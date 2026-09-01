@@ -50,7 +50,7 @@ function canonicalUnit(unit) {
   return UNIT_ALIASES[lower] || lower;
 }
 
-function capitalize(str) {
+export function capitalize(str) {
   if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1);
 }

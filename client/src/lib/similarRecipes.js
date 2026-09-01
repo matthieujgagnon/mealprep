@@ -1,4 +1,4 @@
-import { canonicalize } from "./groceryList.js";
+import { canonicalize, capitalize } from "./groceryList.js";
 import { familyKey } from "./ingredientFamilies.js";
 
 // Perishable ingredients that typically go bad within a week if bought fresh.
@@ -48,10 +48,10 @@ export function findSimilarRecipes(recipe, allRecipes, limit = 8) {
       return {
         recipe: r,
         sharedCount: sharedCores.length,
-        sharedIngredients: sharedCores.map((c) =>
-          // Find original display name from the target recipe's ingredients
-          recipe.ingredients.find((i) => core(i.name) === c)?.name || c
-        ),
+        // Clean canonical name ("Red onion"), not the raw prep-annotated
+        // ingredient text ("Red onions, thinly sliced") — this is a display
+        // list, not a shopping line, so the prep detail is just noise here.
+        sharedIngredients: sharedCores.map((c) => capitalize(c)),
       };
     })
     .filter((m) => m.sharedCount > 0)
@@ -127,9 +127,7 @@ export function findUnusedPerishables(recipe, plannerEntries, allRecipes) {
   }
 
   // Perishables from this recipe NOT already used elsewhere this week
-  return [...perishableInRecipe]
-    .filter((c) => !plannedElsewhere.has(c))
-    .map((c) => recipe.ingredients.find((i) => core(i.name) === c)?.name || c);
+  return [...perishableInRecipe].filter((c) => !plannedElsewhere.has(c)).map(capitalize);
 }
 
 // True if an ingredient name is a perishable

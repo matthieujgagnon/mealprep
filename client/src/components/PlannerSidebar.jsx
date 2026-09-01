@@ -1,6 +1,34 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useDraggable } from "@dnd-kit/core";
 import { findSimilarRecipes, computeWeekOverlap } from "../lib/similarRecipes.js";
+import { capitalize } from "../lib/groceryList.js";
+
+// Rendered via a portal straight to <body> — this sidebar lives inside the
+// planner's flex layout, and a plain in-place "position: fixed" modal here
+// was landing inside whatever stacking/containing context its ancestors
+// happen to create, instead of centered over the whole page. A portal
+// sidesteps that entirely: the popup's DOM position no longer has anything
+// to do with where in the tree it was declared.
+function Popup({ heading, title, items, onClose }) {
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="card shared-ingredients-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        {heading && <p className="shared-ingredients-context">{heading}</p>}
+        <h3 className="shared-ingredients-title">{title}</h3>
+        <ul className="shared-ingredients-list">
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 function SidebarRecipeChip({ recipe, sharedIngredients, onOpenDetails }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -36,7 +64,7 @@ function SidebarRecipeChip({ recipe, sharedIngredients, onOpenDetails }) {
   );
 }
 
-function OverlapScore({ plannerEntries, allRecipes }) {
+function OverlapScore({ plannerEntries, allRecipes, onSelectIngredient }) {
   const { totalUnique, savedItems, overlapScore, sharedIngredients } =
     computeWeekOverlap(plannerEntries, allRecipes);
 
@@ -72,9 +100,14 @@ function OverlapScore({ plannerEntries, allRecipes }) {
           <p className="sidebar-section-label">Shared this week</p>
           <div className="sidebar-shared-tags">
             {[...sharedIngredients.entries()].slice(0, 8).map(([c, recipes]) => (
-              <span key={c} className="sidebar-shared-tag" title={`Used in: ${recipes.join(", ")}`}>
-                {c}
-              </span>
+              <button
+                key={c}
+                type="button"
+                className="sidebar-shared-tag"
+                onClick={() => onSelectIngredient({ core: c, recipes })}
+              >
+                {capitalize(c)}
+              </button>
             ))}
           </div>
         </>
@@ -85,9 +118,25 @@ function OverlapScore({ plannerEntries, allRecipes }) {
 
 export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onClearAnchor }) {
   const [mode, setMode] = useState("overlap");
-  const [expandedChip, setExpandedChip] = useState(null); // { recipe, sharedIngredients }
+  const [popup, setPopup] = useState(null); // { heading, title, items }
   const activeMode = anchorRecipe ? "plan-around" : mode;
   const similar = anchorRecipe ? findSimilarRecipes(anchorRecipe, allRecipes, 12) : [];
+
+  function openChipDetails({ recipe, sharedIngredients }) {
+    setPopup({
+      heading: `Shares ingredients with ${anchorRecipe?.title}`,
+      title: recipe.title,
+      items: sharedIngredients,
+    });
+  }
+
+  function openIngredientDetails({ core, recipes }) {
+    setPopup({
+      heading: `Used in ${recipes.length} recipe${recipes.length !== 1 ? "s" : ""} this week`,
+      title: capitalize(core),
+      items: recipes,
+    });
+  }
 
   return (
     <div className="planner-sidebar">
@@ -107,7 +156,11 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
       </div>
 
       {activeMode === "overlap" && (
-        <OverlapScore plannerEntries={plannerEntries} allRecipes={allRecipes} />
+        <OverlapScore
+          plannerEntries={plannerEntries}
+          allRecipes={allRecipes}
+          onSelectIngredient={openIngredientDetails}
+        />
       )}
 
       {activeMode === "plan-around" && (
@@ -136,7 +189,7 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
                         key={recipe.id}
                         recipe={recipe}
                         sharedIngredients={sharedIngredients}
-                        onOpenDetails={setExpandedChip}
+                        onOpenDetails={openChipDetails}
                       />
                     ))}
                   </div>
@@ -151,21 +204,13 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
         </div>
       )}
 
-      {expandedChip && (
-        <div className="modal-overlay" onClick={() => setExpandedChip(null)}>
-          <div className="card shared-ingredients-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setExpandedChip(null)} aria-label="Close">
-              ×
-            </button>
-            <p className="shared-ingredients-context">Shares ingredients with {anchorRecipe?.title}</p>
-            <h3 className="shared-ingredients-title">{expandedChip.recipe.title}</h3>
-            <ul className="shared-ingredients-list">
-              {expandedChip.sharedIngredients.map((ing) => (
-                <li key={ing}>{ing}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      {popup && (
+        <Popup
+          heading={popup.heading}
+          title={popup.title}
+          items={popup.items}
+          onClose={() => setPopup(null)}
+        />
       )}
     </div>
   );
