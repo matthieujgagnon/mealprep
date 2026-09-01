@@ -210,7 +210,7 @@ function extractRecipeFromArticleBody($, sourceUrl) {
     }
 
     const instructions = instructionTexts.map((text) => ({
-      text: decodeHtmlEntities(text),
+      text: decodeHtmlEntities(stripDualUnitAlt(text)),
       image: null,
     }));
 
@@ -680,8 +680,25 @@ const UNIT_ALIASES = {
 const VULGAR_FRACTIONS = "¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞";
 const QTY_CHARS = `[\\d\\s\\/.\\-–${VULGAR_FRACTIONS}]`;
 
+// Vice/Munchies (and a few other sites) write dual-unit ingredients and
+// quantities as "1 pound|450 grams chicken breasts" or, mid-sentence in a
+// direction, "1 cup|250 ml cold water" — a "|" separating the US and metric
+// measurement for the same amount. parseIngredientLine's regex expects one
+// quantity+unit pair right before the text, so the "|" broke it completely:
+// no whitespace ever followed the unit, so the match backtracked all the way
+// down to capturing nothing, and the ENTIRE line (unit included) fell
+// through into the name field unparsed. Strip the redundant metric echo
+// before it ever reaches the parser — used for both ingredient lines and
+// instruction text.
+function stripDualUnitAlt(line) {
+  return line.replace(
+    new RegExp(`\\s*\\|\\s*${QTY_CHARS}+\\s*(?:${UNIT_WORDS.join("|")})\\b\\.?`, "gi"),
+    ""
+  );
+}
+
 function parseIngredientLine(line, position) {
-  const text = String(line).trim();
+  const text = stripDualUnitAlt(String(line).trim());
 
   const match = text.match(new RegExp(`^(${QTY_CHARS}+)?\\s*([a-zA-Z]+\\.?)?\\s+(.*)$`));
 

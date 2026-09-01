@@ -15,8 +15,9 @@
 // thigh", "boneless skinless chicken breast", "ground chicken" all contain
 // "chicken").
 const FAMILY_WORDS = new Set([
-  "chicken", "beef", "pork", "turkey", "lamb", "duck", "veal",
+  "chicken", "beef", "pork", "turkey", "lamb", "duck", "veal", "bison", "venison",
   "shrimp", "salmon", "tuna", "cod", "tilapia", "halibut", "scallop",
+  "crab", "lobster", "clam", "mussel", "mussels", "oyster", "oysters",
   "tofu", "tempeh",
 ]);
 
@@ -27,9 +28,11 @@ const CUT_TO_FAMILY = {
   "rib eye": "beef", "sirloin": "beef", "chuck roast": "beef",
   "brisket": "beef", "short rib": "beef", "short ribs": "beef",
   "prime rib": "beef", "new york strip": "beef", "strip steak": "beef",
-  "tri tip": "beef",
+  "tri tip": "beef", "hanger steak": "beef", "porterhouse": "beef",
+  "t-bone": "beef", "tbone": "beef", "filet mignon": "beef",
   "bacon": "pork", "ham": "pork", "prosciutto": "pork", "pancetta": "pork",
   "sausage": "pork", "chorizo": "pork", "italian sausage": "pork",
+  "spare ribs": "pork", "baby back ribs": "pork",
   "prawn": "shrimp", "prawns": "shrimp", "langoustine": "shrimp",
 };
 
@@ -43,9 +46,14 @@ const SYNONYM_WORDS = {
   capsicum: "bell pepper",
   aubergine: "eggplant",
   courgette: "zucchini",
+  rocket: "arugula",
   garbanzo: "chickpea", "garbanzo bean": "chickpea", "garbanzo beans": "chickpea",
   spud: "potato", spuds: "potato",
   chili: "chile", chilli: "chile", chilies: "chile", chillies: "chile",
+  cornflour: "cornstarch", // UK term — different product from US "corn flour"
+  "icing sugar": "powdered sugar", "confectioners sugar": "powdered sugar",
+  "confectioner's sugar": "powdered sugar",
+  "double cream": "heavy cream", "heavy whipping cream": "heavy cream",
 };
 
 // Given a canonicalize()-produced core string, returns the broader family
