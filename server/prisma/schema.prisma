@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Recipe {
+  id               String   @id @default(cuid())
+  title            String
+  sourceUrl        String?
+  photoUrl         String?
+  photos           String   @default("[]") // JSON-stringified array of all image URLs found at import
+  inCookbook       Boolean  @default(false) // true for manual entries, or imported recipes dragged into the cookbook
+  inImported       Boolean  @default(true) // true for recipes that came from a URL import; independent of inCookbook so deleting from one section doesn't affect the other
+  isPlaceholder    Boolean  @default(false) // true for the generic "Restaurant"/"YOLO"/"N/A" planner cards, which aren't real recipes
+  baseServings     Int      @default(4)
+  prepTimeMinutes  Int?
+  cookTimeMinutes  Int?
+  fridgeLifeDays   Int? // how many days this keeps well as a fridge leftover; user-set, powers the "past its fridge life" warning on leftover-marked planner cards
+  instructions     String // JSON-stringified array of step strings
+  tags             String   @default("[]") // JSON-stringified array of tag strings, e.g. ["shrimp","summer"]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ingredients   Ingredient[]
+  plannerEntries PlannerEntry[]
+}
+
+model Ingredient {
+  id       String  @id @default(cuid())
+  recipeId String
+  recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  name     String
+  quantity Float? // base quantity for recipe.baseServings; null for "to taste" items
+  unit     String? // e.g. "g", "cup", "tbsp"; null when quantity is unitless (e.g. "2 eggs")
+  group    String? // section header this ingredient falls under, e.g. "For the sauce"; null if the recipe has no sub-groups
+  position Int     @default(0)
+}
+
+// A canonical ingredient name (e.g. "salt", "olive oil") the user has marked
+// as a pantry staple they always have on hand — dragged onto the "staples"
+// section of the grocery list. Persists across weeks.
+model PantryStaple {
+  id        String   @id @default(cuid())
+  core      String   @unique // normalized ingredient name, e.g. "olive oil"
+  category  String? // "spice" | "other" — user override of the automatic spice/other split; null = auto-detect
+  createdAt DateTime @default(now())
+}
+
+// A user-created grocery list section, e.g. "Metro", "Super C", "Fruit du Jour"
+model GrocerySection {
+  id          String              @id @default(cuid())
+  name        String              @unique
+  position    Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  assignments GroceryAssignment[]
+}
+
+// Maps a canonical ingredient name to a grocery section the user dragged it into
+model GroceryAssignment {
+  id        String         @id @default(cuid())
+  core      String         @unique // normalized ingredient name, e.g. "avocado"
+  sectionId String
+  section   GrocerySection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+}
+
+// A recipe card placed on a specific day of the weekly planner
+model PlannerEntry {
+  id        String   @id @default(cuid())
+  dayOfWeek Int // 0 = Monday ... 6 = Sunday
+  mealType  String   @default("dinner") // "breakfast" | "lunch" | "dinner"
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  servings  Int? // override servings for this planned meal; falls back to recipe.baseServings
+  isLeftover Boolean @default(false) // true = reusing food from another planned meal; excluded from grocery list
+  position  Int      @default(0) // order within the day+mealType slot
+  createdAt DateTime @default(now())
+}

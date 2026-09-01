@@ -1,0 +1,16 @@
+{
+  "name": "mealprep",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "setup": "npm install && npm run prisma:generate --workspace=server && npm run prisma:migrate --workspace=server",
+    "build": "npm run prisma:generate --workspace=server && npm run build --workspace=client",
+    "start": "npm run start --workspace=server"
+  }
+}
