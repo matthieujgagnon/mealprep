@@ -257,7 +257,7 @@ const SPECIFIC_RECIPE_CONTAINERS = [
 ];
 
 const NOISE_PATTERN =
-  /(logo|icon|avatar|sprite|pixel|badge|share|social|advert|gravatar|blank|spacer|placeholder|author|headshot|profile|byline|comment|nav|widget|sidebar|footer|menu|-\d{2,3}x\d{2,3}\.(?:png|jpe?g|gif|webp))/i;
+  /(logo|icon|avatar|sprite|pixel|badge|share|social|advert|gravatar|blank|spacer|placeholder|author|headshot|profile|byline|comment|nav|widget|sidebar|footer|menu|wp-content\/plugins|wp-includes|-\d{2,3}x\d{2,3}\.(?:png|jpe?g|gif|webp))/i;
 
 function extractDomImages($, baseUrl) {
   try {
@@ -736,7 +736,8 @@ const NOTE_TRIGGER_WORDS = new Set([
   "melted", "softened", "beaten", "whisked", "toasted", "peeled", "seeded",
   "deveined", "drained", "rinsed", "cubed", "julienned", "torn", "zested",
   "juiced", "cooked", "uncooked", "room", "divided", "optional", "chilled",
-  "warmed", "pounded", "trimmed", "halved", "quartered", "crumbled",
+  "warmed", "pounded", "trimmed", "halved", "quartered", "crumbled", "cut",
+  "thinly", "finely", "roughly", "coarsely", "freshly", "hand-torn", "such",
   "to", "for",
 ]);
 
@@ -751,13 +752,37 @@ function splitTrailingNote(name) {
   return { name: before, notes: after };
 }
 
+// "Tomato (sliced)", "Red onion (cut into strips)" — some sites put the prep
+// note in trailing parentheses instead of after a comma. Same idea as
+// splitTrailingNote, just a different wrapper.
+function splitParentheticalNote(name) {
+  const match = name.match(/^(.*\S)\s*\(([^()]+)\)\s*$/);
+  if (!match) return { name, notes: null };
+  const [, before, inside] = match;
+  if (!before.trim() || inside.length > 50) return { name, notes: null };
+  const firstWord = inside.trim().split(/\s+/)[0]?.toLowerCase().replace(/[.,]$/, "");
+  if (!NOTE_TRIGGER_WORDS.has(firstWord)) return { name, notes: null };
+  return { name: before.trim(), notes: inside.trim() };
+}
+
+// Tries a trailing comma clause first ("butter, melted"), then a trailing
+// parenthetical ("tomato (sliced)"). Comma wins when both are present —
+// in a case like "chickpeas (garbanzo beans), drained and rinsed" the paren
+// is a genuine alternate-name aside, not a prep note, and should stay in
+// the name; only the trailing comma clause is the real note there.
+function extractIngredientNote(name) {
+  const commaSplit = splitTrailingNote(name);
+  if (commaSplit.notes) return commaSplit;
+  return splitParentheticalNote(name);
+}
+
 function parseIngredientLine(line, position) {
   const text = normalizeWordedRange(stripQuantityQualifier(stripDualUnitAlt(String(line).trim())));
 
   const match = text.match(new RegExp(`^(${QTY_CHARS}+)?\\s*([a-zA-Z]+\\.?)?\\s+(.*)$`));
 
   if (!match) {
-    const { name: splitName, notes } = splitTrailingNote(
+    const { name: splitName, notes } = extractIngredientNote(
       stripStrayParens(text).replace(/[,.\-–\s]+$/, "").trim()
     );
     return {
@@ -797,7 +822,7 @@ function parseIngredientLine(line, position) {
   name = stripStrayParens(name);
   name = name.replace(/[,.\-–\s]+$/, "").trim();
 
-  const { name: splitName, notes } = splitTrailingNote(name);
+  const { name: splitName, notes } = extractIngredientNote(name);
 
   return {
     name: capitalizeFirst(splitName.trim()),

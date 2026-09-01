@@ -552,6 +552,19 @@ select {
   flex-shrink: 0;
 }
 
+.photo-row-preview.loading {
+  opacity: 0.4;
+}
+
+.photo-row-preview-failed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(200, 56, 3, 0.12);
+  color: var(--tomato);
+  font-size: 14px;
+}
+
 .form-hint {
   font-size: 11px;
   color: var(--ink-soft);

@@ -7,6 +7,42 @@ import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
 const emptyIngredient = () => ({ name: "", quantity: "", unit: "", notes: "" });
 
+// Some scraped/pasted photo URLs are slow, blocked by the source site's
+// hotlink protection, or just dead — a plain <img> just sits there looking
+// like it's stuck loading forever with no way to tell what happened. This
+// shows an explicit "couldn't load" state on a real error, and also gives up
+// after a timeout so a hung request doesn't look identical to one that's
+// still legitimately loading.
+function PhotoPreview({ url }) {
+  const [status, setStatus] = useState("loading"); // "loading" | "loaded" | "failed"
+
+  useEffect(() => {
+    setStatus("loading");
+    const timeout = setTimeout(() => {
+      setStatus((s) => (s === "loading" ? "failed" : s));
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [url]);
+
+  if (status === "failed") {
+    return (
+      <div className="photo-row-preview photo-row-preview-failed" title="Couldn't load this image">
+        ⚠
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt=""
+      className={`photo-row-preview${status === "loading" ? " loading" : ""}`}
+      onLoad={() => setStatus("loaded")}
+      onError={() => setStatus("failed")}
+    />
+  );
+}
+
 // Works in two modes:
 //   - create (no `recipe` prop): blank form, calls api.createRecipe, then onCreated(recipe)
 //   - edit (`recipe` prop passed): pre-filled from the existing recipe, calls
@@ -167,7 +203,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
             onChange={(e) => updatePhoto(i, e.target.value)}
             style={{ flex: 1 }}
           />
-          {url.trim() && <img src={url.trim()} alt="" className="photo-row-preview" />}
+          {url.trim() && <PhotoPreview url={url.trim()} />}
           {photos.length > 1 && (
             <button
               type="button"
