@@ -36,6 +36,7 @@ model Ingredient {
   name     String
   quantity Float? // base quantity for recipe.baseServings; null for "to taste" items
   unit     String? // e.g. "g", "cup", "tbsp"; null when quantity is unitless (e.g. "2 eggs")
+  notes    String? // prep note kept separate from the name, e.g. "melted", "diced" — shown alongside the ingredient but excluded from grocery-list name matching
   group    String? // section header this ingredient falls under, e.g. "For the sauce"; null if the recipe has no sub-groups
   position Int     @default(0)
 }
