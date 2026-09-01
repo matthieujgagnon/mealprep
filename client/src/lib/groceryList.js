@@ -50,6 +50,11 @@ function canonicalUnit(unit) {
   return UNIT_ALIASES[lower] || lower;
 }
 
+// Canonical unit list for the manual-entry dropdown, derived from the same
+// alias map that powers grocery-list merging — so a unit picked from this
+// list is guaranteed to already be in its canonical form.
+export const UNIT_OPTIONS = [...new Set(Object.values(UNIT_ALIASES))];
+
 export function capitalize(str) {
   if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../api.js";
-import { stepText, stepImage } from "../lib/steps.js";
+import { stepText, stepImage, stepIsHeading, stepHeadingText } from "../lib/steps.js";
 import { findSimilarRecipes, findUnusedPerishables, isPerishable } from "../lib/similarRecipes.js";
 import { CookMode } from "./CookMode.jsx";
 import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
@@ -269,6 +269,7 @@ export function RecipeDetailModal({
                   <li key={ing.id || ing.name} className={perishable ? "perishable-row" : ""}>
                     <span>
                       {ing.name}
+                      {ing.notes && <span className="ingredient-notes">, {ing.notes}</span>}
                       {perishable && <span className="perishable-dot" title="Perishable ingredient" />}
                     </span>
                     <span className="qty">
@@ -292,19 +293,30 @@ export function RecipeDetailModal({
               </button>
             </div>
             <ol className="instructions-list">
-              {recipe.instructions.map((step, i) => {
-                const text = stepText(step);
-                const image = stepImage(step);
-                return (
-                  <li key={i} className="step-block">
-                    <span className="step-block-number">{i + 1}</span>
-                    <div className="step-block-content">
-                      {image && <img src={image} alt="" className="step-block-image" />}
-                      <p>{text}</p>
-                    </div>
-                  </li>
-                );
-              })}
+              {(() => {
+                let stepNumber = 0;
+                return recipe.instructions.map((step, i) => {
+                  if (stepIsHeading(step)) {
+                    return (
+                      <li key={i} className="step-heading">
+                        {stepHeadingText(step)}
+                      </li>
+                    );
+                  }
+                  stepNumber++;
+                  const text = stepText(step);
+                  const image = stepImage(step);
+                  return (
+                    <li key={i} className="step-block">
+                      <span className="step-block-number">{stepNumber}</span>
+                      <div className="step-block-content">
+                        {image && <img src={image} alt="" className="step-block-image" />}
+                        <p>{text}</p>
+                      </div>
+                    </li>
+                  );
+                });
+              })()}
             </ol>
           </>
         )}

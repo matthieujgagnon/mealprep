@@ -16,6 +16,31 @@ const VOLUME_TO_ML = {
   fl_oz: 29.5735,
 };
 
+// Parses a quantity typed as free text — accepts a fraction ("1/4"), a mixed
+// number ("1 1/2"), a plain decimal ("0.25"), or an empty string. Recipe
+// entry shouldn't require converting "1/4 cup" to "0.25" in your head first.
+// Returns a number, or null if the input is empty/unparseable.
+export function parseQuantityInput(raw) {
+  if (raw == null) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+
+  const mixed = str.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) {
+    const [, whole, num, den] = mixed;
+    return Number(den) === 0 ? null : Number(whole) + Number(num) / Number(den);
+  }
+
+  const fraction = str.match(/^(\d+)\/(\d+)$/);
+  if (fraction) {
+    const [, num, den] = fraction;
+    return Number(den) === 0 ? null : Number(num) / Number(den);
+  }
+
+  const value = Number(str);
+  return Number.isFinite(value) ? value : null;
+}
+
 function unitClass(unit) {
   if (!unit) return null;
   const u = unit.toLowerCase();

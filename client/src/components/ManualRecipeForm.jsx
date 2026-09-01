@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { api } from "../api.js";
 import { stepText, stepImage } from "../lib/steps.js";
+import { UNIT_OPTIONS } from "../lib/groceryList.js";
+import { parseQuantityInput } from "../lib/units.js";
 
-const emptyIngredient = () => ({ name: "", quantity: "", unit: "" });
+const emptyIngredient = () => ({ name: "", quantity: "", unit: "", notes: "" });
 
 // Works in two modes:
 //   - create (no `recipe` prop): blank form, calls api.createRecipe, then onCreated(recipe)
@@ -25,6 +27,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
           name: ing.name || "",
           quantity: ing.quantity ?? "",
           unit: ing.unit || "",
+          notes: ing.notes || "",
         }))
       : [emptyIngredient()]
   );
@@ -64,8 +67,17 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   // otherwise we'd be attaching an old picture to a rewritten step. New or
   // edited lines just don't get a photo here (add one by re-importing, or
   // this is a manual recipe with no photos to begin with).
+  //
+  // Also strips leading "* " / "- " / "• " bullet markers, since pasting a
+  // recipe from another app or a PDF usually brings those along and they'd
+  // otherwise show up literally in each step's text. Section headers like
+  // "1. Make the Sauce:" are left as-is here — they're detected and rendered
+  // as headings (no step number) at display time, not parsed out here.
   function buildInstructions() {
-    const lines = instructionsText.split("\n").map((s) => s.trim()).filter(Boolean);
+    const lines = instructionsText
+      .split("\n")
+      .map((s) => s.trim().replace(/^[*\-•]\s*/, "").trim())
+      .filter(Boolean);
     const originalSteps = recipe?.instructions || [];
     return lines.map((text) => {
       const matchingOriginal = originalSteps.find((step) => stepText(step) === text);
@@ -94,8 +106,9 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
           .filter((ing) => ing.name.trim())
           .map((ing, i) => ({
             name: ing.name.trim(),
-            quantity: ing.quantity !== "" ? Number(ing.quantity) : null,
+            quantity: parseQuantityInput(ing.quantity),
             unit: ing.unit.trim() || null,
+            notes: ing.notes.trim() || null,
             position: i,
           })),
       };
@@ -199,23 +212,36 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
         <div className="form-row ingredient-row" key={i}>
           <input
             type="text"
-            placeholder="Name (e.g. flour)"
+            placeholder="Name (e.g. butter)"
             value={ing.name}
             onChange={(e) => updateIngredient(i, "name", e.target.value)}
             style={{ flex: 2 }}
           />
           <input
-            type="number"
-            placeholder="Qty"
+            type="text"
+            inputMode="decimal"
+            placeholder="Qty (1/4)"
             value={ing.quantity}
             onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
             style={{ flex: 1 }}
           />
-          <input
-            type="text"
-            placeholder="Unit"
+          <select
             value={ing.unit}
             onChange={(e) => updateIngredient(i, "unit", e.target.value)}
+            style={{ flex: 1 }}
+          >
+            <option value="">(none)</option>
+            {UNIT_OPTIONS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="Notes (e.g. melted)"
+            value={ing.notes}
+            onChange={(e) => updateIngredient(i, "notes", e.target.value)}
             style={{ flex: 1 }}
           />
           {ingredients.length > 1 && (
@@ -243,6 +269,11 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
           placeholder={"Preheat oven to 350°F\nMix dry ingredients…"}
         />
       </label>
+      <p className="form-hint">
+        Paste freely — bullet markers (*, -) are stripped automatically, and a
+        line ending in a colon (like "Make the Sauce:") is shown as a section
+        heading instead of a numbered step.
+      </p>
       {isEditing && recipe.instructions?.some(stepImage) && (
         <p className="form-hint">
           Steps with an imported photo keep it as long as you don't change that
