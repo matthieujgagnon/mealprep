@@ -19,10 +19,16 @@ const STAPLE_WORDS = [
 // mixed in with oils and baking basics.
 const SPICE_WORDS = [
   "salt", "pepper", "black pepper", "garlic powder", "onion powder",
-  "paprika", "cumin", "oregano", "basil", "thyme", "cinnamon", "nutmeg",
+  "paprika", "smoked paprika", "cumin", "ground cumin", "oregano", "basil",
+  "thyme", "cinnamon", "ground cinnamon", "nutmeg", "ground nutmeg",
   "chili powder", "cayenne", "cayenne pepper", "curry powder", "bay leaf",
-  "bay leaves", "rosemary", "coriander", "turmeric", "ginger", "allspice",
-  "red pepper flakes", "italian seasoning", "chili flakes",
+  "bay leaves", "rosemary", "coriander", "ground coriander", "turmeric",
+  "ground turmeric", "ginger", "ground ginger", "allspice", "ground allspice",
+  "white pepper", "ground black pepper", "cracked black pepper",
+  "red pepper flakes", "crushed red pepper", "italian seasoning",
+  "chili flakes", "mustard powder", "ground mustard", "star anise",
+  "cardamom", "fennel seed", "fennel seeds", "mustard seed", "mustard seeds",
+  "onion salt", "celery salt", "five spice powder", "chinese five-spice powder",
 ];
 
 // Mirrors the alias map in server/src/lib/scrapeRecipe.js. Kept here too so
@@ -91,6 +97,17 @@ const PREP_WORDS = new Set([
   "strips", "strip", "pieces", "piece", "chunks", "chunk",
   "optional", "divided", "or", "more", "taste", "needed",
   "into", "and", "for", "to", "with",
+  // Spice/seasoning modifiers — without these, "kosher salt" or "coarse
+  // black pepper" canonicalize to a core that never matches the plain
+  // "salt"/"pepper" entries in STAPLE_WORDS/SPICE_WORDS below, so they never
+  // get auto-recognized as staples. Deliberately NOT included here: "ground",
+  // "smoked", "crushed" — those meaningfully distinguish different products
+  // to buy ("ground beef" vs "beef" steak, "smoked salmon" vs "salmon"), so
+  // stripping them everywhere would wrongly merge those grocery lines. The
+  // spice-specific phrasings that need them ("ground cumin", "smoked
+  // paprika") are handled as their own entries in SPICE_WORDS instead.
+  "kosher", "sea", "himalayan", "coarse", "fine", "cracked", "table",
+  "iodized",
 ]);
 
 // Splits an ingredient name into a grouping key (core food, singularized,
@@ -136,7 +153,11 @@ export function canonicalize(rawName) {
 // line item. See `parts` on each returned item.
 export function buildGroceryList(plannerEntries, customStaples = [], staplesCategoryOverrides = {}) {
   const map = new Map(); // core -> { core, name, parts, usedIn, varieties, isStaple, isSpice }
-  const staplesSet = new Set([...STAPLE_WORDS, ...customStaples.map((s) => s.toLowerCase())]);
+  // Every spice is inherently a pantry staple (you don't buy cumin fresh
+  // each week) — folding SPICE_WORDS into the staples set here means a new
+  // entry only ever needs to be added to ONE list to get both isStaple and
+  // isSpice, instead of needing to remember to keep two lists in sync.
+  const staplesSet = new Set([...STAPLE_WORDS, ...SPICE_WORDS, ...customStaples.map((s) => s.toLowerCase())]);
 
   for (const entry of plannerEntries) {
     if (entry.isLeftover) continue; // reusing food from another meal — don't re-buy it

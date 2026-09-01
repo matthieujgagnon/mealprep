@@ -69,6 +69,7 @@ recipesRouter.post("/import", async (req, res) => {
           name: ing.name,
           quantity: ing.quantity,
           unit: ing.unit,
+          notes: ing.notes || null,
           group: ing.group || null,
           position: ing.position,
         })),

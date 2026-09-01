@@ -714,16 +714,57 @@ function stripQuantityQualifier(line) {
   return line.replace(/^(?:a\s+)?(scant|brimming|heaping|generous|rounded)\s+/i, "");
 }
 
+// "1 to 2 tablespoons" or "3 or 4 slices" — some sites spell out a range
+// with a word instead of a dash. The main regex expects a unit right after
+// the quantity, so that word sitting there broke it the exact same way
+// "brimming"/"scant" did — the whole line, unit included, fell through
+// unparsed. Convert it to the dash form so parseFraction's existing
+// range-averaging handles it the same way it handles "1-2".
+function normalizeWordedRange(line) {
+  return line.replace(new RegExp(`^(${QTY_CHARS}+)\\s+(?:to|or)\\s+(${QTY_CHARS}+)`, "i"), "$1-$2");
+}
+
+// Common ending words that read as a preparation note rather than part of
+// the ingredient's identity — mirrors the manual-entry Notes field: "1/4 cup
+// butter, melted" splits into name "butter", notes "melted" the same way
+// typing it in by hand would. Only splits on a TRAILING comma clause that
+// starts with one of these trigger words, so "boneless, skinless chicken
+// thighs" (descriptors before the noun, no trailing clause) is left alone
+// rather than risking a wrong split.
+const NOTE_TRIGGER_WORDS = new Set([
+  "sliced", "diced", "chopped", "minced", "grated", "shredded", "crushed",
+  "melted", "softened", "beaten", "whisked", "toasted", "peeled", "seeded",
+  "deveined", "drained", "rinsed", "cubed", "julienned", "torn", "zested",
+  "juiced", "cooked", "uncooked", "room", "divided", "optional", "chilled",
+  "warmed", "pounded", "trimmed", "halved", "quartered", "crumbled",
+  "to", "for",
+]);
+
+function splitTrailingNote(name) {
+  const lastComma = name.lastIndexOf(",");
+  if (lastComma === -1) return { name, notes: null };
+  const before = name.slice(0, lastComma).trim();
+  const after = name.slice(lastComma + 1).trim();
+  if (!before || !after || after.length > 50) return { name, notes: null };
+  const firstWord = after.split(/\s+/)[0]?.toLowerCase().replace(/[.,]$/, "");
+  if (!NOTE_TRIGGER_WORDS.has(firstWord)) return { name, notes: null };
+  return { name: before, notes: after };
+}
+
 function parseIngredientLine(line, position) {
-  const text = stripQuantityQualifier(stripDualUnitAlt(String(line).trim()));
+  const text = normalizeWordedRange(stripQuantityQualifier(stripDualUnitAlt(String(line).trim())));
 
   const match = text.match(new RegExp(`^(${QTY_CHARS}+)?\\s*([a-zA-Z]+\\.?)?\\s+(.*)$`));
 
   if (!match) {
+    const { name: splitName, notes } = splitTrailingNote(
+      stripStrayParens(text).replace(/[,.\-–\s]+$/, "").trim()
+    );
     return {
-      name: capitalizeFirst(stripStrayParens(text).replace(/[,.\-–\s]+$/, "").trim()),
+      name: capitalizeFirst(splitName),
       quantity: null,
       unit: null,
+      notes,
       position,
     };
   }
@@ -756,10 +797,13 @@ function parseIngredientLine(line, position) {
   name = stripStrayParens(name);
   name = name.replace(/[,.\-–\s]+$/, "").trim();
 
+  const { name: splitName, notes } = splitTrailingNote(name);
+
   return {
-    name: capitalizeFirst(name.trim()),
+    name: capitalizeFirst(splitName.trim()),
     quantity,
     unit: isKnownUnit ? UNIT_ALIASES[unitNormalized] : null,
+    notes,
     position,
   };
 }
