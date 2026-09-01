@@ -789,7 +789,24 @@ const VULGAR_FRACTION_VALUES = {
 };
 
 function parseFraction(rawStr) {
-  // handles "2", "2.5", "1/2", "2 1/2", "¼", "1¼"
+  // "1/4 – 1/3", "2-3", "1 1/2-2" etc. represent a RANGE ("somewhere between
+  // ¼ and ⅓ cup"), not two amounts meant to be added together. The old code
+  // treated the dash as just another separator and summed both sides —
+  // "1/4 – 1/2 teaspoon" silently became 0.75 tsp, 50% more than the actual
+  // top of the range. Detect a two-part range first and average it instead;
+  // that's a far more sensible single number than either bound alone, and
+  // definitely better than the wrong sum.
+  const rangeParts = rawStr.split(/\s*[-–]\s*/).filter(Boolean);
+  if (rangeParts.length === 2) {
+    const low = parseSingleAmount(rangeParts[0]);
+    const high = parseSingleAmount(rangeParts[1]);
+    if (low != null && high != null) return (low + high) / 2;
+  }
+  return parseSingleAmount(rawStr);
+}
+
+// Parses a single (non-range) amount: "2", "2.5", "1/2", "2 1/2", "¼", "1¼".
+function parseSingleAmount(rawStr) {
   let str = rawStr;
   let total = 0;
   let found = false;

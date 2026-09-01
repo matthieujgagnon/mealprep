@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { scrapeRecipe } from "../lib/scrapeRecipe.js";
+import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
 export const recipesRouter = Router();
 
@@ -61,6 +62,7 @@ recipesRouter.post("/import", async (req, res) => {
       baseServings: parsed.baseServings,
       prepTimeMinutes: parsed.prepTimeMinutes,
       cookTimeMinutes: parsed.cookTimeMinutes,
+      fridgeLifeDays: estimateFridgeLifeDays(parsed.ingredients.map((i) => i.name)),
       instructions: JSON.stringify(parsed.instructions),
       ingredients: {
         create: parsed.ingredients.map((ing) => ({

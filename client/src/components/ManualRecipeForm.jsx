@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { stepText, stepImage } from "../lib/steps.js";
 import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
+import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
 const emptyIngredient = () => ({ name: "", quantity: "", unit: "", notes: "" });
 
@@ -21,6 +22,11 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(recipe?.prepTimeMinutes ?? "");
   const [cookTimeMinutes, setCookTimeMinutes] = useState(recipe?.cookTimeMinutes ?? "");
   const [fridgeLifeDays, setFridgeLifeDays] = useState(recipe?.fridgeLifeDays ?? "");
+  // Once the user types into the fridge-life field themselves, stop
+  // overwriting it — the suggestion is a one-time starting point, not
+  // something that should fight the user's own edit as they keep typing
+  // ingredients.
+  const [fridgeLifeTouched, setFridgeLifeTouched] = useState(isEditing);
   const [ingredients, setIngredients] = useState(
     recipe?.ingredients?.length
       ? recipe.ingredients.map((ing) => ({
@@ -36,6 +42,17 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Live one-time smart default: as ingredients are typed in, suggest a
+  // fridge-life value based on what's most perishable in the list. Only
+  // applies while creating a new recipe and only until the user edits the
+  // field themselves — see fridgeLifeTouched above.
+  useEffect(() => {
+    if (isEditing || fridgeLifeTouched) return;
+    const names = ingredients.map((ing) => ing.name).filter(Boolean);
+    if (names.length === 0) return;
+    setFridgeLifeDays(String(estimateFridgeLifeDays(names)));
+  }, [ingredients, isEditing, fridgeLifeTouched]);
 
   function updateIngredient(i, field, value) {
     setIngredients((prev) =>
@@ -201,11 +218,20 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
             type="number"
             min="0"
             value={fridgeLifeDays}
-            onChange={(e) => setFridgeLifeDays(e.target.value)}
+            onChange={(e) => {
+              setFridgeLifeTouched(true);
+              setFridgeLifeDays(e.target.value);
+            }}
             placeholder="e.g. 4"
           />
         </label>
       </div>
+      {!isEditing && !fridgeLifeTouched && fridgeLifeDays !== "" && (
+        <p className="form-hint">
+          Suggested based on the ingredients so far — edit the number above
+          any time.
+        </p>
+      )}
 
       <p className="form-section-label">Ingredients</p>
       {ingredients.map((ing, i) => (
