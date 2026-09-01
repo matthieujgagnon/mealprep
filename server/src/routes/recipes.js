@@ -42,9 +42,11 @@ recipesRouter.post("/import", async (req, res) => {
   try {
     parsed = await scrapeRecipe(url);
   } catch (err) {
-    const needsManualEntry = String(err.message).startsWith("NO_STRUCTURED_DATA");
+    const needsManualEntry =
+      String(err.message).startsWith("NO_STRUCTURED_DATA") ||
+      String(err.message).startsWith("FETCH_FAILED");
     return res.status(needsManualEntry ? 422 : 502).json({
-      error: err.message,
+      error: err.message.replace(/^(NO_STRUCTURED_DATA|FETCH_FAILED):\s*/, ""),
       needsManualEntry,
     });
   }
