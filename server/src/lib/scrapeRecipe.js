@@ -697,8 +697,20 @@ function stripDualUnitAlt(line) {
   );
 }
 
+// Some recipes prefix a quantity with an informal qualifier ("scant 2
+// teaspoons", "brimming 2 tablespoons", "a heaping 1/4 cup") instead of
+// leading straight with the number. The main regex below expects the
+// quantity first, so a leading qualifier word made it fail exactly like the
+// dual-unit "|" case — the whole line (unit included) fell through into the
+// name, quantity lost entirely. Strip it before parsing; the qualifier
+// itself is minor cooking color, not worth preserving at the cost of losing
+// the actual quantity.
+function stripQuantityQualifier(line) {
+  return line.replace(/^(?:a\s+)?(scant|brimming|heaping|generous|rounded)\s+/i, "");
+}
+
 function parseIngredientLine(line, position) {
-  const text = stripDualUnitAlt(String(line).trim());
+  const text = stripQuantityQualifier(stripDualUnitAlt(String(line).trim()));
 
   const match = text.match(new RegExp(`^(${QTY_CHARS}+)?\\s*([a-zA-Z]+\\.?)?\\s+(.*)$`));
 

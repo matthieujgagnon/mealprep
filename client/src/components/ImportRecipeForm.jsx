@@ -40,7 +40,9 @@ export function ImportRecipeForm({ onImported }) {
         <p className="import-error">
           {error.message}
           {error.needsManualEntry &&
-            " — this site doesn't expose structured recipe data, so it can't be auto-imported. You can add it manually instead."}
+            (error.message.startsWith("Failed to fetch")
+              ? " — this site is blocking automated requests, so it can't be auto-imported. You can add it manually instead."
+              : " — this site doesn't expose structured recipe data, so it can't be auto-imported. You can add it manually instead.")}
         </p>
       )}
     </div>
