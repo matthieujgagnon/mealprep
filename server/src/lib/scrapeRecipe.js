@@ -95,8 +95,13 @@ function extractRecipeFromArticleBody($, sourceUrl) {
 
     for (let i = 0; i < headings.length; i++) {
       const headingText = $(headings[i]).text().toLowerCase().trim();
-      const isIngredients = /^ingredients?/.test(headingText);
-      const isDirections = /^(directions?|instructions?|method|steps?|preparation)/.test(headingText);
+      // Must be (close to) exactly "Ingredients" — not just start with that
+      // word. A loose startsWith match here was catching unrelated sections
+      // like "Ingredient Notes" (a prose blurb about each ingredient, common
+      // on food blogs for SEO) and feeding its sentences through as if they
+      // were the real ingredient list.
+      const isIngredients = /^ingredients?\s*(\(\d+\))?\s*:?\s*$/.test(headingText);
+      const isDirections = /^(directions?|instructions?|method|steps?|preparation)\s*:?\s*$/.test(headingText);
 
       if (!isIngredients && !isDirections) continue;
 
@@ -137,7 +142,7 @@ function extractRecipeFromArticleBody($, sourceUrl) {
           if ($node.find("br").length > 0 && (isIngredients || isDirections)) {
             const lines = splitOnLineBreaks($node);
             for (const lineText of lines) {
-              if (isIngredients && /^(for the |for )/i.test(lineText) && lineText.endsWith(":")) {
+              if (isIngredients && isGroupHeader(lineText)) {
                 if (groupItems.length) {
                   ingredientGroups.push({ name: currentGroup, items: groupItems });
                   groupItems = [];
@@ -158,7 +163,7 @@ function extractRecipeFromArticleBody($, sourceUrl) {
           if (!text) { $node = $node.next(); continue; }
 
           // Italic/bold "for the X:" patterns signal a sub-group in ingredients
-          if (isIngredients && /^(for the |for )/i.test(text) && text.endsWith(":")) {
+          if (isIngredients && isGroupHeader(text)) {
             if (groupItems.length) {
               ingredientGroups.push({ name: currentGroup, items: groupItems });
               groupItems = [];
@@ -174,7 +179,7 @@ function extractRecipeFromArticleBody($, sourceUrl) {
         } else if (tag === "em" || tag === "strong") {
           // Vice wraps group headers in <em> or <strong> inline
           const text = $node.text().replace(/\s+/g, " ").trim();
-          if (isIngredients && text.startsWith("for") && text.endsWith(":")) {
+          if (isIngredients && isGroupHeader(text)) {
             if (groupItems.length) {
               ingredientGroups.push({ name: currentGroup, items: groupItems });
               groupItems = [];
