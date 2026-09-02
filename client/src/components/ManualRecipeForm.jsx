@@ -6,6 +6,55 @@ import { parseQuantityInput } from "../lib/units.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
 const emptyIngredient = () => ({ name: "", quantity: "", unit: "", notes: "" });
+const emptySection = () => ({ isSection: true, name: "" });
+
+// Reconstructs the mixed section+ingredient list the form edits from a
+// flat ingredients array — each ingredient carries its own `group` string
+// (or null), so a section header is inserted right before the first
+// ingredient of each new group as the list is walked in position order.
+function buildInitialItems(ingredients) {
+  if (!ingredients || ingredients.length === 0) return [emptyIngredient()];
+  const items = [];
+  let lastGroup; // undefined sentinel — distinct from a real "no group" (null)
+  for (const ing of ingredients) {
+    const group = ing.group || null;
+    if (group && group !== lastGroup) {
+      items.push({ isSection: true, name: group });
+    }
+    lastGroup = group;
+    items.push({
+      name: ing.name || "",
+      quantity: ing.quantity ?? "",
+      unit: ing.unit || "",
+      notes: ing.notes || "",
+    });
+  }
+  return items;
+}
+
+// Flattens the mixed section+ingredient list back into a plain ingredients
+// array for the API — each ingredient's `group` becomes whichever section
+// header most recently preceded it (null if none yet).
+function buildIngredientsPayload(items) {
+  let currentGroup = null;
+  const result = [];
+  for (const item of items) {
+    if (item.isSection) {
+      currentGroup = item.name.trim() || null;
+      continue;
+    }
+    if (!item.name.trim()) continue;
+    result.push({
+      name: item.name.trim(),
+      quantity: parseQuantityInput(item.quantity),
+      unit: item.unit.trim() || null,
+      notes: item.notes.trim() || null,
+      group: currentGroup,
+      position: result.length,
+    });
+  }
+  return result;
+}
 
 // Some scraped/pasted photo URLs are slow, blocked by the source site's
 // hotlink protection, or just dead — a plain <img> just sits there looking
@@ -64,14 +113,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   // ingredients.
   const [fridgeLifeTouched, setFridgeLifeTouched] = useState(isEditing);
   const [ingredients, setIngredients] = useState(
-    recipe?.ingredients?.length
-      ? recipe.ingredients.map((ing) => ({
-          name: ing.name || "",
-          quantity: ing.quantity ?? "",
-          unit: ing.unit || "",
-          notes: ing.notes || "",
-        }))
-      : [emptyIngredient()]
+    recipe?.ingredients?.length ? buildInitialItems(recipe.ingredients) : [emptyIngredient()]
   );
   const [instructionsText, setInstructionsText] = useState(
     recipe?.instructions?.map(stepText).join("\n") || ""
@@ -85,10 +127,16 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   // field themselves — see fridgeLifeTouched above.
   useEffect(() => {
     if (isEditing || fridgeLifeTouched) return;
-    const names = ingredients.map((ing) => ing.name).filter(Boolean);
+    const names = ingredients.filter((i) => !i.isSection).map((ing) => ing.name).filter(Boolean);
     if (names.length === 0) return;
     setFridgeLifeDays(String(estimateFridgeLifeDays(names)));
   }, [ingredients, isEditing, fridgeLifeTouched]);
+
+  function updateSectionName(i, value) {
+    setIngredients((prev) =>
+      prev.map((item, idx) => (idx === i ? { ...item, name: value } : item))
+    );
+  }
 
   function updateIngredient(i, field, value) {
     setIngredients((prev) =>
@@ -98,6 +146,10 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
 
   function addIngredientRow() {
     setIngredients((prev) => [...prev, emptyIngredient()]);
+  }
+
+  function addSectionRow() {
+    setIngredients((prev) => [...prev, emptySection()]);
   }
 
   function removeIngredientRow(i) {
@@ -155,15 +207,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
         cookTimeMinutes: cookTimeMinutes !== "" ? Number(cookTimeMinutes) : null,
         fridgeLifeDays: fridgeLifeDays !== "" ? Number(fridgeLifeDays) : null,
         instructions: buildInstructions(),
-        ingredients: ingredients
-          .filter((ing) => ing.name.trim())
-          .map((ing, i) => ({
-            name: ing.name.trim(),
-            quantity: parseQuantityInput(ing.quantity),
-            unit: ing.unit.trim() || null,
-            notes: ing.notes.trim() || null,
-            position: i,
-          })),
+        ingredients: buildIngredientsPayload(ingredients),
       };
 
       if (isEditing) {
@@ -270,43 +314,16 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
       )}
 
       <p className="form-section-label">Ingredients</p>
-      {ingredients.map((ing, i) => (
-        <div className="form-row ingredient-row" key={i}>
-          <input
-            type="text"
-            placeholder="Name (e.g. butter)"
-            value={ing.name}
-            onChange={(e) => updateIngredient(i, "name", e.target.value)}
-            style={{ flex: 2 }}
-          />
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="Qty (1/4)"
-            value={ing.quantity}
-            onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <select
-            value={ing.unit}
-            onChange={(e) => updateIngredient(i, "unit", e.target.value)}
-            style={{ flex: 1 }}
-          >
-            <option value="">(none)</option>
-            {UNIT_OPTIONS.map((u) => (
-              <option key={u} value={u}>
-                {u}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Notes (e.g. melted)"
-            value={ing.notes}
-            onChange={(e) => updateIngredient(i, "notes", e.target.value)}
-            style={{ flex: 1 }}
-          />
-          {ingredients.length > 1 && (
+      {ingredients.map((item, i) =>
+        item.isSection ? (
+          <div className="form-row section-row" key={i}>
+            <input
+              type="text"
+              placeholder="Section name (e.g. Dressing)"
+              value={item.name}
+              onChange={(e) => updateSectionName(i, e.target.value)}
+              style={{ flex: 1 }}
+            />
             <button
               type="button"
               className="btn subtle"
@@ -315,12 +332,64 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
             >
               ×
             </button>
-          )}
-        </div>
-      ))}
-      <button type="button" className="btn subtle" onClick={addIngredientRow}>
-        + Add ingredient
-      </button>
+          </div>
+        ) : (
+          <div className="form-row ingredient-row" key={i}>
+            <input
+              type="text"
+              placeholder="Name (e.g. butter)"
+              value={item.name}
+              onChange={(e) => updateIngredient(i, "name", e.target.value)}
+              style={{ flex: 2 }}
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Qty (1/4)"
+              value={item.quantity}
+              onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <select
+              value={item.unit}
+              onChange={(e) => updateIngredient(i, "unit", e.target.value)}
+              style={{ flex: 1 }}
+            >
+              <option value="">(none)</option>
+              {UNIT_OPTIONS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Notes (e.g. melted)"
+              value={item.notes}
+              onChange={(e) => updateIngredient(i, "notes", e.target.value)}
+              style={{ flex: 1 }}
+            />
+            {ingredients.length > 1 && (
+              <button
+                type="button"
+                className="btn subtle"
+                style={{ padding: "6px 10px" }}
+                onClick={() => removeIngredientRow(i)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )
+      )}
+      <div className="form-row" style={{ gap: 8 }}>
+        <button type="button" className="btn subtle" onClick={addIngredientRow}>
+          + Add ingredient
+        </button>
+        <button type="button" className="btn subtle" onClick={addSectionRow}>
+          + Add section
+        </button>
+      </div>
 
       <label className="form-label" style={{ marginTop: 16 }}>
         Instructions (one step per line)

@@ -628,6 +628,18 @@ select {
   align-items: center;
 }
 
+.section-row {
+  align-items: center;
+  margin-top: 8px;
+}
+
+.section-row input {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--paper-soft);
+}
+
 .form-section-label {
   font-family: var(--font-mono);
   font-size: 11px;
