@@ -7,7 +7,7 @@ const VARIETY_WORDS = ["california", "haas", "roma"];
 
 // Common pantry basics most people already have on hand — separated out in
 // the UI so the "real" shopping list isn't cluttered with olive oil every week.
-const STAPLE_WORDS = [
+export const STAPLE_WORDS = [
   "salt", "pepper", "black pepper", "olive oil", "vegetable oil", "canola oil",
   "cooking oil", "oil", "sugar", "brown sugar", "flour", "all-purpose flour",
   "baking powder", "baking soda", "soy sauce", "vinegar", "water", "cooking spray",
@@ -17,7 +17,7 @@ const STAPLE_WORDS = [
 // Staples that are specifically spices/seasonings — shown in their own
 // subsection so the list reads like an actual spice rack rather than being
 // mixed in with oils and baking basics.
-const SPICE_WORDS = [
+export const SPICE_WORDS = [
   "salt", "pepper", "black pepper", "garlic powder", "onion powder",
   "paprika", "smoked paprika", "cumin", "ground cumin", "oregano", "basil",
   "thyme", "cinnamon", "ground cinnamon", "nutmeg", "ground nutmeg",

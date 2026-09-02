@@ -1,4 +1,4 @@
-import { canonicalize, capitalize } from "./groceryList.js";
+import { canonicalize, capitalize, STAPLE_WORDS, SPICE_WORDS } from "./groceryList.js";
 import { familyKey } from "./ingredientFamilies.js";
 
 // Perishable ingredients that typically go bad within a week if bought fresh.
@@ -23,8 +23,28 @@ const PERISHABLES = new Set([
 // prep-word/unit stripping, then familyKey() to collapse cuts and synonyms
 // ("chicken thigh" / "chicken breast" / "ground chicken" -> "chicken") so
 // reuse detection isn't fooled by which cut a recipe happens to call for.
+//
+// Staples (salt, pepper, oil, and most other spices — the same list the
+// grocery list uses) are excluded entirely, returning null. Virtually every
+// recipe calls for salt, so counting it as a "shared ingredient" was pure
+// noise — two completely unrelated recipes would show up as "matching"
+// over nothing more than both using salt and pepper. Every caller below
+// already drops falsy cores, so this one change clears staples out of
+// findSimilarRecipes, computeWeekOverlap, and findUnusedPerishables alike.
+const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
+
 function core(ingredientName) {
-  return familyKey(canonicalize(ingredientName).core);
+  const c = familyKey(canonicalize(ingredientName).core);
+  return STAPLES_SET.has(c) ? null : c;
+}
+
+// Not every shared ingredient is equally worth surfacing. A shared
+// perishable (chicken, avocado, cilantro) means using it up before it
+// spoils — the actual point of "plan around this" — so it's weighted
+// higher than a shared shelf-stable item like canned beans or flour, which
+// don't create any real urgency or waste risk either way.
+function ingredientWeight(coreName) {
+  return PERISHABLES.has(coreName) ? 2 : 1;
 }
 
 // Get the set of canonical ingredient cores for a recipe
@@ -34,8 +54,10 @@ function recipeCores(recipe) {
   );
 }
 
-// Returns up to `limit` other recipes ranked by how many ingredients they
-// share with `recipe`. Used in the recipe popup and the planner sidebar.
+// Returns up to `limit` other recipes ranked by how *useful* their overlap
+// with `recipe` is — not just how many ingredients they share. A recipe
+// sharing one perishable protein outranks one sharing two pantry basics,
+// since reusing the protein before it spoils is the actual value here.
 export function findSimilarRecipes(recipe, allRecipes, limit = 8) {
   const targetCores = recipeCores(recipe);
   if (targetCores.size === 0) return [];
@@ -45,9 +67,11 @@ export function findSimilarRecipes(recipe, allRecipes, limit = 8) {
     .map((r) => {
       const cores = recipeCores(r);
       const sharedCores = [...cores].filter((c) => targetCores.has(c));
+      const score = sharedCores.reduce((sum, c) => sum + ingredientWeight(c), 0);
       return {
         recipe: r,
         sharedCount: sharedCores.length,
+        score,
         // Clean canonical name ("Red onion"), not the raw prep-annotated
         // ingredient text ("Red onions, thinly sliced") — this is a display
         // list, not a shopping line, so the prep detail is just noise here.
@@ -55,7 +79,7 @@ export function findSimilarRecipes(recipe, allRecipes, limit = 8) {
       };
     })
     .filter((m) => m.sharedCount > 0)
-    .sort((a, b) => b.sharedCount - a.sharedCount)
+    .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
     .slice(0, limit);
 }
 
