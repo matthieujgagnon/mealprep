@@ -76,6 +76,13 @@ function stripParens(str) {
 // Crude singularization for grouping purposes only (display name keeps
 // whatever form was first seen) — "avocados" and "avocado" should merge.
 function singularize(word) {
+  // Words ending in "us" (hummus, asparagus, citrus, octopus) are singular
+  // in their own right, not an "-s" plural of something — stripping the
+  // final letter mangled them into nonsense ("hummus" -> "hummu") that
+  // could never match any known-ingredient list again, which is exactly
+  // why "asparagus" — already in the perishables list — was silently never
+  // matching.
+  if (word.endsWith("us") && word.length > 3) return word;
   if (word.endsWith("oes") && word.length > 4) return word.slice(0, -2);
   if (word.endsWith("ies") && word.length > 4) return word.slice(0, -3) + "y";
   if (word.endsWith("es") && word.length > 4) return word.slice(0, -2);

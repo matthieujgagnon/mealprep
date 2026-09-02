@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DndContext, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, MeasuringStrategy, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { api } from "./api.js";
 import { ImportRecipeForm } from "./components/ImportRecipeForm.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
@@ -43,6 +43,7 @@ export default function App() {
   const [grocerySections, setGrocerySections] = useState([]);
   const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [isDragActive, setIsDragActive] = useState(false);
 
   // Require a small pointer movement before a drag "activates" — otherwise
   // the drag sensor grabs every click and cards never open.
@@ -168,6 +169,7 @@ export default function App() {
   }
 
   async function handleDragEnd(event) {
+    setIsDragActive(false);
     const { active, over } = event;
     if (!over) return;
 
@@ -246,8 +248,21 @@ export default function App() {
   const allTags = [...new Set(recipes.flatMap((r) => r.tags || []))].sort();
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="app">
+    <DndContext
+      sensors={sensors}
+      onDragStart={() => setIsDragActive(true)}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setIsDragActive(false)}
+      // Re-measures droppable rects continuously while dragging instead of
+      // only once at drag start. The default (measure-once) can miss a
+      // droppable whose actual position settles slightly late — a flex-wrap
+      // row of store sections is exactly that case, since the last section's
+      // position depends on how many sections came before it wrapping onto
+      // the row. This is dnd-kit's own documented fix for "some drop
+      // targets don't register reliably."
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+    >
+      <div className={`app${isDragActive ? " dnd-active" : ""}`}>
         <header className="app-header">
           <h1 className="wordmark">
             The Matt Mo <span>Cookbook</span>

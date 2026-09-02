@@ -13,10 +13,21 @@ const PERISHABLES = new Set([
   "asparagus", "broccoli", "cauliflower", "cabbage", "eggplant", "corn",
   "lemon", "lime", "orange", "ginger", "fresh ginger", "jalapeño", "jalapeno",
   "fish", "shrimp", "salmon", "tuna", "halibut", "cod", "tilapia", "scallop", "scallops",
-  "chicken", "ground beef", "beef", "pork", "lamb", "turkey",
-  "cream", "heavy cream", "sour cream", "greek yogurt", "yogurt", "milk",
-  "feta", "brie", "ricotta", "cottage cheese", "cream cheese",
+  "chicken", "ground beef", "beef", "pork", "lamb", "turkey", "bacon", "sausage",
+  "prosciutto", "deli ham", "tofu",
+  "cream", "heavy cream", "sour cream", "greek yogurt", "yogurt", "milk", "buttermilk",
+  "feta", "brie", "ricotta", "cottage cheese", "cream cheese", "mozzarella", "goat cheese",
   "egg", "eggs",
+  // Onions and shallots: not as fast-spoiling as herbs, but cut/prepped
+  // portions do go bad within a week in the fridge, and every color variant
+  // is a distinct core from plain "onion" (canonicalize doesn't strip the
+  // color), so each needs its own entry.
+  "onion", "onions", "red onion", "red onions", "yellow onion", "yellow onions",
+  "white onion", "white onions", "shallot", "shallots",
+  // Prepared dips/sauces built on perishable bases (yogurt, avocado) that
+  // spoil at the same pace as their main ingredient, even though the
+  // ingredient line itself doesn't literally say "yogurt" or "avocado".
+  "tzatziki", "hummus", "guacamole", "pesto",
 ]);
 
 // Get the reuse-matching key for an ingredient name: canonicalize() for

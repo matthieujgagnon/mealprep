@@ -69,6 +69,17 @@ select {
   padding: 28px 20px 80px;
 }
 
+/* Without this, the cursor reverts to whatever the pointer happens to be
+   hovering over mid-drag (a button's "pointer", a text field's "text"),
+   since the browser picks the cursor from the element actually under the
+   pointer, not from the item being dragged. Forcing "grabbing" on
+   everything while a drag is active keeps the cursor consistent for the
+   whole gesture, the way dragging normally feels. */
+.app.dnd-active,
+.app.dnd-active * {
+  cursor: grabbing !important;
+}
+
 .app-header {
   display: flex;
   align-items: baseline;
