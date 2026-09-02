@@ -1,10 +1,54 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { stepText, stepImage } from "../lib/steps.js";
 
 export function CookMode({ recipe, onExit }) {
   const steps = recipe.instructions || [];
   const [stepIndex, setStepIndex] = useState(0);
   const isLast = stepIndex === steps.length - 1;
+  const wakeLockRef = useRef(null);
+
+  // Keep the screen on for as long as cook mode is open — the whole point is
+  // reading steps with the phone propped up on a counter; a screen timeout
+  // mid-recipe is exactly the failure this is meant to prevent. Not every
+  // browser supports the Wake Lock API, so this silently no-ops where it's
+  // unavailable rather than breaking cook mode itself. Browsers also release
+  // the lock automatically when the tab is backgrounded, so it's reacquired
+  // on visibilitychange rather than assumed to still be held.
+  useEffect(() => {
+    if (!("wakeLock" in navigator)) return;
+
+    let cancelled = false;
+
+    async function requestLock() {
+      try {
+        const lock = await navigator.wakeLock.request("screen");
+        if (cancelled) {
+          lock.release();
+          return;
+        }
+        wakeLockRef.current = lock;
+      } catch {
+        // Permission denied, unsupported in this context, etc. — cook mode
+        // still works fine, it just won't keep the screen awake.
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible" && !wakeLockRef.current) {
+        requestLock();
+      }
+    }
+
+    requestLock();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      wakeLockRef.current?.release();
+      wakeLockRef.current = null;
+    };
+  }, []);
 
   if (steps.length === 0) {
     return (

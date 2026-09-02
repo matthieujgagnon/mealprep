@@ -3,6 +3,22 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { api } from "../api.js";
 import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
 
+// Persisted so a backgrounded phone tab (very normal while standing in a
+// store) doesn't wipe out checkmarks mid-shopping-trip. Keyed by ingredient
+// core, so it naturally carries over between visits as long as the same
+// ingredient is still on the list — there's a "Clear checked items" button
+// for starting a fresh trip once a list has gone stale.
+const CHECKED_STORAGE_KEY = "mealprep-grocery-checked";
+
+function loadCheckedFromStorage() {
+  try {
+    const raw = localStorage.getItem(CHECKED_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
 function formatQuantity(qty) {
   if (qty === null || qty === undefined) return "";
   const rounded = Math.round(qty * 100) / 100;
@@ -219,13 +235,22 @@ export function GroceryList({
   onUnassignFromSection,
 }) {
   const [deals, setDeals] = useState([]);
-  const [checked, setChecked] = useState({});
+  const [checked, setChecked] = useState(loadCheckedFromStorage);
   const [showStaples, setShowStaples] = useState(true);
   const [showSources, setShowSources] = useState(false);
 
   useEffect(() => {
     api.getDeals().then((d) => setDeals(d.deals)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHECKED_STORAGE_KEY, JSON.stringify(checked));
+    } catch {
+      // localStorage unavailable (private browsing, quota, etc.) —
+      // checkmarks just won't survive a refresh, same as before this existed.
+    }
+  }, [checked]);
 
   const { setNodeRef: setStaplesDropRef, isOver: isOverStaples } = useDroppable({
     id: "pantry-staples-drop",
@@ -247,6 +272,12 @@ export function GroceryList({
   function toggle(key) {
     setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
   }
+
+  function clearChecked() {
+    setChecked({});
+  }
+
+  const hasChecked = Object.values(checked).some(Boolean);
 
   function isRemovable(item) {
     return customStaples.includes(item.core);
@@ -287,6 +318,15 @@ export function GroceryList({
       >
         {showSources ? "✓ " : ""}Group by recipe
       </button>
+      {hasChecked && (
+        <button
+          className="btn btn-sm subtle"
+          style={{ marginBottom: 10, marginLeft: 8 }}
+          onClick={clearChecked}
+        >
+          Clear checked items
+        </button>
+      )}
 
       {showSources ? (
         groupItemsByRecipe(shoppingItems).map(([recipeName, recipeItems]) => (

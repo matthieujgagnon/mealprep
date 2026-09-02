@@ -281,6 +281,19 @@ select {
 
 /* ---------- Tags ---------- */
 
+.recipe-search-input {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  font-family: var(--font-body);
+  margin: 14px 0;
+}
+
 .tag-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1838,4 +1851,147 @@ select {
 
 .cook-mode-nav .btn {
   flex: 1;
+}
+
+/* ================================================================
+   Mobile responsiveness
+   Everything above was built and reviewed on desktop screenshots
+   only — this is the first real pass at making it usable on a
+   phone, which given the whole point of deploying this live is
+   arguably the primary device it needs to work on.
+   ================================================================ */
+@media (max-width: 680px) {
+  .app {
+    padding: 16px 12px 60px;
+  }
+
+  .app-header {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .wordmark {
+    font-size: 22px;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  /* Planner: sidebar stacks below the board instead of squeezing into a
+     sliver next to it, and drops its sticky positioning (sticky-while-
+     stacked-below looks broken, not helpful, on a phone-height viewport). */
+  .planner-layout {
+    flex-direction: column;
+  }
+
+  .planner-sidebar {
+    width: 100%;
+    position: static;
+  }
+
+  /* The 7-day grid itself stays a real grid (shrinking it into a single
+     mobile-only view is a bigger redesign than a CSS pass can safely do
+     blind) — .planner-main already scrolls horizontally, so this keeps
+     that scroll working with touch, more like swiping a calendar than a
+     broken layout. */
+  .planner-main {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .planner-grid {
+    grid-template-columns: 72px repeat(7, minmax(128px, 1fr));
+  }
+
+  /* Recipe/edit/cook modals: near-full-screen instead of a small centered
+     card with barely any room to work in. */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 92vh;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 16px 24px;
+  }
+
+  /* Manual/edit recipe form: four fields side by side (Servings/Prep/Cook/
+     Fridge life, or Name/Qty/Unit/Notes) never fit a phone width — wrap
+     them so each field keeps a usable tap target instead of shrinking to
+     nothing. */
+  .form-row {
+    flex-wrap: wrap;
+  }
+
+  .form-row .form-label {
+    min-width: 45%;
+  }
+
+  .ingredient-row {
+    gap: 6px;
+  }
+
+  .ingredient-row input,
+  .ingredient-row select {
+    min-width: 0;
+  }
+
+  .collection-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .recipe-modal-stats-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .recipe-modal-actions {
+    justify-content: flex-start;
+  }
+
+  /* Grocery rows: a long ingredient name plus a quantity chip plus a deal
+     badge all fighting for one line is the first thing to break on a
+     narrow screen — let it wrap to a second line instead of truncating or
+     overflowing. */
+  .grocery-item-namerow {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .grocery-item {
+    padding: 10px 12px;
+  }
+
+  /* Tap targets: checkboxes and small icon buttons are comfortably
+     clickable with a mouse at 16-20px but too small to reliably tap on a
+     phone screen (44px is the standard minimum). */
+  .grocery-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .meal-card-delete,
+  .leftover-dot {
+    width: 26px;
+    height: 26px;
+  }
+
+  .step-block {
+    padding: 12px 14px;
+  }
+
+  .cook-mode-header-top {
+    flex-wrap: wrap;
+  }
 }

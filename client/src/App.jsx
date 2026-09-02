@@ -19,6 +19,18 @@ function CookbookDropZone({ children }) {
   );
 }
 
+// Matches on title, tags, and ingredient names — client-side only, no API
+// call, so it stays fast even as the cookbook grows. Case-insensitive,
+// substring match rather than exact-word, so "chick" finds "chickpea".
+function matchesRecipeSearch(recipe, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (recipe.title?.toLowerCase().includes(q)) return true;
+  if (recipe.tags?.some((t) => t.toLowerCase().includes(q))) return true;
+  if (recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))) return true;
+  return false;
+}
+
 export default function App() {
   const [tab, setTab] = useState("collection"); // "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
@@ -30,6 +42,7 @@ export default function App() {
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [grocerySections, setGrocerySections] = useState([]);
   const [activeTagFilter, setActiveTagFilter] = useState(null);
+  const [recipeSearch, setRecipeSearch] = useState("");
 
   // Require a small pointer movement before a drag "activates" — otherwise
   // the drag sensor grabs every click and cards never open.
@@ -223,10 +236,12 @@ export default function App() {
 
   const importedRecipes = recipes
     .filter((r) => r.inImported && !r.isPlaceholder)
-    .filter((r) => !activeTagFilter || r.tags?.includes(activeTagFilter));
+    .filter((r) => !activeTagFilter || r.tags?.includes(activeTagFilter))
+    .filter((r) => matchesRecipeSearch(r, recipeSearch));
   const cookbookRecipes = recipes
     .filter((r) => r.inCookbook && !r.isPlaceholder)
-    .filter((r) => !activeTagFilter || r.tags?.includes(activeTagFilter));
+    .filter((r) => !activeTagFilter || r.tags?.includes(activeTagFilter))
+    .filter((r) => matchesRecipeSearch(r, recipeSearch));
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
   const allTags = [...new Set(recipes.flatMap((r) => r.tags || []))].sort();
 
@@ -265,6 +280,14 @@ export default function App() {
           <>
             <ImportRecipeForm onImported={handleImported} />
 
+            <input
+              type="text"
+              className="recipe-search-input"
+              placeholder="🔍 Search recipes by name, tag, or ingredient…"
+              value={recipeSearch}
+              onChange={(e) => setRecipeSearch(e.target.value)}
+            />
+
             {allTags.length > 0 && (
               <div className="tag-filter-bar">
                 {allTags.map((tag) => (
@@ -290,7 +313,9 @@ export default function App() {
               </div>
               {importedRecipes.length === 0 ? (
                 <p className="empty-state">
-                  No imported recipes yet — paste a URL above.
+                  {recipeSearch || activeTagFilter
+                    ? "No imported recipes match your search."
+                    : "No imported recipes yet — paste a URL above."}
                 </p>
               ) : (
                 <div className="collection-grid">
@@ -326,8 +351,9 @@ export default function App() {
               <CookbookDropZone>
                 {cookbookRecipes.length === 0 && !showManualForm ? (
                   <p className="empty-state">
-                    Drag a recipe here from Imported, or add one by hand — recipes
-                    you save stay separate from your imports.
+                    {recipeSearch || activeTagFilter
+                      ? "No cookbook recipes match your search."
+                      : "Drag a recipe here from Imported, or add one by hand — recipes you save stay separate from your imports."}
                   </p>
                 ) : (
                   <div className="collection-grid">
