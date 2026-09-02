@@ -14,19 +14,39 @@ import * as cheerio from "cheerio";
  *   3. If no structured Recipe data exists at all, throw so the caller falls back to manual entry.
  */
 export async function scrapeRecipe(url) {
-  const res = await fetch(url, {
-    headers: {
-      // A self-declared bot UA gets blocked outright by WordPress-based
-      // bot-protection plugins (Wordfence, Cloudflare's basic bot rules)
-      // that a lot of food blogs run — this looks like an ordinary desktop
-      // Chrome request instead, which is what actually lets us through.
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-  });
+  // Without a timeout, a slow-to-respond site (or one sitting behind a
+  // CDN/WAF that stalls) leaves this fetch hanging until Render's own
+  // infrastructure-level timeout kicks in — which returns a raw, non-JSON
+  // 502 page rather than one of this file's own clean, actionable error
+  // messages. Failing fast here means a slow site becomes a normal handled
+  // error (falls back to manual entry) instead of a confusing blank 502.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  let res;
+  try {
+    res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        // A self-declared bot UA gets blocked outright by WordPress-based
+        // bot-protection plugins (Wordfence, Cloudflare's basic bot rules)
+        // that a lot of food blogs run — this looks like an ordinary desktop
+        // Chrome request instead, which is what actually lets us through.
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("FETCH_FAILED: This site took too long to respond (over 15s). Try again, or add it manually.");
+    }
+    throw new Error(`FETCH_FAILED: Couldn't reach this URL (${err.message})`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     throw new Error(`FETCH_FAILED: Failed to fetch URL (status ${res.status})`);
@@ -339,7 +359,8 @@ function extractIngredientGroupsFromDom($) {
           if (nameText) {
             items.push({
               structured: true,
-              name: nameText + (notesText ? ` (${notesText})` : ""),
+              name: nameText,
+              notes: notesText || null,
               amountText,
               unitText,
             });
@@ -451,6 +472,7 @@ function parseIngredientsWithGroups(rawLines, domGroups) {
             name: capitalizeFirst(decodeHtmlEntities(item.name).trim()),
             quantity,
             unit: unitNorm || null,
+            notes: item.notes ? decodeHtmlEntities(item.notes).trim() : null,
             group: group.name || null,
             position: position++,
           });

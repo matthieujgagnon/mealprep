@@ -269,7 +269,12 @@ export function RecipeDetailModal({
                   <li key={ing.id || ing.name} className={perishable ? "perishable-row" : ""}>
                     <span>
                       {ing.name}
-                      {ing.notes && <span className="ingredient-notes">, {ing.notes}</span>}
+                      {ing.notes && (
+                        <span className="ingredient-notes">
+                          {ing.notes.trim().startsWith("(") ? " " : ", "}
+                          {ing.notes}
+                        </span>
+                      )}
                       {perishable && <span className="perishable-dot" title="Perishable ingredient" />}
                     </span>
                     <span className="qty">
