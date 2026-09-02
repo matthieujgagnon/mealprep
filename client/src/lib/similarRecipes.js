@@ -40,8 +40,8 @@ const PERISHABLES = new Set([
 // recipe calls for salt, so counting it as a "shared ingredient" was pure
 // noise — two completely unrelated recipes would show up as "matching"
 // over nothing more than both using salt and pepper. Every caller below
-// already drops falsy cores, so this one change clears staples out of
-// findSimilarRecipes, computeWeekOverlap, and findUnusedPerishables alike.
+// already drops falsy cores, so this one change clears staples out
+// everywhere at once.
 const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
 
 function core(ingredientName) {
@@ -65,16 +65,30 @@ function recipeCores(recipe) {
   );
 }
 
+// Get the union of canonical ingredient cores across several recipes.
+function unionCores(recipes) {
+  const result = new Set();
+  for (const r of recipes) {
+    for (const c of recipeCores(r)) result.add(c);
+  }
+  return result;
+}
+
 // Returns up to `limit` other recipes ranked by how *useful* their overlap
-// with `recipe` is — not just how many ingredients they share. A recipe
-// sharing one perishable protein outranks one sharing two pantry basics,
-// since reusing the protein before it spoils is the actual value here.
-export function findSimilarRecipes(recipe, allRecipes, limit = 8) {
-  const targetCores = recipeCores(recipe);
+// with `anchorRecipes` is — not just how many ingredients they share. A
+// recipe sharing one perishable protein outranks one sharing two pantry
+// basics, since reusing the protein before it spoils is the actual value
+// here. Accepts either a single recipe or an array of recipes to plan
+// around several things — e.g. "I have chicken thighs AND a bunch of
+// avocados" — at once; the match is against the combined ingredient set.
+export function findSimilarRecipes(anchorRecipes, allRecipes, limit = 8) {
+  const anchors = Array.isArray(anchorRecipes) ? anchorRecipes : [anchorRecipes];
+  const anchorIds = new Set(anchors.map((r) => r.id));
+  const targetCores = unionCores(anchors);
   if (targetCores.size === 0) return [];
 
   return allRecipes
-    .filter((r) => r.id !== recipe.id && !r.isPlaceholder)
+    .filter((r) => !anchorIds.has(r.id) && !r.isPlaceholder)
     .map((r) => {
       const cores = recipeCores(r);
       const sharedCores = [...cores].filter((c) => targetCores.has(c));
@@ -99,11 +113,11 @@ export function findSimilarRecipes(recipe, allRecipes, limit = 8) {
 //   totalUnique     - number of distinct ingredients across all meals
 //   totalWithDups   - total if counted per-meal (no merging)
 //   savedItems      - how many shopping trips you're saving by reusing
-//   sharedIngredients - Map of core name -> array of recipe titles that use it
+//   sharedIngredients - Map of core name -> array of recipe objects using it
 //   overlapScore    - 0-100, how well-optimized the week is for reuse
 export function computeWeekOverlap(plannerEntries, allRecipes) {
   const recipeMap = new Map(allRecipes.map((r) => [r.id, r]));
-  const ingredientToRecipes = new Map(); // core -> Set of recipe titles
+  const ingredientToRecipes = new Map(); // core -> Map<recipeId, recipe>
   let totalWithDups = 0;
 
   for (const entry of plannerEntries) {
@@ -115,25 +129,125 @@ export function computeWeekOverlap(plannerEntries, allRecipes) {
       const c = core(ing.name);
       if (!c) continue;
       totalWithDups++;
-      if (!ingredientToRecipes.has(c)) ingredientToRecipes.set(c, new Set());
-      ingredientToRecipes.get(c).add(recipe.title);
+      if (!ingredientToRecipes.has(c)) ingredientToRecipes.set(c, new Map());
+      ingredientToRecipes.get(c).set(recipe.id, recipe);
     }
   }
 
   const totalUnique = ingredientToRecipes.size;
   const savedItems = totalWithDups - totalUnique;
 
-  // Shared ingredients: only those used in 2+ recipes
+  // Shared ingredients: only those used in 2+ recipes. Keeps full recipe
+  // objects (not just titles) so the UI can act on them directly — open a
+  // recipe, or drag one straight onto an empty planner slot — instead of
+  // just displaying a name.
   const shared = new Map(
     [...ingredientToRecipes.entries()]
       .filter(([, recipes]) => recipes.size > 1)
-      .map(([c, recipes]) => [c, [...recipes]])
+      .map(([c, recipes]) => [c, [...recipes.values()]])
   );
 
   const overlapScore =
     totalWithDups > 0 ? Math.round((savedItems / totalWithDups) * 100) : 0;
 
   return { totalUnique, totalWithDups, savedItems, sharedIngredients: shared, overlapScore };
+}
+
+// Given everything already planned this week, ranks NOT-yet-planned recipes
+// by how much they'd add to this week's ingredient reuse — i.e. "what's the
+// single best thing to add to an empty slot." This is computeWeekOverlap's
+// natural complement: that function reports on the week after the fact,
+// this one recommends what to do next.
+export function suggestNextRecipes(plannerEntries, allRecipes, limit = 5) {
+  const recipeMap = new Map(allRecipes.map((r) => [r.id, r]));
+  const plannedIds = new Set();
+  const weekCores = new Set();
+
+  for (const entry of plannerEntries) {
+    if (entry.isLeftover) continue;
+    const recipe = recipeMap.get(entry.recipeId) || entry.recipe;
+    if (!recipe || recipe.isPlaceholder) continue;
+    plannedIds.add(recipe.id);
+    for (const c of recipeCores(recipe)) weekCores.add(c);
+  }
+
+  if (weekCores.size === 0) return [];
+
+  return allRecipes
+    .filter((r) => !plannedIds.has(r.id) && !r.isPlaceholder)
+    .map((r) => {
+      const cores = recipeCores(r);
+      const sharedCores = [...cores].filter((c) => weekCores.has(c));
+      const score = sharedCores.reduce((sum, c) => sum + ingredientWeight(c), 0);
+      return {
+        recipe: r,
+        sharedCount: sharedCores.length,
+        score,
+        sharedIngredients: sharedCores.map((c) => capitalize(c)),
+      };
+    })
+    .filter((m) => m.sharedCount > 0)
+    .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
+    .slice(0, limit);
+}
+
+// Given a list of ingredient names the user says they have on hand, ranks
+// recipes by how close they are to fully makeable right now — fewest
+// missing ingredients first. Staples (salt, oil, most spices) are assumed
+// to always be on hand and never count as missing, the same way they're
+// excluded from every other matching function here.
+export function findRecipesByIngredients(haveNames, allRecipes, limit = 30) {
+  const haveCores = new Set(haveNames.map((n) => core(n)).filter(Boolean));
+  if (haveCores.size === 0) return [];
+
+  return allRecipes
+    .filter((r) => !r.isPlaceholder)
+    .map((r) => {
+      const cores = [...recipeCores(r)];
+      if (cores.length === 0) return null;
+      const matched = cores.filter((c) => haveCores.has(c));
+      const missing = cores.filter((c) => !haveCores.has(c));
+      return {
+        recipe: r,
+        matchedCount: matched.length,
+        totalCount: cores.length,
+        matchedIngredients: matched.map((c) => capitalize(c)),
+        missingIngredients: missing.map((c) => capitalize(c)),
+      };
+    })
+    .filter((m) => m && m.matchedCount > 0)
+    .sort((a, b) => {
+      if (a.missingIngredients.length !== b.missingIngredients.length) {
+        return a.missingIngredients.length - b.missingIngredients.length;
+      }
+      return b.matchedCount - a.matchedCount;
+    })
+    .slice(0, limit);
+}
+
+// Perishable ingredients used somewhere in this week's plan that only ONE
+// recipe calls for — i.e. likely to go to waste once that meal's made,
+// since nothing else in the week uses the rest of it up. Powers the
+// "add what's expiring" shortcut on the "what can I make" page.
+export function findAtRiskPerishables(plannerEntries, allRecipes) {
+  const recipeMap = new Map(allRecipes.map((r) => [r.id, r]));
+  const ingredientToRecipes = new Map(); // core -> Set of recipe ids
+
+  for (const entry of plannerEntries) {
+    if (entry.isLeftover) continue;
+    const recipe = recipeMap.get(entry.recipeId) || entry.recipe;
+    if (!recipe || recipe.isPlaceholder) continue;
+    for (const ing of recipe.ingredients || []) {
+      const c = core(ing.name);
+      if (!c || !PERISHABLES.has(c)) continue;
+      if (!ingredientToRecipes.has(c)) ingredientToRecipes.set(c, new Set());
+      ingredientToRecipes.get(c).add(recipe.id);
+    }
+  }
+
+  return [...ingredientToRecipes.entries()]
+    .filter(([, ids]) => ids.size === 1)
+    .map(([c]) => capitalize(c));
 }
 
 // Returns perishable ingredients from a recipe's list that are NOT already

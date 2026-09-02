@@ -9,6 +9,7 @@ import { PlannerBoard } from "./components/PlannerBoard.jsx";
 import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { DealsPanel } from "./components/DealsPanel.jsx";
+import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
 
 function CookbookDropZone({ children }) {
   const { setNodeRef, isOver } = useDroppable({ id: "cookbook-drop" });
@@ -36,7 +37,7 @@ export default function App() {
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [activeRecipe, setActiveRecipe] = useState(null);
-  const [anchorRecipe, setAnchorRecipe] = useState(null); // for detail modal
+  const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
   const [showManualForm, setShowManualForm] = useState(false);
   const [customStaples, setCustomStaples] = useState([]);
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
@@ -281,6 +282,12 @@ export default function App() {
               Planner
             </button>
             <button
+              className={`tab${tab === "makeable" ? " active" : ""}`}
+              onClick={() => setTab("makeable")}
+            >
+              Makeable
+            </button>
+            <button
               className={`tab${tab === "grocery" ? " active" : ""}`}
               onClick={() => setTab("grocery")}
             >
@@ -290,6 +297,14 @@ export default function App() {
         </header>
 
         <DealsPanel />
+
+        {tab === "makeable" && (
+          <WhatCanIMake
+            recipes={recipes}
+            plannerEntries={plannerEntries}
+            onSelectRecipe={setActiveRecipe}
+          />
+        )}
 
         {tab === "collection" && (
           <>
@@ -411,8 +426,17 @@ export default function App() {
                   <PlannerSidebar
                     plannerEntries={plannerEntries}
                     allRecipes={recipes}
-                    anchorRecipe={anchorRecipe}
-                    onClearAnchor={() => setAnchorRecipe(null)}
+                    anchorRecipes={anchorRecipes}
+                    onClearAnchors={() => setAnchorRecipes([])}
+                    onRemoveAnchor={(id) =>
+                      setAnchorRecipes((prev) => prev.filter((r) => r.id !== id))
+                    }
+                    onAddAnchor={(recipe) =>
+                      setAnchorRecipes((prev) =>
+                        prev.some((r) => r.id === recipe.id) ? prev : [...prev, recipe]
+                      )
+                    }
+                    onSelectRecipe={setActiveRecipe}
                   />
                 </div>
                 <h3 className="planner-source-heading">Drag a recipe onto the board</h3>
@@ -452,7 +476,7 @@ export default function App() {
               setActiveRecipe(null);
             }}
             onPlanAround={(recipe) => {
-              setAnchorRecipe(recipe);
+              setAnchorRecipes([recipe]);
               setActiveRecipe(null);
               setTab("planner");
             }}

@@ -1,36 +1,80 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useDraggable } from "@dnd-kit/core";
-import { findSimilarRecipes, computeWeekOverlap } from "../lib/similarRecipes.js";
+import { findSimilarRecipes, computeWeekOverlap, suggestNextRecipes } from "../lib/similarRecipes.js";
 import { capitalize } from "../lib/groceryList.js";
 
-// Rendered via a portal straight to <body> — this sidebar lives inside the
-// planner's flex layout, and a plain in-place "position: fixed" modal here
-// was landing inside whatever stacking/containing context its ancestors
-// happen to create, instead of centered over the whole page. A portal
-// sidesteps that entirely: the popup's DOM position no longer has anything
-// to do with where in the tree it was declared.
-function Popup({ heading, title, items, onClose }) {
+// A draggable, clickable reference to a recipe shown inside the popup —
+// lets you drag a result straight onto an empty planner slot instead of
+// closing the popup, finding the recipe in the grid, and starting a new
+// drag from scratch.
+function PopupRecipeChip({ recipe, onOpen }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `popup-recipe-${recipe.id}`,
+    data: { recipe },
+  });
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 60 }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`popup-recipe-chip${isDragging ? " dragging" : ""}`}
+      onClick={() => onOpen(recipe)}
+      {...listeners}
+      {...attributes}
+    >
+      {recipe.photoUrl && <img src={recipe.photoUrl} alt="" className="popup-recipe-chip-photo" />}
+      <span className="popup-recipe-chip-title">{recipe.title}</span>
+    </div>
+  );
+}
+
+// Rendered via a portal straight to <body> — see the note that used to live
+// here: a plain in-place "position: fixed" popup was landing inside
+// whatever stacking/containing context its ancestors happened to create.
+// Positioned toward a corner rather than dead-center so more of the
+// planner board stays visible behind it — relevant now that its contents
+// can include something you might want to drag onto that board.
+function Popup({ heading, title, items, itemType, onClose, onOpenRecipe }) {
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay popup-overlay" onClick={onClose}>
       <div className="card shared-ingredients-modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">
           ×
         </button>
         {heading && <p className="shared-ingredients-context">{heading}</p>}
         <h3 className="shared-ingredients-title">{title}</h3>
-        <ul className="shared-ingredients-list">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        {itemType === "recipes" ? (
+          <div className="popup-recipe-list">
+            {items.map((recipe) => (
+              <PopupRecipeChip
+                key={recipe.id}
+                recipe={recipe}
+                onOpen={(r) => {
+                  onOpenRecipe(r);
+                  onClose();
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <ul className="shared-ingredients-list">
+            {items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>,
     document.body
   );
 }
 
-function SidebarRecipeChip({ recipe, sharedIngredients, onOpenDetails }) {
+function SidebarRecipeChip({ recipe, sharedIngredients, onOpenDetails, onAddAnchor }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `sidebar-recipe-${recipe.id}`,
     data: { recipe },
@@ -59,16 +103,30 @@ function SidebarRecipeChip({ recipe, sharedIngredients, onOpenDetails }) {
           {sharedIngredients.length > 3 && ` +${sharedIngredients.length - 3} more`}
         </span>
       </div>
+      {onAddAnchor && (
+        <button
+          type="button"
+          className="sidebar-chip-add-anchor"
+          title="Also plan around this recipe"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddAnchor(recipe);
+          }}
+        >
+          +
+        </button>
+      )}
       <span className="sidebar-chip-count">{sharedIngredients.length}</span>
     </div>
   );
 }
 
-function OverlapScore({ plannerEntries, allRecipes, onSelectIngredient }) {
+function OverlapScore({ plannerEntries, allRecipes, onSelectIngredient, onSelectRecipe }) {
   const { totalUnique, savedItems, overlapScore, sharedIngredients } =
     computeWeekOverlap(plannerEntries, allRecipes);
 
   const activeMeals = plannerEntries.filter((e) => !e.isLeftover);
+  const suggestions = suggestNextRecipes(plannerEntries, allRecipes, 3);
 
   if (activeMeals.length < 2) {
     return (
@@ -112,21 +170,58 @@ function OverlapScore({ plannerEntries, allRecipes, onSelectIngredient }) {
           </div>
         </>
       )}
+      {suggestions.length > 0 && (
+        <>
+          <p className="sidebar-section-label">Good next addition</p>
+          <div className="sidebar-suggestions">
+            {suggestions.map(({ recipe, sharedIngredients: shared }) => (
+              <button
+                key={recipe.id}
+                type="button"
+                className="sidebar-suggestion"
+                onClick={() => onSelectRecipe(recipe)}
+              >
+                {recipe.photoUrl && (
+                  <img src={recipe.photoUrl} alt="" className="sidebar-chip-photo" />
+                )}
+                <div className="sidebar-chip-info">
+                  <span className="sidebar-chip-title">{recipe.title}</span>
+                  <span className="sidebar-chip-shared">
+                    Reuses {shared.slice(0, 2).join(", ")}
+                    {shared.length > 2 && ` +${shared.length - 2} more`}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onClearAnchor }) {
+export function PlannerSidebar({
+  plannerEntries,
+  allRecipes,
+  anchorRecipes = [],
+  onClearAnchors,
+  onRemoveAnchor,
+  onAddAnchor,
+  onSelectRecipe,
+}) {
   const [mode, setMode] = useState("overlap");
-  const [popup, setPopup] = useState(null); // { heading, title, items }
-  const activeMode = anchorRecipe ? "plan-around" : mode;
-  const similar = anchorRecipe ? findSimilarRecipes(anchorRecipe, allRecipes, 12) : [];
+  const [popup, setPopup] = useState(null); // { heading, title, items, itemType }
+  const hasAnchors = anchorRecipes.length > 0;
+  const activeMode = hasAnchors ? "plan-around" : mode;
+  const similar = hasAnchors ? findSimilarRecipes(anchorRecipes, allRecipes, 12) : [];
 
   function openChipDetails({ recipe, sharedIngredients }) {
+    const anchorTitles = anchorRecipes.map((r) => r.title).join(" + ");
     setPopup({
-      heading: `Shares ingredients with ${anchorRecipe?.title}`,
+      heading: `Shares ingredients with ${anchorTitles}`,
       title: recipe.title,
       items: sharedIngredients,
+      itemType: "ingredients",
     });
   }
 
@@ -135,6 +230,7 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
       heading: `Used in ${recipes.length} recipe${recipes.length !== 1 ? "s" : ""} this week`,
       title: capitalize(core),
       items: recipes,
+      itemType: "recipes",
     });
   }
 
@@ -143,7 +239,7 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
       <div className="sidebar-tabs">
         <button
           className={`sidebar-tab${activeMode === "overlap" ? " active" : ""}`}
-          onClick={() => { onClearAnchor?.(); setMode("overlap"); }}
+          onClick={() => { onClearAnchors?.(); setMode("overlap"); }}
         >
           Week overview
         </button>
@@ -160,28 +256,43 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
           plannerEntries={plannerEntries}
           allRecipes={allRecipes}
           onSelectIngredient={openIngredientDetails}
+          onSelectRecipe={onSelectRecipe}
         />
       )}
 
       {activeMode === "plan-around" && (
         <div className="sidebar-plan-around">
-          {anchorRecipe ? (
+          {hasAnchors ? (
             <>
               <div className="sidebar-anchor-header">
                 <div>
                   <span className="sidebar-anchor-label">Based on</span>
-                  <span className="sidebar-anchor-title">{anchorRecipe.title}</span>
+                  <div className="sidebar-anchor-list">
+                    {anchorRecipes.map((r) => (
+                      <span key={r.id} className="sidebar-anchor-title-chip">
+                        {r.title}
+                        <button
+                          type="button"
+                          onClick={() => onRemoveAnchor?.(r.id)}
+                          aria-label={`Stop planning around ${r.title}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <button className="sidebar-anchor-clear" onClick={onClearAnchor}>×</button>
+                <button className="sidebar-anchor-clear" onClick={onClearAnchors}>×</button>
               </div>
               {similar.length === 0 ? (
                 <p className="sidebar-empty">
-                  No other recipes share ingredients with this one yet. Import more recipes to see suggestions.
+                  No other recipes share ingredients with{" "}
+                  {anchorRecipes.length > 1 ? "these yet" : "this one yet"}. Import more recipes to see suggestions.
                 </p>
               ) : (
                 <>
                   <p className="sidebar-hint">
-                    Drag a recipe onto the planner. Numbers show shared ingredients.
+                    Drag a recipe onto the planner, or tap + on a suggestion to plan around it too.
                   </p>
                   <div className="sidebar-chips">
                     {similar.map(({ recipe, sharedIngredients }) => (
@@ -190,6 +301,7 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
                         recipe={recipe}
                         sharedIngredients={sharedIngredients}
                         onOpenDetails={openChipDetails}
+                        onAddAnchor={onAddAnchor}
                       />
                     ))}
                   </div>
@@ -209,7 +321,9 @@ export function PlannerSidebar({ plannerEntries, allRecipes, anchorRecipe, onCle
           heading={popup.heading}
           title={popup.title}
           items={popup.items}
+          itemType={popup.itemType}
           onClose={() => setPopup(null)}
+          onOpenRecipe={onSelectRecipe}
         />
       )}
     </div>
