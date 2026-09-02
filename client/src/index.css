@@ -140,13 +140,15 @@ select {
   overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: 1px solid transparent;
-  /* Without this, a touch-drag on mobile fights the browser's native
-     scroll gesture — dnd-kit sees a jumpy, half-registering drag instead
-     of a clean one, since the browser is simultaneously trying to
-     interpret the same touch as "scroll the page." This is dnd-kit's own
-     documented fix for touch devices; it doesn't affect mouse/pointer use
-     on desktop at all. */
-  touch-action: none;
+  /* "pan-y" (not "none") lets the browser handle normal vertical scrolling
+     on this element natively — important since these cards/rows often fill
+     the full width of a scrollable list with no gaps to grab elsewhere.
+     dnd-kit's delay-based activation constraint (see App.jsx) is what
+     actually distinguishes a drag from a scroll: a quick swipe never holds
+     still long enough to activate a drag, so it just scrolls; a
+     press-and-hold does activate one. Using "none" here would block the
+     browser from ever scrolling via this element at all, drag or not. */
+  touch-action: pan-y;
 }
 
 .meal-card:hover {
@@ -988,7 +990,7 @@ select {
   padding: 8px;
   cursor: grab;
   transition: background 0.15s ease;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .sidebar-recipe-chip:hover {
@@ -1215,7 +1217,7 @@ select {
   border-radius: 8px;
   padding: 8px;
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
   transition: background 0.15s ease;
 }
 
@@ -1532,7 +1534,7 @@ select {
 
 .grocery-item.draggable {
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .grocery-item.dragging {

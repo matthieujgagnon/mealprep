@@ -85,7 +85,15 @@ function singularize(word) {
   if (word.endsWith("us") && word.length > 3) return word;
   if (word.endsWith("oes") && word.length > 4) return word.slice(0, -2);
   if (word.endsWith("ies") && word.length > 4) return word.slice(0, -3) + "y";
-  if (word.endsWith("es") && word.length > 4) return word.slice(0, -2);
+  // Only words ending in a genuine sibilant sound ("-ches", "-shes",
+  // "-sses", "-xes", "-zes" — boxes, dishes, watches, glasses) take a real
+  // "-es" plural where both letters come off. Everything else ending in
+  // "es" is actually a silent-e word plus a plain "-s" ("flake" -> "flakes",
+  // "olive" -> "olives", "grape" -> "grapes", "lime" -> "limes") — chopping
+  // both letters there ate the "e" and mangled a huge class of common
+  // ingredient words ("red pepper flakes" -> "flak", "limes" -> "lim",
+  // silently breaking the "lime" entry in the perishables list too).
+  if (/(?:[sxz]|ch|sh)es$/.test(word) && word.length > 4) return word.slice(0, -2);
   if (word.endsWith("s") && !word.endsWith("ss") && word.length > 3) return word.slice(0, -1);
   return word;
 }

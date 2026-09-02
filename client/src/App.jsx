@@ -46,10 +46,17 @@ export default function App() {
   const [recipeSearch, setRecipeSearch] = useState("");
   const [isDragActive, setIsDragActive] = useState(false);
 
-  // Require a small pointer movement before a drag "activates" — otherwise
-  // the drag sensor grabs every click and cards never open.
+  // A distance-based activation constraint (start dragging after 8px of
+  // movement) is fine for a mouse, but on a touchscreen it means any quick
+  // vertical swipe to scroll the page — which is also "more than 8px of
+  // movement" — gets grabbed as a drag instead. A delay-based constraint
+  // fixes this the way most touch apps handle reorderable lists: the
+  // gesture only becomes a drag if the finger stays roughly still for a
+  // moment first; a swipe that starts moving right away is left alone and
+  // scrolls normally. This is dnd-kit's own documented fix for exactly
+  // this conflict.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
   useEffect(() => {
