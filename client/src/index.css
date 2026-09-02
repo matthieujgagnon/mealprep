@@ -129,6 +129,13 @@ select {
   overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: 1px solid transparent;
+  /* Without this, a touch-drag on mobile fights the browser's native
+     scroll gesture — dnd-kit sees a jumpy, half-registering drag instead
+     of a clean one, since the browser is simultaneously trying to
+     interpret the same touch as "scroll the page." This is dnd-kit's own
+     documented fix for touch devices; it doesn't affect mouse/pointer use
+     on desktop at all. */
+  touch-action: none;
 }
 
 .meal-card:hover {
@@ -882,6 +889,7 @@ select {
   padding: 8px;
   cursor: grab;
   transition: background 0.15s ease;
+  touch-action: none;
 }
 
 .sidebar-recipe-chip:hover {
@@ -1301,6 +1309,7 @@ select {
 
 .grocery-item.draggable {
   cursor: grab;
+  touch-action: none;
 }
 
 .grocery-item.dragging {
@@ -1908,6 +1917,34 @@ select {
 
   .planner-grid {
     grid-template-columns: 72px repeat(7, minmax(128px, 1fr));
+  }
+
+  /* Freeze the meal-type labels (Breakfast/Lunch/Supper) and day headers
+     (Mon/Tue/...) in place while the grid scrolls, the way a real calendar
+     app does. Without this, scrolling right to see Thursday/Friday loses
+     the row labels entirely — there's nothing left on screen to say which
+     row is which meal, which is the main thing that made this feel "weird"
+     rather than just "a bit cramped." */
+  .planner-day-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--bg);
+  }
+
+  .planner-meal-label {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--bg);
+  }
+
+  .planner-grid-corner {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    background: var(--bg);
   }
 
   /* Recipe/edit/cook modals: near-full-screen instead of a small centered
