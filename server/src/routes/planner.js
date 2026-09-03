@@ -3,47 +3,35 @@ import { prisma } from "../lib/prisma.js";
 
 export const plannerRouter = Router();
 
-function serializeEntry(e) {
-  return {
-    ...e,
-    recipe: {
-      ...e.recipe,
-      instructions: JSON.parse(e.recipe.instructions),
-      photos: e.recipe.photos ? JSON.parse(e.recipe.photos) : [],
-      tags: e.recipe.tags ? JSON.parse(e.recipe.tags) : [],
-    },
-  };
-}
-
-// GET /api/planner?week=YYYY-MM-DD - one week's placements, with recipe
-// details included. `week` is the Monday of the week to load; required so
-// the board only ever shows one week at a time.
+// GET /api/planner - full week's placements, with recipe details included
 plannerRouter.get("/", async (req, res) => {
-  const { week } = req.query;
-  if (!week) {
-    return res.status(400).json({ error: "week (Monday, YYYY-MM-DD) query param is required" });
-  }
   const entries = await prisma.plannerEntry.findMany({
-    where: { weekStart: week },
     include: { recipe: { include: { ingredients: true } } },
     orderBy: [{ dayOfWeek: "asc" }, { position: "asc" }],
   });
-  res.json(entries.map(serializeEntry));
+  res.json(
+    entries.map((e) => ({
+      ...e,
+      recipe: {
+        ...e.recipe,
+        instructions: JSON.parse(e.recipe.instructions),
+        photos: e.recipe.photos ? JSON.parse(e.recipe.photos) : [],
+        tags: e.recipe.tags ? JSON.parse(e.recipe.tags) : [],
+      },
+    }))
+  );
 });
 
 // POST /api/planner - place a recipe card onto a day + meal slot
-// body: { recipeId, weekStart, dayOfWeek (0-6), mealType, servings?, isLeftover?, position? }
+// body: { recipeId, dayOfWeek (0-6), mealType ("breakfast"|"lunch"|"dinner"), servings?, isLeftover?, position? }
 plannerRouter.post("/", async (req, res) => {
-  const { recipeId, weekStart, dayOfWeek, mealType, servings, isLeftover, position } = req.body;
-  if (!recipeId || !weekStart || dayOfWeek === undefined || !mealType) {
-    return res
-      .status(400)
-      .json({ error: "recipeId, weekStart, dayOfWeek, and mealType are required" });
+  const { recipeId, dayOfWeek, mealType, servings, isLeftover, position } = req.body;
+  if (!recipeId || dayOfWeek === undefined || !mealType) {
+    return res.status(400).json({ error: "recipeId, dayOfWeek, and mealType are required" });
   }
   const entry = await prisma.plannerEntry.create({
     data: {
       recipeId,
-      weekStart,
       dayOfWeek,
       mealType,
       servings: servings ?? null,
@@ -52,39 +40,15 @@ plannerRouter.post("/", async (req, res) => {
     },
     include: { recipe: { include: { ingredients: true } } },
   });
-  res.status(201).json(serializeEntry(entry));
-});
-
-// POST /api/planner/copy-week - duplicate every placement from one week onto
-// another (used for the on-demand "copy last week" action). Leftover flags
-// reset to false on the copy — a leftover marker describes that specific
-// week's fridge stock, not the recipe itself.
-plannerRouter.post("/copy-week", async (req, res) => {
-  const { fromWeekStart, toWeekStart } = req.body;
-  if (!fromWeekStart || !toWeekStart) {
-    return res.status(400).json({ error: "fromWeekStart and toWeekStart are required" });
-  }
-  const source = await prisma.plannerEntry.findMany({ where: { weekStart: fromWeekStart } });
-  if (!source.length) {
-    return res.json([]);
-  }
-  await prisma.plannerEntry.createMany({
-    data: source.map((e) => ({
-      weekStart: toWeekStart,
-      dayOfWeek: e.dayOfWeek,
-      mealType: e.mealType,
-      recipeId: e.recipeId,
-      servings: e.servings,
-      isLeftover: false,
-      position: e.position,
-    })),
+  res.status(201).json({
+    ...entry,
+    recipe: {
+      ...entry.recipe,
+      instructions: JSON.parse(entry.recipe.instructions),
+      photos: entry.recipe.photos ? JSON.parse(entry.recipe.photos) : [],
+      tags: entry.recipe.tags ? JSON.parse(entry.recipe.tags) : [],
+    },
   });
-  const created = await prisma.plannerEntry.findMany({
-    where: { weekStart: toWeekStart },
-    include: { recipe: { include: { ingredients: true } } },
-    orderBy: [{ dayOfWeek: "asc" }, { position: "asc" }],
-  });
-  res.status(201).json(created.map(serializeEntry));
 });
 
 // PUT /api/planner/:id - move a card, change planned servings, or toggle leftovers
