@@ -137,7 +137,7 @@ function OverlapScore({ plannerEntries, allRecipes, onSelectIngredient, onSelect
   }
 
   const scoreColor =
-    overlapScore >= 40 ? "var(--sage)" : overlapScore >= 20 ? "var(--mustard)" : "var(--paper-soft)";
+    overlapScore >= 40 ? "var(--sage)" : overlapScore >= 20 ? "var(--tomato)" : "var(--paper-soft)";
 
   return (
     <div className="sidebar-overlap">

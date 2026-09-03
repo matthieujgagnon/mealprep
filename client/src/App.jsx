@@ -390,6 +390,18 @@ export default function App() {
     );
   }
 
+  async function handleToggleAlreadyHave(entryId, alreadyHave) {
+    await api.updatePlannerEntry(entryId, { alreadyHave });
+    setPlannerEntries((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, alreadyHave } : e))
+    );
+  }
+
+  async function handleMarkBlank(dayOfWeek, mealType) {
+    const entry = await api.markSlotBlank(dayOfWeek, mealType);
+    setPlannerEntries((prev) => [...prev, entry]);
+  }
+
   const importedRecipes = recipes
     .filter((r) => r.inImported && !r.isPlaceholder)
     .filter((r) => !activeTagFilter || r.tags?.includes(activeTagFilter))
@@ -603,7 +615,7 @@ export default function App() {
             ) : (
               <>
                 <p className="planner-tip">
-                  <span className="leftover-dot-demo" /> Tap the dot on a placed card to mark it as leftovers — stays on your calendar but won't be added to the grocery list again.
+                  <span className="leftover-dot-demo" /> Tap the dot on a placed card to mark it as leftovers, or the blue dot to mark "already have it" — either way it stays on your calendar but won't be added to the grocery list again. Click an empty slot to mark it as intentionally blank.
                 </p>
                 <div className="planner-layout">
                   <div className="planner-main">
@@ -612,6 +624,8 @@ export default function App() {
                       onCardClick={setActiveRecipe}
                       onRemove={handleRemoveFromPlanner}
                       onToggleLeftover={handleToggleLeftover}
+                      onToggleAlreadyHave={handleToggleAlreadyHave}
+                      onMarkBlank={handleMarkBlank}
                     />
                   </div>
                   <PlannerSidebar

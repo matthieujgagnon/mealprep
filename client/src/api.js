@@ -28,6 +28,8 @@ export const api = {
   listPlanner: () => request("/planner"),
   placeOnPlanner: (payload) =>
     request("/planner", { method: "POST", body: JSON.stringify(payload) }),
+  markSlotBlank: (dayOfWeek, mealType) =>
+    request("/planner/blank", { method: "POST", body: JSON.stringify({ dayOfWeek, mealType }) }),
   updatePlannerEntry: (id, payload) =>
     request(`/planner/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   removeFromPlanner: (id) => request(`/planner/${id}`, { method: "DELETE" }),

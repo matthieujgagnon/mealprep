@@ -93,6 +93,7 @@ model PlannerEntry {
   recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   servings  Int? // override servings for this planned meal; falls back to recipe.baseServings
   isLeftover Boolean @default(false) // true = reusing food from another planned meal; excluded from grocery list
+  alreadyHave Boolean @default(false) // true = already have what this meal needs on hand (e.g. breakfast staples); excluded from grocery list, same as a leftover, but for a different reason
   position  Int      @default(0) // order within the day+mealType slot
   createdAt DateTime @default(now())
 }

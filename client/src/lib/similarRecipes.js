@@ -121,7 +121,7 @@ export function computeWeekOverlap(plannerEntries, allRecipes) {
   let totalWithDups = 0;
 
   for (const entry of plannerEntries) {
-    if (entry.isLeftover) continue;
+    if (entry.isLeftover || entry.alreadyHave) continue;
     const recipe = recipeMap.get(entry.recipeId) || entry.recipe;
     if (!recipe || recipe.isPlaceholder) continue;
 
@@ -164,7 +164,7 @@ export function suggestNextRecipes(plannerEntries, allRecipes, limit = 5) {
   const weekCores = new Set();
 
   for (const entry of plannerEntries) {
-    if (entry.isLeftover) continue;
+    if (entry.isLeftover || entry.alreadyHave) continue;
     const recipe = recipeMap.get(entry.recipeId) || entry.recipe;
     if (!recipe || recipe.isPlaceholder) continue;
     plannedIds.add(recipe.id);
@@ -234,7 +234,7 @@ export function findAtRiskPerishables(plannerEntries, allRecipes) {
   const ingredientToRecipes = new Map(); // core -> Set of recipe ids
 
   for (const entry of plannerEntries) {
-    if (entry.isLeftover) continue;
+    if (entry.isLeftover || entry.alreadyHave) continue;
     const recipe = recipeMap.get(entry.recipeId) || entry.recipe;
     if (!recipe || recipe.isPlaceholder) continue;
     for (const ing of recipe.ingredients || []) {
@@ -266,7 +266,7 @@ export function findUnusedPerishables(recipe, plannerEntries, allRecipes) {
   // All ingredient cores planned elsewhere this week (excluding this recipe)
   const plannedElsewhere = new Set();
   for (const entry of plannerEntries) {
-    if (entry.isLeftover) continue;
+    if (entry.isLeftover || entry.alreadyHave) continue;
     const other = recipeMap.get(entry.recipeId) || entry.recipe;
     if (!other || other.id === recipe.id || other.isPlaceholder) continue;
     for (const ing of other.ingredients || []) {

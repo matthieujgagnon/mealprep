@@ -299,6 +299,7 @@ export function GroceryList({
   const otherStaples = items.filter((i) => i.isStaple && !i.isSpice);
   const stapleCount = spiceStaples.length + otherStaples.length;
   const leftoverCount = plannerEntries.filter((e) => e.isLeftover).length;
+  const alreadyHaveCount = plannerEntries.filter((e) => e.alreadyHave).length;
 
   function toggle(key) {
     setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -339,6 +340,8 @@ export function GroceryList({
           Drag an item onto a store section or "Pantry staples" below to sort it.
           {leftoverCount > 0 &&
             ` ${leftoverCount} leftover meal${leftoverCount !== 1 ? "s" : ""} excluded.`}
+          {alreadyHaveCount > 0 &&
+            ` ${alreadyHaveCount} meal${alreadyHaveCount !== 1 ? "s" : ""} you already have the stuff for excluded.`}
         </p>
       </div>
 

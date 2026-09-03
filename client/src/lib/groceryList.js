@@ -175,7 +175,7 @@ export function buildGroceryList(plannerEntries, customStaples = [], staplesCate
   const staplesSet = new Set([...STAPLE_WORDS, ...SPICE_WORDS, ...customStaples.map((s) => s.toLowerCase())]);
 
   for (const entry of plannerEntries) {
-    if (entry.isLeftover) continue; // reusing food from another meal — don't re-buy it
+    if (entry.isLeftover || entry.alreadyHave) continue; // reusing food, or already have what's needed — don't re-buy it
     const recipe = entry.recipe;
     if (!recipe) continue;
     const base = recipe.baseServings || 1;

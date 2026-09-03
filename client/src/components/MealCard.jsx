@@ -24,6 +24,8 @@ export function MealCard({
   isLeftover,
   isStale,
   onToggleLeftover,
+  alreadyHave,
+  onToggleAlreadyHave,
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -67,7 +69,7 @@ export function MealCard({
     <div
       ref={setNodeRef}
       style={{ ...style, position: "relative" }}
-      className={`card meal-card${isDragging ? " dragging" : ""}${compact ? " compact" : ""}${isLeftover ? " leftover-active" : ""}${isLeftover && isStale ? " leftover-stale" : ""}`}
+      className={`card meal-card${isDragging ? " dragging" : ""}${compact ? " compact" : ""}${isLeftover ? " leftover-active" : ""}${isLeftover && isStale ? " leftover-stale" : ""}${alreadyHave ? " already-have-active" : ""}`}
       onClick={() => onClick?.(recipe)}
       {...listeners}
       {...attributes}
@@ -92,6 +94,19 @@ export function MealCard({
           }}
         />
       )}
+      {onToggleAlreadyHave && (
+        <button
+          className={`already-have-dot${alreadyHave ? " active" : ""}`}
+          aria-label={
+            alreadyHave ? "Marked as already have it — click to unmark" : "Mark as already have it"
+          }
+          title={alreadyHave ? "Already have it (not on grocery list)" : "Mark as already have it"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleAlreadyHave();
+          }}
+        />
+      )}
       {onToggleLeftover && isLeftover && (
         <span
           className={`leftover-badge${isStale ? " stale" : ""}`}
@@ -99,6 +114,9 @@ export function MealCard({
         >
           {isStale ? "⚠ Past fridge life" : "Leftover"}
         </span>
+      )}
+      {onToggleAlreadyHave && alreadyHave && (
+        <span className="already-have-badge">Already have it</span>
       )}
       {!recipe.isPlaceholder &&
         (recipe.photoUrl && !photoFailed ? (

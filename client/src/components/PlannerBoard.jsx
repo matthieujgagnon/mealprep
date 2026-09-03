@@ -9,26 +9,68 @@ const MEAL_TYPES = [
   { id: "dinner", label: "Supper" },
 ];
 
-function PlannerCell({ dayIndex, mealType, entries, staleIds, onCardClick, onRemove, onToggleLeftover }) {
+// The "no meal planned" marker is a real (hidden) placeholder recipe under
+// the hood — see server/src/routes/planner.js's POST /blank — so it can be
+// placed on the planner the same way any other recipe is, with no schema
+// change needed. This just recognizes it here to render it differently from
+// a normal meal card.
+function isBlankMarker(entry) {
+  return entry.recipe?.isPlaceholder && entry.recipe?.title === "No meal planned";
+}
+
+function PlannerCell({
+  dayIndex,
+  mealType,
+  entries,
+  staleIds,
+  onCardClick,
+  onRemove,
+  onToggleLeftover,
+  onToggleAlreadyHave,
+  onMarkBlank,
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}-${mealType}` });
 
   return (
     <div ref={setNodeRef} className={`planner-cell${isOver ? " drop-active" : ""}`}>
-      {entries.length === 0 && <div className="planner-empty-slot">—</div>}
-      {entries.map((entry) => (
-        <MealCard
-          key={entry.id}
-          recipe={entry.recipe}
-          dragId={`planner-${entry.id}`}
-          dragData={{ entryId: entry.id }}
-          compact
-          onClick={() => onCardClick(entry.recipe)}
-          onRemove={() => onRemove(entry.id)}
-          isLeftover={entry.isLeftover}
-          isStale={staleIds.has(entry.id)}
-          onToggleLeftover={() => onToggleLeftover(entry.id, !entry.isLeftover)}
-        />
-      ))}
+      {entries.length === 0 && (
+        <button
+          type="button"
+          className="planner-empty-slot"
+          title="Mark as no meal planned"
+          onClick={() => onMarkBlank(dayIndex, mealType)}
+        >
+          —
+        </button>
+      )}
+      {entries.map((entry) =>
+        isBlankMarker(entry) ? (
+          <button
+            key={entry.id}
+            type="button"
+            className="planner-blank-slot"
+            title="No meal planned — click to clear"
+            onClick={() => onRemove(entry.id)}
+          >
+            ✕
+          </button>
+        ) : (
+          <MealCard
+            key={entry.id}
+            recipe={entry.recipe}
+            dragId={`planner-${entry.id}`}
+            dragData={{ entryId: entry.id }}
+            compact
+            onClick={() => onCardClick(entry.recipe)}
+            onRemove={() => onRemove(entry.id)}
+            isLeftover={entry.isLeftover}
+            isStale={staleIds.has(entry.id)}
+            onToggleLeftover={() => onToggleLeftover(entry.id, !entry.isLeftover)}
+            alreadyHave={entry.alreadyHave}
+            onToggleAlreadyHave={() => onToggleAlreadyHave(entry.id, !entry.alreadyHave)}
+          />
+        )
+      )}
     </div>
   );
 }
@@ -64,7 +106,14 @@ function computeStaleLeftoverIds(entries) {
   return stale;
 }
 
-export function PlannerBoard({ entries, onCardClick, onRemove, onToggleLeftover }) {
+export function PlannerBoard({
+  entries,
+  onCardClick,
+  onRemove,
+  onToggleLeftover,
+  onToggleAlreadyHave,
+  onMarkBlank,
+}) {
   // Group entries by "dayIndex-mealType" for quick lookup per cell
   const grouped = {};
   for (const entry of entries) {
@@ -96,6 +145,8 @@ export function PlannerBoard({ entries, onCardClick, onRemove, onToggleLeftover 
               onCardClick={onCardClick}
               onRemove={onRemove}
               onToggleLeftover={onToggleLeftover}
+              onToggleAlreadyHave={onToggleAlreadyHave}
+              onMarkBlank={onMarkBlank}
             />
           ))}
         </Fragment>
