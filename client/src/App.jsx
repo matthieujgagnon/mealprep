@@ -10,6 +10,7 @@ import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { DealsPanel } from "./components/DealsPanel.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
+import { getMondayOf, shiftWeek, formatWeekLabel, isCurrentWeek } from "./lib/weeks.js";
 
 function CookbookDropZone({ children }) {
   const { setNodeRef, isOver } = useDroppable({ id: "cookbook-drop" });
@@ -36,6 +37,8 @@ export default function App() {
   const [tab, setTab] = useState("collection"); // "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
+  const [weekStart, setWeekStart] = useState(() => getMondayOf());
+  const [copyingWeek, setCopyingWeek] = useState(false);
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
   const [showManualForm, setShowManualForm] = useState(false);
@@ -61,7 +64,6 @@ export default function App() {
 
   useEffect(() => {
     api.listRecipes().then(setRecipes).catch(() => {});
-    api.listPlanner().then(setPlannerEntries).catch(() => {});
     api.listPantryStaples().then((list) => {
       setCustomStaples(list.map((s) => s.core));
       setStapleCategories(
@@ -70,6 +72,22 @@ export default function App() {
     }).catch(() => {});
     api.listGrocerySections().then(setGrocerySections).catch(() => {});
   }, []);
+
+  // Reload the board whenever the viewed week changes (nav arrows, or the
+  // initial current-week load).
+  useEffect(() => {
+    api.listPlanner(weekStart).then(setPlannerEntries).catch(() => {});
+  }, [weekStart]);
+
+  async function handleCopyLastWeek() {
+    setCopyingWeek(true);
+    try {
+      const created = await api.copyPlannerWeek(shiftWeek(weekStart, -1), weekStart);
+      setPlannerEntries((prev) => [...prev, ...created]);
+    } finally {
+      setCopyingWeek(false);
+    }
+  }
 
   function handleImported(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
@@ -228,7 +246,7 @@ export default function App() {
 
     const dayOfWeek = Number(cellMatch[1]);
     const mealType = cellMatch[2];
-    const entry = await api.placeOnPlanner({ recipeId, dayOfWeek, mealType });
+    const entry = await api.placeOnPlanner({ recipeId, weekStart, dayOfWeek, mealType });
     setPlannerEntries((prev) => [...prev, entry]);
   }
 
@@ -418,12 +436,45 @@ export default function App() {
               </p>
             ) : (
               <>
+                <div className="planner-week-toolbar">
+                  <div className="planner-week-nav">
+                    <button
+                      className="btn subtle btn-sm"
+                      onClick={() => setWeekStart((w) => shiftWeek(w, -1))}
+                      aria-label="Previous week"
+                    >
+                      ← 
+                    </button>
+                    <span className="planner-week-label">
+                      {formatWeekLabel(weekStart)}
+                      {isCurrentWeek(weekStart) && <span className="planner-week-current"> · This week</span>}
+                    </span>
+                    <button
+                      className="btn subtle btn-sm"
+                      onClick={() => setWeekStart((w) => shiftWeek(w, 1))}
+                      aria-label="Next week"
+                    >
+                      →
+                    </button>
+                  </div>
+                  <div className="planner-week-actions">
+                    {!isCurrentWeek(weekStart) && (
+                      <button className="btn subtle btn-sm" onClick={() => setWeekStart(getMondayOf())}>
+                        Jump to this week
+                      </button>
+                    )}
+                    <button className="btn subtle btn-sm" onClick={handleCopyLastWeek} disabled={copyingWeek}>
+                      {copyingWeek ? "Copying…" : "Copy last week"}
+                    </button>
+                  </div>
+                </div>
                 <p className="planner-tip">
                   <span className="leftover-dot-demo" /> Tap the dot on a placed card to mark it as leftovers — stays on your calendar but won't be added to the grocery list again.
                 </p>
                 <div className="planner-layout">
                   <div className="planner-main">
                     <PlannerBoard
+                      weekStart={weekStart}
                       entries={plannerEntries}
                       onCardClick={setActiveRecipe}
                       onRemove={handleRemoveFromPlanner}
