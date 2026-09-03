@@ -1,7 +1,6 @@
 import { Fragment } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { MealCard } from "./MealCard.jsx";
-import { formatDayHeader, isToday } from "../lib/weeks.js";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEAL_TYPES = [
@@ -36,12 +35,9 @@ function PlannerCell({ dayIndex, mealType, entries, staleIds, onCardClick, onRem
 
 // A leftover card is "stale" once more days have passed since the earliest
 // non-leftover placement of that same recipe this week than the recipe's
-// fridgeLifeDays allows. Only meaningful within a single week's board — day
-// indices are consecutive calendar days within one week, so comparing
-// day-of-week positions is equivalent to comparing elapsed days as long as
-// the leftover and its source meal are both in the same loaded week. It
-// doesn't currently follow a leftover that crosses a week boundary (e.g. a
-// Sunday-cooked meal eaten as leftovers the following Monday).
+// fridgeLifeDays allows. Only meaningful within a single week's board — the
+// planner has no real calendar dates, just Mon–Sun slots, so this compares
+// day-of-week positions rather than actual elapsed days.
 function computeStaleLeftoverIds(entries) {
   const stale = new Set();
   const firstCookedDay = new Map();
@@ -68,7 +64,7 @@ function computeStaleLeftoverIds(entries) {
   return stale;
 }
 
-export function PlannerBoard({ weekStart, entries, onCardClick, onRemove, onToggleLeftover }) {
+export function PlannerBoard({ entries, onCardClick, onRemove, onToggleLeftover }) {
   // Group entries by "dayIndex-mealType" for quick lookup per cell
   const grouped = {};
   for (const entry of entries) {
@@ -81,12 +77,9 @@ export function PlannerBoard({ weekStart, entries, onCardClick, onRemove, onTogg
   return (
     <div className="planner-grid">
       <div className="planner-grid-corner" />
-      {DAYS.map((day, dayIndex) => (
-        <div
-          key={day}
-          className={`planner-day-header${isToday(weekStart, dayIndex) ? " is-today" : ""}`}
-        >
-          {formatDayHeader(weekStart, dayIndex)}
+      {DAYS.map((day) => (
+        <div key={day} className="planner-day-header">
+          {day}
         </div>
       ))}
 

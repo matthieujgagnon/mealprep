@@ -333,6 +333,21 @@ function extractDomImages($, baseUrl) {
 // has quantity/unit/name split into separate spans — we extract those directly
 // and return structured ingredient objects instead of raw text lines, so our
 // text parser doesn't have to re-parse merged strings like "¼ cup honey".
+// Strips a single layer of wrapping parens from a notes value, if present.
+// Some sites (WP Recipe Maker in particular) write their own notes text
+// already wrapped in parens on the page itself, so extracting it verbatim
+// carries the parens along as literal characters — inconsistent with every
+// other path here, which strips them when *we're* the one pulling a note
+// out of surrounding text. The app's own italic styling is what visually
+// separates a note from the ingredient name, so a redundant paren baked
+// into the stored value is just noise.
+function stripWrappingParens(text) {
+  if (!text) return text;
+  const trimmed = text.trim();
+  const match = trimmed.match(/^\(([^()]+)\)$/);
+  return match ? match[1].trim() : trimmed;
+}
+
 function extractIngredientGroupsFromDom($) {
   try {
     // WP Recipe Maker — check for its quantity/unit/name spans first
@@ -354,7 +369,9 @@ function extractIngredientGroupsFromDom($) {
           const amountText = $li.find(".wprm-recipe-ingredient-amount").first().text().trim();
           const unitText = $li.find(".wprm-recipe-ingredient-unit").first().text().trim();
           const nameText = $li.find(".wprm-recipe-ingredient-name").first().text().trim();
-          const notesText = $li.find(".wprm-recipe-ingredient-notes").first().text().trim();
+          const notesText = stripWrappingParens(
+            $li.find(".wprm-recipe-ingredient-notes").first().text().trim()
+          );
 
           if (nameText) {
             items.push({
@@ -472,7 +489,7 @@ function parseIngredientsWithGroups(rawLines, domGroups) {
             name: capitalizeFirst(decodeHtmlEntities(item.name).trim()),
             quantity,
             unit: unitNorm || null,
-            notes: cleanScrapedNote(item.notes ? decodeHtmlEntities(item.notes).trim() : null),
+            notes: item.notes ? decodeHtmlEntities(item.notes).trim() : null,
             group: group.name || null,
             position: position++,
           });
@@ -798,27 +815,6 @@ function extractIngredientNote(name) {
   return splitParentheticalNote(name);
 }
 
-// WPRM (and similar) sites often bake literal parentheses straight into the
-// notes markup — e.g. a notes span whose raw text is "(round or chuck)".
-// Other note sources (comma-split, manual entry) never have parens, since
-// we strip them during extraction. That mismatch is what caused inconsistent
-// display: some ingredients showed "(round or chuck)", others showed plain
-// "melted" with no parens at all. Normalize everything down to plain text
-// here — parens get added back uniformly at render time, in one place.
-function cleanScrapedNote(raw) {
-  if (!raw) return null;
-  let text = String(raw).trim();
-  if (!text) return null;
-  // Two adjacent parenthetical fragments concatenated with no separator,
-  // e.g. "(Finely crushed)(12 crackers)" from nested WPRM notes spans.
-  text = text.replace(/\)\(/g, ") (");
-  // If the whole note is one parenthetical wrapper, unwrap it so it isn't
-  // double-wrapped when the UI adds its own parens.
-  const fullyWrapped = text.match(/^\(([^()]+)\)$/);
-  if (fullyWrapped) text = fullyWrapped[1].trim();
-  return text || null;
-}
-
 function parseIngredientLine(line, position) {
   const text = normalizeWordedRange(stripQuantityQualifier(stripDualUnitAlt(String(line).trim())));
 
@@ -832,12 +828,7 @@ function parseIngredientLine(line, position) {
       name: capitalizeFirst(splitName),
       quantity: null,
       unit: null,
-      // Route through the same cleanup the WPRM structured path already
-      // gets (collapses adjacent "(a)(b)" fragments, unwraps double parens)
-      // — previously only WPRM imports got this, so JSON-LD/article-body
-      // imports could come out with differently-shaped notes than WPRM
-      // imports of the same site's sister recipes.
-      notes: cleanScrapedNote(notes),
+      notes,
       position,
     };
   }
@@ -876,10 +867,7 @@ function parseIngredientLine(line, position) {
     name: capitalizeFirst(splitName.trim()),
     quantity,
     unit: isKnownUnit ? UNIT_ALIASES[unitNormalized] : null,
-    // Same uniform cleanup as above — every text-parsed ingredient (JSON-LD,
-    // article-body, WPRM plain-line fallback) now gets identical note
-    // formatting to the structured WPRM path.
-    notes: cleanScrapedNote(notes),
+    notes,
     position,
   };
 }

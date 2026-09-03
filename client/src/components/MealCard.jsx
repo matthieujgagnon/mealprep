@@ -1,5 +1,16 @@
 import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
+import { canonicalize, STAPLE_WORDS, SPICE_WORDS } from "../lib/groceryList.js";
+
+const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
+
+// Salt, pepper, and other pantry staples/spices are on hand for virtually
+// every recipe — counting them toward "N ingredients" makes that number
+// less meaningful (a recipe with 3 real ingredients plus salt and pepper
+// shouldn't read as "5 ingredients").
+function isStapleIngredient(name) {
+  return STAPLES_SET.has(canonicalize(name).core);
+}
 
 export function MealCard({
   recipe,
@@ -26,7 +37,8 @@ export function MealCard({
     : undefined;
 
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
-  const ingredientCount = recipe.ingredients?.length || 0;
+  const ingredientCount =
+    recipe.ingredients?.filter((i) => !isStapleIngredient(i.name)).length || 0;
 
   // A card either offers "delete this recipe entirely" (collection views) or
   // "remove just this placement" (planner cells) — never both — so one small

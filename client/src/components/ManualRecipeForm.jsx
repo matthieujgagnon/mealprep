@@ -1,12 +1,24 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { stepText, stepImage } from "../lib/steps.js";
+import { stepText, stepImage, stepIsHeading } from "../lib/steps.js";
 import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
 const emptyIngredient = () => ({ name: "", quantity: "", unit: "", notes: "" });
 const emptySection = () => ({ isSection: true, name: "" });
+
+// Strips a single layer of wrapping parens from a notes value, if present —
+// e.g. someone typing "(melted)" out of habit from the placeholder text
+// ("Notes (e.g. melted)" is a format example, not a literal instruction to
+// include parens). Keeps stored notes consistent with the scraper, which
+// does the same normalization for imported recipes.
+function stripWrappingParens(text) {
+  if (!text) return text;
+  const trimmed = text.trim();
+  const match = trimmed.match(/^\(([^()]+)\)$/);
+  return match ? match[1].trim() : trimmed;
+}
 
 // Reconstructs the mixed section+ingredient list the form edits from a
 // flat ingredients array — each ingredient carries its own `group` string
@@ -26,7 +38,7 @@ function buildInitialItems(ingredients) {
       name: ing.name || "",
       quantity: ing.quantity ?? "",
       unit: ing.unit || "",
-      notes: ing.notes || "",
+      notes: stripWrappingParens(ing.notes || ""),
     });
   }
   return items;
@@ -48,7 +60,7 @@ function buildIngredientsPayload(items) {
       name: item.name.trim(),
       quantity: parseQuantityInput(item.quantity),
       unit: item.unit.trim() || null,
-      notes: item.notes.trim() || null,
+      notes: stripWrappingParens(item.notes.trim()) || null,
       group: currentGroup,
       position: result.length,
     });
@@ -118,6 +130,17 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   const [instructionsText, setInstructionsText] = useState(
     recipe?.instructions?.map(stepText).join("\n") || ""
   );
+  // Step text -> photo URL. Pre-filled from the recipe's existing step
+  // images (if editing an imported recipe) so this one map is the single
+  // source of truth for every step photo, imported or manually added here.
+  const [stepPhotoOverrides, setStepPhotoOverrides] = useState(() => {
+    const initial = {};
+    for (const step of recipe?.instructions || []) {
+      const img = stepImage(step);
+      if (img) initial[stepText(step)] = img;
+    }
+    return initial;
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -144,6 +167,16 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
     );
   }
 
+  function moveIngredientItem(i, direction) {
+    const target = direction === "up" ? i - 1 : i + 1;
+    setIngredients((prev) => {
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[target]] = [next[target], next[i]];
+      return next;
+    });
+  }
+
   function addIngredientRow() {
     setIngredients((prev) => [...prev, emptyIngredient()]);
   }
@@ -168,25 +201,38 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
     setPhotos((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  // A step keeps its already-imported photo only if its text is unchanged —
-  // otherwise we'd be attaching an old picture to a rewritten step. New or
-  // edited lines just don't get a photo here (add one by re-importing, or
-  // this is a manual recipe with no photos to begin with).
-  //
-  // Also strips leading "* " / "- " / "• " bullet markers, since pasting a
-  // recipe from another app or a PDF usually brings those along and they'd
-  // otherwise show up literally in each step's text. Section headers like
-  // "1. Make the Sauce:" are left as-is here — they're detected and rendered
-  // as headings (no step number) at display time, not parsed out here.
-  function buildInstructions() {
-    const lines = instructionsText
+  // A step's photo is looked up by its exact text — stable across reordering
+  // or inserting new lines (unlike an index), and consistent with how an
+  // imported photo already only survives if the step's text is unchanged.
+  // Pre-filled from the recipe's existing step images when editing, so this
+  // one map is the single source of truth for every step photo, imported
+  // or manually added.
+  function updateStepPhoto(text, url) {
+    setStepPhotoOverrides((prev) => {
+      const next = { ...prev };
+      if (url.trim()) next[text] = url.trim();
+      else delete next[text];
+      return next;
+    });
+  }
+
+  // A step keeps its photo only if its text is unchanged — otherwise we'd
+  // be attaching an old picture to a rewritten step. Also strips leading
+  // "* " / "- " / "• " bullet markers, since pasting a recipe from another
+  // app or a PDF usually brings those along and they'd otherwise show up
+  // literally in each step's text. Section headers like "1. Make the
+  // Sauce:" are left as-is here — they're detected and rendered as
+  // headings (no step number) at display time, not parsed out here.
+  function cleanInstructionLines() {
+    return instructionsText
       .split("\n")
       .map((s) => s.trim().replace(/^[*\-•]\s*/, "").trim())
       .filter(Boolean);
-    const originalSteps = recipe?.instructions || [];
-    return lines.map((text) => {
-      const matchingOriginal = originalSteps.find((step) => stepText(step) === text);
-      const image = matchingOriginal ? stepImage(matchingOriginal) : null;
+  }
+
+  function buildInstructions() {
+    return cleanInstructionLines().map((text) => {
+      const image = stepPhotoOverrides[text];
       return image ? { text, image } : text;
     });
   }
@@ -324,6 +370,24 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
               onChange={(e) => updateSectionName(i, e.target.value)}
               style={{ flex: 1 }}
             />
+            <div className="reorder-buttons">
+              <button
+                type="button"
+                disabled={i === 0}
+                title="Move up"
+                onClick={() => moveIngredientItem(i, "up")}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                disabled={i === ingredients.length - 1}
+                title="Move down"
+                onClick={() => moveIngredientItem(i, "down")}
+              >
+                ▼
+              </button>
+            </div>
             <button
               type="button"
               className="btn subtle"
@@ -369,6 +433,24 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
               onChange={(e) => updateIngredient(i, "notes", e.target.value)}
               style={{ flex: 1 }}
             />
+            <div className="reorder-buttons">
+              <button
+                type="button"
+                disabled={i === 0}
+                title="Move up"
+                onClick={() => moveIngredientItem(i, "up")}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                disabled={i === ingredients.length - 1}
+                title="Move down"
+                onClick={() => moveIngredientItem(i, "down")}
+              >
+                ▼
+              </button>
+            </div>
             {ingredients.length > 1 && (
               <button
                 type="button"
@@ -405,11 +487,28 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
         line ending in a colon (like "Make the Sauce:") is shown as a section
         heading instead of a numbered step.
       </p>
-      {isEditing && recipe.instructions?.some(stepImage) && (
-        <p className="form-hint">
-          Steps with an imported photo keep it as long as you don't change that
-          step's text.
-        </p>
+
+      {cleanInstructionLines().filter((line) => !stepIsHeading(line)).length > 0 && (
+        <>
+          <p className="form-section-label" style={{ marginTop: 16 }}>
+            Step photos (optional)
+          </p>
+          {cleanInstructionLines()
+            .filter((line) => !stepIsHeading(line))
+            .map((line, i) => (
+              <div className="form-row step-photo-row" key={i}>
+                <span className="step-photo-preview-text">{line}</span>
+                <input
+                  type="url"
+                  placeholder="Photo URL…"
+                  value={stepPhotoOverrides[line] || ""}
+                  onChange={(e) => updateStepPhoto(line, e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                {stepPhotoOverrides[line] && <PhotoPreview url={stepPhotoOverrides[line]} />}
+              </div>
+            ))}
+        </>
       )}
 
       {error && <p className="import-error">{error}</p>}

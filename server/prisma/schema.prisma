@@ -22,6 +22,8 @@ model Recipe {
   fridgeLifeDays   Int? // how many days this keeps well as a fridge leftover; user-set, powers the "past its fridge life" warning on leftover-marked planner cards
   instructions     String // JSON-stringified array of step strings
   tags             String   @default("[]") // JSON-stringified array of tag strings, e.g. ["shrimp","summer"]
+  categoryId       String? // user-created cookbook category, e.g. "Breakfast", "Sides"; null = uncategorized
+  category         RecipeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -39,6 +41,19 @@ model Ingredient {
   notes    String? // prep note kept separate from the name, e.g. "melted", "diced" — shown alongside the ingredient but excluded from grocery-list name matching
   group    String? // section header this ingredient falls under, e.g. "For the sauce"; null if the recipe has no sub-groups
   position Int     @default(0)
+}
+
+// A user-created cookbook category, e.g. "Breakfast", "Sides", "Mains" — for
+// organizing recipes within "My Cookbook". Mirrors GrocerySection, but lives
+// as a direct field on Recipe (categoryId) rather than a separate
+// assignment table, since a recipe already has its own stable id/record to
+// attach it to — unlike a grocery item, which is just a computed string.
+model RecipeCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  recipes   Recipe[]
 }
 
 // A canonical ingredient name (e.g. "salt", "olive oil") the user has marked
@@ -69,10 +84,9 @@ model GroceryAssignment {
   createdAt DateTime       @default(now())
 }
 
-// A recipe card placed on a specific day of a specific week's planner
+// A recipe card placed on a specific day of the weekly planner
 model PlannerEntry {
   id        String   @id @default(cuid())
-  weekStart String   @default("2026-08-31") // Monday of the week this entry belongs to, "YYYY-MM-DD"
   dayOfWeek Int // 0 = Monday ... 6 = Sunday
   mealType  String   @default("dinner") // "breakfast" | "lunch" | "dinner"
   recipeId  String

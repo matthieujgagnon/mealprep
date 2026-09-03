@@ -125,21 +125,51 @@ function GroceryItemRow({
   );
 }
 
-function StoreSection({ section, items, deals, checked, onToggle, onUnassign, onDelete, showSources }) {
+function StoreSection({
+  section,
+  items,
+  deals,
+  checked,
+  onToggle,
+  onUnassign,
+  onDelete,
+  onReorder,
+  isFirst,
+  isLast,
+  showSources,
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: `section-drop-${section.id}` });
 
   return (
     <div ref={setNodeRef} className={`store-section${isOver ? " drop-active" : ""}`}>
       <div className="store-section-header">
         <p className="store-section-title">{section.name}</p>
-        <button
-          className="staple-remove-btn"
-          aria-label={`Delete section ${section.name}`}
-          title="Delete this section"
-          onClick={() => onDelete(section.id)}
-        >
-          ×
-        </button>
+        <div className="store-section-reorder">
+          <button
+            disabled={isFirst}
+            aria-label={`Move ${section.name} earlier`}
+            title="Move earlier"
+            onClick={() => onReorder(section.id, "up")}
+          >
+            ▲
+          </button>
+          <button
+            disabled={isLast}
+            aria-label={`Move ${section.name} later`}
+            title="Move later"
+            onClick={() => onReorder(section.id, "down")}
+          >
+            ▼
+          </button>
+          <button
+            className="staple-remove-btn"
+            aria-label={`Delete section ${section.name}`}
+            title="Delete this section"
+            onClick={() => onDelete(section.id)}
+          >
+            ×
+          </button>
+        </div>
       </div>
       {items.length === 0 ? (
         <p className="staples-empty-hint">Drag items here</p>
@@ -232,6 +262,7 @@ export function GroceryList({
   grocerySections,
   onCreateSection,
   onDeleteSection,
+  onReorderSection,
   onUnassignFromSection,
 }) {
   const [deals, setDeals] = useState([]);
@@ -364,7 +395,7 @@ export function GroceryList({
 
       {grocerySections.length > 0 && (
         <div className="store-sections-row">
-          {grocerySections.map((section) => (
+          {grocerySections.map((section, i) => (
             <StoreSection
               key={section.id}
               section={section}
@@ -374,6 +405,9 @@ export function GroceryList({
               onToggle={toggle}
               onUnassign={onUnassignFromSection}
               onDelete={onDeleteSection}
+              onReorder={onReorderSection}
+              isFirst={i === 0}
+              isLast={i === grocerySections.length - 1}
               showSources={showSources}
             />
           ))}

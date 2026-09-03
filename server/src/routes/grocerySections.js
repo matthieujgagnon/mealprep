@@ -26,6 +26,21 @@ grocerySectionsRouter.post("/", async (req, res) => {
   res.status(201).json(section);
 });
 
+// PUT /api/grocery-sections/reorder { orderedIds: [id1, id2, ...] } - sets
+// each section's position to its index in the given order
+grocerySectionsRouter.put("/reorder", async (req, res) => {
+  const { orderedIds } = req.body;
+  if (!Array.isArray(orderedIds)) {
+    return res.status(400).json({ error: "orderedIds[] is required" });
+  }
+  await prisma.$transaction(
+    orderedIds.map((id, position) =>
+      prisma.grocerySection.update({ where: { id }, data: { position } })
+    )
+  );
+  res.status(204).send();
+});
+
 // DELETE /api/grocery-sections/:id - remove a section (its items go back to unsorted)
 grocerySectionsRouter.delete("/:id", async (req, res) => {
   await prisma.grocerySection.delete({ where: { id: req.params.id } });

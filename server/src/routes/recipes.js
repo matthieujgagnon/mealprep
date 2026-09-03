@@ -120,7 +120,7 @@ recipesRouter.post("/", async (req, res) => {
 
 // PUT /api/recipes/:id - edit a recipe (title, servings, ingredients, instructions)
 recipesRouter.put("/:id", async (req, res) => {
-  const { title, photoUrl, photos, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags } = req.body;
+  const { title, photoUrl, photos, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
 
   await prisma.recipe.update({
     where: { id: req.params.id },
@@ -135,6 +135,7 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(inCookbook !== undefined && { inCookbook }),
       ...(inImported !== undefined && { inImported }),
       ...(tags !== undefined && { tags: JSON.stringify(tags) }),
+      ...(categoryId !== undefined && { categoryId }),
       ...(instructions !== undefined && { instructions: JSON.stringify(instructions) }),
     },
   });

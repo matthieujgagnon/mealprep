@@ -5,30 +5,6 @@ import { findSimilarRecipes, findUnusedPerishables, isPerishable } from "../lib/
 import { CookMode } from "./CookMode.jsx";
 import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
 
-// Defensive normalization for display: older imported rows (or anything
-// entered by hand) may carry a leading comma/dash left over from a split,
-// two adjacent parenthetical fragments pasted together with no space
-// ("(Finely crushed)(12 crackers)"), or the whole note already wrapped in
-// its own parens. Whatever shape it comes in as, this always produces the
-// same single "(note)" — never a comma — so display is uniform regardless
-// of which import path (or which past session's bug) produced the raw text.
-function formatNote(notes) {
-  if (!notes) return "";
-  let text = String(notes).trim();
-  text = text.replace(/^[,\-–]\s*/, ""); // stray leading separator
-  text = text.replace(/\)\(/g, ") ("); // adjacent parenthetical fragments
-  const fullyWrapped = text.match(/^\(([^()]+)\)$/);
-  if (fullyWrapped) text = fullyWrapped[1].trim(); // avoid double-wrapping
-  return text ? `(${text})` : "";
-}
-
-// Defensive: strips a trailing comma that may be baked into the name field
-// itself from legacy data, so the name is never followed by a naked comma
-// even before the note span renders.
-function cleanIngredientName(name) {
-  return String(name || "").replace(/,\s*$/, "").trim();
-}
-
 function formatQuantity(qty) {
   if (qty === null || qty === undefined) return "";
   const rounded = Math.round(qty * 100) / 100;
@@ -143,32 +119,10 @@ export function RecipeDetailModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div
-        className={`card modal-content${activePhoto ? " has-hero-photo" : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          className={activePhoto ? "modal-close recipe-modal-close-photo" : "modal-close"}
-          onClick={onClose}
-          aria-label="Close"
-        >
+      <div className="card modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">
           ×
         </button>
-
-        {activePhoto && (
-          <div className="recipe-modal-hero">
-            <img
-              src={activePhoto}
-              alt={recipe.title}
-              className="recipe-modal-photo"
-              onError={() => {
-                const next = gallery.find((u) => u !== activePhoto && !brokenPhotos.has(u));
-                setBrokenPhotos((prev) => new Set(prev).add(activePhoto));
-                if (next) setActivePhoto(next);
-              }}
-            />
-          </div>
-        )}
 
         <h2 className="recipe-modal-title">{recipe.title}</h2>
         <div className="recipe-modal-stats-row">
@@ -243,6 +197,20 @@ export function RecipeDetailModal({
           />
         </div>
 
+        {activePhoto && (
+          <img
+            src={activePhoto}
+            alt={recipe.title}
+            className="recipe-modal-photo"
+            style={{ marginBottom: gallery.length > 1 ? 8 : 18 }}
+            onError={() => {
+              const next = gallery.find((u) => u !== activePhoto && !brokenPhotos.has(u));
+              setBrokenPhotos((prev) => new Set(prev).add(activePhoto));
+              if (next) setActivePhoto(next);
+            }}
+          />
+        )}
+
         {gallery.filter((u) => !brokenPhotos.has(u)).length > 1 && (
           <div className="recipe-modal-gallery">
             {gallery
@@ -300,9 +268,9 @@ export function RecipeDetailModal({
                 return (
                   <li key={ing.id || ing.name} className={perishable ? "perishable-row" : ""}>
                     <span>
-                      {cleanIngredientName(ing.name)}
+                      {ing.name}
                       {ing.notes && (
-                        <span className="ingredient-notes"> {formatNote(ing.notes)}</span>
+                        <span className="ingredient-notes"> {ing.notes}</span>
                       )}
                       {perishable && <span className="perishable-dot" title="Perishable ingredient" />}
                     </span>

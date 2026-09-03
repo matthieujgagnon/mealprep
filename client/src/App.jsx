@@ -10,7 +10,6 @@ import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { DealsPanel } from "./components/DealsPanel.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
-import { getMondayOf, shiftWeek, formatWeekLabel, isCurrentWeek } from "./lib/weeks.js";
 
 function CookbookDropZone({ children }) {
   const { setNodeRef, isOver } = useDroppable({ id: "cookbook-drop" });
@@ -18,6 +17,90 @@ function CookbookDropZone({ children }) {
     <div ref={setNodeRef} className={`cookbook-drop-zone${isOver ? " drop-active" : ""}`}>
       {children}
     </div>
+  );
+}
+
+function RecipeCategorySection({
+  category,
+  recipes,
+  isFirst,
+  isLast,
+  onReorder,
+  onDelete,
+  onSelectRecipe,
+  onDeleteRecipe,
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `category-drop-${category.id}` });
+  return (
+    <div ref={setNodeRef} className={`recipe-category-section${isOver ? " drop-active" : ""}`}>
+      <div className="recipe-category-header">
+        <h3 className="recipe-category-title">{category.name}</h3>
+        <div className="reorder-buttons">
+          <button disabled={isFirst} title="Move up" onClick={() => onReorder(category.id, "up")}>
+            ▲
+          </button>
+          <button disabled={isLast} title="Move down" onClick={() => onReorder(category.id, "down")}>
+            ▼
+          </button>
+        </div>
+        <button
+          className="staple-remove-btn"
+          title="Delete this category"
+          onClick={() => onDelete(category.id)}
+        >
+          ×
+        </button>
+      </div>
+      {recipes.length === 0 ? (
+        <p className="staples-empty-hint">Drag a recipe here</p>
+      ) : (
+        <div className="collection-grid">
+          {recipes.map((r) => (
+            <MealCard
+              key={r.id}
+              recipe={r}
+              dragId={`cookbook-${r.id}`}
+              onClick={onSelectRecipe}
+              onDelete={() => onDeleteRecipe(r)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UncategorizedDropZone({ children }) {
+  const { setNodeRef, isOver } = useDroppable({ id: "category-drop-none" });
+  return (
+    <div ref={setNodeRef} className={`recipe-category-section${isOver ? " drop-active" : ""}`}>
+      {children}
+    </div>
+  );
+}
+
+function AddCategoryForm({ onCreate }) {
+  const [name, setName] = useState("");
+  return (
+    <form
+      className="add-section-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        onCreate(name.trim());
+        setName("");
+      }}
+    >
+      <input
+        type="text"
+        placeholder="New category (e.g. Breakfast)"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <button type="submit" className="btn subtle">
+        + Add category
+      </button>
+    </form>
   );
 }
 
@@ -37,14 +120,13 @@ export default function App() {
   const [tab, setTab] = useState("collection"); // "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
-  const [weekStart, setWeekStart] = useState(() => getMondayOf());
-  const [copyingWeek, setCopyingWeek] = useState(false);
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
   const [showManualForm, setShowManualForm] = useState(false);
   const [customStaples, setCustomStaples] = useState([]);
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [grocerySections, setGrocerySections] = useState([]);
+  const [recipeCategories, setRecipeCategories] = useState([]);
   const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [isDragActive, setIsDragActive] = useState(false);
@@ -64,6 +146,7 @@ export default function App() {
 
   useEffect(() => {
     api.listRecipes().then(setRecipes).catch(() => {});
+    api.listPlanner().then(setPlannerEntries).catch(() => {});
     api.listPantryStaples().then((list) => {
       setCustomStaples(list.map((s) => s.core));
       setStapleCategories(
@@ -71,23 +154,8 @@ export default function App() {
       );
     }).catch(() => {});
     api.listGrocerySections().then(setGrocerySections).catch(() => {});
+    api.listRecipeCategories().then(setRecipeCategories).catch(() => {});
   }, []);
-
-  // Reload the board whenever the viewed week changes (nav arrows, or the
-  // initial current-week load).
-  useEffect(() => {
-    api.listPlanner(weekStart).then(setPlannerEntries).catch(() => {});
-  }, [weekStart]);
-
-  async function handleCopyLastWeek() {
-    setCopyingWeek(true);
-    try {
-      const created = await api.copyPlannerWeek(shiftWeek(weekStart, -1), weekStart);
-      setPlannerEntries((prev) => [...prev, ...created]);
-    } finally {
-      setCopyingWeek(false);
-    }
-  }
 
   function handleImported(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
@@ -194,6 +262,60 @@ export default function App() {
     );
   }
 
+  async function handleReorderSection(id, direction) {
+    const currentOrder = grocerySections.map((s) => s.id);
+    const index = currentOrder.indexOf(id);
+    const swapWith = direction === "up" ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= currentOrder.length) return;
+
+    const newOrder = [...currentOrder];
+    [newOrder[index], newOrder[swapWith]] = [newOrder[swapWith], newOrder[index]];
+
+    setGrocerySections((prev) => {
+      const byId = new Map(prev.map((s) => [s.id, s]));
+      return newOrder.map((sid) => byId.get(sid));
+    });
+
+    await api.reorderGrocerySections(newOrder);
+  }
+
+  async function handleCreateRecipeCategory(name) {
+    const category = await api.createRecipeCategory(name);
+    setRecipeCategories((prev) => [...prev, category]);
+  }
+
+  async function handleDeleteRecipeCategory(id) {
+    await api.deleteRecipeCategory(id);
+    setRecipeCategories((prev) => prev.filter((c) => c.id !== id));
+    // Recipes in this category become uncategorized server-side (onDelete:
+    // SetNull) — reflect that locally too instead of waiting for a refetch.
+    setRecipes((prev) =>
+      prev.map((r) => (r.categoryId === id ? { ...r, categoryId: null } : r))
+    );
+  }
+
+  async function handleReorderRecipeCategory(id, direction) {
+    const currentOrder = recipeCategories.map((c) => c.id);
+    const index = currentOrder.indexOf(id);
+    const swapWith = direction === "up" ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= currentOrder.length) return;
+
+    const newOrder = [...currentOrder];
+    [newOrder[index], newOrder[swapWith]] = [newOrder[swapWith], newOrder[index]];
+
+    setRecipeCategories((prev) => {
+      const byId = new Map(prev.map((c) => [c.id, c]));
+      return newOrder.map((cid) => byId.get(cid));
+    });
+
+    await api.reorderRecipeCategories(newOrder);
+  }
+
+  async function handleAssignRecipeCategory(recipeId, categoryId) {
+    await api.updateRecipe(recipeId, { categoryId });
+    setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, categoryId } : r)));
+  }
+
   async function handleDragEnd(event) {
     setIsDragActive(false);
     const { active, over } = event;
@@ -241,12 +363,18 @@ export default function App() {
       return;
     }
 
+    const categoryMatch = /^category-drop-(.+)$/.exec(over.id);
+    if (categoryMatch) {
+      handleAssignRecipeCategory(recipeId, categoryMatch[1] === "none" ? null : categoryMatch[1]);
+      return;
+    }
+
     const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
     if (!cellMatch) return;
 
     const dayOfWeek = Number(cellMatch[1]);
     const mealType = cellMatch[2];
-    const entry = await api.placeOnPlanner({ recipeId, weekStart, dayOfWeek, mealType });
+    const entry = await api.placeOnPlanner({ recipeId, dayOfWeek, mealType });
     setPlannerEntries((prev) => [...prev, entry]);
   }
 
@@ -410,7 +538,7 @@ export default function App() {
                       ? "No cookbook recipes match your search."
                       : "Drag a recipe here from Imported, or add one by hand — recipes you save stay separate from your imports."}
                   </p>
-                ) : (
+                ) : recipeCategories.length === 0 ? (
                   <div className="collection-grid">
                     {cookbookRecipes.map((r) => (
                       <MealCard
@@ -422,8 +550,46 @@ export default function App() {
                       />
                     ))}
                   </div>
+                ) : (
+                  <>
+                    <UncategorizedDropZone>
+                      {cookbookRecipes.filter((r) => !r.categoryId).length > 0 ? (
+                        <div className="collection-grid">
+                          {cookbookRecipes
+                            .filter((r) => !r.categoryId)
+                            .map((r) => (
+                              <MealCard
+                                key={r.id}
+                                recipe={r}
+                                dragId={`cookbook-${r.id}`}
+                                onClick={setActiveRecipe}
+                                onDelete={() => handleRemoveFromCookbook(r)}
+                              />
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="staples-empty-hint">Drag a recipe here to remove it from a category</p>
+                      )}
+                    </UncategorizedDropZone>
+                    {recipeCategories.map((cat, i) => (
+                      <RecipeCategorySection
+                        key={cat.id}
+                        category={cat}
+                        recipes={cookbookRecipes.filter((r) => r.categoryId === cat.id)}
+                        isFirst={i === 0}
+                        isLast={i === recipeCategories.length - 1}
+                        onReorder={handleReorderRecipeCategory}
+                        onDelete={handleDeleteRecipeCategory}
+                        onSelectRecipe={setActiveRecipe}
+                        onDeleteRecipe={handleRemoveFromCookbook}
+                      />
+                    ))}
+                  </>
                 )}
               </CookbookDropZone>
+              {cookbookRecipes.length > 0 && (
+                <AddCategoryForm onCreate={handleCreateRecipeCategory} />
+              )}
             </section>
           </>
         )}
@@ -436,45 +602,12 @@ export default function App() {
               </p>
             ) : (
               <>
-                <div className="planner-week-toolbar">
-                  <div className="planner-week-nav">
-                    <button
-                      className="btn subtle btn-sm"
-                      onClick={() => setWeekStart((w) => shiftWeek(w, -1))}
-                      aria-label="Previous week"
-                    >
-                      ← 
-                    </button>
-                    <span className="planner-week-label">
-                      {formatWeekLabel(weekStart)}
-                      {isCurrentWeek(weekStart) && <span className="planner-week-current"> · This week</span>}
-                    </span>
-                    <button
-                      className="btn subtle btn-sm"
-                      onClick={() => setWeekStart((w) => shiftWeek(w, 1))}
-                      aria-label="Next week"
-                    >
-                      →
-                    </button>
-                  </div>
-                  <div className="planner-week-actions">
-                    {!isCurrentWeek(weekStart) && (
-                      <button className="btn subtle btn-sm" onClick={() => setWeekStart(getMondayOf())}>
-                        Jump to this week
-                      </button>
-                    )}
-                    <button className="btn subtle btn-sm" onClick={handleCopyLastWeek} disabled={copyingWeek}>
-                      {copyingWeek ? "Copying…" : "Copy last week"}
-                    </button>
-                  </div>
-                </div>
                 <p className="planner-tip">
                   <span className="leftover-dot-demo" /> Tap the dot on a placed card to mark it as leftovers — stays on your calendar but won't be added to the grocery list again.
                 </p>
                 <div className="planner-layout">
                   <div className="planner-main">
                     <PlannerBoard
-                      weekStart={weekStart}
                       entries={plannerEntries}
                       onCardClick={setActiveRecipe}
                       onRemove={handleRemoveFromPlanner}
@@ -517,6 +650,7 @@ export default function App() {
             grocerySections={grocerySections}
             onCreateSection={handleCreateSection}
             onDeleteSection={handleDeleteSection}
+            onReorderSection={handleReorderSection}
             onUnassignFromSection={handleUnassignFromSection}
           />
         )}
