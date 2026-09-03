@@ -69,9 +69,10 @@ model GroceryAssignment {
   createdAt DateTime       @default(now())
 }
 
-// A recipe card placed on a specific day of the weekly planner
+// A recipe card placed on a specific day of a specific week's planner
 model PlannerEntry {
   id        String   @id @default(cuid())
+  weekStart String   @default("2026-08-31") // Monday of the week this entry belongs to, "YYYY-MM-DD"
   dayOfWeek Int // 0 = Monday ... 6 = Sunday
   mealType  String   @default("dinner") // "breakfast" | "lunch" | "dinner"
   recipeId  String

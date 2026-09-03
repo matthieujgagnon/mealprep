@@ -472,7 +472,7 @@ function parseIngredientsWithGroups(rawLines, domGroups) {
             name: capitalizeFirst(decodeHtmlEntities(item.name).trim()),
             quantity,
             unit: unitNorm || null,
-            notes: item.notes ? decodeHtmlEntities(item.notes).trim() : null,
+            notes: cleanScrapedNote(item.notes ? decodeHtmlEntities(item.notes).trim() : null),
             group: group.name || null,
             position: position++,
           });
@@ -796,6 +796,27 @@ function extractIngredientNote(name) {
   const commaSplit = splitTrailingNote(name);
   if (commaSplit.notes) return commaSplit;
   return splitParentheticalNote(name);
+}
+
+// WPRM (and similar) sites often bake literal parentheses straight into the
+// notes markup — e.g. a notes span whose raw text is "(round or chuck)".
+// Other note sources (comma-split, manual entry) never have parens, since
+// we strip them during extraction. That mismatch is what caused inconsistent
+// display: some ingredients showed "(round or chuck)", others showed plain
+// "melted" with no parens at all. Normalize everything down to plain text
+// here — parens get added back uniformly at render time, in one place.
+function cleanScrapedNote(raw) {
+  if (!raw) return null;
+  let text = String(raw).trim();
+  if (!text) return null;
+  // Two adjacent parenthetical fragments concatenated with no separator,
+  // e.g. "(Finely crushed)(12 crackers)" from nested WPRM notes spans.
+  text = text.replace(/\)\(/g, ") (");
+  // If the whole note is one parenthetical wrapper, unwrap it so it isn't
+  // double-wrapped when the UI adds its own parens.
+  const fullyWrapped = text.match(/^\(([^()]+)\)$/);
+  if (fullyWrapped) text = fullyWrapped[1].trim();
+  return text || null;
 }
 
 function parseIngredientLine(line, position) {
