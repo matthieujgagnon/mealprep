@@ -99,7 +99,7 @@ export function RecipeDetailModal({
   if (editing) {
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="card modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="card modal-content wide-modal" onClick={(e) => e.stopPropagation()}>
           <button className="modal-close" onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -154,6 +154,13 @@ export function RecipeDetailModal({
             )}
           </div>
         </div>
+
+        {recipe.notes && (
+          <div className="recipe-modal-notes">
+            <p className="section-label">Notes</p>
+            <p>{recipe.notes}</p>
+          </div>
+        )}
 
         {!recipe.isPlaceholder && (
           <div className="fridge-life-editor">
@@ -270,7 +277,7 @@ export function RecipeDetailModal({
                     <span>
                       {ing.name}
                       {ing.notes && (
-                        <span className="ingredient-notes"> {ing.notes}</span>
+                        <span className="ingredient-notes"> ({ing.notes})</span>
                       )}
                       {perishable && <span className="perishable-dot" title="Perishable ingredient" />}
                     </span>

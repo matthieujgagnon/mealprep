@@ -24,6 +24,8 @@ export const api = {
   updateRecipe: (id, payload) =>
     request(`/recipes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteRecipe: (id) => request(`/recipes/${id}`, { method: "DELETE" }),
+  reorderRecipes: (orderedIds) =>
+    request("/recipes/reorder", { method: "PUT", body: JSON.stringify({ orderedIds }) }),
 
   listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
   listPlannerWeeks: () => request("/planner/weeks"),

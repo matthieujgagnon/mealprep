@@ -264,6 +264,7 @@ export function GroceryList({
   plannerEntries,
   weekStart,
   customStaples,
+  excludedStaples,
   stapleCategories,
   onRemoveStaple,
   grocerySections,
@@ -300,7 +301,7 @@ export function GroceryList({
     id: "pantry-staples-drop",
   });
 
-  const items = buildGroceryList(plannerEntries, customStaples, stapleCategories);
+  const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples);
 
   // A core assigned to any store section — excluded from the main unsorted list.
   const assignedCores = new Set(
@@ -323,10 +324,6 @@ export function GroceryList({
   }
 
   const hasChecked = Object.values(checked).some(Boolean);
-
-  function isRemovable(item) {
-    return customStaples.includes(item.core);
-  }
 
   function itemsForSection(section) {
     const cores = new Set(section.assignments.map((a) => a.core));
@@ -470,14 +467,14 @@ export function GroceryList({
                           checked={!!checked[item.key]}
                           onToggle={() => toggle(item.key)}
                           draggable
-                          onRemoveStaple={isRemovable(item) ? onRemoveStaple : null}
+                          onRemoveStaple={onRemoveStaple}
                         />
                       ))}
                     </ul>
                   )}
                 </StaplesSubsection>
 
-                <p className="staples-subheading">Other staples</p>
+                <p className="staples-subheading">Staples</p>
                 <StaplesSubsection dropId="staple-category-other-drop">
                   {otherStaples.length === 0 ? (
                     <p className="staples-empty-hint">Drag a staple here to file it here instead</p>
@@ -492,7 +489,7 @@ export function GroceryList({
                           checked={!!checked[item.key]}
                           onToggle={() => toggle(item.key)}
                           draggable
-                          onRemoveStaple={isRemovable(item) ? onRemoveStaple : null}
+                          onRemoveStaple={onRemoveStaple}
                         />
                       ))}
                     </ul>

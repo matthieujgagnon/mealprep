@@ -11,6 +11,8 @@ pantryStaplesRouter.get("/", async (req, res) => {
 
 // POST /api/pantry-staples { core } - mark an ingredient as a staple.
 // Idempotent: dragging the same ingredient twice just no-ops the second time.
+// Also clears a prior "excluded" override — dragging a previously-removed
+// default staple (e.g. salt) back onto the staples section un-removes it.
 pantryStaplesRouter.post("/", async (req, res) => {
   const { core } = req.body;
   if (!core || !core.trim()) {
@@ -20,7 +22,7 @@ pantryStaplesRouter.post("/", async (req, res) => {
 
   const staple = await prisma.pantryStaple.upsert({
     where: { core: normalized },
-    update: {},
+    update: { excluded: false },
     create: { core: normalized },
   });
   res.status(201).json(staple);
@@ -45,8 +47,18 @@ pantryStaplesRouter.put("/:core", async (req, res) => {
   res.json(staple);
 });
 
-// DELETE /api/pantry-staples/:core - un-mark an ingredient as a staple
+// DELETE /api/pantry-staples/:core - un-mark an ingredient as a staple. For
+// one the user added themselves this just reverts it to being a normal
+// grocery item. For one of the app's built-in defaults (e.g. "salt", which
+// has no row at all until now) it records an explicit exclusion instead of
+// deleting nothing — otherwise the built-in list would just put it right
+// back on the next render with no way to actually remove it.
 pantryStaplesRouter.delete("/:core", async (req, res) => {
-  await prisma.pantryStaple.deleteMany({ where: { core: req.params.core.toLowerCase() } });
+  const normalized = req.params.core.toLowerCase();
+  await prisma.pantryStaple.upsert({
+    where: { core: normalized },
+    update: { excluded: true },
+    create: { core: normalized, excluded: true },
+  });
   res.status(204).send();
 });

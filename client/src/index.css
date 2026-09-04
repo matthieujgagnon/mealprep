@@ -171,6 +171,10 @@ select {
   opacity: 0.5;
 }
 
+.meal-card.reorder-target {
+  box-shadow: 0 0 0 2px var(--accent-text);
+}
+
 .meal-card-photo {
   width: 100%;
   height: 120px;
@@ -291,28 +295,14 @@ select {
   color: #fff;
 }
 
-.already-have-dot {
-  position: absolute;
-  top: 6px;
-  left: 26px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(0, 0, 0, 0.3);
-  padding: 0;
-  background: rgba(255, 255, 255, 0.65);
-  cursor: pointer;
-  z-index: 5;
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-
-.already-have-dot:hover {
-  transform: scale(1.2);
-}
-
-.already-have-dot.active {
-  background: var(--mustard);
-  border-color: var(--mustard);
+/* "Already have it" is the same physical dot as leftover — one control
+   cycles plain -> leftover (filled green) -> already have it (blue outline,
+   unfilled) -> plain. Deliberately unfilled here so it reads as a distinct
+   third state rather than "leftover but blue." */
+.leftover-dot.have-outline {
+  background: transparent;
+  border-color: var(--accent-text);
+  border-width: 2px;
 }
 
 .meal-card.already-have-active {
@@ -498,6 +488,13 @@ select {
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 20px;
+}
+
+.makeable-and-hint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-text);
+  margin: 0 0 14px;
 }
 
 .makeable-results {
@@ -716,6 +713,15 @@ select {
 
 .ingredient-row {
   align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Enough room for each field to stay readable even with 4 fields plus a
+   drag handle and a delete button crammed into one row — below this they'd
+   rather wrap onto a second line than squeeze illegibly narrow. */
+.ingredient-row input[type="text"],
+.ingredient-row select {
+  min-width: 90px;
 }
 
 .section-row {
@@ -734,6 +740,26 @@ select {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+}
+
+.drag-handle {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: grab;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 6px;
+  touch-action: none;
+}
+
+.drag-handle:hover {
+  color: var(--mustard);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 
 .reorder-buttons button {
@@ -1673,44 +1699,51 @@ select {
   height: 92px;
 }
 
-.planner-empty-slot {
-  display: block;
+/* An empty planner slot is a card-shaped tile (same base .card.meal-card
+   classes as a real placed recipe, so it matches size/shape exactly) rather
+   than a bare text button — tinted blue so it's unmistakably "not a recipe."
+   Two sub-states share this look: unmarked (dashed border, click to mark
+   blank) and marked-blank (solid border, click to clear). */
+.planner-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
-  font-size: 12px;
-  color: var(--paper-soft);
-  opacity: 0.55; /* was 0.35 (2.7:1 against --bg-soft, fails WCAG AA) */
-  text-align: center;
-  padding: 24px 0;
-  background: none;
-  border: none;
+  min-height: 110px;
+  background: rgba(35, 35, 255, 0.08);
+  border: 1.5px dashed var(--accent-text);
+  color: var(--accent-text);
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.planner-empty-slot:hover {
-  opacity: 0.8;
+.planner-empty-card:hover {
+  background: rgba(35, 35, 255, 0.16);
 }
 
-.planner-blank-slot {
-  display: block;
-  width: 100%;
-  font-size: 14px;
-  color: var(--paper-soft);
-  opacity: 0.55; /* was 0.4 (3.2:1 against --bg-soft, fails WCAG AA) */
-  text-align: center;
-  padding: 24px 0;
-  background: none;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 0.15s ease, background 0.15s ease;
+.planner-empty-card-plus {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.planner-blank-slot:hover {
-  opacity: 0.9;
-  background: rgba(255, 255, 255, 0.06);
+.planner-empty-card-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.planner-empty-card.marked {
+  border-style: solid;
+  background: rgba(35, 35, 255, 0.14);
+}
+
+.planner-empty-card.marked:hover {
+  background: rgba(35, 35, 255, 0.22);
 }
 
 .grocery-list {
@@ -2023,6 +2056,26 @@ select {
   max-height: 85vh;
   overflow-y: auto;
   padding: 24px;
+}
+
+/* The edit form packs 4 fields per ingredient row (name/qty/unit/notes)
+   plus a drag handle and delete button — 560px was sized for the read-only
+   view (photo + ingredient list) and squeezed those down to illegible
+   widths, with typed text trailing off out of view. */
+.modal-content.wide-modal {
+  max-width: 760px;
+}
+
+.recipe-modal-notes {
+  margin-bottom: 14px;
+}
+
+.recipe-modal-notes p:not(.section-label) {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
 }
 
 .modal-close {
@@ -2479,7 +2532,8 @@ select {
     align-items: flex-end;
   }
 
-  .modal-content {
+  .modal-content,
+  .modal-content.wide-modal {
     max-width: 100%;
     max-height: 92vh;
     width: 100%;

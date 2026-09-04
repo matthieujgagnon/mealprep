@@ -13,6 +13,7 @@ model Recipe {
   sourceUrl        String?
   photoUrl         String?
   photos           String   @default("[]") // JSON-stringified array of all image URLs found at import
+  notes            String? // freeform recipe-level notes ("used less salt", "great with rice") — separate from any per-ingredient note
   inCookbook       Boolean  @default(false) // true for manual entries, or imported recipes dragged into the cookbook
   inImported       Boolean  @default(true) // true for recipes that came from a URL import; independent of inCookbook so deleting from one section doesn't affect the other
   isPlaceholder    Boolean  @default(false) // true for the generic "Restaurant"/"YOLO"/"N/A" planner cards, which aren't real recipes
@@ -24,6 +25,7 @@ model Recipe {
   tags             String   @default("[]") // JSON-stringified array of tag strings, e.g. ["shrimp","summer"]
   categoryId       String? // user-created cookbook category, e.g. "Breakfast", "Sides"; null = uncategorized
   category         RecipeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  position         Int      @default(0) // manual drag-to-reorder position within whichever grid (Imported / Cookbook / a category) it's shown in
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -56,13 +58,21 @@ model RecipeCategory {
   recipes   Recipe[]
 }
 
-// A canonical ingredient name (e.g. "salt", "olive oil") the user has marked
-// as a pantry staple they always have on hand — dragged onto the "staples"
-// section of the grocery list. Persists across weeks.
+// A canonical ingredient name (e.g. "salt", "olive oil") with a user
+// decision about staple status, overriding the app's built-in default list
+// (STAPLE_WORDS/SPICE_WORDS on the client) either direction:
+//   - excluded: false (default) - explicitly marked a staple, e.g. dragged
+//     onto the "staples" section of the grocery list.
+//   - excluded: true - explicitly marked NOT a staple, even though it's on
+//     the built-in default list (e.g. "salt") — otherwise there'd be no way
+//     to ever remove one of those from the staples section, since they
+//     aren't backed by a row at all until the user overrides them.
+// No row at all = defer entirely to the built-in default list.
 model PantryStaple {
   id        String   @id @default(cuid())
   core      String   @unique // normalized ingredient name, e.g. "olive oil"
   category  String? // "spice" | "other" — user override of the automatic spice/other split; null = auto-detect
+  excluded  Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 

@@ -107,8 +107,7 @@ function PlannerCell({
   staleIds,
   onCardClick,
   onRemove,
-  onToggleLeftover,
-  onToggleAlreadyHave,
+  onCycleState,
   onMarkBlank,
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}-${mealType}` });
@@ -118,11 +117,12 @@ function PlannerCell({
       {entries.length === 0 && (
         <button
           type="button"
-          className="planner-empty-slot"
+          className="card meal-card compact planner-empty-card"
           title="Mark as no meal planned"
           onClick={() => onMarkBlank(dayIndex, mealType)}
         >
-          —
+          <span className="planner-empty-card-plus">+</span>
+          <span className="planner-empty-card-label">No meal planned</span>
         </button>
       )}
       {entries.map((entry) =>
@@ -130,11 +130,12 @@ function PlannerCell({
           <button
             key={entry.id}
             type="button"
-            className="planner-blank-slot"
+            className="card meal-card compact planner-empty-card marked"
             title="No meal planned — click to clear"
             onClick={() => onRemove(entry.id)}
           >
-            ✕
+            <span className="planner-empty-card-plus">✕</span>
+            <span className="planner-empty-card-label">No meal planned</span>
           </button>
         ) : (
           <MealCard
@@ -147,9 +148,8 @@ function PlannerCell({
             onRemove={() => onRemove(entry.id)}
             isLeftover={entry.isLeftover}
             isStale={staleIds.has(entry.id)}
-            onToggleLeftover={() => onToggleLeftover(entry.id, !entry.isLeftover)}
             alreadyHave={entry.alreadyHave}
-            onToggleAlreadyHave={() => onToggleAlreadyHave(entry.id, !entry.alreadyHave)}
+            onCycleState={() => onCycleState(entry.id)}
           />
         )
       )}
@@ -198,8 +198,7 @@ export function PlannerBoard({
   onCopyLastWeek,
   onCardClick,
   onRemove,
-  onToggleLeftover,
-  onToggleAlreadyHave,
+  onCycleState,
   onMarkBlank,
 }) {
   // Group entries by "dayIndex-mealType" for quick lookup per cell
@@ -249,8 +248,7 @@ export function PlannerBoard({
                 staleIds={staleIds}
                 onCardClick={onCardClick}
                 onRemove={onRemove}
-                onToggleLeftover={onToggleLeftover}
-                onToggleAlreadyHave={onToggleAlreadyHave}
+                onCycleState={onCycleState}
                 onMarkBlank={onMarkBlank}
               />
             ))}

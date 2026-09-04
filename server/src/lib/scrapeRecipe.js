@@ -679,14 +679,20 @@ function extractServings(recipeYield) {
   return match ? parseInt(match[0], 10) : null;
 }
 
-// Parses ISO 8601 durations like "PT30M" or "PT1H15M" into minutes.
+// Parses ISO 8601 durations like "PT30M" or "PT1H15M" into minutes. Also
+// handles a leading day component ("P1DT2H" — a 1-day, 2-hour marinate or
+// proof) which the original PT-only regex silently failed to match at all
+// (the whole string fell through as "no leading PT", returning null even
+// though the value was perfectly valid) — a real gap for slow-marinated or
+// bread/dough recipes specifically.
 function parseIsoDuration(iso) {
   if (!iso) return null;
-  const match = /^PT(?:(\d+)H)?(?:(\d+)M)?/.exec(iso);
+  const match = /^P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?/.exec(iso);
   if (!match) return null;
-  const hours = parseInt(match[1] || "0", 10);
-  const minutes = parseInt(match[2] || "0", 10);
-  return hours * 60 + minutes || null;
+  const days = parseInt(match[1] || "0", 10);
+  const hours = parseInt(match[2] || "0", 10);
+  const minutes = parseInt(match[3] || "0", 10);
+  return days * 1440 + hours * 60 + minutes || null;
 }
 
 // Splits a raw ingredient line like "2 1/2 cups flour" into quantity/unit/name.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { canonicalize, STAPLE_WORDS, SPICE_WORDS } from "../lib/groceryList.js";
 
 const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
@@ -10,6 +10,18 @@ const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
 // shouldn't read as "5 ingredients").
 function isStapleIngredient(name) {
   return STAPLES_SET.has(canonicalize(name).core);
+}
+
+// dnd-kit hands back a separate ref setter for the draggable half and the
+// droppable half of a card that's both — this attaches both to the same DOM
+// node, the same way you'd combine any two ref callbacks in React.
+function mergeRefs(...refs) {
+  return (node) => {
+    for (const ref of refs) {
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    }
+  };
 }
 
 export function MealCard({
@@ -23,15 +35,24 @@ export function MealCard({
   compact,
   isLeftover,
   isStale,
-  onToggleLeftover,
   alreadyHave,
-  onToggleAlreadyHave,
+  onCycleState,
+  reorderable,
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
+  const resolvedDragId = dragId || `recipe-${recipe.id}`;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: dragId || `recipe-${recipe.id}`,
+    id: resolvedDragId,
     data: { recipe, ...dragData },
     disabled: dragDisabled,
+  });
+  // Reorderable grids double as drop targets on their own cards — dropping
+  // one card onto another (rather than onto a distinct zone like "cookbook-
+  // drop") is how App.jsx's handleDragEnd recognizes "reorder these two."
+  const { setNodeRef: setDropRef, isOver: isReorderTarget } = useDroppable({
+    id: resolvedDragId,
+    disabled: !reorderable,
+    data: { recipe },
   });
 
   const style = transform
@@ -67,9 +88,9 @@ export function MealCard({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={mergeRefs(setNodeRef, setDropRef)}
       style={{ ...style, position: "relative" }}
-      className={`card meal-card${isDragging ? " dragging" : ""}${compact ? " compact" : ""}${isLeftover ? " leftover-active" : ""}${isLeftover && isStale ? " leftover-stale" : ""}${alreadyHave ? " already-have-active" : ""}`}
+      className={`card meal-card${isDragging ? " dragging" : ""}${compact ? " compact" : ""}${isLeftover ? " leftover-active" : ""}${isLeftover && isStale ? " leftover-stale" : ""}${alreadyHave ? " already-have-active" : ""}${isReorderTarget ? " reorder-target" : ""}`}
       onClick={() => onClick?.(recipe)}
       {...listeners}
       {...attributes}
@@ -83,31 +104,30 @@ export function MealCard({
           ×
         </button>
       )}
-      {onToggleLeftover && (
+      {onCycleState && (
         <button
-          className={`leftover-dot${isLeftover ? " active" : ""}`}
-          aria-label={isLeftover ? "Marked as leftovers — click to unmark" : "Mark as leftovers"}
-          title={isLeftover ? "Leftovers (not on grocery list)" : "Mark as leftovers"}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleLeftover();
-          }}
-        />
-      )}
-      {onToggleAlreadyHave && (
-        <button
-          className={`already-have-dot${alreadyHave ? " active" : ""}`}
+          className={`leftover-dot${isLeftover ? " active" : ""}${alreadyHave ? " have-outline" : ""}`}
           aria-label={
-            alreadyHave ? "Marked as already have it — click to unmark" : "Mark as already have it"
+            isLeftover
+              ? "Marked as leftovers — click to mark as already have it instead"
+              : alreadyHave
+              ? "Marked as already have it — click to clear"
+              : "Mark as leftovers"
           }
-          title={alreadyHave ? "Already have it (not on grocery list)" : "Mark as already have it"}
+          title={
+            isLeftover
+              ? "Leftovers (not on grocery list) — click for “already have it”"
+              : alreadyHave
+              ? "Already have it (not on grocery list) — click to clear"
+              : "Click to mark as leftovers, click again for “already have it”"
+          }
           onClick={(e) => {
             e.stopPropagation();
-            onToggleAlreadyHave();
+            onCycleState();
           }}
         />
       )}
-      {onToggleLeftover && isLeftover && (
+      {onCycleState && isLeftover && (
         <span
           className={`leftover-badge${isStale ? " stale" : ""}`}
           title={isStale ? "Past this recipe's fridge life — probably time to toss it" : undefined}
@@ -115,7 +135,7 @@ export function MealCard({
           {isStale ? "⚠ Past fridge life" : "Leftover"}
         </span>
       )}
-      {onToggleAlreadyHave && alreadyHave && (
+      {onCycleState && alreadyHave && (
         <span className="already-have-badge">Already have it</span>
       )}
       {!recipe.isPlaceholder &&
