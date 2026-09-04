@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { DndContext, MeasuringStrategy, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
+import { capitalize } from "./lib/groceryList.js";
 import { ImportRecipeForm } from "./components/ImportRecipeForm.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
 import { MealCard } from "./components/MealCard.jsx";
@@ -11,6 +12,37 @@ import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { DealsPanel } from "./components/DealsPanel.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
+
+// Rendered inside <DragOverlay> — a floating copy that actually follows the
+// cursor, independent of wherever the real (now-dimmed) source element sits.
+// Without this, dnd-kit still tracks the drag internally and drop zones
+// still light up correctly, but nothing visibly moves with the pointer —
+// which reads as "it doesn't drag, it just highlights where I'm dropping."
+function DragPreview({ active }) {
+  const recipe = active?.data.current?.recipe;
+  const ingredientCore = active?.data.current?.ingredientCore;
+
+  if (recipe) {
+    return (
+      <div className="card meal-card compact drag-preview">
+        {recipe.photoUrl ? (
+          <img className="meal-card-photo" src={recipe.photoUrl} alt="" />
+        ) : (
+          <div className="meal-card-photo placeholder">no photo</div>
+        )}
+        <div className="meal-card-body">
+          <p className="meal-card-title">{recipe.title}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (ingredientCore) {
+    return <div className="drag-preview-chip">{capitalize(ingredientCore)}</div>;
+  }
+
+  return null;
+}
 
 function CookbookDropZone({ children }) {
   const { setNodeRef, isOver } = useDroppable({ id: "cookbook-drop" });
@@ -124,6 +156,10 @@ export default function App() {
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [weekStart, setWeekStart] = useState(currentWeekStart()); // Monday, "YYYY-MM-DD" — which week the Planner and Grocery List tabs are showing
   const [activeRecipe, setActiveRecipe] = useState(null);
+  // Ingredient names shared with the current week's plan, when the open
+  // recipe was opened from a "good next addition" suggestion — null the
+  // rest of the time. Set alongside activeRecipe by openRecipe() below.
+  const [activeRecipeSharedWith, setActiveRecipeSharedWith] = useState(null);
   const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
   const [showManualForm, setShowManualForm] = useState(false);
   const [customStaples, setCustomStaples] = useState([]);
@@ -133,7 +169,9 @@ export default function App() {
   const [recipeCategories, setRecipeCategories] = useState([]);
   const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [showImported, setShowImported] = useState(true);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
 
   // A distance-based activation constraint (start dragging after 8px of
   // movement) is fine for a mouse, but on a touchscreen it means any quick
@@ -236,6 +274,15 @@ export default function App() {
     await api.setPantryStapleCategory(core, category);
     setCustomStaples((prev) => (prev.includes(core) ? prev : [...prev, core]));
     setStapleCategories((prev) => ({ ...prev, [core]: category }));
+  }
+
+  // Single entry point for opening the recipe detail modal. sharedWith is
+  // only ever passed by the "good next addition" suggestion click — every
+  // other caller passes just the recipe, which naturally clears any
+  // leftover context from a previous suggestion-opened recipe.
+  function openRecipe(recipe, sharedWith) {
+    setActiveRecipe(recipe);
+    setActiveRecipeSharedWith(sharedWith || null);
   }
 
   // Keeps the recipes list AND the currently-open modal in sync after an
@@ -346,6 +393,7 @@ export default function App() {
 
   async function handleDragEnd(event) {
     setIsDragActive(false);
+    setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -475,9 +523,15 @@ export default function App() {
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={() => setIsDragActive(true)}
+      onDragStart={(event) => {
+        setIsDragActive(true);
+        setActiveDragItem(event.active);
+      }}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setIsDragActive(false)}
+      onDragCancel={() => {
+        setIsDragActive(false);
+        setActiveDragItem(null);
+      }}
       // Re-measures droppable rects continuously while dragging instead of
       // only once at drag start. The default (measure-once) can miss a
       // droppable whose actual position settles slightly late — a flex-wrap
@@ -526,7 +580,7 @@ export default function App() {
           <WhatCanIMake
             recipes={recipes}
             plannerEntries={plannerEntries}
-            onSelectRecipe={setActiveRecipe}
+            onSelectRecipe={openRecipe}
           />
         )}
 
@@ -563,27 +617,34 @@ export default function App() {
 
             <section className="recipe-section">
               <div className="recipe-section-header">
-                <h2 className="recipe-section-title">Imported</h2>
+                <button
+                  type="button"
+                  className="recipe-section-toggle"
+                  onClick={() => setShowImported((s) => !s)}
+                >
+                  {showImported ? "▾" : "▸"} Imported
+                </button>
               </div>
-              {importedRecipes.length === 0 ? (
-                <p className="empty-state">
-                  {recipeSearch || activeTagFilter
-                    ? "No imported recipes match your search."
-                    : "No imported recipes yet — paste a URL above."}
-                </p>
-              ) : (
-                <div className="collection-grid">
-                  {importedRecipes.map((r) => (
-                    <MealCard
-                      key={r.id}
-                      recipe={r}
-                      onClick={setActiveRecipe}
-                      onDelete={() => handleRemoveFromImported(r)}
-                      reorderable
-                    />
-                  ))}
-                </div>
-              )}
+              {showImported &&
+                (importedRecipes.length === 0 ? (
+                  <p className="empty-state">
+                    {recipeSearch || activeTagFilter
+                      ? "No imported recipes match your search."
+                      : "No imported recipes yet — paste a URL above."}
+                  </p>
+                ) : (
+                  <div className="collection-grid">
+                    {importedRecipes.map((r) => (
+                      <MealCard
+                        key={r.id}
+                        recipe={r}
+                        onClick={openRecipe}
+                        onDelete={() => handleRemoveFromImported(r)}
+                        reorderable
+                      />
+                    ))}
+                  </div>
+                ))}
             </section>
 
             <section className="recipe-section">
@@ -617,7 +678,7 @@ export default function App() {
                         key={r.id}
                         recipe={r}
                         dragId={`cookbook-${r.id}`}
-                        onClick={setActiveRecipe}
+                        onClick={openRecipe}
                         onDelete={() => handleRemoveFromCookbook(r)}
                         reorderable
                       />
@@ -635,7 +696,7 @@ export default function App() {
                                 key={r.id}
                                 recipe={r}
                                 dragId={`cookbook-${r.id}`}
-                                onClick={setActiveRecipe}
+                                onClick={openRecipe}
                                 onDelete={() => handleRemoveFromCookbook(r)}
                                 reorderable
                               />
@@ -654,7 +715,7 @@ export default function App() {
                         isLast={i === recipeCategories.length - 1}
                         onReorder={handleReorderRecipeCategory}
                         onDelete={handleDeleteRecipeCategory}
-                        onSelectRecipe={setActiveRecipe}
+                        onSelectRecipe={openRecipe}
                         onDeleteRecipe={handleRemoveFromCookbook}
                       />
                     ))}
@@ -686,7 +747,7 @@ export default function App() {
                       weekStart={weekStart}
                       onChangeWeek={setWeekStart}
                       onCopyLastWeek={handleCopyLastWeek}
-                      onCardClick={setActiveRecipe}
+                      onCardClick={openRecipe}
                       onRemove={handleRemoveFromPlanner}
                       onCycleState={handleCycleMealState}
                       onMarkBlank={handleMarkBlank}
@@ -705,13 +766,13 @@ export default function App() {
                         prev.some((r) => r.id === recipe.id) ? prev : [...prev, recipe]
                       )
                     }
-                    onSelectRecipe={setActiveRecipe}
+                    onSelectRecipe={openRecipe}
                   />
                 </div>
                 <h3 className="planner-source-heading">Drag a recipe onto the board</h3>
                 <div className="collection-grid" style={{ marginTop: 12 }}>
                   {plannableRecipes.map((r) => (
-                    <MealCard key={r.id} recipe={r} onClick={setActiveRecipe} />
+                    <MealCard key={r.id} recipe={r} onClick={openRecipe} />
                   ))}
                 </div>
               </>
@@ -738,24 +799,28 @@ export default function App() {
         {activeRecipe && (
           <RecipeDetailModal
             recipe={activeRecipe}
-            onClose={() => setActiveRecipe(null)}
+            sharedWithWeek={activeRecipeSharedWith}
+            onClose={() => openRecipe(null)}
             allRecipes={recipes}
             plannerEntries={plannerEntries}
-            onSelectRecipe={setActiveRecipe}
+            onSelectRecipe={openRecipe}
             onRecipeUpdated={handleRecipeUpdated}
             onDelete={async (id) => {
               await handleDeleteRecipe(id);
-              setActiveRecipe(null);
+              openRecipe(null);
             }}
             onPlanAround={(recipe) => {
               setAnchorRecipes([recipe]);
-              setActiveRecipe(null);
+              openRecipe(null);
               setWeekStart(currentWeekStart());
               setTab("planner");
             }}
           />
         )}
       </div>
+      <DragOverlay dropAnimation={null}>
+        {activeDragItem && <DragPreview active={activeDragItem} />}
+      </DragOverlay>
     </DndContext>
   );
 }
