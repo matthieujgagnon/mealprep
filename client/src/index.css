@@ -728,6 +728,16 @@ select {
   color: var(--ink);
 }
 
+/* Groups the edit-recipe form into clearly separated blocks (Photos,
+   Servings & timing, Ingredients, Instructions, Notes, Step photos) instead
+   of one long undifferentiated stack — the same divider rhythm repeated for
+   every section is what makes the form read as "uniform." */
+.form-section {
+  padding-top: 16px;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
 .form-row {
   display: flex;
   gap: 8px;
@@ -737,6 +747,28 @@ select {
 .ingredient-row {
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* Servings/Prep/Cook/Fridge-life: same fix as .ingredient-row below — these
+   four labels were shrinking below their own content's natural width (the
+   flexbox "min-width: auto" trap), which pushed "Fridge life (days)" past
+   the edge of the form instead of wrapping. */
+.servings-row {
+  flex-wrap: wrap;
+}
+
+.servings-row .form-label {
+  min-width: 130px;
+}
+
+.notes-field textarea {
+  background: var(--paper-soft);
+  border-color: var(--mustard);
+}
+
+.form-label-hint {
+  font-weight: 400;
+  opacity: 0.75;
 }
 
 /* Enough room for each field to stay readable even with 4 fields plus a
@@ -2153,11 +2185,12 @@ input[type="date"].planner-week-picker {
 }
 
 .modal-content {
-  max-width: 560px;
+  max-width: 640px;
   width: 100%;
-  max-height: 85vh;
+  max-height: 88vh;
   overflow-y: auto;
-  padding: 24px;
+  padding: 28px;
+  border-radius: 14px;
 }
 
 /* The edit form packs 4 fields per ingredient row (name/qty/unit/notes)

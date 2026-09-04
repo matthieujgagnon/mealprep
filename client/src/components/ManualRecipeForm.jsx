@@ -331,146 +331,106 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
         />
       </label>
 
-      <p className="form-section-label">Photos</p>
-      {photos.map((url, i) => (
-        <div className="form-row photo-row" key={i}>
-          <input
-            type="url"
-            placeholder="https://…"
-            value={url}
-            onChange={(e) => updatePhoto(i, e.target.value)}
-            style={{ flex: 1 }}
-          />
-          {url.trim() && <PhotoPreview url={url.trim()} />}
-          {photos.length > 1 && (
-            <button
-              type="button"
-              className="btn subtle"
-              style={{ padding: "6px 10px" }}
-              onClick={() => removePhotoRow(i)}
-            >
-              ×
-            </button>
-          )}
-        </div>
-      ))}
-      <button type="button" className="btn subtle" onClick={addPhotoRow}>
-        + Add photo
-      </button>
-
-      <div className="form-row" style={{ marginTop: 16 }}>
-        <label className="form-label">
-          Servings
-          <input
-            type="number"
-            min="1"
-            value={baseServings}
-            onChange={(e) => setBaseServings(e.target.value)}
-          />
-        </label>
-        <label className="form-label">
-          Prep (min)
-          <input
-            type="number"
-            min="0"
-            value={prepTimeMinutes}
-            onChange={(e) => setPrepTimeMinutes(e.target.value)}
-          />
-        </label>
-        <label className="form-label">
-          Cook (min)
-          <input
-            type="number"
-            min="0"
-            value={cookTimeMinutes}
-            onChange={(e) => setCookTimeMinutes(e.target.value)}
-          />
-        </label>
-        <label className="form-label">
-          Fridge life (days)
-          <input
-            type="number"
-            min="0"
-            value={fridgeLifeDays}
-            onChange={(e) => {
-              setFridgeLifeTouched(true);
-              setFridgeLifeDays(e.target.value);
-            }}
-            placeholder="e.g. 4"
-          />
-        </label>
+      <div className="form-section">
+        <p className="form-section-label">Photos</p>
+        {photos.map((url, i) => (
+          <div className="form-row photo-row" key={i}>
+            <input
+              type="url"
+              placeholder="https://…"
+              value={url}
+              onChange={(e) => updatePhoto(i, e.target.value)}
+              style={{ flex: 1 }}
+            />
+            {url.trim() && <PhotoPreview url={url.trim()} />}
+            {photos.length > 1 && (
+              <button
+                type="button"
+                className="btn subtle"
+                style={{ padding: "6px 10px" }}
+                onClick={() => removePhotoRow(i)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+        <button type="button" className="btn subtle" onClick={addPhotoRow}>
+          + Add photo
+        </button>
       </div>
-      {!isEditing && !fridgeLifeTouched && fridgeLifeDays !== "" && (
-        <p className="form-hint">
-          Suggested based on the ingredients so far — edit the number above
-          any time.
-        </p>
-      )}
 
-      <p className="form-section-label">Ingredients</p>
-      <p className="form-hint">Drag the ⠿ handle to reorder.</p>
-      <DndContext
-        sensors={ingredientSensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleIngredientDragEnd}
-      >
-        <SortableContext items={ingredients.map((item) => item._id)} strategy={verticalListSortingStrategy}>
-          {ingredients.map((item, i) =>
-            item.isSection ? (
-              <SortableRow id={item._id} className="form-row section-row" key={item._id}>
-                <input
-                  type="text"
-                  placeholder="Section name (e.g. Dressing)"
-                  value={item.name}
-                  onChange={(e) => updateSectionName(i, e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                <button
-                  type="button"
-                  className="btn subtle"
-                  style={{ padding: "6px 10px" }}
-                  onClick={() => removeIngredientRow(i)}
-                >
-                  ×
-                </button>
-              </SortableRow>
-            ) : (
-              <SortableRow id={item._id} className="form-row ingredient-row" key={item._id}>
-                <input
-                  type="text"
-                  placeholder="Name (e.g. butter)"
-                  value={item.name}
-                  onChange={(e) => updateIngredient(i, "name", e.target.value)}
-                  style={{ flex: 2 }}
-                />
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="Qty (1/4)"
-                  value={item.quantity}
-                  onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                <select
-                  value={item.unit}
-                  onChange={(e) => updateIngredient(i, "unit", e.target.value)}
-                  style={{ flex: 1 }}
-                >
-                  <option value="">(none)</option>
-                  {UNIT_OPTIONS.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  placeholder="Notes (e.g. melted)"
-                  value={item.notes}
-                  onChange={(e) => updateIngredient(i, "notes", e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                {ingredients.length > 1 && (
+      <div className="form-section">
+        <p className="form-section-label">Servings &amp; timing</p>
+        <div className="form-row servings-row">
+          <label className="form-label">
+            Servings
+            <input
+              type="number"
+              min="1"
+              value={baseServings}
+              onChange={(e) => setBaseServings(e.target.value)}
+            />
+          </label>
+          <label className="form-label">
+            Prep (min)
+            <input
+              type="number"
+              min="0"
+              value={prepTimeMinutes}
+              onChange={(e) => setPrepTimeMinutes(e.target.value)}
+            />
+          </label>
+          <label className="form-label">
+            Cook (min)
+            <input
+              type="number"
+              min="0"
+              value={cookTimeMinutes}
+              onChange={(e) => setCookTimeMinutes(e.target.value)}
+            />
+          </label>
+          <label className="form-label">
+            Fridge life (days)
+            <input
+              type="number"
+              min="0"
+              value={fridgeLifeDays}
+              onChange={(e) => {
+                setFridgeLifeTouched(true);
+                setFridgeLifeDays(e.target.value);
+              }}
+              placeholder="e.g. 4"
+            />
+          </label>
+        </div>
+        {!isEditing && !fridgeLifeTouched && fridgeLifeDays !== "" && (
+          <p className="form-hint">
+            Suggested based on the ingredients so far — edit the number above
+            any time.
+          </p>
+        )}
+      </div>
+
+      <div className="form-section">
+        <p className="form-section-label">Ingredients</p>
+        <p className="form-hint">Drag the ⠿ handle to reorder.</p>
+        <DndContext
+          sensors={ingredientSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleIngredientDragEnd}
+        >
+          <SortableContext items={ingredients.map((item) => item._id)} strategy={verticalListSortingStrategy}>
+            {ingredients.map((item, i) =>
+              item.isSection ? (
+                <SortableRow id={item._id} className="form-row section-row" key={item._id}>
+                  <input
+                    type="text"
+                    placeholder="Section name (e.g. Dressing)"
+                    value={item.name}
+                    onChange={(e) => updateSectionName(i, e.target.value)}
+                    style={{ flex: 1 }}
+                  />
                   <button
                     type="button"
                     className="btn subtle"
@@ -479,51 +439,102 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
                   >
                     ×
                   </button>
-                )}
-              </SortableRow>
-            )
-          )}
-        </SortableContext>
-      </DndContext>
-      <div className="form-row" style={{ gap: 8 }}>
-        <button type="button" className="btn subtle" onClick={addIngredientRow}>
-          + Add ingredient
-        </button>
-        <button type="button" className="btn subtle" onClick={addSectionRow}>
-          + Add section
-        </button>
+                </SortableRow>
+              ) : (
+                <SortableRow id={item._id} className="form-row ingredient-row" key={item._id}>
+                  <input
+                    type="text"
+                    placeholder="Name (e.g. butter)"
+                    value={item.name}
+                    onChange={(e) => updateIngredient(i, "name", e.target.value)}
+                    style={{ flex: 2 }}
+                  />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Qty (1/4)"
+                    value={item.quantity}
+                    onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <select
+                    value={item.unit}
+                    onChange={(e) => updateIngredient(i, "unit", e.target.value)}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">(none)</option>
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Notes (e.g. melted)"
+                    value={item.notes}
+                    onChange={(e) => updateIngredient(i, "notes", e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  {ingredients.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn subtle"
+                      style={{ padding: "6px 10px" }}
+                      onClick={() => removeIngredientRow(i)}
+                    >
+                      ×
+                    </button>
+                  )}
+                </SortableRow>
+              )
+            )}
+          </SortableContext>
+        </DndContext>
+        <div className="form-row" style={{ gap: 8 }}>
+          <button type="button" className="btn subtle" onClick={addIngredientRow}>
+            + Add ingredient
+          </button>
+          <button type="button" className="btn subtle" onClick={addSectionRow}>
+            + Add section
+          </button>
+        </div>
       </div>
 
-      <label className="form-label" style={{ marginTop: 16 }}>
-        Instructions (one step per line)
-        <textarea
-          rows={5}
-          value={instructionsText}
-          onChange={(e) => setInstructionsText(e.target.value)}
-          placeholder={"Preheat oven to 350°F\nMix dry ingredients…"}
-        />
-      </label>
-      <p className="form-hint">
-        Paste freely — bullet markers (*, -) are stripped automatically, and a
-        line ending in a colon (like "Make the Sauce:") is shown as a section
-        heading instead of a numbered step.
-      </p>
+      <div className="form-section">
+        <label className="form-label">
+          Instructions (one step per line)
+          <textarea
+            rows={5}
+            value={instructionsText}
+            onChange={(e) => setInstructionsText(e.target.value)}
+            placeholder={"Preheat oven to 350°F\nMix dry ingredients…"}
+          />
+        </label>
+        <p className="form-hint">
+          Paste freely — bullet markers (*, -) are stripped automatically, and
+          a line ending in a colon (like "Make the Sauce:") is shown as a
+          section heading instead of a numbered step.
+        </p>
+      </div>
 
-      <label className="form-label" style={{ marginTop: 16 }}>
-        Notes (optional)
-        <textarea
-          rows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={"Used less salt than called for. Great with rice."}
-        />
-      </label>
+      <div className="form-section notes-field">
+        <label className="form-label">
+          <span>
+            📝 Notes <span className="form-label-hint">(optional)</span>
+          </span>
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={"Used less salt than called for. Great with rice."}
+          />
+        </label>
+      </div>
 
       {cleanInstructionLines().filter((line) => !stepIsHeading(line)).length > 0 && (
-        <>
-          <p className="form-section-label" style={{ marginTop: 16 }}>
-            Step photos (optional)
-          </p>
+        <div className="form-section">
+          <p className="form-section-label">Step photos (optional)</p>
           {cleanInstructionLines()
             .filter((line) => !stepIsHeading(line))
             .map((line, i) => (
@@ -539,12 +550,12 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
                 {stepPhotoOverrides[line] && <PhotoPreview url={stepPhotoOverrides[line]} />}
               </div>
             ))}
-        </>
+        </div>
       )}
 
       {error && <p className="import-error">{error}</p>}
 
-      <div className="form-row" style={{ marginTop: 16 }}>
+      <div className="form-section form-row">
         <button className="btn primary" type="submit" disabled={saving}>
           {saving ? "Saving…" : isEditing ? "Save changes" : "Save to cookbook"}
         </button>

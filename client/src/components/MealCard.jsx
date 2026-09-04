@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { canonicalize, STAPLE_WORDS, SPICE_WORDS } from "../lib/groceryList.js";
 
 const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
@@ -10,18 +11,6 @@ const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
 // shouldn't read as "5 ingredients").
 function isStapleIngredient(name) {
   return STAPLES_SET.has(canonicalize(name).core);
-}
-
-// dnd-kit hands back a separate ref setter for the draggable half and the
-// droppable half of a card that's both — this attaches both to the same DOM
-// node, the same way you'd combine any two ref callbacks in React.
-function mergeRefs(...refs) {
-  return (node) => {
-    for (const ref of refs) {
-      if (typeof ref === "function") ref(node);
-      else if (ref) ref.current = node;
-    }
-  };
 }
 
 export function MealCard({
@@ -41,22 +30,30 @@ export function MealCard({
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const resolvedDragId = dragId || `recipe-${recipe.id}`;
-  // No transform-follow here — App.jsx's <DragOverlay> renders the floating
-  // copy that actually tracks the cursor; this card just dims via
-  // .dragging while that's happening (see App.jsx's DragPreview).
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  // useSortable combines the draggable and droppable halves App.jsx used to
+  // wire up separately, and — as long as this card sits inside a matching
+  // <SortableContext> — animates its siblings sliding apart live while a
+  // card hovers over the grid, instead of the old drop-only reorder that
+  // just toggled a static border. No transform-follow on the dragged card
+  // itself here — App.jsx's <DragOverlay> renders the floating copy that
+  // actually tracks the cursor; this card just dims via .dragging while
+  // that's happening (see App.jsx's DragPreview).
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    isDragging,
+    isOver: isReorderTarget,
+    transform,
+    transition,
+  } = useSortable({
     id: resolvedDragId,
     data: { recipe, ...dragData },
-    disabled: dragDisabled,
+    disabled: { draggable: dragDisabled, droppable: !reorderable },
   });
-  // Reorderable grids double as drop targets on their own cards — dropping
-  // one card onto another (rather than onto a distinct zone like "cookbook-
-  // drop") is how App.jsx's handleDragEnd recognizes "reorder these two."
-  const { setNodeRef: setDropRef, isOver: isReorderTarget } = useDroppable({
-    id: resolvedDragId,
-    disabled: !reorderable,
-    data: { recipe },
-  });
+  const sortableStyle = reorderable
+    ? { transform: CSS.Transform.toString(transform), transition }
+    : undefined;
 
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
   const ingredientCount =
@@ -87,8 +84,8 @@ export function MealCard({
 
   return (
     <div
-      ref={mergeRefs(setNodeRef, setDropRef)}
-      style={{ position: "relative" }}
+      ref={setNodeRef}
+      style={{ position: "relative", ...sortableStyle }}
       className={`card meal-card${isDragging ? " dragging" : ""}${compact ? " compact" : ""}${isLeftover ? " leftover-active" : ""}${isLeftover && isStale ? " leftover-stale" : ""}${alreadyHave ? " already-have-active" : ""}${isReorderTarget ? " reorder-target" : ""}`}
       onClick={() => onClick?.(recipe)}
       {...listeners}

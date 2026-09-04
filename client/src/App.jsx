@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { capitalize } from "./lib/groceryList.js";
@@ -87,18 +88,20 @@ function RecipeCategorySection({
       {recipes.length === 0 ? (
         <p className="staples-empty-hint">Drag a recipe here</p>
       ) : (
-        <div className="collection-grid">
-          {recipes.map((r) => (
-            <MealCard
-              key={r.id}
-              recipe={r}
-              dragId={`cookbook-${r.id}`}
-              onClick={onSelectRecipe}
-              onDelete={() => onDeleteRecipe(r)}
-              reorderable
-            />
-          ))}
-        </div>
+        <SortableContext items={recipes.map((r) => `cookbook-${r.id}`)} strategy={rectSortingStrategy}>
+          <div className="collection-grid">
+            {recipes.map((r) => (
+              <MealCard
+                key={r.id}
+                recipe={r}
+                dragId={`cookbook-${r.id}`}
+                onClick={onSelectRecipe}
+                onDelete={() => onDeleteRecipe(r)}
+                reorderable
+              />
+            ))}
+          </div>
+        </SortableContext>
       )}
     </div>
   );
@@ -172,6 +175,10 @@ export default function App() {
   const [showImported, setShowImported] = useState(true);
   const [isDragActive, setIsDragActive] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
+  // Which droppable id a drag is currently hovering, tracked only to drive
+  // the Imported -> Cookbook live-reflow preview below (dnd-kit's own
+  // useSortable already handles reflow for same-grid drags on its own).
+  const [dragOverId, setDragOverId] = useState(null);
 
   // A distance-based activation constraint (start dragging after 8px of
   // movement) is fine for a mouse, but on a touchscreen it means any quick
@@ -437,23 +444,49 @@ export default function App() {
     if (!recipeId) return;
 
     // Dropped onto another recipe card (not a named zone like "cookbook-
-    // drop") — reorder within whichever grid both cards are shown in. The
-    // dragId prefix says which grid ("recipe-" = Imported, "cookbook-" =
-    // Cookbook); within Cookbook, only recipes sharing the dragged one's
-    // category actually sit in the same visible grid together.
+    // drop"). The dragId prefix says which grid each card belongs to
+    // ("recipe-" = Imported, "cookbook-" = Cookbook) — only same-grid drops
+    // are a reorder. A card dropped on a card from the *other* grid isn't a
+    // reorder at all (e.g. an Imported card landing on top of a Cookbook
+    // card, which is very likely since the cookbook area is usually full of
+    // cards) — that needs to fall through to the normal zone handling below
+    // instead of being swallowed here.
     const overRecipe = over.data.current?.recipe;
     if (overRecipe && overRecipe.id !== recipeId) {
-      const draggedRecipe = recipes.find((r) => r.id === recipeId);
-      if (draggedRecipe) {
-        const subset = String(active.id).startsWith("cookbook-")
-          ? cookbookRecipes.filter((r) => (r.categoryId || null) === (draggedRecipe.categoryId || null))
-          : importedRecipes;
-        const oldIndex = subset.findIndex((r) => r.id === recipeId);
-        const newIndex = subset.findIndex((r) => r.id === overRecipe.id);
-        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          await handleReorderRecipes(subset, oldIndex, newIndex);
+      const draggedFromCookbook = String(active.id).startsWith("cookbook-");
+      const overIsCookbookCard = String(over.id).startsWith("cookbook-");
+
+      if (draggedFromCookbook === overIsCookbookCard) {
+        // Same grid: genuine reorder (Cookbook only reorders within the
+        // dragged recipe's own category — different categories fall
+        // through to a category reassignment instead).
+        const draggedRecipe = recipes.find((r) => r.id === recipeId);
+        if (draggedRecipe) {
+          if (draggedFromCookbook && (overRecipe.categoryId || null) !== (draggedRecipe.categoryId || null)) {
+            handleAssignRecipeCategory(recipeId, overRecipe.categoryId || null);
+            return;
+          }
+          const subset = draggedFromCookbook
+            ? cookbookRecipes.filter((r) => (r.categoryId || null) === (draggedRecipe.categoryId || null))
+            : importedRecipes;
+          const oldIndex = subset.findIndex((r) => r.id === recipeId);
+          const newIndex = subset.findIndex((r) => r.id === overRecipe.id);
+          if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+            await handleReorderRecipes(subset, oldIndex, newIndex);
+          }
         }
+        return;
       }
+
+      if (!draggedFromCookbook && overIsCookbookCard) {
+        // Imported card dropped on top of an existing Cookbook card — treat
+        // it the same as dropping on the Cookbook zone itself.
+        handleAddToCookbook(recipeId);
+        return;
+      }
+
+      // A Cookbook card dropped back onto the Imported grid isn't a
+      // supported action.
       return;
     }
 
@@ -520,6 +553,26 @@ export default function App() {
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
   const allTags = [...new Set(recipes.flatMap((r) => r.tags || []))].sort();
 
+  // While an Imported card hovers over an existing Cookbook card, preview it
+  // moving into the Cookbook grid so the cards there visually slide apart to
+  // make room for it — real reflow, not just a border. Scoped to the flat
+  // (no-categories) Cookbook view: once categories exist the grid splits
+  // into several separate ones and this would need to know which one to
+  // target, so it falls back to the plain .reorder-target border there.
+  const draggedRecipeId = activeDragItem?.data.current?.recipe?.id ?? null;
+  const draggedFromImported = draggedRecipeId != null && !String(activeDragItem.id).startsWith("cookbook-");
+  let displayImportedRecipes = importedRecipes;
+  let displayCookbookRecipes = cookbookRecipes;
+  if (recipeCategories.length === 0 && draggedFromImported && dragOverId) {
+    const overIndex = cookbookRecipes.findIndex((r) => `cookbook-${r.id}` === dragOverId);
+    const draggedRecipe = importedRecipes.find((r) => r.id === draggedRecipeId);
+    if (overIndex !== -1 && draggedRecipe) {
+      displayImportedRecipes = importedRecipes.filter((r) => r.id !== draggedRecipeId);
+      displayCookbookRecipes = cookbookRecipes.slice();
+      displayCookbookRecipes.splice(overIndex, 0, draggedRecipe);
+    }
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -527,10 +580,17 @@ export default function App() {
         setIsDragActive(true);
         setActiveDragItem(event.active);
       }}
-      onDragEnd={handleDragEnd}
+      onDragOver={(event) => {
+        setDragOverId(event.over?.id ?? null);
+      }}
+      onDragEnd={(event) => {
+        setDragOverId(null);
+        return handleDragEnd(event);
+      }}
       onDragCancel={() => {
         setIsDragActive(false);
         setActiveDragItem(null);
+        setDragOverId(null);
       }}
       // Re-measures droppable rects continuously while dragging instead of
       // only once at drag start. The default (measure-once) can miss a
@@ -633,17 +693,22 @@ export default function App() {
                       : "No imported recipes yet — paste a URL above."}
                   </p>
                 ) : (
-                  <div className="collection-grid">
-                    {importedRecipes.map((r) => (
-                      <MealCard
-                        key={r.id}
-                        recipe={r}
-                        onClick={openRecipe}
-                        onDelete={() => handleRemoveFromImported(r)}
-                        reorderable
-                      />
-                    ))}
-                  </div>
+                  <SortableContext
+                    items={displayImportedRecipes.map((r) => `recipe-${r.id}`)}
+                    strategy={rectSortingStrategy}
+                  >
+                    <div className="collection-grid">
+                      {displayImportedRecipes.map((r) => (
+                        <MealCard
+                          key={r.id}
+                          recipe={r}
+                          onClick={openRecipe}
+                          onDelete={() => handleRemoveFromImported(r)}
+                          reorderable
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
                 ))}
             </section>
 
@@ -672,36 +737,48 @@ export default function App() {
                       : "Drag a recipe here from Imported, or add one by hand — recipes you save stay separate from your imports."}
                   </p>
                 ) : recipeCategories.length === 0 ? (
+                  <SortableContext
+                    items={displayCookbookRecipes.map((r) =>
+                      r.id === draggedRecipeId ? `recipe-${r.id}` : `cookbook-${r.id}`
+                    )}
+                    strategy={rectSortingStrategy}
+                  >
                   <div className="collection-grid">
-                    {cookbookRecipes.map((r) => (
+                    {displayCookbookRecipes.map((r) => (
                       <MealCard
                         key={r.id}
                         recipe={r}
-                        dragId={`cookbook-${r.id}`}
+                        dragId={r.id === draggedRecipeId ? `recipe-${r.id}` : `cookbook-${r.id}`}
                         onClick={openRecipe}
                         onDelete={() => handleRemoveFromCookbook(r)}
                         reorderable
                       />
                     ))}
                   </div>
+                  </SortableContext>
                 ) : (
                   <>
                     <UncategorizedDropZone>
                       {cookbookRecipes.filter((r) => !r.categoryId).length > 0 ? (
-                        <div className="collection-grid">
-                          {cookbookRecipes
-                            .filter((r) => !r.categoryId)
-                            .map((r) => (
-                              <MealCard
-                                key={r.id}
-                                recipe={r}
-                                dragId={`cookbook-${r.id}`}
-                                onClick={openRecipe}
-                                onDelete={() => handleRemoveFromCookbook(r)}
-                                reorderable
-                              />
-                            ))}
-                        </div>
+                        <SortableContext
+                          items={cookbookRecipes.filter((r) => !r.categoryId).map((r) => `cookbook-${r.id}`)}
+                          strategy={rectSortingStrategy}
+                        >
+                          <div className="collection-grid">
+                            {cookbookRecipes
+                              .filter((r) => !r.categoryId)
+                              .map((r) => (
+                                <MealCard
+                                  key={r.id}
+                                  recipe={r}
+                                  dragId={`cookbook-${r.id}`}
+                                  onClick={openRecipe}
+                                  onDelete={() => handleRemoveFromCookbook(r)}
+                                  reorderable
+                                />
+                              ))}
+                          </div>
+                        </SortableContext>
                       ) : (
                         <p className="staples-empty-hint">Drag a recipe here to remove it from a category</p>
                       )}
