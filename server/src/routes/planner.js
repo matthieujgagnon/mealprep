@@ -31,18 +31,6 @@ plannerRouter.get("/", async (req, res) => {
   res.json(entries.map(serializeEntry));
 });
 
-// GET /api/planner/weeks - the Monday of every week that has at least one
-// placement, oldest first. Powers "jump to a week you've already planned"
-// instead of blind prev/next paging through empty weeks.
-plannerRouter.get("/weeks", async (req, res) => {
-  const rows = await prisma.plannerEntry.findMany({
-    distinct: ["weekStart"],
-    select: { weekStart: true },
-    orderBy: { weekStart: "asc" },
-  });
-  res.json(rows.map((r) => r.weekStart));
-});
-
 // POST /api/planner - place a recipe card onto a day + meal slot
 // body: { recipeId, weekStart, dayOfWeek (0-6), mealType ("breakfast"|"lunch"|"dinner"), servings?, isLeftover?, alreadyHave?, position? }
 plannerRouter.post("/", async (req, res) => {

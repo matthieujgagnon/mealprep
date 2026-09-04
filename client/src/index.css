@@ -309,20 +309,6 @@ select {
   box-shadow: 0 0 0 2px var(--mustard);
 }
 
-.already-have-badge {
-  position: absolute;
-  bottom: 6px;
-  left: 6px;
-  z-index: 5;
-  background: var(--mustard);
-  color: #fff;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
 /* ---------- Recipe sections (Imported vs Cookbook) ---------- */
 
 .recipe-section {
@@ -1701,49 +1687,28 @@ select {
 
 /* An empty planner slot is a card-shaped tile (same base .card.meal-card
    classes as a real placed recipe, so it matches size/shape exactly) rather
-   than a bare text button — tinted blue so it's unmistakably "not a recipe."
-   Two sub-states share this look: unmarked (dashed border, click to mark
-   blank) and marked-blank (solid border, click to clear). */
+   than a bare text button — solid blue with a white border so it's
+   unmistakably "not a recipe." Unmarked shows just a dash (click to mark
+   blank); once marked blank, no text at all — the blue card itself already
+   says "intentionally empty" (click again to clear). */
 .planner-empty-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   width: 100%;
   min-height: 110px;
-  background: rgba(35, 35, 255, 0.08);
-  border: 1.5px dashed var(--accent-text);
-  color: var(--accent-text);
-  cursor: pointer;
+  background: var(--mustard);
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
   font-family: inherit;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .planner-empty-card:hover {
-  background: rgba(35, 35, 255, 0.16);
-}
-
-.planner-empty-card-plus {
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.planner-empty-card-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.planner-empty-card.marked {
-  border-style: solid;
-  background: rgba(35, 35, 255, 0.14);
-}
-
-.planner-empty-card.marked:hover {
-  background: rgba(35, 35, 255, 0.22);
+  background: var(--accent-text);
 }
 
 .grocery-list {

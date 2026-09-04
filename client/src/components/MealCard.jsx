@@ -135,9 +135,6 @@ export function MealCard({
           {isStale ? "⚠ Past fridge life" : "Leftover"}
         </span>
       )}
-      {onCycleState && alreadyHave && (
-        <span className="already-have-badge">Already have it</span>
-      )}
       {!recipe.isPlaceholder &&
         (recipe.photoUrl && !photoFailed ? (
           <img
