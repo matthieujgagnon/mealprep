@@ -2,17 +2,23 @@ import { useEffect, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { api } from "../api.js";
 import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
+import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
 
 // Persisted so a backgrounded phone tab (very normal while standing in a
 // store) doesn't wipe out checkmarks mid-shopping-trip. Keyed by ingredient
-// core, so it naturally carries over between visits as long as the same
-// ingredient is still on the list — there's a "Clear checked items" button
-// for starting a fresh trip once a list has gone stale.
-const CHECKED_STORAGE_KEY = "mealprep-grocery-checked";
+// core within a given week, so it naturally carries over between visits as
+// long as the same ingredient is still on that week's list — there's a
+// "Clear checked items" button for starting a fresh trip once a list has
+// gone stale. Scoped per weekStart (not one global key) so checking off
+// "eggs" while shopping for this week doesn't also mark it checked on a
+// different week's list.
+function checkedStorageKey(weekStart) {
+  return `mealprep-grocery-checked:${weekStart}`;
+}
 
-function loadCheckedFromStorage() {
+function loadCheckedFromStorage(weekStart) {
   try {
-    const raw = localStorage.getItem(CHECKED_STORAGE_KEY);
+    const raw = localStorage.getItem(checkedStorageKey(weekStart));
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -256,6 +262,7 @@ function groupItemsByRecipe(items) {
 
 export function GroceryList({
   plannerEntries,
+  weekStart,
   customStaples,
   stapleCategories,
   onRemoveStaple,
@@ -266,7 +273,7 @@ export function GroceryList({
   onUnassignFromSection,
 }) {
   const [deals, setDeals] = useState([]);
-  const [checked, setChecked] = useState(loadCheckedFromStorage);
+  const [checked, setChecked] = useState(() => loadCheckedFromStorage(weekStart));
   const [showStaples, setShowStaples] = useState(true);
   const [showSources, setShowSources] = useState(false);
 
@@ -274,14 +281,20 @@ export function GroceryList({
     api.getDeals().then((d) => setDeals(d.deals)).catch(() => {});
   }, []);
 
+  // Switching weeks swaps in that week's own checkmarks instead of carrying
+  // the previous week's over.
+  useEffect(() => {
+    setChecked(loadCheckedFromStorage(weekStart));
+  }, [weekStart]);
+
   useEffect(() => {
     try {
-      localStorage.setItem(CHECKED_STORAGE_KEY, JSON.stringify(checked));
+      localStorage.setItem(checkedStorageKey(weekStart), JSON.stringify(checked));
     } catch {
       // localStorage unavailable (private browsing, quota, etc.) —
       // checkmarks just won't survive a refresh, same as before this existed.
     }
-  }, [checked]);
+  }, [checked, weekStart]);
 
   const { setNodeRef: setStaplesDropRef, isOver: isOverStaples } = useDroppable({
     id: "pantry-staples-drop",
@@ -320,21 +333,26 @@ export function GroceryList({
     return items.filter((i) => cores.has(i.core));
   }
 
+  const weekLabel = isCurrentWeek(weekStart)
+    ? `this week (${formatWeekRangeLabel(weekStart)})`
+    : `the week of ${formatWeekRangeLabel(weekStart)}`;
+
   if (plannerEntries.length === 0) {
     return (
       <p className="empty-state">
-        Plan a few meals first — your grocery list builds itself from what's on
-        the planner.
+        Nothing planned for {weekLabel} yet — plan a few meals on the Planner
+        tab first and your grocery list builds itself.
       </p>
     );
   }
 
   return (
     <div>
+      <p className="grocery-week-label">Groceries for {weekLabel}</p>
       <div className="grocery-note">
         <p>
           <strong>{shoppingItems.length}</strong> item{shoppingItems.length !== 1 ? "s" : ""} to
-          buy this week.
+          buy.
         </p>
         <p>
           Drag an item onto a store section or "Pantry staples" below to sort it.

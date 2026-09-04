@@ -84,9 +84,18 @@ model GroceryAssignment {
   createdAt DateTime       @default(now())
 }
 
-// A recipe card placed on a specific day of the weekly planner
+// A recipe card placed on a specific day of a specific week's planner.
+// weekStart is the Monday of that week, "YYYY-MM-DD" — a plain calendar-date
+// string rather than a DateTime, so there's no timezone conversion to get
+// wrong when comparing it to a day picked in the browser. The default below
+// is push-safe: `prisma db push` can add a required column with a static
+// default with no prompt or data loss, unlike a schema-level default that
+// referenced another table's id (which can't exist yet for old rows). Every
+// pre-existing PlannerEntry (the old single permanent template) lands on
+// this one week, which becomes its first real week once this ships.
 model PlannerEntry {
   id        String   @id @default(cuid())
+  weekStart String   @default("2026-08-31")
   dayOfWeek Int // 0 = Monday ... 6 = Sunday
   mealType  String   @default("dinner") // "breakfast" | "lunch" | "dinner"
   recipeId  String
@@ -96,4 +105,6 @@ model PlannerEntry {
   alreadyHave Boolean @default(false) // true = already have what this meal needs on hand (e.g. breakfast staples); excluded from grocery list, same as a leftover, but for a different reason
   position  Int      @default(0) // order within the day+mealType slot
   createdAt DateTime @default(now())
+
+  @@index([weekStart])
 }

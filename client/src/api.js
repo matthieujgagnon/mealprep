@@ -25,11 +25,20 @@ export const api = {
     request(`/recipes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteRecipe: (id) => request(`/recipes/${id}`, { method: "DELETE" }),
 
-  listPlanner: () => request("/planner"),
+  listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
+  listPlannerWeeks: () => request("/planner/weeks"),
   placeOnPlanner: (payload) =>
     request("/planner", { method: "POST", body: JSON.stringify(payload) }),
-  markSlotBlank: (dayOfWeek, mealType) =>
-    request("/planner/blank", { method: "POST", body: JSON.stringify({ dayOfWeek, mealType }) }),
+  markSlotBlank: (weekStart, dayOfWeek, mealType) =>
+    request("/planner/blank", {
+      method: "POST",
+      body: JSON.stringify({ weekStart, dayOfWeek, mealType }),
+    }),
+  copyPlannerWeek: (fromWeekStart, toWeekStart) =>
+    request("/planner/copy-week", {
+      method: "POST",
+      body: JSON.stringify({ fromWeekStart, toWeekStart }),
+    }),
   updatePlannerEntry: (id, payload) =>
     request(`/planner/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   removeFromPlanner: (id) => request(`/planner/${id}`, { method: "DELETE" }),

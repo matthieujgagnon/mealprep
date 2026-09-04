@@ -1,13 +1,95 @@
 import { Fragment } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { MealCard } from "./MealCard.jsx";
+import {
+  currentWeekStart,
+  formatDayLabel,
+  formatWeekRangeLabel,
+  isCurrentWeek,
+  mondayOf,
+  parseDateKey,
+  shiftWeek,
+  toDateKey,
+} from "../lib/dates.js";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEAL_TYPES = [
   { id: "breakfast", label: "Breakfast" },
   { id: "lunch", label: "Lunch" },
   { id: "dinner", label: "Supper" },
 ];
+
+// Prev/next/today navigation, a jump-to-any-date picker, a quick-jump list
+// of weeks that already have something planned, and (only when this week's
+// board is empty) a one-click way to start from last week's shape instead
+// of a blank grid.
+function WeekNav({ weekStart, plannedWeeks, hasEntries, onChangeWeek, onCopyLastWeek }) {
+  function handleDatePick(e) {
+    const value = e.target.value;
+    if (!value) return;
+    onChangeWeek(toDateKey(mondayOf(parseDateKey(value))));
+  }
+
+  return (
+    <div className="planner-week-nav">
+      <button
+        type="button"
+        className="planner-week-arrow"
+        onClick={() => onChangeWeek(shiftWeek(weekStart, -1))}
+        aria-label="Previous week"
+      >
+        ‹
+      </button>
+      <div className="planner-week-label-group">
+        <span className="planner-week-label">{formatWeekRangeLabel(weekStart)}</span>
+        {isCurrentWeek(weekStart) && <span className="planner-week-current-badge">This week</span>}
+      </div>
+      <button
+        type="button"
+        className="planner-week-arrow"
+        onClick={() => onChangeWeek(shiftWeek(weekStart, 1))}
+        aria-label="Next week"
+      >
+        ›
+      </button>
+
+      {!isCurrentWeek(weekStart) && (
+        <button type="button" className="btn subtle btn-sm" onClick={() => onChangeWeek(currentWeekStart())}>
+          Today
+        </button>
+      )}
+
+      <input
+        type="date"
+        className="planner-week-picker"
+        value={weekStart}
+        onChange={handleDatePick}
+        aria-label="Jump to the week containing a date"
+      />
+
+      {plannedWeeks.length > 0 && (
+        <select
+          className="planner-week-picker"
+          value={plannedWeeks.includes(weekStart) ? weekStart : ""}
+          onChange={(e) => e.target.value && onChangeWeek(e.target.value)}
+          aria-label="Jump to a week you've already planned"
+        >
+          <option value="">Jump to a planned week…</option>
+          {plannedWeeks.map((ws) => (
+            <option key={ws} value={ws}>
+              {formatWeekRangeLabel(ws)}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {!hasEntries && (
+        <button type="button" className="btn subtle btn-sm" onClick={onCopyLastWeek}>
+          Copy last week's plan
+        </button>
+      )}
+    </div>
+  );
+}
 
 // The "no meal planned" marker is a real (hidden) placeholder recipe under
 // the hood — see server/src/routes/planner.js's POST /blank — so it can be
@@ -106,8 +188,14 @@ function computeStaleLeftoverIds(entries) {
   return stale;
 }
 
+const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
+
 export function PlannerBoard({
   entries,
+  weekStart,
+  plannedWeeks,
+  onChangeWeek,
+  onCopyLastWeek,
   onCardClick,
   onRemove,
   onToggleLeftover,
@@ -124,33 +212,51 @@ export function PlannerBoard({
   const staleIds = computeStaleLeftoverIds(entries);
 
   return (
-    <div className="planner-grid">
-      <div className="planner-grid-corner" />
-      {DAYS.map((day) => (
-        <div key={day} className="planner-day-header">
-          {day}
-        </div>
-      ))}
+    <>
+      <WeekNav
+        weekStart={weekStart}
+        plannedWeeks={plannedWeeks}
+        hasEntries={entries.length > 0}
+        onChangeWeek={onChangeWeek}
+        onCopyLastWeek={onCopyLastWeek}
+      />
+      <div className="planner-grid">
+        <div className="planner-grid-corner" />
+        {DAY_INDICES.map((dayIndex) => {
+          const { weekday, dayNum, monthShort, isToday } = formatDayLabel(weekStart, dayIndex);
+          return (
+            <div
+              key={dayIndex}
+              className={`planner-day-header${isToday ? " is-today" : ""}`}
+            >
+              <span className="planner-day-weekday">{weekday}</span>
+              <span className="planner-day-date">
+                {monthShort} {dayNum}
+              </span>
+            </div>
+          );
+        })}
 
-      {MEAL_TYPES.map((meal) => (
-        <Fragment key={meal.id}>
-          <div className="planner-meal-label">{meal.label}</div>
-          {DAYS.map((_, dayIndex) => (
-            <PlannerCell
-              key={`${dayIndex}-${meal.id}`}
-              dayIndex={dayIndex}
-              mealType={meal.id}
-              entries={grouped[`${dayIndex}-${meal.id}`] || []}
-              staleIds={staleIds}
-              onCardClick={onCardClick}
-              onRemove={onRemove}
-              onToggleLeftover={onToggleLeftover}
-              onToggleAlreadyHave={onToggleAlreadyHave}
-              onMarkBlank={onMarkBlank}
-            />
-          ))}
-        </Fragment>
-      ))}
-    </div>
+        {MEAL_TYPES.map((meal) => (
+          <Fragment key={meal.id}>
+            <div className="planner-meal-label">{meal.label}</div>
+            {DAY_INDICES.map((dayIndex) => (
+              <PlannerCell
+                key={`${dayIndex}-${meal.id}`}
+                dayIndex={dayIndex}
+                mealType={meal.id}
+                entries={grouped[`${dayIndex}-${meal.id}`] || []}
+                staleIds={staleIds}
+                onCardClick={onCardClick}
+                onRemove={onRemove}
+                onToggleLeftover={onToggleLeftover}
+                onToggleAlreadyHave={onToggleAlreadyHave}
+                onMarkBlank={onMarkBlank}
+              />
+            ))}
+          </Fragment>
+        ))}
+      </div>
+    </>
   );
 }
