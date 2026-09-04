@@ -1761,13 +1761,13 @@ input[type="date"].planner-week-picker {
   height: 92px;
 }
 
-/* An empty planner slot is a card-shaped tile (same base .card.meal-card
-   classes as a real placed recipe, so it matches size/shape exactly) rather
-   than a bare text button. Unmarked: neutral and quiet — dashed outline,
-   transparent fill, just a dash — inviting a click without competing for
-   attention. Marked blank: same card shape but a solid border and a faint
-   tint instead of dashed/transparent, and no text — different enough at a
-   glance to read as "confirmed," without being a loud block of color. */
+/* "Ghost" — an empty planner slot is a card-shaped tile (same base
+   .card.meal-card classes as a real placed recipe, so it matches size/shape
+   exactly) rather than a bare text button, but line-weight alone carries
+   the meaning — no fill at either state. Unmarked: a faint dashed outline
+   and a faint dash. Marked blank: the same outline turned solid, slightly
+   more visible, still no fill and no text — the least assertive of the
+   options tried, chosen over ones that used a color/tint shift instead. */
 .planner-empty-card {
   display: flex;
   align-items: center;
@@ -1775,27 +1775,27 @@ input[type="date"].planner-week-picker {
   width: 100%;
   min-height: 110px;
   background: transparent;
-  border: 1.5px dashed var(--paper-soft);
-  color: var(--paper-soft);
-  font-size: 18px;
+  border: 1.5px dashed rgba(227, 227, 246, 0.32);
+  color: rgba(227, 227, 246, 0.55);
+  font-size: 16px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .planner-empty-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(227, 227, 246, 0.55);
+  color: var(--paper-soft);
 }
 
 .planner-empty-card.marked {
   border-style: solid;
-  border-color: var(--accent-text);
-  background: rgba(35, 35, 255, 0.06);
+  border-color: rgba(227, 227, 246, 0.55);
 }
 
 .planner-empty-card.marked:hover {
-  background: rgba(35, 35, 255, 0.12);
+  border-color: var(--paper-soft);
 }
 
 .grocery-list {
