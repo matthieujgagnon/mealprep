@@ -737,9 +737,21 @@ export default function App() {
               </p>
             ) : (
               <>
-                <p className="planner-tip">
-                  <span className="leftover-dot-demo" /> Tap the dot on a placed card to cycle it: leftovers (green), then "already have it" (blue outline), then back to plain — either way it stays on your calendar but won't be added to the grocery list again. Click an empty slot to mark it as intentionally blank.
-                </p>
+                <div className="planner-tip">
+                  <div className="planner-tip-legend">
+                    <span className="planner-tip-item">
+                      <span className="leftover-dot-demo" /> Leftover
+                    </span>
+                    <span className="planner-tip-item">
+                      <span className="already-have-dot-demo" /> Already have it
+                    </span>
+                  </div>
+                  <p className="planner-tip-text">
+                    Tap the dot on a placed card to cycle between these — either way it stays on
+                    your calendar but won't be added to the grocery list again. Click an empty
+                    slot to mark it as intentionally blank.
+                  </p>
+                </div>
                 <div className="planner-layout">
                   <div className="planner-main">
                     <PlannerBoard

@@ -951,13 +951,36 @@ select {
 }
 
 .planner-tip {
+  background: var(--bg-soft);
+  border: 1px solid rgba(227, 227, 246, 0.12);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+}
+
+.planner-tip-legend {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 6px;
+}
+
+.planner-tip-item {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+
+.planner-tip-text {
   font-size: 12px;
+  line-height: 1.5;
   color: var(--paper-soft);
-  opacity: 0.75;
-  margin: 0 0 10px;
+  margin: 0;
 }
 
 .leftover-dot-demo {
@@ -967,6 +990,16 @@ select {
   border-radius: 50%;
   background: var(--sage);
   border: 1.5px solid var(--sage);
+  flex-shrink: 0;
+}
+
+.already-have-dot-demo {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--mustard);
+  border: 2px solid #fff;
   flex-shrink: 0;
 }
 
@@ -1089,6 +1122,15 @@ select {
   padding: 14px;
   position: sticky;
   top: 20px;
+  /* A "plan around" match list or the overlap suggestions can run to a
+     dozen-plus items — without a cap the sidebar (sticky, so it never
+     scrolls off) just kept growing taller than the viewport, pushing
+     everything below the planner grid further and further down the page.
+     Only the list itself scrolls; the tabs/header above it stay in place. */
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .sidebar-tabs {
@@ -1120,6 +1162,9 @@ select {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar-overlap-score {
@@ -1194,6 +1239,9 @@ select {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar-recipe-chip {
@@ -1279,6 +1327,9 @@ select {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar-suggestion {
@@ -1462,6 +1513,9 @@ select {
   display: flex;
   flex-direction: column;
   gap: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .plan-around-btn {
@@ -1774,6 +1828,12 @@ input[type="date"].planner-week-picker {
   justify-content: center;
   width: 100%;
   min-height: 110px;
+  /* .planner-cell is a column flex container, and CSS Grid stretches each
+     cell in a row to match its tallest sibling (a real recipe card, whose
+     photo+title content is naturally taller than this button's min-height)
+     — without flex:1 here, the button just sat at 110px inside a taller
+     cell, leaving a dead gap of bare cell background below it. */
+  flex: 1;
   background: transparent;
   border: 1.5px dashed rgba(227, 227, 246, 0.32);
   color: rgba(227, 227, 246, 0.55);
@@ -2521,6 +2581,21 @@ input[type="date"].planner-week-picker {
   .planner-sidebar {
     width: 100%;
     position: static;
+    /* The internal-scroll treatment only makes sense while the sidebar is
+       sticky to the viewport (desktop) — stacked in normal page flow here,
+       it should just size to its content and let the page itself scroll. */
+    max-height: none;
+    overflow: visible;
+  }
+
+  .sidebar-overlap,
+  .sidebar-plan-around {
+    overflow: visible;
+  }
+
+  .sidebar-suggestions,
+  .sidebar-chips {
+    overflow-y: visible;
   }
 
   /* The 7-day grid itself stays a real grid (shrinking it into a single
