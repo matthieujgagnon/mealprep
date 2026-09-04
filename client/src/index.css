@@ -1122,15 +1122,6 @@ select {
   padding: 14px;
   position: sticky;
   top: 20px;
-  /* A "plan around" match list or the overlap suggestions can run to a
-     dozen-plus items — without a cap the sidebar (sticky, so it never
-     scrolls off) just kept growing taller than the viewport, pushing
-     everything below the planner grid further and further down the page.
-     Only the list itself scrolls; the tabs/header above it stay in place. */
-  max-height: calc(100vh - 40px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 .sidebar-tabs {
@@ -1162,9 +1153,6 @@ select {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .sidebar-overlap-score {
@@ -1239,8 +1227,13 @@ select {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1;
-  min-height: 0;
+  /* A fixed cap rather than something relative to the viewport (100vh) —
+     some screenshot/capture tools render the whole scrollable page in one
+     tall synthetic viewport, which makes 100vh equal the entire page and
+     silently defeats a viewport-relative cap. A "plan around" match list
+     can run past a dozen items; this caps it to roughly 6 rows before it
+     scrolls internally instead of pushing the rest of the page down. */
+  max-height: 380px;
   overflow-y: auto;
 }
 
@@ -1327,8 +1320,8 @@ select {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1;
-  min-height: 0;
+  /* Same fixed cap as .sidebar-chips — see that comment. */
+  max-height: 380px;
   overflow-y: auto;
 }
 
@@ -1513,9 +1506,6 @@ select {
   display: flex;
   flex-direction: column;
   gap: 0;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .plan-around-btn {
@@ -2581,20 +2571,16 @@ input[type="date"].planner-week-picker {
   .planner-sidebar {
     width: 100%;
     position: static;
-    /* The internal-scroll treatment only makes sense while the sidebar is
-       sticky to the viewport (desktop) — stacked in normal page flow here,
-       it should just size to its content and let the page itself scroll. */
-    max-height: none;
-    overflow: visible;
   }
 
-  .sidebar-overlap,
-  .sidebar-plan-around {
-    overflow: visible;
-  }
-
+  /* The capped-scroll treatment on these two lists is mainly there to stop
+     a long "plan around" match list from pushing everything below it far
+     down the page when the sidebar sits beside a much shorter grid — on
+     mobile the sidebar already stacks below the grid in normal flow, so
+     there's nothing to protect and this can just size to its content. */
   .sidebar-suggestions,
   .sidebar-chips {
+    max-height: none;
     overflow-y: visible;
   }
 
