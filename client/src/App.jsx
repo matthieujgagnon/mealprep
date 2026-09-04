@@ -123,7 +123,6 @@ export default function App() {
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [weekStart, setWeekStart] = useState(currentWeekStart()); // Monday, "YYYY-MM-DD" — which week the Planner and Grocery List tabs are showing
-  const [plannedWeeks, setPlannedWeeks] = useState([]); // every weekStart that has at least one placement, for the week-jump picker
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
   const [showManualForm, setShowManualForm] = useState(false);
@@ -160,19 +159,11 @@ export default function App() {
     }).catch(() => {});
     api.listGrocerySections().then(setGrocerySections).catch(() => {});
     api.listRecipeCategories().then(setRecipeCategories).catch(() => {});
-    api.listPlannerWeeks().then(setPlannedWeeks).catch(() => {});
   }, []);
 
   useEffect(() => {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => {});
   }, [weekStart]);
-
-  // Keeps the week-jump list in sync locally instead of refetching the whole
-  // list on every placement — cheap since it's just tracking which weeks are
-  // non-empty, not the placements themselves.
-  function notePlannedWeek(ws) {
-    setPlannedWeeks((prev) => (prev.includes(ws) ? prev : [...prev, ws].sort()));
-  }
 
   function handleImported(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
@@ -436,7 +427,6 @@ export default function App() {
     const mealType = cellMatch[2];
     const entry = await api.placeOnPlanner({ recipeId, weekStart, dayOfWeek, mealType });
     setPlannerEntries((prev) => [...prev, entry]);
-    notePlannedWeek(weekStart);
   }
 
   async function handleRemoveFromPlanner(entryId) {
@@ -463,14 +453,12 @@ export default function App() {
   async function handleMarkBlank(dayOfWeek, mealType) {
     const entry = await api.markSlotBlank(weekStart, dayOfWeek, mealType);
     setPlannerEntries((prev) => [...prev, entry]);
-    notePlannedWeek(weekStart);
   }
 
   async function handleCopyLastWeek() {
     const fromWeekStart = shiftWeek(weekStart, -1);
     const copied = await api.copyPlannerWeek(fromWeekStart, weekStart);
     setPlannerEntries(copied);
-    if (copied.length > 0) notePlannedWeek(weekStart);
   }
 
   const importedRecipes = recipes
@@ -696,7 +684,6 @@ export default function App() {
                     <PlannerBoard
                       entries={plannerEntries}
                       weekStart={weekStart}
-                      plannedWeeks={plannedWeeks}
                       onChangeWeek={setWeekStart}
                       onCopyLastWeek={handleCopyLastWeek}
                       onCardClick={setActiveRecipe}

@@ -18,11 +18,10 @@ const MEAL_TYPES = [
   { id: "dinner", label: "Supper" },
 ];
 
-// Prev/next/today navigation, a jump-to-any-date picker, a quick-jump list
-// of weeks that already have something planned, and (only when this week's
-// board is empty) a one-click way to start from last week's shape instead
-// of a blank grid.
-function WeekNav({ weekStart, plannedWeeks, hasEntries, onChangeWeek, onCopyLastWeek }) {
+// Prev/next/today navigation, a jump-to-any-date picker, and (only when
+// this week's board is empty) a one-click way to start from last week's
+// shape instead of a blank grid.
+function WeekNav({ weekStart, hasEntries, onChangeWeek, onCopyLastWeek }) {
   function handleDatePick(e) {
     const value = e.target.value;
     if (!value) return;
@@ -66,22 +65,6 @@ function WeekNav({ weekStart, plannedWeeks, hasEntries, onChangeWeek, onCopyLast
         aria-label="Jump to the week containing a date"
       />
 
-      {plannedWeeks.length > 0 && (
-        <select
-          className="planner-week-picker"
-          value={plannedWeeks.includes(weekStart) ? weekStart : ""}
-          onChange={(e) => e.target.value && onChangeWeek(e.target.value)}
-          aria-label="Jump to a week you've already planned"
-        >
-          <option value="">Jump to a planned week…</option>
-          {plannedWeeks.map((ws) => (
-            <option key={ws} value={ws}>
-              {formatWeekRangeLabel(ws)}
-            </option>
-          ))}
-        </select>
-      )}
-
       {!hasEntries && (
         <button type="button" className="btn subtle btn-sm" onClick={onCopyLastWeek}>
           Copy last week's plan
@@ -121,8 +104,7 @@ function PlannerCell({
           title="Mark as no meal planned"
           onClick={() => onMarkBlank(dayIndex, mealType)}
         >
-          <span className="planner-empty-card-plus">+</span>
-          <span className="planner-empty-card-label">No meal planned</span>
+          —
         </button>
       )}
       {entries.map((entry) =>
@@ -130,13 +112,10 @@ function PlannerCell({
           <button
             key={entry.id}
             type="button"
-            className="card meal-card compact planner-empty-card marked"
+            className="card meal-card compact planner-empty-card"
             title="No meal planned — click to clear"
             onClick={() => onRemove(entry.id)}
-          >
-            <span className="planner-empty-card-plus">✕</span>
-            <span className="planner-empty-card-label">No meal planned</span>
-          </button>
+          />
         ) : (
           <MealCard
             key={entry.id}
@@ -193,7 +172,6 @@ const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 export function PlannerBoard({
   entries,
   weekStart,
-  plannedWeeks,
   onChangeWeek,
   onCopyLastWeek,
   onCardClick,
@@ -214,7 +192,6 @@ export function PlannerBoard({
     <>
       <WeekNav
         weekStart={weekStart}
-        plannedWeeks={plannedWeeks}
         hasEntries={entries.length > 0}
         onChangeWeek={onChangeWeek}
         onCopyLastWeek={onCopyLastWeek}

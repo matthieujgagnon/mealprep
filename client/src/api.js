@@ -28,7 +28,6 @@ export const api = {
     request("/recipes/reorder", { method: "PUT", body: JSON.stringify({ orderedIds }) }),
 
   listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
-  listPlannerWeeks: () => request("/planner/weeks"),
   placeOnPlanner: (payload) =>
     request("/planner", { method: "POST", body: JSON.stringify(payload) }),
   markSlotBlank: (weekStart, dayOfWeek, mealType) =>
