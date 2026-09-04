@@ -63,6 +63,7 @@ function RecipeCategorySection({
               dragId={`cookbook-${r.id}`}
               onClick={onSelectRecipe}
               onDelete={() => onDeleteRecipe(r)}
+              reorderable
             />
           ))}
         </div>
@@ -127,6 +128,7 @@ export default function App() {
   const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
   const [showManualForm, setShowManualForm] = useState(false);
   const [customStaples, setCustomStaples] = useState([]);
+  const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [grocerySections, setGrocerySections] = useState([]);
   const [recipeCategories, setRecipeCategories] = useState([]);
@@ -150,7 +152,8 @@ export default function App() {
   useEffect(() => {
     api.listRecipes().then(setRecipes).catch(() => {});
     api.listPantryStaples().then((list) => {
-      setCustomStaples(list.map((s) => s.core));
+      setCustomStaples(list.filter((s) => !s.excluded).map((s) => s.core));
+      setExcludedStaples(list.filter((s) => s.excluded).map((s) => s.core));
       setStapleCategories(
         Object.fromEntries(list.filter((s) => s.category).map((s) => [s.core, s.category]))
       );
@@ -219,11 +222,19 @@ export default function App() {
     if (customStaples.includes(core)) return; // already a staple
     await api.addPantryStaple(core);
     setCustomStaples((prev) => [...prev, core]);
+    // Dragging a previously-removed default (e.g. salt) back onto the
+    // staples section un-removes it — see pantryStaplesRouter's POST handler.
+    setExcludedStaples((prev) => prev.filter((c) => c !== core));
   }
 
+  // Un-marks a staple. For one the user added themselves this just drops
+  // it from customStaples. For one of the app's built-in defaults (never in
+  // customStaples to begin with) it instead records the exclusion so the
+  // built-in list stops re-adding it on every render.
   async function handleRemoveStaple(core) {
     await api.removePantryStaple(core);
     setCustomStaples((prev) => prev.filter((c) => c !== core));
+    setExcludedStaples((prev) => (prev.includes(core) ? prev : [...prev, core]));
     setStapleCategories((prev) => {
       const { [core]: _removed, ...rest } = prev;
       return rest;
@@ -330,6 +341,18 @@ export default function App() {
     setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, categoryId } : r)));
   }
 
+  // Recomputes the dragged recipe's new position among just the given
+  // subset (the grid it's visibly part of), then refetches the full list —
+  // simpler and safer than hand-splicing local state, since `position` is a
+  // single global column shared across every grid a recipe could appear in.
+  async function handleReorderRecipes(subset, oldIndex, newIndex) {
+    const reordered = [...subset];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    await api.reorderRecipes(reordered.map((r) => r.id));
+    api.listRecipes().then(setRecipes).catch(() => {});
+  }
+
   async function handleDragEnd(event) {
     setIsDragActive(false);
     const { active, over } = event;
@@ -374,6 +397,27 @@ export default function App() {
     const recipeId = active.data.current?.recipe?.id;
     if (!recipeId) return;
 
+    // Dropped onto another recipe card (not a named zone like "cookbook-
+    // drop") — reorder within whichever grid both cards are shown in. The
+    // dragId prefix says which grid ("recipe-" = Imported, "cookbook-" =
+    // Cookbook); within Cookbook, only recipes sharing the dragged one's
+    // category actually sit in the same visible grid together.
+    const overRecipe = over.data.current?.recipe;
+    if (overRecipe && overRecipe.id !== recipeId) {
+      const draggedRecipe = recipes.find((r) => r.id === recipeId);
+      if (draggedRecipe) {
+        const subset = String(active.id).startsWith("cookbook-")
+          ? cookbookRecipes.filter((r) => (r.categoryId || null) === (draggedRecipe.categoryId || null))
+          : importedRecipes;
+        const oldIndex = subset.findIndex((r) => r.id === recipeId);
+        const newIndex = subset.findIndex((r) => r.id === overRecipe.id);
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          await handleReorderRecipes(subset, oldIndex, newIndex);
+        }
+      }
+      return;
+    }
+
     if (over.id === "cookbook-drop") {
       handleAddToCookbook(recipeId);
       return;
@@ -400,18 +444,20 @@ export default function App() {
     setPlannerEntries((prev) => prev.filter((e) => e.id !== entryId));
   }
 
-  async function handleToggleLeftover(entryId, isLeftover) {
-    await api.updatePlannerEntry(entryId, { isLeftover });
-    setPlannerEntries((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, isLeftover } : e))
-    );
-  }
-
-  async function handleToggleAlreadyHave(entryId, alreadyHave) {
-    await api.updatePlannerEntry(entryId, { alreadyHave });
-    setPlannerEntries((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, alreadyHave } : e))
-    );
+  // One control cycles a placed card through three states: plain -> leftover
+  // -> already have it -> back to plain. isLeftover/alreadyHave stay two
+  // separate booleans server-side, but the UI only ever has one of them true
+  // at a time, driven from this single handler.
+  async function handleCycleMealState(entryId) {
+    const entry = plannerEntries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const next = entry.isLeftover
+      ? { isLeftover: false, alreadyHave: true }
+      : entry.alreadyHave
+      ? { isLeftover: false, alreadyHave: false }
+      : { isLeftover: true, alreadyHave: false };
+    await api.updatePlannerEntry(entryId, next);
+    setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
   }
 
   async function handleMarkBlank(dayOfWeek, mealType) {
@@ -545,6 +591,7 @@ export default function App() {
                       recipe={r}
                       onClick={setActiveRecipe}
                       onDelete={() => handleRemoveFromImported(r)}
+                      reorderable
                     />
                   ))}
                 </div>
@@ -584,6 +631,7 @@ export default function App() {
                         dragId={`cookbook-${r.id}`}
                         onClick={setActiveRecipe}
                         onDelete={() => handleRemoveFromCookbook(r)}
+                        reorderable
                       />
                     ))}
                   </div>
@@ -601,6 +649,7 @@ export default function App() {
                                 dragId={`cookbook-${r.id}`}
                                 onClick={setActiveRecipe}
                                 onDelete={() => handleRemoveFromCookbook(r)}
+                                reorderable
                               />
                             ))}
                         </div>
@@ -640,7 +689,7 @@ export default function App() {
             ) : (
               <>
                 <p className="planner-tip">
-                  <span className="leftover-dot-demo" /> Tap the dot on a placed card to mark it as leftovers, or the blue dot to mark "already have it" — either way it stays on your calendar but won't be added to the grocery list again. Click an empty slot to mark it as intentionally blank.
+                  <span className="leftover-dot-demo" /> Tap the dot on a placed card to cycle it: leftovers (green), then "already have it" (blue outline), then back to plain — either way it stays on your calendar but won't be added to the grocery list again. Click an empty slot to mark it as intentionally blank.
                 </p>
                 <div className="planner-layout">
                   <div className="planner-main">
@@ -652,8 +701,7 @@ export default function App() {
                       onCopyLastWeek={handleCopyLastWeek}
                       onCardClick={setActiveRecipe}
                       onRemove={handleRemoveFromPlanner}
-                      onToggleLeftover={handleToggleLeftover}
-                      onToggleAlreadyHave={handleToggleAlreadyHave}
+                      onCycleState={handleCycleMealState}
                       onMarkBlank={handleMarkBlank}
                     />
                   </div>
@@ -689,6 +737,7 @@ export default function App() {
             plannerEntries={plannerEntries}
             weekStart={weekStart}
             customStaples={customStaples}
+            excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
             onRemoveStaple={handleRemoveStaple}
             grocerySections={grocerySections}

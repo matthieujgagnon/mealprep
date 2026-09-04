@@ -43,11 +43,28 @@ export function WhatCanIMake({ recipes, plannerEntries, onSelectRecipe }) {
     setHave((prev) => prev.filter((h) => h !== name));
   }
 
-  const atRisk = findAtRiskPerishables(plannerEntries, recipes).filter(
+  const allAtRisk = findAtRiskPerishables(plannerEntries, recipes);
+  const atRisk = allAtRisk.filter(
     (name) => !have.some((h) => h.toLowerCase() === name.toLowerCase())
   );
 
-  const results = have.length > 0 ? findRecipesByIngredients(have, recipes) : [];
+  // Ingredients currently in "have" that came from the expiring-soon list
+  // (as opposed to typed in by hand). Picking 2+ of these is a specific
+  // ask — "what uses both of these up together" — so once there are 2+,
+  // narrow results down to recipes containing all of them, rather than the
+  // usual closest-match ranking used for the rest of the "have" list.
+  const selectedAtRisk = have.filter((h) =>
+    allAtRisk.some((name) => name.toLowerCase() === h.toLowerCase())
+  );
+
+  let results = have.length > 0 ? findRecipesByIngredients(have, recipes) : [];
+  if (selectedAtRisk.length >= 2) {
+    results = results.filter((r) =>
+      selectedAtRisk.every((name) =>
+        r.matchedIngredients.some((m) => m.toLowerCase() === name.toLowerCase())
+      )
+    );
+  }
 
   // Ingredient vocabulary for autocomplete — every ingredient name that's
   // ever shown up in the cookbook, so typing matches what the app actually
@@ -116,10 +133,20 @@ export function WhatCanIMake({ recipes, plannerEntries, onSelectRecipe }) {
         </div>
       )}
 
+      {selectedAtRisk.length >= 2 && (
+        <p className="makeable-and-hint">
+          Showing recipes that use all of: {selectedAtRisk.join(", ")}
+        </p>
+      )}
+
       {have.length === 0 ? (
         <p className="empty-state">Add a few ingredients above to see what you can make.</p>
       ) : results.length === 0 ? (
-        <p className="empty-state">No recipes match yet — try adding a few more ingredients.</p>
+        <p className="empty-state">
+          {selectedAtRisk.length >= 2
+            ? "No recipe uses all of those together — try removing one."
+            : "No recipes match yet — try adding a few more ingredients."}
+        </p>
       ) : (
         <div className="makeable-results">
           {results.map(({ recipe, missingIngredients }) => (

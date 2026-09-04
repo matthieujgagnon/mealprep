@@ -166,13 +166,24 @@ export function canonicalize(rawName) {
 // fraction of a whole onion isn't the same kind of quantity as a cup), it's
 // kept as a separate "part" on the SAME row rather than spawning a duplicate
 // line item. See `parts` on each returned item.
-export function buildGroceryList(plannerEntries, customStaples = [], staplesCategoryOverrides = {}) {
+//
+// excludedStaples is the flip side of customStaples: cores the user has
+// explicitly said should NOT be treated as a staple even though they're on
+// the built-in STAPLE_WORDS/SPICE_WORDS list (e.g. removing "salt") — those
+// come out of the real shopping list instead.
+export function buildGroceryList(
+  plannerEntries,
+  customStaples = [],
+  staplesCategoryOverrides = {},
+  excludedStaples = []
+) {
   const map = new Map(); // core -> { core, name, parts, usedIn, varieties, isStaple, isSpice }
   // Every spice is inherently a pantry staple (you don't buy cumin fresh
   // each week) — folding SPICE_WORDS into the staples set here means a new
   // entry only ever needs to be added to ONE list to get both isStaple and
   // isSpice, instead of needing to remember to keep two lists in sync.
   const staplesSet = new Set([...STAPLE_WORDS, ...SPICE_WORDS, ...customStaples.map((s) => s.toLowerCase())]);
+  for (const core of excludedStaples) staplesSet.delete(core.toLowerCase());
 
   for (const entry of plannerEntries) {
     if (entry.isLeftover || entry.alreadyHave) continue; // reusing food, or already have what's needed — don't re-buy it

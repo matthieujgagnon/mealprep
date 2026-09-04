@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { stepText, stepImage, stepIsHeading } from "../lib/steps.js";
 import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
-const emptyIngredient = () => ({ name: "", quantity: "", unit: "", notes: "" });
-const emptySection = () => ({ isSection: true, name: "" });
+// A client-only id for drag-and-drop tracking — never sent to the server.
+// Needs to be stable across reorders (unlike the array index used as the
+// React `key` elsewhere), which is what @dnd-kit/sortable keys off of.
+function makeLocalId() {
+  return crypto.randomUUID ? crypto.randomUUID() : `local-${Math.random().toString(36).slice(2)}`;
+}
+
+const emptyIngredient = () => ({ _id: makeLocalId(), name: "", quantity: "", unit: "", notes: "" });
+const emptySection = () => ({ _id: makeLocalId(), isSection: true, name: "" });
 
 // Strips a single layer of wrapping parens from a notes value, if present —
 // e.g. someone typing "(melted)" out of habit from the placeholder text
@@ -31,10 +41,11 @@ function buildInitialItems(ingredients) {
   for (const ing of ingredients) {
     const group = ing.group || null;
     if (group && group !== lastGroup) {
-      items.push({ isSection: true, name: group });
+      items.push({ _id: makeLocalId(), isSection: true, name: group });
     }
     lastGroup = group;
     items.push({
+      _id: makeLocalId(),
       name: ing.name || "",
       quantity: ing.quantity ?? "",
       unit: ing.unit || "",
@@ -104,6 +115,34 @@ function PhotoPreview({ url }) {
   );
 }
 
+// Wraps one ingredient or section row so it can be dragged by its handle to
+// reorder. The whole row isn't draggable — only the handle carries the
+// drag listeners — so clicking into the name/qty/notes inputs still just
+// focuses them instead of fighting a drag gesture.
+function SortableRow({ id, className, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className={className}>
+      <button
+        type="button"
+        className="drag-handle"
+        aria-label="Drag to reorder"
+        title="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        ⠿
+      </button>
+      {children}
+    </div>
+  );
+}
+
 // Works in two modes:
 //   - create (no `recipe` prop): blank form, calls api.createRecipe, then onCreated(recipe)
 //   - edit (`recipe` prop passed): pre-filled from the existing recipe, calls
@@ -127,6 +166,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   const [ingredients, setIngredients] = useState(
     recipe?.ingredients?.length ? buildInitialItems(recipe.ingredients) : [emptyIngredient()]
   );
+  const [notes, setNotes] = useState(recipe?.notes || "");
   const [instructionsText, setInstructionsText] = useState(
     recipe?.instructions?.map(stepText).join("\n") || ""
   );
@@ -167,13 +207,20 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
     );
   }
 
-  function moveIngredientItem(i, direction) {
-    const target = direction === "up" ? i - 1 : i + 1;
+  // Distance-based (not delay-based) activation is fine here, unlike the
+  // planner cards — the drag trigger is a dedicated handle button, not
+  // overlapping any scrollable content, so there's no swipe-to-scroll
+  // gesture to protect against.
+  const ingredientSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  function handleIngredientDragEnd(event) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
     setIngredients((prev) => {
-      if (target < 0 || target >= prev.length) return prev;
-      const next = [...prev];
-      [next[i], next[target]] = [next[target], next[i]];
-      return next;
+      const oldIndex = prev.findIndex((item) => item._id === active.id);
+      const newIndex = prev.findIndex((item) => item._id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
     });
   }
 
@@ -248,6 +295,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
         title: title.trim(),
         photoUrl: cleanedPhotos[0] || null,
         photos: cleanedPhotos,
+        notes: notes.trim() || null,
         baseServings: Number(baseServings) || 4,
         prepTimeMinutes: prepTimeMinutes !== "" ? Number(prepTimeMinutes) : null,
         cookTimeMinutes: cookTimeMinutes !== "" ? Number(cookTimeMinutes) : null,
@@ -360,110 +408,83 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
       )}
 
       <p className="form-section-label">Ingredients</p>
-      {ingredients.map((item, i) =>
-        item.isSection ? (
-          <div className="form-row section-row" key={i}>
-            <input
-              type="text"
-              placeholder="Section name (e.g. Dressing)"
-              value={item.name}
-              onChange={(e) => updateSectionName(i, e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <div className="reorder-buttons">
-              <button
-                type="button"
-                disabled={i === 0}
-                title="Move up"
-                onClick={() => moveIngredientItem(i, "up")}
-              >
-                ▲
-              </button>
-              <button
-                type="button"
-                disabled={i === ingredients.length - 1}
-                title="Move down"
-                onClick={() => moveIngredientItem(i, "down")}
-              >
-                ▼
-              </button>
-            </div>
-            <button
-              type="button"
-              className="btn subtle"
-              style={{ padding: "6px 10px" }}
-              onClick={() => removeIngredientRow(i)}
-            >
-              ×
-            </button>
-          </div>
-        ) : (
-          <div className="form-row ingredient-row" key={i}>
-            <input
-              type="text"
-              placeholder="Name (e.g. butter)"
-              value={item.name}
-              onChange={(e) => updateIngredient(i, "name", e.target.value)}
-              style={{ flex: 2 }}
-            />
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="Qty (1/4)"
-              value={item.quantity}
-              onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <select
-              value={item.unit}
-              onChange={(e) => updateIngredient(i, "unit", e.target.value)}
-              style={{ flex: 1 }}
-            >
-              <option value="">(none)</option>
-              {UNIT_OPTIONS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              placeholder="Notes (e.g. melted)"
-              value={item.notes}
-              onChange={(e) => updateIngredient(i, "notes", e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <div className="reorder-buttons">
-              <button
-                type="button"
-                disabled={i === 0}
-                title="Move up"
-                onClick={() => moveIngredientItem(i, "up")}
-              >
-                ▲
-              </button>
-              <button
-                type="button"
-                disabled={i === ingredients.length - 1}
-                title="Move down"
-                onClick={() => moveIngredientItem(i, "down")}
-              >
-                ▼
-              </button>
-            </div>
-            {ingredients.length > 1 && (
-              <button
-                type="button"
-                className="btn subtle"
-                style={{ padding: "6px 10px" }}
-                onClick={() => removeIngredientRow(i)}
-              >
-                ×
-              </button>
-            )}
-          </div>
-        )
-      )}
+      <p className="form-hint">Drag the ⠿ handle to reorder.</p>
+      <DndContext
+        sensors={ingredientSensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleIngredientDragEnd}
+      >
+        <SortableContext items={ingredients.map((item) => item._id)} strategy={verticalListSortingStrategy}>
+          {ingredients.map((item, i) =>
+            item.isSection ? (
+              <SortableRow id={item._id} className="form-row section-row" key={item._id}>
+                <input
+                  type="text"
+                  placeholder="Section name (e.g. Dressing)"
+                  value={item.name}
+                  onChange={(e) => updateSectionName(i, e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn subtle"
+                  style={{ padding: "6px 10px" }}
+                  onClick={() => removeIngredientRow(i)}
+                >
+                  ×
+                </button>
+              </SortableRow>
+            ) : (
+              <SortableRow id={item._id} className="form-row ingredient-row" key={item._id}>
+                <input
+                  type="text"
+                  placeholder="Name (e.g. butter)"
+                  value={item.name}
+                  onChange={(e) => updateIngredient(i, "name", e.target.value)}
+                  style={{ flex: 2 }}
+                />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Qty (1/4)"
+                  value={item.quantity}
+                  onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <select
+                  value={item.unit}
+                  onChange={(e) => updateIngredient(i, "unit", e.target.value)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">(none)</option>
+                  {UNIT_OPTIONS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Notes (e.g. melted)"
+                  value={item.notes}
+                  onChange={(e) => updateIngredient(i, "notes", e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                {ingredients.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn subtle"
+                    style={{ padding: "6px 10px" }}
+                    onClick={() => removeIngredientRow(i)}
+                  >
+                    ×
+                  </button>
+                )}
+              </SortableRow>
+            )
+          )}
+        </SortableContext>
+      </DndContext>
       <div className="form-row" style={{ gap: 8 }}>
         <button type="button" className="btn subtle" onClick={addIngredientRow}>
           + Add ingredient
@@ -487,6 +508,16 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
         line ending in a colon (like "Make the Sauce:") is shown as a section
         heading instead of a numbered step.
       </p>
+
+      <label className="form-label" style={{ marginTop: 16 }}>
+        Notes (optional)
+        <textarea
+          rows={3}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={"Used less salt than called for. Great with rice."}
+        />
+      </label>
 
       {cleanInstructionLines().filter((line) => !stepIsHeading(line)).length > 0 && (
         <>

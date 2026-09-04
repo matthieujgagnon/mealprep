@@ -15,11 +15,14 @@ function serializeRecipe(recipe) {
   };
 }
 
-// GET /api/recipes - list all saved recipes
+// GET /api/recipes - list all saved recipes. position sorts first — every
+// recipe defaults to position 0, so until something's actually been
+// drag-reordered this falls through to createdAt desc (newest first), the
+// same order the app has always shown.
 recipesRouter.get("/", async (req, res) => {
   const recipes = await prisma.recipe.findMany({
     include: { ingredients: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ position: "asc" }, { createdAt: "desc" }],
   });
   res.json(recipes.map(serializeRecipe));
 });
@@ -83,7 +86,7 @@ recipesRouter.post("/import", async (req, res) => {
 
 // POST /api/recipes - manual entry (fallback when import fails, or add-your-own)
 recipesRouter.post("/", async (req, res) => {
-  const { title, photoUrl, photos, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients } = req.body;
+  const { title, photoUrl, photos, notes, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients } = req.body;
 
   if (!title || !Array.isArray(ingredients)) {
     return res.status(400).json({ error: "title and ingredients[] are required" });
@@ -94,6 +97,7 @@ recipesRouter.post("/", async (req, res) => {
       title,
       photoUrl: photoUrl || null,
       photos: JSON.stringify(photos || []),
+      notes: notes || null,
       baseServings: baseServings || 4,
       inCookbook: true,
       inImported: false,
@@ -118,9 +122,25 @@ recipesRouter.post("/", async (req, res) => {
   res.status(201).json(serializeRecipe(recipe));
 });
 
+// PUT /api/recipes/reorder { orderedIds: [id1, id2, ...] } - sets each
+// recipe's position to its index in the given order. Registered before
+// PUT /:id so "reorder" isn't swallowed as a recipe id.
+recipesRouter.put("/reorder", async (req, res) => {
+  const { orderedIds } = req.body;
+  if (!Array.isArray(orderedIds)) {
+    return res.status(400).json({ error: "orderedIds[] is required" });
+  }
+  await prisma.$transaction(
+    orderedIds.map((id, position) =>
+      prisma.recipe.update({ where: { id }, data: { position } })
+    )
+  );
+  res.status(204).send();
+});
+
 // PUT /api/recipes/:id - edit a recipe (title, servings, ingredients, instructions)
 recipesRouter.put("/:id", async (req, res) => {
-  const { title, photoUrl, photos, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
+  const { title, photoUrl, photos, notes, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
 
   await prisma.recipe.update({
     where: { id: req.params.id },
@@ -128,6 +148,7 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(title !== undefined && { title }),
       ...(photoUrl !== undefined && { photoUrl }),
       ...(photos !== undefined && { photos: JSON.stringify(photos) }),
+      ...(notes !== undefined && { notes: notes || null }),
       ...(baseServings !== undefined && { baseServings }),
       ...(prepTimeMinutes !== undefined && { prepTimeMinutes }),
       ...(cookTimeMinutes !== undefined && { cookTimeMinutes }),
