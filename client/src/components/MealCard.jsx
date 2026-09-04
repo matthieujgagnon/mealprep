@@ -41,7 +41,10 @@ export function MealCard({
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const resolvedDragId = dragId || `recipe-${recipe.id}`;
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  // No transform-follow here — App.jsx's <DragOverlay> renders the floating
+  // copy that actually tracks the cursor; this card just dims via
+  // .dragging while that's happening (see App.jsx's DragPreview).
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: resolvedDragId,
     data: { recipe, ...dragData },
     disabled: dragDisabled,
@@ -54,10 +57,6 @@ export function MealCard({
     disabled: !reorderable,
     data: { recipe },
   });
-
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10 }
-    : undefined;
 
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
   const ingredientCount =
@@ -89,7 +88,7 @@ export function MealCard({
   return (
     <div
       ref={mergeRefs(setNodeRef, setDropRef)}
-      style={{ ...style, position: "relative" }}
+      style={{ position: "relative" }}
       className={`card meal-card${isDragging ? " dragging" : ""}${compact ? " compact" : ""}${isLeftover ? " leftover-active" : ""}${isLeftover && isStale ? " leftover-stale" : ""}${alreadyHave ? " already-have-active" : ""}${isReorderTarget ? " reorder-target" : ""}`}
       onClick={() => onClick?.(recipe)}
       {...listeners}

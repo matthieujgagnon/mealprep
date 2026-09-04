@@ -112,7 +112,7 @@ function PlannerCell({
           <button
             key={entry.id}
             type="button"
-            className="card meal-card compact planner-empty-card"
+            className="card meal-card compact planner-empty-card marked"
             title="No meal planned — click to clear"
             onClick={() => onRemove(entry.id)}
           />

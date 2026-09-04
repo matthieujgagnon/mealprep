@@ -45,6 +45,7 @@ export function RecipeDetailModal({
   onRecipeUpdated,
   onDelete,
   onPlanAround,
+  sharedWithWeek, // ingredient names reused from this week's plan — only set when opened from a "good next addition" suggestion
 }) {
   const defaultServings = recipe.baseServings || 4;
   const [servings, setServings] = useState(defaultServings);
@@ -155,11 +156,11 @@ export function RecipeDetailModal({
           </div>
         </div>
 
-        {recipe.notes && (
-          <div className="recipe-modal-notes">
-            <p className="section-label">Notes</p>
-            <p>{recipe.notes}</p>
-          </div>
+        {sharedWithWeek?.length > 0 && (
+          <p className="shared-with-week-note">
+            Reuses {sharedWithWeek.length === 1 ? "an ingredient" : "ingredients"} from this
+            week's plan: {sharedWithWeek.join(", ")}
+          </p>
         )}
 
         {!recipe.isPlaceholder && (
@@ -328,6 +329,13 @@ export function RecipeDetailModal({
               })()}
             </ol>
           </>
+        )}
+
+        {recipe.notes && (
+          <div className="recipe-modal-notes">
+            <p className="section-label">Notes</p>
+            <p>{recipe.notes}</p>
+          </div>
         )}
 
         {similar.length > 0 && (

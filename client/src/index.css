@@ -171,6 +171,29 @@ select {
   opacity: 0.5;
 }
 
+/* The floating copy rendered inside <DragOverlay> (App.jsx) — this is what
+   actually follows the cursor while dragging a recipe card. */
+.drag-preview {
+  width: 180px;
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Same idea for a dragged ingredient (grocery item / staple), which has no
+   card of its own to reuse — a simple pill instead. */
+.drag-preview-chip {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--bg-soft);
+  border: 1px solid var(--accent-text);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
 .meal-card.reorder-target {
   box-shadow: 0 0 0 2px var(--accent-text);
 }
@@ -296,13 +319,12 @@ select {
 }
 
 /* "Already have it" is the same physical dot as leftover — one control
-   cycles plain -> leftover (filled green) -> already have it (blue outline,
-   unfilled) -> plain. Deliberately unfilled here so it reads as a distinct
-   third state rather than "leftover but blue." */
+   cycles plain -> leftover (filled green) -> already have it (filled blue,
+   white ring) -> plain. */
 .leftover-dot.have-outline {
-  background: transparent;
-  border-color: var(--accent-text);
-  border-width: 2px;
+  background: var(--mustard);
+  border-color: #fff;
+  border-width: 2.5px;
 }
 
 .meal-card.already-have-active {
@@ -326,6 +348,21 @@ select {
   font-family: var(--font-display);
   font-size: 18px;
   margin: 0;
+}
+
+.recipe-section-toggle {
+  background: none;
+  border: none;
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+.recipe-section-toggle:hover {
+  opacity: 0.85;
 }
 
 /* ---------- Tags ---------- */
@@ -1476,6 +1513,16 @@ select {
   border-radius: 999px;
 }
 
+.shared-with-week-note {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mustard);
+  background: rgba(35, 35, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 12px;
+}
+
 .fridge-life-editor {
   display: inline-flex;
   align-items: center;
@@ -1597,12 +1644,41 @@ select {
 .planner-week-picker {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--ink);
-  background: var(--paper);
-  border: 1px solid var(--line);
+  color: var(--paper-soft);
+  background: var(--bg-soft);
+  border: 1px solid transparent;
   border-radius: 8px;
   padding: 5px 8px;
   cursor: pointer;
+}
+
+.planner-week-picker:hover {
+  border-color: var(--accent-text);
+}
+
+/* Native date-input chrome (the little calendar icon) defaults to
+   light-mode rendering everywhere else in the app (a global color-scheme
+   rule near the top of this file) so it stays legible on light form fields
+   — but this one sits directly on the dark nav bar, so it needs the
+   opposite: dark-mode chrome to actually match its own background instead
+   of showing up as a bright mismatched icon. */
+input[type="date"].planner-week-picker {
+  color-scheme: dark;
+}
+
+/* .btn.subtle is styled for sitting on a light card/modal elsewhere in the
+   app (light background, dark text) — reused here for "Today" / "Copy last
+   week's plan," it would render as a bright light rectangle floating in
+   this dark nav bar. Scoped override to match the surrounding dark theme
+   instead. */
+.planner-week-nav .btn.subtle {
+  background: var(--bg-soft);
+  color: var(--paper-soft);
+}
+
+.planner-week-nav .btn.subtle:hover {
+  background: rgba(35, 35, 255, 0.18);
+  color: var(--accent-text);
 }
 
 /* ---------- Planner board ---------- */
@@ -1687,28 +1763,39 @@ select {
 
 /* An empty planner slot is a card-shaped tile (same base .card.meal-card
    classes as a real placed recipe, so it matches size/shape exactly) rather
-   than a bare text button — solid blue with a white border so it's
-   unmistakably "not a recipe." Unmarked shows just a dash (click to mark
-   blank); once marked blank, no text at all — the blue card itself already
-   says "intentionally empty" (click again to clear). */
+   than a bare text button. Unmarked: neutral and quiet — dashed outline,
+   transparent fill, just a dash — inviting a click without competing for
+   attention. Marked blank: same card shape but a solid border and a faint
+   tint instead of dashed/transparent, and no text — different enough at a
+   glance to read as "confirmed," without being a loud block of color. */
 .planner-empty-card {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   min-height: 110px;
-  background: var(--mustard);
-  border: 2px solid #fff;
-  color: #fff;
-  font-size: 20px;
+  background: transparent;
+  border: 1.5px dashed var(--paper-soft);
+  color: var(--paper-soft);
+  font-size: 18px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .planner-empty-card:hover {
-  background: var(--accent-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.planner-empty-card.marked {
+  border-style: solid;
+  border-color: var(--accent-text);
+  background: rgba(35, 35, 255, 0.06);
+}
+
+.planner-empty-card.marked:hover {
+  background: rgba(35, 35, 255, 0.12);
 }
 
 .grocery-list {

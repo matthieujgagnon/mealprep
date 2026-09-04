@@ -125,6 +125,19 @@ const PREP_WORDS = new Set([
   "iodized",
 ]);
 
+// A handful of spice phrasings are different words for the exact same
+// shopping-list item, but can't go through PREP_WORDS above — "ground" is
+// deliberately NOT a generic prep-word (stripping it everywhere would wrongly
+// merge "ground beef" with "beef"). So instead of stripping "ground" from
+// every ingredient, alias these specific known-equivalent full phrasings
+// directly to the plain form once the rest of canonicalize() has run.
+// Deliberately narrow — "white pepper" and "cracked black pepper" are left
+// alone since those are genuinely different products, not just a respelling.
+const CORE_ALIASES = {
+  "ground black pepper": "pepper",
+  "black pepper": "pepper",
+};
+
 // Splits an ingredient name into a grouping key (core food, singularized,
 // variety and prep words removed) and any variety words that were stripped.
 export function canonicalize(rawName) {
@@ -144,7 +157,8 @@ export function canonicalize(rawName) {
     if (PREP_WORDS.has(w)) return false;
     return true;
   });
-  const core = coreWords.map(singularize).join(" ").trim();
+  let core = coreWords.map(singularize).join(" ").trim();
+  core = CORE_ALIASES[core] || core;
   return { core, varieties };
 }
 

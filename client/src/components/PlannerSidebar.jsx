@@ -179,7 +179,7 @@ function OverlapScore({ plannerEntries, allRecipes, onSelectIngredient, onSelect
                 key={recipe.id}
                 type="button"
                 className="sidebar-suggestion"
-                onClick={() => onSelectRecipe(recipe)}
+                onClick={() => onSelectRecipe(recipe, shared)}
               >
                 {recipe.photoUrl && (
                   <img src={recipe.photoUrl} alt="" className="sidebar-chip-photo" />
