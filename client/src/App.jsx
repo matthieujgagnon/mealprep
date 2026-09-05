@@ -54,6 +54,15 @@ function CookbookDropZone({ children }) {
   );
 }
 
+function ImportedDropZone({ children }) {
+  const { setNodeRef, isOver } = useDroppable({ id: "imported-drop" });
+  return (
+    <div ref={setNodeRef} className={`cookbook-drop-zone${isOver ? " drop-active" : ""}`}>
+      {children}
+    </div>
+  );
+}
+
 function RecipeCategorySection({
   category,
   recipes,
@@ -252,6 +261,13 @@ export default function App() {
   async function handleAddToCookbook(recipeId) {
     const updated = await api.updateRecipe(recipeId, { inCookbook: true, inImported: false });
     setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, inCookbook: true, inImported: false } : r)));
+  }
+
+  // Symmetric to handleAddToCookbook — moves a recipe back out of the
+  // Cookbook and into Imported (dragging it the other way).
+  async function handleAddToImported(recipeId) {
+    await api.updateRecipe(recipeId, { inImported: true, inCookbook: false });
+    setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, inImported: true, inCookbook: false } : r)));
   }
 
   async function handleMarkStaple(core) {
@@ -485,13 +501,19 @@ export default function App() {
         return;
       }
 
-      // A Cookbook card dropped back onto the Imported grid isn't a
-      // supported action.
+      // Cookbook card dropped on top of an existing Imported card — the
+      // reverse move, treat it the same as dropping on the Imported zone.
+      handleAddToImported(recipeId);
       return;
     }
 
     if (over.id === "cookbook-drop") {
       handleAddToCookbook(recipeId);
+      return;
+    }
+
+    if (over.id === "imported-drop") {
+      handleAddToImported(recipeId);
       return;
     }
 
@@ -685,31 +707,34 @@ export default function App() {
                   {showImported ? "▾" : "▸"} Imported
                 </button>
               </div>
-              {showImported &&
-                (importedRecipes.length === 0 ? (
-                  <p className="empty-state">
-                    {recipeSearch || activeTagFilter
-                      ? "No imported recipes match your search."
-                      : "No imported recipes yet — paste a URL above."}
-                  </p>
-                ) : (
-                  <SortableContext
-                    items={displayImportedRecipes.map((r) => `recipe-${r.id}`)}
-                    strategy={rectSortingStrategy}
-                  >
-                    <div className="collection-grid">
-                      {displayImportedRecipes.map((r) => (
-                        <MealCard
-                          key={r.id}
-                          recipe={r}
-                          onClick={openRecipe}
-                          onDelete={() => handleRemoveFromImported(r)}
-                          reorderable
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                ))}
+              {showImported && (
+                <ImportedDropZone>
+                  {importedRecipes.length === 0 ? (
+                    <p className="empty-state">
+                      {recipeSearch || activeTagFilter
+                        ? "No imported recipes match your search."
+                        : "No imported recipes yet — paste a URL above, or drag one back here from My Cookbook."}
+                    </p>
+                  ) : (
+                    <SortableContext
+                      items={displayImportedRecipes.map((r) => `recipe-${r.id}`)}
+                      strategy={rectSortingStrategy}
+                    >
+                      <div className="collection-grid">
+                        {displayImportedRecipes.map((r) => (
+                          <MealCard
+                            key={r.id}
+                            recipe={r}
+                            onClick={openRecipe}
+                            onDelete={() => handleRemoveFromImported(r)}
+                            reorderable
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  )}
+                </ImportedDropZone>
+              )}
             </section>
 
             <section className="recipe-section">
