@@ -8,6 +8,7 @@ import { plannerRouter } from "./routes/planner.js";
 import { dealsRouter } from "./routes/deals.js";
 import { pantryStaplesRouter } from "./routes/pantryStaples.js";
 import { grocerySectionsRouter } from "./routes/grocerySections.js";
+import { groceryCheckedRouter } from "./routes/groceryChecked.js";
 import { recipeCategoriesRouter } from "./routes/recipeCategories.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,6 +22,7 @@ app.use("/api/planner", plannerRouter);
 app.use("/api/deals", dealsRouter);
 app.use("/api/pantry-staples", pantryStaplesRouter);
 app.use("/api/grocery-sections", grocerySectionsRouter);
+app.use("/api/grocery-checked", groceryCheckedRouter);
 app.use("/api/recipe-categories", recipeCategoriesRouter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));

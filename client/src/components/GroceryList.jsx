@@ -4,27 +4,6 @@ import { api } from "../api.js";
 import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
 import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
 
-// Persisted so a backgrounded phone tab (very normal while standing in a
-// store) doesn't wipe out checkmarks mid-shopping-trip. Keyed by ingredient
-// core within a given week, so it naturally carries over between visits as
-// long as the same ingredient is still on that week's list — there's a
-// "Clear checked items" button for starting a fresh trip once a list has
-// gone stale. Scoped per weekStart (not one global key) so checking off
-// "eggs" while shopping for this week doesn't also mark it checked on a
-// different week's list.
-function checkedStorageKey(weekStart) {
-  return `mealprep-grocery-checked:${weekStart}`;
-}
-
-function loadCheckedFromStorage(weekStart) {
-  try {
-    const raw = localStorage.getItem(checkedStorageKey(weekStart));
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
 function formatQuantity(qty) {
   if (qty === null || qty === undefined) return "";
   const rounded = Math.round(qty * 100) / 100;
@@ -274,7 +253,11 @@ export function GroceryList({
   onUnassignFromSection,
 }) {
   const [deals, setDeals] = useState([]);
-  const [checked, setChecked] = useState(() => loadCheckedFromStorage(weekStart));
+  // Which ingredient cores are checked off this week — lives on the server
+  // (see api.listGroceryChecked/checkGroceryItem) so checking something off
+  // on one device shows up on another instead of being stuck in that one
+  // browser's localStorage.
+  const [checked, setChecked] = useState({});
   const [showStaples, setShowStaples] = useState(true);
   const [showSources, setShowSources] = useState(false);
 
@@ -285,17 +268,10 @@ export function GroceryList({
   // Switching weeks swaps in that week's own checkmarks instead of carrying
   // the previous week's over.
   useEffect(() => {
-    setChecked(loadCheckedFromStorage(weekStart));
+    api.listGroceryChecked(weekStart)
+      .then((cores) => setChecked(Object.fromEntries(cores.map((c) => [c, true]))))
+      .catch(() => setChecked({}));
   }, [weekStart]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(checkedStorageKey(weekStart), JSON.stringify(checked));
-    } catch {
-      // localStorage unavailable (private browsing, quota, etc.) —
-      // checkmarks just won't survive a refresh, same as before this existed.
-    }
-  }, [checked, weekStart]);
 
   const { setNodeRef: setStaplesDropRef, isOver: isOverStaples } = useDroppable({
     id: "pantry-staples-drop",
@@ -315,12 +291,23 @@ export function GroceryList({
   const leftoverCount = plannerEntries.filter((e) => e.isLeftover).length;
   const alreadyHaveCount = plannerEntries.filter((e) => e.alreadyHave).length;
 
-  function toggle(key) {
-    setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
+  // Optimistic: flip the checkbox immediately, then persist — reverting if
+  // the request fails, so a dropped connection doesn't leave the UI showing
+  // a check that never actually saved.
+  async function toggle(key) {
+    const wasChecked = !!checked[key];
+    setChecked((prev) => ({ ...prev, [key]: !wasChecked }));
+    try {
+      if (wasChecked) await api.uncheckGroceryItem(weekStart, key);
+      else await api.checkGroceryItem(weekStart, key);
+    } catch {
+      setChecked((prev) => ({ ...prev, [key]: wasChecked }));
+    }
   }
 
-  function clearChecked() {
+  async function clearChecked() {
     setChecked({});
+    await api.clearGroceryChecked(weekStart);
   }
 
   const hasChecked = Object.values(checked).some(Boolean);

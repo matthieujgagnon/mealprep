@@ -46,6 +46,17 @@ export const api = {
 
   getDeals: () => request("/deals"),
 
+  listGroceryChecked: (weekStart) =>
+    request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`),
+  checkGroceryItem: (weekStart, core) =>
+    request("/grocery-checked", { method: "POST", body: JSON.stringify({ weekStart, core }) }),
+  uncheckGroceryItem: (weekStart, core) =>
+    request(`/grocery-checked/${encodeURIComponent(weekStart)}/${encodeURIComponent(core)}`, {
+      method: "DELETE",
+    }),
+  clearGroceryChecked: (weekStart) =>
+    request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`, { method: "DELETE" }),
+
   listPantryStaples: () => request("/pantry-staples"),
   addPantryStaple: (core) =>
     request("/pantry-staples", { method: "POST", body: JSON.stringify({ core }) }),
