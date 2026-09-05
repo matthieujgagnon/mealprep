@@ -10,10 +10,13 @@
     "prisma:migrate": "prisma migrate dev --name init"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
     "@prisma/client": "^5.20.0",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
-    "express": "^4.21.0"
+    "express": "^4.21.0",
+    "multer": "^2.0.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "prisma": "^5.20.0"

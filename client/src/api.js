@@ -45,6 +45,15 @@ export const api = {
   removeFromPlanner: (id) => request(`/planner/${id}`, { method: "DELETE" }),
 
   getDeals: () => request("/deals"),
+  uploadFlyer: async (store, file) => {
+    const form = new FormData();
+    form.append("store", store);
+    form.append("pdf", file);
+    const res = await fetch(`${BASE}/flyers/upload`, { method: "POST", body: form });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+    return data;
+  },
 
   listGroceryChecked: (weekStart) =>
     request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`),

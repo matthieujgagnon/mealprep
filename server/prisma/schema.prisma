@@ -107,6 +107,22 @@ model GroceryCheckedItem {
   @@unique([weekStart, core])
 }
 
+// A single deal extracted from an uploaded flyer PDF via Claude, replacing
+// the old hardcoded MOCK_DEALS array. Re-uploading a flyer for a store
+// replaces that store's rows outright, since a new flyer supersedes the old
+// one rather than adding to it.
+model FlyerDeal {
+  id         String   @id @default(cuid())
+  store      String
+  category   String // "protein" | "produce" | "dairy" | "bakery" | "staple" | "other"
+  item       String
+  price      String // display string as printed on the flyer, e.g. "$4.99/lb"
+  validUntil String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
+  createdAt  DateTime @default(now())
+
+  @@index([store])
+}
+
 // A recipe card placed on a specific day of a specific week's planner.
 // weekStart is the Monday of that week, "YYYY-MM-DD" — a plain calendar-date
 // string rather than a DateTime, so there's no timezone conversion to get
