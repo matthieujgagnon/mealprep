@@ -241,6 +241,99 @@ export function findRecipesByIngredients(haveNames, allRecipes, limit = 30) {
     .slice(0, limit);
 }
 
+// Flyers name things the way a store shelf does, not the way a recipe does:
+// "Broccoli crowns," "Baby spinach," "Russet potatoes, 10 lb bag." None of
+// those qualifiers change what you'd cook with, but every one of them breaks
+// a straight core comparison against a recipe's "broccoli" / "spinach" /
+// "potatoes" — 9 of 15 realistic flyer phrasings missed before this existed.
+//
+// Deliberately NOT folded into groceryList.js's canonicalize(): that stays
+// literal on purpose (see its own notes), and recipe wording never carries
+// this kind of retail packaging noise. Stripping happens on the deal side of
+// the match only.
+const RETAIL_WORDS = new Set([
+  // cut / form
+  "crown", "crowns", "floret", "florets", "spear", "spears", "half", "halves",
+  "piece", "pieces", "cut", "cuts", "tip", "tips",
+  // grade / marketing adjectives
+  "fresh", "frozen", "seedless", "baby", "english", "large", "jumbo", "small",
+  "medium", "mini", "sweet", "old", "mild", "aged", "organic", "premium",
+  "select", "assorted", "ripe", "natural", "classic", "russet",
+  // packaging
+  "pack", "bag", "box", "carton", "tray", "dozen", "case", "bunch", "each",
+  "value", "family", "economy", "club",
+]);
+
+// Packaging sizes flyers tack on: "1 lb", "10 lb bag", "900 g", "500ml".
+const SIZE_TOKEN = /^\d+(\.\d+)?(g|kg|ml|l|lb|lbs|oz|ct|pk)?$/;
+
+// The deal-side counterpart to core(): strips retail noise, then hands off to
+// the same core() every other matcher here uses, so a deal and a recipe end
+// up compared on identical terms.
+function dealCore(itemName) {
+  const stripped = itemName
+    .toLowerCase()
+    // Everything before the first comma or bracket is the product; the rest
+    // is packaging ("Ground beef, extra lean", "Strawberries (1 lb)").
+    .split(/[,([]/)[0]
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9%.-]/g, ""))
+    .filter((w) => w && !RETAIL_WORDS.has(w) && !SIZE_TOKEN.test(w))
+    .join(" ");
+  return core(stripped || itemName);
+}
+
+// Matches this week's flyer deals against the cookbook: "chicken is $2.99/lb
+// — here's what you can cook with it." Deals are grouped by ingredient core
+// rather than listed one by one, so the same ingredient on sale at three
+// stores reads as one thing to cook with at three prices, not three
+// unrelated rows.
+//
+// Ordering puts perishables first for the same reason findSimilarRecipes
+// weights them: a protein or produce deal is the one actually worth
+// building a meal around, while a sale on flour is just a sale on flour.
+export function matchDealsToRecipes(deals, allRecipes, recipeLimit = 8) {
+  const coreToRecipes = new Map();
+  for (const r of allRecipes) {
+    if (r.isPlaceholder) continue;
+    for (const c of recipeCores(r)) {
+      if (!coreToRecipes.has(c)) coreToRecipes.set(c, []);
+      coreToRecipes.get(c).push(r);
+    }
+  }
+
+  const groups = new Map();
+  const unmatched = [];
+
+  for (const deal of deals) {
+    const c = dealCore(deal.item);
+    const matches = c ? coreToRecipes.get(c) : null;
+    if (!matches?.length) {
+      unmatched.push(deal);
+      continue;
+    }
+    if (!groups.has(c)) {
+      groups.set(c, {
+        core: c,
+        label: capitalize(c),
+        deals: [],
+        recipes: matches.slice(0, recipeLimit),
+        recipeCount: matches.length,
+      });
+    }
+    groups.get(c).deals.push(deal);
+  }
+
+  const matched = [...groups.values()].sort(
+    (a, b) =>
+      ingredientWeight(b.core) - ingredientWeight(a.core) ||
+      b.recipeCount - a.recipeCount ||
+      a.label.localeCompare(b.label)
+  );
+
+  return { matched, unmatched };
+}
+
 // Perishable ingredients used somewhere in this week's plan that only ONE
 // recipe calls for — i.e. likely to go to waste once that meal's made,
 // since nothing else in the week uses the rest of it up. Powers the

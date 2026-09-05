@@ -2103,31 +2103,94 @@ input[type="date"].planner-week-picker {
   text-align: center;
 }
 
-/* ---------- Price tag (deals) ---------- */
+/* ---------- Flyers tab (cook what's on sale) ---------- */
 
-.deals-section {
-  margin-bottom: 26px;
-}
-
-.deals-header {
+.flyer-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 4px;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
-.deals-heading {
+.flyer-heading {
   font-family: var(--font-display);
-  font-size: 18px;
-  margin: 0;
+  font-size: 20px;
+  margin: 0 0 4px;
 }
 
-.deals-sub {
+.flyer-sub {
   font-size: 13px;
   color: var(--paper-soft);
   opacity: 0.75;
-  margin: 0 0 12px;
+  margin: 0;
+}
+
+.flyer-store-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.flyer-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Each ingredient on sale is its own block: the ingredient and its prices on
+   top, the recipes that use it underneath — the whole point of the tab is
+   reading down from "chicken is cheap" to "so cook one of these." */
+.flyer-match {
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+/* Name and prices sit together on one line — "Chicken · $4.99 Metro ·
+   $2.99 IGA" reads as one fact. Pushing the prices to the far edge with
+   space-between just made them look unrelated to the ingredient. */
+.flyer-match-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.flyer-match-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  margin: 0;
+}
+
+.flyer-match-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flyer-match-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--paper-soft);
+  opacity: 0.7;
+  margin: 8px 0 12px;
+}
+
+.flyer-match-recipes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.flyer-other {
+  margin-top: 26px;
+}
+
+.flyer-other .deals-row {
+  margin-top: 12px;
 }
 
 .flyer-upload-form {
