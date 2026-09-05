@@ -94,6 +94,19 @@ model GroceryAssignment {
   createdAt DateTime       @default(now())
 }
 
+// A checked-off grocery item for a given week. Existence of a row = checked;
+// unchecking deletes it. Previously lived in the browser's localStorage
+// (per-device only), which meant checking something off on one phone didn't
+// show up on another — this table is what makes the list actually sync.
+model GroceryCheckedItem {
+  id        String   @id @default(cuid())
+  weekStart String
+  core      String // normalized ingredient name, matches the grocery list's item.key
+  createdAt DateTime @default(now())
+
+  @@unique([weekStart, core])
+}
+
 // A recipe card placed on a specific day of a specific week's planner.
 // weekStart is the Monday of that week, "YYYY-MM-DD" — a plain calendar-date
 // string rather than a DateTime, so there's no timezone conversion to get
