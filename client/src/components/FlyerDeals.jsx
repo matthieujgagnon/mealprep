@@ -86,6 +86,20 @@ export function FlyerDeals({ recipes, onSelectRecipe }) {
   const [storeFilter, setStoreFilter] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [openOther, setOpenOther] = useState(() => new Set());
+  const [clearing, setClearing] = useState(false);
+
+  async function clearAllDeals() {
+    if (!window.confirm("Clear all uploaded flyer deals? This can't be undone.")) return;
+    setClearing(true);
+    try {
+      await api.clearFlyerDeals();
+      setStoreFilter(null);
+      setCategoryFilter(null);
+      loadDeals();
+    } finally {
+      setClearing(false);
+    }
+  }
 
   function toggleOther(category) {
     setOpenOther((prev) => {
@@ -132,7 +146,14 @@ export function FlyerDeals({ recipes, onSelectRecipe }) {
                 `${cookableCount} match recipes in your cookbook.`}
           </p>
         </div>
-        <UploadFlyerForm onUploaded={loadDeals} />
+        <div className="flyer-header-actions">
+          {!deals.isMockData && (
+            <button type="button" className="btn subtle" onClick={clearAllDeals} disabled={clearing}>
+              {clearing ? "Clearing…" : "Clear all deals"}
+            </button>
+          )}
+          <UploadFlyerForm onUploaded={loadDeals} />
+        </div>
       </div>
 
       {deals.stores.length > 1 && (

@@ -54,6 +54,7 @@ export const api = {
     if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
     return data;
   },
+  clearFlyerDeals: () => request("/flyers", { method: "DELETE" }),
 
   listGroceryChecked: (weekStart) =>
     request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`),
