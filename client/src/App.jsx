@@ -11,7 +11,7 @@ import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { PlannerBoard } from "./components/PlannerBoard.jsx";
 import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
-import { DealsPanel } from "./components/DealsPanel.jsx";
+import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
 
 // Rendered inside <DragOverlay> — a floating copy that actually follows the
@@ -653,10 +653,16 @@ export default function App() {
             >
               Grocery List
             </button>
+            <button
+              className={`tab${tab === "flyers" ? " active" : ""}`}
+              onClick={() => setTab("flyers")}
+            >
+              Flyers
+            </button>
           </nav>
         </header>
 
-        <DealsPanel />
+        {tab === "flyers" && <FlyerDeals recipes={recipes} onSelectRecipe={openRecipe} />}
 
         {tab === "makeable" && (
           <WhatCanIMake
