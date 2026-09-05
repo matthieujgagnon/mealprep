@@ -115,7 +115,8 @@ model FlyerDeal {
   id         String   @id @default(cuid())
   store      String
   category   String // "protein" | "produce" | "dairy" | "bakery" | "staple" | "other"
-  item       String
+  item       String // displayed exactly as printed on the flyer, in whatever language that is
+  matchName  String? // item translated to plain English grocery terms (e.g. "brocoli" -> "broccoli"), for matching against recipe ingredient names; null for rows from before this field existed, or when extraction didn't provide one — falls back to item
   price      String // display string as printed on the flyer, e.g. "$4.99/lb"
   validUntil String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
   createdAt  DateTime @default(now())

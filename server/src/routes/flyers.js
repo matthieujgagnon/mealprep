@@ -24,6 +24,14 @@ const DEALS_SCHEMA = {
         type: Type.OBJECT,
         properties: {
           item: { type: Type.STRING },
+          matchName: {
+            type: Type.STRING,
+            description:
+              "item translated to a plain English grocery-ingredient name (lowercase, no brand, " +
+              "no cut/packaging detail beyond what a recipe would name it - e.g. 'brocoli' -> " +
+              "'broccoli', 'poitrine de poulet désossée' -> 'chicken breast'). If item is already " +
+              "in English, repeat it here in the same simplified form.",
+          },
           price: { type: Type.STRING },
           category: { type: Type.STRING, enum: CATEGORIES },
           validUntil: {
@@ -31,7 +39,7 @@ const DEALS_SCHEMA = {
             description: "YYYY-MM-DD if the flyer states a valid-until date, else an empty string",
           },
         },
-        required: ["item", "price", "category", "validUntil"],
+        required: ["item", "matchName", "price", "category", "validUntil"],
       },
     },
   },
@@ -65,12 +73,15 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
             mimeType: "application/pdf",
           },
         },
-        "You extract grocery flyer specials from a scanned/printed flyer PDF. " +
-          "List every distinct priced item you can read. For each: a short item " +
-          "name as printed (e.g. 'Boneless chicken breast'), the price exactly as " +
-          "printed including any unit (e.g. '$4.99/lb', '2 for $5'), a category, " +
-          "and the flyer's stated valid-until date if one is printed. Do not " +
-          "invent items or prices that aren't legible.",
+        "You extract grocery flyer specials from a scanned/printed flyer PDF, " +
+          "which may be in French, English, or another language. List every " +
+          "distinct priced item you can read. For each: a short item name as " +
+          "printed on the flyer (e.g. 'Boneless chicken breast' or 'Brocoli'), " +
+          "an English translation of that name for ingredient matching (see " +
+          "matchName below), the price exactly as printed including any unit " +
+          "(e.g. '$4.99/lb', '2 for $5'), a category, and the flyer's stated " +
+          "valid-until date if one is printed. Do not invent items or prices " +
+          "that aren't legible.",
       ],
       config: {
         responseMimeType: "application/json",
@@ -86,6 +97,7 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
     const storeName = store.trim();
     const deals = parsed.deals.map((d) => ({
       item: d.item,
+      matchName: d.matchName || d.item,
       price: d.price,
       category: CATEGORIES.includes(d.category) ? d.category : "other",
       validUntil: d.validUntil || null,
