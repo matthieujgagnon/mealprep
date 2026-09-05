@@ -85,6 +85,16 @@ export function FlyerDeals({ recipes, onSelectRecipe }) {
   const [deals, setDeals] = useState(null);
   const [storeFilter, setStoreFilter] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState(null);
+  const [openOther, setOpenOther] = useState(() => new Set());
+
+  function toggleOther(category) {
+    setOpenOther((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }
 
   function loadDeals() {
     api.getDeals().then(setDeals).catch(() => setDeals(null));
@@ -175,49 +185,70 @@ export function FlyerDeals({ recipes, onSelectRecipe }) {
         </p>
       ) : (
         <div className="flyer-matches">
-          {sections.map((section) => (
-            <div key={section.category}>
-              {categoryFilter === null && <p className="cat-eyebrow">{section.label}</p>}
-              {section.groups.map((group, i) => (
-                <section
-                  key={group.core}
-                  className="flyer-match"
-                  style={i > 0 ? { marginTop: 12 } : undefined}
-                >
-                  <div className="flyer-match-header">
-                    <h3 className="flyer-match-title">{group.label}</h3>
-                    <div className="flyer-match-prices">
-                      {group.deals.map((d) => (
-                        <span key={d.id} className="price-pill">
-                          <span className="item">{d.item}</span>
-                          <span className="meta">
-                            {d.price} · {d.store}
+          {sections.map((section) => {
+            const cookable = section.groups.filter((g) => g.recipeCount > 0);
+            const rest = section.groups.filter((g) => g.recipeCount === 0);
+            const isOpen = openOther.has(section.category);
+            return (
+              <div key={section.category}>
+                {categoryFilter === null && <p className="cat-eyebrow">{section.label}</p>}
+                {cookable.map((group, i) => (
+                  <section
+                    key={group.core}
+                    className="flyer-match"
+                    style={i > 0 ? { marginTop: 12 } : undefined}
+                  >
+                    <div className="flyer-match-header">
+                      <h3 className="flyer-match-title">{group.label}</h3>
+                      <div className="flyer-match-prices">
+                        {group.deals.map((d) => (
+                          <span key={d.id} className="price-pill">
+                            <span className="item">{d.item}</span>
+                            <span className="meta">
+                              {d.price} · {d.store}
+                            </span>
                           </span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  {group.recipeCount === 0 ? (
-                    <p className="flyer-match-count flyer-match-none">
-                      No recipes in your cookbook use this yet
-                    </p>
-                  ) : (
-                    <>
-                      <p className="flyer-match-count">
-                        {group.recipeCount} recipe{group.recipeCount === 1 ? "" : "s"} use
-                        {group.recipeCount === 1 ? "s" : ""} this
-                      </p>
-                      <div className="flyer-match-recipes">
-                        {group.recipes.map((r) => (
-                          <MealCard key={r.id} recipe={r} compact onClick={() => onSelectRecipe(r)} />
                         ))}
                       </div>
-                    </>
-                  )}
-                </section>
-              ))}
-            </div>
-          ))}
+                    </div>
+                    <p className="flyer-match-count">
+                      {group.recipeCount} recipe{group.recipeCount === 1 ? "" : "s"} use
+                      {group.recipeCount === 1 ? "s" : ""} this
+                    </p>
+                    <div className="flyer-match-recipes">
+                      {group.recipes.map((r) => (
+                        <MealCard key={r.id} recipe={r} compact onClick={() => onSelectRecipe(r)} />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+                {rest.length > 0 && (
+                  <div className="flyer-rest" style={cookable.length > 0 ? { marginTop: 12 } : undefined}>
+                    <button
+                      type="button"
+                      className="recipe-section-toggle"
+                      onClick={() => toggleOther(section.category)}
+                    >
+                      {isOpen ? "▾" : "▸"} {rest.length} more ingredient{rest.length === 1 ? "" : "s"} in{" "}
+                      {section.label} — nothing in your cookbook uses these
+                    </button>
+                    {isOpen && (
+                      <div className="flyer-rest-prices">
+                        {rest.flatMap((g) => g.deals).map((d) => (
+                          <span key={d.id} className="price-pill">
+                            <span className="item">{d.item}</span>
+                            <span className="meta">
+                              {d.price} · {d.store}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
