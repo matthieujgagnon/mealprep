@@ -18,6 +18,25 @@ function makeLocalId() {
 const emptyIngredient = () => ({ _id: makeLocalId(), name: "", quantity: "", unit: "", notes: "" });
 const emptySection = () => ({ _id: makeLocalId(), isSection: true, name: "" });
 
+// Mirrors the server's scrapeRecipe.js stripStrayParens — some imported
+// recipes' notes carry one unmatched paren left over from the source site's
+// own markup (e.g. "(455 g) cubed)", a metric conversion and a prep note
+// merged into one span). Runs before stripWrappingParens below so opening
+// the edit form for one of these already shows the cleaned-up text.
+function stripStrayParens(text) {
+  let result = text;
+  const countOpen = () => (result.match(/\(/g) || []).length;
+  const countClose = () => (result.match(/\)/g) || []).length;
+
+  while (result.trimEnd().endsWith(")") && countClose() > countOpen()) {
+    result = result.trimEnd().slice(0, -1).trimEnd();
+  }
+  while (result.trimStart().startsWith("(") && countOpen() > countClose()) {
+    result = result.trimStart().slice(1).trimStart();
+  }
+  return result;
+}
+
 // Strips a single layer of wrapping parens from a notes value, if present —
 // e.g. someone typing "(melted)" out of habit from the placeholder text
 // ("Notes (e.g. melted)" is a format example, not a literal instruction to
@@ -25,7 +44,7 @@ const emptySection = () => ({ _id: makeLocalId(), isSection: true, name: "" });
 // does the same normalization for imported recipes.
 function stripWrappingParens(text) {
   if (!text) return text;
-  const trimmed = text.trim();
+  const trimmed = stripStrayParens(text.trim());
   const match = trimmed.match(/^\(([^()]+)\)$/);
   return match ? match[1].trim() : trimmed;
 }

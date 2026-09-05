@@ -341,9 +341,16 @@ function extractDomImages($, baseUrl) {
 // out of surrounding text. The app's own italic styling is what visually
 // separates a note from the ingredient name, so a redundant paren baked
 // into the stored value is just noise.
+//
+// Runs stripStrayParens first: some sites' notes markup mixes a metric
+// conversion into the same span as the note ("(455 g) cubed)"), leaving one
+// unmatched trailing ")" that the plain full-wrap check below can't see
+// (the string as a whole isn't just "(...)") — without this it passed
+// through untouched, and then the app's own display code wrapped it in
+// *another* layer of parens on top, showing "((455 g) cubed))" on the card.
 function stripWrappingParens(text) {
   if (!text) return text;
-  const trimmed = text.trim();
+  const trimmed = stripStrayParens(text.trim());
   const match = trimmed.match(/^\(([^()]+)\)$/);
   return match ? match[1].trim() : trimmed;
 }
