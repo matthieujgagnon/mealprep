@@ -2220,20 +2220,21 @@ input[type="date"].planner-week-picker {
   margin: 8px 0 12px;
 }
 
-/* A group with no cookbook match yet still gets a section (so its category
-   isn't just missing) — full opacity and a plain sans font instead of the
-   mono/faded "N recipes" treatment, since it's prose, not a stat. */
-.flyer-match-none {
-  font-family: var(--font-body);
-  color: var(--paper-soft);
-  opacity: 1;
-  font-style: italic;
-}
-
 .flyer-match-recipes {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
+}
+
+/* Deals nothing in the cookbook uses yet, collapsed into one line per
+   category instead of a full block each — a real flyer runs 30-100+ items
+   per department, most of which won't match a modest cookbook, so giving
+   each its own "no recipes yet" row buried the few that actually matched. */
+.flyer-rest-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .flyer-upload-form {
