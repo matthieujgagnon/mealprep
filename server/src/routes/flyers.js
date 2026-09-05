@@ -129,3 +129,11 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
     res.status(500).json({ error: "Failed to process flyer." });
   }
 });
+
+// DELETE /api/flyers - clear every uploaded flyer's deals at once (e.g. to
+// drop stale rows extracted before a matching fix, without re-uploading
+// each store one at a time).
+flyersRouter.delete("/", async (req, res) => {
+  await prisma.flyerDeal.deleteMany({});
+  res.status(204).send();
+});
