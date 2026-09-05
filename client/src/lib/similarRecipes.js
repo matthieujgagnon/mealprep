@@ -309,7 +309,13 @@ export function groupDealsByIngredient(deals, allRecipes, recipeLimit = 8) {
   const groups = new Map();
 
   for (const deal of deals) {
-    const c = dealCore(deal.item) || deal.item.toLowerCase();
+    // matchName is an English translation of item, filled in at extraction
+    // time so a French (or other-language) flyer still matches English
+    // recipe ingredients — item itself stays untranslated for display,
+    // since that's the text the user needs to recognize in-store. Falls
+    // back to item for deals stored before matchName existed.
+    const matchText = deal.matchName || deal.item;
+    const c = dealCore(matchText) || matchText.toLowerCase();
     const matches = coreToRecipes.get(c) || [];
     if (!groups.has(c)) {
       groups.set(c, {
