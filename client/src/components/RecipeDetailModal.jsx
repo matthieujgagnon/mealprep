@@ -278,7 +278,14 @@ export function RecipeDetailModal({
                     <span>
                       {ing.name}
                       {ing.notes && (
-                        <span className="ingredient-notes"> ({ing.notes})</span>
+                        // Shown verbatim — no parens added here. Whatever's
+                        // stored is whatever the edit form shows and saved;
+                        // adding our own wrapping on top of that was how a
+                        // note that already carried a stray "(...)" from an
+                        // import (or a user's own typing) turned into
+                        // "((...))" on the card. The italic/muted styling
+                        // below is what sets a note apart from the name.
+                        <span className="ingredient-notes"> {ing.notes}</span>
                       )}
                       {perishable && <span className="perishable-dot" title="Perishable ingredient" />}
                     </span>
