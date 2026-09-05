@@ -526,8 +526,13 @@ export default function App() {
     const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
     if (!cellMatch) return;
 
-    const dayOfWeek = Number(cellMatch[1]);
-    const mealType = cellMatch[2];
+    await handleAddToPlanner(recipeId, Number(cellMatch[1]), cellMatch[2]);
+  }
+
+  // Shared by the planner drag-and-drop above and any quick "add to
+  // planner" action elsewhere (e.g. the Flyers tab) that isn't dragging
+  // onto a visible planner cell.
+  async function handleAddToPlanner(recipeId, dayOfWeek, mealType) {
     const entry = await api.placeOnPlanner({ recipeId, weekStart, dayOfWeek, mealType });
     setPlannerEntries((prev) => [...prev, entry]);
   }
@@ -662,7 +667,13 @@ export default function App() {
           </nav>
         </header>
 
-        {tab === "flyers" && <FlyerDeals recipes={recipes} onSelectRecipe={openRecipe} />}
+        {tab === "flyers" && (
+          <FlyerDeals
+            recipes={recipes}
+            onSelectRecipe={openRecipe}
+            onAddToPlanner={handleAddToPlanner}
+          />
+        )}
 
         {tab === "makeable" && (
           <WhatCanIMake

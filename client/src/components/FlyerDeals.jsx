@@ -16,6 +16,73 @@ const CATEGORY_LABELS = {
   other: "Other",
 };
 
+// Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
+// per the schema, mealType id matches PlannerEntry.mealType).
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MEAL_TYPES = [
+  { id: "breakfast", label: "Breakfast" },
+  { id: "lunch", label: "Lunch" },
+  { id: "dinner", label: "Supper" },
+];
+
+// A quick way to place a matched recipe onto this week's planner without
+// leaving the Flyers tab — click-to-reveal a day+meal picker rather than
+// requiring a drag, since there's no planner board in view here to drag
+// onto. Sits below the MealCard, not inside it (MealCard stays a plain
+// reusable card with its own onClick to open the recipe).
+function AddToPlannerButton({ recipe, onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [day, setDay] = useState(0);
+  const [meal, setMeal] = useState("dinner");
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  async function handleAdd() {
+    setAdding(true);
+    try {
+      await onAdd(recipe.id, day, meal);
+      setAdded(true);
+      setOpen(false);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  if (added) {
+    return <p className="flyer-added-note">✓ Added to {WEEKDAY_LABELS[day]}</p>;
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="btn subtle btn-sm flyer-add-btn" onClick={() => setOpen(true)}>
+        + Add to planner
+      </button>
+    );
+  }
+
+  return (
+    <div className="flyer-add-form">
+      <select value={day} onChange={(e) => setDay(Number(e.target.value))}>
+        {WEEKDAY_LABELS.map((label, i) => (
+          <option key={label} value={i}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <select value={meal} onChange={(e) => setMeal(e.target.value)}>
+        {MEAL_TYPES.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+      <button type="button" className="btn primary btn-sm" onClick={handleAdd} disabled={adding}>
+        {adding ? "…" : "Add"}
+      </button>
+    </div>
+  );
+}
+
 function UploadFlyerForm({ onUploaded }) {
   const [open, setOpen] = useState(false);
   const [store, setStore] = useState("");
@@ -81,12 +148,22 @@ function UploadFlyerForm({ onUploaded }) {
   );
 }
 
-export function FlyerDeals({ recipes, onSelectRecipe }) {
+export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
   const [deals, setDeals] = useState(null);
   const [storeFilter, setStoreFilter] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [openOther, setOpenOther] = useState(() => new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState(() => new Set());
   const [clearing, setClearing] = useState(false);
+
+  function toggleCategory(category) {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }
 
   async function clearAllDeals() {
     if (!window.confirm("Clear all uploaded flyer deals? This can't be undone.")) return;
@@ -210,62 +287,78 @@ export function FlyerDeals({ recipes, onSelectRecipe }) {
             const cookable = section.groups.filter((g) => g.recipeCount > 0);
             const rest = section.groups.filter((g) => g.recipeCount === 0);
             const isOpen = openOther.has(section.category);
+            const isCollapsed = categoryFilter === null && collapsedCategories.has(section.category);
             return (
               <div key={section.category}>
-                {categoryFilter === null && <p className="cat-eyebrow">{section.label}</p>}
-                {cookable.map((group, i) => (
-                  <section
-                    key={group.core}
-                    className="flyer-match"
-                    style={i > 0 ? { marginTop: 12 } : undefined}
+                {categoryFilter === null && (
+                  <button
+                    type="button"
+                    className="cat-eyebrow"
+                    onClick={() => toggleCategory(section.category)}
                   >
-                    <div className="flyer-match-header">
-                      <h3 className="flyer-match-title">{group.label}</h3>
-                      <div className="flyer-match-prices">
-                        {group.deals.map((d) => (
-                          <span key={d.id} className="price-pill">
-                            <span className="item">{d.item}</span>
-                            <span className="meta">
-                              {d.price} · {d.store}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <p className="flyer-match-count">
-                      {group.recipeCount} recipe{group.recipeCount === 1 ? "" : "s"} use
-                      {group.recipeCount === 1 ? "s" : ""} this
-                    </p>
-                    <div className="flyer-match-recipes">
-                      {group.recipes.map((r) => (
-                        <MealCard key={r.id} recipe={r} compact onClick={() => onSelectRecipe(r)} />
-                      ))}
-                    </div>
-                  </section>
-                ))}
-                {rest.length > 0 && (
-                  <div className="flyer-rest" style={cookable.length > 0 ? { marginTop: 12 } : undefined}>
-                    <button
-                      type="button"
-                      className="recipe-section-toggle"
-                      onClick={() => toggleOther(section.category)}
-                    >
-                      {isOpen ? "▾" : "▸"} {rest.length} more ingredient{rest.length === 1 ? "" : "s"} in{" "}
-                      {section.label} — nothing in your cookbook uses these
-                    </button>
-                    {isOpen && (
-                      <div className="flyer-rest-prices">
-                        {rest.flatMap((g) => g.deals).map((d) => (
-                          <span key={d.id} className="price-pill">
-                            <span className="item">{d.item}</span>
-                            <span className="meta">
-                              {d.price} · {d.store}
-                            </span>
-                          </span>
-                        ))}
+                    {isCollapsed ? "▸" : "▾"} {section.label}
+                  </button>
+                )}
+                {!isCollapsed && (
+                  <>
+                    {cookable.map((group, i) => (
+                      <section
+                        key={group.core}
+                        className="flyer-match"
+                        style={i > 0 ? { marginTop: 12 } : undefined}
+                      >
+                        <div className="flyer-match-header">
+                          <h3 className="flyer-match-title">{group.label}</h3>
+                          <div className="flyer-match-prices">
+                            {group.deals.map((d) => (
+                              <span key={d.id} className="price-pill">
+                                <span className="item">{d.item}</span>
+                                <span className="meta">
+                                  {d.price} · {d.store}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="flyer-match-count">
+                          {group.recipeCount} recipe{group.recipeCount === 1 ? "" : "s"} use
+                          {group.recipeCount === 1 ? "s" : ""} this
+                        </p>
+                        <div className="flyer-match-recipes">
+                          {group.recipes.map((r) => (
+                            <div key={r.id} className="flyer-recipe-cell">
+                              <MealCard recipe={r} compact onClick={() => onSelectRecipe(r)} />
+                              <AddToPlannerButton recipe={r} onAdd={onAddToPlanner} />
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                    {rest.length > 0 && (
+                      <div className="flyer-rest" style={cookable.length > 0 ? { marginTop: 12 } : undefined}>
+                        <button
+                          type="button"
+                          className="recipe-section-toggle"
+                          onClick={() => toggleOther(section.category)}
+                        >
+                          {isOpen ? "▾" : "▸"} {rest.length} more ingredient{rest.length === 1 ? "" : "s"} in{" "}
+                          {section.label} — nothing in your cookbook uses these
+                        </button>
+                        {isOpen && (
+                          <div className="flyer-rest-prices">
+                            {rest.flatMap((g) => g.deals).map((d) => (
+                              <span key={d.id} className="price-pill">
+                                <span className="item">{d.item}</span>
+                                <span className="meta">
+                                  {d.price} · {d.store}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             );
