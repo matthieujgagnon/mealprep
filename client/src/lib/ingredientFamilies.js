@@ -56,6 +56,17 @@ const SYNONYM_WORDS = {
   "double cream": "heavy cream", "heavy whipping cream": "heavy cream",
 };
 
+// Broths, stocks, and bouillon name-drop a protein but aren't a stand-in for
+// having that raw protein on hand — having raw chicken breast in the fridge
+// doesn't mean "chicken broth" is covered, and vice versa. Without this,
+// "chicken broth" collapsed to the same "chicken" family as an actual cut of
+// chicken below, so Makeable would call a soup recipe makeable off nothing
+// but raw chicken breast, or a stir-fry "using up" chicken because a
+// completely unrelated recipe happened to need chicken stock.
+const DERIVED_PRODUCT_WORDS = new Set([
+  "broth", "stock", "bouillon", "base", "consomme", "consommé",
+]);
+
 // Given a canonicalize()-produced core string, returns the broader family
 // key to use for reuse/similarity matching. Falls back to the core itself
 // when nothing more specific is known, so unmapped ingredients still match
@@ -67,6 +78,8 @@ export function familyKey(core) {
   if (SYNONYM_WORDS[core]) return SYNONYM_WORDS[core];
 
   const words = core.split(" ");
+  if (words.some((w) => DERIVED_PRODUCT_WORDS.has(w))) return core;
+
   for (const w of words) {
     if (FAMILY_WORDS.has(w)) return w;
   }
