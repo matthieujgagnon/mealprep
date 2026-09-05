@@ -2134,6 +2134,47 @@ input[type="date"].planner-week-picker {
   margin-bottom: 18px;
 }
 
+/* Category sub-nav — same pill anatomy as .tabs/.tab, one size down, since
+   this narrows the same page rather than switching to a different one. */
+.cat-tabs {
+  display: flex;
+  gap: 3px;
+  background: var(--bg-soft);
+  padding: 3px;
+  border-radius: 9px;
+  flex-wrap: wrap;
+  width: fit-content;
+  margin-bottom: 22px;
+}
+
+.cat-tab {
+  background: none;
+  border: none;
+  color: var(--paper-soft);
+  padding: 6px 13px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cat-tab.active {
+  background: var(--mustard);
+  color: #f3f3fb;
+}
+
+/* Category label shown above each category's ingredient blocks while
+   viewing "All" — hidden once a single category tab narrows the view,
+   since the active tab already says it. */
+.cat-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sage);
+  margin: 0 0 10px;
+}
+
 .flyer-matches {
   display: flex;
   flex-direction: column;
@@ -2179,18 +2220,20 @@ input[type="date"].planner-week-picker {
   margin: 8px 0 12px;
 }
 
+/* A group with no cookbook match yet still gets a section (so its category
+   isn't just missing) — full opacity and a plain sans font instead of the
+   mono/faded "N recipes" treatment, since it's prose, not a stat. */
+.flyer-match-none {
+  font-family: var(--font-body);
+  color: var(--paper-soft);
+  opacity: 1;
+  font-style: italic;
+}
+
 .flyer-match-recipes {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
-}
-
-.flyer-other {
-  margin-top: 26px;
-}
-
-.flyer-other .deals-row {
-  margin-top: 12px;
 }
 
 .flyer-upload-form {
@@ -2216,58 +2259,32 @@ input[type="date"].planner-week-picker {
   color: var(--tomato);
 }
 
-.deals-row {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-}
-
-.price-tag {
-  position: relative;
+/* Compact price pill — item and price/store on two tight lines, no
+   decorative flourish. Replaced an earlier chunkier tag (150px min-width,
+   each of item/price/store on its own line) that read as too heavy sitting
+   next to an ingredient name. */
+.price-pill {
   flex: 0 0 auto;
   background: var(--mustard);
   color: #eef0ff;
-  padding: 10px 14px 10px 20px;
-  border-radius: 2px 8px 8px 2px;
-  font-size: 13px;
-  min-width: 150px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
-.price-tag::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  background: var(--paper);
-  border-radius: 50%;
-}
-
-.price-tag.sale {
-  background: var(--tomato);
-  color: #fbe9e6;
-}
-
-.price-tag .item {
+.price-pill .item {
+  font-size: 11px;
   font-weight: 600;
-  display: block;
-  margin-bottom: 2px;
+  white-space: nowrap;
 }
 
-.price-tag .price {
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.price-tag .store {
+.price-pill .meta {
   font-family: var(--font-mono);
   font-size: 10px;
-  opacity: 0.75;
-  display: block;
-  margin-top: 2px;
+  opacity: 0.85;
+  white-space: nowrap;
 }
 
 /* ---------- Recipe detail modal ---------- */

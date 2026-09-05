@@ -287,12 +287,16 @@ function dealCore(itemName) {
 // — here's what you can cook with it." Deals are grouped by ingredient core
 // rather than listed one by one, so the same ingredient on sale at three
 // stores reads as one thing to cook with at three prices, not three
-// unrelated rows.
+// unrelated rows. Every deal gets a group — recipeCount is 0 (and recipes
+// empty) when nothing in the cookbook uses it yet — rather than splitting
+// off a separate "unmatched" bucket, so browsing by category (protein,
+// produce, ...) shows the whole flyer, not just the parts you can already
+// cook.
 //
 // Ordering puts perishables first for the same reason findSimilarRecipes
 // weights them: a protein or produce deal is the one actually worth
 // building a meal around, while a sale on flour is just a sale on flour.
-export function matchDealsToRecipes(deals, allRecipes, recipeLimit = 8) {
+export function groupDealsByIngredient(deals, allRecipes, recipeLimit = 8) {
   const coreToRecipes = new Map();
   for (const r of allRecipes) {
     if (r.isPlaceholder) continue;
@@ -303,19 +307,15 @@ export function matchDealsToRecipes(deals, allRecipes, recipeLimit = 8) {
   }
 
   const groups = new Map();
-  const unmatched = [];
 
   for (const deal of deals) {
-    const c = dealCore(deal.item);
-    const matches = c ? coreToRecipes.get(c) : null;
-    if (!matches?.length) {
-      unmatched.push(deal);
-      continue;
-    }
+    const c = dealCore(deal.item) || deal.item.toLowerCase();
+    const matches = coreToRecipes.get(c) || [];
     if (!groups.has(c)) {
       groups.set(c, {
         core: c,
         label: capitalize(c),
+        category: deal.category,
         deals: [],
         recipes: matches.slice(0, recipeLimit),
         recipeCount: matches.length,
@@ -324,14 +324,12 @@ export function matchDealsToRecipes(deals, allRecipes, recipeLimit = 8) {
     groups.get(c).deals.push(deal);
   }
 
-  const matched = [...groups.values()].sort(
+  return [...groups.values()].sort(
     (a, b) =>
       ingredientWeight(b.core) - ingredientWeight(a.core) ||
       b.recipeCount - a.recipeCount ||
       a.label.localeCompare(b.label)
   );
-
-  return { matched, unmatched };
 }
 
 // Perishable ingredients used somewhere in this week's plan that only ONE
