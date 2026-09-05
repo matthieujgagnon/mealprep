@@ -57,7 +57,7 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
   try {
     const client = new GoogleGenAI({});
     const response = await client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: [
         {
           inlineData: {
