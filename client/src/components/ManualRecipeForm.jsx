@@ -170,6 +170,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
   const isEditing = !!recipe;
 
   const [title, setTitle] = useState(recipe?.title || "");
+  const [sourceUrl, setSourceUrl] = useState(recipe?.sourceUrl || "");
   const [photos, setPhotos] = useState(
     recipe?.photos?.length ? recipe.photos : recipe?.photoUrl ? [recipe.photoUrl] : [""]
   );
@@ -312,6 +313,7 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
       const cleanedPhotos = photos.map((p) => p.trim()).filter(Boolean);
       const payload = {
         title: title.trim(),
+        sourceUrl: sourceUrl.trim() || null,
         photoUrl: cleanedPhotos[0] || null,
         photos: cleanedPhotos,
         notes: notes.trim() || null,
@@ -347,6 +349,16 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
           onChange={(e) => setTitle(e.target.value)}
           required
           placeholder="Grandma's lasagna"
+        />
+      </label>
+
+      <label className="form-label">
+        Recipe link (optional)
+        <input
+          type="url"
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
+          placeholder="https://…"
         />
       </label>
 

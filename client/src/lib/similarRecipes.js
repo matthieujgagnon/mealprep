@@ -44,8 +44,24 @@ const PERISHABLES = new Set([
 // everywhere at once.
 const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
 
+// Fat-content descriptors that don't change what's actually needed for
+// reuse/"can I make this" matching — someone with a carton of whole milk
+// on hand has milk, full stop, whether a recipe says "whole milk," "2%
+// milk," or just "milk." Deliberately not folded into groceryList.js's
+// PREP_WORDS: the grocery list stays literal about this on purpose (a
+// recipe that specifically needs buttermilk or heavy cream shouldn't get
+// merged with plain milk there), so this narrower strip lives here instead,
+// scoped to matching only.
+const MATCH_ONLY_DESCRIPTOR_WORDS = new Set([
+  "unsalted", "salted", "whole", "skim", "nonfat", "fat-free", "low-fat",
+  "reduced-fat", "2%", "1%",
+]);
+
 function core(ingredientName) {
-  const c = familyKey(canonicalize(ingredientName).core);
+  const rawCore = canonicalize(ingredientName).core;
+  const words = rawCore.split(" ").filter((w) => !MATCH_ONLY_DESCRIPTOR_WORDS.has(w));
+  const strippedCore = words.join(" ").trim() || rawCore;
+  const c = familyKey(strippedCore);
   return STAPLES_SET.has(c) ? null : c;
 }
 

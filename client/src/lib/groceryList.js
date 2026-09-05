@@ -136,6 +136,15 @@ const PREP_WORDS = new Set([
 const CORE_ALIASES = {
   "ground black pepper": "pepper",
   "black pepper": "pepper",
+  // "clove"/"cloves" can't go in PREP_WORDS above — a whole clove-of-garlic
+  // count and the actual "cloves" spice (used whole or ground in baking)
+  // are two completely different ingredients that both canonicalize through
+  // the same word, so a blanket strip would wrongly erase the spice's own
+  // core entirely. Aliasing the full "garlic clove(s)" phrase is narrow
+  // enough to merge "garlic clove" with plain "garlic" (nobody buys cloves
+  // as a separate item from a head of garlic) without touching "cloves" on
+  // its own.
+  "garlic clove": "garlic",
 };
 
 // Splits an ingredient name into a grouping key (core food, singularized,

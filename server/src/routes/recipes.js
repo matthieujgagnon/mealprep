@@ -86,7 +86,7 @@ recipesRouter.post("/import", async (req, res) => {
 
 // POST /api/recipes - manual entry (fallback when import fails, or add-your-own)
 recipesRouter.post("/", async (req, res) => {
-  const { title, photoUrl, photos, notes, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients } = req.body;
+  const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients } = req.body;
 
   if (!title || !Array.isArray(ingredients)) {
     return res.status(400).json({ error: "title and ingredients[] are required" });
@@ -98,6 +98,7 @@ recipesRouter.post("/", async (req, res) => {
       photoUrl: photoUrl || null,
       photos: JSON.stringify(photos || []),
       notes: notes || null,
+      sourceUrl: sourceUrl || null,
       baseServings: baseServings || 4,
       inCookbook: true,
       inImported: false,
@@ -140,7 +141,7 @@ recipesRouter.put("/reorder", async (req, res) => {
 
 // PUT /api/recipes/:id - edit a recipe (title, servings, ingredients, instructions)
 recipesRouter.put("/:id", async (req, res) => {
-  const { title, photoUrl, photos, notes, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
+  const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
 
   await prisma.recipe.update({
     where: { id: req.params.id },
@@ -149,6 +150,7 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(photoUrl !== undefined && { photoUrl }),
       ...(photos !== undefined && { photos: JSON.stringify(photos) }),
       ...(notes !== undefined && { notes: notes || null }),
+      ...(sourceUrl !== undefined && { sourceUrl: sourceUrl || null }),
       ...(baseServings !== undefined && { baseServings }),
       ...(prepTimeMinutes !== undefined && { prepTimeMinutes }),
       ...(cookTimeMinutes !== undefined && { cookTimeMinutes }),
