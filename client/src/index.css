@@ -1154,6 +1154,11 @@ select {
   padding: 14px;
   position: sticky;
   top: 20px;
+  /* Lines the "Week overview / Plan around" tabs up with the MON/TUE/...
+     day-header row instead of the week-nav (prev/next + date) row above it
+     — .planner-week-nav's own height (36px) plus .planner-grid's top
+     margin (10px), matching how far down that row actually sits. */
+  margin-top: 32px;
 }
 
 .sidebar-tabs {
@@ -2604,6 +2609,7 @@ input[type="date"].planner-week-picker {
   .planner-sidebar {
     width: 100%;
     position: static;
+    margin-top: 0;
   }
 
   /* The capped-scroll treatment on these two lists is mainly there to stop
