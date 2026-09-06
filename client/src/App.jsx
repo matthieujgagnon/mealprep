@@ -127,6 +127,16 @@ function UncategorizedDropZone({ children }) {
 
 function AddCategoryForm({ onCreate }) {
   const [name, setName] = useState("");
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button className="btn subtle btn-sm" onClick={() => setOpen(true)}>
+        + Add category
+      </button>
+    );
+  }
+
   return (
     <form
       className="add-section-form"
@@ -135,16 +145,19 @@ function AddCategoryForm({ onCreate }) {
         if (!name.trim()) return;
         onCreate(name.trim());
         setName("");
+        setOpen(false);
       }}
     >
       <input
+        autoFocus
         type="text"
-        placeholder="New category (e.g. Breakfast)"
+        placeholder="e.g. Breakfast"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        onBlur={() => !name.trim() && setOpen(false)}
       />
-      <button type="submit" className="btn subtle">
-        + Add category
+      <button className="btn primary btn-sm" type="submit">
+        Add
       </button>
     </form>
   );
@@ -526,8 +539,13 @@ export default function App() {
     const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
     if (!cellMatch) return;
 
-    const dayOfWeek = Number(cellMatch[1]);
-    const mealType = cellMatch[2];
+    await handleAddToPlanner(recipeId, Number(cellMatch[1]), cellMatch[2]);
+  }
+
+  // Shared by the planner drag-and-drop above and any quick "add to
+  // planner" action elsewhere (e.g. the Flyers tab) that isn't dragging
+  // onto a visible planner cell.
+  async function handleAddToPlanner(recipeId, dayOfWeek, mealType) {
     const entry = await api.placeOnPlanner({ recipeId, weekStart, dayOfWeek, mealType });
     setPlannerEntries((prev) => [...prev, entry]);
   }
@@ -662,7 +680,13 @@ export default function App() {
           </nav>
         </header>
 
-        {tab === "flyers" && <FlyerDeals recipes={recipes} onSelectRecipe={openRecipe} />}
+        {tab === "flyers" && (
+          <FlyerDeals
+            recipes={recipes}
+            onSelectRecipe={openRecipe}
+            onAddToPlanner={handleAddToPlanner}
+          />
+        )}
 
         {tab === "makeable" && (
           <WhatCanIMake

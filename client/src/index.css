@@ -696,7 +696,7 @@ select {
   border-radius: 8px;
   border: 1px solid var(--line);
   font-size: 13px;
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
 }
 
@@ -2140,6 +2140,85 @@ input[type="date"].planner-week-picker {
   margin-bottom: 18px;
 }
 
+/* Whole-flyer-page thumbnails — a quick visual reference alongside the
+   AI-extracted deal text, since a flyer's actual layout (photos, nearby
+   items) doesn't survive the extraction step. */
+.flyer-page-gallery {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 18px;
+}
+
+.flyer-page-thumb {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.flyer-page-thumb:hover {
+  border-color: var(--accent-text);
+}
+
+.flyer-page-thumb img {
+  height: 110px;
+  width: auto;
+  border-radius: 4px;
+  display: block;
+}
+
+.flyer-page-thumb-label {
+  font-size: 11px;
+  color: var(--paper-soft);
+  opacity: 0.8;
+}
+
+.flyer-lightbox {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+/* .modal-close normally relies on `float: right` inside a block-layout
+   modal card — this modal is a flex column instead, where float is
+   ignored, so it's pinned to the corner directly. */
+.flyer-lightbox .modal-close {
+  float: none;
+  position: absolute;
+  top: 10px;
+  right: 14px;
+}
+
+.flyer-lightbox img {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.flyer-lightbox-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
 /* Category sub-nav — same pill anatomy as .tabs/.tab, one size down, since
    this narrows the same page rather than switching to a different one. */
 .cat-tabs {
@@ -2173,12 +2252,53 @@ input[type="date"].planner-week-picker {
    viewing "All" — hidden once a single category tab narrows the view,
    since the active tab already says it. */
 .cat-eyebrow {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--sage);
   margin: 0 0 10px;
+}
+
+.cat-eyebrow:hover {
+  opacity: 0.8;
+}
+
+.flyer-recipe-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flyer-add-btn {
+  align-self: flex-start;
+}
+
+.flyer-add-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.flyer-add-form select {
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.flyer-added-note {
+  font-size: 12px;
+  color: var(--sage);
+  margin: 0;
 }
 
 .flyer-matches {
