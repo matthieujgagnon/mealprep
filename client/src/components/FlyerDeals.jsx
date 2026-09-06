@@ -370,7 +370,13 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
                           <h3 className="flyer-match-title">{group.label}</h3>
                           <div className="flyer-match-prices">
                             {group.deals.map((d) => (
-                              <span key={d.id} className="price-pill">
+                              <span
+                                key={d.id}
+                                className={`price-pill${group.bestPriceDealIds.has(d.id) ? " best-price" : ""}`}
+                              >
+                                {group.bestPriceDealIds.has(d.id) && (
+                                  <span className="best-price-badge">Best price</span>
+                                )}
                                 <span className="item">{d.item}</span>
                                 <span className="meta">
                                   {d.price} · {d.store}
@@ -405,8 +411,12 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
                         </button>
                         {isOpen && (
                           <div className="flyer-rest-prices">
-                            {rest.flatMap((g) => g.deals).map((d) => (
-                              <span key={d.id} className="price-pill">
+                            {rest.flatMap((g) => g.deals.map((d) => ({ d, g }))).map(({ d, g }) => (
+                              <span
+                                key={d.id}
+                                className={`price-pill${g.bestPriceDealIds.has(d.id) ? " best-price" : ""}`}
+                              >
+                                {g.bestPriceDealIds.has(d.id) && <span className="best-price-badge">Best price</span>}
                                 <span className="item">{d.item}</span>
                                 <span className="meta">
                                   {d.price} · {d.store}

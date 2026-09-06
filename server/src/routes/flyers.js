@@ -35,6 +35,22 @@ const DEALS_SCHEMA = {
               "in English, repeat it here in the same simplified form.",
           },
           price: { type: Type.STRING },
+          unitPrice: {
+            type: Type.NUMBER,
+            description:
+              "price reduced to a single number per one unitBasis unit, doing any multi-buy or " +
+              "package-size math yourself (e.g. '2 for $5' -> 2.5, '900g for $1.99' converted to " +
+              "price per lb, '$3.49 each' -> 3.49). Omit entirely (do not guess or default to 0) " +
+              "if the printed price can't be confidently reduced to one number this way.",
+          },
+          unitBasis: {
+            type: Type.STRING,
+            enum: ["lb", "each", "L"],
+            description:
+              "the unit unitPrice is expressed in - 'lb' for anything priced by weight (convert " +
+              "kg/g/oz to lb), 'L' for anything priced by volume (convert mL to L), 'each' for " +
+              "anything priced by count/piece. Omit alongside unitPrice if omitted.",
+          },
           category: { type: Type.STRING, enum: CATEGORIES },
           validUntil: {
             type: Type.STRING,
@@ -117,7 +133,9 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
           "printed on the flyer (e.g. 'Boneless chicken breast' or 'Brocoli'), " +
           "an English translation of that name for ingredient matching (see " +
           "matchName below), the price exactly as printed including any unit " +
-          "(e.g. '$4.99/lb', '2 for $5'), a category, and the flyer's stated " +
+          "(e.g. '$4.99/lb', '2 for $5'), that same price reduced to one " +
+          "comparable per-unit number (see unitPrice/unitBasis below) when " +
+          "you can do so confidently, a category, and the flyer's stated " +
           "valid-until date if one is printed. Do not invent items or prices " +
           "that aren't legible.",
       ],
@@ -132,14 +150,23 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
       return res.status(502).json({ error: "Could not extract deals from this PDF." });
     }
 
+    const UNIT_BASES = ["lb", "each", "L"];
     const storeName = store.trim();
-    const deals = parsed.deals.map((d) => ({
-      item: d.item,
-      matchName: d.matchName || d.item,
-      price: d.price,
-      category: CATEGORIES.includes(d.category) ? d.category : "other",
-      validUntil: d.validUntil || null,
-    }));
+    const deals = parsed.deals.map((d) => {
+      // A confident unitPrice requires a matching unitBasis too - either
+      // both are usable or neither is, since a bare number with no unit
+      // can't be compared against anything.
+      const hasUnitPrice = typeof d.unitPrice === "number" && d.unitPrice > 0 && UNIT_BASES.includes(d.unitBasis);
+      return {
+        item: d.item,
+        matchName: d.matchName || d.item,
+        price: d.price,
+        unitPrice: hasUnitPrice ? d.unitPrice : null,
+        unitBasis: hasUnitPrice ? d.unitBasis : null,
+        category: CATEGORIES.includes(d.category) ? d.category : "other",
+        validUntil: d.validUntil || null,
+      };
+    });
 
     // Best-effort: page thumbnails are a nice-to-have on top of the
     // already-extracted deals, so a rendering failure (e.g. an unusual PDF
