@@ -69,12 +69,10 @@ const DEALS_SCHEMA = {
 // alternatives (node-canvas, poppler binaries) because it ships prebuilt
 // native binaries, avoiding a system-package dependency on Render.
 //
-// Both are loaded here via dynamic import, not a top-level static import,
-// specifically so a missing/incompatible prebuilt native binary on the
-// deploy platform throws inside this function - already wrapped in a
-// try/catch by the one caller below - rather than at module load time,
-// which would crash the whole server on startup and take down every route,
-// not just uploads (this is a from-production fix: exactly that happened).
+// UNUSED for now - see the comment at its one former call site below. Left
+// defined rather than deleted since the dynamic-import structure here is
+// still the right shape once the underlying native-crash issue is
+// resolved; just not safe to call in production yet.
 async function renderPdfPages(buffer) {
   const [{ createCanvas }, pdfjsLib] = await Promise.all([
     import("@napi-rs/canvas"),
@@ -177,15 +175,18 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
       };
     });
 
-    // Best-effort: page thumbnails are a nice-to-have on top of the
-    // already-extracted deals, so a rendering failure (e.g. an unusual PDF
-    // structure) shouldn't fail the whole upload.
-    let pageImages = [];
-    try {
-      pageImages = await renderPdfPages(req.file.buffer);
-    } catch (err) {
-      console.error("Flyer page rendering failed (deals still saved):", err);
-    }
+    // Temporarily disabled: rendering flyer pages to thumbnails via
+    // @napi-rs/canvas was taking down every upload in production with a raw,
+    // unhandled-crash-style failure (no error body at all) that a JS
+    // try/catch around renderPdfPages did not prevent - consistent with a
+    // native-code crash (e.g. a missing system graphics library on the
+    // deploy platform) rather than a catchable JS exception, since that
+    // kind of failure kills the process before JS error handling ever runs.
+    // Deals-only upload worked reliably for weeks before this was added, so
+    // it's off until the rendering step can be proven safe outside a JS
+    // try/catch (page-count/size limits, isolating it from the main
+    // process, or verifying the native binary's runtime deps on Render).
+    const pageImages = [];
 
     await prisma.$transaction([
       prisma.flyerDeal.deleteMany({ where: { store: storeName } }),
