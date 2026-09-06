@@ -2414,6 +2414,27 @@ input[type="date"].planner-week-picker {
   white-space: nowrap;
 }
 
+/* Cheapest per-unit price among this ingredient's stores, compared only
+   within the same unit basis (lb vs lb, each vs each) - see
+   groupDealsByIngredient's bestPriceDealIds. */
+.price-pill.best-price {
+  outline: 2px solid var(--sage);
+  outline-offset: 1px;
+}
+
+.best-price-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bg);
+  background: var(--sage);
+  border-radius: 4px;
+  padding: 1px 5px;
+  align-self: flex-start;
+}
+
 /* ---------- Recipe detail modal ---------- */
 
 .modal-overlay {

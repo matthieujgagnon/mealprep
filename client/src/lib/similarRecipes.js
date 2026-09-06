@@ -330,6 +330,31 @@ export function groupDealsByIngredient(deals, allRecipes, recipeLimit = 8) {
     groups.get(c).deals.push(deal);
   }
 
+  // Flag the cheapest deal per unitBasis within each group (as a set of deal
+  // ids on the group, rather than mutating the deal objects themselves), so
+  // "chicken breast $4.99/lb at Metro vs $5.49/lb at Provigo" can surface a
+  // "best price" badge. Only ever compared within the same basis (lb vs lb,
+  // each vs each) - never across bases, and never when a deal's own price
+  // couldn't be confidently reduced to one (unitPrice/unitBasis null). A
+  // lone deal in its basis isn't "best" over anything, so it's skipped.
+  for (const group of groups.values()) {
+    const byBasis = new Map();
+    for (const deal of group.deals) {
+      if (deal.unitPrice == null || !deal.unitBasis) continue;
+      if (!byBasis.has(deal.unitBasis)) byBasis.set(deal.unitBasis, []);
+      byBasis.get(deal.unitBasis).push(deal);
+    }
+    const bestPriceDealIds = new Set();
+    for (const basisDeals of byBasis.values()) {
+      if (basisDeals.length < 2) continue;
+      const min = Math.min(...basisDeals.map((d) => d.unitPrice));
+      for (const deal of basisDeals) {
+        if (deal.unitPrice === min) bestPriceDealIds.add(deal.id);
+      }
+    }
+    group.bestPriceDealIds = bestPriceDealIds;
+  }
+
   return [...groups.values()].sort(
     (a, b) =>
       ingredientWeight(b.core) - ingredientWeight(a.core) ||

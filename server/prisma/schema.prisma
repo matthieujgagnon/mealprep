@@ -118,6 +118,8 @@ model FlyerDeal {
   item       String // displayed exactly as printed on the flyer, in whatever language that is
   matchName  String? // item translated to plain English grocery terms (e.g. "brocoli" -> "broccoli"), for matching against recipe ingredient names; null for rows from before this field existed, or when extraction didn't provide one — falls back to item
   price      String // display string as printed on the flyer, e.g. "$4.99/lb"
+  unitPrice  Float? // price/quantity reduced to a single number in unitBasis's unit (e.g. "2 for $5" -> 2.5, "900g for $1.99" -> converted to price per lb) — null when extraction couldn't confidently reduce the printed price to one comparable number
+  unitBasis  String? // "lb" | "each" | "L" — the unit unitPrice is expressed in, so deals are only ever compared within the same basis; null alongside a null unitPrice
   validUntil String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
   createdAt  DateTime @default(now())
 
