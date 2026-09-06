@@ -127,6 +127,16 @@ function UncategorizedDropZone({ children }) {
 
 function AddCategoryForm({ onCreate }) {
   const [name, setName] = useState("");
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button className="btn subtle btn-sm" onClick={() => setOpen(true)}>
+        + Add category
+      </button>
+    );
+  }
+
   return (
     <form
       className="add-section-form"
@@ -135,16 +145,19 @@ function AddCategoryForm({ onCreate }) {
         if (!name.trim()) return;
         onCreate(name.trim());
         setName("");
+        setOpen(false);
       }}
     >
       <input
+        autoFocus
         type="text"
-        placeholder="New category (e.g. Breakfast)"
+        placeholder="e.g. Breakfast"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        onBlur={() => !name.trim() && setOpen(false)}
       />
-      <button type="submit" className="btn subtle">
-        + Add category
+      <button className="btn primary btn-sm" type="submit">
+        Add
       </button>
     </form>
   );
