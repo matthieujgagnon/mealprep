@@ -1,6 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import { GoogleGenAI, Type, ApiError } from "@google/genai";
+import { createCanvas } from "@napi-rs/canvas";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { prisma } from "../lib/prisma.js";
 
 export const flyersRouter = Router();
@@ -45,6 +47,42 @@ const DEALS_SCHEMA = {
   },
   required: ["deals"],
 };
+
+// Renders every page of an uploaded flyer PDF to a PNG buffer, so the
+// Flyers tab can show the actual flyer layout alongside the AI-extracted
+// deal text. Uses pdfjs-dist's Node ("legacy") build with @napi-rs/canvas
+// standing in for the browser <canvas> it normally draws into - chosen over
+// alternatives (node-canvas, poppler binaries) because it ships prebuilt
+// native binaries, avoiding a system-package dependency on Render.
+async function renderPdfPages(buffer) {
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer), disableWorker: true }).promise;
+  const pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = createCanvas(viewport.width, viewport.height);
+    await page.render({
+      canvasContext: canvas.getContext("2d"),
+      viewport,
+      // pdfjs asks the canvas factory for extra offscreen canvases (e.g. for
+      // masks/patterns) during rendering - @napi-rs/canvas isn't a DOM
+      // canvas so it needs this adapter rather than pdfjs's browser default.
+      canvasFactory: {
+        create(width, height) {
+          const c = createCanvas(width, height);
+          return { canvas: c, context: c.getContext("2d") };
+        },
+        reset(canvasAndContext, width, height) {
+          canvasAndContext.canvas.width = width;
+          canvasAndContext.canvas.height = height;
+        },
+        destroy() {},
+      },
+    }).promise;
+    pages.push(await canvas.encode("png"));
+  }
+  return pages;
+}
 
 // POST /api/flyers/upload - upload a grocery flyer PDF for one store; Gemini
 // (free tier - see GEMINI_API_KEY below) reads it and extracts structured
@@ -103,11 +141,29 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
       validUntil: d.validUntil || null,
     }));
 
+    // Best-effort: page thumbnails are a nice-to-have on top of the
+    // already-extracted deals, so a rendering failure (e.g. an unusual PDF
+    // structure) shouldn't fail the whole upload.
+    let pageImages = [];
+    try {
+      pageImages = await renderPdfPages(req.file.buffer);
+    } catch (err) {
+      console.error("Flyer page rendering failed (deals still saved):", err);
+    }
+
     await prisma.$transaction([
       prisma.flyerDeal.deleteMany({ where: { store: storeName } }),
       prisma.flyerDeal.createMany({
         data: deals.map((d) => ({ ...d, store: storeName })),
       }),
+      prisma.flyerPage.deleteMany({ where: { store: storeName } }),
+      ...(pageImages.length > 0
+        ? [
+            prisma.flyerPage.createMany({
+              data: pageImages.map((image, i) => ({ store: storeName, page: i + 1, image })),
+            }),
+          ]
+        : []),
     ]);
 
     res.status(201).json({ store: storeName, count: deals.length });
@@ -130,10 +186,21 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
   }
 });
 
+// GET /api/flyers/pages/:id/image - serves one rendered flyer-page PNG.
+// Cached hard since a page's image never changes once created (a re-upload
+// creates new FlyerPage rows with new ids rather than mutating this one).
+flyersRouter.get("/pages/:id/image", async (req, res) => {
+  const page = await prisma.flyerPage.findUnique({ where: { id: req.params.id } });
+  if (!page) return res.status(404).end();
+  res.set("Content-Type", "image/png");
+  res.set("Cache-Control", "public, max-age=31536000, immutable");
+  res.send(page.image);
+});
+
 // DELETE /api/flyers - clear every uploaded flyer's deals at once (e.g. to
 // drop stale rows extracted before a matching fix, without re-uploading
 // each store one at a time).
 flyersRouter.delete("/", async (req, res) => {
-  await prisma.flyerDeal.deleteMany({});
+  await prisma.$transaction([prisma.flyerDeal.deleteMany({}), prisma.flyerPage.deleteMany({})]);
   res.status(204).send();
 });

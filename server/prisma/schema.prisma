@@ -124,6 +124,20 @@ model FlyerDeal {
   @@index([store])
 }
 
+// A rendered PNG snapshot of one page of an uploaded flyer PDF, so the user
+// can glance at the actual flyer layout (photos, surrounding context) rather
+// than only the AI-extracted item/price text. Replaced wholesale alongside
+// that store's FlyerDeal rows whenever a new flyer is uploaded for it.
+model FlyerPage {
+  id        String   @id @default(cuid())
+  store     String
+  page      Int // 1-based page number within that store's uploaded PDF
+  image     Bytes // rendered PNG bytes
+  createdAt DateTime @default(now())
+
+  @@index([store])
+}
+
 // A recipe card placed on a specific day of a specific week's planner.
 // weekStart is the Monday of that week, "YYYY-MM-DD" — a plain calendar-date
 // string rather than a DateTime, so there's no timezone conversion to get

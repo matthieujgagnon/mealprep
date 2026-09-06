@@ -29,16 +29,22 @@ dealsRouter.get("/", async (req, res) => {
       stores: ["Metro", "Provigo", "Maxi", "Super C", "IGA"],
       weekOf: "2026-08-27",
       deals: MOCK_DEALS,
+      pages: [],
       isMockData: true,
     });
   }
 
   const stores = [...new Set(rows.map((r) => r.store))];
+  const pages = await prisma.flyerPage.findMany({
+    select: { id: true, store: true, page: true },
+    orderBy: [{ store: "asc" }, { page: "asc" }],
+  });
   res.json({
     region: "Montreal, QC (H1W)",
     stores,
     weekOf: null,
     deals: rows,
+    pages,
     isMockData: false,
   });
 });

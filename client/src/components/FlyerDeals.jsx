@@ -83,6 +83,60 @@ function AddToPlannerButton({ recipe, onAdd }) {
   );
 }
 
+// A horizontal strip of whole-flyer-page thumbnails, so the user can glance
+// at the actual flyer layout (photos, surrounding context) rather than only
+// the AI-extracted item/price text. Click a thumbnail to open it full-size.
+function FlyerPageGallery({ pages, onOpen }) {
+  if (pages.length === 0) return null;
+  return (
+    <div className="flyer-page-gallery">
+      {pages.map((p, i) => (
+        <button
+          key={p.id}
+          type="button"
+          className="flyer-page-thumb"
+          onClick={() => onOpen(i)}
+        >
+          <img src={`/api/flyers/pages/${p.id}/image`} alt={`${p.store} flyer, page ${p.page}`} loading="lazy" />
+          <span className="flyer-page-thumb-label">
+            {p.store} · p.{p.page}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function FlyerPageLightbox({ pages, index, onClose, onNav }) {
+  const p = pages[index];
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="flyer-lightbox" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <img src={`/api/flyers/pages/${p.id}/image`} alt={`${p.store} flyer, page ${p.page}`} />
+        <div className="flyer-lightbox-nav">
+          <button type="button" className="btn subtle btn-sm" onClick={() => onNav(-1)} disabled={index === 0}>
+            ‹ Prev
+          </button>
+          <span>
+            {p.store} — page {p.page} of {pages.length}
+          </span>
+          <button
+            type="button"
+            className="btn subtle btn-sm"
+            onClick={() => onNav(1)}
+            disabled={index === pages.length - 1}
+          >
+            Next ›
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function UploadFlyerForm({ onUploaded }) {
   const [open, setOpen] = useState(false);
   const [store, setStore] = useState("");
@@ -155,6 +209,7 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
   const [openOther, setOpenOther] = useState(() => new Set());
   const [collapsedCategories, setCollapsedCategories] = useState(() => new Set());
   const [clearing, setClearing] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   function toggleCategory(category) {
     setCollapsedCategories((prev) => {
@@ -200,6 +255,8 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
     : deals.deals;
   const allGroups = groupDealsByIngredient(visibleDeals, recipes);
   const cookableCount = allGroups.filter((g) => g.recipeCount > 0).length;
+  const pages = deals.pages || [];
+  const visiblePages = storeFilter ? pages.filter((p) => p.store === storeFilter) : pages;
 
   const presentCategories = CATEGORY_ORDER.filter((c) => allGroups.some((g) => g.category === c));
   const visibleGroups = categoryFilter ? allGroups.filter((g) => g.category === categoryFilter) : allGroups;
@@ -254,6 +311,8 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
           ))}
         </div>
       )}
+
+      <FlyerPageGallery pages={visiblePages} onOpen={setLightboxIndex} />
 
       {presentCategories.length > 1 && (
         <div className="cat-tabs">
@@ -364,6 +423,15 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
             );
           })}
         </div>
+      )}
+
+      {lightboxIndex !== null && visiblePages[lightboxIndex] && (
+        <FlyerPageLightbox
+          pages={visiblePages}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNav={(delta) => setLightboxIndex((i) => Math.min(visiblePages.length - 1, Math.max(0, i + delta)))}
+        />
       )}
     </div>
   );
