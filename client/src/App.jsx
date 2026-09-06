@@ -770,11 +770,16 @@ export default function App() {
             <section className="recipe-section">
               <div className="recipe-section-header">
                 <h2 className="recipe-section-title">My Cookbook</h2>
-                {!showManualForm && (
-                  <button className="btn primary" onClick={() => setShowManualForm(true)}>
-                    + Add a recipe
-                  </button>
-                )}
+                <div className="recipe-section-header-actions">
+                  {cookbookRecipes.length > 0 && (
+                    <AddCategoryForm onCreate={handleCreateRecipeCategory} />
+                  )}
+                  {!showManualForm && (
+                    <button className="btn primary" onClick={() => setShowManualForm(true)}>
+                      + Add a recipe
+                    </button>
+                  )}
+                </div>
               </div>
 
               {showManualForm && (
@@ -854,9 +859,6 @@ export default function App() {
                   </>
                 )}
               </CookbookDropZone>
-              {cookbookRecipes.length > 0 && (
-                <AddCategoryForm onCreate={handleCreateRecipeCategory} />
-              )}
             </section>
           </>
         )}
