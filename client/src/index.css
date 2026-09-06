@@ -341,7 +341,16 @@ select {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
+}
+
+.recipe-section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .recipe-section-title {
@@ -1758,6 +1767,20 @@ input[type="date"].planner-week-picker {
 }
 
 .planner-week-nav .btn.subtle:hover {
+  background: rgba(35, 35, 255, 0.18);
+  color: var(--accent-text);
+}
+
+/* Same issue as .planner-week-nav above: .btn.subtle is styled for a light
+   card, but this header sits directly on the dark page background, so it
+   rendered as a bright white pill next to "+ Add a recipe" instead of
+   reading as its quieter, secondary sibling. */
+.recipe-section-header-actions .btn.subtle {
+  background: var(--bg-soft);
+  color: var(--paper-soft);
+}
+
+.recipe-section-header-actions .btn.subtle:hover {
   background: rgba(35, 35, 255, 0.18);
   color: var(--accent-text);
 }
