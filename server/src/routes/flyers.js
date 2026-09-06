@@ -1,8 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
 import { GoogleGenAI, Type, ApiError } from "@google/genai";
-import { createCanvas } from "@napi-rs/canvas";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { prisma } from "../lib/prisma.js";
 
 export const flyersRouter = Router();
@@ -70,7 +68,18 @@ const DEALS_SCHEMA = {
 // standing in for the browser <canvas> it normally draws into - chosen over
 // alternatives (node-canvas, poppler binaries) because it ships prebuilt
 // native binaries, avoiding a system-package dependency on Render.
+//
+// Both are loaded here via dynamic import, not a top-level static import,
+// specifically so a missing/incompatible prebuilt native binary on the
+// deploy platform throws inside this function - already wrapped in a
+// try/catch by the one caller below - rather than at module load time,
+// which would crash the whole server on startup and take down every route,
+// not just uploads (this is a from-production fix: exactly that happened).
 async function renderPdfPages(buffer) {
+  const [{ createCanvas }, pdfjsLib] = await Promise.all([
+    import("@napi-rs/canvas"),
+    import("pdfjs-dist/legacy/build/pdf.mjs"),
+  ]);
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer), disableWorker: true }).promise;
   const pages = [];
   for (let i = 1; i <= pdf.numPages; i++) {
