@@ -99,7 +99,13 @@ model RecipeCategory {
   createdAt DateTime @default(now())
   recipes   Recipe[]
 
-  @@unique([userId, name])
+  // Non-unique on purpose: a real unique constraint here would make
+  // `prisma db push` refuse to run on the deploy pipeline (it can't prove
+  // no existing rows would violate it without --accept-data-loss, which
+  // isn't in Render's build command and isn't something worth wiring up
+  // for a personal app's scale). Application code enforces "one name per
+  // account" instead - see the route's own duplicate check.
+  @@index([userId, name])
 }
 
 // A canonical ingredient name (e.g. "salt", "olive oil") with a user
@@ -121,7 +127,8 @@ model PantryStaple {
   excluded  Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  @@unique([userId, core])
+  // Non-unique on purpose - see RecipeCategory's @@index comment above.
+  @@index([userId, core])
 }
 
 // A user-created grocery list section, e.g. "Metro", "Super C", "Fruit du Jour"
@@ -134,7 +141,8 @@ model GrocerySection {
   createdAt   DateTime            @default(now())
   assignments GroceryAssignment[]
 
-  @@unique([userId, name])
+  // Non-unique on purpose - see RecipeCategory's @@index comment above.
+  @@index([userId, name])
 }
 
 // Maps a canonical ingredient name to a grocery section the user dragged it into
@@ -147,7 +155,8 @@ model GroceryAssignment {
   section   GrocerySection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   createdAt DateTime       @default(now())
 
-  @@unique([userId, core])
+  // Non-unique on purpose - see RecipeCategory's @@index comment above.
+  @@index([userId, core])
 }
 
 // A checked-off grocery item for a given week. Existence of a row = checked;
@@ -162,7 +171,8 @@ model GroceryCheckedItem {
   core      String // normalized ingredient name, matches the grocery list's item.key
   createdAt DateTime @default(now())
 
-  @@unique([userId, weekStart, core])
+  // Non-unique on purpose - see RecipeCategory's @@index comment above.
+  @@index([userId, weekStart, core])
 }
 
 // A single deal extracted from an uploaded flyer PDF or photo via Gemini,

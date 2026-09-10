@@ -12,6 +12,18 @@ pantryStaplesRouter.get("/", async (req, res) => {
   res.json(staples);
 });
 
+// (userId, core) isn't a DB-level unique constraint (see schema.prisma's
+// @@index comment on PantryStaple), so "one row per user per core" is
+// enforced here instead of via Prisma's upsert - find it first, then
+// create or update accordingly.
+async function upsertStaple(userId, core, data) {
+  const existing = await prisma.pantryStaple.findFirst({ where: { userId, core } });
+  if (existing) {
+    return prisma.pantryStaple.update({ where: { id: existing.id }, data });
+  }
+  return prisma.pantryStaple.create({ data: { userId, core, ...data } });
+}
+
 // POST /api/pantry-staples { core } - mark an ingredient as a staple.
 // Idempotent: dragging the same ingredient twice just no-ops the second time.
 // Also clears a prior "excluded" override — dragging a previously-removed
@@ -22,12 +34,7 @@ pantryStaplesRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "core is required" });
   }
   const normalized = core.trim().toLowerCase();
-
-  const staple = await prisma.pantryStaple.upsert({
-    where: { userId_core: { userId: req.userId, core: normalized } },
-    update: { excluded: false },
-    create: { userId: req.userId, core: normalized },
-  });
+  const staple = await upsertStaple(req.userId, normalized, { excluded: false });
   res.status(201).json(staple);
 });
 
@@ -41,12 +48,7 @@ pantryStaplesRouter.put("/:core", async (req, res) => {
     return res.status(400).json({ error: 'category must be "spice", "other", or null' });
   }
   const normalized = req.params.core.toLowerCase();
-
-  const staple = await prisma.pantryStaple.upsert({
-    where: { userId_core: { userId: req.userId, core: normalized } },
-    update: { category },
-    create: { userId: req.userId, core: normalized, category },
-  });
+  const staple = await upsertStaple(req.userId, normalized, { category });
   res.json(staple);
 });
 
@@ -58,10 +60,6 @@ pantryStaplesRouter.put("/:core", async (req, res) => {
 // back on the next render with no way to actually remove it.
 pantryStaplesRouter.delete("/:core", async (req, res) => {
   const normalized = req.params.core.toLowerCase();
-  await prisma.pantryStaple.upsert({
-    where: { userId_core: { userId: req.userId, core: normalized } },
-    update: { excluded: true },
-    create: { userId: req.userId, core: normalized, excluded: true },
-  });
+  await upsertStaple(req.userId, normalized, { excluded: true });
   res.status(204).send();
 });
