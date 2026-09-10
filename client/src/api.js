@@ -48,7 +48,7 @@ export const api = {
   uploadFlyer: async (store, file) => {
     const form = new FormData();
     form.append("store", store);
-    form.append("pdf", file);
+    form.append("file", file);
     const res = await fetch(`${BASE}/flyers/upload`, { method: "POST", body: form });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);

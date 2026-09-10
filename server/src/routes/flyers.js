@@ -10,6 +10,11 @@ const upload = multer({
   limits: { fileSize: 32 * 1024 * 1024 },
 });
 
+// PDF for a normal single-store flyer, or a photo/screenshot for anything
+// else worth extracting deals from (e.g. a curated weekly roundup image
+// posted by someone else, rather than a store's own flyer).
+const ACCEPTED_MIMETYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+
 const CATEGORIES = ["protein", "produce", "dairy", "bakery", "staple", "other"];
 
 // Gemini's structured-output schema has no "nullable" support here, so
@@ -24,6 +29,15 @@ const DEALS_SCHEMA = {
         type: Type.OBJECT,
         properties: {
           item: { type: Type.STRING },
+          store: {
+            type: Type.STRING,
+            description:
+              "the specific grocery store this item's price is attributed to - ONLY when this " +
+              "image mixes deals from several different stores (e.g. a curated weekly roundup " +
+              "graphic) and a label, logo, or caption names which store this particular item is " +
+              "from. Omit entirely for a normal single-store flyer where every item is already " +
+              "from the same store - do not repeat or guess a store name in that case.",
+          },
           matchName: {
             type: Type.STRING,
             description:
@@ -107,20 +121,21 @@ async function renderPdfPages(buffer) {
   return pages;
 }
 
-// POST /api/flyers/upload - upload a grocery flyer PDF for one store; Gemini
-// (free tier - see GEMINI_API_KEY below) reads it and extracts structured
-// deals, which replace that store's previous rows outright (a new flyer
-// supersedes the old one).
-flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
+// POST /api/flyers/upload - upload a grocery flyer PDF, or a photo/screenshot
+// of one (e.g. a curated weekly deals roundup someone else posted) for a
+// named source; Gemini (free tier - see GEMINI_API_KEY below) reads it and
+// extracts structured deals, which replace that source's previous rows
+// outright (a new upload supersedes the old one under the same source).
+flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
   const { store } = req.body;
   if (!store || !store.trim()) {
     return res.status(400).json({ error: "store is required" });
   }
   if (!req.file) {
-    return res.status(400).json({ error: "pdf file is required" });
+    return res.status(400).json({ error: "file is required" });
   }
-  if (req.file.mimetype !== "application/pdf") {
-    return res.status(400).json({ error: "file must be a PDF" });
+  if (!ACCEPTED_MIMETYPES.includes(req.file.mimetype)) {
+    return res.status(400).json({ error: "file must be a PDF, JPG, PNG, or WebP" });
   }
 
   try {
@@ -131,20 +146,23 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
         {
           inlineData: {
             data: req.file.buffer.toString("base64"),
-            mimeType: "application/pdf",
+            mimeType: req.file.mimetype,
           },
         },
-        "You extract grocery flyer specials from a scanned/printed flyer PDF, " +
-          "which may be in French, English, or another language. List every " +
-          "distinct priced item you can read. For each: a short item name as " +
-          "printed on the flyer (e.g. 'Boneless chicken breast' or 'Brocoli'), " +
-          "an English translation of that name for ingredient matching (see " +
-          "matchName below), the price exactly as printed including any unit " +
-          "(e.g. '$4.99/lb', '2 for $5'), that same price reduced to one " +
-          "comparable per-unit number (see unitPrice/unitBasis below) when " +
-          "you can do so confidently, a category, and the flyer's stated " +
-          "valid-until date if one is printed. Do not invent items or prices " +
-          "that aren't legible.",
+        "You extract grocery flyer specials from a scanned/printed flyer, or " +
+          "from a photo/screenshot of one (which may show a single store's " +
+          "flyer, or a curated roundup image mixing deals from several " +
+          "different stores) - which may be in French, English, or another " +
+          "language. List every distinct priced item you can read. For each: " +
+          "a short item name as printed (e.g. 'Boneless chicken breast' or " +
+          "'Brocoli'), which store it's from if the image mixes several (see " +
+          "store below), an English translation of that name for ingredient " +
+          "matching (see matchName below), the price exactly as printed " +
+          "including any unit (e.g. '$4.99/lb', '2 for $5'), that same price " +
+          "reduced to one comparable per-unit number (see " +
+          "unitPrice/unitBasis below) when you can do so confidently, a " +
+          "category, and the stated valid-until date if one is printed. Do " +
+          "not invent items or prices that aren't legible.",
       ],
       config: {
         responseMimeType: "application/json",
@@ -154,11 +172,16 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
 
     const parsed = JSON.parse(response.text);
     if (!parsed || !Array.isArray(parsed.deals)) {
-      return res.status(502).json({ error: "Could not extract deals from this PDF." });
+      return res.status(502).json({ error: "Could not extract deals from this file." });
     }
 
     const UNIT_BASES = ["lb", "each", "L"];
-    const storeName = store.trim();
+    // `source` identifies this upload for replace-on-reupload purposes (the
+    // name typed in the form - "Metro," or "Le Rabais" for a recurring
+    // multi-store roundup). `store` is the actual store each item's price is
+    // from - per-item when Gemini could tell them apart, else the source
+    // name, which is the same value for a normal single-store flyer.
+    const source = store.trim();
     const deals = parsed.deals.map((d) => {
       // A confident unitPrice requires a matching unitBasis too - either
       // both are usable or neither is, since a bare number with no unit
@@ -166,6 +189,8 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
       const hasUnitPrice = typeof d.unitPrice === "number" && d.unitPrice > 0 && UNIT_BASES.includes(d.unitBasis);
       return {
         item: d.item,
+        store: (d.store && d.store.trim()) || source,
+        source,
         matchName: d.matchName || d.item,
         price: d.price,
         unitPrice: hasUnitPrice ? d.unitPrice : null,
@@ -189,21 +214,23 @@ flyersRouter.post("/upload", upload.single("pdf"), async (req, res) => {
     const pageImages = [];
 
     await prisma.$transaction([
-      prisma.flyerDeal.deleteMany({ where: { store: storeName } }),
-      prisma.flyerDeal.createMany({
-        data: deals.map((d) => ({ ...d, store: storeName })),
-      }),
-      prisma.flyerPage.deleteMany({ where: { store: storeName } }),
+      // Also matches pre-migration rows (source null, store equal to what's
+      // now the source name) so re-uploading a store that already has old
+      // rows from before `source` existed replaces them too, rather than
+      // leaving them stranded forever.
+      prisma.flyerDeal.deleteMany({ where: { OR: [{ source }, { source: null, store: source }] } }),
+      prisma.flyerDeal.createMany({ data: deals }),
+      prisma.flyerPage.deleteMany({ where: { store: source } }),
       ...(pageImages.length > 0
         ? [
             prisma.flyerPage.createMany({
-              data: pageImages.map((image, i) => ({ store: storeName, page: i + 1, image })),
+              data: pageImages.map((image, i) => ({ store: source, page: i + 1, image })),
             }),
           ]
         : []),
     ]);
 
-    res.status(201).json({ store: storeName, count: deals.length });
+    res.status(201).json({ store: source, count: deals.length });
   } catch (err) {
     if (err instanceof ApiError) {
       if (err.status === 401 || err.status === 403) {
