@@ -60,11 +60,20 @@ grocerySectionsRouter.post("/:id/assign", async (req, res) => {
   if (!section) return res.status(404).json({ error: "Section not found" });
   const normalized = core.trim().toLowerCase();
 
-  const assignment = await prisma.groceryAssignment.upsert({
-    where: { userId_core: { userId: req.userId, core: normalized } },
-    update: { sectionId: req.params.id },
-    create: { userId: req.userId, core: normalized, sectionId: req.params.id },
+  // (userId, core) isn't a DB-level unique constraint (see schema.prisma's
+  // @@index comment on GroceryAssignment), so this finds-then-writes
+  // instead of using Prisma's upsert.
+  const existing = await prisma.groceryAssignment.findFirst({
+    where: { userId: req.userId, core: normalized },
   });
+  const assignment = existing
+    ? await prisma.groceryAssignment.update({
+        where: { id: existing.id },
+        data: { sectionId: req.params.id },
+      })
+    : await prisma.groceryAssignment.create({
+        data: { userId: req.userId, core: normalized, sectionId: req.params.id },
+      });
   res.status(201).json(assignment);
 });
 
