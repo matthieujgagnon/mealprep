@@ -210,6 +210,8 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
   const [collapsedCategories, setCollapsedCategories] = useState(() => new Set());
   const [clearing, setClearing] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [importingLeRabais, setImportingLeRabais] = useState(false);
+  const [leRabaisError, setLeRabaisError] = useState(null);
 
   function toggleCategory(category) {
     setCollapsedCategories((prev) => {
@@ -230,6 +232,19 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
       loadDeals();
     } finally {
       setClearing(false);
+    }
+  }
+
+  async function importLeRabais() {
+    setImportingLeRabais(true);
+    setLeRabaisError(null);
+    try {
+      await api.importLeRabaisDeals();
+      loadDeals();
+    } catch (err) {
+      setLeRabaisError(err.message);
+    } finally {
+      setImportingLeRabais(false);
     }
   }
 
@@ -286,9 +301,13 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
               {clearing ? "Clearing…" : "Clear all deals"}
             </button>
           )}
+          <button type="button" className="btn subtle" onClick={importLeRabais} disabled={importingLeRabais}>
+            {importingLeRabais ? "Importing…" : "Import from Le Rabais"}
+          </button>
           <UploadFlyerForm onUploaded={loadDeals} />
         </div>
       </div>
+      {leRabaisError && <p className="flyer-upload-error">{leRabaisError}</p>}
 
       {deals.stores.length > 1 && (
         <div className="flyer-store-filter">
