@@ -173,7 +173,7 @@ function UploadFlyerForm({ onUploaded }) {
   return (
     <form className="flyer-upload-form" onSubmit={handleUpload}>
       <label className="form-label">
-        Store
+        Store (or a name for this upload, e.g. "Le Rabais")
         <input
           type="text"
           value={store}
@@ -183,16 +183,16 @@ function UploadFlyerForm({ onUploaded }) {
         />
       </label>
       <label className="form-label">
-        Flyer PDF
+        Flyer PDF or photo
         <input
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,image/jpeg,image/png,image/webp"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           required
         />
       </label>
       <button type="submit" className="btn primary" disabled={uploading}>
-        {uploading ? "Reading flyer…" : "Extract deals"}
+        {uploading ? "Reading…" : "Extract deals"}
       </button>
       <button type="button" className="btn subtle" onClick={() => setOpen(false)}>
         Cancel

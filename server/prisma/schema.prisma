@@ -107,13 +107,14 @@ model GroceryCheckedItem {
   @@unique([weekStart, core])
 }
 
-// A single deal extracted from an uploaded flyer PDF via Claude, replacing
-// the old hardcoded MOCK_DEALS array. Re-uploading a flyer for a store
-// replaces that store's rows outright, since a new flyer supersedes the old
-// one rather than adding to it.
+// A single deal extracted from an uploaded flyer PDF or photo via Gemini,
+// replacing the old hardcoded MOCK_DEALS array. Re-uploading under the same
+// source replaces that source's rows outright, since a new upload
+// supersedes the old one rather than adding to it.
 model FlyerDeal {
   id         String   @id @default(cuid())
-  store      String
+  store      String // the actual store this item's price is from (e.g. "Metro") - extracted per-item for a multi-store roundup image, or just the upload's source for a normal single-store flyer
+  source     String? // identifies the flyer/upload this deal came from - the name typed on upload (e.g. "Metro" for a normal flyer, or "Le Rabais" for a recurring multi-store roundup); re-uploading with the same source replaces its previous deals, independent of the per-item store above. Null for rows from before this field existed - falls back to store for those.
   category   String // "protein" | "produce" | "dairy" | "bakery" | "staple" | "other"
   item       String // displayed exactly as printed on the flyer, in whatever language that is
   matchName  String? // item translated to plain English grocery terms (e.g. "brocoli" -> "broccoli"), for matching against recipe ingredient names; null for rows from before this field existed, or when extraction didn't provide one — falls back to item
@@ -124,6 +125,7 @@ model FlyerDeal {
   createdAt  DateTime @default(now())
 
   @@index([store])
+  @@index([source])
 }
 
 // A rendered PNG snapshot of one page of an uploaded flyer PDF, so the user
