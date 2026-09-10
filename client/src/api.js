@@ -3,6 +3,7 @@ const BASE = "/api";
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     ...options,
   });
   const data = await res.json().catch(() => null);
@@ -15,6 +16,16 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  signup: (email, password, name) =>
+    request("/auth/signup", { method: "POST", body: JSON.stringify({ email, password, name }) }),
+  login: (email, password) =>
+    request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  logout: () => request("/auth/logout", { method: "POST" }),
+  // Any failure (401 for "not logged in" included) just means "no session" -
+  // callers only need a yes/no, not a thrown exception on the expected
+  // first-load case of nobody being logged in yet.
+  me: () => request("/auth/me").catch(() => null),
+
   listRecipes: () => request("/recipes"),
   getRecipe: (id) => request(`/recipes/${id}`),
   importRecipe: (url) =>
@@ -49,7 +60,7 @@ export const api = {
     const form = new FormData();
     form.append("store", store);
     form.append("file", file);
-    const res = await fetch(`${BASE}/flyers/upload`, { method: "POST", body: form });
+    const res = await fetch(`${BASE}/flyers/upload`, { method: "POST", body: form, credentials: "include" });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
     return data;

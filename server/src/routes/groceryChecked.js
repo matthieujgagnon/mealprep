@@ -11,7 +11,7 @@ groceryCheckedRouter.get("/", async (req, res) => {
   if (!week) return res.status(400).json({ error: "week is required" });
 
   const rows = await prisma.groceryCheckedItem.findMany({
-    where: { weekStart: week },
+    where: { weekStart: week, userId: req.userId },
     select: { core: true },
   });
   res.json(rows.map((r) => r.core));
@@ -27,9 +27,9 @@ groceryCheckedRouter.post("/", async (req, res) => {
   const normalized = core.trim().toLowerCase();
 
   await prisma.groceryCheckedItem.upsert({
-    where: { weekStart_core: { weekStart, core: normalized } },
+    where: { userId_weekStart_core: { userId: req.userId, weekStart, core: normalized } },
     update: {},
-    create: { weekStart, core: normalized },
+    create: { userId: req.userId, weekStart, core: normalized },
   });
   res.status(201).json({ weekStart, core: normalized });
 });
@@ -42,7 +42,7 @@ groceryCheckedRouter.delete("/", async (req, res) => {
   const { week } = req.query;
   if (!week) return res.status(400).json({ error: "week is required" });
 
-  await prisma.groceryCheckedItem.deleteMany({ where: { weekStart: week } });
+  await prisma.groceryCheckedItem.deleteMany({ where: { weekStart: week, userId: req.userId } });
   res.status(204).send();
 });
 
@@ -50,7 +50,7 @@ groceryCheckedRouter.delete("/", async (req, res) => {
 groceryCheckedRouter.delete("/:weekStart/:core", async (req, res) => {
   const normalized = req.params.core.toLowerCase();
   await prisma.groceryCheckedItem.deleteMany({
-    where: { weekStart: req.params.weekStart, core: normalized },
+    where: { weekStart: req.params.weekStart, core: normalized, userId: req.userId },
   });
   res.status(204).send();
 });

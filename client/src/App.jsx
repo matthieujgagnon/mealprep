@@ -175,7 +175,7 @@ function matchesRecipeSearch(recipe, query) {
   return false;
 }
 
-export default function App() {
+export default function App({ user, onLogout }) {
   const [tab, setTab] = useState("collection"); // "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
@@ -281,6 +281,11 @@ export default function App() {
   async function handleAddToImported(recipeId) {
     await api.updateRecipe(recipeId, { inImported: true, inCookbook: false });
     setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, inImported: true, inCookbook: false } : r)));
+  }
+
+  async function handleLogout() {
+    await api.logout();
+    onLogout();
   }
 
   async function handleMarkStaple(core) {
@@ -678,6 +683,12 @@ export default function App() {
               Flyers
             </button>
           </nav>
+          <div className="app-header-account">
+            <span className="app-header-account-name">{user.name || user.email}</span>
+            <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
+              Log out
+            </button>
+          </div>
         </header>
 
         {tab === "flyers" && (

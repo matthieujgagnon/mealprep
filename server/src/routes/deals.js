@@ -21,7 +21,10 @@ const MOCK_DEALS = [
 // real deals extracted from uploaded flyers once any exist, falling back to
 // sample data before the first upload.
 dealsRouter.get("/", async (req, res) => {
-  const rows = await prisma.flyerDeal.findMany({ orderBy: { createdAt: "desc" } });
+  const rows = await prisma.flyerDeal.findMany({
+    where: { userId: req.userId },
+    orderBy: { createdAt: "desc" },
+  });
 
   if (rows.length === 0) {
     return res.json({
@@ -36,6 +39,7 @@ dealsRouter.get("/", async (req, res) => {
 
   const stores = [...new Set(rows.map((r) => r.store))];
   const pages = await prisma.flyerPage.findMany({
+    where: { userId: req.userId },
     select: { id: true, store: true, page: true },
     orderBy: [{ store: "asc" }, { page: "asc" }],
   });

@@ -24,7 +24,7 @@ plannerRouter.get("/", async (req, res) => {
     return res.status(400).json({ error: "week (Monday, YYYY-MM-DD) query param is required" });
   }
   const entries = await prisma.plannerEntry.findMany({
-    where: { weekStart: week },
+    where: { weekStart: week, userId: req.userId },
     include: { recipe: { include: { ingredients: true } } },
     orderBy: [{ dayOfWeek: "asc" }, { position: "asc" }],
   });
@@ -40,8 +40,15 @@ plannerRouter.post("/", async (req, res) => {
       .status(400)
       .json({ error: "recipeId, weekStart, dayOfWeek, and mealType are required" });
   }
+  // Confirms the recipe being placed is actually this user's own before
+  // creating a planner entry that points at it - otherwise a guessed or
+  // leaked recipeId from another account could be placed on this planner.
+  const recipe = await prisma.recipe.findFirst({ where: { id: recipeId, userId: req.userId } });
+  if (!recipe) return res.status(404).json({ error: "Recipe not found" });
+
   const entry = await prisma.plannerEntry.create({
     data: {
+      userId: req.userId,
       recipeId,
       weekStart,
       dayOfWeek,
@@ -60,8 +67,8 @@ plannerRouter.post("/", async (req, res) => {
 // intentionally empty (no meal planned) rather than just unplanned, so it
 // reads differently from "haven't gotten to this yet". Reuses the same
 // isPlaceholder mechanism the old Restaurant/YOLO/N-A cards used: finds or
-// creates one hidden marker recipe and places it here — no schema change
-// needed for that part.
+// creates one hidden marker recipe (per-user, like any other recipe) and
+// places it here.
 plannerRouter.post("/blank", async (req, res) => {
   const { weekStart, dayOfWeek, mealType } = req.body;
   if (!weekStart || dayOfWeek === undefined || !mealType) {
@@ -69,11 +76,12 @@ plannerRouter.post("/blank", async (req, res) => {
   }
 
   let blankRecipe = await prisma.recipe.findFirst({
-    where: { title: "No meal planned", isPlaceholder: true },
+    where: { title: "No meal planned", isPlaceholder: true, userId: req.userId },
   });
   if (!blankRecipe) {
     blankRecipe = await prisma.recipe.create({
       data: {
+        userId: req.userId,
         title: "No meal planned",
         isPlaceholder: true,
         inCookbook: false,
@@ -84,7 +92,7 @@ plannerRouter.post("/blank", async (req, res) => {
   }
 
   const entry = await prisma.plannerEntry.create({
-    data: { recipeId: blankRecipe.id, weekStart, dayOfWeek, mealType, position: 0 },
+    data: { userId: req.userId, recipeId: blankRecipe.id, weekStart, dayOfWeek, mealType, position: 0 },
     include: { recipe: { include: { ingredients: true } } },
   });
   res.status(201).json(serializeEntry(entry));
@@ -103,8 +111,8 @@ plannerRouter.post("/copy-week", async (req, res) => {
     return res.status(400).json({ error: "fromWeekStart and toWeekStart are required" });
   }
   const [source, existingTarget] = await Promise.all([
-    prisma.plannerEntry.findMany({ where: { weekStart: fromWeekStart } }),
-    prisma.plannerEntry.findMany({ where: { weekStart: toWeekStart } }),
+    prisma.plannerEntry.findMany({ where: { weekStart: fromWeekStart, userId: req.userId } }),
+    prisma.plannerEntry.findMany({ where: { weekStart: toWeekStart, userId: req.userId } }),
   ]);
   const existingKeys = new Set(
     existingTarget.map((e) => `${e.dayOfWeek}-${e.mealType}-${e.recipeId}`)
@@ -115,6 +123,7 @@ plannerRouter.post("/copy-week", async (req, res) => {
   if (toCreate.length > 0) {
     await prisma.plannerEntry.createMany({
       data: toCreate.map((e) => ({
+        userId: req.userId,
         weekStart: toWeekStart,
         dayOfWeek: e.dayOfWeek,
         mealType: e.mealType,
@@ -127,7 +136,7 @@ plannerRouter.post("/copy-week", async (req, res) => {
     });
   }
   const entries = await prisma.plannerEntry.findMany({
-    where: { weekStart: toWeekStart },
+    where: { weekStart: toWeekStart, userId: req.userId },
     include: { recipe: { include: { ingredients: true } } },
     orderBy: [{ dayOfWeek: "asc" }, { position: "asc" }],
   });
@@ -138,8 +147,8 @@ plannerRouter.post("/copy-week", async (req, res) => {
 // planned servings, or toggle leftovers/already-have
 plannerRouter.put("/:id", async (req, res) => {
   const { weekStart, dayOfWeek, mealType, position, servings, isLeftover, alreadyHave } = req.body;
-  const entry = await prisma.plannerEntry.update({
-    where: { id: req.params.id },
+  const { count } = await prisma.plannerEntry.updateMany({
+    where: { id: req.params.id, userId: req.userId },
     data: {
       ...(weekStart !== undefined && { weekStart }),
       ...(dayOfWeek !== undefined && { dayOfWeek }),
@@ -150,11 +159,14 @@ plannerRouter.put("/:id", async (req, res) => {
       ...(alreadyHave !== undefined && { alreadyHave }),
     },
   });
+  if (count === 0) return res.status(404).json({ error: "Planner entry not found" });
+
+  const entry = await prisma.plannerEntry.findFirst({ where: { id: req.params.id, userId: req.userId } });
   res.json(entry);
 });
 
 // DELETE /api/planner/:id - remove a card from the planner
 plannerRouter.delete("/:id", async (req, res) => {
-  await prisma.plannerEntry.delete({ where: { id: req.params.id } });
+  await prisma.plannerEntry.deleteMany({ where: { id: req.params.id, userId: req.userId } });
   res.status(204).send();
 });

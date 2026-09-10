@@ -189,6 +189,7 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
       const hasUnitPrice = typeof d.unitPrice === "number" && d.unitPrice > 0 && UNIT_BASES.includes(d.unitBasis);
       return {
         item: d.item,
+        userId: req.userId,
         store: (d.store && d.store.trim()) || source,
         source,
         matchName: d.matchName || d.item,
@@ -214,17 +215,22 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
     const pageImages = [];
 
     await prisma.$transaction([
-      // Also matches pre-migration rows (source null, store equal to what's
-      // now the source name) so re-uploading a store that already has old
-      // rows from before `source` existed replaces them too, rather than
-      // leaving them stranded forever.
-      prisma.flyerDeal.deleteMany({ where: { OR: [{ source }, { source: null, store: source }] } }),
+      // Scoped to this user first and foremost - without that, two accounts
+      // both typing "Metro" would delete/see each other's deals. Also
+      // matches pre-migration rows (source null, store equal to what's now
+      // the source name) so re-uploading a store that already has old rows
+      // from before `source` existed replaces them too, rather than leaving
+      // them stranded forever - that legacy case only ever applies to
+      // whichever account inherited the pre-account data (see auth.js).
+      prisma.flyerDeal.deleteMany({
+        where: { userId: req.userId, OR: [{ source }, { source: null, store: source }] },
+      }),
       prisma.flyerDeal.createMany({ data: deals }),
-      prisma.flyerPage.deleteMany({ where: { store: source } }),
+      prisma.flyerPage.deleteMany({ where: { userId: req.userId, store: source } }),
       ...(pageImages.length > 0
         ? [
             prisma.flyerPage.createMany({
-              data: pageImages.map((image, i) => ({ store: source, page: i + 1, image })),
+              data: pageImages.map((image, i) => ({ userId: req.userId, store: source, page: i + 1, image })),
             }),
           ]
         : []),
@@ -254,7 +260,7 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
 // Cached hard since a page's image never changes once created (a re-upload
 // creates new FlyerPage rows with new ids rather than mutating this one).
 flyersRouter.get("/pages/:id/image", async (req, res) => {
-  const page = await prisma.flyerPage.findUnique({ where: { id: req.params.id } });
+  const page = await prisma.flyerPage.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!page) return res.status(404).end();
   res.set("Content-Type", "image/png");
   res.set("Cache-Control", "public, max-age=31536000, immutable");
@@ -265,6 +271,9 @@ flyersRouter.get("/pages/:id/image", async (req, res) => {
 // drop stale rows extracted before a matching fix, without re-uploading
 // each store one at a time).
 flyersRouter.delete("/", async (req, res) => {
-  await prisma.$transaction([prisma.flyerDeal.deleteMany({}), prisma.flyerPage.deleteMany({})]);
+  await prisma.$transaction([
+    prisma.flyerDeal.deleteMany({ where: { userId: req.userId } }),
+    prisma.flyerPage.deleteMany({ where: { userId: req.userId } }),
+  ]);
   res.status(204).send();
 });

@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import { prisma } from "./lib/prisma.js";
+import { requireAuth } from "./lib/auth.js";
+import { authRouter } from "./routes/auth.js";
 import { recipesRouter } from "./routes/recipes.js";
 import { plannerRouter } from "./routes/planner.js";
 import { dealsRouter } from "./routes/deals.js";
@@ -15,19 +17,27 @@ import { recipeCategoriesRouter } from "./routes/recipeCategories.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
+// Render terminates TLS at its own proxy and forwards plain HTTP internally,
+// so without this Express would see every request as insecure and never
+// consider `secure: true` cookies (see lib/auth.js) safe to send.
+app.set("trust proxy", 1);
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 
-app.use("/api/recipes", recipesRouter);
-app.use("/api/planner", plannerRouter);
-app.use("/api/deals", dealsRouter);
-app.use("/api/flyers", flyersRouter);
-app.use("/api/pantry-staples", pantryStaplesRouter);
-app.use("/api/grocery-sections", grocerySectionsRouter);
-app.use("/api/grocery-checked", groceryCheckedRouter);
-app.use("/api/recipe-categories", recipeCategoriesRouter);
-
 app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.use("/api/auth", authRouter);
+
+// Everything below is per-account data - requireAuth attaches req.userId,
+// which every route uses to scope its own queries.
+app.use("/api/recipes", requireAuth, recipesRouter);
+app.use("/api/planner", requireAuth, plannerRouter);
+app.use("/api/deals", requireAuth, dealsRouter);
+app.use("/api/flyers", requireAuth, flyersRouter);
+app.use("/api/pantry-staples", requireAuth, pantryStaplesRouter);
+app.use("/api/grocery-sections", requireAuth, grocerySectionsRouter);
+app.use("/api/grocery-checked", requireAuth, groceryCheckedRouter);
+app.use("/api/recipe-categories", requireAuth, recipeCategoriesRouter);
 
 // In production, this one server hosts both the API and the already-built
 // React app (client/dist) — one deployment, one URL, no CORS to worry about.
@@ -41,42 +51,10 @@ app.get(/^(?!\/api).*/, (req, res, next) => {
   });
 });
 
-// Generic "quick add" planner cards (Restaurant / YOLO / N/A) — these are just
-// Recipe rows with no ingredients, flagged isPlaceholder so they're hidden
-// from the Imported/Cookbook views but still draggable onto the planner like
-// any real recipe. Created once on first server start.
-const PLACEHOLDER_RECIPES = [
-  { title: "🍽️ Restaurant", baseServings: 1 },
-  { title: "🎲 Figure it out / YOLO", baseServings: 1 },
-  { title: "➖ N/A", baseServings: 1 },
-];
-
-async function seedPlaceholderRecipes() {
-  for (const p of PLACEHOLDER_RECIPES) {
-    const existing = await prisma.recipe.findFirst({
-      where: { isPlaceholder: true, title: p.title },
-    });
-    if (!existing) {
-      await prisma.recipe.create({
-        data: {
-          title: p.title,
-          baseServings: p.baseServings,
-          isPlaceholder: true,
-          inImported: false,
-          inCookbook: false,
-          instructions: "[]",
-          photos: "[]",
-        },
-      });
-    }
-  }
-}
-
+// Placeholder recipes (the "quick add" Restaurant/YOLO/N-A cards) now belong
+// to each account and are seeded at signup time instead - see
+// lib/placeholders.js and routes/auth.js.
 const port = process.env.PORT || 4000;
-seedPlaceholderRecipes()
-  .catch((err) => console.error("Failed to seed placeholder recipes:", err))
-  .finally(() => {
-    app.listen(port, () => {
-      console.log(`Server running on http://localhost:${port}`);
-    });
-  });
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
