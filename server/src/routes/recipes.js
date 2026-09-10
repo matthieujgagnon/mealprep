@@ -21,6 +21,7 @@ function serializeRecipe(recipe) {
 // same order the app has always shown.
 recipesRouter.get("/", async (req, res) => {
   const recipes = await prisma.recipe.findMany({
+    where: { userId: req.userId },
     include: { ingredients: true },
     orderBy: [{ position: "asc" }, { createdAt: "desc" }],
   });
@@ -29,8 +30,8 @@ recipesRouter.get("/", async (req, res) => {
 
 // GET /api/recipes/:id
 recipesRouter.get("/:id", async (req, res) => {
-  const recipe = await prisma.recipe.findUnique({
-    where: { id: req.params.id },
+  const recipe = await prisma.recipe.findFirst({
+    where: { id: req.params.id, userId: req.userId },
     include: { ingredients: true },
   });
   if (!recipe) return res.status(404).json({ error: "Recipe not found" });
@@ -57,6 +58,7 @@ recipesRouter.post("/import", async (req, res) => {
 
   const recipe = await prisma.recipe.create({
     data: {
+      userId: req.userId,
       title: parsed.title,
       sourceUrl: parsed.sourceUrl,
       photoUrl: parsed.photoUrl,
@@ -94,6 +96,7 @@ recipesRouter.post("/", async (req, res) => {
 
   const recipe = await prisma.recipe.create({
     data: {
+      userId: req.userId,
       title,
       photoUrl: photoUrl || null,
       photos: JSON.stringify(photos || []),
@@ -133,7 +136,7 @@ recipesRouter.put("/reorder", async (req, res) => {
   }
   await prisma.$transaction(
     orderedIds.map((id, position) =>
-      prisma.recipe.update({ where: { id }, data: { position } })
+      prisma.recipe.updateMany({ where: { id, userId: req.userId }, data: { position } })
     )
   );
   res.status(204).send();
@@ -143,8 +146,8 @@ recipesRouter.put("/reorder", async (req, res) => {
 recipesRouter.put("/:id", async (req, res) => {
   const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
 
-  await prisma.recipe.update({
-    where: { id: req.params.id },
+  const { count } = await prisma.recipe.updateMany({
+    where: { id: req.params.id, userId: req.userId },
     data: {
       ...(title !== undefined && { title }),
       ...(photoUrl !== undefined && { photoUrl }),
@@ -162,6 +165,7 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(instructions !== undefined && { instructions: JSON.stringify(instructions) }),
     },
   });
+  if (count === 0) return res.status(404).json({ error: "Recipe not found" });
 
   if (Array.isArray(ingredients)) {
     await prisma.ingredient.deleteMany({ where: { recipeId: req.params.id } });
@@ -178,8 +182,8 @@ recipesRouter.put("/:id", async (req, res) => {
     });
   }
 
-  const recipe = await prisma.recipe.findUnique({
-    where: { id: req.params.id },
+  const recipe = await prisma.recipe.findFirst({
+    where: { id: req.params.id, userId: req.userId },
     include: { ingredients: true },
   });
   res.json(serializeRecipe(recipe));
@@ -187,6 +191,6 @@ recipesRouter.put("/:id", async (req, res) => {
 
 // DELETE /api/recipes/:id
 recipesRouter.delete("/:id", async (req, res) => {
-  await prisma.recipe.delete({ where: { id: req.params.id } });
+  await prisma.recipe.deleteMany({ where: { id: req.params.id, userId: req.userId } });
   res.status(204).send();
 });

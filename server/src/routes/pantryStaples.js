@@ -5,7 +5,10 @@ export const pantryStaplesRouter = Router();
 
 // GET /api/pantry-staples - list every ingredient the user has marked as a staple
 pantryStaplesRouter.get("/", async (req, res) => {
-  const staples = await prisma.pantryStaple.findMany({ orderBy: { core: "asc" } });
+  const staples = await prisma.pantryStaple.findMany({
+    where: { userId: req.userId },
+    orderBy: { core: "asc" },
+  });
   res.json(staples);
 });
 
@@ -21,9 +24,9 @@ pantryStaplesRouter.post("/", async (req, res) => {
   const normalized = core.trim().toLowerCase();
 
   const staple = await prisma.pantryStaple.upsert({
-    where: { core: normalized },
+    where: { userId_core: { userId: req.userId, core: normalized } },
     update: { excluded: false },
-    create: { core: normalized },
+    create: { userId: req.userId, core: normalized },
   });
   res.status(201).json(staple);
 });
@@ -40,9 +43,9 @@ pantryStaplesRouter.put("/:core", async (req, res) => {
   const normalized = req.params.core.toLowerCase();
 
   const staple = await prisma.pantryStaple.upsert({
-    where: { core: normalized },
+    where: { userId_core: { userId: req.userId, core: normalized } },
     update: { category },
-    create: { core: normalized, category },
+    create: { userId: req.userId, core: normalized, category },
   });
   res.json(staple);
 });
@@ -56,9 +59,9 @@ pantryStaplesRouter.put("/:core", async (req, res) => {
 pantryStaplesRouter.delete("/:core", async (req, res) => {
   const normalized = req.params.core.toLowerCase();
   await prisma.pantryStaple.upsert({
-    where: { core: normalized },
+    where: { userId_core: { userId: req.userId, core: normalized } },
     update: { excluded: true },
-    create: { core: normalized, excluded: true },
+    create: { userId: req.userId, core: normalized, excluded: true },
   });
   res.status(204).send();
 });

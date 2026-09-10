@@ -136,6 +136,98 @@ select {
   color: #f3f3fb;
 }
 
+.app-header-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header-account-name {
+  font-size: 13px;
+  color: var(--paper-soft);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+/* .btn.subtle is styled for a light card (light background, dark text),
+   but this sits directly on the dark page background - same fix as
+   .planner-week-nav and .recipe-section-header-actions below. */
+.app-header-account .btn.subtle {
+  background: var(--bg-soft);
+  color: var(--paper-soft);
+}
+
+.app-header-account .btn.subtle:hover {
+  background: rgba(35, 35, 255, 0.18);
+  color: var(--accent-text);
+}
+
+/* ---------- Auth (login/signup) page ---------- */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 32px;
+}
+
+.auth-wordmark {
+  text-align: center;
+  margin: 0 0 20px;
+}
+
+.auth-mode-tabs {
+  display: flex;
+  gap: 3px;
+  background: var(--paper-soft);
+  padding: 3px;
+  border-radius: 9px;
+  margin-bottom: 20px;
+}
+
+.auth-mode-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.auth-mode-tab.active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-hint {
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.auth-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tomato);
+}
+
 /* ---------- Cards (recipe index-card look) ---------- */
 
 .card {

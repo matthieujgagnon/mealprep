@@ -6,6 +6,7 @@ export const recipeCategoriesRouter = Router();
 // GET /api/recipe-categories - list all cookbook categories
 recipeCategoriesRouter.get("/", async (req, res) => {
   const categories = await prisma.recipeCategory.findMany({
+    where: { userId: req.userId },
     orderBy: { position: "asc" },
   });
   res.json(categories);
@@ -17,9 +18,9 @@ recipeCategoriesRouter.post("/", async (req, res) => {
   if (!name || !name.trim()) {
     return res.status(400).json({ error: "name is required" });
   }
-  const count = await prisma.recipeCategory.count();
+  const count = await prisma.recipeCategory.count({ where: { userId: req.userId } });
   const category = await prisma.recipeCategory.create({
-    data: { name: name.trim(), position: count },
+    data: { userId: req.userId, name: name.trim(), position: count },
   });
   res.status(201).json(category);
 });
@@ -33,7 +34,7 @@ recipeCategoriesRouter.put("/reorder", async (req, res) => {
   }
   await prisma.$transaction(
     orderedIds.map((id, position) =>
-      prisma.recipeCategory.update({ where: { id }, data: { position } })
+      prisma.recipeCategory.updateMany({ where: { id, userId: req.userId }, data: { position } })
     )
   );
   res.status(204).send();
@@ -42,6 +43,6 @@ recipeCategoriesRouter.put("/reorder", async (req, res) => {
 // DELETE /api/recipe-categories/:id - remove a category (its recipes become
 // uncategorized, via the onDelete: SetNull relation — not deleted)
 recipeCategoriesRouter.delete("/:id", async (req, res) => {
-  await prisma.recipeCategory.delete({ where: { id: req.params.id } });
+  await prisma.recipeCategory.deleteMany({ where: { id: req.params.id, userId: req.userId } });
   res.status(204).send();
 });
