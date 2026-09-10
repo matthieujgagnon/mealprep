@@ -66,6 +66,7 @@ export const api = {
     return data;
   },
   clearFlyerDeals: () => request("/flyers", { method: "DELETE" }),
+  importLeRabaisDeals: () => request("/flyers/import-le-rabais", { method: "POST" }),
 
   listGroceryChecked: (weekStart) =>
     request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`),

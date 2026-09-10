@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { GoogleGenAI, Type, ApiError } from "@google/genai";
 import { prisma } from "../lib/prisma.js";
+import { parseLeRabaisMarkdown, mapToFlyerDeals } from "../lib/leRabais.js";
 
 export const flyersRouter = Router();
 
@@ -254,6 +255,50 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
     console.error("Flyer upload failed:", err);
     res.status(500).json({ error: "Failed to process flyer." });
   }
+});
+
+// Le Rabais (lerabais.com) publishes a pre-compiled table of current grocery
+// deals across several Montreal-area stores, itself pulled from Flipp - see
+// server/src/lib/leRabais.js for how that file is parsed. This bypasses the
+// PDF/photo upload path (and the Gemini call it relies on) entirely: the
+// data's already structured and the per-lb prices are already computed, so
+// there's nothing to OCR or guess.
+const LE_RABAIS_URL = "https://lerabais.com/Liste/Tableau.md";
+const LE_RABAIS_SOURCE = "Le Rabais";
+const MONTREAL_POSTAL_CODE = "H2T2S3";
+
+// POST /api/flyers/import-le-rabais - fetches and imports this week's deals
+// from Le Rabais. Re-running it replaces its own previous rows only (scoped
+// by source, same as a re-upload under the same name), leaving any manually
+// uploaded flyers untouched.
+flyersRouter.post("/import-le-rabais", async (req, res) => {
+  let response;
+  try {
+    response = await fetch(LE_RABAIS_URL);
+  } catch (err) {
+    console.error("Le Rabais fetch failed:", err);
+    return res.status(502).json({ error: "Could not reach Le Rabais - try again shortly." });
+  }
+  if (!response.ok) {
+    return res.status(502).json({ error: `Le Rabais returned an error (${response.status}).` });
+  }
+
+  const text = await response.text();
+  const rows = parseLeRabaisMarkdown(text);
+  if (rows.length === 0) {
+    return res.status(502).json({ error: "Could not parse any deals from Le Rabais - its format may have changed." });
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const mapped = mapToFlyerDeals(rows, { postalCode: MONTREAL_POSTAL_CODE, today });
+  const deals = mapped.map((d) => ({ ...d, userId: req.userId, source: LE_RABAIS_SOURCE }));
+
+  await prisma.$transaction([
+    prisma.flyerDeal.deleteMany({ where: { userId: req.userId, source: LE_RABAIS_SOURCE } }),
+    ...(deals.length > 0 ? [prisma.flyerDeal.createMany({ data: deals })] : []),
+  ]);
+
+  res.status(201).json({ store: LE_RABAIS_SOURCE, count: deals.length });
 });
 
 // GET /api/flyers/pages/:id/image - serves one rendered flyer-page PNG.
