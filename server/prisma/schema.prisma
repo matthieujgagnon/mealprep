@@ -24,6 +24,7 @@ model User {
   grocerySections     GrocerySection[]
   groceryAssignments  GroceryAssignment[]
   groceryCheckedItems GroceryCheckedItem[]
+  groceryExtraItems   GroceryExtraItem[]
   flyerDeals          FlyerDeal[]
   flyerPages          FlyerPage[]
   plannerEntries      PlannerEntry[]
@@ -173,6 +174,26 @@ model GroceryCheckedItem {
 
   // Non-unique on purpose - see RecipeCategory's @@index comment above.
   @@index([userId, weekStart, core])
+}
+
+// A manually-typed grocery item for a given week, on top of whatever the
+// planner's recipes already generate (e.g. "paper towels", or extra onions
+// beyond what a recipe calls for). Kept as its own line rather than merged
+// into a recipe-derived row's quantity - see groceryList.js's
+// buildGroceryList - so adding/removing one never touches what a recipe
+// contributes. Existence of a row = it's on the list; deleting it removes
+// just that one line.
+model GroceryExtraItem {
+  id        String   @id @default(cuid())
+  userId    String? // nullable only pre-backfill - see Recipe.userId
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart String
+  name      String
+  quantity  Float?
+  unit      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, weekStart])
 }
 
 // A single deal extracted from an uploaded flyer PDF or photo via Gemini,

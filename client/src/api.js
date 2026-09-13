@@ -68,6 +68,12 @@ export const api = {
   clearFlyerDeals: () => request("/flyers", { method: "DELETE" }),
   importLeRabaisDeals: () => request("/flyers/import-le-rabais", { method: "POST" }),
 
+  listGroceryExtras: (weekStart) =>
+    request(`/grocery-extra-items?week=${encodeURIComponent(weekStart)}`),
+  addGroceryExtra: (weekStart, item) =>
+    request("/grocery-extra-items", { method: "POST", body: JSON.stringify({ weekStart, ...item }) }),
+  deleteGroceryExtra: (id) => request(`/grocery-extra-items/${id}`, { method: "DELETE" }),
+
   listGroceryChecked: (weekStart) =>
     request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`),
   checkGroceryItem: (weekStart, core) =>
