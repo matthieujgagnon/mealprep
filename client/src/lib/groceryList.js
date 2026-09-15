@@ -194,11 +194,19 @@ export function canonicalize(rawName) {
 // explicitly said should NOT be treated as a staple even though they're on
 // the built-in STAPLE_WORDS/SPICE_WORDS list (e.g. removing "salt") — those
 // come out of the real shopping list instead.
+//
+// extraItems are manually-typed additions (see GroceryExtraItem) — things
+// like "paper towels" or extra onions beyond what a recipe calls for. Each
+// stays its own row (never merged into a recipe-derived row's quantity, so
+// adding/removing one never touches what a recipe contributes) but still
+// gets a `core` so it can be dragged into store sections/staples and filed
+// alongside matching recipe ingredients the same way everything else is.
 export function buildGroceryList(
   plannerEntries,
   customStaples = [],
   staplesCategoryOverrides = {},
-  excludedStaples = []
+  excludedStaples = [],
+  extraItems = []
 ) {
   const map = new Map(); // core -> { core, name, parts, usedIn, varieties, isStaple, isSpice }
   // Every spice is inherently a pantry staple (you don't buy cumin fresh
@@ -246,26 +254,47 @@ export function buildGroceryList(
     }
   }
 
-  return [...map.values()]
-    .map((item) => {
-      const parts = item.parts.length > 0 ? item.parts : [{ quantity: null, unit: null }];
-      return {
-        key: item.core,
-        core: item.core,
-        name: item.name,
-        parts,
-        // Legacy single-value fields — first part only. Fine for the common
-        // case (one part); GroceryList.jsx reads `parts` directly to render
-        // the rare multi-part row.
-        quantity: parts[0].quantity,
-        unit: parts[0].unit,
-        usedIn: [...item.usedIn],
-        varieties: [...item.varieties].map(capitalize),
-        isStaple: item.isStaple,
-        isSpice: item.isSpice,
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const recipeItems = [...map.values()].map((item) => {
+    const parts = item.parts.length > 0 ? item.parts : [{ quantity: null, unit: null }];
+    return {
+      key: item.core,
+      core: item.core,
+      name: item.name,
+      parts,
+      // Legacy single-value fields — first part only. Fine for the common
+      // case (one part); GroceryList.jsx reads `parts` directly to render
+      // the rare multi-part row.
+      quantity: parts[0].quantity,
+      unit: parts[0].unit,
+      usedIn: [...item.usedIn],
+      varieties: [...item.varieties].map(capitalize),
+      isStaple: item.isStaple,
+      isSpice: item.isSpice,
+    };
+  });
+
+  const manualItems = extraItems.map((extra) => {
+    const { core, varieties } = canonicalize(extra.name);
+    const resolvedCore = core || extra.name.toLowerCase();
+    return {
+      key: `extra-${extra.id}`,
+      core: resolvedCore,
+      name: extra.name,
+      parts: [{ quantity: extra.quantity ?? null, unit: extra.unit || null }],
+      quantity: extra.quantity ?? null,
+      unit: extra.unit || null,
+      usedIn: [],
+      varieties: varieties.map(capitalize),
+      isStaple: staplesSet.has(resolvedCore),
+      isSpice: staplesCategoryOverrides[resolvedCore]
+        ? staplesCategoryOverrides[resolvedCore] === "spice"
+        : SPICE_WORDS.includes(resolvedCore),
+      isManual: true,
+      manualId: extra.id,
+    };
+  });
+
+  return [...recipeItems, ...manualItems].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Adds a (quantity, unit) pair into a row's part list — merging into an

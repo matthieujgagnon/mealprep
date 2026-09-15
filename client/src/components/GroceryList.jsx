@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { api } from "../api.js";
-import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
+import { buildGroceryList, findMatchingDeal, UNIT_OPTIONS } from "../lib/groceryList.js";
+import { parseQuantityInput } from "../lib/units.js";
 import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
 
 function formatQuantity(qty) {
@@ -40,6 +41,9 @@ function GroceryItemRow({
   draggable,
   onRemoveStaple,
   onUnassign,
+  onDeleteManual,
+  onAddToPantry,
+  pantryAdded,
   showSources,
   dragId,
 }) {
@@ -80,31 +84,61 @@ function GroceryItemRow({
           {deal.price} · {deal.store}
         </span>
       )}
-      {onRemoveStaple && (
+      {checked && onAddToPantry && (
         <button
-          className="staple-remove-btn"
-          aria-label={`Stop treating ${item.name} as a staple`}
-          title="Remove from staples"
+          type="button"
+          className="btn subtle btn-sm"
+          disabled={pantryAdded}
+          title={pantryAdded ? "Already added to your pantry inventory" : "Add to your pantry inventory"}
           onClick={(e) => {
             e.stopPropagation();
-            onRemoveStaple(item.core);
+            onAddToPantry(item);
           }}
         >
-          ×
+          {pantryAdded ? "✓ pantry" : "+ pantry"}
         </button>
       )}
-      {onUnassign && (
+      {item.isManual ? (
         <button
           className="staple-remove-btn"
-          aria-label={`Move ${item.name} back to unsorted`}
-          title="Remove from this section"
+          aria-label={`Delete ${item.name}`}
+          title="Delete this item"
           onClick={(e) => {
             e.stopPropagation();
-            onUnassign(item.core);
+            onDeleteManual(item.manualId);
           }}
         >
           ×
         </button>
+      ) : (
+        <>
+          {onRemoveStaple && (
+            <button
+              className="staple-remove-btn"
+              aria-label={`Stop treating ${item.name} as a staple`}
+              title="Remove from staples"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveStaple(item.core);
+              }}
+            >
+              ×
+            </button>
+          )}
+          {onUnassign && (
+            <button
+              className="staple-remove-btn"
+              aria-label={`Move ${item.name} back to unsorted`}
+              title="Remove from this section"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnassign(item.core);
+              }}
+            >
+              ×
+            </button>
+          )}
+        </>
       )}
     </li>
   );
@@ -117,6 +151,9 @@ function StoreSection({
   checked,
   onToggle,
   onUnassign,
+  onDeleteManual,
+  onAddToPantry,
+  pantryAddedKeys,
   onDelete,
   onReorder,
   isFirst,
@@ -169,6 +206,9 @@ function StoreSection({
               onToggle={() => onToggle(item.key)}
               draggable={false}
               onUnassign={onUnassign}
+              onDeleteManual={onDeleteManual}
+              onAddToPantry={onAddToPantry}
+              pantryAdded={pantryAddedKeys.has(item.key)}
               showSources={showSources}
             />
           ))}
@@ -225,18 +265,94 @@ function AddSectionForm({ onCreateSection }) {
   );
 }
 
+// Lets the user type something onto the list that no planned recipe calls
+// for — "paper towels", or extra onions beyond what's already planned.
+// Quantity/unit are optional since plenty of items (paper towels, dish
+// soap) don't need either.
+function AddExtraItemForm({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  if (!open) {
+    return (
+      <button type="button" className="btn subtle btn-sm" onClick={() => setOpen(true)}>
+        + Add item
+      </button>
+    );
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setAdding(true);
+    try {
+      await onAdd(name.trim(), parseQuantityInput(quantity), unit || null);
+      setName("");
+      setQuantity("");
+      setUnit("");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <form className="add-section-form" onSubmit={handleSubmit}>
+      <input
+        autoFocus
+        type="text"
+        placeholder="e.g. Paper towels"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        type="text"
+        placeholder="Qty"
+        value={quantity}
+        onChange={(e) => setQuantity(e.target.value)}
+        style={{ width: 56 }}
+      />
+      <select value={unit} onChange={(e) => setUnit(e.target.value)}>
+        <option value="">unit</option>
+        {UNIT_OPTIONS.map((u) => (
+          <option key={u} value={u}>
+            {u}
+          </option>
+        ))}
+      </select>
+      <button className="btn primary btn-sm" type="submit" disabled={adding}>
+        Add
+      </button>
+      <button type="button" className="btn subtle btn-sm" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 // Groups shopping items by which recipe(s) they're used in. A shared
 // ingredient (e.g. garlic used in two recipes) appears under both headings —
 // that's intentional, it shows the full picture of what each recipe needs.
+// A manually-added item isn't used in any recipe (usedIn is always empty for
+// those), so it gets its own catch-all heading instead of silently vanishing
+// from this view, sorted last since it's not a "real" recipe name.
+const MANUAL_GROUP_LABEL = "Added by you";
 function groupItemsByRecipe(items) {
   const map = new Map();
   for (const item of items) {
-    for (const recipeName of item.usedIn) {
+    const recipeNames = item.usedIn.length > 0 ? item.usedIn : [MANUAL_GROUP_LABEL];
+    for (const recipeName of recipeNames) {
       if (!map.has(recipeName)) map.set(recipeName, []);
       map.get(recipeName).push(item);
     }
   }
-  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  return [...map.entries()].sort((a, b) => {
+    if (a[0] === MANUAL_GROUP_LABEL) return 1;
+    if (b[0] === MANUAL_GROUP_LABEL) return -1;
+    return a[0].localeCompare(b[0]);
+  });
 }
 
 export function GroceryList({
@@ -251,6 +367,7 @@ export function GroceryList({
   onDeleteSection,
   onReorderSection,
   onUnassignFromSection,
+  onAddPantryItem,
 }) {
   const [deals, setDeals] = useState([]);
   // Which ingredient cores are checked off this week — lives on the server
@@ -260,6 +377,12 @@ export function GroceryList({
   const [checked, setChecked] = useState({});
   const [showStaples, setShowStaples] = useState(true);
   const [showSources, setShowSources] = useState(false);
+  const [extraItems, setExtraItems] = useState([]);
+  // Tracks which items have been sent to the pantry inventory this session,
+  // just to swap the button to "✓ pantry" and stop double-adding on a
+  // stray extra click — not persisted, since re-adding later (e.g. after
+  // reopening the app) is harmless and arguably correct (you bought it again).
+  const [pantryAddedKeys, setPantryAddedKeys] = useState(() => new Set());
 
   useEffect(() => {
     api.getDeals().then((d) => setDeals(d.deals)).catch(() => {});
@@ -273,11 +396,26 @@ export function GroceryList({
       .catch(() => setChecked({}));
   }, [weekStart]);
 
+  // Manually-added items are week-scoped too, same as checked state above.
+  useEffect(() => {
+    api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
+  }, [weekStart]);
+
+  async function addExtraItem(name, quantity, unit) {
+    const created = await api.addGroceryExtra(weekStart, { name, quantity, unit });
+    setExtraItems((prev) => [...prev, created]);
+  }
+
+  async function deleteExtraItem(id) {
+    setExtraItems((prev) => prev.filter((i) => i.id !== id));
+    await api.deleteGroceryExtra(id);
+  }
+
   const { setNodeRef: setStaplesDropRef, isOver: isOverStaples } = useDroppable({
     id: "pantry-staples-drop",
   });
 
-  const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples);
+  const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems);
 
   // A core assigned to any store section — excluded from the main unsorted list.
   const assignedCores = new Set(
@@ -305,6 +443,30 @@ export function GroceryList({
     }
   }
 
+  // Checking something off is exactly the moment you know you bought it, so
+  // that's when this offers to also drop it into the pantry inventory (with
+  // today as the purchase date) - location defaults to fridge since that's
+  // the common case; wrong for a handful of items, but always editable from
+  // the Makeable tab afterward.
+  async function addToPantry(item) {
+    if (!onAddPantryItem || pantryAddedKeys.has(item.key)) return;
+    setPantryAddedKeys((prev) => new Set(prev).add(item.key));
+    try {
+      await onAddPantryItem({
+        name: item.name,
+        quantity: item.parts?.[0]?.quantity ?? null,
+        unit: item.parts?.[0]?.unit ?? null,
+        location: "fridge",
+      });
+    } catch {
+      setPantryAddedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(item.key);
+        return next;
+      });
+    }
+  }
+
   async function clearChecked() {
     setChecked({});
     await api.clearGroceryChecked(weekStart);
@@ -321,12 +483,16 @@ export function GroceryList({
     ? `this week (${formatWeekRangeLabel(weekStart)})`
     : `the week of ${formatWeekRangeLabel(weekStart)}`;
 
-  if (plannerEntries.length === 0) {
+  if (plannerEntries.length === 0 && extraItems.length === 0) {
     return (
-      <p className="empty-state">
-        Nothing planned for {weekLabel} yet — plan a few meals on the Planner
-        tab first and your grocery list builds itself.
-      </p>
+      <div>
+        <p className="empty-state">
+          Nothing planned for {weekLabel} yet — plan a few meals on the Planner
+          tab first and your grocery list builds itself. You can still add
+          items by hand below.
+        </p>
+        <AddExtraItemForm onAdd={addExtraItem} />
+      </div>
     );
   }
 
@@ -363,6 +529,9 @@ export function GroceryList({
           Clear checked items
         </button>
       )}
+      <div style={{ marginBottom: 10 }}>
+        <AddExtraItemForm onAdd={addExtraItem} />
+      </div>
 
       {showSources ? (
         groupItemsByRecipe(shoppingItems).map(([recipeName, recipeItems]) => (
@@ -378,6 +547,9 @@ export function GroceryList({
                   checked={!!checked[item.key]}
                   onToggle={() => toggle(item.key)}
                   draggable
+                  onDeleteManual={deleteExtraItem}
+                  onAddToPantry={addToPantry}
+                  pantryAdded={pantryAddedKeys.has(item.key)}
                 />
               ))}
             </ul>
@@ -393,6 +565,9 @@ export function GroceryList({
               checked={!!checked[item.key]}
               onToggle={() => toggle(item.key)}
               draggable
+              onDeleteManual={deleteExtraItem}
+              onAddToPantry={addToPantry}
+              pantryAdded={pantryAddedKeys.has(item.key)}
             />
           ))}
         </ul>
@@ -409,6 +584,9 @@ export function GroceryList({
               checked={checked}
               onToggle={toggle}
               onUnassign={onUnassignFromSection}
+              onDeleteManual={deleteExtraItem}
+              onAddToPantry={addToPantry}
+              pantryAddedKeys={pantryAddedKeys}
               onDelete={onDeleteSection}
               onReorder={onReorderSection}
               isFirst={i === 0}
@@ -455,6 +633,9 @@ export function GroceryList({
                           onToggle={() => toggle(item.key)}
                           draggable
                           onRemoveStaple={onRemoveStaple}
+                          onDeleteManual={deleteExtraItem}
+                          onAddToPantry={addToPantry}
+                          pantryAdded={pantryAddedKeys.has(item.key)}
                         />
                       ))}
                     </ul>
@@ -477,6 +658,9 @@ export function GroceryList({
                           onToggle={() => toggle(item.key)}
                           draggable
                           onRemoveStaple={onRemoveStaple}
+                          onDeleteManual={deleteExtraItem}
+                          onAddToPantry={addToPantry}
+                          pantryAdded={pantryAddedKeys.has(item.key)}
                         />
                       ))}
                     </ul>

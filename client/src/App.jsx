@@ -191,6 +191,14 @@ export default function App({ user, onLogout }) {
   const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [grocerySections, setGrocerySections] = useState([]);
+  const [pantryInventory, setPantryInventory] = useState([]);
+  // Same "expiring" window WhatCanIMake's pantry rows use (<=2 days out,
+  // expired items included) so the banner and the list agree on what counts.
+  const expiringPantryCount = pantryInventory.filter((item) => {
+    if (!item.expiresAt) return false;
+    const days = Math.ceil((new Date(item.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    return days <= 2;
+  }).length;
   const [recipeCategories, setRecipeCategories] = useState([]);
   const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState("");
@@ -226,6 +234,7 @@ export default function App({ user, onLogout }) {
     }).catch(() => {});
     api.listGrocerySections().then(setGrocerySections).catch(() => {});
     api.listRecipeCategories().then(setRecipeCategories).catch(() => {});
+    api.listPantryInventory().then(setPantryInventory).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -364,6 +373,21 @@ export default function App({ user, onLogout }) {
     setGrocerySections((prev) =>
       prev.map((s) => ({ ...s, assignments: s.assignments.filter((a) => a.core !== core) }))
     );
+  }
+
+  async function handleAddPantryItem(item) {
+    const created = await api.addPantryInventoryItem(item);
+    setPantryInventory((prev) => [...prev, created]);
+  }
+
+  async function handleUpdatePantryItem(id, payload) {
+    const updated = await api.updatePantryInventoryItem(id, payload);
+    setPantryInventory((prev) => prev.map((i) => (i.id === id ? updated : i)));
+  }
+
+  async function handleDeletePantryItem(id) {
+    setPantryInventory((prev) => prev.filter((i) => i.id !== id));
+    await api.deletePantryInventoryItem(id);
   }
 
   async function handleReorderSection(id, direction) {
@@ -691,6 +715,16 @@ export default function App({ user, onLogout }) {
           </div>
         </header>
 
+        {expiringPantryCount > 0 && tab !== "makeable" && (
+          <button
+            type="button"
+            className="pantry-expiry-banner"
+            onClick={() => setTab("makeable")}
+          >
+            {expiringPantryCount} pantry item{expiringPantryCount === 1 ? "" : "s"} expiring soon — tap to review
+          </button>
+        )}
+
         {tab === "flyers" && (
           <FlyerDeals
             recipes={recipes}
@@ -704,6 +738,10 @@ export default function App({ user, onLogout }) {
             recipes={recipes}
             plannerEntries={plannerEntries}
             onSelectRecipe={openRecipe}
+            pantryInventory={pantryInventory}
+            onAddPantryItem={handleAddPantryItem}
+            onUpdatePantryItem={handleUpdatePantryItem}
+            onDeletePantryItem={handleDeletePantryItem}
           />
         )}
 
@@ -950,6 +988,7 @@ export default function App({ user, onLogout }) {
             onDeleteSection={handleDeleteSection}
             onReorderSection={handleReorderSection}
             onUnassignFromSection={handleUnassignFromSection}
+            onAddPantryItem={handleAddPantryItem}
           />
         )}
 
