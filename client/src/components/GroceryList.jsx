@@ -42,6 +42,8 @@ function GroceryItemRow({
   onRemoveStaple,
   onUnassign,
   onDeleteManual,
+  onAddToPantry,
+  pantryAdded,
   showSources,
   dragId,
 }) {
@@ -81,6 +83,20 @@ function GroceryItemRow({
         <span className={`deal-flag${deal.category === "protein" ? " sale" : ""}`}>
           {deal.price} · {deal.store}
         </span>
+      )}
+      {checked && onAddToPantry && (
+        <button
+          type="button"
+          className="btn subtle btn-sm"
+          disabled={pantryAdded}
+          title={pantryAdded ? "Already added to your pantry inventory" : "Add to your pantry inventory"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToPantry(item);
+          }}
+        >
+          {pantryAdded ? "✓ pantry" : "+ pantry"}
+        </button>
       )}
       {item.isManual ? (
         <button
@@ -136,6 +152,8 @@ function StoreSection({
   onToggle,
   onUnassign,
   onDeleteManual,
+  onAddToPantry,
+  pantryAddedKeys,
   onDelete,
   onReorder,
   isFirst,
@@ -189,6 +207,8 @@ function StoreSection({
               draggable={false}
               onUnassign={onUnassign}
               onDeleteManual={onDeleteManual}
+              onAddToPantry={onAddToPantry}
+              pantryAdded={pantryAddedKeys.has(item.key)}
               showSources={showSources}
             />
           ))}
@@ -347,6 +367,7 @@ export function GroceryList({
   onDeleteSection,
   onReorderSection,
   onUnassignFromSection,
+  onAddPantryItem,
 }) {
   const [deals, setDeals] = useState([]);
   // Which ingredient cores are checked off this week — lives on the server
@@ -357,6 +378,11 @@ export function GroceryList({
   const [showStaples, setShowStaples] = useState(true);
   const [showSources, setShowSources] = useState(false);
   const [extraItems, setExtraItems] = useState([]);
+  // Tracks which items have been sent to the pantry inventory this session,
+  // just to swap the button to "✓ pantry" and stop double-adding on a
+  // stray extra click — not persisted, since re-adding later (e.g. after
+  // reopening the app) is harmless and arguably correct (you bought it again).
+  const [pantryAddedKeys, setPantryAddedKeys] = useState(() => new Set());
 
   useEffect(() => {
     api.getDeals().then((d) => setDeals(d.deals)).catch(() => {});
@@ -414,6 +440,30 @@ export function GroceryList({
       else await api.checkGroceryItem(weekStart, key);
     } catch {
       setChecked((prev) => ({ ...prev, [key]: wasChecked }));
+    }
+  }
+
+  // Checking something off is exactly the moment you know you bought it, so
+  // that's when this offers to also drop it into the pantry inventory (with
+  // today as the purchase date) - location defaults to fridge since that's
+  // the common case; wrong for a handful of items, but always editable from
+  // the Makeable tab afterward.
+  async function addToPantry(item) {
+    if (!onAddPantryItem || pantryAddedKeys.has(item.key)) return;
+    setPantryAddedKeys((prev) => new Set(prev).add(item.key));
+    try {
+      await onAddPantryItem({
+        name: item.name,
+        quantity: item.parts?.[0]?.quantity ?? null,
+        unit: item.parts?.[0]?.unit ?? null,
+        location: "fridge",
+      });
+    } catch {
+      setPantryAddedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(item.key);
+        return next;
+      });
     }
   }
 
@@ -498,6 +548,8 @@ export function GroceryList({
                   onToggle={() => toggle(item.key)}
                   draggable
                   onDeleteManual={deleteExtraItem}
+                  onAddToPantry={addToPantry}
+                  pantryAdded={pantryAddedKeys.has(item.key)}
                 />
               ))}
             </ul>
@@ -514,6 +566,8 @@ export function GroceryList({
               onToggle={() => toggle(item.key)}
               draggable
               onDeleteManual={deleteExtraItem}
+              onAddToPantry={addToPantry}
+              pantryAdded={pantryAddedKeys.has(item.key)}
             />
           ))}
         </ul>
@@ -531,6 +585,8 @@ export function GroceryList({
               onToggle={toggle}
               onUnassign={onUnassignFromSection}
               onDeleteManual={deleteExtraItem}
+              onAddToPantry={addToPantry}
+              pantryAddedKeys={pantryAddedKeys}
               onDelete={onDeleteSection}
               onReorder={onReorderSection}
               isFirst={i === 0}
@@ -578,6 +634,8 @@ export function GroceryList({
                           draggable
                           onRemoveStaple={onRemoveStaple}
                           onDeleteManual={deleteExtraItem}
+                          onAddToPantry={addToPantry}
+                          pantryAdded={pantryAddedKeys.has(item.key)}
                         />
                       ))}
                     </ul>
@@ -601,6 +659,8 @@ export function GroceryList({
                           draggable
                           onRemoveStaple={onRemoveStaple}
                           onDeleteManual={deleteExtraItem}
+                          onAddToPantry={addToPantry}
+                          pantryAdded={pantryAddedKeys.has(item.key)}
                         />
                       ))}
                     </ul>

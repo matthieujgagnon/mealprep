@@ -115,4 +115,16 @@ export const api = {
     }),
   unassignFromGrocerySection: (core) =>
     request(`/grocery-sections/assignments/${encodeURIComponent(core)}`, { method: "DELETE" }),
+
+  listPantryInventory: () => request("/pantry-inventory"),
+  suggestPantryExpiration: (name, location, purchasedAt) =>
+    request(
+      `/pantry-inventory/suggest?name=${encodeURIComponent(name)}&location=${encodeURIComponent(location)}` +
+        (purchasedAt ? `&purchasedAt=${encodeURIComponent(purchasedAt)}` : "")
+    ),
+  addPantryInventoryItem: (item) =>
+    request("/pantry-inventory", { method: "POST", body: JSON.stringify(item) }),
+  updatePantryInventoryItem: (id, payload) =>
+    request(`/pantry-inventory/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deletePantryInventoryItem: (id) => request(`/pantry-inventory/${id}`, { method: "DELETE" }),
 };

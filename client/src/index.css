@@ -100,6 +100,25 @@ select {
   flex-wrap: wrap;
 }
 
+.pantry-expiry-banner {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--tomato);
+  color: #fbe9e6;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin: -12px 0 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pantry-expiry-banner:hover {
+  filter: brightness(1.08);
+}
+
 .wordmark {
   font-family: var(--font-display);
   font-weight: 600;
@@ -646,6 +665,94 @@ select {
   color: var(--paper-soft);
   opacity: 0.8;
   margin: 0;
+}
+
+.pantry-inventory-section {
+  background: var(--bg-soft);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.pantry-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
+.pantry-add-form input[type="text"] {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.pantry-add-form input[type="date"] {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.pantry-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pantry-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.pantry-item-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.pantry-item-name {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.pantry-item-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pantry-item-date {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  width: 140px;
+}
+
+.pantry-item.expiring .deal-flag,
+.pantry-item.expired .deal-flag {
+  background: var(--tomato);
+  color: #fbe9e6;
 }
 
 /* ---------- Ingredient groups ---------- */

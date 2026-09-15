@@ -17,17 +17,18 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
 
-  sessions            Session[]
-  recipes             Recipe[]
-  recipeCategories    RecipeCategory[]
-  pantryStaples       PantryStaple[]
-  grocerySections     GrocerySection[]
-  groceryAssignments  GroceryAssignment[]
-  groceryCheckedItems GroceryCheckedItem[]
-  groceryExtraItems   GroceryExtraItem[]
-  flyerDeals          FlyerDeal[]
-  flyerPages          FlyerPage[]
-  plannerEntries      PlannerEntry[]
+  sessions             Session[]
+  recipes              Recipe[]
+  recipeCategories     RecipeCategory[]
+  pantryStaples        PantryStaple[]
+  grocerySections      GrocerySection[]
+  groceryAssignments   GroceryAssignment[]
+  groceryCheckedItems  GroceryCheckedItem[]
+  groceryExtraItems    GroceryExtraItem[]
+  flyerDeals           FlyerDeal[]
+  flyerPages           FlyerPage[]
+  plannerEntries       PlannerEntry[]
+  pantryInventoryItems PantryInventoryItem[]
 }
 
 // A logged-in session, looked up by the id stored in the browser's httpOnly
@@ -45,30 +46,30 @@ model Session {
 }
 
 model Recipe {
-  id               String   @id @default(cuid())
-  userId           String? // nullable only for the brief window before the first account claims pre-existing (single-user-era) rows - see auth.js's signup backfill. Every row is owned after that.
-  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title            String
-  sourceUrl        String?
-  photoUrl         String?
-  photos           String   @default("[]") // JSON-stringified array of all image URLs found at import
-  notes            String? // freeform recipe-level notes ("used less salt", "great with rice") — separate from any per-ingredient note
-  inCookbook       Boolean  @default(false) // true for manual entries, or imported recipes dragged into the cookbook
-  inImported       Boolean  @default(true) // true for recipes that came from a URL import; independent of inCookbook so deleting from one section doesn't affect the other
-  isPlaceholder    Boolean  @default(false) // true for the generic "Restaurant"/"YOLO"/"N/A" planner cards, which aren't real recipes
-  baseServings     Int      @default(4)
-  prepTimeMinutes  Int?
-  cookTimeMinutes  Int?
-  fridgeLifeDays   Int? // how many days this keeps well as a fridge leftover; user-set, powers the "past its fridge life" warning on leftover-marked planner cards
-  instructions     String // JSON-stringified array of step strings
-  tags             String   @default("[]") // JSON-stringified array of tag strings, e.g. ["shrimp","summer"]
-  categoryId       String? // user-created cookbook category, e.g. "Breakfast", "Sides"; null = uncategorized
-  category         RecipeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  position         Int      @default(0) // manual drag-to-reorder position within whichever grid (Imported / Cookbook / a category) it's shown in
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String          @id @default(cuid())
+  userId          String? // nullable only for the brief window before the first account claims pre-existing (single-user-era) rows - see auth.js's signup backfill. Every row is owned after that.
+  user            User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  sourceUrl       String?
+  photoUrl        String?
+  photos          String          @default("[]") // JSON-stringified array of all image URLs found at import
+  notes           String? // freeform recipe-level notes ("used less salt", "great with rice") — separate from any per-ingredient note
+  inCookbook      Boolean         @default(false) // true for manual entries, or imported recipes dragged into the cookbook
+  inImported      Boolean         @default(true) // true for recipes that came from a URL import; independent of inCookbook so deleting from one section doesn't affect the other
+  isPlaceholder   Boolean         @default(false) // true for the generic "Restaurant"/"YOLO"/"N/A" planner cards, which aren't real recipes
+  baseServings    Int             @default(4)
+  prepTimeMinutes Int?
+  cookTimeMinutes Int?
+  fridgeLifeDays  Int? // how many days this keeps well as a fridge leftover; user-set, powers the "past its fridge life" warning on leftover-marked planner cards
+  instructions    String // JSON-stringified array of step strings
+  tags            String          @default("[]") // JSON-stringified array of tag strings, e.g. ["shrimp","summer"]
+  categoryId      String? // user-created cookbook category, e.g. "Breakfast", "Sides"; null = uncategorized
+  category        RecipeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  position        Int             @default(0) // manual drag-to-reorder position within whichever grid (Imported / Cookbook / a category) it's shown in
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
-  ingredients   Ingredient[]
+  ingredients    Ingredient[]
   plannerEntries PlannerEntry[]
 
   @@index([userId])
@@ -235,6 +236,29 @@ model FlyerPage {
   @@index([userId, store])
 }
 
+// A specific item physically in the user's fridge/pantry/freezer right now -
+// distinct from PantryStaple (which is just a grocery-list categorization
+// flag, not a real inventory) and from the planner's alreadyHave flag (a
+// quick per-meal override) - see the schema comment history in this repo's
+// PR discussion for why those two stay separate. Existence of a row = it's
+// in stock; deleting it (or letting it expire) means it's not.
+model PantryInventoryItem {
+  id          String    @id @default(cuid())
+  userId      String? // nullable only pre-backfill - see Recipe.userId
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String // as typed, e.g. "chicken breast"
+  core        String // lowercased name, for lookups; not run through groceryList.js's fuller canonicalize() since nothing here needs recipe-ingredient-level normalization
+  quantity    Float?
+  unit        String?
+  location    String    @default("fridge") // "pantry" | "fridge" | "freezer" - which USDA FoodKeeper column the expiration suggestion was drawn from
+  purchasedAt DateTime  @default(now())
+  expiresAt   DateTime? // suggested from the bundled USDA FoodKeeper data at add-time, or set/edited by the user - null means no suggestion was available and none was typed in
+  createdAt   DateTime  @default(now())
+
+  // Non-unique on purpose - see RecipeCategory's @@index comment above.
+  @@index([userId, core])
+}
+
 // A recipe card placed on a specific day of a specific week's planner.
 // weekStart is the Monday of that week, "YYYY-MM-DD" — a plain calendar-date
 // string rather than a DateTime, so there's no timezone conversion to get
@@ -245,19 +269,19 @@ model FlyerPage {
 // pre-existing PlannerEntry (the old single permanent template) lands on
 // this one week, which becomes its first real week once this ships.
 model PlannerEntry {
-  id        String   @id @default(cuid())
-  userId    String? // nullable only pre-backfill - see Recipe.userId
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekStart String   @default("2026-08-31")
-  dayOfWeek Int // 0 = Monday ... 6 = Sunday
-  mealType  String   @default("dinner") // "breakfast" | "lunch" | "dinner"
-  recipeId  String
-  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  servings  Int? // override servings for this planned meal; falls back to recipe.baseServings
-  isLeftover Boolean @default(false) // true = reusing food from another planned meal; excluded from grocery list
-  alreadyHave Boolean @default(false) // true = already have what this meal needs on hand (e.g. breakfast staples); excluded from grocery list, same as a leftover, but for a different reason
-  position  Int      @default(0) // order within the day+mealType slot
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String? // nullable only pre-backfill - see Recipe.userId
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart   String   @default("2026-08-31")
+  dayOfWeek   Int // 0 = Monday ... 6 = Sunday
+  mealType    String   @default("dinner") // "breakfast" | "lunch" | "dinner"
+  recipeId    String
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  servings    Int? // override servings for this planned meal; falls back to recipe.baseServings
+  isLeftover  Boolean  @default(false) // true = reusing food from another planned meal; excluded from grocery list
+  alreadyHave Boolean  @default(false) // true = already have what this meal needs on hand (e.g. breakfast staples); excluded from grocery list, same as a leftover, but for a different reason
+  position    Int      @default(0) // order within the day+mealType slot
+  createdAt   DateTime @default(now())
 
   @@index([userId, weekStart])
 }
