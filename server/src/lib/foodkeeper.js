@@ -12,6 +12,27 @@ const ENTRIES = JSON.parse(readFileSync(path.join(__dirname, "../../data/foodkee
 
 const LOCATION_FIELD = { pantry: "pantryDays", fridge: "fridgeDays", freezer: "freezeDays" };
 
+// The 13 category labels that actually occur in the bundled FoodKeeper data
+// (see data/foodkeeper.json's generation notes), plus "other" for anything
+// that doesn't match a product - real USDA groupings rather than an
+// invented list, same principle as the expiration dates themselves.
+export const CATEGORIES = [
+  "Produce",
+  "Meat",
+  "Poultry",
+  "Seafood",
+  "Dairy Products & Eggs",
+  "Grains, Beans & Pasta",
+  "Baked Goods",
+  "Condiments, Sauces & Canned Goods",
+  "Beverages",
+  "Deli & Prepared Foods",
+  "Food Purchased Frozen",
+  "Shelf Stable Foods",
+  "Vegetarian Proteins",
+  "Other",
+];
+
 function tokenize(text) {
   return text
     .toLowerCase()
@@ -70,6 +91,17 @@ export function findBestMatch(name) {
     }
   }
   return best;
+}
+
+// Suggests a category for an item from the same product match the
+// expiration date is drawn from, so the two stay consistent with each
+// other. Falls back to "Other" when nothing matched, or the matched
+// entry's category isn't one of the known 13 (shouldn't happen with the
+// bundled data, but never worth surfacing as a hard error to the user).
+export function suggestCategory(name) {
+  const match = findBestMatch(name);
+  const category = match?.category;
+  return category && CATEGORIES.includes(category) ? category : "Other";
 }
 
 // Suggests an expiration Date for an item purchased on `purchasedAt`, stored

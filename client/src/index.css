@@ -749,10 +749,55 @@ select {
   width: 140px;
 }
 
+.pantry-item-category {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  max-width: 180px;
+}
+
 .pantry-item.expiring .deal-flag,
 .pantry-item.expired .deal-flag {
   background: var(--tomato);
   color: #fbe9e6;
+}
+
+.inventory-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-soft);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--paper-soft);
+}
+
+.btn.danger {
+  background: var(--tomato);
+  color: #fbe9e6;
+}
+
+.makeable-inventory-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-soft);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--paper-soft);
+  cursor: pointer;
+}
+
+.makeable-inventory-link:hover {
+  filter: brightness(1.1);
 }
 
 /* ---------- Ingredient groups ---------- */
