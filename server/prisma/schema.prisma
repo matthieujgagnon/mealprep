@@ -248,6 +248,7 @@ model PantryInventoryItem {
   user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String // as typed, e.g. "chicken breast"
   core        String // lowercased name, for lookups; not run through groceryList.js's fuller canonicalize() since nothing here needs recipe-ingredient-level normalization
+  category    String    @default("other") // one of foodkeeper.js's CATEGORIES - auto-suggested from the same FoodKeeper product match the expiration date comes from, editable like any other field
   quantity    Float?
   unit        String?
   location    String    @default("fridge") // "pantry" | "fridge" | "freezer" - which USDA FoodKeeper column the expiration suggestion was drawn from

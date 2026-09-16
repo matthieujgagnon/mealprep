@@ -117,6 +117,8 @@ export const api = {
     request(`/grocery-sections/assignments/${encodeURIComponent(core)}`, { method: "DELETE" }),
 
   listPantryInventory: () => request("/pantry-inventory"),
+  // Returns { expiresAt, category } - both suggested from the same bundled
+  // USDA FoodKeeper product match.
   suggestPantryExpiration: (name, location, purchasedAt) =>
     request(
       `/pantry-inventory/suggest?name=${encodeURIComponent(name)}&location=${encodeURIComponent(location)}` +
@@ -127,4 +129,6 @@ export const api = {
   updatePantryInventoryItem: (id, payload) =>
     request(`/pantry-inventory/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deletePantryInventoryItem: (id) => request(`/pantry-inventory/${id}`, { method: "DELETE" }),
+  deletePantryInventoryItems: (ids) =>
+    request("/pantry-inventory", { method: "DELETE", body: JSON.stringify({ ids }) }),
 };

@@ -13,6 +13,7 @@ import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
+import { Inventory } from "./components/Inventory.jsx";
 
 // Rendered inside <DragOverlay> — a floating copy that actually follows the
 // cursor, independent of wherever the real (now-dimmed) source element sits.
@@ -390,6 +391,12 @@ export default function App({ user, onLogout }) {
     await api.deletePantryInventoryItem(id);
   }
 
+  async function handleDeletePantryItems(ids) {
+    const idSet = new Set(ids);
+    setPantryInventory((prev) => prev.filter((i) => !idSet.has(i.id)));
+    await api.deletePantryInventoryItems(ids);
+  }
+
   async function handleReorderSection(id, direction) {
     const currentOrder = grocerySections.map((s) => s.id);
     const index = currentOrder.indexOf(id);
@@ -706,6 +713,12 @@ export default function App({ user, onLogout }) {
             >
               Flyers
             </button>
+            <button
+              className={`tab${tab === "inventory" ? " active" : ""}`}
+              onClick={() => setTab("inventory")}
+            >
+              Inventory
+            </button>
           </nav>
           <div className="app-header-account">
             <span className="app-header-account-name">{user.name || user.email}</span>
@@ -715,11 +728,11 @@ export default function App({ user, onLogout }) {
           </div>
         </header>
 
-        {expiringPantryCount > 0 && tab !== "makeable" && (
+        {expiringPantryCount > 0 && tab !== "inventory" && (
           <button
             type="button"
             className="pantry-expiry-banner"
-            onClick={() => setTab("makeable")}
+            onClick={() => setTab("inventory")}
           >
             {expiringPantryCount} pantry item{expiringPantryCount === 1 ? "" : "s"} expiring soon — tap to review
           </button>
@@ -739,9 +752,17 @@ export default function App({ user, onLogout }) {
             plannerEntries={plannerEntries}
             onSelectRecipe={openRecipe}
             pantryInventory={pantryInventory}
-            onAddPantryItem={handleAddPantryItem}
-            onUpdatePantryItem={handleUpdatePantryItem}
-            onDeletePantryItem={handleDeletePantryItem}
+            onOpenInventory={() => setTab("inventory")}
+          />
+        )}
+
+        {tab === "inventory" && (
+          <Inventory
+            items={pantryInventory}
+            onAdd={handleAddPantryItem}
+            onUpdate={handleUpdatePantryItem}
+            onDelete={handleDeletePantryItem}
+            onDeleteMany={handleDeletePantryItems}
           />
         )}
 
