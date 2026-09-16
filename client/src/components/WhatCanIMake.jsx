@@ -261,12 +261,12 @@ export function WhatCanIMake({
 
       {atRisk.length > 0 && (
         <div className="makeable-at-risk">
-          <span className="makeable-at-risk-label">⚠ At risk from this week's plan (only used once):</span>
+          <span className="makeable-at-risk-label">Expiring soon this week:</span>
           {atRisk.map((name) => (
             <button
               key={name}
               type="button"
-              className="tag-chip risk"
+              className="tag-chip"
               onClick={() => addIngredient(name)}
             >
               + {name}

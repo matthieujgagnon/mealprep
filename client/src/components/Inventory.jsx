@@ -169,7 +169,7 @@ function AddInventoryItemForm({ onAdd }) {
   );
 }
 
-function InventoryRow({ item, checked, onToggleChecked, onUpdate, onDelete }) {
+function InventoryRow({ item, checked, onToggleChecked, onUpdate, onDelete, isStaple, onToggleStaple }) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
   const statusClass = days !== null && days < 0 ? " expired" : days !== null && days <= 2 ? " expiring" : "";
 
@@ -216,6 +216,19 @@ function InventoryRow({ item, checked, onToggleChecked, onUpdate, onDelete }) {
       <span className={`deal-flag${statusClass === " expired" ? " sale" : ""}`}>{formatExpiry(item.expiresAt)}</span>
       <button
         type="button"
+        className={`pantry-item-staple-toggle${isStaple ? " active" : ""}`}
+        aria-label={isStaple ? `Unmark ${item.name} as a pantry staple` : `Mark ${item.name} as a pantry staple`}
+        title={
+          isStaple
+            ? "This is a pantry staple — always counted as \"have\", never on the shopping list"
+            : "Mark as a pantry staple — always counted as \"have\", never on the shopping list"
+        }
+        onClick={() => onToggleStaple(item)}
+      >
+        {isStaple ? "★" : "☆"}
+      </button>
+      <button
+        type="button"
         className="staple-remove-btn"
         aria-label={`Remove ${item.name} from inventory`}
         title="Remove from inventory"
@@ -227,7 +240,7 @@ function InventoryRow({ item, checked, onToggleChecked, onUpdate, onDelete }) {
   );
 }
 
-function CategorySection({ category, items, checkedIds, onToggleChecked, onUpdate, onDelete }) {
+function CategorySection({ category, items, checkedIds, onToggleChecked, onUpdate, onDelete, staples, onToggleStaple }) {
   const [collapsed, setCollapsed] = useState(false);
   const sorted = [...items].sort((a, b) => {
     if (!a.expiresAt) return 1;
@@ -250,6 +263,8 @@ function CategorySection({ category, items, checkedIds, onToggleChecked, onUpdat
               onToggleChecked={onToggleChecked}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              isStaple={staples.has(item.core)}
+              onToggleStaple={onToggleStaple}
             />
           ))}
         </ul>
@@ -258,8 +273,18 @@ function CategorySection({ category, items, checkedIds, onToggleChecked, onUpdat
   );
 }
 
-export function Inventory({ items, onAdd, onUpdate, onDelete, onDeleteMany }) {
+export function Inventory({
+  items,
+  onAdd,
+  onUpdate,
+  onDelete,
+  onDeleteMany,
+  customStaples,
+  onMarkStaple,
+  onUnmarkStaple,
+}) {
   const [checkedIds, setCheckedIds] = useState(() => new Set());
+  const staples = new Set(customStaples || []);
 
   function toggleChecked(id) {
     setCheckedIds((prev) => {
@@ -268,6 +293,14 @@ export function Inventory({ items, onAdd, onUpdate, onDelete, onDeleteMany }) {
       else next.add(id);
       return next;
     });
+  }
+
+  // A deliberate, per-item call - not inferred from category or location,
+  // since what actually counts as "always have it, never shop for it" is a
+  // judgment only the person stocking the pantry can make.
+  function toggleStaple(item) {
+    if (staples.has(item.core)) onUnmarkStaple(item.core);
+    else onMarkStaple(item.core);
   }
 
   async function handleRemoveSelected() {
@@ -316,6 +349,8 @@ export function Inventory({ items, onAdd, onUpdate, onDelete, onDeleteMany }) {
             onToggleChecked={toggleChecked}
             onUpdate={onUpdate}
             onDelete={onDelete}
+            staples={staples}
+            onToggleStaple={toggleStaple}
           />
         ))
       )}

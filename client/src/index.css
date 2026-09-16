@@ -615,8 +615,7 @@ select {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  background: rgba(200, 56, 3, 0.1);
-  border: 1px solid rgba(200, 56, 3, 0.25);
+  background: var(--bg-soft);
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 14px;
@@ -627,13 +626,8 @@ select {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--tomato);
+  color: var(--sage);
   flex-basis: 100%;
-}
-
-.tag-chip.risk {
-  background: var(--tomato);
-  color: #fbe9e6;
 }
 
 .makeable-have-chips {
@@ -2408,6 +2402,26 @@ input[type="date"].planner-week-picker {
 .staple-remove-btn:hover {
   opacity: 1;
   color: var(--tomato);
+}
+
+.pantry-item-staple-toggle {
+  background: none;
+  border: none;
+  color: var(--paper-soft);
+  opacity: 0.4;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.pantry-item-staple-toggle:hover {
+  opacity: 1;
+}
+
+.pantry-item-staple-toggle.active {
+  color: var(--mustard);
+  opacity: 1;
 }
 
 .staples-empty-hint {
