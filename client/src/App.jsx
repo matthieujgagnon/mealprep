@@ -376,14 +376,26 @@ export default function App({ user, onLogout }) {
     );
   }
 
+  // Mirrors pantryInventory.js's server-side promoteToStapleIfShelfStable so
+  // the staples list reflects the promotion immediately, without waiting on
+  // a second fetch - the server does the real write, this just keeps local
+  // state in sync with what it just did.
+  function syncStapleFromInventoryItem(item) {
+    if (item.category !== "Shelf Stable Foods") return;
+    setCustomStaples((prev) => (prev.includes(item.core) ? prev : [...prev, item.core]));
+    setExcludedStaples((prev) => prev.filter((c) => c !== item.core));
+  }
+
   async function handleAddPantryItem(item) {
     const created = await api.addPantryInventoryItem(item);
     setPantryInventory((prev) => [...prev, created]);
+    syncStapleFromInventoryItem(created);
   }
 
   async function handleUpdatePantryItem(id, payload) {
     const updated = await api.updatePantryInventoryItem(id, payload);
     setPantryInventory((prev) => prev.map((i) => (i.id === id ? updated : i)));
+    syncStapleFromInventoryItem(updated);
   }
 
   async function handleDeletePantryItem(id) {
@@ -752,6 +764,7 @@ export default function App({ user, onLogout }) {
             plannerEntries={plannerEntries}
             onSelectRecipe={openRecipe}
             pantryInventory={pantryInventory}
+            customStaples={customStaples}
             onOpenInventory={() => setTab("inventory")}
           />
         )}

@@ -1,10 +1,25 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { suggestExpiration, suggestCategory, CATEGORIES } from "../lib/foodkeeper.js";
+import { upsertStaple } from "./pantryStaples.js";
 
 export const pantryInventoryRouter = Router();
 
 const LOCATIONS = ["pantry", "fridge", "freezer"];
+
+// A shelf-stable item (canned goods, dry goods, condiments, ...) is exactly
+// the kind of thing that belongs on the grocery list's "staples" section -
+// always on hand, never something to actively shop for - so an inventory
+// item in that category is automatically marked as a staple too. Idempotent
+// (safe to call every time a shelf-stable item is created or edited), and
+// deliberately one-directional: this never removes a staple, since "no
+// longer have a dated inventory row for it" doesn't mean "stop treating it
+// as a staple you always have."
+async function promoteToStapleIfShelfStable(userId, item) {
+  if (item.category === "Shelf Stable Foods") {
+    await upsertStaple(userId, item.core, { excluded: false });
+  }
+}
 
 // GET /api/pantry-inventory - every item currently in stock, soonest-expiring first.
 pantryInventoryRouter.get("/", async (req, res) => {
@@ -63,6 +78,7 @@ pantryInventoryRouter.post("/", async (req, res) => {
       expiresAt: resolvedExpiresAt,
     },
   });
+  await promoteToStapleIfShelfStable(req.userId, item);
   res.status(201).json(item);
 });
 
@@ -93,6 +109,7 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   });
   if (result.count === 0) return res.status(404).json({ error: "Item not found" });
   const item = await prisma.pantryInventoryItem.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  await promoteToStapleIfShelfStable(req.userId, item);
   res.json(item);
 });
 

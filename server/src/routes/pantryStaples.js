@@ -16,7 +16,7 @@ pantryStaplesRouter.get("/", async (req, res) => {
 // @@index comment on PantryStaple), so "one row per user per core" is
 // enforced here instead of via Prisma's upsert - find it first, then
 // create or update accordingly.
-async function upsertStaple(userId, core, data) {
+export async function upsertStaple(userId, core, data) {
   const existing = await prisma.pantryStaple.findFirst({ where: { userId, core } });
   if (existing) {
     return prisma.pantryStaple.update({ where: { id: existing.id }, data });
