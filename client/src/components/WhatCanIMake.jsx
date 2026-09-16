@@ -6,6 +6,28 @@ import { MealCard } from "./MealCard.jsx";
 // fridge checking what you've got, a backgrounded phone tab shouldn't wipe
 // the list you just built.
 const STORAGE_KEY = "mealprep-have-ingredients";
+// Opt-out lists (not opt-in) so a newly-added inventory item or category is
+// counted by default - only an explicit exclusion should be persisted.
+const EXCLUDED_INVENTORY_KEY = "mealprep-excluded-inventory-ids";
+const EXCLUDED_CATEGORIES_KEY = "mealprep-excluded-inventory-categories";
+
+// Mirrors server/src/lib/foodkeeper.js's CATEGORIES exactly.
+const CATEGORIES = [
+  "Produce",
+  "Meat",
+  "Poultry",
+  "Seafood",
+  "Dairy Products & Eggs",
+  "Grains, Beans & Pasta",
+  "Baked Goods",
+  "Condiments, Sauces & Canned Goods",
+  "Beverages",
+  "Deli & Prepared Foods",
+  "Food Purchased Frozen",
+  "Shelf Stable Foods",
+  "Vegetarian Proteins",
+  "Other",
+];
 
 function loadHaveFromStorage() {
   try {
@@ -16,15 +38,73 @@ function loadHaveFromStorage() {
   }
 }
 
+function loadSetFromStorage(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function daysUntil(dateStr) {
+  const ms = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(ms / (24 * 60 * 60 * 1000));
+}
+
+function formatExpiry(expiresAt) {
+  if (!expiresAt) return "No date set";
+  const days = daysUntil(expiresAt);
+  if (days < 0) return `Expired ${Math.abs(days)}d ago`;
+  if (days === 0) return "Expires today";
+  if (days === 1) return "Expires tomorrow";
+  return `Expires in ${days}d`;
+}
+
+function itemCategory(item) {
+  return CATEGORIES.includes(item.category) ? item.category : "Other";
+}
+
+function MakeableInventoryRow({ item, counted, onToggle }) {
+  const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
+  const expired = days !== null && days < 0;
+  const statusClass = expired ? " expired" : days !== null && days <= 2 ? " expiring" : "";
+
+  return (
+    <li className={`pantry-item${statusClass}`}>
+      <input
+        type="checkbox"
+        checked={counted}
+        disabled={expired}
+        onChange={() => onToggle(item.id)}
+        aria-label={`Count ${item.name} toward what you can make`}
+        title={expired ? "Expired — not counted" : "Count toward what you can make"}
+      />
+      <span className="pantry-item-main">
+        <span className="pantry-item-name">{item.name}</span>
+        <span className="pantry-item-meta">{itemCategory(item)}</span>
+      </span>
+      <span className={`deal-flag${statusClass === " expired" ? " sale" : ""}`}>{formatExpiry(item.expiresAt)}</span>
+    </li>
+  );
+}
+
 export function WhatCanIMake({
   recipes,
   plannerEntries,
   onSelectRecipe,
   pantryInventory,
+  customStaples,
   onOpenInventory,
 }) {
   const [have, setHave] = useState(loadHaveFromStorage);
   const [input, setInput] = useState("");
+  const [excludedInventoryIds, setExcludedInventoryIds] = useState(() => loadSetFromStorage(EXCLUDED_INVENTORY_KEY));
+  const [excludedCategories, setExcludedCategories] = useState(() => loadSetFromStorage(EXCLUDED_CATEGORIES_KEY));
+  // Deliberately not persisted like the two exclusion sets above - this is a
+  // momentary "what can I make from just what's about to go bad" lens, not
+  // a standing preference, so it resets to showing everything on reload.
+  const [expiringOnly, setExpiringOnly] = useState(false);
 
   useEffect(() => {
     try {
@@ -33,6 +113,22 @@ export function WhatCanIMake({
       // best-effort — not worth surfacing an error over
     }
   }, [have]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(EXCLUDED_INVENTORY_KEY, JSON.stringify([...excludedInventoryIds]));
+    } catch {
+      // best-effort
+    }
+  }, [excludedInventoryIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(EXCLUDED_CATEGORIES_KEY, JSON.stringify([...excludedCategories]));
+    } catch {
+      // best-effort
+    }
+  }, [excludedCategories]);
 
   function addIngredient(raw) {
     const name = raw.trim();
@@ -49,21 +145,58 @@ export function WhatCanIMake({
     setHave((prev) => prev.filter((h) => h !== name));
   }
 
-  // Anything in the real pantry inventory that isn't expired counts as
-  // "have" for matching purposes too - additive to the typed quick-list
-  // above, never replacing it, so a one-off "what if I also had X" check
-  // still works exactly like it always has.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const nonExpiredInventoryNames = pantryInventory
-    .filter((item) => !item.expiresAt || new Date(item.expiresAt) >= today)
-    .map((item) => item.name);
-  const combinedHave = [
-    ...have,
-    ...nonExpiredInventoryNames.filter(
-      (n) => !have.some((h) => h.toLowerCase() === n.toLowerCase())
-    ),
-  ];
+  function toggleInventoryItem(id) {
+    setExcludedInventoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleCategory(category) {
+    setExcludedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }
+
+  // Which categories actually show up in the inventory right now - no point
+  // offering a "Beverages" filter chip when nothing in stock is a beverage.
+  const presentCategories = CATEGORIES.filter((cat) => pantryInventory.some((item) => itemCategory(item) === cat));
+
+  const visibleInventory = pantryInventory
+    .filter((item) => !excludedCategories.has(itemCategory(item)))
+    .filter((item) => {
+      if (!expiringOnly) return true;
+      if (!item.expiresAt) return false;
+      return daysUntil(item.expiresAt) <= 2;
+    })
+    .sort((a, b) => {
+      if (!a.expiresAt) return 1;
+      if (!b.expiresAt) return -1;
+      return new Date(a.expiresAt) - new Date(b.expiresAt);
+    });
+
+  const countedInventory = visibleInventory.filter((item) => {
+    const expired = item.expiresAt && daysUntil(item.expiresAt) < 0;
+    return !expired && !excludedInventoryIds.has(item.id);
+  });
+
+  // Everything that counts as "have" without being typed: filtered/selected
+  // inventory, plus custom pantry staples (soy sauce, flour, whatever you've
+  // marked as always-on-hand on the grocery list) - additive to the typed
+  // quick-list above, never replacing it, so a one-off "what if I also had
+  // X" check still works exactly like it always has.
+  const haveLower = new Set(have.map((h) => h.toLowerCase()));
+  const inventoryExtra = countedInventory
+    .map((item) => item.name)
+    .filter((n) => !haveLower.has(n.toLowerCase()));
+  const afterInventoryLower = new Set([...haveLower, ...inventoryExtra.map((n) => n.toLowerCase())]);
+  const stapleExtra = (customStaples || []).filter((s) => !afterInventoryLower.has(s.toLowerCase()));
+  const combinedHave = [...have, ...inventoryExtra, ...stapleExtra];
 
   const allAtRisk = findAtRiskPerishables(plannerEntries, recipes);
   const atRisk = allAtRisk.filter(
@@ -156,10 +289,55 @@ export function WhatCanIMake({
       )}
 
       {pantryInventory.length > 0 && (
-        <button type="button" className="makeable-inventory-link" onClick={onOpenInventory}>
-          {pantryInventory.length} item{pantryInventory.length === 1 ? "" : "s"} in your inventory
-          (counted above) — manage it →
-        </button>
+        <div className="pantry-inventory-section">
+          <div className="makeable-inventory-header">
+            <span>
+              Your inventory — {countedInventory.length}/{pantryInventory.length} counted
+            </span>
+            <button type="button" className="makeable-inventory-manage" onClick={onOpenInventory}>
+              Manage →
+            </button>
+          </div>
+
+          {presentCategories.length > 1 && (
+            <div className="makeable-inventory-filters">
+              {presentCategories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`tag-chip filter${excludedCategories.has(cat) ? " excluded" : ""}`}
+                  onClick={() => toggleCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <label className="makeable-expiring-toggle">
+            <input
+              type="checkbox"
+              checked={expiringOnly}
+              onChange={(e) => setExpiringOnly(e.target.checked)}
+            />
+            Only count what's expiring soon
+          </label>
+
+          {visibleInventory.length === 0 ? (
+            <p className="staples-empty-hint">Nothing matches these filters.</p>
+          ) : (
+            <ul className="pantry-list">
+              {visibleInventory.map((item) => (
+                <MakeableInventoryRow
+                  key={item.id}
+                  item={item}
+                  counted={countedInventory.includes(item)}
+                  onToggle={toggleInventoryItem}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {selectedAtRisk.length >= 2 && (

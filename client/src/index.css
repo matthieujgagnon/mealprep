@@ -615,6 +615,9 @@ select {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  background: var(--bg-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
   margin-bottom: 14px;
 }
 
@@ -624,6 +627,7 @@ select {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--sage);
+  flex-basis: 100%;
 }
 
 .makeable-have-chips {
@@ -782,22 +786,60 @@ select {
   color: #fbe9e6;
 }
 
-.makeable-inventory-link {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: var(--bg-soft);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 16px;
+.makeable-inventory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   font-size: 13px;
   color: var(--paper-soft);
+  margin-bottom: 8px;
+}
+
+.makeable-inventory-manage {
+  background: none;
+  border: none;
+  color: var(--accent-text);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  padding: 0;
+}
+
+.makeable-inventory-manage:hover {
+  text-decoration: underline;
+}
+
+.makeable-inventory-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tag-chip.filter {
+  background: var(--mustard);
+  color: #eef0ff;
+}
+
+.tag-chip.filter.excluded {
+  background: transparent;
+  color: var(--paper-soft);
+  border: 1px solid var(--line);
+}
+
+.makeable-expiring-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--paper-soft);
+  margin-bottom: 10px;
   cursor: pointer;
 }
 
-.makeable-inventory-link:hover {
-  filter: brightness(1.1);
+.pantry-item input[type="checkbox"]:disabled {
+  opacity: 0.4;
 }
 
 /* ---------- Ingredient groups ---------- */
@@ -2360,6 +2402,26 @@ input[type="date"].planner-week-picker {
 .staple-remove-btn:hover {
   opacity: 1;
   color: var(--tomato);
+}
+
+.pantry-item-staple-toggle {
+  background: none;
+  border: none;
+  color: var(--paper-soft);
+  opacity: 0.4;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.pantry-item-staple-toggle:hover {
+  opacity: 1;
+}
+
+.pantry-item-staple-toggle.active {
+  color: var(--mustard);
+  opacity: 1;
 }
 
 .staples-empty-hint {

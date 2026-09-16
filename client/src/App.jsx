@@ -752,6 +752,7 @@ export default function App({ user, onLogout }) {
             plannerEntries={plannerEntries}
             onSelectRecipe={openRecipe}
             pantryInventory={pantryInventory}
+            customStaples={customStaples}
             onOpenInventory={() => setTab("inventory")}
           />
         )}
@@ -763,6 +764,9 @@ export default function App({ user, onLogout }) {
             onUpdate={handleUpdatePantryItem}
             onDelete={handleDeletePantryItem}
             onDeleteMany={handleDeletePantryItems}
+            customStaples={customStaples}
+            onMarkStaple={handleMarkStaple}
+            onUnmarkStaple={handleRemoveStaple}
           />
         )}
 
