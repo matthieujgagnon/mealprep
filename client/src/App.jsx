@@ -129,6 +129,7 @@ function UncategorizedDropZone({ children }) {
 function AddCategoryForm({ onCreate }) {
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState(null);
 
   if (!open) {
     return (
@@ -138,28 +139,33 @@ function AddCategoryForm({ onCreate }) {
     );
   }
 
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    try {
+      await onCreate(name.trim());
+      setName("");
+      setOpen(false);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
-    <form
-      className="add-section-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!name.trim()) return;
-        onCreate(name.trim());
-        setName("");
-        setOpen(false);
-      }}
-    >
+    <form className="add-section-form" onSubmit={handleSubmit}>
       <input
         autoFocus
         type="text"
         placeholder="e.g. Breakfast"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        onBlur={() => !name.trim() && setOpen(false)}
+        onBlur={() => !name.trim() && !error && setOpen(false)}
       />
       <button className="btn primary btn-sm" type="submit">
         Add
       </button>
+      {error && <p className="import-error">{error}</p>}
     </form>
   );
 }

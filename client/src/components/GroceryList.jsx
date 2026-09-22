@@ -230,6 +230,7 @@ function StaplesSubsection({ dropId, children }) {
 function AddSectionForm({ onCreateSection }) {
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState(null);
 
   if (!open) {
     return (
@@ -239,28 +240,33 @@ function AddSectionForm({ onCreateSection }) {
     );
   }
 
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    try {
+      await onCreateSection(name.trim());
+      setName("");
+      setOpen(false);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
-    <form
-      className="add-section-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!name.trim()) return;
-        onCreateSection(name.trim());
-        setName("");
-        setOpen(false);
-      }}
-    >
+    <form className="add-section-form" onSubmit={handleSubmit}>
       <input
         autoFocus
         type="text"
         placeholder="e.g. Metro, Super C..."
         value={name}
         onChange={(e) => setName(e.target.value)}
-        onBlur={() => !name.trim() && setOpen(false)}
+        onBlur={() => !name.trim() && !error && setOpen(false)}
       />
       <button className="btn primary btn-sm" type="submit">
         Add
       </button>
+      {error && <p className="import-error">{error}</p>}
     </form>
   );
 }

@@ -100,13 +100,10 @@ model RecipeCategory {
   createdAt DateTime @default(now())
   recipes   Recipe[]
 
-  // Non-unique on purpose: a real unique constraint here would make
-  // `prisma db push` refuse to run on the deploy pipeline (it can't prove
-  // no existing rows would violate it without --accept-data-loss, which
-  // isn't in Render's build command and isn't something worth wiring up
-  // for a personal app's scale). Application code enforces "one name per
-  // account" instead - see the route's own duplicate check.
-  @@index([userId, name])
+  // Real unique constraint (added via a real migration, not `db push` -
+  // see the migrations/ folder) so "one name per account" is actually
+  // enforced, not just attempted in application code.
+  @@unique([userId, name])
 }
 
 // A canonical ingredient name (e.g. "salt", "olive oil") with a user
@@ -128,8 +125,8 @@ model PantryStaple {
   excluded  Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  // Non-unique on purpose - see RecipeCategory's @@index comment above.
-  @@index([userId, core])
+  // Real unique constraint - see RecipeCategory's @@unique comment above.
+  @@unique([userId, core])
 }
 
 // A user-created grocery list section, e.g. "Metro", "Super C", "Fruit du Jour"
@@ -142,8 +139,8 @@ model GrocerySection {
   createdAt   DateTime            @default(now())
   assignments GroceryAssignment[]
 
-  // Non-unique on purpose - see RecipeCategory's @@index comment above.
-  @@index([userId, name])
+  // Real unique constraint - see RecipeCategory's @@unique comment above.
+  @@unique([userId, name])
 }
 
 // Maps a canonical ingredient name to a grocery section the user dragged it into
@@ -156,8 +153,8 @@ model GroceryAssignment {
   section   GrocerySection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   createdAt DateTime       @default(now())
 
-  // Non-unique on purpose - see RecipeCategory's @@index comment above.
-  @@index([userId, core])
+  // Real unique constraint - see RecipeCategory's @@unique comment above.
+  @@unique([userId, core])
 }
 
 // A checked-off grocery item for a given week. Existence of a row = checked;
@@ -172,8 +169,8 @@ model GroceryCheckedItem {
   core      String // normalized ingredient name, matches the grocery list's item.key
   createdAt DateTime @default(now())
 
-  // Non-unique on purpose - see RecipeCategory's @@index comment above.
-  @@index([userId, weekStart, core])
+  // Real unique constraint - see RecipeCategory's @@unique comment above.
+  @@unique([userId, weekStart, core])
 }
 
 // A manually-typed grocery item for a given week, on top of whatever the
@@ -239,7 +236,10 @@ model PantryInventoryItem {
   expiresAt   DateTime? // suggested from the bundled USDA FoodKeeper data at add-time, or set/edited by the user - null means no suggestion was available and none was typed in
   createdAt   DateTime  @default(now())
 
-  // Non-unique on purpose - see RecipeCategory's @@index comment above.
+  // Unlike RecipeCategory/PantryStaple/etc., this one is genuinely meant to
+  // be multi-row per (userId, core) - buying milk twice is two separate
+  // inventory rows with different purchase/expiry dates, not one row to
+  // merge into. Plain index, not a unique-constraint candidate.
   @@index([userId, core])
 }
 

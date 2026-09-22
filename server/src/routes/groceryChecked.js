@@ -26,16 +26,13 @@ groceryCheckedRouter.post("/", async (req, res) => {
   }
   const normalized = core.trim().toLowerCase();
 
-  // (userId, weekStart, core) isn't a DB-level unique constraint (see
-  // schema.prisma's @@index comment on GroceryCheckedItem), so this checks
-  // first instead of using Prisma's upsert - no update needed either way
-  // since "checked" is just a row's existence, nothing to change on it.
-  const existing = await prisma.groceryCheckedItem.findFirst({
-    where: { userId: req.userId, weekStart, core: normalized },
+  // Real upsert now that (userId, weekStart, core) is a DB-level unique
+  // constraint - "checked" is just a row's existence, so update is a no-op.
+  await prisma.groceryCheckedItem.upsert({
+    where: { userId_weekStart_core: { userId: req.userId, weekStart, core: normalized } },
+    create: { userId: req.userId, weekStart, core: normalized },
+    update: {},
   });
-  if (!existing) {
-    await prisma.groceryCheckedItem.create({ data: { userId: req.userId, weekStart, core: normalized } });
-  }
   res.status(201).json({ weekStart, core: normalized });
 });
 
