@@ -119,6 +119,19 @@ select {
   filter: brightness(1.08);
 }
 
+.load-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--tomato);
+  color: #fbe9e6;
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin: -12px 0 24px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .wordmark {
   font-family: var(--font-display);
   font-weight: 600;

@@ -199,6 +199,7 @@ export default function App({ user, onLogout }) {
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [grocerySections, setGrocerySections] = useState([]);
   const [pantryInventory, setPantryInventory] = useState([]);
+  const [loadError, setLoadError] = useState(false);
   // Same "expiring" window WhatCanIMake's pantry rows use (<=2 days out,
   // expired items included) so the banner and the list agree on what counts.
   const expiringPantryCount = pantryInventory.filter((item) => {
@@ -230,22 +231,36 @@ export default function App({ user, onLogout }) {
     useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
+  // Loads everything the app needs on first render. Tracked with
+  // Promise.allSettled (rather than each call swallowing its own error)
+  // so a single failure - a Render cold-start timeout, a network blip - is
+  // surfaced with a retry instead of just leaving the app silently empty.
+  function loadInitialData() {
+    setLoadError(false);
+    Promise.allSettled([
+      api.listRecipes().then(setRecipes),
+      api.listPantryStaples().then((list) => {
+        setCustomStaples(list.filter((s) => !s.excluded).map((s) => s.core));
+        setExcludedStaples(list.filter((s) => s.excluded).map((s) => s.core));
+        setStapleCategories(
+          Object.fromEntries(list.filter((s) => s.category).map((s) => [s.core, s.category]))
+        );
+      }),
+      api.listGrocerySections().then(setGrocerySections),
+      api.listRecipeCategories().then(setRecipeCategories),
+      api.listPantryInventory().then(setPantryInventory),
+    ]).then((results) => {
+      if (results.some((r) => r.status === "rejected")) setLoadError(true);
+    });
+  }
+
   useEffect(() => {
-    api.listRecipes().then(setRecipes).catch(() => {});
-    api.listPantryStaples().then((list) => {
-      setCustomStaples(list.filter((s) => !s.excluded).map((s) => s.core));
-      setExcludedStaples(list.filter((s) => s.excluded).map((s) => s.core));
-      setStapleCategories(
-        Object.fromEntries(list.filter((s) => s.category).map((s) => [s.core, s.category]))
-      );
-    }).catch(() => {});
-    api.listGrocerySections().then(setGrocerySections).catch(() => {});
-    api.listRecipeCategories().then(setRecipeCategories).catch(() => {});
-    api.listPantryInventory().then(setPantryInventory).catch(() => {});
+    loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    api.listPlanner(weekStart).then(setPlannerEntries).catch(() => {});
+    api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setLoadError(true));
   }, [weekStart]);
 
   function handleImported(recipe) {
@@ -733,6 +748,15 @@ export default function App({ user, onLogout }) {
             </button>
           </div>
         </header>
+
+        {loadError && (
+          <div className="load-error-banner">
+            Couldn't load everything — check your connection.
+            <button type="button" className="btn subtle btn-sm" onClick={loadInitialData}>
+              Try again
+            </button>
+          </div>
+        )}
 
         {expiringPantryCount > 0 && tab !== "inventory" && (
           <button
