@@ -19,12 +19,20 @@ grocerySectionsRouter.post("/", async (req, res) => {
   if (!name || !name.trim()) {
     return res.status(400).json({ error: "name is required" });
   }
+  const trimmedName = name.trim();
   const count = await prisma.grocerySection.count({ where: { userId: req.userId } });
-  const section = await prisma.grocerySection.create({
-    data: { userId: req.userId, name: name.trim(), position: count },
-    include: { assignments: true },
-  });
-  res.status(201).json(section);
+  try {
+    const section = await prisma.grocerySection.create({
+      data: { userId: req.userId, name: trimmedName, position: count },
+      include: { assignments: true },
+    });
+    res.status(201).json(section);
+  } catch (err) {
+    if (err.code === "P2002") {
+      return res.status(409).json({ error: `A section named "${trimmedName}" already exists` });
+    }
+    throw err;
+  }
 });
 
 // PUT /api/grocery-sections/reorder { orderedIds: [id1, id2, ...] } - sets
@@ -60,20 +68,11 @@ grocerySectionsRouter.post("/:id/assign", async (req, res) => {
   if (!section) return res.status(404).json({ error: "Section not found" });
   const normalized = core.trim().toLowerCase();
 
-  // (userId, core) isn't a DB-level unique constraint (see schema.prisma's
-  // @@index comment on GroceryAssignment), so this finds-then-writes
-  // instead of using Prisma's upsert.
-  const existing = await prisma.groceryAssignment.findFirst({
-    where: { userId: req.userId, core: normalized },
+  const assignment = await prisma.groceryAssignment.upsert({
+    where: { userId_core: { userId: req.userId, core: normalized } },
+    create: { userId: req.userId, core: normalized, sectionId: req.params.id },
+    update: { sectionId: req.params.id },
   });
-  const assignment = existing
-    ? await prisma.groceryAssignment.update({
-        where: { id: existing.id },
-        data: { sectionId: req.params.id },
-      })
-    : await prisma.groceryAssignment.create({
-        data: { userId: req.userId, core: normalized, sectionId: req.params.id },
-      });
   res.status(201).json(assignment);
 });
 

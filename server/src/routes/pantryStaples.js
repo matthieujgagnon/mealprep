@@ -12,16 +12,14 @@ pantryStaplesRouter.get("/", async (req, res) => {
   res.json(staples);
 });
 
-// (userId, core) isn't a DB-level unique constraint (see schema.prisma's
-// @@index comment on PantryStaple), so "one row per user per core" is
-// enforced here instead of via Prisma's upsert - find it first, then
-// create or update accordingly.
-async function upsertStaple(userId, core, data) {
-  const existing = await prisma.pantryStaple.findFirst({ where: { userId, core } });
-  if (existing) {
-    return prisma.pantryStaple.update({ where: { id: existing.id }, data });
-  }
-  return prisma.pantryStaple.create({ data: { userId, core, ...data } });
+// "One row per user per core" is a real DB-level unique constraint (see
+// schema.prisma's @@unique on PantryStaple), so this is a real upsert.
+function upsertStaple(userId, core, data) {
+  return prisma.pantryStaple.upsert({
+    where: { userId_core: { userId, core } },
+    create: { userId, core, ...data },
+    update: data,
+  });
 }
 
 // POST /api/pantry-staples { core } - mark an ingredient as a staple.

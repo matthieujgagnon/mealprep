@@ -18,11 +18,19 @@ recipeCategoriesRouter.post("/", async (req, res) => {
   if (!name || !name.trim()) {
     return res.status(400).json({ error: "name is required" });
   }
+  const trimmedName = name.trim();
   const count = await prisma.recipeCategory.count({ where: { userId: req.userId } });
-  const category = await prisma.recipeCategory.create({
-    data: { userId: req.userId, name: name.trim(), position: count },
-  });
-  res.status(201).json(category);
+  try {
+    const category = await prisma.recipeCategory.create({
+      data: { userId: req.userId, name: trimmedName, position: count },
+    });
+    res.status(201).json(category);
+  } catch (err) {
+    if (err.code === "P2002") {
+      return res.status(409).json({ error: `A category named "${trimmedName}" already exists` });
+    }
+    throw err;
+  }
 });
 
 // PUT /api/recipe-categories/reorder { orderedIds: [id1, id2, ...] } - sets
