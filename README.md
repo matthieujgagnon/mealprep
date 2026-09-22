@@ -12,7 +12,10 @@
    ```
    DATABASE_URL="postgresql://...your Neon connection string..."
    PORT=4000
+   GEMINI_API_KEY="...your Gemini API key..."
    ```
+   `GEMINI_API_KEY` is only needed for flyer-deal extraction (uploading a flyer PDF/photo on the
+   Flyers tab) — everything else works without it.
 3. Install and set up:
    ```bash
    npm install
@@ -69,10 +72,11 @@ git push
 Render automatically redeploys on every push to `main`.
 
 ## Known gaps / next steps
-- **Live flyer data isn't wired up** — `server/src/routes/deals.js` returns mock data shaped
-  like real Reebee/Flipp flyer items. Swapping in a live source is a contained change to that
-  one file once a provider is picked.
-- **No password/login** — anyone with the URL can view and edit everything. Fine for personal
-  use with an unlisted URL; worth adding basic auth if that ever matters.
 - **Ingredient parsing on import is best-effort** — works well for standard formats, occasional
   manual correction may be needed for unusual phrasing.
+- **No automated tests or CI** — every change in this repo's history has been verified by hand
+  (Playwright against a real local Postgres). Fine for a single-developer personal project;
+  worth adding before the app has more than one contributor.
+- **Deploys via `prisma db push`, not real migrations** — no migration history or rollback path,
+  which is also why several tables enforce "one row per user per key" in application code
+  instead of a real database unique constraint. See the schema's own comments for specifics.

@@ -77,51 +77,6 @@ const DEALS_SCHEMA = {
   required: ["deals"],
 };
 
-// Renders every page of an uploaded flyer PDF to a PNG buffer, so the
-// Flyers tab can show the actual flyer layout alongside the AI-extracted
-// deal text. Uses pdfjs-dist's Node ("legacy") build with @napi-rs/canvas
-// standing in for the browser <canvas> it normally draws into - chosen over
-// alternatives (node-canvas, poppler binaries) because it ships prebuilt
-// native binaries, avoiding a system-package dependency on Render.
-//
-// UNUSED for now - see the comment at its one former call site below. Left
-// defined rather than deleted since the dynamic-import structure here is
-// still the right shape once the underlying native-crash issue is
-// resolved; just not safe to call in production yet.
-async function renderPdfPages(buffer) {
-  const [{ createCanvas }, pdfjsLib] = await Promise.all([
-    import("@napi-rs/canvas"),
-    import("pdfjs-dist/legacy/build/pdf.mjs"),
-  ]);
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer), disableWorker: true }).promise;
-  const pages = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 1.5 });
-    const canvas = createCanvas(viewport.width, viewport.height);
-    await page.render({
-      canvasContext: canvas.getContext("2d"),
-      viewport,
-      // pdfjs asks the canvas factory for extra offscreen canvases (e.g. for
-      // masks/patterns) during rendering - @napi-rs/canvas isn't a DOM
-      // canvas so it needs this adapter rather than pdfjs's browser default.
-      canvasFactory: {
-        create(width, height) {
-          const c = createCanvas(width, height);
-          return { canvas: c, context: c.getContext("2d") };
-        },
-        reset(canvasAndContext, width, height) {
-          canvasAndContext.canvas.width = width;
-          canvasAndContext.canvas.height = height;
-        },
-        destroy() {},
-      },
-    }).promise;
-    pages.push(await canvas.encode("png"));
-  }
-  return pages;
-}
-
 // POST /api/flyers/upload - upload a grocery flyer PDF, or a photo/screenshot
 // of one (e.g. a curated weekly deals roundup someone else posted) for a
 // named source; Gemini (free tier - see GEMINI_API_KEY below) reads it and
@@ -202,19 +157,6 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
       };
     });
 
-    // Temporarily disabled: rendering flyer pages to thumbnails via
-    // @napi-rs/canvas was taking down every upload in production with a raw,
-    // unhandled-crash-style failure (no error body at all) that a JS
-    // try/catch around renderPdfPages did not prevent - consistent with a
-    // native-code crash (e.g. a missing system graphics library on the
-    // deploy platform) rather than a catchable JS exception, since that
-    // kind of failure kills the process before JS error handling ever runs.
-    // Deals-only upload worked reliably for weeks before this was added, so
-    // it's off until the rendering step can be proven safe outside a JS
-    // try/catch (page-count/size limits, isolating it from the main
-    // process, or verifying the native binary's runtime deps on Render).
-    const pageImages = [];
-
     await prisma.$transaction([
       // Scoped to this user first and foremost - without that, two accounts
       // both typing "Metro" would delete/see each other's deals. Also
@@ -227,14 +169,6 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
         where: { userId: req.userId, OR: [{ source }, { source: null, store: source }] },
       }),
       prisma.flyerDeal.createMany({ data: deals }),
-      prisma.flyerPage.deleteMany({ where: { userId: req.userId, store: source } }),
-      ...(pageImages.length > 0
-        ? [
-            prisma.flyerPage.createMany({
-              data: pageImages.map((image, i) => ({ userId: req.userId, store: source, page: i + 1, image })),
-            }),
-          ]
-        : []),
     ]);
 
     res.status(201).json({ store: source, count: deals.length });
@@ -301,24 +235,10 @@ flyersRouter.post("/import-le-rabais", async (req, res) => {
   res.status(201).json({ store: LE_RABAIS_SOURCE, count: deals.length });
 });
 
-// GET /api/flyers/pages/:id/image - serves one rendered flyer-page PNG.
-// Cached hard since a page's image never changes once created (a re-upload
-// creates new FlyerPage rows with new ids rather than mutating this one).
-flyersRouter.get("/pages/:id/image", async (req, res) => {
-  const page = await prisma.flyerPage.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!page) return res.status(404).end();
-  res.set("Content-Type", "image/png");
-  res.set("Cache-Control", "public, max-age=31536000, immutable");
-  res.send(page.image);
-});
-
 // DELETE /api/flyers - clear every uploaded flyer's deals at once (e.g. to
 // drop stale rows extracted before a matching fix, without re-uploading
 // each store one at a time).
 flyersRouter.delete("/", async (req, res) => {
-  await prisma.$transaction([
-    prisma.flyerDeal.deleteMany({ where: { userId: req.userId } }),
-    prisma.flyerPage.deleteMany({ where: { userId: req.userId } }),
-  ]);
+  await prisma.flyerDeal.deleteMany({ where: { userId: req.userId } });
   res.status(204).send();
 });

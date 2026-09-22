@@ -2,46 +2,7 @@ import { useEffect, useState } from "react";
 import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { api } from "../api.js";
-
-const LOCATIONS = [
-  { id: "fridge", label: "Fridge" },
-  { id: "pantry", label: "Pantry" },
-  { id: "freezer", label: "Freezer" },
-];
-
-// Mirrors server/src/lib/foodkeeper.js's CATEGORIES exactly (the 13 labels
-// that actually occur in the bundled USDA FoodKeeper data, plus "Other") -
-// the order here is also the section order the list groups into.
-const CATEGORIES = [
-  "Produce",
-  "Meat",
-  "Poultry",
-  "Seafood",
-  "Dairy Products & Eggs",
-  "Grains, Beans & Pasta",
-  "Baked Goods",
-  "Condiments, Sauces & Canned Goods",
-  "Beverages",
-  "Deli & Prepared Foods",
-  "Food Purchased Frozen",
-  "Shelf Stable Foods",
-  "Vegetarian Proteins",
-  "Other",
-];
-
-function daysUntil(dateStr) {
-  const ms = new Date(dateStr).getTime() - Date.now();
-  return Math.ceil(ms / (24 * 60 * 60 * 1000));
-}
-
-function formatExpiry(expiresAt) {
-  if (!expiresAt) return "No date set";
-  const days = daysUntil(expiresAt);
-  if (days < 0) return `Expired ${Math.abs(days)}d ago`;
-  if (days === 0) return "Expires today";
-  if (days === 1) return "Expires tomorrow";
-  return `Expires in ${days}d`;
-}
+import { CATEGORIES, LOCATIONS, daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 
 // The add form fetches a suggested expiration date and category from the
 // bundled USDA FoodKeeper data as soon as there's enough to look up (a name

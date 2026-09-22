@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { findRecipesByIngredients, findAtRiskPerishables } from "../lib/similarRecipes.js";
+import { CATEGORIES, daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 import { MealCard } from "./MealCard.jsx";
 
 // Persisted the same way grocery checkmarks are — if you're standing at the
@@ -10,24 +11,6 @@ const STORAGE_KEY = "mealprep-have-ingredients";
 // counted by default - only an explicit exclusion should be persisted.
 const EXCLUDED_INVENTORY_KEY = "mealprep-excluded-inventory-ids";
 const EXCLUDED_CATEGORIES_KEY = "mealprep-excluded-inventory-categories";
-
-// Mirrors server/src/lib/foodkeeper.js's CATEGORIES exactly.
-const CATEGORIES = [
-  "Produce",
-  "Meat",
-  "Poultry",
-  "Seafood",
-  "Dairy Products & Eggs",
-  "Grains, Beans & Pasta",
-  "Baked Goods",
-  "Condiments, Sauces & Canned Goods",
-  "Beverages",
-  "Deli & Prepared Foods",
-  "Food Purchased Frozen",
-  "Shelf Stable Foods",
-  "Vegetarian Proteins",
-  "Other",
-];
 
 function loadHaveFromStorage() {
   try {
@@ -45,20 +28,6 @@ function loadSetFromStorage(key) {
   } catch {
     return new Set();
   }
-}
-
-function daysUntil(dateStr) {
-  const ms = new Date(dateStr).getTime() - Date.now();
-  return Math.ceil(ms / (24 * 60 * 60 * 1000));
-}
-
-function formatExpiry(expiresAt) {
-  if (!expiresAt) return "No date set";
-  const days = daysUntil(expiresAt);
-  if (days < 0) return `Expired ${Math.abs(days)}d ago`;
-  if (days === 0) return "Expires today";
-  if (days === 1) return "Expires tomorrow";
-  return `Expires in ${days}d`;
 }
 
 function itemCategory(item) {

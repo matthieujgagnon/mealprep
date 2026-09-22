@@ -45,7 +45,6 @@ authRouter.post("/signup", async (req, res) => {
       prisma.groceryAssignment.updateMany({ where: { userId: null }, data: { userId: user.id } }),
       prisma.groceryCheckedItem.updateMany({ where: { userId: null }, data: { userId: user.id } }),
       prisma.flyerDeal.updateMany({ where: { userId: null }, data: { userId: user.id } }),
-      prisma.flyerPage.updateMany({ where: { userId: null }, data: { userId: user.id } }),
       prisma.plannerEntry.updateMany({ where: { userId: null }, data: { userId: user.id } }),
     ]);
   }

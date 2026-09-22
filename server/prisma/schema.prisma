@@ -26,7 +26,6 @@ model User {
   groceryCheckedItems  GroceryCheckedItem[]
   groceryExtraItems    GroceryExtraItem[]
   flyerDeals           FlyerDeal[]
-  flyerPages           FlyerPage[]
   plannerEntries       PlannerEntry[]
   pantryInventoryItems PantryInventoryItem[]
 }
@@ -218,22 +217,6 @@ model FlyerDeal {
 
   @@index([userId, store])
   @@index([userId, source])
-}
-
-// A rendered PNG snapshot of one page of an uploaded flyer PDF, so the user
-// can glance at the actual flyer layout (photos, surrounding context) rather
-// than only the AI-extracted item/price text. Replaced wholesale alongside
-// that store's FlyerDeal rows whenever a new flyer is uploaded for it.
-model FlyerPage {
-  id        String   @id @default(cuid())
-  userId    String? // nullable only pre-backfill - see Recipe.userId
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store     String
-  page      Int // 1-based page number within that store's uploaded PDF
-  image     Bytes // rendered PNG bytes
-  createdAt DateTime @default(now())
-
-  @@index([userId, store])
 }
 
 // A specific item physically in the user's fridge/pantry/freezer right now -
