@@ -87,6 +87,12 @@ const TYPE_TO_CATEGORY = {
   Eau: "staple",
 };
 
+// NomImage is a bare filename (e.g.
+// "2026-09-23_H2T2S3_Super_C_Grenade_Ananas_TropicalGold_gr_30.jpg"), not a
+// full URL - confirmed against a real image address copied straight from
+// lerabais.com that this is the folder it's served from.
+export const LE_RABAIS_IMAGE_BASE_URL = "https://lerabais.com/images/weekly-groceries/";
+
 // Filters the full parsed table (which carries weeks of history) down to
 // whichever single row set is currently valid, and maps it onto the
 // FlyerDeal shape. `today` is a "YYYY-MM-DD" string so this is comparable
@@ -108,6 +114,7 @@ export function mapToFlyerDeals(rows, { postalCode, today }) {
         unitBasis,
         category: TYPE_TO_CATEGORY[r.type] || "other",
         validUntil: r.dateFin || null,
+        imageUrl: r.nomImage ? LE_RABAIS_IMAGE_BASE_URL + r.nomImage : null,
       };
     });
 }

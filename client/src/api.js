@@ -67,6 +67,10 @@ export const api = {
   },
   clearFlyerDeals: () => request("/flyers", { method: "DELETE" }),
   importLeRabaisDeals: () => request("/flyers/import-le-rabais", { method: "POST" }),
+  // The stored file behind a manually-uploaded flyer - used directly as an
+  // <iframe> src, so the browser's own PDF/image viewer renders it. Not run
+  // through `request()` since this isn't JSON.
+  flyerUploadImageUrl: (source) => `${BASE}/flyers/image/${encodeURIComponent(source)}`,
 
   listGroceryExtras: (weekStart) =>
     request(`/grocery-extra-items?week=${encodeURIComponent(weekStart)}`),
