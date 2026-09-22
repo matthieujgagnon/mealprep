@@ -1260,20 +1260,6 @@ select {
   flex: 1;
 }
 
-.quick-add-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.quick-add-cards {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .quick-add-chip {
   font-family: var(--font-mono);
   font-size: 12px;

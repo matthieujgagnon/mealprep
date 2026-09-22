@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { assertSafeRecipeUrl } from "./urlSafety.js";
 
 /**
  * Fetches a recipe URL and extracts structured recipe data.
@@ -14,6 +15,10 @@ import * as cheerio from "cheerio";
  *   3. If no structured Recipe data exists at all, throw so the caller falls back to manual entry.
  */
 export async function scrapeRecipe(url) {
+  // Resolves and range-checks the hostname before fetching, so this can't be
+  // pointed at localhost, a LAN address, or a cloud metadata endpoint.
+  await assertSafeRecipeUrl(url);
+
   // Without a timeout, a slow-to-respond site (or one sitting behind a
   // CDN/WAF that stalls) leaves this fetch hanging until Render's own
   // infrastructure-level timeout kicks in — which returns a raw, non-JSON
