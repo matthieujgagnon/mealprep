@@ -2,6 +2,7 @@
   "name": "mealprep",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "server",
     "client"
@@ -11,6 +12,12 @@
     "dev:client": "npm run dev --workspace=client",
     "setup": "npm install && npm run prisma:generate --workspace=server && npm run prisma:migrate --workspace=server",
     "build": "npm run prisma:generate --workspace=server && npm run prisma:deploy --workspace=server && npm run build --workspace=client",
-    "start": "npm run start --workspace=server"
+    "start": "npm run start --workspace=server",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "vitest": "^5.0.1"
   }
 }
