@@ -169,6 +169,14 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
         where: { userId: req.userId, OR: [{ source }, { source: null, store: source }] },
       }),
       prisma.flyerDeal.createMany({ data: deals }),
+      // Keeps the original file so its page can be viewed later (see GET
+      // /image/:source below) - upsert rather than delete+create like the
+      // deals above, since it's a single row per (userId, source).
+      prisma.flyerUpload.upsert({
+        where: { userId_source: { userId: req.userId, source } },
+        create: { userId: req.userId, source, mimeType: req.file.mimetype, data: req.file.buffer },
+        update: { mimeType: req.file.mimetype, data: req.file.buffer },
+      }),
     ]);
 
     res.status(201).json({ store: source, count: deals.length });
@@ -239,6 +247,23 @@ flyersRouter.post("/import-le-rabais", async (req, res) => {
 // drop stale rows extracted before a matching fix, without re-uploading
 // each store one at a time).
 flyersRouter.delete("/", async (req, res) => {
-  await prisma.flyerDeal.deleteMany({ where: { userId: req.userId } });
+  await prisma.$transaction([
+    prisma.flyerDeal.deleteMany({ where: { userId: req.userId } }),
+    prisma.flyerUpload.deleteMany({ where: { userId: req.userId } }),
+  ]);
   res.status(204).send();
+});
+
+// GET /api/flyers/image/:source - the original file behind a manually-
+// uploaded flyer (see FlyerUpload above), served back as-is so the browser's
+// own PDF/image viewer renders it. `:source` is user-typed free text (e.g.
+// "Metro") so it's matched case-sensitively via a plain param, not an id -
+// encodeURIComponent'd by the client since it can contain spaces/accents.
+flyersRouter.get("/image/:source", async (req, res) => {
+  const upload = await prisma.flyerUpload.findUnique({
+    where: { userId_source: { userId: req.userId, source: req.params.source } },
+  });
+  if (!upload) return res.status(404).json({ error: "No stored flyer image for this source." });
+  res.set("Content-Type", upload.mimeType);
+  res.send(upload.data);
 });

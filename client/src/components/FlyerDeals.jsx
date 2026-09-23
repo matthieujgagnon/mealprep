@@ -83,6 +83,74 @@ function AddToPlannerButton({ recipe, onAdd }) {
   );
 }
 
+// Shows the flyer photo behind a deal: Le Rabais deals carry their own
+// per-item photo (deal.imageUrl, scraped straight from the source), while a
+// manually-uploaded flyer has no per-item location to crop, so this instead
+// shows the whole page you uploaded via <iframe> - the browser's own
+// PDF/image viewer renders it, so there's no rendering work done here.
+function DealPreviewModal({ deal, onClose }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  // Reset the failure flag as soon as a different deal is opened, so an
+  // earlier broken image doesn't carry over and hide a working one.
+  useEffect(() => {
+    setImageFailed(false);
+  }, [deal]);
+
+  if (!deal) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="card modal-content flyer-preview-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <h3 className="flyer-preview-title">
+          {deal.item} <span className="flyer-preview-store">— {deal.store}</span>
+        </h3>
+        {imageFailed ? (
+          <p className="flyer-preview-missing">No flyer image available for this item.</p>
+        ) : deal.imageUrl ? (
+          <img
+            className="flyer-preview-image"
+            src={deal.imageUrl}
+            alt={deal.item}
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <iframe
+            className="flyer-preview-frame"
+            src={api.flyerUploadImageUrl(deal.source || deal.store)}
+            title={`${deal.source || deal.store} flyer`}
+            onError={() => setImageFailed(true)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Sample data (shown before any real flyer has been uploaded/imported) has
+// nothing behind it to preview, so it stays a plain, non-interactive pill.
+function DealPricePill({ deal, isBestPrice, onPreview, previewable }) {
+  const className = `price-pill${isBestPrice ? " best-price" : ""}`;
+  const badge = isBestPrice && <span className="best-price-badge">Best price</span>;
+  const body = (
+    <>
+      {badge}
+      <span className="item">{deal.item}</span>
+      <span className="meta">
+        {deal.price} · {deal.store}
+      </span>
+    </>
+  );
+  if (!previewable) return <span className={className}>{body}</span>;
+  return (
+    <button type="button" className={className} onClick={() => onPreview(deal)}>
+      {body}
+    </button>
+  );
+}
+
 function UploadFlyerForm({ onUploaded }) {
   const [open, setOpen] = useState(false);
   const [store, setStore] = useState("");
@@ -157,6 +225,7 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
   const [clearing, setClearing] = useState(false);
   const [importingLeRabais, setImportingLeRabais] = useState(false);
   const [leRabaisError, setLeRabaisError] = useState(null);
+  const [previewDeal, setPreviewDeal] = useState(null);
 
   function toggleCategory(category) {
     setCollapsedCategories((prev) => {
@@ -330,18 +399,13 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
                           <h3 className="flyer-match-title">{group.label}</h3>
                           <div className="flyer-match-prices">
                             {group.deals.map((d) => (
-                              <span
+                              <DealPricePill
                                 key={d.id}
-                                className={`price-pill${group.bestPriceDealIds.has(d.id) ? " best-price" : ""}`}
-                              >
-                                {group.bestPriceDealIds.has(d.id) && (
-                                  <span className="best-price-badge">Best price</span>
-                                )}
-                                <span className="item">{d.item}</span>
-                                <span className="meta">
-                                  {d.price} · {d.store}
-                                </span>
-                              </span>
+                                deal={d}
+                                isBestPrice={group.bestPriceDealIds.has(d.id)}
+                                onPreview={setPreviewDeal}
+                                previewable={!deals.isMockData}
+                              />
                             ))}
                           </div>
                         </div>
@@ -372,16 +436,13 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
                         {isOpen && (
                           <div className="flyer-rest-prices">
                             {rest.flatMap((g) => g.deals.map((d) => ({ d, g }))).map(({ d, g }) => (
-                              <span
+                              <DealPricePill
                                 key={d.id}
-                                className={`price-pill${g.bestPriceDealIds.has(d.id) ? " best-price" : ""}`}
-                              >
-                                {g.bestPriceDealIds.has(d.id) && <span className="best-price-badge">Best price</span>}
-                                <span className="item">{d.item}</span>
-                                <span className="meta">
-                                  {d.price} · {d.store}
-                                </span>
-                              </span>
+                                deal={d}
+                                isBestPrice={g.bestPriceDealIds.has(d.id)}
+                                onPreview={setPreviewDeal}
+                                previewable={!deals.isMockData}
+                              />
                             ))}
                           </div>
                         )}
@@ -394,6 +455,8 @@ export function FlyerDeals({ recipes, onSelectRecipe, onAddToPlanner }) {
           })}
         </div>
       )}
+
+      <DealPreviewModal deal={previewDeal} onClose={() => setPreviewDeal(null)} />
     </div>
   );
 }

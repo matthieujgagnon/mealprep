@@ -26,6 +26,7 @@ model User {
   groceryCheckedItems  GroceryCheckedItem[]
   groceryExtraItems    GroceryExtraItem[]
   flyerDeals           FlyerDeal[]
+  flyerUploads         FlyerUpload[]
   plannerEntries       PlannerEntry[]
   pantryInventoryItems PantryInventoryItem[]
 }
@@ -210,10 +211,29 @@ model FlyerDeal {
   unitPrice  Float? // price/quantity reduced to a single number in unitBasis's unit (e.g. "2 for $5" -> 2.5, "900g for $1.99" -> converted to price per lb) — null when extraction couldn't confidently reduce the printed price to one comparable number
   unitBasis  String? // "lb" | "each" | "L" — the unit unitPrice is expressed in, so deals are only ever compared within the same basis; null alongside a null unitPrice
   validUntil String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
+  imageUrl   String? // this item's own photo on the flyer, when the source provides one per item (currently only Le Rabais, which hosts one) — null for manually-uploaded flyers, which show the whole uploaded page instead (see FlyerUpload)
   createdAt  DateTime @default(now())
 
   @@index([userId, store])
   @@index([userId, source])
+}
+
+// The raw file behind a manually-uploaded flyer (see POST /api/flyers/upload)
+// kept around so its page can be viewed later, not just its extracted deals -
+// stored as-is (PDF or photo) and served back verbatim so the browser's own
+// PDF/image viewer renders it, rather than this app re-rendering pages itself.
+// One row per (userId, source): a re-upload under the same source name
+// replaces it, same as FlyerDeal's own replace-on-reupload behavior.
+model FlyerUpload {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source    String
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@unique([userId, source])
 }
 
 // A specific item physically in the user's fridge/pantry/freezer right now -
