@@ -4,6 +4,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { capitalize } from "./lib/groceryList.js";
+import { Home } from "./components/Home.jsx";
 import { ImportRecipeForm } from "./components/ImportRecipeForm.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
 import { MealCard } from "./components/MealCard.jsx";
@@ -183,7 +184,7 @@ function matchesRecipeSearch(recipe, query) {
 }
 
 export default function App({ user, onLogout }) {
-  const [tab, setTab] = useState("collection"); // "collection" | "planner"
+  const [tab, setTab] = useState("home"); // "home" | "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [weekStart, setWeekStart] = useState(currentWeekStart()); // Monday, "YYYY-MM-DD" — which week the Planner and Grocery List tabs are showing
@@ -705,6 +706,12 @@ export default function App({ user, onLogout }) {
           </h1>
           <nav className="tabs">
             <button
+              className={`tab${tab === "home" ? " active" : ""}`}
+              onClick={() => setTab("home")}
+            >
+              Home
+            </button>
+            <button
               className={`tab${tab === "collection" ? " active" : ""}`}
               onClick={() => setTab("collection")}
             >
@@ -797,6 +804,18 @@ export default function App({ user, onLogout }) {
             customStaples={customStaples}
             onMarkStaple={handleMarkStaple}
             onUnmarkStaple={handleRemoveStaple}
+          />
+        )}
+
+        {tab === "home" && (
+          <Home
+            user={user}
+            recipes={recipes}
+            customStaples={customStaples}
+            excludedStaples={excludedStaples}
+            pantryInventory={pantryInventory}
+            onNavigate={setTab}
+            onSelectRecipe={openRecipe}
           />
         )}
 
@@ -971,7 +990,7 @@ export default function App({ user, onLogout }) {
           <>
             {plannableRecipes.length === 0 ? (
               <p className="empty-state">
-                Import or add a recipe first, then drag it onto a meal slot here.
+                Import or add a recipe first, then click a meal slot here to add it.
               </p>
             ) : (
               <>
@@ -987,7 +1006,7 @@ export default function App({ user, onLogout }) {
                   <p className="planner-tip-text">
                     Tap the dot on a placed card to cycle between these — either way it stays on
                     your calendar but won't be added to the grocery list again. Click an empty
-                    slot to mark it as intentionally blank.
+                    slot to search for a recipe to add — or to mark it as intentionally blank.
                   </p>
                 </div>
                 <div className="planner-layout">
@@ -995,12 +1014,14 @@ export default function App({ user, onLogout }) {
                     <PlannerBoard
                       entries={plannerEntries}
                       weekStart={weekStart}
+                      plannableRecipes={plannableRecipes}
                       onChangeWeek={setWeekStart}
                       onCopyLastWeek={handleCopyLastWeek}
                       onCardClick={openRecipe}
                       onRemove={handleRemoveFromPlanner}
                       onCycleState={handleCycleMealState}
                       onMarkBlank={handleMarkBlank}
+                      onAddToPlanner={handleAddToPlanner}
                     />
                   </div>
                   <PlannerSidebar
@@ -1019,7 +1040,7 @@ export default function App({ user, onLogout }) {
                     onSelectRecipe={openRecipe}
                   />
                 </div>
-                <h3 className="planner-source-heading">Drag a recipe onto the board</h3>
+                <h3 className="planner-source-heading">Or drag a recipe from your cookbook</h3>
                 <div className="collection-grid" style={{ marginTop: 12 }}>
                   {plannableRecipes.map((r) => (
                     <MealCard key={r.id} recipe={r} onClick={openRecipe} />
