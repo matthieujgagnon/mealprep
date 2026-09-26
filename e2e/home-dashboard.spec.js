@@ -20,7 +20,7 @@ test("signing up lands on Home, not Recipes", async ({ page }) => {
   await expect(page.locator(".tab.active")).toHaveText("Home");
 });
 
-test("adding tonight's dinner from the Home dashboard places it on the planner", async ({ page }) => {
+test("Home's empty tonight card sends you to the Planner tab to add a recipe", async ({ page }) => {
   const email = uniqueEmail();
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -28,29 +28,31 @@ test("adding tonight's dinner from the Home dashboard places it on the planner",
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
 
-  // Add a recipe first so there's something to pick.
-  await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
-  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Home Dashboard Chili");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "beans");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await expect(page.getByText("Home Dashboard Chili")).toBeVisible();
-
-  // Back to Home - the tonight card should be in its empty state.
-  await page.getByRole("button", { name: "Home", exact: true }).click();
+  // The tonight card should be in its empty state, with no meal planned.
   await expect(page.getByText("Nothing planned for tonight yet.")).toBeVisible();
 
+  // Clicking "Add a recipe" navigates to the Planner tab (no click-to-search
+  // popover — that was tried and reverted; the planner's own search/tag
+  // filter and drag-and-drop are the way to place a recipe now).
   await page.getByRole("button", { name: "Add a recipe" }).click();
-  await expect(page.locator(".recipe-picker-popover")).toBeVisible();
-  await page.fill(".recipe-picker-search", "Chili");
-  await page.locator(".recipe-picker-option").click();
+  await expect(page.locator(".tab.active")).toHaveText("Planner");
+  await expect(page.locator(".recipe-picker-popover")).toHaveCount(0);
+});
 
-  // The tonight card now shows the real recipe instead of the empty state.
-  await expect(page.locator(".home-tonight-title")).toHaveText("Home Dashboard Chili");
+test("the week strip can be switched to show next week", async ({ page }) => {
+  const email = uniqueEmail();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
 
-  // And it's really on the planner, not just shown on Home.
-  await page.getByRole("button", { name: "Planner", exact: true }).click();
-  await expect(page.getByText("Home Dashboard Chili")).toBeVisible();
+  await expect(page.getByText("This week's")).toBeVisible();
+  await page.getByRole("button", { name: "Next week" }).click();
+  await expect(page.getByText("Next week's")).toBeVisible();
+
+  await page.getByRole("button", { name: "This week" }).click();
+  await expect(page.getByText("This week's")).toBeVisible();
 });
 
 test("the grocery summary and inventory cards reflect real data", async ({ page }) => {

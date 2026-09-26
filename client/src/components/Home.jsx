@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { RecipePickerPopover } from "./PlannerBoard.jsx";
 import { MealCard } from "./MealCard.jsx";
-import { currentWeekStart, formatDayLabel } from "../lib/dates.js";
+import { currentWeekStart, formatDayLabel, shiftWeek } from "../lib/dates.js";
 import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
 import { findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
@@ -42,7 +41,13 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
   const [checked, setChecked] = useState({});
   const [extraItems, setExtraItems] = useState([]);
   const [deals, setDeals] = useState([]);
-  const [picker, setPicker] = useState(null); // { dayIndex, mealType, replaceEntryId? }
+
+  // The week strip can look ahead to next week without disturbing the
+  // "tonight" card or the grocery card above, which are always about the
+  // real current week.
+  const [stripWeekOffset, setStripWeekOffset] = useState(0);
+  const stripWeekStart = shiftWeek(weekStart, stripWeekOffset);
+  const [stripEntries, setStripEntries] = useState([]);
 
   useEffect(() => {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setPlannerEntries([]));
@@ -56,7 +61,14 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
+  useEffect(() => {
+    if (stripWeekOffset === 0) {
+      setStripEntries(plannerEntries);
+      return;
+    }
+    api.listPlanner(stripWeekStart).then(setStripEntries).catch(() => setStripEntries([]));
+  }, [stripWeekOffset, stripWeekStart, plannerEntries]);
+
   const restaurantRecipe = recipes.find((r) => r.isPlaceholder && r.title === RESTAURANT_TITLE);
 
   const combinedHave = buildCombinedHave(pantryInventory, customStaples);
@@ -75,37 +87,16 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
   const tonightMatch = tonightEntry ? makeableResults.find((m) => m.recipe.id === tonightEntry.recipe.id) : null;
 
   function dinnerFor(dayIndex) {
-    return plannerEntries.find((e) => e.dayOfWeek === dayIndex && e.mealType === "dinner" && !isBlankMarker(e));
-  }
-
-  async function refetchPlanner() {
-    const entries = await api.listPlanner(weekStart);
-    setPlannerEntries(entries);
-  }
-
-  async function handlePick(recipe) {
-    if (picker.replaceEntryId) {
-      await api.removeFromPlanner(picker.replaceEntryId);
-    }
-    await api.placeOnPlanner({ recipeId: recipe.id, weekStart, dayOfWeek: picker.dayIndex, mealType: picker.mealType });
-    await refetchPlanner();
-  }
-
-  async function handleMarkBlank() {
-    await api.markSlotBlank(weekStart, picker.dayIndex, picker.mealType);
-    await refetchPlanner();
+    return stripEntries.find((e) => e.dayOfWeek === dayIndex && e.mealType === "dinner" && !isBlankMarker(e));
   }
 
   async function handleEatingOut() {
     if (!restaurantRecipe) return;
     if (tonightEntry) await api.removeFromPlanner(tonightEntry.id);
     await api.placeOnPlanner({ recipeId: restaurantRecipe.id, weekStart, dayOfWeek: todayIndex, mealType: "dinner" });
-    await refetchPlanner();
+    const entries = await api.listPlanner(weekStart);
+    setPlannerEntries(entries);
   }
-
-  const pickerEntries = picker
-    ? plannerEntries.filter((e) => e.dayOfWeek === picker.dayIndex && e.mealType === picker.mealType)
-    : [];
 
   return (
     <div className="home-page">
@@ -154,11 +145,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
                     Open recipe
                   </button>
                   {!tonightEntry.recipe.isPlaceholder && (
-                    <button
-                      type="button"
-                      className="btn subtle"
-                      onClick={() => setPicker({ dayIndex: todayIndex, mealType: "dinner", replaceEntryId: tonightEntry.id })}
-                    >
+                    <button type="button" className="btn subtle" onClick={() => onNavigate("planner")}>
                       Swap meal
                     </button>
                   )}
@@ -174,11 +161,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
             <div className="home-tonight-empty">
               <p>{tonightBlank ? "Marked as no meal planned tonight." : "Nothing planned for tonight yet."}</p>
               <div className="home-tonight-actions">
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() => setPicker({ dayIndex: todayIndex, mealType: "dinner" })}
-                >
+                <button type="button" className="btn primary" onClick={() => onNavigate("planner")}>
                   Add a recipe
                 </button>
                 {restaurantRecipe && (
@@ -220,15 +203,34 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
       <section className="card home-week-card">
         <div className="home-card-header">
           <h3>
-            This week's suppers <span className="home-card-header-sub">· {DAY_INDICES.filter((d) => dinnerFor(d)).length} of 7 planned</span>
+            {stripWeekOffset === 0 ? "This week's" : "Next week's"} suppers{" "}
+            <span className="home-card-header-sub">
+              · {DAY_INDICES.filter((d) => dinnerFor(d)).length} of 7 planned
+            </span>
           </h3>
           <button type="button" className="home-card-link" onClick={() => onNavigate("planner")}>
             Open planner →
           </button>
         </div>
+        <div className="home-week-toggle">
+          <button
+            type="button"
+            className={`home-week-toggle-btn${stripWeekOffset === 0 ? " active" : ""}`}
+            onClick={() => setStripWeekOffset(0)}
+          >
+            This week
+          </button>
+          <button
+            type="button"
+            className={`home-week-toggle-btn${stripWeekOffset === 1 ? " active" : ""}`}
+            onClick={() => setStripWeekOffset(1)}
+          >
+            Next week
+          </button>
+        </div>
         <div className="home-week-strip">
           {DAY_INDICES.map((d) => {
-            const { weekday, dayNum, isToday } = formatDayLabel(weekStart, d);
+            const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
             const entry = dinnerFor(d);
             return entry ? (
               <button
@@ -252,7 +254,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
                 key={d}
                 type="button"
                 className={`home-week-day empty${isToday ? " today" : ""}`}
-                onClick={() => setPicker({ dayIndex: d, mealType: "dinner" })}
+                onClick={() => onNavigate("planner")}
               >
                 <span className="home-eyebrow">{weekday.toUpperCase()} {dayNum}</span>
                 <span className="home-week-day-plan">+ Plan</span>
@@ -329,18 +331,6 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
           )}
         </section>
       </div>
-
-      {picker && (
-        <RecipePickerPopover
-          dayIndex={picker.dayIndex}
-          mealType={picker.mealType}
-          recipes={plannableRecipes}
-          canMarkBlank={pickerEntries.length === 0}
-          onPick={handlePick}
-          onMarkBlank={handleMarkBlank}
-          onClose={() => setPicker(null)}
-        />
-      )}
     </div>
   );
 }

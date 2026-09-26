@@ -2220,139 +2220,6 @@ input[type="date"].planner-week-picker {
   border-color: var(--paper-soft);
 }
 
-/* Small persistent control on an already-filled slot, for adding a second
-   item to the same meal (e.g. a side dish) without disturbing the placed
-   card's own click-to-open behavior. */
-.planner-cell-add-more {
-  background: none;
-  border: 1px dashed rgba(227, 227, 246, 0.32);
-  border-radius: 6px;
-  color: rgba(227, 227, 246, 0.55);
-  font-size: 11px;
-  font-family: inherit;
-  padding: 4px 6px;
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.planner-cell-add-more:hover {
-  border-color: rgba(227, 227, 246, 0.55);
-  color: var(--paper-soft);
-}
-
-/* Click-to-search recipe picker, opened from a planner slot — the
-   alternative to dragging a card in from the (possibly long) cookbook grid
-   below the board. Reuses .modal-overlay/.modal-content for consistent
-   chrome, narrower than the default modal since it's mostly a search box
-   and a list. */
-.recipe-picker-popover {
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-}
-
-.recipe-picker-title {
-  font-family: var(--font-display);
-  font-size: 18px;
-  margin: 0 0 14px;
-}
-
-.recipe-picker-slot {
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.75;
-}
-
-.recipe-picker-search {
-  font-family: var(--font-body);
-  font-size: 14px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  margin-bottom: 10px;
-}
-
-.recipe-picker-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 50vh;
-  overflow-y: auto;
-}
-
-.recipe-picker-blank-option {
-  text-align: left;
-  background: none;
-  border: 1px dashed var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--paper-soft);
-  cursor: pointer;
-  margin-bottom: 4px;
-}
-
-.recipe-picker-blank-option:hover {
-  border-color: var(--paper-soft);
-  color: var(--ink);
-}
-
-.recipe-picker-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  background: none;
-  border: none;
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-family: inherit;
-  font-size: 14px;
-  color: var(--ink);
-  cursor: pointer;
-}
-
-.recipe-picker-option:hover {
-  background: var(--bg-soft);
-}
-
-.recipe-picker-option:disabled,
-.recipe-picker-blank-option:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.recipe-picker-option-photo {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.recipe-picker-option-photo.placeholder {
-  background: var(--bg-soft);
-}
-
-.recipe-picker-option-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.recipe-picker-empty {
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.75;
-  padding: 8px;
-  margin: 0;
-}
-
 .grocery-list {
   list-style: none;
   padding: 0;
@@ -3501,6 +3368,34 @@ button.price-pill:hover {
 
 .home-week-card {
   padding: 22px;
+}
+
+.home-week-toggle {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+
+.home-week-toggle-btn {
+  background: none;
+  border: 1px solid var(--line-soft, rgba(227, 227, 246, 0.32));
+  border-radius: 999px;
+  color: var(--paper-soft);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.home-week-toggle-btn:hover {
+  border-color: var(--paper-soft);
+}
+
+.home-week-toggle-btn.active {
+  background: var(--mustard);
+  border-color: var(--mustard);
+  color: var(--ink);
 }
 
 .home-week-strip {
