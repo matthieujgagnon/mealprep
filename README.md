@@ -13,9 +13,16 @@
    DATABASE_URL="postgresql://...your Neon connection string..."
    PORT=4000
    GEMINI_API_KEY="...your Gemini API key..."
+   RESEND_API_KEY="...your Resend API key..."
+   APP_URL="http://localhost:5173"
    ```
    `GEMINI_API_KEY` is only needed for flyer-deal extraction (uploading a flyer PDF/photo on the
-   Flyers tab) — everything else works without it.
+   Flyers tab) — everything else works without it. `RESEND_API_KEY` (from
+   [resend.com](https://resend.com), free tier is enough for a handful of accounts) is only needed
+   for "forgot password" emails — without it, signup/login/using the app all still work, people
+   just can't reset a forgotten password themselves. `APP_URL` is the address the reset link in
+   that email points back to — set it to wherever the app is actually reachable (your Render URL
+   in production, `http://localhost:5173` locally).
 3. Install and set up (applies the existing migration history to your database):
    ```bash
    npm install
@@ -54,6 +61,9 @@ running app on Render — all free tiers.
 - Under **Environment Variables**, add:
   - `DATABASE_URL` → your Neon connection string (same one from local dev)
   - `GEMINI_API_KEY` → only needed for flyer-deal extraction
+  - `RESEND_API_KEY` → only needed for "forgot password" emails to work
+  - `APP_URL` → your Render URL once you have it (e.g. `https://mattmocookbook.onrender.com`) —
+    can be added/updated after the first deploy
 - Click **Create Web Service**
 
 Every table that needs "no duplicates per account" enforces it with a real database

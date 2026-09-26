@@ -18,6 +18,7 @@ model User {
   createdAt    DateTime @default(now())
 
   sessions             Session[]
+  passwordResetTokens  PasswordResetToken[]
   recipes              Recipe[]
   recipeCategories     RecipeCategory[]
   pantryStaples        PantryStaple[]
@@ -41,6 +42,21 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// A one-time link mailed to a "forgot password" request - id itself is the
+// unguessable token (same bearer-token approach as Session above), short-
+// lived and consumed on use so it can't be replayed. Old/expired rows are
+// harmless clutter, not a security concern, so nothing prunes them.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

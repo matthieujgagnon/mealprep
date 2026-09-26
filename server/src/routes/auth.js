@@ -2,8 +2,15 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword, createSession, destroySession, requireAuth } from "../lib/auth.js";
 import { seedPlaceholderRecipesForUser } from "../lib/placeholders.js";
+import { sendPasswordResetEmail } from "../lib/mailer.js";
 
 export const authRouter = Router();
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+// Guards against a rapid double-click (or a deliberate spam-click) filling
+// someone's inbox with reset emails - not a real rate limit, just avoids the
+// obviously wasteful case of sending several links within the same minute.
+const RESET_REQUEST_COOLDOWN_MS = 2 * 60 * 1000;
 
 function serializeUser(user) {
   return { id: user.id, email: user.email, name: user.name };
@@ -85,4 +92,72 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(401).json({ error: "Not logged in" });
   res.json(serializeUser(user));
+});
+
+// POST /api/auth/forgot-password { email } - always responds the same way
+// whether or not the email has an account, so this can't be used to check
+// which emails are registered. Mailing the link (rather than returning it
+// in the response) is what actually proves the requester owns that inbox.
+authRouter.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: "email is required" });
+  }
+
+  const genericResponse = () =>
+    res.json({ message: "If that email has an account, we've sent a link to reset the password." });
+
+  const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+  if (!user) return genericResponse();
+
+  const recent = await prisma.passwordResetToken.findFirst({
+    where: { userId: user.id, usedAt: null, createdAt: { gt: new Date(Date.now() - RESET_REQUEST_COOLDOWN_MS) } },
+  });
+  if (recent) return genericResponse();
+
+  const token = await prisma.passwordResetToken.create({
+    data: { userId: user.id, expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
+  });
+
+  const appUrl = process.env.APP_URL || "http://localhost:5173";
+  const resetUrl = `${appUrl}/reset-password?token=${token.id}`;
+
+  try {
+    await sendPasswordResetEmail(user.email, resetUrl);
+  } catch (err) {
+    console.error("Failed to send password reset email:", err.message);
+    // Still a generic response - a delivery failure shouldn't tell an
+    // outside caller anything about which emails exist.
+  }
+
+  genericResponse();
+});
+
+// POST /api/auth/reset-password { token, password } - the actual password
+// change. Also signs out every existing session for the account: a
+// password reset is exactly the moment someone might be recovering from a
+// compromised account, so anything already logged in (possibly the
+// attacker) shouldn't get to stay logged in past this point.
+authRouter.post("/reset-password", async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    return res.status(400).json({ error: "token and password are required" });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: "password must be at least 8 characters" });
+  }
+
+  const resetToken = await prisma.passwordResetToken.findUnique({ where: { id: token } });
+  if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+    return res.status(400).json({ error: "This reset link is invalid or has expired. Request a new one." });
+  }
+
+  const passwordHash = await hashPassword(password);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: resetToken.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.update({ where: { id: token }, data: { usedAt: new Date() } }),
+    prisma.session.deleteMany({ where: { userId: resetToken.userId } }),
+  ]);
+
+  res.json({ message: "Password updated - you can now log in." });
 });
