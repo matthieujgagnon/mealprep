@@ -22,8 +22,8 @@ async function signUp(page, email) {
 
 test("sign up creates an account and loads the app", async ({ page }) => {
   await signUp(page, uniqueEmail("smoke-signup"));
-  await expect(page.getByRole("button", { name: "Recipes" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Planner" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Recipes", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Planner", exact: true })).toBeVisible();
 });
 
 test("add a manual recipe and see it in the cookbook", async ({ page }) => {

@@ -4,6 +4,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { capitalize } from "./lib/groceryList.js";
+import { Home } from "./components/Home.jsx";
 import { ImportRecipeForm } from "./components/ImportRecipeForm.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
 import { MealCard } from "./components/MealCard.jsx";
@@ -183,7 +184,7 @@ function matchesRecipeSearch(recipe, query) {
 }
 
 export default function App({ user, onLogout }) {
-  const [tab, setTab] = useState("collection"); // "collection" | "planner"
+  const [tab, setTab] = useState("home"); // "home" | "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [weekStart, setWeekStart] = useState(currentWeekStart()); // Monday, "YYYY-MM-DD" — which week the Planner and Grocery List tabs are showing
@@ -705,6 +706,12 @@ export default function App({ user, onLogout }) {
           </h1>
           <nav className="tabs">
             <button
+              className={`tab${tab === "home" ? " active" : ""}`}
+              onClick={() => setTab("home")}
+            >
+              Home
+            </button>
+            <button
               className={`tab${tab === "collection" ? " active" : ""}`}
               onClick={() => setTab("collection")}
             >
@@ -797,6 +804,18 @@ export default function App({ user, onLogout }) {
             customStaples={customStaples}
             onMarkStaple={handleMarkStaple}
             onUnmarkStaple={handleRemoveStaple}
+          />
+        )}
+
+        {tab === "home" && (
+          <Home
+            user={user}
+            recipes={recipes}
+            customStaples={customStaples}
+            excludedStaples={excludedStaples}
+            pantryInventory={pantryInventory}
+            onNavigate={setTab}
+            onSelectRecipe={openRecipe}
           />
         )}
 

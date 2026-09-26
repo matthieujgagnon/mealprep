@@ -150,6 +150,16 @@ select {
   background: var(--bg-soft);
   padding: 4px;
   border-radius: 10px;
+  /* Scrolls horizontally rather than squeezing every tab to fit once there
+     are enough of them (8, as of adding Home) that a narrow/mobile screen
+     can't fit them all at a legible size — see the mobile override below,
+     which drops the old flex:1-per-tab squeeze that caused this. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
@@ -161,6 +171,7 @@ select {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .tab.active {
@@ -3289,6 +3300,358 @@ button.price-pill:hover {
 }
 
 /* ================================================================
+   Home dashboard
+   ================================================================ */
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.home-greeting {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.home-greeting-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+}
+
+.home-greeting-date {
+  font-size: 14px;
+  color: var(--paper-soft);
+  opacity: 0.75;
+}
+
+.home-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sage-text);
+}
+
+.home-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.home-card-header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+}
+
+.home-card-header-sub {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.home-card-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--mustard);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.home-card-link:hover {
+  text-decoration: underline;
+}
+
+.home-empty-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.home-top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.home-tonight-card {
+  padding: 22px;
+}
+
+.home-tonight-body {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.home-tonight-photo {
+  width: 200px;
+  height: 160px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: none;
+}
+
+.home-tonight-photo.placeholder {
+  background: var(--bg-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.home-tonight-info {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-tonight-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 23px;
+}
+
+.home-tonight-blurb {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.home-tonight-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.home-tonight-empty {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-tonight-empty p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.home-grocery-card {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-grocery-count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.home-grocery-number {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1;
+}
+
+.home-grocery-unit {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.home-progress-track {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.home-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mustard), #b04dff);
+  border-radius: 4px;
+}
+
+.home-grocery-sale {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.home-week-card {
+  padding: 22px;
+}
+
+.home-week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.home-week-day {
+  border-radius: 12px;
+  background: var(--bg-soft);
+  border: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  min-height: 118px;
+  color: var(--paper-soft);
+}
+
+.home-week-day.today {
+  box-shadow: 0 0 0 2px var(--mustard);
+}
+
+.home-week-day-photo {
+  width: 100%;
+  height: 60px;
+  object-fit: cover;
+  display: block;
+}
+
+.home-week-day-photo.placeholder {
+  background: var(--bg);
+}
+
+.home-week-day-body {
+  padding: 8px 9px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-week-day-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--paper);
+}
+
+.home-week-day.empty {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1.5px dashed rgba(227, 227, 246, 0.32);
+  background: transparent;
+  padding: 10px;
+}
+
+.home-week-day-plan {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-text);
+}
+
+.home-bottom-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.home-mini-card {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-use-soon-list,
+.home-sale-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.home-use-soon-row,
+.home-sale-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-expiry-badge {
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 11px;
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.home-expiry-badge.soon {
+  background: var(--tomato);
+  color: #fbe9e6;
+}
+
+.home-sale-price {
+  color: var(--sage-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.home-makeable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-makeable-list .meal-card.compact {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.home-makeable-list .meal-card.compact .meal-card-photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 9px;
+  flex: none;
+}
+
+.home-makeable-list .meal-card.compact .meal-card-body {
+  padding: 0;
+}
+
+.home-makeable-list .meal-card.compact .meal-card-title {
+  min-height: 0;
+  font-size: 13.5px;
+}
+
+/* ================================================================
    Mobile responsiveness
    Everything above was built and reviewed on desktop screenshots
    only — this is the first real pass at making it usable on a
@@ -3311,12 +3674,16 @@ button.price-pill:hover {
 
   .tabs {
     width: 100%;
+    /* No flex:1-per-tab squeeze here anymore - with 8 tabs that crushed
+       each one down to an illegibly narrow, wrapped mess on a phone
+       screen. Scrolls horizontally instead (see the base .tabs rule),
+       each tab keeping its natural, readable width. */
+    justify-content: flex-start;
   }
 
   .tab {
-    flex: 1;
     text-align: center;
-    padding: 10px 8px;
+    padding: 10px 12px;
     font-size: 13px;
   }
 
@@ -3482,5 +3849,25 @@ button.price-pill:hover {
 
   .cook-mode-header-top {
     flex-wrap: wrap;
+  }
+
+  .home-top-row,
+  .home-bottom-row {
+    grid-template-columns: 1fr;
+  }
+
+  .home-tonight-photo {
+    width: 100%;
+    height: 180px;
+  }
+
+  /* Seven equal-width day tiles are too narrow to read on a phone -
+     scrolls horizontally instead, each tile keeping a legible width. */
+  .home-week-strip {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(110px, 1fr);
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
 }

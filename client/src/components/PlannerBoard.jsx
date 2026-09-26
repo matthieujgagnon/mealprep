@@ -25,7 +25,7 @@ const WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // huge) cookbook grid below the board — search narrows it instantly instead
 // of scrolling to find one card among many, and this works the same on
 // touch as it does with a mouse, unlike drag-and-drop.
-function RecipePickerPopover({ dayIndex, mealType, recipes, canMarkBlank, onPick, onMarkBlank, onClose }) {
+export function RecipePickerPopover({ dayIndex, mealType, recipes, canMarkBlank, onPick, onMarkBlank, onClose }) {
   const [query, setQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
