@@ -211,6 +211,8 @@ export default function App({ user, onLogout }) {
   const [recipeCategories, setRecipeCategories] = useState([]);
   const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [plannerGridSearch, setPlannerGridSearch] = useState("");
+  const [plannerGridTag, setPlannerGridTag] = useState(null);
   const [showImported, setShowImported] = useState(true);
   const [isDragActive, setIsDragActive] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
@@ -650,6 +652,9 @@ export default function App({ user, onLogout }) {
     .filter((r) => matchesRecipeSearch(r, recipeSearch));
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
   const allTags = [...new Set(recipes.flatMap((r) => r.tags || []))].sort();
+  const plannerGridRecipes = plannableRecipes
+    .filter((r) => !plannerGridTag || r.tags?.includes(plannerGridTag))
+    .filter((r) => matchesRecipeSearch(r, plannerGridSearch));
 
   // While an Imported card hovers over an existing Cookbook card, preview it
   // moving into the Cookbook grid so the cards there visually slide apart to
@@ -1006,7 +1011,8 @@ export default function App({ user, onLogout }) {
                   <p className="planner-tip-text">
                     Tap the dot on a placed card to cycle between these — either way it stays on
                     your calendar but won't be added to the grocery list again. Click an empty
-                    slot to search for a recipe to add — or to mark it as intentionally blank.
+                    slot to mark it as intentionally blank — or drag a recipe from below to fill
+                    it.
                   </p>
                 </div>
                 <div className="planner-layout">
@@ -1014,14 +1020,12 @@ export default function App({ user, onLogout }) {
                     <PlannerBoard
                       entries={plannerEntries}
                       weekStart={weekStart}
-                      plannableRecipes={plannableRecipes}
                       onChangeWeek={setWeekStart}
                       onCopyLastWeek={handleCopyLastWeek}
                       onCardClick={openRecipe}
                       onRemove={handleRemoveFromPlanner}
                       onCycleState={handleCycleMealState}
                       onMarkBlank={handleMarkBlank}
-                      onAddToPlanner={handleAddToPlanner}
                     />
                   </div>
                   <PlannerSidebar
@@ -1041,10 +1045,39 @@ export default function App({ user, onLogout }) {
                   />
                 </div>
                 <h3 className="planner-source-heading">Or drag a recipe from your cookbook</h3>
+                <input
+                  type="text"
+                  className="recipe-search-input"
+                  placeholder="🔍 Search recipes by name, tag, or ingredient…"
+                  value={plannerGridSearch}
+                  onChange={(e) => setPlannerGridSearch(e.target.value)}
+                />
+                {allTags.length > 0 && (
+                  <div className="tag-filter-bar">
+                    {allTags.map((tag) => (
+                      <button
+                        key={tag}
+                        className={`tag-chip${plannerGridTag === tag ? " active" : ""}`}
+                        onClick={() => setPlannerGridTag((prev) => (prev === tag ? null : tag))}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                    {plannerGridTag && (
+                      <button className="tag-chip clear" onClick={() => setPlannerGridTag(null)}>
+                        Clear filter ×
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="collection-grid" style={{ marginTop: 12 }}>
-                  {plannableRecipes.map((r) => (
-                    <MealCard key={r.id} recipe={r} onClick={openRecipe} />
-                  ))}
+                  {plannerGridRecipes.length === 0 ? (
+                    <p className="empty-state">No recipes match your search.</p>
+                  ) : (
+                    plannerGridRecipes.map((r) => (
+                      <MealCard key={r.id} recipe={r} onClick={openRecipe} />
+                    ))
+                  )}
                 </div>
               </>
             )}

@@ -1,5 +1,4 @@
-import { Fragment, useState } from "react";
-import { createPortal } from "react-dom";
+import { Fragment } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { MealCard } from "./MealCard.jsx";
 import {
@@ -18,103 +17,6 @@ const MEAL_TYPES = [
   { id: "lunch", label: "Lunch" },
   { id: "dinner", label: "Supper" },
 ];
-const MEAL_LABELS = Object.fromEntries(MEAL_TYPES.map((m) => [m.id, m.label]));
-const WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-// Click-to-search alternative to dragging a recipe in from the (possibly
-// huge) cookbook grid below the board — search narrows it instantly instead
-// of scrolling to find one card among many, and this works the same on
-// touch as it does with a mouse, unlike drag-and-drop.
-export function RecipePickerPopover({ dayIndex, mealType, recipes, canMarkBlank, onPick, onMarkBlank, onClose }) {
-  const [query, setQuery] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const q = query.trim().toLowerCase();
-  const filtered = q ? recipes.filter((r) => r.title.toLowerCase().includes(q)) : recipes;
-
-  async function handlePick(recipe) {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await onPick(recipe);
-      onClose();
-    } catch (err) {
-      setError(err.message);
-      setSubmitting(false);
-    }
-  }
-
-  async function handleMarkBlank() {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await onMarkBlank();
-      onClose();
-    } catch (err) {
-      setError(err.message);
-      setSubmitting(false);
-    }
-  }
-
-  return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="card modal-content recipe-picker-popover" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-        <h3 className="recipe-picker-title">
-          Add a recipe{" "}
-          <span className="recipe-picker-slot">
-            — {WEEKDAY_LABELS[dayIndex]}, {MEAL_LABELS[mealType]}
-          </span>
-        </h3>
-        <input
-          autoFocus
-          type="text"
-          className="recipe-picker-search"
-          placeholder="Search your cookbook…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          disabled={submitting}
-        />
-        {error && <p className="import-error">{error}</p>}
-        <div className="recipe-picker-list">
-          {canMarkBlank && (
-            <button
-              type="button"
-              className="recipe-picker-blank-option"
-              onClick={handleMarkBlank}
-              disabled={submitting}
-            >
-              — No meal planned
-            </button>
-          )}
-          {filtered.length === 0 ? (
-            <p className="recipe-picker-empty">No recipes match "{query}".</p>
-          ) : (
-            filtered.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                className="recipe-picker-option"
-                onClick={() => handlePick(r)}
-                disabled={submitting}
-              >
-                {r.photoUrl ? (
-                  <img src={r.photoUrl} alt="" className="recipe-picker-option-photo" />
-                ) : (
-                  <div className="recipe-picker-option-photo placeholder" />
-                )}
-                <span className="recipe-picker-option-title">{r.title}</span>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
 
 // Prev/next/today navigation, a jump-to-any-date picker, and (only when
 // this week's board is empty) a one-click way to start from last week's
@@ -186,16 +88,12 @@ function PlannerCell({
   mealType,
   entries,
   staleIds,
-  plannableRecipes,
   onCardClick,
   onRemove,
   onCycleState,
   onMarkBlank,
-  onAddToPlanner,
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}-${mealType}` });
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const hasBlankMarker = entries.some(isBlankMarker);
 
   return (
     <div ref={setNodeRef} className={`planner-cell${isOver ? " drop-active" : ""}`}>
@@ -203,10 +101,10 @@ function PlannerCell({
         <button
           type="button"
           className="card meal-card compact planner-empty-card"
-          title="Add a recipe"
-          onClick={() => setPickerOpen(true)}
+          title="Mark as no meal planned"
+          onClick={() => onMarkBlank(dayIndex, mealType)}
         >
-          +
+          —
         </button>
       )}
       {entries.map((entry) =>
@@ -233,27 +131,6 @@ function PlannerCell({
             onCycleState={() => onCycleState(entry.id)}
           />
         )
-      )}
-      {entries.length > 0 && !hasBlankMarker && (
-        <button
-          type="button"
-          className="planner-cell-add-more"
-          title="Add another recipe to this slot"
-          onClick={() => setPickerOpen(true)}
-        >
-          + Add another
-        </button>
-      )}
-      {pickerOpen && (
-        <RecipePickerPopover
-          dayIndex={dayIndex}
-          mealType={mealType}
-          recipes={plannableRecipes}
-          canMarkBlank={entries.length === 0}
-          onPick={(recipe) => onAddToPlanner(recipe.id, dayIndex, mealType)}
-          onMarkBlank={() => onMarkBlank(dayIndex, mealType)}
-          onClose={() => setPickerOpen(false)}
-        />
       )}
     </div>
   );
@@ -295,14 +172,12 @@ const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 export function PlannerBoard({
   entries,
   weekStart,
-  plannableRecipes,
   onChangeWeek,
   onCopyLastWeek,
   onCardClick,
   onRemove,
   onCycleState,
   onMarkBlank,
-  onAddToPlanner,
 }) {
   // Group entries by "dayIndex-mealType" for quick lookup per cell
   const grouped = {};
@@ -348,12 +223,10 @@ export function PlannerBoard({
                 mealType={meal.id}
                 entries={grouped[`${dayIndex}-${meal.id}`] || []}
                 staleIds={staleIds}
-                plannableRecipes={plannableRecipes}
                 onCardClick={onCardClick}
                 onRemove={onRemove}
                 onCycleState={onCycleState}
                 onMarkBlank={onMarkBlank}
-                onAddToPlanner={onAddToPlanner}
               />
             ))}
           </Fragment>
