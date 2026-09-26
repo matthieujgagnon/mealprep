@@ -25,6 +25,10 @@ export const api = {
   // callers only need a yes/no, not a thrown exception on the expected
   // first-load case of nobody being logged in yet.
   me: () => request("/auth/me").catch(() => null),
+  forgotPassword: (email) =>
+    request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token, password) =>
+    request("/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) }),
 
   listRecipes: () => request("/recipes"),
   getRecipe: (id) => request(`/recipes/${id}`),

@@ -4,3 +4,5 @@ server/dev.db-journal
 server/.env
 client/dist/
 .DS_Store
+test-results/
+playwright-report/
