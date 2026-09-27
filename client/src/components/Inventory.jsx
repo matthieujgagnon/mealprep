@@ -130,6 +130,143 @@ function AddInventoryItemForm({ onAdd }) {
   );
 }
 
+// Upload a receipt photo/PDF, let Gemini read it into candidate item names,
+// then let the user review/edit/deselect before anything actually hits the
+// database - OCR'd receipt text is noisy enough (coupons, loyalty lines,
+// misread brand names) that a blind bulk-add would just make a mess to
+// clean up later. Each accepted row goes through the same onAdd as the
+// manual form above, so it gets the same suggested category/expiration.
+function ImportReceiptForm({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
+  const [pending, setPending] = useState(null); // [{ name, quantity, location, selected }] once parsed
+  const [saving, setSaving] = useState(false);
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const { items } = await api.parseReceipt(file);
+      setPending(
+        items.map((it) => ({ name: it.name, quantity: it.quantity, location: "fridge", selected: true }))
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function updateRow(i, patch) {
+    setPending((prev) => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  }
+
+  async function handleAddSelected() {
+    const selected = pending.filter((row) => row.selected && row.name.trim());
+    if (selected.length === 0) return;
+    setSaving(true);
+    try {
+      for (const row of selected) {
+        await onAdd({ name: row.name.trim(), quantity: row.quantity ?? null, location: row.location });
+      }
+      setPending(null);
+      setOpen(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="btn subtle" onClick={() => setOpen(true)}>
+        Import from receipt
+      </button>
+    );
+  }
+
+  if (pending) {
+    const selectedCount = pending.filter((row) => row.selected).length;
+    return (
+      <div className="receipt-review">
+        <p className="receipt-review-intro">
+          Found {pending.length} item{pending.length === 1 ? "" : "s"} — uncheck anything that isn't
+          actually food, fix any misread names, then add the rest.
+        </p>
+        <ul className="receipt-review-list">
+          {pending.map((row, i) => (
+            <li key={i} className="receipt-review-row">
+              <input
+                type="checkbox"
+                checked={row.selected}
+                onChange={(e) => updateRow(i, { selected: e.target.checked })}
+                aria-label={`Include ${row.name}`}
+              />
+              <input
+                type="text"
+                value={row.name}
+                onChange={(e) => updateRow(i, { name: e.target.value })}
+                disabled={!row.selected}
+              />
+              <select
+                value={row.location}
+                onChange={(e) => updateRow(i, { location: e.target.value })}
+                disabled={!row.selected}
+              >
+                {LOCATIONS.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+        {error && <p className="flyer-upload-error">{error}</p>}
+        <div className="receipt-review-actions">
+          <button type="button" className="btn primary" onClick={handleAddSelected} disabled={saving || selectedCount === 0}>
+            {saving ? "Adding…" : `Add ${selectedCount} item${selectedCount === 1 ? "" : "s"} to inventory`}
+          </button>
+          <button
+            type="button"
+            className="btn subtle"
+            onClick={() => {
+              setPending(null);
+              setOpen(false);
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flyer-upload-form">
+      <label className="form-label">
+        Receipt photo or PDF
+        <input
+          type="file"
+          accept="application/pdf,image/jpeg,image/png,image/webp"
+          onChange={handleFile}
+          disabled={uploading}
+        />
+      </label>
+      {uploading && <p className="receipt-review-intro">Reading…</p>}
+      {error && <p className="flyer-upload-error">{error}</p>}
+      <button type="button" className="btn subtle" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
 function InventoryRow({ item, checked, onToggleChecked, onUpdate, onDelete, isStaple, onToggleStaple }) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
   const statusClass = days !== null && days < 0 ? " expired" : days !== null && days <= 2 ? " expiring" : "";
@@ -283,6 +420,7 @@ export function Inventory({
       </p>
 
       <AddInventoryItemForm onAdd={onAdd} />
+      <ImportReceiptForm onAdd={onAdd} />
 
       {checkedIds.size > 0 && (
         <div className="inventory-bulk-bar">

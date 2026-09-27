@@ -745,6 +745,58 @@ select {
   font-size: 13px;
 }
 
+/* Receipt import: review step between "Gemini read the file" and "these
+   items actually get saved" - a plain list of editable/deselectable rows,
+   deliberately unstyled as anything fancier since it's a one-time,
+   short-lived review UI. */
+.receipt-review {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.receipt-review-intro {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.receipt-review-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.receipt-review-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.receipt-review-row input[type="text"] {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.receipt-review-row select {
+  font-size: 12px;
+}
+
+.receipt-review-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .pantry-list {
   list-style: none;
   padding: 0;
