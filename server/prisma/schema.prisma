@@ -31,6 +31,7 @@ model User {
   plannerEntries       PlannerEntry[]
   pantryInventoryItems PantryInventoryItem[]
   pantryConsumptionLogs PantryConsumptionLog[]
+  pantryLocations       PantryLocation[]
 }
 
 // A logged-in session, looked up by the id stored in the browser's httpOnly
@@ -325,4 +326,25 @@ model PantryConsumptionLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// A user-added storage place beyond the three built-in ones (Fridge,
+// Pantry, Freezer, which stay hardcoded since they're also the three USDA
+// FoodKeeper shelf-life columns - see foodkeeper.js). A custom section has
+// no USDA data of its own: items placed in one just don't get a
+// freshness bar or a suggested expiry, same as any item whose name didn't
+// match the USDA dataset at all. PantryInventoryItem.location stores
+// either a built-in id ("fridge"/"pantry"/"freezer") or one of these rows'
+// own id - looked up by id (not name) so renaming a section doesn't strand
+// the items already placed in it.
+model PantryLocation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  // Real unique constraint - see RecipeCategory's @@unique comment above.
+  @@unique([userId, name])
 }

@@ -24,6 +24,7 @@ import { Inventory } from "./components/Inventory.jsx";
 function DragPreview({ active }) {
   const recipe = active?.data.current?.recipe;
   const ingredientCore = active?.data.current?.ingredientCore;
+  const inventoryItem = active?.data.current?.inventoryItem;
 
   if (recipe) {
     return (
@@ -42,6 +43,10 @@ function DragPreview({ active }) {
 
   if (ingredientCore) {
     return <div className="drag-preview-chip">{capitalize(ingredientCore)}</div>;
+  }
+
+  if (inventoryItem) {
+    return <div className="drag-preview-chip">{inventoryItem.name}</div>;
   }
 
   return null;
@@ -200,6 +205,7 @@ export default function App({ user, onLogout }) {
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [grocerySections, setGrocerySections] = useState([]);
   const [pantryInventory, setPantryInventory] = useState([]);
+  const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
   const [loadError, setLoadError] = useState(false);
   // Same "expiring" window WhatCanIMake's pantry rows use (<=2 days out,
   // expired items included) so the banner and the list agree on what counts.
@@ -252,6 +258,7 @@ export default function App({ user, onLogout }) {
       api.listGrocerySections().then(setGrocerySections),
       api.listRecipeCategories().then(setRecipeCategories),
       api.listPantryInventory().then(setPantryInventory),
+      api.listPantryLocations().then(setPantryLocations),
     ]).then((results) => {
       if (results.some((r) => r.status === "rejected")) setLoadError(true);
     });
@@ -424,6 +431,37 @@ export default function App({ user, onLogout }) {
     await api.consumePantryInventoryItems(ids, action);
   }
 
+  async function handleAddPantryLocation(name) {
+    const created = await api.addPantryLocation(name);
+    setPantryLocations((prev) => [...prev, created]);
+  }
+
+  // Items still in a deleted section move back to Pantry server-side (see
+  // POST /pantry-locations/:id) - mirrored here so the shelves don't show a
+  // stale/missing column for them until the next full reload.
+  async function handleDeletePantryLocation(id) {
+    setPantryLocations((prev) => prev.filter((l) => l.id !== id));
+    setPantryInventory((prev) => prev.map((i) => (i.location === id ? { ...i, location: "pantry" } : i)));
+    await api.deletePantryLocation(id);
+  }
+
+  // Drag a card from one Inventory shelf onto another - the drag-and-drop
+  // equivalent of clicking a storage pill in the edit panel, but reachable
+  // for any location including a custom section (pills only cover the
+  // three USDA-backed ones). Recomputes expiresAt from the target's own
+  // USDA range when it's a built-in location with data for this item;
+  // dropped onto a custom section (or a built-in one with no data for this
+  // item), the date is left as-is rather than guessed.
+  async function handleMoveInventoryItem(itemId, newLocation) {
+    const item = pantryInventory.find((i) => i.id === itemId);
+    if (!item || item.location === newLocation) return;
+    const targetData = item.locations?.[newLocation];
+    const payload = { location: newLocation, ...(targetData ? { expiresAt: targetData.expiresAt } : {}) };
+    setPantryInventory((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...payload } : i)));
+    const updated = await api.updatePantryInventoryItem(itemId, payload);
+    setPantryInventory((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
+  }
+
   async function handleReorderSection(id, direction) {
     const currentOrder = grocerySections.map((s) => s.id);
     const index = currentOrder.indexOf(id);
@@ -495,6 +533,13 @@ export default function App({ user, onLogout }) {
     setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
+
+    const inventoryItemId = active.data.current?.inventoryItemId;
+    if (inventoryItemId) {
+      const shelfMatch = /^inv-shelf-(.+)$/.exec(over.id);
+      if (shelfMatch) await handleMoveInventoryItem(inventoryItemId, shelfMatch[1]);
+      return;
+    }
 
     if (over.id === "pantry-staples-drop") {
       const core = active.data.current?.ingredientCore;
@@ -819,6 +864,9 @@ export default function App({ user, onLogout }) {
               setTab("collection");
             }}
             onFindRecipesForSelection={() => setTab("makeable")}
+            locations={pantryLocations}
+            onAddLocation={handleAddPantryLocation}
+            onDeleteLocation={handleDeletePantryLocation}
           />
         )}
 
@@ -1118,6 +1166,9 @@ export default function App({ user, onLogout }) {
             onClose={() => openRecipe(null)}
             allRecipes={recipes}
             plannerEntries={plannerEntries}
+            pantryInventory={pantryInventory}
+            customStaples={customStaples}
+            weekStart={weekStart}
             onSelectRecipe={openRecipe}
             onRecipeUpdated={handleRecipeUpdated}
             onDelete={async (id) => {

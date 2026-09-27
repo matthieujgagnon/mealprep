@@ -57,7 +57,10 @@ const MATCH_ONLY_DESCRIPTOR_WORDS = new Set([
   "reduced-fat", "2%", "1%",
 ]);
 
-function core(ingredientName) {
+// Exported so callers that need to match a single ingredient name against
+// this same core (e.g. the recipe card's per-row "in inventory" dot) don't
+// have to reimplement canonicalize+familyKey+staple-filtering themselves.
+export function core(ingredientName) {
   const rawCore = canonicalize(ingredientName).core;
   const words = rawCore.split(" ").filter((w) => !MATCH_ONLY_DESCRIPTOR_WORDS.has(w));
   const strippedCore = words.join(" ").trim() || rawCore;
@@ -420,4 +423,42 @@ export function findUnusedPerishables(recipe, plannerEntries, allRecipes) {
 // True if an ingredient name is a perishable
 export function isPerishable(ingredientName) {
   return PERISHABLES.has(core(ingredientName));
+}
+
+// Cores (not display names) of this recipe's ingredients that are also in
+// pantry inventory expiring within `withinDays`, and not already covered by
+// another planned meal this week — the recipe card's "USE SOON" badge.
+// Same "not already covered elsewhere" logic as findUnusedPerishables, but
+// driven by real inventory expiry dates instead of a generic perishable
+// list, so it also catches something like rice or canned beans if that
+// particular batch happens to be expiring soon.
+export function findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes, withinDays = 3) {
+  const recipeCoresSet = recipeCores(recipe);
+  if (recipeCoresSet.size === 0) return new Set();
+
+  const now = Date.now();
+  const soonCores = new Set();
+  for (const item of pantryInventory) {
+    if (!item.expiresAt) continue;
+    const days = Math.ceil((new Date(item.expiresAt).getTime() - now) / (24 * 60 * 60 * 1000));
+    if (days > withinDays) continue;
+    const c = core(item.name);
+    if (c && recipeCoresSet.has(c)) soonCores.add(c);
+  }
+  if (soonCores.size === 0) return soonCores;
+
+  const recipeMap = new Map(allRecipes.map((r) => [r.id, r]));
+  const plannedElsewhere = new Set();
+  for (const entry of plannerEntries) {
+    if (entry.isLeftover || entry.alreadyHave) continue;
+    const other = recipeMap.get(entry.recipeId) || entry.recipe;
+    if (!other || other.id === recipe.id || other.isPlaceholder) continue;
+    for (const ing of other.ingredients || []) {
+      const c = core(ing.name);
+      if (c) plannedElsewhere.add(c);
+    }
+  }
+
+  for (const c of plannedElsewhere) soonCores.delete(c);
+  return soonCores;
 }

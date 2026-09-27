@@ -1,0 +1,129 @@
+import { expect, test } from "@playwright/test";
+
+// Covers the redesigned recipe detail modal: the two-column desktop layout,
+// servings-scaled ingredient/step text, inline step timers, the options
+// menu, the photo lightbox, and the phone-width tabbed Ingredients/Steps
+// layout.
+
+function uniqueEmail() {
+  return `rc-redesign+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
+}
+
+async function signUp(page, email) {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText(email)).toBeVisible();
+}
+
+async function addRecipe(page, { title, servings, steps }) {
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
+  await page.fill('input[placeholder="e.g. 4"]', servings);
+  await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");
+  await page.fill('input[placeholder="Qty (1/4)"]', "2");
+  await page.fill('textarea[placeholder*="Preheat oven"]', steps);
+  await page.getByRole("button", { name: "Save to cookbook" }).click();
+  await page.waitForTimeout(300);
+  await page.getByText(title, { exact: true }).click();
+  await page.waitForTimeout(300);
+}
+
+test("servings scaling updates ingredient and step quantities, but not durations", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await addRecipe(page, {
+    title: "Redesign Roast",
+    servings: "4",
+    steps: "Prep: Chop 2 onions and mince the garlic.\nRoast for 20 minutes, flipping halfway.",
+  });
+
+  await expect(page.locator(".rc-step-title").first()).toHaveText("Prep");
+  await expect(page.locator(".rc-step-row").nth(0).locator(".rc-step-text")).toContainText("Chop 2 onions");
+  await expect(page.locator(".rc-step-row").nth(1).locator(".rc-step-text")).toContainText("Roast for 20 minutes");
+
+  // Bump servings 4 -> 8: ingredient/step quantities double, durations don't.
+  await page.locator(".rc-servings-stepper button").nth(1).click();
+  await page.locator(".rc-servings-stepper button").nth(1).click();
+  await page.locator(".rc-servings-stepper button").nth(1).click();
+  await page.locator(".rc-servings-stepper button").nth(1).click();
+
+  await expect(page.locator(".rc-ingredient-qty").first()).toHaveText("4");
+  await expect(page.locator(".rc-step-row").nth(0).locator(".rc-step-text")).toContainText("Chop 4 onions");
+  await expect(page.locator(".rc-step-row").nth(1).locator(".rc-step-text")).toContainText("Roast for 20 minutes");
+});
+
+test("step timer chip starts a countdown", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await addRecipe(page, {
+    title: "Redesign Timer Test",
+    servings: "2",
+    steps: "Simmer for 5 minutes, then serve.",
+  });
+
+  const timerChip = page.locator(".rc-timer-chip");
+  await expect(timerChip).toHaveCount(1);
+  await expect(timerChip).toContainText("5 MIN");
+  await timerChip.click();
+  await page.waitForTimeout(1100);
+  await expect(timerChip).toContainText("04:5");
+});
+
+test("options menu opens and closes on outside click", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await addRecipe(page, {
+    title: "Redesign Menu Test",
+    servings: "2",
+    steps: "Serve immediately.",
+  });
+
+  await expect(page.locator(".rc-menu")).toHaveCount(0);
+  await page.locator(".rc-btn-icon").click();
+  await expect(page.locator(".rc-menu")).toBeVisible();
+  await expect(page.locator(".rc-menu").getByRole("button", { name: "Edit" })).toBeVisible();
+  await expect(page.locator(".rc-menu").getByRole("button", { name: "Delete" })).toBeVisible();
+
+  await page.locator(".rc-menu-catcher").click();
+  await expect(page.locator(".rc-menu")).toHaveCount(0);
+});
+
+test("recipe notes render legibly on the dark card", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Redesign Notes Test");
+  await page.fill('input[placeholder="e.g. 4"]', "2");
+  await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");
+  await page.fill('input[placeholder="Qty (1/4)"]', "2");
+  await page.fill('textarea[placeholder*="Preheat oven"]', "Serve immediately.");
+  await page.fill('textarea[placeholder*="Used less salt"]', "Great with a squeeze of lemon.");
+  await page.getByRole("button", { name: "Save to cookbook" }).click();
+  await page.waitForTimeout(300);
+  await page.getByText("Redesign Notes Test", { exact: true }).click();
+  await page.waitForTimeout(300);
+
+  await expect(page.locator(".rc-notes-label")).toHaveText("Notes");
+  await expect(page.locator(".rc-notes-text")).toHaveText("Great with a squeeze of lemon.");
+});
+
+test("phone width shows tabbed Ingredients/Steps layout", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await addRecipe(page, {
+    title: "Redesign Phone Test",
+    servings: "2",
+    steps: "Prep: Chop the onions.\nServe hot.",
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".rc-phone-tabs")).toBeVisible();
+
+  // Ingredients tab shown by default; steps panel hidden.
+  await expect(page.locator(".rc-ingredients-panel")).toBeVisible();
+  await expect(page.locator(".rc-steps-wrap")).toBeHidden();
+
+  await page.getByRole("button", { name: /Steps ·/ }).click();
+  await expect(page.locator(".rc-steps-wrap")).toBeVisible();
+  await expect(page.locator(".rc-ingredients-panel")).toBeHidden();
+});

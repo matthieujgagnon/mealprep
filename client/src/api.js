@@ -151,4 +151,9 @@ export const api = {
   // "wasted" first - see POST /pantry-inventory/consume.
   consumePantryInventoryItems: (ids, action) =>
     request("/pantry-inventory/consume", { method: "POST", body: JSON.stringify({ ids, action }) }),
+
+  listPantryLocations: () => request("/pantry-locations"),
+  addPantryLocation: (name) =>
+    request("/pantry-locations", { method: "POST", body: JSON.stringify({ name }) }),
+  deletePantryLocation: (id) => request(`/pantry-locations/${id}`, { method: "DELETE" }),
 };
