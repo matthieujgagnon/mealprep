@@ -103,3 +103,18 @@ export function scaleStepText(step, scale) {
     return formatQuantity(value * scale);
   });
 }
+
+// Which of the recipe's ingredients this step's text actually mentions —
+// same crude word-overlap heuristic as findMatchingDeal/matchRecipesForDeal
+// elsewhere in the app: a significant word (>3 letters) from the ingredient
+// name shows up in the step text. Good enough for "THIS STEP USES" pills in
+// cook mode; doesn't attempt to resolve a reference to an earlier step's
+// output ("the seasoned chickpeas from step 2") since the recipe data has
+// no structured link between steps to resolve that from.
+export function stepIngredients(step, ingredients) {
+  const text = stepBody(step).toLowerCase();
+  return (ingredients || []).filter((ing) => {
+    const words = ing.name.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    return words.length > 0 && words.some((w) => text.includes(w));
+  });
+}

@@ -3850,125 +3850,433 @@ button.price-pill:hover {
   padding: 6px 10px !important;
 }
 
-.cook-mode-overlay {
+/* ================================================================
+   Cook mode (full screen) — design handoff 2b. Reuses the app's fixed
+   dark-surface tokens (--inv-*) rather than inventing new ones, same as
+   the Inventory tab and the recipe card modal.
+   ================================================================ */
+.cm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 14, 9, 0.75);
+  background: var(--bg);
+  z-index: 70;
+  display: flex;
+}
+
+.cm-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 28px 32px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.cm-empty {
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--paper);
+  text-align: center;
+}
+
+.cm-topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.cm-recipe-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--paper);
+  white-space: nowrap;
+  flex: none;
+}
+
+.cm-progress-track {
+  flex: 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+}
+
+.cm-progress-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--inv-border);
+}
+
+.cm-progress-bar.done {
+  background: var(--mustard);
+}
+
+.cm-progress-bar.current {
+  background: var(--inv-neon);
+}
+
+.cm-step-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--inv-muted);
+  white-space: nowrap;
+  flex: none;
+}
+
+.cm-running-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--inv-neon);
+  white-space: nowrap;
+  flex: none;
+}
+
+.cm-exit-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  background: #171752;
+  border: none;
+  color: var(--paper);
+  font-size: 13px;
+  cursor: pointer;
+  flex: none;
+}
+
+.cm-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.cm-photo-col {
+  border-radius: 20px;
+  overflow: hidden;
+  background: #171752;
+  min-height: 360px;
+}
+
+.cm-photo {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  object-fit: cover;
+  display: block;
+}
+
+.cm-content-col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.cm-content-col.full {
+  grid-column: 1 / -1;
+}
+
+.cm-step-title {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--inv-neon);
+}
+
+.cm-step-text {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.45;
+  color: var(--paper);
+  text-wrap: pretty;
+}
+
+.cm-timer-card {
+  background: #171752;
+  border-radius: 18px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cm-timer-label {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--inv-muted);
+}
+
+.cm-timer-time {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 40px;
+  line-height: 1.1;
+  color: var(--paper);
+  margin-top: 4px;
+}
+
+.cm-timer-btn {
+  margin-left: auto;
+  height: 46px;
+  padding: 0 24px;
+  border-radius: 23px;
+  border: none;
+  background: var(--mustard);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: none;
+}
+
+.cm-uses {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cm-uses-label {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--inv-muted);
+}
+
+.cm-uses-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cm-uses-pill {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: #171752;
+  display: flex;
+  align-items: center;
+  font-size: 13.5px;
+  color: var(--paper);
+}
+
+.cm-uses-pill-qty {
+  color: var(--inv-muted);
+  margin-left: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.cm-bottom-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.cm-nav-btn {
+  height: 52px;
+  padding: 0 26px;
+  border-radius: 26px;
+  border: none;
+  background: #171752;
+  color: var(--paper);
+  font-size: 15px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+
+.cm-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cm-nav-btn.primary {
+  background: var(--mustard);
+  color: #fff;
+  font-weight: 600;
+  padding: 0 30px;
+}
+
+.cm-nav-hint {
+  font-size: 13px;
+  color: var(--inv-muted);
+  white-space: nowrap;
+  flex: none;
+}
+
+.cm-finish-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 40, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  z-index: 60;
+  z-index: 80;
 }
 
-.cook-mode-card {
-  background: var(--paper);
-  color: var(--ink);
-  border-radius: 14px;
-  max-width: 480px;
+.cm-finish-sheet {
+  background: #171752;
+  border-radius: 20px;
+  padding: 28px;
   width: 100%;
-  padding: 24px;
-  position: relative;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.cook-mode-header-top {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.cook-mode-header-top .modal-close {
-  float: none;
-  flex-shrink: 0;
-  padding: 4px 8px;
-}
-
-.cook-mode-recipe-title {
-  font-family: var(--font-display);
-  font-size: 15px;
-  margin: 0;
-  opacity: 0.7;
-  flex: 1;
-  text-align: left;
-}
-
-.cook-mode-progress {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-soft);
-  margin: 2px 0 0;
+  gap: 18px;
   text-align: center;
 }
 
-.cook-mode-step-image {
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 10px;
+.cm-finish-sheet h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--paper);
 }
 
-.cook-mode-step-image.ambient {
-  opacity: 0.55;
-}
-
-.cook-mode-dots {
+.cm-finish-stepper {
   display: flex;
-  justify-content: center;
-  gap: 6px;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--paper);
 }
 
-.cook-mode-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--line);
+.cm-finish-stepper button {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  border: none;
+  background: var(--inv-surface2);
+  color: var(--paper);
+  font-size: 18px;
   cursor: pointer;
 }
 
-.cook-mode-dot.done {
-  background: var(--sage);
-}
-
-.cook-mode-dot.active {
-  background: var(--mustard);
-  transform: scale(1.3);
-}
-
-.cook-mode-step-text {
-  font-size: 20px;
-  line-height: 1.5;
-  text-align: center;
-  min-height: 100px;
+.cm-finish-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 8px;
-}
-
-.cook-mode-nav {
-  display: flex;
-  justify-content: space-between;
   gap: 10px;
+  width: 100%;
 }
 
-.cook-mode-nav .btn {
+.cm-finish-actions .btn {
   flex: 1;
+}
+
+@media (max-width: 780px) {
+  .cm-screen {
+    padding: 20px;
+    gap: 18px;
+  }
+
+  .cm-recipe-title {
+    display: none;
+  }
+
+  .cm-main {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .cm-photo-col,
+  .cm-photo {
+    min-height: 220px;
+  }
+
+  .cm-step-text {
+    font-size: 21px;
+  }
+
+  .cm-nav-btn {
+    max-width: none;
+    padding: 0 16px;
+  }
+
+  .cm-nav-hint {
+    display: none;
+  }
 }
 
 /* ================================================================
    Home dashboard
    ================================================================ */
 .home-page {
+  /* Dark theme (default) — same navy/plum dark-surface palette as the
+     Inventory and Recipe Card redesigns (--inv-*), scoped here under its
+     own --hm-* names since this toggle is local to Home only: the rest of
+     the app stays on the fixed dark theme regardless of this switch. */
+  --hm-bg: var(--bg);
+  --hm-surface: #171752;
+  --hm-surface2: var(--inv-surface2);
+  --hm-track: var(--bg);
+  --hm-border: var(--inv-border);
+  --hm-dash: var(--inv-dash);
+  --hm-text: var(--paper);
+  --hm-muted: var(--inv-muted);
+  --hm-soft: var(--inv-soft);
+  --hm-neon: var(--inv-neon);
+  --hm-good: var(--sage);
+  --hm-shadow: none;
+  --hm-accent: var(--mustard);
+
   display: flex;
   flex-direction: column;
   gap: 18px;
+  background: var(--hm-bg);
+  color: var(--hm-text);
+  border-radius: 24px;
+  padding: 24px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.home-page[data-theme="light"] {
+  --hm-bg: #f4f3ff;
+  --hm-surface: #ffffff;
+  --hm-surface2: #efedfc;
+  --hm-track: #e6e3fa;
+  --hm-border: #e4e1f7;
+  --hm-dash: #cfcbef;
+  --hm-text: #15133a;
+  --hm-muted: #5e5b85;
+  --hm-soft: #3d3a66;
+  --hm-neon: #8f1fe0;
+  --hm-good: #138a5b;
+  --hm-shadow: 0 1px 2px rgba(35, 35, 120, 0.06), 0 0 0 1px #e8e5fa;
+}
+
+.home-card {
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  border-radius: 20px;
+  box-shadow: var(--hm-shadow);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .home-greeting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.home-greeting-text {
   display: flex;
   align-items: baseline;
   gap: 14px;
@@ -3979,12 +4287,42 @@ button.price-pill:hover {
   margin: 0;
   font-family: var(--font-display);
   font-size: 26px;
+  color: var(--hm-text);
 }
 
 .home-greeting-date {
   font-size: 14px;
-  color: var(--paper-soft);
-  opacity: 0.75;
+  color: var(--hm-muted);
+}
+
+.home-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 34px;
+  padding: 0 4px;
+  border-radius: 17px;
+  background: var(--hm-surface2);
+  box-shadow: var(--hm-shadow);
+  border: none;
+  cursor: pointer;
+}
+
+.home-theme-toggle-pill {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hm-muted);
+  pointer-events: none;
+}
+
+.home-theme-toggle-pill.active {
+  background: var(--hm-accent);
+  color: #fff;
 }
 
 .home-eyebrow {
@@ -3992,7 +4330,7 @@ button.price-pill:hover {
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--sage-text);
+  color: var(--hm-neon);
 }
 
 .home-card-header {
@@ -4007,20 +4345,21 @@ button.price-pill:hover {
   margin: 0;
   font-family: var(--font-display);
   font-size: 17px;
+  color: var(--hm-text);
 }
 
 .home-card-header-sub {
   font-family: var(--font-body);
   font-weight: 400;
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--hm-muted);
 }
 
 .home-card-link {
   background: none;
   border: none;
   padding: 0;
-  color: var(--mustard);
+  color: var(--hm-neon);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -4032,7 +4371,7 @@ button.price-pill:hover {
 
 .home-empty-note {
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--hm-muted);
   margin: 0;
 }
 
@@ -4043,7 +4382,7 @@ button.price-pill:hover {
 }
 
 .home-tonight-card {
-  padding: 22px;
+  padding: 26px;
 }
 
 .home-tonight-body {
@@ -4056,18 +4395,18 @@ button.price-pill:hover {
 .home-tonight-photo {
   width: 200px;
   height: 160px;
-  border-radius: 12px;
+  border-radius: 14px;
   object-fit: cover;
   flex: none;
 }
 
 .home-tonight-photo.placeholder {
-  background: var(--bg-soft);
+  background: var(--hm-surface2);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: var(--ink-soft);
+  color: var(--hm-muted);
 }
 
 .home-tonight-info {
@@ -4082,13 +4421,14 @@ button.price-pill:hover {
   margin: 0;
   font-family: var(--font-display);
   font-size: 23px;
+  color: var(--hm-text);
 }
 
 .home-tonight-blurb {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
-  color: var(--ink-soft);
+  color: var(--hm-soft);
 }
 
 .home-tonight-actions {
@@ -4108,7 +4448,7 @@ button.price-pill:hover {
 .home-tonight-empty p {
   margin: 0;
   font-size: 14px;
-  color: var(--ink-soft);
+  color: var(--hm-soft);
 }
 
 .home-grocery-card {
@@ -4129,34 +4469,35 @@ button.price-pill:hover {
   font-weight: 700;
   font-size: 36px;
   line-height: 1;
+  color: var(--hm-text);
 }
 
 .home-grocery-unit {
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--hm-muted);
 }
 
 .home-progress-track {
   height: 7px;
   border-radius: 4px;
-  background: var(--line);
+  background: var(--hm-track);
   overflow: hidden;
   margin-bottom: 6px;
 }
 
 .home-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--mustard), #b04dff);
+  background: linear-gradient(90deg, var(--hm-accent), #b04dff);
   border-radius: 4px;
 }
 
 .home-grocery-sale {
   margin: 12px 0 0;
   padding-top: 12px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hm-border);
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--ink-soft);
+  color: var(--hm-soft);
 }
 
 .home-week-card {
@@ -4171,9 +4512,9 @@ button.price-pill:hover {
 
 .home-week-toggle-btn {
   background: none;
-  border: 1px solid var(--line-soft, rgba(227, 227, 246, 0.32));
+  border: 1px solid var(--hm-border);
   border-radius: 999px;
-  color: var(--paper-soft);
+  color: var(--hm-muted);
   font-family: inherit;
   font-size: 12px;
   padding: 5px 12px;
@@ -4182,13 +4523,14 @@ button.price-pill:hover {
 }
 
 .home-week-toggle-btn:hover {
-  border-color: var(--paper-soft);
+  border-color: var(--hm-soft);
+  color: var(--hm-soft);
 }
 
 .home-week-toggle-btn.active {
-  background: var(--mustard);
-  border-color: var(--mustard);
-  color: var(--ink);
+  background: var(--hm-accent);
+  border-color: var(--hm-accent);
+  color: #fff;
 }
 
 .home-week-strip {
@@ -4199,7 +4541,7 @@ button.price-pill:hover {
 
 .home-week-day {
   border-radius: 12px;
-  background: var(--bg-soft);
+  background: var(--hm-surface2);
   border: none;
   overflow: hidden;
   display: flex;
@@ -4208,11 +4550,11 @@ button.price-pill:hover {
   cursor: pointer;
   padding: 0;
   min-height: 118px;
-  color: var(--paper-soft);
+  color: var(--hm-soft);
 }
 
 .home-week-day.today {
-  box-shadow: 0 0 0 2px var(--mustard);
+  box-shadow: 0 0 0 2px var(--hm-accent);
 }
 
 .home-week-day-photo {
@@ -4223,7 +4565,7 @@ button.price-pill:hover {
 }
 
 .home-week-day-photo.placeholder {
-  background: var(--bg);
+  background: var(--hm-track);
 }
 
 .home-week-day-body {
@@ -4233,18 +4575,29 @@ button.price-pill:hover {
   gap: 3px;
 }
 
+.home-week-day-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--hm-muted);
+}
+
+.home-week-day.today .home-week-day-label {
+  color: var(--hm-neon);
+}
+
 .home-week-day-title {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
-  color: var(--paper);
+  color: var(--hm-text);
 }
 
 .home-week-day.empty {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1.5px dashed rgba(227, 227, 246, 0.32);
+  border: 1.5px dashed var(--hm-dash);
   background: transparent;
   padding: 10px;
 }
@@ -4252,7 +4605,7 @@ button.price-pill:hover {
 .home-week-day-plan {
   font-size: 13px;
   font-weight: 500;
-  color: var(--accent-text);
+  color: var(--hm-neon);
 }
 
 .home-bottom-row {
@@ -4287,8 +4640,8 @@ button.price-pill:hover {
   height: 22px;
   padding: 0 9px;
   border-radius: 11px;
-  background: var(--bg-soft);
-  color: var(--ink-soft);
+  background: var(--hm-surface2);
+  color: var(--hm-soft);
   display: flex;
   align-items: center;
   font-family: var(--font-mono);
@@ -4297,14 +4650,23 @@ button.price-pill:hover {
 }
 
 .home-expiry-badge.soon {
-  background: var(--tomato);
-  color: #fbe9e6;
+  background: var(--hm-neon);
+  color: #fff;
 }
 
 .home-sale-price {
-  color: var(--sage-text);
+  color: var(--hm-good);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.home-sale-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--hm-border);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--hm-soft);
 }
 
 .home-makeable-list {
@@ -4318,7 +4680,7 @@ button.price-pill:hover {
   flex-direction: row;
   align-items: center;
   gap: 12px;
-  background: var(--bg-soft);
+  background: var(--hm-surface2);
   border-radius: 12px;
   padding: 6px;
 }
@@ -4337,6 +4699,11 @@ button.price-pill:hover {
 .home-makeable-list .meal-card.compact .meal-card-title {
   min-height: 0;
   font-size: 13.5px;
+  /* This compact card overrides the shared .meal-card's background to a
+     dark surface color but the title inherited .card's --ink (dark navy)
+     text color meant for a light card, making it unreadable against the
+     dark override. Set it explicitly for both Home themes. */
+  color: var(--hm-text);
 }
 
 /* ================================================================
@@ -4535,8 +4902,12 @@ button.price-pill:hover {
     padding: 12px 14px;
   }
 
-  .cook-mode-header-top {
-    flex-wrap: wrap;
+  .home-page {
+    padding: 16px;
+  }
+
+  .home-greeting {
+    align-items: flex-start;
   }
 
   .home-top-row,

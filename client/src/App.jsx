@@ -879,6 +879,11 @@ export default function App({ user, onLogout }) {
             pantryInventory={pantryInventory}
             onNavigate={setTab}
             onSelectRecipe={openRecipe}
+            onFindRecipes={(query) => {
+              setRecipeSearch(query);
+              setActiveTagFilter(null);
+              setTab("collection");
+            }}
           />
         )}
 
@@ -1181,6 +1186,7 @@ export default function App({ user, onLogout }) {
               setWeekStart(currentWeekStart());
               setTab("planner");
             }}
+            onAddPantryItem={handleAddPantryItem}
           />
         )}
       </div>
