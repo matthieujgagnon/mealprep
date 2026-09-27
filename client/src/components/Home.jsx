@@ -8,6 +8,33 @@ import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 const RESTAURANT_TITLE = "🍽️ Restaurant";
+const THEME_STORAGE_KEY = "mealprep-home-theme";
+
+// Home has its own light/dark toggle, independent of the rest of the app
+// (which stays on the fixed dark theme) — scoped to this page only, so the
+// preference lives in its own localStorage key rather than the server.
+function loadStoredTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === "light" || stored === "dark" ? stored : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+// Recipes with an ingredient matching this deal — same crude word-overlap
+// heuristic findMatchingDeal uses, just checked from the other side (find
+// recipes for a deal, instead of a deal for one ingredient). Also keeps the
+// matching ingredient's own name off each hit: the deal's own text (e.g.
+// "Boneless chicken breast") is usually a poor search query for
+// matchesRecipeSearch's substring check — a shorter recipe ingredient name
+// like "chicken breast" is a substring of the deal text, not the reverse,
+// so passing the deal text back in as a search query would go the wrong way.
+function matchRecipesForDeal(deal, recipes) {
+  return recipes
+    .map((recipe) => ({ recipe, ingredientName: recipe.ingredients?.find((i) => findMatchingDeal(i.name, [deal]))?.name }))
+    .filter((m) => m.ingredientName);
+}
 
 function isBlankMarker(entry) {
   return entry.recipe?.isPlaceholder && entry.recipe?.title === "No meal planned";
@@ -33,10 +60,20 @@ function buildCombinedHave(pantryInventory, customStaples) {
   return [...inStock, ...stapleExtra];
 }
 
-export function Home({ user, recipes, customStaples, excludedStaples, pantryInventory, onNavigate, onSelectRecipe }) {
+export function Home({
+  user,
+  recipes,
+  customStaples,
+  excludedStaples,
+  pantryInventory,
+  onNavigate,
+  onSelectRecipe,
+  onFindRecipes,
+}) {
   const weekStart = currentWeekStart();
   const todayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
 
+  const [theme, setTheme] = useState(loadStoredTheme);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [checked, setChecked] = useState({});
   const [extraItems, setExtraItems] = useState([]);
@@ -69,6 +106,16 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
     api.listPlanner(stripWeekStart).then(setStripEntries).catch(() => setStripEntries([]));
   }, [stripWeekOffset, stripWeekStart, plannerEntries]);
 
+  function toggleTheme(next) {
+    setTheme(next);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch {
+      // localStorage unavailable (private browsing, etc.) — theme just
+      // won't persist across visits, which is fine as a fallback.
+    }
+  }
+
   const restaurantRecipe = recipes.find((r) => r.isPlaceholder && r.title === RESTAURANT_TITLE);
 
   const combinedHave = buildCombinedHave(pantryInventory, customStaples);
@@ -98,19 +145,33 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
     setPlannerEntries(entries);
   }
 
+  const dealsShown = deals.slice(0, 3).map((d) => ({ ...d, matches: matchRecipesForDeal(d, recipes) }));
+  const topDealMatch = dealsShown.filter((d) => d.matches.length > 0).sort((a, b) => b.matches.length - a.matches.length)[0];
+
   return (
-    <div className="home-page">
+    <div className="home-page" data-theme={theme}>
       <div className="home-greeting">
-        <h1 className="home-greeting-title">
-          {greeting()}, {user.name || user.email.split("@")[0]}
-        </h1>
-        <span className="home-greeting-date">
-          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-        </span>
+        <div className="home-greeting-text">
+          <h1 className="home-greeting-title">
+            {greeting()}, {user.name || user.email.split("@")[0]}
+          </h1>
+          <span className="home-greeting-date">
+            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="home-theme-toggle"
+          onClick={() => toggleTheme(theme === "dark" ? "light" : "dark")}
+          aria-label={`Switch Home to ${theme === "dark" ? "light" : "dark"} mode`}
+        >
+          <span className={`home-theme-toggle-pill${theme === "light" ? " active" : ""}`}>Light</span>
+          <span className={`home-theme-toggle-pill${theme === "dark" ? " active" : ""}`}>Dark</span>
+        </button>
       </div>
 
       <div className="home-top-row">
-        <section className="card home-tonight-card">
+        <section className="home-card home-tonight-card">
           <div className="home-eyebrow">Tonight · Supper</div>
           {tonightEntry ? (
             <div className="home-tonight-body">
@@ -174,7 +235,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
           )}
         </section>
 
-        <section className="card home-grocery-card">
+        <section className="home-card home-grocery-card">
           <div className="home-card-header">
             <h3>Grocery list</h3>
             <button type="button" className="home-card-link" onClick={() => onNavigate("grocery")}>
@@ -200,7 +261,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
         </section>
       </div>
 
-      <section className="card home-week-card">
+      <section className="home-card home-week-card">
         <div className="home-card-header">
           <h3>
             {stripWeekOffset === 0 ? "This week's" : "Next week's"} suppers{" "}
@@ -245,7 +306,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
                   <div className="home-week-day-photo placeholder" />
                 )}
                 <div className="home-week-day-body">
-                  <span className="home-eyebrow">{weekday.toUpperCase()} {dayNum}</span>
+                  <span className="home-week-day-label">{weekday.toUpperCase()} {dayNum}</span>
                   <span className="home-week-day-title">{entry.recipe.title}</span>
                 </div>
               </button>
@@ -256,7 +317,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
                 className={`home-week-day empty${isToday ? " today" : ""}`}
                 onClick={() => onNavigate("planner")}
               >
-                <span className="home-eyebrow">{weekday.toUpperCase()} {dayNum}</span>
+                <span className="home-week-day-label">{weekday.toUpperCase()} {dayNum}</span>
                 <span className="home-week-day-plan">+ Plan</span>
               </button>
             );
@@ -265,7 +326,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
       </section>
 
       <div className="home-bottom-row">
-        <section className="card home-mini-card">
+        <section className="home-card home-mini-card">
           <div className="home-card-header">
             <h3>Use soon</h3>
             <button type="button" className="home-card-link" onClick={() => onNavigate("inventory")}>
@@ -292,7 +353,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
           )}
         </section>
 
-        <section className="card home-mini-card">
+        <section className="home-card home-mini-card">
           <div className="home-card-header">
             <h3>Makeable now</h3>
             <button type="button" className="home-card-link" onClick={() => onNavigate("makeable")}>
@@ -310,7 +371,7 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
           )}
         </section>
 
-        <section className="card home-mini-card">
+        <section className="home-card home-mini-card">
           <div className="home-card-header">
             <h3>On sale this week</h3>
             <button type="button" className="home-card-link" onClick={() => onNavigate("flyers")}>
@@ -321,13 +382,25 @@ export function Home({ user, recipes, customStaples, excludedStaples, pantryInve
             <p className="home-empty-note">No flyer deals loaded yet.</p>
           ) : (
             <div className="home-sale-list">
-              {deals.slice(0, 3).map((d) => (
+              {dealsShown.map((d) => (
                 <div key={d.id} className="home-sale-row">
                   <span>{d.item}</span>
                   <span className="home-sale-price">{d.price}</span>
                 </div>
               ))}
             </div>
+          )}
+          {topDealMatch && (
+            <p className="home-sale-footer">
+              {topDealMatch.matches.length} of your recipes use {topDealMatch.item.toLowerCase()}.{" "}
+              <button
+                type="button"
+                className="home-card-link"
+                onClick={() => onFindRecipes?.(topDealMatch.matches[0].ingredientName)}
+              >
+                See them →
+              </button>
+            </p>
           )}
         </section>
       </div>
