@@ -17,7 +17,7 @@
    APP_URL="http://localhost:5173"
    ```
    `GEMINI_API_KEY` is only needed for flyer-deal extraction (uploading a flyer PDF/photo on the
-   Flyers tab) — everything else works without it. `RESEND_API_KEY` (from
+   Flyers tab) and receipt import (the Inventory tab) — everything else works without it. `RESEND_API_KEY` (from
    [resend.com](https://resend.com), free tier is enough for a handful of accounts) is only needed
    for "forgot password" emails — without it, signup/login/using the app all still work, people
    just can't reset a forgotten password themselves. `APP_URL` is the address the reset link in
@@ -60,7 +60,7 @@ running app on Render — all free tiers.
   - **Instance Type:** Free
 - Under **Environment Variables**, add:
   - `DATABASE_URL` → your Neon connection string (same one from local dev)
-  - `GEMINI_API_KEY` → only needed for flyer-deal extraction
+  - `GEMINI_API_KEY` → only needed for flyer-deal extraction and receipt import
   - `RESEND_API_KEY` → only needed for "forgot password" emails to work
   - `APP_URL` → your Render URL once you have it (e.g. `https://mattmocookbook.onrender.com`) —
     can be added/updated after the first deploy

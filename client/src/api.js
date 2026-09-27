@@ -125,6 +125,16 @@ export const api = {
     request(`/grocery-sections/assignments/${encodeURIComponent(core)}`, { method: "DELETE" }),
 
   listPantryInventory: () => request("/pantry-inventory"),
+  // Returns { items: [{ name, quantity }] } - extracted candidates only,
+  // nothing is saved server-side until each is added individually below.
+  parseReceipt: async (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${BASE}/receipts/parse`, { method: "POST", body: form, credentials: "include" });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+    return data;
+  },
   // Returns { expiresAt, category } - both suggested from the same bundled
   // USDA FoodKeeper product match.
   suggestPantryExpiration: (name, location, purchasedAt) =>
