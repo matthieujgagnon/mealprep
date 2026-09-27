@@ -41,6 +41,24 @@ export function parseQuantityInput(raw) {
   return Number.isFinite(value) ? value : null;
 }
 
+// The inverse of parseQuantityInput's fraction parsing — formats a scaled
+// quantity back into "1 1/2" rather than "1.5", since that's how a recipe
+// actually reads. Plain "1/2" rather than unicode fraction glyphs — IBM
+// Plex Mono doesn't carry those glyphs, so they'd render as fallback/tofu
+// symbols wherever this shows up (the ingredient list, scaled step text).
+export function formatQuantity(qty) {
+  if (qty === null || qty === undefined) return "";
+  const rounded = Math.round(qty * 100) / 100;
+  const whole = Math.floor(rounded);
+  const frac = rounded - whole;
+  const fracMap = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4", 0.33: "1/3", 0.67: "2/3" };
+  const nearestFrac = Object.keys(fracMap).find((f) => Math.abs(f - frac) < 0.05);
+  if (nearestFrac) {
+    return `${whole > 0 ? whole + " " : ""}${fracMap[nearestFrac]}`;
+  }
+  return String(rounded);
+}
+
 function unitClass(unit) {
   if (!unit) return null;
   const u = unit.toLowerCase();

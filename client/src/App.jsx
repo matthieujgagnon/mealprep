@@ -1166,6 +1166,9 @@ export default function App({ user, onLogout }) {
             onClose={() => openRecipe(null)}
             allRecipes={recipes}
             plannerEntries={plannerEntries}
+            pantryInventory={pantryInventory}
+            customStaples={customStaples}
+            weekStart={weekStart}
             onSelectRecipe={openRecipe}
             onRecipeUpdated={handleRecipeUpdated}
             onDelete={async (id) => {
