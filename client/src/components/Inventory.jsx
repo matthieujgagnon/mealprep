@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { api } from "../api.js";
@@ -36,7 +37,7 @@ function expiryChip(item) {
 // bundled USDA FoodKeeper data as soon as there's enough to look up (a name
 // and a location) - both always shown as editable, never locked in, since
 // the suggestion is a starting point, not an authority.
-function AddInventoryItemForm({ onAdd, onDone }) {
+function AddInventoryItemForm({ onAdd, onDone, locations }) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
@@ -131,6 +132,11 @@ function AddInventoryItemForm({ onAdd, onDone }) {
             {l.label}
           </option>
         ))}
+        {(locations || []).map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.name}
+          </option>
+        ))}
       </select>
       <input
         type="date"
@@ -151,7 +157,7 @@ function AddInventoryItemForm({ onAdd, onDone }) {
 // misread brand names) that a blind bulk-add would just make a mess to
 // clean up later. Each accepted row goes through the same onAdd as the
 // manual form above, so it gets the same suggested category/expiration.
-function ReceiptScanPanel({ onAdd, onDone }) {
+function ReceiptScanPanel({ onAdd, onDone, locations }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [pending, setPending] = useState(null); // [{ name, quantity, location, selected }] once parsed
@@ -229,6 +235,11 @@ function ReceiptScanPanel({ onAdd, onDone }) {
                     {l.label}
                   </option>
                 ))}
+                {(locations || []).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
               </select>
             </li>
           ))}
@@ -293,9 +304,25 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
         })}.`
       : null;
 
+  // Draggable onto any other shelf column (see App.jsx's handleDragEnd,
+  // routed via the "inv-shelf-<location>" droppable id below) - the
+  // general-purpose way to move an item, since the edit panel's storage
+  // pills only cover the three USDA-backed locations, not custom sections.
+  // PointerSensor's activation delay (App.jsx) is what keeps a quick click
+  // working as a click rather than always starting a drag.
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `inv-item-${item.id}`,
+    data: { inventoryItemId: item.id, inventoryItem: item },
+  });
+
   return (
     <div
-      className={`inv-card${active ? " active" : ""}${urgent && !active ? " urgent" : ""}`}
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={`inv-card${active ? " active" : ""}${urgent && !active ? " urgent" : ""}${
+        isDragging ? " dragging" : ""
+      }`}
       onClick={onSelect}
     >
       <div className="inv-card-top">
@@ -333,7 +360,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
   );
 }
 
-function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onToggleSelect }) {
+function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onToggleSelect, onDeleteLocation }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.expiresAt ? daysUntil(a.expiresAt) : null;
     const db = b.expiresAt ? daysUntil(b.expiresAt) : null;
@@ -343,11 +370,27 @@ function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onT
     return da - db;
   });
 
+  // Every shelf is a drop target for a dragged card (see ItemCard above and
+  // App.jsx's handleDragEnd, which routes "inv-shelf-<id>" ids) - built-in
+  // and custom sections work identically here.
+  const { setNodeRef, isOver } = useDroppable({ id: `inv-shelf-${location.id}` });
+
   return (
-    <div className="inv-shelf">
+    <div ref={setNodeRef} className={`inv-shelf${isOver ? " drop-active" : ""}`}>
       <div className="inv-shelf-header">
         <span>{location.label}</span>
         <span className="inv-shelf-count">{items.length}</span>
+        {location.custom && (
+          <button
+            type="button"
+            className="inv-shelf-remove"
+            aria-label={`Remove the "${location.label}" section`}
+            title={items.length > 0 ? "Items here move back to Pantry" : "Remove this section"}
+            onClick={() => onDeleteLocation(location.id)}
+          >
+            ×
+          </button>
+        )}
       </div>
       {sorted.length === 0 ? (
         <div className="inv-shelf-empty">Nothing here yet</div>
@@ -364,6 +407,58 @@ function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onT
         ))
       )}
     </div>
+  );
+}
+
+// A trailing tile in the shelves grid for creating a new custom section
+// (e.g. "Garage Freezer", "Wine Cellar") - plain storage bins with no USDA
+// backing, so items in one just don't get a freshness bar or a suggested
+// expiry (same as any item whose name has no FoodKeeper match at all).
+function AddSectionTile({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await onAdd(name.trim());
+      setName("");
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="inv-add-section-tile" onClick={() => setOpen(true)}>
+        + Add section
+      </button>
+    );
+  }
+
+  return (
+    <form className="inv-add-section-tile form" onSubmit={handleSubmit}>
+      <input
+        autoFocus
+        type="text"
+        placeholder="e.g. Garage Freezer"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        disabled={saving}
+      />
+      <div className="inv-add-section-actions">
+        <button type="submit" className="btn primary btn-sm" disabled={saving || !name.trim()}>
+          Add
+        </button>
+        <button type="button" className="btn subtle btn-sm" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -503,6 +598,9 @@ export function Inventory({
   recipes,
   onFindRecipes,
   onFindRecipesForSelection,
+  locations,
+  onAddLocation,
+  onDeleteLocation,
 }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [activeItemId, setActiveItemId] = useState(null);
@@ -548,6 +646,13 @@ export function Inventory({
   const activeItem = items.find((i) => i.id === activeItemId);
   const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3).length;
 
+  // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed) followed by the
+  // user's own custom sections, in creation order.
+  const shelfLocations = [
+    ...SHELF_LOCATIONS,
+    ...(locations || []).map((l) => ({ id: l.id, label: l.name, custom: true })),
+  ];
+
   return (
     <div className="inv-page">
       <div className="inv-title-row">
@@ -563,41 +668,43 @@ export function Inventory({
         </button>
       </div>
 
-      {items.length === 0 ? (
+      {items.length === 0 && (
         <p className="empty-state">
           Nothing tracked yet — add what's in your fridge, pantry, or freezer above.
         </p>
-      ) : (
-        <div className="inv-main">
-          <div className="inv-shelves">
-            {SHELF_LOCATIONS.map((loc) => (
-              <ShelfColumn
-                key={loc.id}
-                location={loc}
-                items={items.filter((i) => i.location === loc.id)}
-                activeItemId={activeItemId}
-                selectedIds={selectedIds}
-                onSelect={setActiveItemId}
-                onToggleSelect={toggleSelect}
-              />
-            ))}
-          </div>
-          {activeItem && (
-            <EditPanel
-              item={activeItem}
-              recipes={recipes}
-              onUpdate={onUpdate}
-              onDelete={(id) => {
-                setActiveItemId(null);
-                onDelete(id);
-              }}
-              onFindRecipes={onFindRecipes}
-              isStaple={staples.has(activeItem.core)}
-              onToggleStaple={toggleStaple}
-            />
-          )}
-        </div>
       )}
+
+      <div className="inv-main">
+        <div className="inv-shelves">
+          {shelfLocations.map((loc) => (
+            <ShelfColumn
+              key={loc.id}
+              location={loc}
+              items={items.filter((i) => i.location === loc.id)}
+              activeItemId={activeItemId}
+              selectedIds={selectedIds}
+              onSelect={setActiveItemId}
+              onToggleSelect={toggleSelect}
+              onDeleteLocation={onDeleteLocation}
+            />
+          ))}
+          <AddSectionTile onAdd={onAddLocation} />
+        </div>
+        {activeItem && (
+          <EditPanel
+            item={activeItem}
+            recipes={recipes}
+            onUpdate={onUpdate}
+            onDelete={(id) => {
+              setActiveItemId(null);
+              onDelete(id);
+            }}
+            onFindRecipes={onFindRecipes}
+            isStaple={staples.has(activeItem.core)}
+            onToggleStaple={toggleStaple}
+          />
+        )}
+      </div>
 
       {selectedIds.size > 0 && (
         <FloatingActionBar
@@ -611,12 +718,12 @@ export function Inventory({
 
       {showAdd && (
         <Modal title="Add item" onClose={() => setShowAdd(false)}>
-          <AddInventoryItemForm onAdd={onAdd} />
+          <AddInventoryItemForm onAdd={onAdd} locations={locations} />
         </Modal>
       )}
       {showScan && (
         <Modal title="Scan receipt" onClose={() => setShowScan(false)}>
-          <ReceiptScanPanel onAdd={onAdd} onDone={() => setShowScan(false)} />
+          <ReceiptScanPanel onAdd={onAdd} onDone={() => setShowScan(false)} locations={locations} />
         </Modal>
       )}
     </div>

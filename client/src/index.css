@@ -866,12 +866,16 @@ select {
 
 .inv-shelf-header {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
+  gap: 8px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 17px;
   color: var(--paper);
+}
+
+.inv-shelf-header span:first-child {
+  flex: 1;
 }
 
 .inv-shelf-count {
@@ -879,6 +883,20 @@ select {
   font-weight: 500;
   font-size: 11px;
   color: var(--inv-muted);
+}
+
+.inv-shelf-remove {
+  background: none;
+  border: none;
+  color: var(--inv-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.inv-shelf-remove:hover {
+  color: var(--inv-neon);
 }
 
 .inv-shelf-empty {
@@ -893,6 +911,52 @@ select {
   color: var(--inv-muted);
 }
 
+.inv-shelf.drop-active {
+  box-shadow: 0 0 0 2px var(--mustard) inset;
+}
+
+.inv-add-section-tile {
+  border: 1.5px dashed var(--inv-dash);
+  border-radius: 20px;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
+  color: var(--inv-muted);
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.inv-add-section-tile:hover {
+  color: var(--paper);
+  border-color: var(--inv-boxline);
+}
+
+.inv-add-section-tile.form {
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  cursor: default;
+}
+
+.inv-add-section-tile.form input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--inv-boxline);
+  background: var(--bg);
+  color: var(--paper);
+  font-size: 13px;
+}
+
+.inv-add-section-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .inv-card {
   background: var(--inv-surface2);
   border-radius: 12px;
@@ -900,8 +964,9 @@ select {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  cursor: pointer;
+  cursor: grab;
   transition: box-shadow 0.15s ease;
+  touch-action: none;
 }
 
 .inv-card.active {
@@ -910,6 +975,10 @@ select {
 
 .inv-card.urgent {
   box-shadow: 0 0 0 1.5px var(--inv-neon);
+}
+
+.inv-card.dragging {
+  opacity: 0.5;
 }
 
 .inv-card-top {

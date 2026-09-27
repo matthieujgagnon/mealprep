@@ -22,6 +22,16 @@ function enrichItem(item) {
   return { ...item, locations, shelfLifeDays: locations[item.location]?.defaultDays ?? null };
 }
 
+// A built-in location (fridge/pantry/freezer) or one of the user's own
+// custom PantryLocation ids (see routes/pantryLocations.js). Returns null
+// when `location` is neither, so callers can tell "not given" from
+// "invalid" apart.
+async function resolveLocation(userId, location) {
+  if (LOCATIONS.includes(location)) return location;
+  const custom = await prisma.pantryLocation.findFirst({ where: { id: location, userId } });
+  return custom ? location : null;
+}
+
 // GET /api/pantry-inventory - every item currently in stock, soonest-expiring first.
 pantryInventoryRouter.get("/", async (req, res) => {
   const items = await prisma.pantryInventoryItem.findMany({
@@ -60,7 +70,7 @@ pantryInventoryRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: `category must be one of: ${CATEGORIES.join(", ")}` });
   }
 
-  const location = LOCATIONS.includes(req.body.location) ? req.body.location : "fridge";
+  const location = (await resolveLocation(req.userId, req.body.location)) || "fridge";
   const purchasedAt = req.body.purchasedAt ? new Date(req.body.purchasedAt) : new Date();
   const resolvedExpiresAt =
     expiresAt !== undefined ? (expiresAt ? new Date(expiresAt) : null) : suggestExpiration(name, location, purchasedAt);
@@ -89,10 +99,11 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   if (req.body.quantity !== undefined) data.quantity = typeof req.body.quantity === "number" ? req.body.quantity : null;
   if (req.body.unit !== undefined) data.unit = req.body.unit || null;
   if (req.body.location !== undefined) {
-    if (!LOCATIONS.includes(req.body.location)) {
-      return res.status(400).json({ error: `location must be one of: ${LOCATIONS.join(", ")}` });
+    const resolved = await resolveLocation(req.userId, req.body.location);
+    if (!resolved) {
+      return res.status(400).json({ error: "location must be a built-in location or one of your own sections" });
     }
-    data.location = req.body.location;
+    data.location = resolved;
   }
   if (req.body.category !== undefined) {
     if (!CATEGORIES.includes(req.body.category)) {
