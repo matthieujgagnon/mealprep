@@ -42,14 +42,17 @@ test("add a pantry inventory item and mark it a staple", async ({ page }) => {
   await signUp(page, uniqueEmail("smoke-inventory"));
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
+  await page.getByRole("button", { name: "+ Add item" }).click();
   await page.fill('.pantry-add-form input[type="text"]', "canned tomatoes");
   await page.locator('.pantry-add-form button[type="submit"]').click();
+  await page.locator(".modal-close").click();
   await expect(page.getByText("canned tomatoes")).toBeVisible();
 
-  const starButton = page.locator(".pantry-item-staple-toggle").first();
-  await expect(starButton).toHaveText("☆");
-  await starButton.click();
-  await expect(starButton).toHaveText("★");
+  await page.getByText("canned tomatoes", { exact: true }).click();
+  const stapleButton = page.getByRole("button", { name: "☆ Mark as pantry staple" });
+  await expect(stapleButton).toBeVisible();
+  await stapleButton.click();
+  await expect(page.getByRole("button", { name: "★ Pantry staple" })).toBeVisible();
 });
 
 test("add an extra grocery item and check it off", async ({ page }) => {

@@ -147,6 +147,8 @@ export const api = {
   updatePantryInventoryItem: (id, payload) =>
     request(`/pantry-inventory/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deletePantryInventoryItem: (id) => request(`/pantry-inventory/${id}`, { method: "DELETE" }),
-  deletePantryInventoryItems: (ids) =>
-    request("/pantry-inventory", { method: "DELETE", body: JSON.stringify({ ids }) }),
+  // Removes items like a plain delete, but logs each as "consumed" or
+  // "wasted" first - see POST /pantry-inventory/consume.
+  consumePantryInventoryItems: (ids, action) =>
+    request("/pantry-inventory/consume", { method: "POST", body: JSON.stringify({ ids, action }) }),
 };

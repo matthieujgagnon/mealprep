@@ -30,6 +30,7 @@ model User {
   flyerUploads         FlyerUpload[]
   plannerEntries       PlannerEntry[]
   pantryInventoryItems PantryInventoryItem[]
+  pantryConsumptionLogs PantryConsumptionLog[]
 }
 
 // A logged-in session, looked up by the id stored in the browser's httpOnly
@@ -304,4 +305,24 @@ model PlannerEntry {
   createdAt   DateTime @default(now())
 
   @@index([userId, weekStart])
+}
+
+// A record that a PantryInventoryItem was removed via the Inventory page's
+// "Used up" or "Tossed" bulk action (see routes/pantryInventory.js's POST
+// /consume) - snapshotted at removal time (name/core/category) rather than
+// a foreign key to the item, since the item itself is hard-deleted, not
+// soft-deleted. Nothing reads this yet - no waste report exists in this
+// app - but it exists so that report has real history to work from later
+// instead of starting from zero the day it ships.
+model PantryConsumptionLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  core      String
+  category  String?
+  action    String // "consumed" | "wasted"
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

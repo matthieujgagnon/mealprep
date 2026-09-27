@@ -123,3 +123,48 @@ export function suggestExpiration(name, location, purchasedAt) {
   const expires = new Date(purchased.getTime() + midDays * 24 * 60 * 60 * 1000);
   return expires;
 }
+
+// Human-readable version of a {min, max} day range, scaled to whichever
+// unit reads most naturally - days under a month, months under a year,
+// years beyond that - matching how the USDA FoodKeeper app itself presents
+// these ranges rather than printing raw day counts like "540 days".
+function formatDayRange(min, max) {
+  if (max < 30) {
+    return min === max ? `${min} day${min === 1 ? "" : "s"}` : `${min}–${max} days`;
+  }
+  if (max < 365) {
+    const minMo = Math.max(1, Math.round(min / 30));
+    const maxMo = Math.max(1, Math.round(max / 30));
+    return minMo === maxMo ? `${minMo} month${minMo === 1 ? "" : "s"}` : `${minMo}–${maxMo} months`;
+  }
+  const minYr = Math.max(1, Math.round(min / 365));
+  const maxYr = Math.max(1, Math.round(max / 365));
+  return minYr === maxYr ? `${minYr} year${minYr === 1 ? "" : "s"}` : `${minYr}–${maxYr} years`;
+}
+
+// Same product match as suggestExpiration, but for every storage location at
+// once rather than one - used by the Inventory page to show "what would
+// this become in the Freezer?" for an item before the user moves it there,
+// without a separate lookup per location. Returns null for a location the
+// matched entry has no data for (see suggestExpiration's own note on why
+// that's left alone rather than guessed).
+export function suggestAllLocations(name, purchasedAt) {
+  const match = findBestMatch(name);
+  const purchased = purchasedAt instanceof Date ? purchasedAt : new Date(purchasedAt);
+  const result = {};
+  for (const location of Object.keys(LOCATION_FIELD)) {
+    const range = match?.[LOCATION_FIELD[location]];
+    if (!range) {
+      result[location] = null;
+      continue;
+    }
+    const { min, max } = range;
+    const midDays = (min + max) / 2;
+    result[location] = {
+      expiresAt: new Date(purchased.getTime() + midDays * 24 * 60 * 60 * 1000),
+      defaultDays: midDays,
+      rangeLabel: formatDayRange(min, max),
+    };
+  }
+  return result;
+}
