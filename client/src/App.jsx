@@ -1186,6 +1186,7 @@ export default function App({ user, onLogout }) {
               setWeekStart(currentWeekStart());
               setTab("planner");
             }}
+            onAddPantryItem={handleAddPantryItem}
           />
         )}
       </div>

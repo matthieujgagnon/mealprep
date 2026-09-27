@@ -196,6 +196,7 @@ export function RecipeDetailModal({
   onRecipeUpdated,
   onDelete,
   onPlanAround,
+  onAddPantryItem,
   sharedWithWeek, // ingredient names reused from this week's plan — only set when opened from a "good next addition" suggestion
 }) {
   const defaultServings = recipe.baseServings || 4;
@@ -588,7 +589,14 @@ export function RecipeDetailModal({
           </div>
         )}
       </div>
-      {cookModeOn && <CookMode recipe={recipe} onExit={() => setCookModeOn(false)} />}
+      {cookModeOn && (
+        <CookMode
+          recipe={recipe}
+          servings={servings}
+          onExit={() => setCookModeOn(false)}
+          onAddPantryItem={onAddPantryItem}
+        />
+      )}
     </div>
   );
 }

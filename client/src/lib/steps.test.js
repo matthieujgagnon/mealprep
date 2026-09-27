@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stepIsHeading, stepTitle, stepBody, stepTimer, scaleStepText } from "./steps.js";
+import { stepIsHeading, stepTitle, stepBody, stepTimer, scaleStepText, stepIngredients } from "./steps.js";
 
 describe("stepIsHeading / stepTitle", () => {
   it("treats a bare label as a heading, not a title", () => {
@@ -66,5 +66,30 @@ describe("scaleStepText", () => {
 
   it("scales a step's body, not its title prefix", () => {
     expect(scaleStepText("Prep: Chop 2 onions.", 2)).toBe("Chop 4 onions.");
+  });
+});
+
+describe("stepIngredients", () => {
+  const ingredients = [{ name: "chickpeas" }, { name: "olive oil" }, { name: "salt" }];
+
+  it("matches ingredients mentioned in the step text", () => {
+    expect(stepIngredients("Toss the chickpeas in olive oil.", ingredients)).toEqual([
+      { name: "chickpeas" },
+      { name: "olive oil" },
+    ]);
+  });
+
+  it("skips ingredients not mentioned", () => {
+    expect(stepIngredients("Preheat the oven to 400F.", ingredients)).toEqual([]);
+  });
+
+  it("skips short/generic words that would over-match (e.g. 'salt')", () => {
+    // "salt" is 4 letters, right at the >3-letter cutoff, but shouldn't
+    // match unless it's actually in the step text.
+    expect(stepIngredients("Roast until golden.", ingredients)).toEqual([]);
+  });
+
+  it("matches the step's body, not its title prefix", () => {
+    expect(stepIngredients("Prep: Toss the chickpeas.", ingredients)).toEqual([{ name: "chickpeas" }]);
   });
 });
