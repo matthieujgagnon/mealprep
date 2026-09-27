@@ -415,10 +415,13 @@ export default function App({ user, onLogout }) {
     await api.deletePantryInventoryItem(id);
   }
 
-  async function handleDeletePantryItems(ids) {
+  // "Used up"/"Tossed" on the Inventory page - removes the items like a
+  // plain delete, but also logs each removal (see PantryConsumptionLog) so
+  // a future waste report has real history.
+  async function handleConsumePantryItems(ids, action) {
     const idSet = new Set(ids);
     setPantryInventory((prev) => prev.filter((i) => !idSet.has(i.id)));
-    await api.deletePantryInventoryItems(ids);
+    await api.consumePantryInventoryItems(ids, action);
   }
 
   async function handleReorderSection(id, direction) {
@@ -805,10 +808,17 @@ export default function App({ user, onLogout }) {
             onAdd={handleAddPantryItem}
             onUpdate={handleUpdatePantryItem}
             onDelete={handleDeletePantryItem}
-            onDeleteMany={handleDeletePantryItems}
+            onConsume={handleConsumePantryItems}
             customStaples={customStaples}
             onMarkStaple={handleMarkStaple}
             onUnmarkStaple={handleRemoveStaple}
+            recipes={recipes}
+            onFindRecipes={(query) => {
+              setRecipeSearch(query);
+              setActiveTagFilter(null);
+              setTab("collection");
+            }}
+            onFindRecipesForSelection={() => setTab("makeable")}
           />
         )}
 

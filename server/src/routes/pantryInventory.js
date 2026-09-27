@@ -1,10 +1,26 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { suggestExpiration, suggestCategory, CATEGORIES } from "../lib/foodkeeper.js";
+import { suggestExpiration, suggestAllLocations, suggestCategory, CATEGORIES } from "../lib/foodkeeper.js";
 
 export const pantryInventoryRouter = Router();
 
 const LOCATIONS = ["pantry", "fridge", "freezer"];
+
+// Adds `locations` (the USDA range for every storage spot, keyed by
+// location - null where the matched product has no data for that spot) and
+// `shelfLifeDays` (that same range's day count for the item's *current*
+// location) - both computed fresh from the bundled FoodKeeper data on every
+// read rather than stored, same as suggestCategory/suggestExpiration
+// already are elsewhere in this file. The Inventory page uses `locations`
+// to render the storage picker's per-location day ranges without a lookup
+// per item, and `shelfLifeDays` as the freshness bar's denominator - used
+// by every route below that returns an item, not just the list, so a
+// freshly added or edited item has these fields immediately rather than
+// only after the next full reload.
+function enrichItem(item) {
+  const locations = suggestAllLocations(item.name, item.purchasedAt);
+  return { ...item, locations, shelfLifeDays: locations[item.location]?.defaultDays ?? null };
+}
 
 // GET /api/pantry-inventory - every item currently in stock, soonest-expiring first.
 pantryInventoryRouter.get("/", async (req, res) => {
@@ -12,7 +28,7 @@ pantryInventoryRouter.get("/", async (req, res) => {
     where: { userId: req.userId },
     orderBy: [{ expiresAt: "asc" }, { createdAt: "desc" }],
   });
-  res.json(items);
+  res.json(items.map(enrichItem));
 });
 
 // GET /api/pantry-inventory/suggest?name=...&location=...&purchasedAt=... - a
@@ -63,7 +79,7 @@ pantryInventoryRouter.post("/", async (req, res) => {
       expiresAt: resolvedExpiresAt,
     },
   });
-  res.status(201).json(item);
+  res.status(201).json(enrichItem(item));
 });
 
 // PUT /api/pantry-inventory/:id { quantity?, unit?, location?, category?, purchasedAt?, expiresAt? } -
@@ -93,18 +109,44 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   });
   if (result.count === 0) return res.status(404).json({ error: "Item not found" });
   const item = await prisma.pantryInventoryItem.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  res.json(item);
+  res.json(enrichItem(item));
 });
 
-// DELETE /api/pantry-inventory { ids: [...] } - bulk remove, for multi-select.
-// Registered before /:id so an exact match on the router path ("/") wins;
-// Express matches routes in registration order.
-pantryInventoryRouter.delete("/", async (req, res) => {
-  const { ids } = req.body;
+// POST /api/pantry-inventory/consume { ids: [...], action: "consumed" | "wasted" } -
+// the Inventory page's "Used up"/"Tossed" bulk actions: removes the items
+// (same as a plain delete) but first snapshots each into
+// PantryConsumptionLog, since the item row itself won't exist to look back
+// at afterward. Registered before /:id for the same route-ordering reason
+// as the bulk DELETE below.
+pantryInventoryRouter.post("/consume", async (req, res) => {
+  const { ids, action } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: "ids must be a non-empty array" });
   }
-  await prisma.pantryInventoryItem.deleteMany({ where: { id: { in: ids }, userId: req.userId } });
+  if (action !== "consumed" && action !== "wasted") {
+    return res.status(400).json({ error: "action must be 'consumed' or 'wasted'" });
+  }
+
+  const items = await prisma.pantryInventoryItem.findMany({
+    where: { id: { in: ids }, userId: req.userId },
+  });
+  if (items.length === 0) return res.status(404).json({ error: "No matching items" });
+
+  await prisma.$transaction([
+    prisma.pantryConsumptionLog.createMany({
+      data: items.map((item) => ({
+        userId: req.userId,
+        name: item.name,
+        core: item.core,
+        category: item.category,
+        action,
+      })),
+    }),
+    prisma.pantryInventoryItem.deleteMany({
+      where: { id: { in: items.map((i) => i.id) }, userId: req.userId },
+    }),
+  ]);
+
   res.status(204).send();
 });
 

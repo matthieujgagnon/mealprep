@@ -2,13 +2,41 @@ import { useEffect, useState } from "react";
 import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { api } from "../api.js";
-import { CATEGORIES, LOCATIONS, daysUntil, formatExpiry } from "../lib/pantryInventory.js";
+import { LOCATIONS, daysUntil } from "../lib/pantryInventory.js";
+
+// Fridge and Freezer sit side by side, Pantry after - see the design
+// handoff. "Counter" is a fourth USDA location the bundled data supports
+// but this app has no dedicated shelf for yet (deferred per the handoff's
+// own note that it's optional).
+const SHELF_LOCATIONS = [
+  { id: "fridge", label: "Fridge" },
+  { id: "freezer", label: "Freezer" },
+  { id: "pantry", label: "Pantry" },
+];
+
+function isUrgent(item) {
+  if (!item.expiresAt) return false;
+  return daysUntil(item.expiresAt) <= 3;
+}
+
+// Card/panel expiry chip - a compact variant of formatExpiry's fuller
+// sentence, matching the design handoff's exact label rules.
+function expiryChip(item) {
+  if (!item.expiresAt) return "+ DATE";
+  const d = daysUntil(item.expiresAt);
+  if (d < 0) return "EXPIRED";
+  if (d === 0) return "TODAY";
+  if (d === 1) return "TOMORROW";
+  if (d < 60) return `${d}D`;
+  if (d < 365) return `${Math.round(d / 30)}MO`;
+  return `${Math.round(d / 365)}Y`;
+}
 
 // The add form fetches a suggested expiration date and category from the
 // bundled USDA FoodKeeper data as soon as there's enough to look up (a name
 // and a location) - both always shown as editable, never locked in, since
 // the suggestion is a starting point, not an authority.
-function AddInventoryItemForm({ onAdd }) {
+function AddInventoryItemForm({ onAdd, onDone }) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
@@ -67,6 +95,7 @@ function AddInventoryItemForm({ onAdd }) {
       setCategory("Other");
       setCategoryTouched(false);
       setExpiresAt("");
+      onDone?.();
     } finally {
       setAdding(false);
     }
@@ -103,20 +132,6 @@ function AddInventoryItemForm({ onAdd }) {
           </option>
         ))}
       </select>
-      <select
-        value={category}
-        onChange={(e) => {
-          setCategory(e.target.value);
-          setCategoryTouched(true);
-        }}
-        title="Category"
-      >
-        {CATEGORIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
       <input
         type="date"
         value={expiresAt}
@@ -136,8 +151,7 @@ function AddInventoryItemForm({ onAdd }) {
 // misread brand names) that a blind bulk-add would just make a mess to
 // clean up later. Each accepted row goes through the same onAdd as the
 // manual form above, so it gets the same suggested category/expiration.
-function ImportReceiptForm({ onAdd }) {
-  const [open, setOpen] = useState(false);
+function ReceiptScanPanel({ onAdd, onDone }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [pending, setPending] = useState(null); // [{ name, quantity, location, selected }] once parsed
@@ -174,20 +188,12 @@ function ImportReceiptForm({ onAdd }) {
         await onAdd({ name: row.name.trim(), quantity: row.quantity ?? null, location: row.location });
       }
       setPending(null);
-      setOpen(false);
+      onDone?.();
     } catch (err) {
       setError(err.message);
     } finally {
       setSaving(false);
     }
-  }
-
-  if (!open) {
-    return (
-      <button type="button" className="btn subtle" onClick={() => setOpen(true)}>
-        Import from receipt
-      </button>
-    );
   }
 
   if (pending) {
@@ -232,16 +238,6 @@ function ImportReceiptForm({ onAdd }) {
           <button type="button" className="btn primary" onClick={handleAddSelected} disabled={saving || selectedCount === 0}>
             {saving ? "Adding…" : `Add ${selectedCount} item${selectedCount === 1 ? "" : "s"} to inventory`}
           </button>
-          <button
-            type="button"
-            className="btn subtle"
-            onClick={() => {
-              setPending(null);
-              setOpen(false);
-            }}
-          >
-            Cancel
-          </button>
         </div>
       </div>
     );
@@ -260,113 +256,237 @@ function ImportReceiptForm({ onAdd }) {
       </label>
       {uploading && <p className="receipt-review-intro">Reading…</p>}
       {error && <p className="flyer-upload-error">{error}</p>}
-      <button type="button" className="btn subtle" onClick={() => setOpen(false)}>
-        Cancel
-      </button>
     </div>
   );
 }
 
-function InventoryRow({ item, checked, onToggleChecked, onUpdate, onDelete, isStaple, onToggleStaple }) {
-  const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
-  const statusClass = days !== null && days < 0 ? " expired" : days !== null && days <= 2 ? " expiring" : "";
-
+function Modal({ title, onClose, children }) {
   return (
-    <li className={`pantry-item${statusClass}`}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={() => onToggleChecked(item.id)}
-        aria-label={`Select ${item.name}`}
-      />
-      <span className="pantry-item-main">
-        <span className="pantry-item-name">
-          {item.name}
-          {item.quantity != null && (
-            <span className="grocery-item-qty" style={{ marginLeft: 8 }}>
-              {item.quantity}
-              {item.unit ? ` ${item.unit}` : ""}
-            </span>
-          )}
-        </span>
-        <span className="pantry-item-meta">
-          {LOCATIONS.find((l) => l.id === item.location)?.label || item.location}
-        </span>
-      </span>
-      <select
-        className="pantry-item-category"
-        value={CATEGORIES.includes(item.category) ? item.category : "Other"}
-        onChange={(e) => onUpdate(item.id, { category: e.target.value })}
-        title="Category"
-      >
-        {CATEGORIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <input
-        type="date"
-        className="pantry-item-date"
-        value={item.expiresAt ? item.expiresAt.slice(0, 10) : ""}
-        onChange={(e) => onUpdate(item.id, { expiresAt: e.target.value || null })}
-      />
-      <span className={`deal-flag${statusClass === " expired" ? " sale" : ""}`}>{formatExpiry(item.expiresAt)}</span>
-      <button
-        type="button"
-        className={`pantry-item-staple-toggle${isStaple ? " active" : ""}`}
-        aria-label={isStaple ? `Unmark ${item.name} as a pantry staple` : `Mark ${item.name} as a pantry staple`}
-        title={
-          isStaple
-            ? "This is a pantry staple — always counted as \"have\", never on the shopping list"
-            : "Mark as a pantry staple — always counted as \"have\", never on the shopping list"
-        }
-        onClick={() => onToggleStaple(item)}
-      >
-        {isStaple ? "★" : "☆"}
-      </button>
-      <button
-        type="button"
-        className="staple-remove-btn"
-        aria-label={`Remove ${item.name} from inventory`}
-        title="Remove from inventory"
-        onClick={() => onDelete(item.id)}
-      >
-        ×
-      </button>
-    </li>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="card modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <h3 style={{ marginTop: 0 }}>{title}</h3>
+        {children}
+      </div>
+    </div>
   );
 }
 
-function CategorySection({ category, items, checkedIds, onToggleChecked, onUpdate, onDelete, staples, onToggleStaple }) {
-  const [collapsed, setCollapsed] = useState(false);
+function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
+  const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
+  const urgent = isUrgent(item);
+  const pct =
+    item.expiresAt && item.shelfLifeDays
+      ? Math.min(100, Math.max(6, (Math.max(days, 0) / item.shelfLifeDays) * 100))
+      : null;
+
+  // A fridge item close to expiring that would keep much longer in the
+  // freezer gets a one-line nudge, using the freezer range already
+  // computed server-side (see pantryInventory.js's GET / enrichment) - no
+  // extra lookup needed here.
+  const freezeTip =
+    urgent && item.location === "fridge" && item.locations?.freezer
+      ? `Freeze it to keep until ${new Date(item.locations.freezer.expiresAt).toLocaleDateString("en-US", {
+          month: "long",
+        })}.`
+      : null;
+
+  return (
+    <div
+      className={`inv-card${active ? " active" : ""}${urgent && !active ? " urgent" : ""}`}
+      onClick={onSelect}
+    >
+      <div className="inv-card-top">
+        <input
+          type="checkbox"
+          className="inv-card-check"
+          checked={selected}
+          onChange={(e) => {
+            e.stopPropagation();
+            onToggleSelect();
+          }}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Select ${item.name}`}
+        />
+        <span className="inv-card-name">{item.name}</span>
+        <span className={`inv-card-expiry${days !== null && days <= 3 ? " urgent-text" : ""}`}>
+          {expiryChip(item)}
+        </span>
+      </div>
+      {(item.quantity != null || item.unit) && (
+        <div className="inv-card-qty">
+          {item.quantity ?? ""} {item.unit || ""}
+        </div>
+      )}
+      {pct !== null && (
+        <div className="inv-freshness-track">
+          <div
+            className={`inv-freshness-fill${days !== null && days <= 3 ? " urgent" : ""}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+      {freezeTip && <p className="inv-card-tip">{freezeTip}</p>}
+    </div>
+  );
+}
+
+function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onToggleSelect }) {
   const sorted = [...items].sort((a, b) => {
-    if (!a.expiresAt) return 1;
-    if (!b.expiresAt) return -1;
-    return new Date(a.expiresAt) - new Date(b.expiresAt);
+    const da = a.expiresAt ? daysUntil(a.expiresAt) : null;
+    const db = b.expiresAt ? daysUntil(b.expiresAt) : null;
+    if (da === null && db === null) return 0;
+    if (da === null) return 1;
+    if (db === null) return -1;
+    return da - db;
   });
 
   return (
-    <div className="pantry-inventory-section">
-      <button type="button" className="staples-toggle" onClick={() => setCollapsed((c) => !c)}>
-        {collapsed ? "▸" : "▾"} {category} ({items.length})
-      </button>
-      {!collapsed && (
-        <ul className="pantry-list">
-          {sorted.map((item) => (
-            <InventoryRow
-              key={item.id}
-              item={item}
-              checked={checkedIds.has(item.id)}
-              onToggleChecked={onToggleChecked}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              isStaple={staples.has(item.core)}
-              onToggleStaple={onToggleStaple}
-            />
-          ))}
-        </ul>
+    <div className="inv-shelf">
+      <div className="inv-shelf-header">
+        <span>{location.label}</span>
+        <span className="inv-shelf-count">{items.length}</span>
+      </div>
+      {sorted.length === 0 ? (
+        <div className="inv-shelf-empty">Nothing here yet</div>
+      ) : (
+        sorted.map((item) => (
+          <ItemCard
+            key={item.id}
+            item={item}
+            active={item.id === activeItemId}
+            selected={selectedIds.has(item.id)}
+            onSelect={() => onSelect(item.id)}
+            onToggleSelect={() => onToggleSelect(item.id)}
+          />
+        ))
       )}
+    </div>
+  );
+}
+
+function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple, onToggleStaple }) {
+  function adjustQty(delta) {
+    const next = Math.max(0, (item.quantity ?? 0) + delta);
+    onUpdate(item.id, { quantity: next });
+  }
+
+  // Union of every location with real USDA data for this item, plus its
+  // current location even if that one happens to have none (e.g. an item
+  // whose only guidance is "use the date on the package") - so the panel
+  // never ends up with no pill selected.
+  const pillLocations = SHELF_LOCATIONS.filter(
+    (l) => item.locations?.[l.id] || l.id === item.location
+  );
+
+  const useByText = item.expiresAt
+    ? `Use by ${new Date(item.expiresAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: daysUntil(item.expiresAt) > 300 ? "numeric" : undefined,
+      })}.`
+    : "No date yet. Pick a storage spot above to use the USDA estimate, or pick a date.";
+
+  const recipeCount = recipes.filter(
+    (r) => !r.isPlaceholder && r.ingredients?.some((i) => i.name?.toLowerCase().includes(item.name.toLowerCase()))
+  ).length;
+
+  return (
+    <aside className="inv-panel">
+      <div className="inv-panel-header">
+        <h3>{item.name}</h3>
+        <span className="inv-panel-category">{item.category}</span>
+      </div>
+
+      <div>
+        <div className="inv-panel-label">Quantity</div>
+        <div className="inv-qty-stepper">
+          <button type="button" onClick={() => adjustQty(-1)} aria-label="Decrease quantity">
+            −
+          </button>
+          <span>
+            {item.quantity ?? 0}
+            {item.unit ? ` ${item.unit}` : ""}
+          </span>
+          <button type="button" onClick={() => adjustQty(1)} aria-label="Increase quantity">
+            +
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div className="inv-panel-label">Stored in · USDA</div>
+        <div className="inv-storage-pills">
+          {pillLocations.map((l) => {
+            const data = item.locations?.[l.id];
+            const active = item.location === l.id;
+            return (
+              <button
+                key={l.id}
+                type="button"
+                className={`inv-storage-pill${active ? " active" : ""}`}
+                disabled={active}
+                onClick={() => onUpdate(item.id, { location: l.id, expiresAt: data ? data.expiresAt : null })}
+              >
+                <span>{l.label}</span>
+                {data && <span className="inv-storage-pill-range">{data.rangeLabel}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <p className="inv-use-by">
+        {useByText}{" "}
+        <input
+          type="date"
+          className="inv-use-by-picker"
+          value={item.expiresAt ? item.expiresAt.slice(0, 10) : ""}
+          onChange={(e) => onUpdate(item.id, { expiresAt: e.target.value || null })}
+        />
+      </p>
+
+      <div className="inv-panel-staple">
+        <button type="button" className={`btn subtle btn-sm${isStaple ? " active" : ""}`} onClick={() => onToggleStaple(item)}>
+          {isStaple ? "★ Pantry staple" : "☆ Mark as pantry staple"}
+        </button>
+      </div>
+
+      <div className="inv-panel-footer">
+        {recipeCount} of your recipes use {item.name}.{" "}
+        <button type="button" className="link-btn" onClick={() => onFindRecipes(item.name)}>
+          See them →
+        </button>
+        <br />
+        <button type="button" className="link-btn subtle" onClick={() => onDelete(item.id)}>
+          Remove (typo or duplicate, not used/tossed)
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function FloatingActionBar({ count, onFindRecipes, onConsume, onFreeze, onClear }) {
+  return (
+    <div className="inv-action-bar">
+      <span className="inv-action-count">{count} selected</span>
+      <button type="button" className="inv-action-btn primary" onClick={onFindRecipes}>
+        Find recipes
+      </button>
+      <button type="button" className="inv-action-btn" onClick={() => onConsume("consumed")}>
+        Used up
+      </button>
+      <button type="button" className="inv-action-btn" onClick={() => onConsume("wasted")}>
+        Tossed
+      </button>
+      <button type="button" className="inv-action-btn" onClick={onFreeze}>
+        Freeze
+      </button>
+      <button type="button" className="inv-action-btn" onClick={onClear} aria-label="Clear selection">
+        ×
+      </button>
     </div>
   );
 }
@@ -376,16 +496,26 @@ export function Inventory({
   onAdd,
   onUpdate,
   onDelete,
-  onDeleteMany,
+  onConsume,
   customStaples,
   onMarkStaple,
   onUnmarkStaple,
+  recipes,
+  onFindRecipes,
+  onFindRecipesForSelection,
 }) {
-  const [checkedIds, setCheckedIds] = useState(() => new Set());
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [activeItemId, setActiveItemId] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [showScan, setShowScan] = useState(false);
   const staples = new Set(customStaples || []);
 
-  function toggleChecked(id) {
-    setCheckedIds((prev) => {
+  useEffect(() => {
+    if (activeItemId && !items.some((i) => i.id === activeItemId)) setActiveItemId(null);
+  }, [items, activeItemId]);
+
+  function toggleSelect(id) {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -393,65 +523,101 @@ export function Inventory({
     });
   }
 
-  // A deliberate, per-item call - not inferred from category or location,
-  // since what actually counts as "always have it, never shop for it" is a
-  // judgment only the person stocking the pantry can make.
   function toggleStaple(item) {
     if (staples.has(item.core)) onUnmarkStaple(item.core);
     else onMarkStaple(item.core);
   }
 
-  async function handleRemoveSelected() {
-    if (checkedIds.size === 0) return;
-    await onDeleteMany([...checkedIds]);
-    setCheckedIds(new Set());
+  async function handleConsumeSelected(action) {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setSelectedIds(new Set());
+    await onConsume(ids, action);
   }
 
-  const grouped = CATEGORIES.map((category) => ({
-    category,
-    items: items.filter((item) => (CATEGORIES.includes(item.category) ? item.category : "Other") === category),
-  })).filter((g) => g.items.length > 0);
+  async function handleFreezeSelected() {
+    const ids = [...selectedIds];
+    setSelectedIds(new Set());
+    for (const id of ids) {
+      const item = items.find((i) => i.id === id);
+      const freezerData = item?.locations?.freezer;
+      if (freezerData) await onUpdate(id, { location: "freezer", expiresAt: freezerData.expiresAt });
+    }
+  }
+
+  const activeItem = items.find((i) => i.id === activeItemId);
+  const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3).length;
 
   return (
-    <div className="makeable-page">
-      <p className="makeable-intro">
-        Everything actually in your fridge, pantry, and freezer right now — with
-        real, USDA-backed expiration suggestions.
-      </p>
-
-      <AddInventoryItemForm onAdd={onAdd} />
-      <ImportReceiptForm onAdd={onAdd} />
-
-      {checkedIds.size > 0 && (
-        <div className="inventory-bulk-bar">
-          <span>{checkedIds.size} selected</span>
-          <button type="button" className="btn danger btn-sm" onClick={handleRemoveSelected}>
-            Remove selected
-          </button>
-          <button type="button" className="btn subtle btn-sm" onClick={() => setCheckedIds(new Set())}>
-            Clear selection
-          </button>
-        </div>
-      )}
+    <div className="inv-page">
+      <div className="inv-title-row">
+        <h1>Inventory</h1>
+        <span className="inv-summary">
+          {items.length} item{items.length === 1 ? "" : "s"} · {soonCount} to use soon
+        </span>
+        <button type="button" className="btn primary" onClick={() => setShowAdd(true)}>
+          + Add item
+        </button>
+        <button type="button" className="btn subtle" onClick={() => setShowScan(true)}>
+          Scan receipt
+        </button>
+      </div>
 
       {items.length === 0 ? (
         <p className="empty-state">
           Nothing tracked yet — add what's in your fridge, pantry, or freezer above.
         </p>
       ) : (
-        grouped.map((g) => (
-          <CategorySection
-            key={g.category}
-            category={g.category}
-            items={g.items}
-            checkedIds={checkedIds}
-            onToggleChecked={toggleChecked}
-            onUpdate={onUpdate}
-            onDelete={onDelete}
-            staples={staples}
-            onToggleStaple={toggleStaple}
-          />
-        ))
+        <div className="inv-main">
+          <div className="inv-shelves">
+            {SHELF_LOCATIONS.map((loc) => (
+              <ShelfColumn
+                key={loc.id}
+                location={loc}
+                items={items.filter((i) => i.location === loc.id)}
+                activeItemId={activeItemId}
+                selectedIds={selectedIds}
+                onSelect={setActiveItemId}
+                onToggleSelect={toggleSelect}
+              />
+            ))}
+          </div>
+          {activeItem && (
+            <EditPanel
+              item={activeItem}
+              recipes={recipes}
+              onUpdate={onUpdate}
+              onDelete={(id) => {
+                setActiveItemId(null);
+                onDelete(id);
+              }}
+              onFindRecipes={onFindRecipes}
+              isStaple={staples.has(activeItem.core)}
+              onToggleStaple={toggleStaple}
+            />
+          )}
+        </div>
+      )}
+
+      {selectedIds.size > 0 && (
+        <FloatingActionBar
+          count={selectedIds.size}
+          onFindRecipes={onFindRecipesForSelection}
+          onConsume={handleConsumeSelected}
+          onFreeze={handleFreezeSelected}
+          onClear={() => setSelectedIds(new Set())}
+        />
+      )}
+
+      {showAdd && (
+        <Modal title="Add item" onClose={() => setShowAdd(false)}>
+          <AddInventoryItemForm onAdd={onAdd} />
+        </Modal>
+      )}
+      {showScan && (
+        <Modal title="Scan receipt" onClose={() => setShowScan(false)}>
+          <ReceiptScanPanel onAdd={onAdd} onDone={() => setShowScan(false)} />
+        </Modal>
       )}
     </div>
   );
