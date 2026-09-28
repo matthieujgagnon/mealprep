@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { MealCard } from "./MealCard.jsx";
 import {
@@ -83,6 +83,84 @@ function isBlankMarker(entry) {
   return entry.recipe?.isPlaceholder && entry.recipe?.title === "No meal planned";
 }
 
+// A custom note ("sandwich", "ordering food", "at a friend's") is the same
+// placeholder-recipe mechanism as the blank marker, just with the user's
+// own text as the title instead of the fixed "No meal planned" one — see
+// PUT /api/planner/:id/note.
+function isCustomNote(entry) {
+  return entry.recipe?.isPlaceholder && entry.recipe?.title !== "No meal planned";
+}
+
+// The dashed no-recipe slot (empty, blank-marked, or carrying a custom
+// note) and its small pencil edit button. Pulled out of PlannerCell so the
+// inline-edit state (which text is being typed) is scoped to just the one
+// slot being edited, not the whole cell.
+function PlannerNoteSlot({ entryId, noteText, placeholder, onClick, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(noteText);
+
+  function startEdit() {
+    setDraft(noteText);
+    setEditing(true);
+  }
+  function commit() {
+    onSave(draft.trim());
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="planner-empty-card-wrap">
+        <input
+          autoFocus
+          type="text"
+          className="planner-note-input"
+          value={draft}
+          placeholder={placeholder}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              setEditing(false);
+            }
+          }}
+          onBlur={() => setEditing(false)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="planner-empty-card-wrap">
+      <button
+        type="button"
+        className={`card meal-card compact planner-empty-card${
+          entryId ? " marked" : ""
+        }${noteText ? " has-note" : ""}`}
+        title={entryId ? `${noteText || "No meal planned"} — click to clear` : "Mark as no meal planned"}
+        onClick={onClick}
+      >
+        {noteText ? <span className="planner-note-text">{noteText}</span> : !entryId && "—"}
+      </button>
+      <button
+        type="button"
+        className="planner-note-edit-btn"
+        aria-label={entryId ? "Edit note" : "Write a note instead"}
+        title={entryId ? "Edit note" : "Write a note instead (e.g. “sandwich”, “ordering food”)"}
+        onClick={(e) => {
+          e.stopPropagation();
+          startEdit();
+        }}
+      >
+        ✎
+      </button>
+    </div>
+  );
+}
+
 function PlannerCell({
   dayIndex,
   mealType,
@@ -92,29 +170,30 @@ function PlannerCell({
   onRemove,
   onCycleState,
   onMarkBlank,
+  onSetNote,
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}-${mealType}` });
 
   return (
     <div ref={setNodeRef} className={`planner-cell${isOver ? " drop-active" : ""}`}>
       {entries.length === 0 && (
-        <button
-          type="button"
-          className="card meal-card compact planner-empty-card"
-          title="Mark as no meal planned"
+        <PlannerNoteSlot
+          entryId={null}
+          noteText=""
+          placeholder="e.g. sandwich, ordering food…"
           onClick={() => onMarkBlank(dayIndex, mealType)}
-        >
-          —
-        </button>
+          onSave={(note) => onSetNote({ entryId: null, dayIndex, mealType, note })}
+        />
       )}
       {entries.map((entry) =>
-        isBlankMarker(entry) ? (
-          <button
+        isBlankMarker(entry) || isCustomNote(entry) ? (
+          <PlannerNoteSlot
             key={entry.id}
-            type="button"
-            className="card meal-card compact planner-empty-card marked"
-            title="No meal planned — click to clear"
+            entryId={entry.id}
+            noteText={isCustomNote(entry) ? entry.recipe.title : ""}
+            placeholder="e.g. sandwich, ordering food…"
             onClick={() => onRemove(entry.id)}
+            onSave={(note) => onSetNote({ entryId: entry.id, dayIndex, mealType, note })}
           />
         ) : (
           <MealCard
@@ -178,6 +257,7 @@ export function PlannerBoard({
   onRemove,
   onCycleState,
   onMarkBlank,
+  onSetNote,
 }) {
   // Group entries by "dayIndex-mealType" for quick lookup per cell
   const grouped = {};
@@ -227,6 +307,7 @@ export function PlannerBoard({
                 onRemove={onRemove}
                 onCycleState={onCycleState}
                 onMarkBlank={onMarkBlank}
+                onSetNote={onSetNote}
               />
             ))}
           </Fragment>

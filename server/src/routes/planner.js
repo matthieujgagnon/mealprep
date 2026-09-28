@@ -63,26 +63,20 @@ plannerRouter.post("/", async (req, res) => {
   res.status(201).json(serializeEntry(entry));
 });
 
-// POST /api/planner/blank { weekStart, dayOfWeek, mealType } - mark a slot as
-// intentionally empty (no meal planned) rather than just unplanned, so it
-// reads differently from "haven't gotten to this yet". Reuses the same
-// isPlaceholder mechanism the old Restaurant/YOLO/N-A cards used: finds or
-// creates one hidden marker recipe (per-user, like any other recipe) and
-// places it here.
-plannerRouter.post("/blank", async (req, res) => {
-  const { weekStart, dayOfWeek, mealType } = req.body;
-  if (!weekStart || dayOfWeek === undefined || !mealType) {
-    return res.status(400).json({ error: "weekStart, dayOfWeek, and mealType are required" });
-  }
+const BLANK_TITLE = "No meal planned";
 
-  let blankRecipe = await prisma.recipe.findFirst({
-    where: { title: "No meal planned", isPlaceholder: true, userId: req.userId },
-  });
-  if (!blankRecipe) {
-    blankRecipe = await prisma.recipe.create({
+// Finds or creates the (per-user) placeholder recipe for a given title -
+// same isPlaceholder mechanism the old Restaurant/YOLO/N-A cards used.
+// Reused by both the plain blank marker and a custom note, so typing the
+// same note twice (e.g. "Ordering food") lands on the same underlying
+// recipe rather than piling up duplicates.
+async function findOrCreatePlaceholderRecipe(userId, title) {
+  let recipe = await prisma.recipe.findFirst({ where: { title, isPlaceholder: true, userId } });
+  if (!recipe) {
+    recipe = await prisma.recipe.create({
       data: {
-        userId: req.userId,
-        title: "No meal planned",
+        userId,
+        title,
         isPlaceholder: true,
         inCookbook: false,
         inImported: false,
@@ -90,6 +84,23 @@ plannerRouter.post("/blank", async (req, res) => {
       },
     });
   }
+  return recipe;
+}
+
+// POST /api/planner/blank { weekStart, dayOfWeek, mealType, note? } - mark a
+// slot as intentionally empty (no meal planned), or, with a note, as a
+// custom non-recipe placement ("sandwich", "ordering food", "at a
+// friend's") - reads differently from "haven't gotten to this yet" either
+// way. The note becomes the placeholder recipe's title (see
+// findOrCreatePlaceholderRecipe above).
+plannerRouter.post("/blank", async (req, res) => {
+  const { weekStart, dayOfWeek, mealType, note } = req.body;
+  if (!weekStart || dayOfWeek === undefined || !mealType) {
+    return res.status(400).json({ error: "weekStart, dayOfWeek, and mealType are required" });
+  }
+
+  const title = typeof note === "string" && note.trim() ? note.trim() : BLANK_TITLE;
+  const blankRecipe = await findOrCreatePlaceholderRecipe(req.userId, title);
 
   const entry = await prisma.plannerEntry.create({
     data: { userId: req.userId, recipeId: blankRecipe.id, weekStart, dayOfWeek, mealType, position: 0 },
@@ -141,6 +152,38 @@ plannerRouter.post("/copy-week", async (req, res) => {
     orderBy: [{ dayOfWeek: "asc" }, { position: "asc" }],
   });
   res.status(201).json(entries.map(serializeEntry));
+});
+
+// PUT /api/planner/:id/note { note? } - change what text a blank/custom
+// placeholder card shows, by repointing the entry at a different (found or
+// created) placeholder recipe - notes live on the placeholder Recipe's
+// title, the same mechanism POST /blank uses, so no separate note column
+// is needed. An empty/omitted note reverts to the plain "No meal planned"
+// blank marker. Declared before PUT /:id below since it's a distinct,
+// more specific path - registration order doesn't actually matter here
+// (Express only routes a request to the pattern that matches its exact
+// segment count), but this keeps the two /:id-shaped routes next to each
+// other for readability.
+plannerRouter.put("/:id/note", async (req, res) => {
+  const { note } = req.body;
+  const entry = await prisma.plannerEntry.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    include: { recipe: true },
+  });
+  if (!entry) return res.status(404).json({ error: "Planner entry not found" });
+  if (!entry.recipe.isPlaceholder) {
+    return res.status(400).json({ error: "Only a blank/note card can be edited this way" });
+  }
+
+  const title = typeof note === "string" && note.trim() ? note.trim() : BLANK_TITLE;
+  const recipe = await findOrCreatePlaceholderRecipe(req.userId, title);
+
+  const updated = await prisma.plannerEntry.update({
+    where: { id: entry.id },
+    data: { recipeId: recipe.id },
+    include: { recipe: { include: { ingredients: true } } },
+  });
+  res.json(serializeEntry(updated));
 });
 
 // PUT /api/planner/:id - move a card (within or across weeks), change

@@ -2534,18 +2534,25 @@ input[type="date"].planner-week-picker {
    the meaning — no fill at either state. Unmarked: a faint dashed outline
    and a faint dash. Marked blank: the same outline turned solid, slightly
    more visible, still no fill and no text — the least assertive of the
-   options tried, chosen over ones that used a color/tint shift instead. */
+   options tried, chosen over ones that used a color/tint shift instead.
+   A custom note (typed via the pencil button) reuses the "marked" solid
+   outline but shows the typed text in place of nothing. */
+.planner-empty-card-wrap {
+  position: relative;
+  /* Same reason the button itself used to carry flex:1 directly - see the
+     comment that was here before this wrapper was added. Moving flex:1 up
+     to the wrap and keeping display:flex lets the inner button (or, while
+     editing, the input) still stretch to fill a grid row's full height. */
+  flex: 1;
+  display: flex;
+  min-height: 110px;
+}
+
 .planner-empty-card {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 110px;
-  /* .planner-cell is a column flex container, and CSS Grid stretches each
-     cell in a row to match its tallest sibling (a real recipe card, whose
-     photo+title content is naturally taller than this button's min-height)
-     — without flex:1 here, the button just sat at 110px inside a taller
-     cell, leaving a dead gap of bare cell background below it. */
   flex: 1;
   background: transparent;
   border: 1.5px dashed rgba(227, 227, 246, 0.32);
@@ -2555,6 +2562,8 @@ input[type="date"].planner-week-picker {
   font-family: inherit;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
+  padding: 8px;
+  text-align: center;
 }
 
 .planner-empty-card:hover {
@@ -2569,6 +2578,72 @@ input[type="date"].planner-week-picker {
 
 .planner-empty-card.marked:hover {
   border-color: var(--paper-soft);
+}
+
+.planner-empty-card.has-note {
+  color: var(--paper-soft);
+}
+
+.planner-note-text {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  /* Long typed notes wrap instead of overflowing the card - this is a
+     free-text field, unlike the fixed "—"/blank states. */
+  overflow-wrap: break-word;
+}
+
+/* Small pencil affordance on a no-recipe slot (empty, blank-marked, or
+   carrying a note) that opens the inline text input below - kept as a
+   sibling button rather than nesting it inside .planner-empty-card, since
+   that's itself a <button> and a button-in-a-button is invalid HTML.
+   Matches .meal-card-delete's corner-button sizing/position. */
+.planner-note-edit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(20, 20, 43, 0.5);
+  color: rgba(227, 227, 246, 0.75);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planner-note-edit-btn:hover {
+  background: var(--mustard);
+  color: #14142b;
+}
+
+.planner-note-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 1.5px solid var(--mustard);
+  border-radius: 10px;
+  color: var(--paper);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
+}
+
+.planner-note-input:focus {
+  outline: none;
+}
+
+.planner-note-input::placeholder {
+  color: rgba(227, 227, 246, 0.45);
+  font-weight: 500;
 }
 
 .grocery-list {
@@ -4921,7 +4996,8 @@ button.price-pill:hover {
   }
 
   .meal-card-delete,
-  .leftover-dot {
+  .leftover-dot,
+  .planner-note-edit-btn {
     width: 26px;
     height: 26px;
   }
