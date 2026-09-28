@@ -109,29 +109,46 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
   expect(canceled).toBe(false);
 });
 
-test("a real touch drag reorders a recipe card in the Recipes grid without the browser cancelling it", async ({
+// The Recipes tab itself lost drag-and-drop when it moved to the Riso
+// unified grid (filter chips + sort replaced manual reordering), so this
+// now exercises the other still-draggable single-column-mobile recipe
+// grid: dragging a card from the Planner tab's own "drag a recipe from
+// your cookbook" picker onto a planner cell.
+test("a real touch drag places a recipe from the Planner's picker grid onto a planner cell without the browser cancelling it", async ({
   page,
   context,
 }) => {
   await signUp(page, uniqueEmail("touch-recipe"));
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  for (const [title, ingredient] of [["Touch Recipe One", "flour"], ["Touch Recipe Two", "sugar"]]) {
-    await page.getByRole("button", { name: "+ Add a recipe" }).click();
-    await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
-    await page.fill('input[placeholder="e.g. 4"]', "2");
-    await page.fill('input[placeholder="Name (e.g. butter)"]', ingredient);
-    await page.fill('input[placeholder="Qty (1/4)"]', "1");
-    await page.fill('textarea[placeholder*="Preheat oven"]', "Cook and serve.");
-    await page.getByRole("button", { name: "Save to cookbook" }).click();
-    await page.waitForTimeout(250);
-  }
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Touch Recipe One");
+  await page.fill('input[placeholder="e.g. 4"]', "2");
+  await page.fill('input[placeholder="Name (e.g. butter)"]', "flour");
+  await page.fill('input[placeholder="Qty (1/4)"]', "1");
+  await page.fill('textarea[placeholder*="Preheat oven"]', "Cook and serve.");
+  await page.getByRole("button", { name: "Save to cookbook" }).click();
+  await page.waitForTimeout(250);
+
+  await page.getByRole("button", { name: "Planner", exact: true }).click();
+  await page.waitForTimeout(300);
+
+  const sourceCard = page.locator(".collection-grid .meal-card", { hasText: "Touch Recipe One" });
+  const targetCell = page.locator(".planner-cell").last();
+
+  // The board (7 days x 3 meals) is taller than the 700px mobile viewport,
+  // with the picker grid below it - scroll so the LAST planner cell (the
+  // one closest to the picker section) and the source card land in view
+  // together, since a touch coordinate outside the viewport can't hit
+  // anything.
+  await targetCell.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollBy(0, 200));
 
   const client = await context.newCDPSession(page);
-  const sourceCard = page.locator(".meal-card", { hasText: "Touch Recipe One" });
-  const targetCard = page.locator(".meal-card", { hasText: "Touch Recipe Two" });
   const sourceBox = await sourceCard.boundingBox();
-  const targetBox = await targetCard.boundingBox();
+  const targetBox = await targetCell.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
 
   const canceled = await touchDragAndDetectCancel(
     page,

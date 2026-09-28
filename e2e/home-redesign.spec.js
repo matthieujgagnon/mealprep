@@ -26,7 +26,7 @@ test("a makeable recipe shows as a Riso-styled row with its title legible on pap
   await signUp(page, uniqueEmail());
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Home Redesign Test Dish");
   await page.fill('input[placeholder="e.g. 4"]', "2");
   await page.fill('input[placeholder="Name (e.g. butter)"]', "test ingredient");
@@ -54,7 +54,7 @@ test("the sale-deal footer link filters Recipes to a matching ingredient", async
   await signUp(page, uniqueEmail());
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Home Redesign Chicken Dish");
   await page.fill('input[placeholder="e.g. 4"]', "2");
   await page.fill('input[placeholder="Name (e.g. butter)"]', "chicken breast");

@@ -4371,6 +4371,282 @@ input[type="date"].planner-week-picker {
   color: var(--tomato);
 }
 
+/* ---------- Riso Poster: Recipes screen ---------- */
+
+.riso-recipes {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-recipes-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-recipes-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.riso-recipes-searchbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 6px 6px 6px 10px;
+  box-shadow: var(--riso-shadow-ready);
+}
+
+.riso-recipes-searchbar-label {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  flex: none;
+}
+
+.riso-recipes-searchbar input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.riso-recipes-searchbar-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: none;
+}
+
+.riso-recipes-searchbar-btn.primary {
+  padding: 0 22px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.riso-recipes-searchbar-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.riso-recipes-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.riso-recipes-filters-spacer {
+  flex: 1;
+}
+
+.riso-recipes-sort-label {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--riso-ink);
+}
+
+.riso-recipes-sort-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-filter-chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.riso-filter-chip.active {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-filter-chip-count {
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  opacity: 0.75;
+}
+
+.riso-recipes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 20px;
+}
+
+.riso-recipe-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.riso-recipe-card-photo {
+  height: 160px;
+  border-bottom: 2px solid var(--riso-ink);
+  background: var(--riso-track);
+  flex: none;
+}
+
+.riso-recipe-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-recipe-card-badge {
+  position: absolute;
+}
+
+.riso-recipe-card-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.riso-recipe-card-name {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.riso-recipe-card-meta {
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+}
+
+.riso-recipe-card-spacer {
+  flex: 1;
+}
+
+.riso-recipe-card-havebar {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--riso-track);
+  border: 2px solid var(--riso-ink);
+  overflow: hidden;
+}
+
+.riso-recipe-card-havebar-fill {
+  height: 100%;
+  background: var(--riso-accent);
+}
+
+.riso-recipe-card-havelabel {
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.riso-recipes-empty {
+  border: 2px dashed var(--riso-ink);
+  border-radius: 22px;
+  padding: 40px;
+  text-align: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--riso-ink);
+  margin: 0;
+}
+
+@media (max-width: 680px) {
+  .riso-recipes {
+    padding: 18px 16px 40px;
+  }
+
+  .riso-recipes-title {
+    font-size: 40px;
+  }
+
+  .riso-recipes-searchbar {
+    flex-wrap: wrap;
+    border-radius: 24px;
+  }
+
+  .riso-recipes-searchbar input {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 /* ---------- Recipe detail modal ---------- */
 
 .modal-overlay {

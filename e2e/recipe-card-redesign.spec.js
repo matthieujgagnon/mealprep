@@ -20,7 +20,7 @@ async function signUp(page, email) {
 
 async function addRecipe(page, { title, servings, steps }) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
   await page.fill('input[placeholder="e.g. 4"]', servings);
   await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");
@@ -92,7 +92,7 @@ test("options menu opens and closes on outside click", async ({ page }) => {
 test("recipe notes render legibly on the dark card", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Redesign Notes Test");
   await page.fill('input[placeholder="e.g. 4"]', "2");
   await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");

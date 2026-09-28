@@ -39,8 +39,6 @@ export const api = {
   updateRecipe: (id, payload) =>
     request(`/recipes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteRecipe: (id) => request(`/recipes/${id}`, { method: "DELETE" }),
-  reorderRecipes: (orderedIds) =>
-    request("/recipes/reorder", { method: "PUT", body: JSON.stringify({ orderedIds }) }),
 
   listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
   placeOnPlanner: (payload) =>
@@ -113,12 +111,6 @@ export const api = {
   listGrocerySections: () => request("/grocery-sections"),
   reorderGrocerySections: (orderedIds) =>
     request("/grocery-sections/reorder", { method: "PUT", body: JSON.stringify({ orderedIds }) }),
-  listRecipeCategories: () => request("/recipe-categories"),
-  createRecipeCategory: (name) =>
-    request("/recipe-categories", { method: "POST", body: JSON.stringify({ name }) }),
-  deleteRecipeCategory: (id) => request(`/recipe-categories/${id}`, { method: "DELETE" }),
-  reorderRecipeCategories: (orderedIds) =>
-    request("/recipe-categories/reorder", { method: "PUT", body: JSON.stringify({ orderedIds }) }),
   createGrocerySection: (name) =>
     request("/grocery-sections", { method: "POST", body: JSON.stringify({ name }) }),
   deleteGrocerySection: (id) => request(`/grocery-sections/${id}`, { method: "DELETE" }),

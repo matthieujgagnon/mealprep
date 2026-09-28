@@ -19,7 +19,7 @@ async function signUpAndAddRecipe(page, title) {
   await expect(page.getByText(email)).toBeVisible();
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
   await page.fill('input[placeholder="Name (e.g. butter)"]', "carrots");
   await page.getByRole("button", { name: "Save to cookbook" }).click();
@@ -55,7 +55,7 @@ test("the cookbook grid below the planner can be filtered by search", async ({ p
   await signUpAndAddRecipe(page, "Picker Test Chili");
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Picker Test Soup");
   await page.fill('input[placeholder="Name (e.g. butter)"]', "celery");
   await page.getByRole("button", { name: "Save to cookbook" }).click();

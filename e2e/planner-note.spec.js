@@ -21,7 +21,7 @@ async function signUpAndAddRecipe(page, title) {
   await expect(page.getByText(email)).toBeVisible();
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
   await page.fill('input[placeholder="Name (e.g. butter)"]', "carrots");
   await page.getByRole("button", { name: "Save to cookbook" }).click();
