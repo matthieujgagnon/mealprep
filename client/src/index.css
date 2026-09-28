@@ -309,15 +309,21 @@ select {
      other uses (modals, forms). */
   background: var(--inv-surface2);
   color: var(--paper);
-  /* "pan-y" (not "none") lets the browser handle normal vertical scrolling
-     on this element natively — important since these cards/rows often fill
-     the full width of a scrollable list with no gaps to grab elsewhere.
-     dnd-kit's delay-based activation constraint (see App.jsx) is what
-     actually distinguishes a drag from a scroll: a quick swipe never holds
-     still long enough to activate a drag, so it just scrolls; a
-     press-and-hold does activate one. Using "none" here would block the
-     browser from ever scrolling via this element at all, drag or not. */
-  touch-action: pan-y;
+  /* touch-action: none, not pan-y — verified via real (CDP-dispatched)
+     touch events, not just page.mouse simulation: a permitted native pan
+     axis wins the gesture the instant a touch moves in that direction,
+     regardless of how long the touch held still first. dnd-kit's
+     delay-based activation constraint (App.jsx) only gates whether ITS OWN
+     drag starts; it can't stop the browser from independently starting a
+     native scroll and firing pointercancel out from under an
+     already-activated drag once movement lands on a pan-y axis. On the
+     narrow single-column layouts these cards live in (Recipes, Planner,
+     Makeable on mobile), reordering/placing a card is overwhelmingly a
+     vertical gesture — the same direction pan-y would hand to native
+     scroll — so pan-y silently broke touch dragging here. "none" gives up
+     scrolling by touching directly on a card (still possible via the gaps/
+     headers around it) in exchange for drags that actually complete. */
+  touch-action: none;
 }
 
 .meal-card:hover {
@@ -974,6 +980,13 @@ select {
   gap: 7px;
   cursor: grab;
   transition: box-shadow 0.15s ease;
+  /* touch-action: none — see the long comment on .meal-card above for why
+     (verified via real touch-event dispatch, not just page.mouse
+     simulation): pan-y lets native scroll steal any vertical hold-and-drag
+     gesture out from under dnd-kit, and shelf-to-shelf dragging on a
+     narrow mobile layout is almost always vertical. Scrolling a shelf via
+     touch still works through the gaps around a card, just not by
+     touching the card itself. */
   touch-action: none;
 }
 
@@ -2039,7 +2052,10 @@ select {
   padding: 8px;
   cursor: grab;
   transition: background 0.15s ease;
-  touch-action: pan-y;
+  /* touch-action: none — see .meal-card's comment above; pan-y lets native
+     scroll cancel a vertical drag out from under dnd-kit on real touch
+     devices, and this sidebar list is single-column/vertical. */
+  touch-action: none;
 }
 
 .sidebar-recipe-chip:hover {
@@ -2269,7 +2285,9 @@ select {
   border-radius: 8px;
   padding: 8px;
   cursor: grab;
-  touch-action: pan-y;
+  /* touch-action: none — see .meal-card's comment above; same fix, same
+     reasoning (this list is vertical, single-column). */
+  touch-action: none;
   transition: background 0.15s ease;
 }
 
@@ -2653,7 +2671,9 @@ input[type="date"].planner-week-picker {
 
 .grocery-item.draggable {
   cursor: grab;
-  touch-action: pan-y;
+  /* touch-action: none — see .meal-card's comment above; same fix, same
+     reasoning (this list is vertical, single-column). */
+  touch-action: none;
 }
 
 .grocery-item.dragging {
