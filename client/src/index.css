@@ -3438,6 +3438,18 @@ input[type="date"].planner-week-picker {
   text-transform: uppercase;
 }
 
+/* Labels sitting on a colored block need their own contrast — white text
+   only ever sits on --blue per the handoff's color rules, and pink always
+   takes ink text, never white. */
+.riso-eyebrow.on-accent {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.riso-eyebrow.on-pink {
+  color: var(--riso-ink);
+  opacity: 0.75;
+}
+
 .riso-flyers-title {
   font-family: var(--riso-font-display);
   font-weight: 800;
@@ -3447,7 +3459,7 @@ input[type="date"].planner-week-picker {
   margin: 0 0 6px;
 }
 
-.riso-flyers-title .accent {
+.riso-theme .accent {
   color: var(--riso-accent);
 }
 
@@ -3503,6 +3515,41 @@ input[type="date"].planner-week-picker {
   border-radius: 16px;
 }
 
+/* Urgency accent (--pink) - ink text, never white, per the handoff's "One
+   meaning per color" rule. Used for the primary call-to-action inside a
+   --blue block (e.g. Home's "Start cooking"), where --blue itself is
+   already the block's own background. */
+.riso-btn.hot {
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-btn.hot:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+/* Secondary button meant to sit on a --blue block - a transparent fill
+   with a white border reads against blue the way the ink border reads
+   against paper. */
+.riso-btn.outline-on-accent {
+  background: transparent;
+  border-color: var(--riso-on-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-btn.ink {
+  background: var(--riso-ink);
+  border-color: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+.riso-btn.full {
+  width: 100%;
+  justify-content: center;
+}
+
 .riso-chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -3527,6 +3574,37 @@ input[type="date"].planner-week-picker {
   background: var(--riso-ink);
   color: var(--riso-canvas);
   box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-chip.small {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 11.5px;
+}
+
+/* Angled pill "sticker" overlapping a card edge - position (top/right/
+   rotate) is supplied inline per instance, since it varies with what the
+   sticker sits on. */
+.riso-sticker {
+  position: absolute;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.riso-sticker.yellow {
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+}
+
+.riso-sticker.pink {
+  background: var(--riso-hot);
+  color: var(--riso-ink);
 }
 
 /* Category label shown above each category's ingredient blocks while
@@ -5058,456 +5136,385 @@ button.riso-price:hover {
    Home dashboard
    ================================================================ */
 .home-page {
-  /* Dark theme (default) — same navy/plum dark-surface palette as the
-     Inventory and Recipe Card redesigns (--inv-*), scoped here under its
-     own --hm-* names since this toggle is local to Home only: the rest of
-     the app stays on the fixed dark theme regardless of this switch. */
-  --hm-bg: var(--bg);
-  --hm-surface: #171752;
-  --hm-surface2: var(--inv-surface2);
-  --hm-track: var(--bg);
-  --hm-border: var(--inv-border);
-  --hm-dash: var(--inv-dash);
-  --hm-text: var(--paper);
-  --hm-muted: var(--inv-muted);
-  --hm-soft: var(--inv-soft);
-  --hm-neon: var(--inv-neon);
-  --hm-good: var(--sage);
-  --hm-shadow: none;
-  --hm-accent: var(--mustard);
-
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 44px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  background: var(--hm-bg);
-  color: var(--hm-text);
-  border-radius: 24px;
-  padding: 24px;
-  transition: background 0.2s ease, color 0.2s ease;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
 }
 
-.home-page[data-theme="light"] {
-  --hm-bg: #f4f3ff;
-  --hm-surface: #ffffff;
-  --hm-surface2: #efedfc;
-  --hm-track: #e6e3fa;
-  --hm-border: #e4e1f7;
-  --hm-dash: #cfcbef;
-  --hm-text: #15133a;
-  --hm-muted: #5e5b85;
-  --hm-soft: #3d3a66;
-  --hm-neon: #8f1fe0;
-  --hm-good: #138a5b;
-  --hm-shadow: 0 1px 2px rgba(35, 35, 120, 0.06), 0 0 0 1px #e8e5fa;
-}
-
-.home-card {
-  background: var(--hm-surface);
-  color: var(--hm-text);
-  border-radius: 20px;
-  box-shadow: var(--hm-shadow);
-  transition: background 0.2s ease, box-shadow 0.2s ease;
-}
-
-.home-greeting {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.home-greeting-text {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.home-greeting-title {
+.riso-home-greeting-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 26px;
-  color: var(--hm-text);
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 44px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
-.home-greeting-date {
-  font-size: 14px;
-  color: var(--hm-muted);
-}
-
-.home-theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  height: 34px;
-  padding: 0 4px;
-  border-radius: 17px;
-  background: var(--hm-surface2);
-  box-shadow: var(--hm-shadow);
-  border: none;
-  cursor: pointer;
-}
-
-.home-theme-toggle-pill {
-  height: 26px;
-  padding: 0 12px;
-  border-radius: 13px;
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--hm-muted);
-  pointer-events: none;
-}
-
-.home-theme-toggle-pill.active {
-  background: var(--hm-accent);
-  color: #fff;
-}
-
-.home-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--hm-neon);
-}
-
-.home-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.home-card-header h3 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 17px;
-  color: var(--hm-text);
-}
-
-.home-card-header-sub {
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: 13px;
-  color: var(--hm-muted);
-}
-
-.home-card-link {
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--hm-neon);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.home-card-link:hover {
-  text-decoration: underline;
-}
-
-.home-empty-note {
-  font-size: 13px;
-  color: var(--hm-muted);
-  margin: 0;
-}
-
-.home-top-row {
+.riso-home-top-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 20px;
 }
 
-.home-tonight-card {
-  padding: 26px;
+.riso-home-hero {
+  position: relative;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 24px;
 }
 
-.home-tonight-body {
+.riso-home-hero-body {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
-  margin-top: 12px;
 }
 
-.home-tonight-photo {
-  width: 200px;
-  height: 160px;
-  border-radius: 14px;
+.riso-home-hero-photo {
+  width: clamp(160px, 30%, 250px);
+  height: 230px;
+  border-radius: 18px;
+  border: 2px solid var(--riso-ink);
   object-fit: cover;
   flex: none;
 }
 
-.home-tonight-photo.placeholder {
-  background: var(--hm-surface2);
+.riso-home-hero-photo.placeholder {
+  background: rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: var(--hm-muted);
+  color: var(--riso-on-accent);
 }
 
-.home-tonight-info {
+.riso-home-hero-info {
   flex: 1;
   min-width: 220px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-.home-tonight-title {
+.riso-home-hero-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 23px;
-  color: var(--hm-text);
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 38px;
+  line-height: 1.05;
 }
 
-.home-tonight-blurb {
+.riso-home-hero-blurb {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
-  color: var(--hm-soft);
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.home-tonight-actions {
+.riso-home-hero-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
-.home-tonight-empty {
-  margin-top: 8px;
+.riso-home-hero-empty {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.home-tonight-empty p {
+.riso-home-hero-empty p {
   margin: 0;
-  font-size: 14px;
-  color: var(--hm-soft);
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.home-grocery-card {
+.riso-home-grocery {
+  background: var(--riso-hot);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-lg);
   padding: 22px;
   display: flex;
   flex-direction: column;
 }
 
-.home-grocery-count {
+.riso-home-grocery-count {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .home-grocery-number {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 36px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 72px;
   line-height: 1;
-  color: var(--hm-text);
+  color: var(--riso-ink);
 }
 
-.home-grocery-unit {
-  font-size: 13px;
-  color: var(--hm-muted);
+.riso-home-grocery-unit {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--riso-ink);
+  max-width: 90px;
+  line-height: 1.15;
 }
 
-.home-progress-track {
-  height: 7px;
-  border-radius: 4px;
-  background: var(--hm-track);
+.riso-home-grocery-track {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--riso-canvas);
+  border: 1.5px solid var(--riso-ink);
   overflow: hidden;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
-.home-progress-fill {
+.riso-home-grocery-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--hm-accent), #b04dff);
-  border-radius: 4px;
+  background: var(--riso-ink);
 }
 
-.home-grocery-sale {
-  margin: 12px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--hm-border);
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--hm-soft);
+.riso-home-grocery-line {
+  margin: 0 0 14px;
+  font-family: var(--riso-font-mono);
+  font-size: 11.5px;
+  color: var(--riso-ink);
 }
 
-.home-week-card {
+.riso-home-week {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
   padding: 22px;
 }
 
-.home-week-toggle {
+.riso-home-week-header {
   display: flex;
-  gap: 6px;
-  margin: 10px 0 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
-.home-week-toggle-btn {
-  background: none;
-  border: 1px solid var(--hm-border);
-  border-radius: 999px;
-  color: var(--hm-muted);
-  font-family: inherit;
-  font-size: 12px;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+.riso-home-week-header h3 {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 22px;
 }
 
-.home-week-toggle-btn:hover {
-  border-color: var(--hm-soft);
-  color: var(--hm-soft);
+.riso-home-week-sub {
+  font-family: var(--riso-font-body);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--riso-muted);
 }
 
-.home-week-toggle-btn.active {
-  background: var(--hm-accent);
-  border-color: var(--hm-accent);
-  color: #fff;
-}
-
-.home-week-strip {
+.riso-home-week-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
-.home-week-day {
-  border-radius: 12px;
-  background: var(--hm-surface2);
-  border: none;
+.riso-home-week-day {
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-canvas);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   text-align: left;
   cursor: pointer;
   padding: 0;
-  min-height: 118px;
-  color: var(--hm-soft);
+  min-height: 128px;
+  color: var(--riso-ink);
 }
 
-.home-week-day.today {
-  box-shadow: 0 0 0 2px var(--hm-accent);
+.riso-home-week-day.today {
+  background: var(--riso-hot);
+  box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
-.home-week-day-photo {
+.riso-home-week-day-photo {
   width: 100%;
-  height: 60px;
+  height: 74px;
   object-fit: cover;
   display: block;
+  border-bottom: 2px solid var(--riso-ink);
 }
 
-.home-week-day-photo.placeholder {
-  background: var(--hm-track);
+.riso-home-week-day-photo.placeholder {
+  background: var(--riso-track);
 }
 
-.home-week-day-body {
+.riso-home-week-day-body {
   padding: 8px 9px 9px;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
-.home-week-day-label {
-  font-family: var(--font-mono);
+.riso-home-week-day-label {
+  font-family: var(--riso-font-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: var(--hm-muted);
+  color: var(--riso-muted);
 }
 
-.home-week-day.today .home-week-day-label {
-  color: var(--hm-neon);
+.riso-home-week-day.today .riso-home-week-day-label {
+  color: var(--riso-ink);
 }
 
-.home-week-day-title {
-  font-size: 12px;
-  font-weight: 600;
+.riso-home-week-day-title {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 12.5px;
   line-height: 1.3;
-  color: var(--hm-text);
 }
 
-.home-week-day.empty {
+.riso-home-week-day.empty {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1.5px dashed var(--hm-dash);
+  border-style: dashed;
   background: transparent;
   padding: 10px;
 }
 
-.home-week-day-plan {
+.riso-home-week-day-plan {
+  font-family: var(--riso-font-display);
+  font-weight: 600;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--hm-neon);
+  color: var(--riso-muted);
 }
 
-.home-bottom-row {
+.riso-home-bottom-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 18px;
+  gap: 20px;
 }
 
-.home-mini-card {
+.riso-home-mini {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
   padding: 22px;
   display: flex;
   flex-direction: column;
 }
 
-.home-use-soon-list,
-.home-sale-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 13.5px;
-}
-
-.home-use-soon-row,
-.home-sale-row {
+.riso-home-mini-header {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.riso-home-mini-header h3 {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.riso-home-mini-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--riso-accent);
+  font-family: var(--riso-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.riso-home-mini-link:hover {
+  text-decoration: underline;
+}
+
+.riso-empty-note {
+  font-size: 13px;
+  color: var(--riso-muted);
+  margin: 0;
+}
+
+.riso-sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.riso-sticker-cell {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
+  text-align: center;
 }
 
-.home-expiry-badge {
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 11px;
-  background: var(--hm-surface2);
-  color: var(--hm-soft);
+.riso-sticker-circle {
+  width: 100%;
+  max-width: 96px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid var(--riso-ink);
+  box-shadow: var(--riso-shadow);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  white-space: nowrap;
+  justify-content: center;
+  background: var(--riso-surface);
 }
 
-.home-expiry-badge.soon {
-  background: var(--hm-neon);
-  color: #fff;
+.riso-sticker-circle.pink {
+  background: var(--riso-hot);
 }
 
-.home-sale-price {
-  color: var(--hm-good);
+.riso-sticker-circle.yellow {
+  background: var(--riso-yellow);
+}
+
+.riso-sticker-circle-num {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.riso-sticker-circle-unit {
+  font-family: var(--riso-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.riso-sticker-cell-name {
+  font-size: 12.5px;
   font-weight: 600;
-  white-space: nowrap;
+  color: var(--riso-soft);
 }
 
-.home-sale-footer {
-  margin-top: auto;
+.riso-home-mini-footer {
+  margin: auto 0 0;
   padding-top: 12px;
-  border-top: 1px solid var(--hm-border);
+  border-top: 1.5px dashed var(--riso-dash);
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--hm-soft);
+  color: var(--riso-soft);
 }
 
 .home-makeable-list {
@@ -5516,35 +5523,126 @@ button.riso-price:hover {
   gap: 8px;
 }
 
-.home-makeable-list .meal-card.compact {
+.riso-makeable-row {
   display: flex;
-  flex-direction: row;
   align-items: center;
   gap: 12px;
-  background: var(--hm-surface2);
-  border-radius: 12px;
-  padding: 6px;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--riso-ink);
 }
 
-.home-makeable-list .meal-card.compact .meal-card-photo {
-  width: 52px;
-  height: 52px;
-  border-radius: 9px;
+.riso-makeable-row-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  border: 2px solid var(--riso-ink);
+  object-fit: cover;
   flex: none;
 }
 
-.home-makeable-list .meal-card.compact .meal-card-body {
-  padding: 0;
+.riso-makeable-row-thumb.placeholder {
+  background: var(--riso-track);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  color: var(--riso-muted);
 }
 
-.home-makeable-list .meal-card.compact .meal-card-title {
-  min-height: 0;
-  font-size: 13.5px;
-  /* This compact card overrides the shared .meal-card's background to a
-     dark surface color but the title inherited .card's --ink (dark navy)
-     text color meant for a light card, making it unreadable against the
-     dark override. Set it explicitly for both Home themes. */
-  color: var(--hm-text);
+.riso-makeable-row-title {
+  flex: 1;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.riso-makeable-row-time {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  color: var(--riso-muted);
+  white-space: nowrap;
+}
+
+.riso-price-tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The riso "price tag" shape - a two-layer clip-path (ink outer, green
+   inner, inset 2px) makes the pointed end carry the same 2px ink border as
+   every other shape in this design, without a separate CSS-triangle hack. */
+.riso-price-tag {
+  position: relative;
+  margin-left: 14px;
+  background: var(--riso-ink);
+  clip-path: polygon(16px 0, 100% 0, 100% 100%, 16px 100%, 0 50%);
+  padding: 2px;
+}
+
+.riso-price-tag-inner {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  background: var(--riso-green);
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 14px 100%, 0 50%);
+  padding: 10px 14px 10px 24px;
+}
+
+.riso-price-tag-hole {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--riso-surface);
+  border: 1.5px solid var(--riso-ink);
+  z-index: 2;
+}
+
+.riso-price-tag-amount {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.riso-price-tag-unit {
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+.riso-price-tag-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.riso-price-tag-item {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--riso-ink);
+}
+
+.riso-price-tag-store {
+  font-family: var(--riso-font-mono);
+  font-size: 9.5px;
+  color: var(--riso-ink);
+  opacity: 0.75;
 }
 
 /* ================================================================
@@ -5745,26 +5843,26 @@ button.riso-price:hover {
   }
 
   .home-page {
-    padding: 16px;
+    padding: 18px 16px 40px;
   }
 
-  .home-greeting {
-    align-items: flex-start;
+  .riso-home-greeting-title {
+    font-size: 32px;
   }
 
-  .home-top-row,
-  .home-bottom-row {
+  .riso-home-top-row,
+  .riso-home-bottom-row {
     grid-template-columns: 1fr;
   }
 
-  .home-tonight-photo {
+  .riso-home-hero-photo {
     width: 100%;
     height: 180px;
   }
 
   /* Seven equal-width day tiles are too narrow to read on a phone -
      scrolls horizontally instead, each tile keeping a legible width. */
-  .home-week-strip {
+  .riso-home-week-strip {
     grid-auto-flow: column;
     grid-auto-columns: minmax(110px, 1fr);
     grid-template-columns: none;

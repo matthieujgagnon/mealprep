@@ -1,8 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-// Covers the Home page's own light/dark toggle (scoped to Home only, the
-// rest of the app stays dark) and the "N of your recipes use X" sale-deal
-// link, both new in this redesign pass.
+// Covers pieces specific to the Home redesign: the "N of your recipes use
+// X" sale-deal link, and the Riso Poster "Makeable now" row (its own plain
+// row design, not the shared dark .meal-card — see makeable-vapor.spec.js's
+// header comment for the same precedent on the Makeable tab). Home's old
+// light/dark toggle was removed when Home moved to the Riso Poster design:
+// design_handoff_riso/README.md's fidelity note says light ("paper") is the
+// only mode designed so far ("black paper" dark mode is future work), so
+// there's currently nothing for a toggle to switch to.
 
 function uniqueEmail() {
   return `home-redesign+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -17,34 +22,7 @@ async function signUp(page, email) {
   await expect(page.getByText(email)).toBeVisible();
 }
 
-test("Home defaults to dark and the toggle switches to light without affecting other tabs", async ({ page }) => {
-  await signUp(page, uniqueEmail());
-
-  await expect(page.locator(".home-page")).toHaveAttribute("data-theme", "dark");
-
-  await page.locator(".home-theme-toggle").click();
-  await expect(page.locator(".home-page")).toHaveAttribute("data-theme", "light");
-
-  // Switching tabs and back doesn't affect the shared header/other tabs -
-  // only the Home page content carries the theme attribute.
-  await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await expect(page.locator("[data-theme]")).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Home", exact: true }).click();
-  await expect(page.locator(".home-page")).toHaveAttribute("data-theme", "light");
-});
-
-test("the theme choice persists across a reload", async ({ page }) => {
-  await signUp(page, uniqueEmail());
-
-  await page.locator(".home-theme-toggle").click();
-  await expect(page.locator(".home-page")).toHaveAttribute("data-theme", "light");
-
-  await page.reload();
-  await expect(page.locator(".home-page")).toHaveAttribute("data-theme", "light");
-});
-
-test("a makeable recipe's title is legible against the dark Makeable-now card", async ({ page }) => {
+test("a makeable recipe shows as a Riso-styled row with its title legible on paper", async ({ page }) => {
   await signUp(page, uniqueEmail());
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
@@ -65,19 +43,11 @@ test("a makeable recipe's title is legible against the dark Makeable-now card", 
   await page.locator(".modal-close").click();
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
-  await expect(page.locator(".home-makeable-list .meal-card-title")).toHaveText("Home Redesign Test Dish");
+  const row = page.locator(".riso-makeable-row", { hasText: "Home Redesign Test Dish" });
+  await expect(row).toBeVisible();
 
-  // Regression check for the exact bug this redesign fixed: the title
-  // inherited --ink (a dark navy meant for a light card) after its card's
-  // background was overridden to a dark surface, making it unreadable. A
-  // plain inequality check wouldn't catch that (both colors were dark, just
-  // different) - assert the title actually resolves to --paper (light
-  // text), not merely "not equal to the background".
-  const titleColor = await page.evaluate(() => {
-    const title = document.querySelector(".home-makeable-list .meal-card-title");
-    return getComputedStyle(title).color;
-  });
-  expect(titleColor).toBe("rgb(243, 243, 251)"); // --paper
+  const titleColor = await row.locator(".riso-makeable-row-title").evaluate((el) => getComputedStyle(el).color);
+  expect(titleColor).toBe("rgb(22, 24, 31)"); // --riso-ink, legible on the paper-colored row
 });
 
 test("the sale-deal footer link filters Recipes to a matching ingredient", async ({ page }) => {
@@ -105,4 +75,11 @@ test("the sale-deal footer link filters Recipes to a matching ingredient", async
   await footerLink.click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
   await expect(page.getByText("Home Redesign Chicken Dish")).toBeVisible();
+});
+
+test("On sale deals render as Riso price tags", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+
+  await expect(page.locator(".riso-price-tag").first()).toBeVisible();
+  await expect(page.locator(".riso-price-tag-amount").first()).toBeVisible();
 });
