@@ -513,6 +513,25 @@
   }
 }
 
+@media (max-width: 680px) {
+  .riso-flyers {
+    padding: 18px 16px 40px;
+    gap: 18px;
+  }
+
+  .riso-flyers-header {
+    flex-wrap: wrap;
+  }
+
+  .riso-flyers-title {
+    font-size: 26px;
+  }
+
+  .riso-recipe-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -3353,183 +3372,522 @@ input[type="date"].planner-week-picker {
 
 /* ---------- Flyers tab (cook what's on sale) ---------- */
 
-.flyer-header {
+/* ---------- "Riso" theme tokens (Flyers screen redesign) ----------
+   Neubrutalist style from the Riso Flyers design exploration: thick black
+   borders, offset drop shadows, a cream surface on a warm off-white page,
+   saturated accent blocks (blue for actions, pink for "ends soon", yellow
+   for stickers, green for price/savings). Scoped to .riso-theme (Flyers
+   only), same prefixed-token pattern as --vp-, --inv-, --hm- elsewhere in
+   this file - purely additive, no other screen changes. */
+.riso-theme {
+  --riso-canvas: #f4f1ea;
+  --riso-surface: #fffdf8;
+  --riso-track: #e9e4d8;
+  --riso-ink: #16181f;
+  --riso-soft: #3f3e37;
+  --riso-muted: #5e5b52;
+  --riso-dash: #d6cfbf;
+  --riso-accent: #2323ff;
+  --riso-on-accent: #ffffff;
+  --riso-hot: #ff48b0;
+  --riso-yellow: #ffe14d;
+  --riso-green: #00a95c;
+  --riso-green-text: #00753f;
+  --riso-shadow: 3px 3px 0 var(--riso-ink);
+  --riso-shadow-lg: 6px 6px 0 var(--riso-ink);
+  --riso-font-display: "Bricolage Grotesque", sans-serif;
+  --riso-font-body: "Inter", system-ui, sans-serif;
+  --riso-font-mono: "DM Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+
+.riso-flyers {
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 32px 56px;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.riso-flyers-header {
+  display: flex;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
 }
 
-.flyer-header-actions {
+.riso-eyebrow {
+  font-family: var(--riso-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--riso-muted);
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.riso-flyers-title {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 32px;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.riso-flyers-title .accent {
+  color: var(--riso-accent);
+}
+
+.riso-flyers-sub {
+  font-size: 13.5px;
+  color: var(--riso-soft);
+  margin: 0;
+  max-width: 640px;
+}
+
+.riso-flyers-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.flyer-heading {
-  font-family: var(--font-display);
-  font-size: 20px;
-  margin: 0 0 4px;
-}
-
-.flyer-sub {
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.75;
-  margin: 0;
-}
-
-.flyer-store-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 18px;
-}
-
-/* Category sub-nav — same pill anatomy as .tabs/.tab, one size down, since
-   this narrows the same page rather than switching to a different one. */
-.cat-tabs {
-  display: flex;
-  gap: 3px;
-  background: var(--bg-soft);
-  padding: 3px;
-  border-radius: 9px;
-  flex-wrap: wrap;
-  width: fit-content;
-  margin-bottom: 22px;
-}
-
-.cat-tab {
-  background: none;
-  border: none;
-  color: var(--paper-soft);
-  padding: 6px 13px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
+.riso-btn {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 20px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13.5px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.cat-tab.active {
-  background: var(--mustard);
-  color: #f3f3fb;
+.riso-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.riso-btn.primary {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-btn.primary:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.riso-btn.small {
+  height: 32px;
+  padding: 0 13px;
+  font-size: 12.5px;
+  border-radius: 16px;
+}
+
+.riso-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-chip {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.riso-chip.active {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 3px 3px 0 var(--riso-accent);
 }
 
 /* Category label shown above each category's ingredient blocks while
    viewing "All" — hidden once a single category tab narrows the view,
    since the active tab already says it. */
-.cat-eyebrow {
+.riso-cat-eyebrow {
   display: block;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sage);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
   margin: 0 0 10px;
 }
 
-.cat-eyebrow:hover {
-  opacity: 0.8;
+.riso-cat-eyebrow:hover {
+  color: var(--riso-ink);
 }
 
-.flyer-recipe-cell {
+.riso-groups {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px;
 }
 
-.flyer-add-btn {
-  align-self: flex-start;
-}
-
-.flyer-add-form {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.flyer-add-form select {
-  font-family: var(--font-body);
-  font-size: 12px;
-  padding: 5px 6px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-}
-
-.flyer-added-note {
-  font-size: 12px;
-  color: var(--sage);
-  margin: 0;
-}
-
-.flyer-matches {
+/* Each ingredient on sale is its own card: name and prices on top, the
+   recipes that use it underneath — the whole point of the tab is reading
+   down from "chicken is cheap" to "so cook one of these." */
+.riso-group {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
+  box-shadow: var(--riso-shadow-lg);
 }
 
-/* Each ingredient on sale is its own block: the ingredient and its prices on
-   top, the recipes that use it underneath — the whole point of the tab is
-   reading down from "chicken is cheap" to "so cook one of these." */
-.flyer-match {
-  background: var(--bg-soft);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-/* Name and prices sit together on one line — "Chicken · $4.99 Metro ·
-   $2.99 IGA" reads as one fact. Pushing the prices to the far edge with
-   space-between just made them look unrelated to the ingredient. */
-.flyer-match-header {
+.riso-group-header {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
 }
 
-.flyer-match-title {
-  font-family: var(--font-display);
+.riso-group-title {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
   font-size: 19px;
   margin: 0;
 }
 
-.flyer-match-prices {
+.riso-group-prices {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.flyer-match-count {
-  font-family: var(--font-mono);
+.riso-group-count {
+  font-family: var(--riso-font-mono);
   font-size: 11px;
-  color: var(--paper-soft);
-  opacity: 0.7;
-  margin: 8px 0 12px;
+  color: var(--riso-muted);
+  margin: 0;
 }
 
-.flyer-match-recipes {
+.riso-recipe-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 12px;
+}
+
+.riso-recipe-tile {
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-recipe-thumb-btn {
+  display: block;
+  width: 100%;
+  height: 92px;
+  border: none;
+  border-bottom: 2px solid var(--riso-ink);
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  background: var(--riso-track);
+}
+
+.riso-recipe-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-recipe-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--riso-muted);
+}
+
+.riso-recipe-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-recipe-title {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13.5px;
+  line-height: 1.2;
+  margin: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: var(--riso-ink);
+}
+
+.riso-plan-form {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.riso-plan-form select {
+  font-family: var(--riso-font-body);
+  font-size: 11.5px;
+  padding: 4px 5px;
+  border-radius: 8px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-added-note {
+  font-size: 11.5px;
+  color: var(--riso-green-text);
+  margin: 0;
 }
 
 /* Deals nothing in the cookbook uses yet, collapsed into one line per
    category instead of a full block each — a real flyer runs 30-100+ items
    per department, most of which won't match a modest cookbook, so giving
    each its own "no recipes yet" row buried the few that actually matched. */
-.flyer-rest-prices {
+.riso-rest {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-rest-toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  color: var(--riso-muted);
+}
+
+.riso-rest-toggle:hover {
+  color: var(--riso-ink);
+}
+
+.riso-rest-prices {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
+}
+
+.riso-empty {
+  font-size: 13.5px;
+  color: var(--riso-soft);
+  background: var(--riso-surface);
+  border: 2px dashed var(--riso-dash);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  margin: 0;
+}
+
+.riso-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12.5px;
+  font-family: var(--riso-font-mono);
+  color: #b3003a;
+}
+
+.riso-upload-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.riso-upload-form .form-label {
+  min-width: 140px;
+  font-family: var(--riso-font-body);
+  font-size: 12.5px;
+  color: var(--riso-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.riso-upload-form input {
+  font-family: var(--riso-font-body);
+}
+
+/* Compact price pill — item and price/store on two tight lines. */
+.riso-price {
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--riso-track);
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  padding: 5px 10px;
+  font: inherit;
+  text-align: left;
+  color: var(--riso-ink);
+}
+
+/* Only the interactive form (a <button>, when there's a flyer image to
+   show) gets a pointer + hover — the plain <span> shown for sample data
+   before any real deal exists stays visually inert. */
+button.riso-price {
+  cursor: pointer;
+}
+
+button.riso-price:hover {
+  transform: translate(-1px, -1px);
+}
+
+.riso-price .item {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.riso-price .meta {
+  font-family: var(--riso-font-mono);
+  font-size: 10px;
+  color: var(--riso-muted);
+}
+
+.riso-price .price-amt {
+  font-family: var(--riso-font-mono);
+  font-weight: 700;
+  color: var(--riso-green-text);
+}
+
+/* Cheapest per-unit price among this ingredient's stores, compared only
+   within the same unit basis (lb vs lb, each vs each) - see
+   groupDealsByIngredient's bestPriceDealIds. */
+.riso-price.best-price {
+  background: #e6f5ec;
+  border-color: var(--riso-green-text);
+}
+
+.riso-badge-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.riso-best-badge {
+  font-family: var(--riso-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--riso-surface);
+  background: var(--riso-green-text);
+  border-radius: 5px;
+  padding: 2px 6px;
+  align-self: flex-start;
+}
+
+.riso-ends-badge {
+  font-family: var(--riso-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--riso-ink);
+  background: var(--riso-hot);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 9px;
+  padding: 2px 7px;
+  align-self: flex-start;
+}
+
+.riso-preview-modal {
+  max-width: 520px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  box-shadow: var(--riso-shadow-lg);
+  font-family: var(--riso-font-body);
+}
+
+.riso-preview-title {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+.riso-preview-store {
+  font-family: var(--riso-font-body);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--riso-muted);
+}
+
+.riso-preview-image {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-track);
+}
+
+.riso-preview-frame {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-track);
+}
+
+.riso-preview-missing {
+  margin: 0;
+  padding: 40px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--riso-muted);
+  background: var(--riso-track);
+  border-radius: 12px;
 }
 
 .flyer-upload-form {
@@ -3553,119 +3911,6 @@ input[type="date"].planner-week-picker {
   margin: 0;
   font-size: 12px;
   color: var(--tomato);
-}
-
-/* Click-to-preview modal for a single deal — a real photo (Le Rabais) or
-   the whole page you uploaded (manual upload), reusing the same
-   .modal-overlay/.modal-content shell the recipe detail modal uses. */
-.flyer-preview-modal {
-  max-width: 520px;
-}
-
-.flyer-preview-title {
-  font-family: var(--font-display);
-  font-size: 18px;
-  margin: 0 0 12px;
-}
-
-.flyer-preview-store {
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.75;
-}
-
-.flyer-preview-image {
-  display: block;
-  width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
-  border-radius: 8px;
-  background: var(--bg-soft);
-}
-
-.flyer-preview-frame {
-  display: block;
-  width: 100%;
-  height: 70vh;
-  border: none;
-  border-radius: 8px;
-  background: var(--bg-soft);
-}
-
-.flyer-preview-missing {
-  margin: 0;
-  padding: 40px 16px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.75;
-  background: var(--bg-soft);
-  border-radius: 8px;
-}
-
-/* Compact price pill — item and price/store on two tight lines, no
-   decorative flourish. Replaced an earlier chunkier tag (150px min-width,
-   each of item/price/store on its own line) that read as too heavy sitting
-   next to an ingredient name. */
-.price-pill {
-  flex: 0 0 auto;
-  background: var(--mustard);
-  color: #eef0ff;
-  padding: 6px 10px;
-  border-radius: 8px;
-  display: inline-flex;
-  flex-direction: column;
-  gap: 1px;
-  border: none;
-  font: inherit;
-  text-align: left;
-}
-
-/* Only the interactive form (a <button>, when there's a flyer image to show)
-   gets a pointer + hover - the plain <span> shown for sample data before any
-   real deal exists stays visually inert. */
-button.price-pill {
-  cursor: pointer;
-}
-
-button.price-pill:hover {
-  filter: brightness(1.08);
-}
-
-.price-pill .item {
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.price-pill .meta {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  opacity: 0.85;
-  white-space: nowrap;
-}
-
-/* Cheapest per-unit price among this ingredient's stores, compared only
-   within the same unit basis (lb vs lb, each vs each) - see
-   groupDealsByIngredient's bestPriceDealIds. */
-.price-pill.best-price {
-  outline: 2px solid var(--sage);
-  outline-offset: 1px;
-}
-
-.best-price-badge {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--bg);
-  background: var(--sage);
-  border-radius: 4px;
-  padding: 1px 5px;
-  align-self: flex-start;
 }
 
 /* ---------- Recipe detail modal ---------- */
