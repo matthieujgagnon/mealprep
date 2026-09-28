@@ -302,6 +302,13 @@ select {
   overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: 1px solid transparent;
+  /* Overrides .card's light --paper/--ink here specifically - a recipe
+     card is a nested tile on the dark page everywhere it appears (Recipes,
+     Planner, Makeable, Flyers), same as Home's week-day tiles or an
+     Inventory shelf card, not a light card floating on dark like .card's
+     other uses (modals, forms). */
+  background: var(--inv-surface2);
+  color: var(--paper);
   /* "pan-y" (not "none") lets the browser handle normal vertical scrolling
      on this element natively — important since these cards/rows often fill
      the full width of a scrollable list with no gaps to grab elsewhere.
@@ -353,7 +360,7 @@ select {
   width: 100%;
   height: 120px;
   object-fit: cover;
-  background: var(--paper-soft);
+  background: var(--inv-surface2);
   display: block;
 }
 
@@ -362,7 +369,7 @@ select {
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  color: var(--ink-soft);
+  color: var(--inv-muted);
   font-size: 13px;
 }
 
@@ -385,6 +392,7 @@ select {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  color: var(--paper);
 }
 
 .meal-card-stats {
@@ -392,7 +400,7 @@ select {
   gap: 10px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--ink-soft);
+  color: var(--inv-muted);
 }
 
 .meal-card-delete {
