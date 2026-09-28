@@ -19,10 +19,14 @@ const MOCK_DEALS = [
 
 // GET /api/deals - this week's flyer specials across nearby stores. Serves
 // real deals extracted from uploaded flyers once any exist, falling back to
-// sample data before the first upload.
+// sample data before the first upload. isCurrent: true only - a re-upload
+// supersedes rather than deletes its previous deals (see isCurrent's
+// comment on the FlyerDeal model), so this must filter them out to keep
+// showing just what's actually on sale right now; the superseded rows stay
+// in the table as price history for later features.
 dealsRouter.get("/", async (req, res) => {
   const rows = await prisma.flyerDeal.findMany({
-    where: { userId: req.userId },
+    where: { userId: req.userId, isCurrent: true },
     orderBy: { createdAt: "desc" },
   });
 

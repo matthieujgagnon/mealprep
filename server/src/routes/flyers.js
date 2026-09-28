@@ -159,14 +159,18 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
 
     await prisma.$transaction([
       // Scoped to this user first and foremost - without that, two accounts
-      // both typing "Metro" would delete/see each other's deals. Also
+      // both typing "Metro" would supersede/see each other's deals. Also
       // matches pre-migration rows (source null, store equal to what's now
       // the source name) so re-uploading a store that already has old rows
-      // from before `source` existed replaces them too, rather than leaving
-      // them stranded forever - that legacy case only ever applies to
-      // whichever account inherited the pre-account data (see auth.js).
-      prisma.flyerDeal.deleteMany({
-        where: { userId: req.userId, OR: [{ source }, { source: null, store: source }] },
+      // from before `source` existed supersedes them too, rather than
+      // leaving them stranded forever - that legacy case only ever applies
+      // to whichever account inherited the pre-account data (see auth.js).
+      // Flips isCurrent to false rather than deleting, so this week's prices
+      // join price history instead of being wiped - see isCurrent's comment
+      // on the FlyerDeal model.
+      prisma.flyerDeal.updateMany({
+        where: { userId: req.userId, isCurrent: true, OR: [{ source }, { source: null, store: source }] },
+        data: { isCurrent: false },
       }),
       prisma.flyerDeal.createMany({ data: deals }),
       // Keeps the original file so its page can be viewed later (see GET
@@ -210,8 +214,9 @@ const LE_RABAIS_SOURCE = "Le Rabais";
 const MONTREAL_POSTAL_CODE = "H2T2S3";
 
 // POST /api/flyers/import-le-rabais - fetches and imports this week's deals
-// from Le Rabais. Re-running it replaces its own previous rows only (scoped
-// by source, same as a re-upload under the same name), leaving any manually
+// from Le Rabais. Re-running it supersedes its own previous rows only
+// (scoped by source, same as a re-upload under the same name - see
+// isCurrent's comment on the FlyerDeal model), leaving any manually
 // uploaded flyers untouched.
 flyersRouter.post("/import-le-rabais", async (req, res) => {
   let response;
@@ -236,7 +241,10 @@ flyersRouter.post("/import-le-rabais", async (req, res) => {
   const deals = mapped.map((d) => ({ ...d, userId: req.userId, source: LE_RABAIS_SOURCE }));
 
   await prisma.$transaction([
-    prisma.flyerDeal.deleteMany({ where: { userId: req.userId, source: LE_RABAIS_SOURCE } }),
+    prisma.flyerDeal.updateMany({
+      where: { userId: req.userId, source: LE_RABAIS_SOURCE, isCurrent: true },
+      data: { isCurrent: false },
+    }),
     ...(deals.length > 0 ? [prisma.flyerDeal.createMany({ data: deals })] : []),
   ]);
 
