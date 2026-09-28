@@ -102,6 +102,417 @@
   --vp-font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* ---------- Vapor shared controls (design handoff's "Standard controls") ----------
+   Reusable across every screen as it migrates - not Makeable-specific,
+   even though Makeable (the first screen implemented) is the only
+   consumer today. */
+
+.vp-theme {
+  background: var(--vp-bg);
+  color: var(--vp-text);
+  font-family: var(--vp-font-body);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.vp-page-title {
+  font-family: var(--vp-font-display);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.vp-page-subtitle {
+  font-size: 14.5px;
+  color: var(--vp-muted);
+  margin: 4px 0 0;
+}
+
+/* Local per-screen toggle, same pattern Home already uses - a single
+   app-wide header toggle (per the handoff) lands once every screen has
+   migrated; until then each screen gets its own, all reading/writing the
+   same mealprep-vp-theme key so they agree once more than one exists. */
+.vp-theme-toggle {
+  display: flex;
+  background: var(--vp-surface2);
+  border-radius: 17px;
+  padding: 3px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--vp-font-body);
+}
+
+.vp-theme-toggle span {
+  padding: 5px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vp-muted);
+}
+
+.vp-theme-toggle span.active {
+  background: var(--vp-accent);
+  color: var(--vp-on-accent);
+}
+
+.vp-hint-strip {
+  background: var(--vp-surface2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.vp-hint-icon {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 1.5px solid var(--vp-muted);
+  color: var(--vp-muted);
+  font-family: var(--vp-font-display);
+  font-style: italic;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vp-hint-text {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vp-soft);
+}
+
+.vp-hint-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--vp-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.vp-hint-dismiss:hover {
+  color: var(--vp-text);
+}
+
+.vp-toggle {
+  display: inline-flex;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--vp-track);
+  padding: 3px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.vp-toggle.on {
+  background: var(--vp-accent);
+}
+
+.vp-toggle-knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.vp-toggle.on .vp-toggle-knob {
+  transform: translateX(16px);
+}
+
+.vp-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.vp-toggle-label {
+  font-size: 14px;
+  color: var(--vp-text);
+}
+
+.vp-toggle-meta {
+  margin-left: 6px;
+  font-family: var(--vp-font-mono);
+  font-size: 10.5px;
+  color: var(--vp-muted);
+}
+
+.vp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border-radius: 14px;
+  background: var(--vp-accent);
+  color: var(--vp-on-accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.vp-chip button {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.vp-chip button:hover {
+  opacity: 1;
+}
+
+.vp-empty-state {
+  color: var(--vp-muted);
+  font-size: 14px;
+}
+
+/* ---------- Makeable screen ---------- */
+
+.vp-makeable-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vp-control-card {
+  background: var(--vp-surface);
+  border-radius: 20px;
+  box-shadow: var(--vp-shadow);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vp-toggle-row-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+
+.vp-also-have {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--vp-surface2);
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+
+.vp-also-have-label {
+  font-family: var(--vp-font-mono);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--vp-muted);
+  flex-shrink: 0;
+}
+
+.vp-also-have-input {
+  flex: 1;
+  min-width: 160px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--vp-text);
+  font-family: var(--vp-font-body);
+}
+
+.vp-also-have-input:focus {
+  outline: none;
+}
+
+.vp-also-have-input::placeholder {
+  color: var(--vp-muted);
+}
+
+.vp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vp-group-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.vp-group-title {
+  font-family: var(--vp-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  margin: 0;
+}
+
+.vp-group-count {
+  font-family: var(--vp-font-mono);
+  font-size: 12px;
+  color: var(--vp-muted);
+}
+
+.vp-group-note {
+  font-size: 13px;
+  color: var(--vp-muted);
+}
+
+.vp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.vp-card {
+  background: var(--vp-surface);
+  border-radius: 18px;
+  box-shadow: var(--vp-shadow);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.vp-card-thumb-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.vp-card-thumb {
+  width: 100%;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: block;
+}
+
+.vp-card-thumb-placeholder {
+  background: var(--vp-surface2);
+}
+
+.vp-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px 4px;
+}
+
+.vp-card-title {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-family: var(--vp-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--vp-text);
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.vp-card-meta {
+  margin: 0;
+  font-family: var(--vp-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--vp-muted);
+}
+
+.vp-card-uses {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--vp-hot);
+}
+
+.vp-card-need {
+  background: var(--vp-surface2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--vp-soft);
+}
+
+.vp-card-need-label {
+  font-family: var(--vp-font-mono);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--vp-muted);
+}
+
+.vp-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.vp-btn-card {
+  height: 34px;
+  border-radius: 17px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--vp-font-body);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vp-btn-card-primary {
+  flex: 1;
+  background: var(--vp-accent);
+  color: var(--vp-on-accent);
+  box-shadow: var(--vp-glow);
+}
+
+.vp-btn-card-secondary {
+  background: var(--vp-surface2);
+  color: var(--vp-text);
+}
+
+@media (max-width: 680px) {
+  .vp-theme {
+    padding: 18px 16px 40px;
+    gap: 18px;
+  }
+
+  .vp-makeable-header {
+    flex-wrap: wrap;
+  }
+
+  .vp-toggle-row-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

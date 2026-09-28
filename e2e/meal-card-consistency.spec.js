@@ -2,8 +2,11 @@ import { expect, test } from "@playwright/test";
 
 // Regression coverage for the app-wide visual consistency pass: recipe
 // cards (the shared MealCard component) moved from the old light .card
-// look to a dark surface everywhere they appear - Recipes, Planner,
-// Makeable - matching the Inventory/Recipe-Card/Home/Cook-Mode redesigns.
+// look to a dark surface everywhere they appear - Recipes, Planner -
+// matching the Inventory/Recipe-Card/Home/Cook-Mode redesigns. Makeable
+// used to share this look too, but it's since been migrated to its own
+// design (see e2e/makeable-vapor.spec.js) as part of the Cobalt Vapor
+// redesign, so it's no longer covered by this shared-.meal-card guarantee.
 
 function uniqueEmail() {
   return `meal-card+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -49,9 +52,7 @@ test("a recipe card on the Recipes tab is a dark surface with legible light text
   expect(titleColor).toBe("rgb(243, 243, 251)"); // --paper
 });
 
-test("the same recipe card styling is used in the Planner's drag source grid and Makeable results", async ({
-  page,
-}) => {
+test("the same recipe card styling is used in the Planner's drag source grid", async ({ page }) => {
   await signUp(page, uniqueEmail());
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
@@ -68,11 +69,4 @@ test("the same recipe card styling is used in the Planner's drag source grid and
   await page.waitForTimeout(300);
   const plannerCard = page.locator(".meal-card", { hasText: "Shared Card Style Test" });
   await expect(plannerCard).toHaveCSS("background-color", "rgb(31, 31, 99)");
-
-  await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  await page.fill('input[placeholder*="ingredient you have"]', "rice");
-  await page.getByRole("button", { name: "+ Add" }).click();
-  await page.waitForTimeout(300);
-  const makeableCard = page.locator(".meal-card", { hasText: "Shared Card Style Test" });
-  await expect(makeableCard).toHaveCSS("background-color", "rgb(31, 31, 99)");
 });
