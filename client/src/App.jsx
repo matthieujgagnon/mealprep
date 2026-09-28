@@ -850,6 +850,8 @@ export default function App({ user, onLogout }) {
         {tab === "flyers" && (
           <FlyerDeals
             recipes={recipes}
+            customStaples={customStaples}
+            weekStart={weekStart}
             onSelectRecipe={openRecipe}
             onAddToPlanner={handleAddToPlanner}
           />

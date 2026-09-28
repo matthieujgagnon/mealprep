@@ -1,35 +1,18 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { MealCard } from "./MealCard.jsx";
 import { currentWeekStart, formatDayLabel, shiftWeek } from "../lib/dates.js";
-import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
+import { buildGroceryList, findMatchingDeal, canonicalize } from "../lib/groceryList.js";
 import { findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 const RESTAURANT_TITLE = "🍽️ Restaurant";
-const THEME_STORAGE_KEY = "mealprep-home-theme";
 
-// Home has its own light/dark toggle, independent of the rest of the app
-// (which stays on the fixed dark theme) — scoped to this page only, so the
-// preference lives in its own localStorage key rather than the server.
-function loadStoredTheme() {
-  try {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    return stored === "light" || stored === "dark" ? stored : "dark";
-  } catch {
-    return "dark";
-  }
-}
+// Small deterministic rotation set for the Riso Poster "stickers" - a
+// fixed-angle sticker looks static/printed, but a fully random one would
+// re-roll (and visually jitter) on every re-render.
+const STICKER_ROTATIONS = [-5, 3, -2];
 
-// Recipes with an ingredient matching this deal — same crude word-overlap
-// heuristic findMatchingDeal uses, just checked from the other side (find
-// recipes for a deal, instead of a deal for one ingredient). Also keeps the
-// matching ingredient's own name off each hit: the deal's own text (e.g.
-// "Boneless chicken breast") is usually a poor search query for
-// matchesRecipeSearch's substring check — a shorter recipe ingredient name
-// like "chicken breast" is a substring of the deal text, not the reverse,
-// so passing the deal text back in as a search query would go the wrong way.
 function matchRecipesForDeal(deal, recipes) {
   return recipes
     .map((recipe) => ({ recipe, ingredientName: recipe.ingredients?.find((i) => findMatchingDeal(i.name, [deal]))?.name }))
@@ -49,8 +32,6 @@ function greeting() {
 
 // Everything that counts as "have" without being typed in — same rule
 // WhatCanIMake.jsx uses: non-expired inventory, plus custom pantry staples.
-// Kept independent here rather than imported, since Home only ever needs
-// the plain combined list (no typed-in quick list, no exclusion toggles).
 function buildCombinedHave(pantryInventory, customStaples) {
   const inStock = pantryInventory
     .filter((item) => !item.expiresAt || daysUntil(item.expiresAt) >= 0)
@@ -58,6 +39,65 @@ function buildCombinedHave(pantryInventory, customStaples) {
   const haveLower = new Set(inStock.map((n) => n.toLowerCase()));
   const stapleExtra = (customStaples || []).filter((s) => !haveLower.has(s.toLowerCase()));
   return [...inStock, ...stapleExtra];
+}
+
+// True when this expiring item's core ingredient appears in any recipe
+// planned for the current week — used for "Use it up"'s footer nudge.
+function usedThisWeek(itemName, plannerEntries) {
+  const core = canonicalize(itemName).core;
+  return plannerEntries.some(
+    (e) => !isBlankMarker(e) && e.recipe.ingredients?.some((i) => canonicalize(i.name).core === core)
+  );
+}
+
+function StickerCircle({ item, index, tone }) {
+  const days = daysUntil(item.expiresAt);
+  const unit = days === 1 ? "DAY" : "DAYS";
+  return (
+    <div
+      className={`riso-sticker-circle ${tone}`}
+      style={{ transform: `rotate(${STICKER_ROTATIONS[index]}deg)` }}
+    >
+      <span className="riso-sticker-circle-num">{Math.max(0, days)}</span>
+      <span className="riso-sticker-circle-unit">{unit}</span>
+    </div>
+  );
+}
+
+function MakeableRow({ recipe, onOpen }) {
+  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+  return (
+    <button type="button" className="riso-makeable-row" onClick={() => onOpen(recipe)}>
+      {recipe.photoUrl ? (
+        <img src={recipe.photoUrl} alt="" className="riso-makeable-row-thumb" />
+      ) : (
+        <div className="riso-makeable-row-thumb placeholder">{recipe.title[0]}</div>
+      )}
+      <span className="riso-makeable-row-title">{recipe.title}</span>
+      {totalTime > 0 && <span className="riso-makeable-row-time">{totalTime} min</span>}
+    </button>
+  );
+}
+
+function PriceTag({ deal, index }) {
+  const rotation = index % 2 === 0 ? 1.5 : -1.5;
+  const [amount, ...unitParts] = deal.price.split("/");
+  const unit = unitParts.length ? `/${unitParts.join("/")}` : "";
+  return (
+    <div className="riso-price-tag" style={{ transform: `rotate(${rotation}deg)` }}>
+      <span className="riso-price-tag-hole" />
+      <div className="riso-price-tag-inner">
+        <span className="riso-price-tag-amount">
+          {amount}
+          {unit && <span className="riso-price-tag-unit">{unit}</span>}
+        </span>
+        <span className="riso-price-tag-body">
+          <span className="riso-price-tag-item">{deal.item}</span>
+          <span className="riso-price-tag-store">{deal.store}</span>
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function Home({
@@ -73,7 +113,6 @@ export function Home({
   const weekStart = currentWeekStart();
   const todayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
 
-  const [theme, setTheme] = useState(loadStoredTheme);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [checked, setChecked] = useState({});
   const [extraItems, setExtraItems] = useState([]);
@@ -106,16 +145,6 @@ export function Home({
     api.listPlanner(stripWeekStart).then(setStripEntries).catch(() => setStripEntries([]));
   }, [stripWeekOffset, stripWeekStart, plannerEntries]);
 
-  function toggleTheme(next) {
-    setTheme(next);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, next);
-    } catch {
-      // localStorage unavailable (private browsing, etc.) — theme just
-      // won't persist across visits, which is fine as a fallback.
-    }
-  }
-
   const restaurantRecipe = recipes.find((r) => r.isPlaceholder && r.title === RESTAURANT_TITLE);
 
   const combinedHave = buildCombinedHave(pantryInventory, customStaples);
@@ -132,6 +161,7 @@ export function Home({
   const tonightBlank = todaysDinner.some(isBlankMarker);
   const tonightEntry = todaysDinner.find((e) => !isBlankMarker(e));
   const tonightMatch = tonightEntry ? makeableResults.find((m) => m.recipe.id === tonightEntry.recipe.id) : null;
+  const tonightAllHave = !!tonightMatch && tonightMatch.missingIngredients.length === 0;
 
   function dinnerFor(dayIndex) {
     return stripEntries.find((e) => e.dayOfWeek === dayIndex && e.mealType === "dinner" && !isBlankMarker(e));
@@ -148,70 +178,63 @@ export function Home({
   const dealsShown = deals.slice(0, 3).map((d) => ({ ...d, matches: matchRecipesForDeal(d, recipes) }));
   const topDealMatch = dealsShown.filter((d) => d.matches.length > 0).sort((a, b) => b.matches.length - a.matches.length)[0];
 
+  const useSoonItems = pantryInventory
+    .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0)
+    .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt))
+    .slice(0, 3);
+  const soonestUnused = useSoonItems.length > 0 && !usedThisWeek(useSoonItems[0].name, plannerEntries) ? useSoonItems[0] : null;
+
   return (
-    <div className="home-page" data-theme={theme}>
-      <div className="home-greeting">
-        <div className="home-greeting-text">
-          <h1 className="home-greeting-title">
-            {greeting()}, {user.name || user.email.split("@")[0]}
-          </h1>
-          <span className="home-greeting-date">
-            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-          </span>
-        </div>
-        <button
-          type="button"
-          className="home-theme-toggle"
-          onClick={() => toggleTheme(theme === "dark" ? "light" : "dark")}
-          aria-label={`Switch Home to ${theme === "dark" ? "light" : "dark"} mode`}
-        >
-          <span className={`home-theme-toggle-pill${theme === "light" ? " active" : ""}`}>Light</span>
-          <span className={`home-theme-toggle-pill${theme === "dark" ? " active" : ""}`}>Dark</span>
-        </button>
+    <div className="riso-theme riso-home home-page" data-theme="light">
+      <div className="riso-home-greeting">
+        <h1 className="riso-home-greeting-title">
+          {greeting()},
+          <br />
+          <span className="accent">{user.name || user.email.split("@")[0]}.</span>
+        </h1>
       </div>
 
-      <div className="home-top-row">
-        <section className="home-card home-tonight-card">
-          <div className="home-eyebrow">Tonight · Supper</div>
+      <div className="riso-home-top-row">
+        <section className="riso-home-hero">
+          {tonightAllHave && (
+            <span className="riso-sticker yellow" style={{ top: -14, right: 26, transform: "rotate(6deg)" }}>
+              nothing to buy!
+            </span>
+          )}
           {tonightEntry ? (
-            <div className="home-tonight-body">
+            <div className="riso-home-hero-body">
               {tonightEntry.recipe.photoUrl ? (
-                <img src={tonightEntry.recipe.photoUrl} alt="" className="home-tonight-photo" />
+                <img src={tonightEntry.recipe.photoUrl} alt="" className="riso-home-hero-photo" />
               ) : (
-                <div className="home-tonight-photo placeholder">no photo</div>
+                <div className="riso-home-hero-photo placeholder">no photo</div>
               )}
-              <div className="home-tonight-info">
-                <h2 className="home-tonight-title">{tonightEntry.recipe.title}</h2>
-                <p className="home-tonight-blurb">
+              <div className="riso-home-hero-info">
+                <div className="riso-eyebrow on-accent">Tonight · Supper</div>
+                <h2 className="riso-home-hero-title">{tonightEntry.recipe.title}</h2>
+                <p className="riso-home-hero-blurb">
                   {tonightEntry.recipe.isPlaceholder
                     ? "Eating out tonight."
                     : tonightMatch
                     ? `You have all ${tonightMatch.totalCount} ingredients.`
                     : tonightEntry.recipe.ingredients?.length
-                    ? `You're missing some ingredients for this one.`
+                    ? "You're missing some ingredients for this one."
                     : null}
                 </p>
-                <div className="home-eyebrow home-tonight-stats">
-                  {[
-                    (tonightEntry.recipe.prepTimeMinutes || 0) + (tonightEntry.recipe.cookTimeMinutes || 0) > 0 &&
-                      `${(tonightEntry.recipe.prepTimeMinutes || 0) + (tonightEntry.recipe.cookTimeMinutes || 0)} min`,
-                    tonightEntry.recipe.ingredients?.length && `${tonightEntry.recipe.ingredients.length} ingredients`,
-                    tonightEntry.recipe.baseServings && `serves ${tonightEntry.recipe.baseServings}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </div>
-                <div className="home-tonight-actions">
-                  <button type="button" className="btn primary" onClick={() => onSelectRecipe(tonightEntry.recipe)}>
-                    Open recipe
+                <div className="riso-home-hero-actions">
+                  <button
+                    type="button"
+                    className="riso-btn hot"
+                    onClick={() => onSelectRecipe(tonightEntry.recipe, null, true)}
+                  >
+                    Start cooking
                   </button>
                   {!tonightEntry.recipe.isPlaceholder && (
-                    <button type="button" className="btn subtle" onClick={() => onNavigate("planner")}>
-                      Swap meal
+                    <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
+                      Swap
                     </button>
                   )}
                   {!tonightEntry.recipe.isPlaceholder && restaurantRecipe && (
-                    <button type="button" className="btn subtle" onClick={handleEatingOut}>
+                    <button type="button" className="riso-btn outline-on-accent" onClick={handleEatingOut}>
                       Eating out
                     </button>
                   )}
@@ -219,14 +242,15 @@ export function Home({
               </div>
             </div>
           ) : (
-            <div className="home-tonight-empty">
+            <div className="riso-home-hero-empty">
+              <div className="riso-eyebrow on-accent">Tonight · Supper</div>
               <p>{tonightBlank ? "Marked as no meal planned tonight." : "Nothing planned for tonight yet."}</p>
-              <div className="home-tonight-actions">
-                <button type="button" className="btn primary" onClick={() => onNavigate("planner")}>
+              <div className="riso-home-hero-actions">
+                <button type="button" className="riso-btn hot" onClick={() => onNavigate("planner")}>
                   Add a recipe
                 </button>
                 {restaurantRecipe && (
-                  <button type="button" className="btn subtle" onClick={handleEatingOut}>
+                  <button type="button" className="riso-btn outline-on-accent" onClick={handleEatingOut}>
                     Eating out
                   </button>
                 )}
@@ -235,61 +259,50 @@ export function Home({
           )}
         </section>
 
-        <section className="home-card home-grocery-card">
-          <div className="home-card-header">
-            <h3>Grocery list</h3>
-            <button type="button" className="home-card-link" onClick={() => onNavigate("grocery")}>
-              Open →
-            </button>
-          </div>
-          <div className="home-grocery-count">
+        <section className="riso-home-grocery">
+          <div className="riso-eyebrow on-pink">Grocery list</div>
+          <div className="riso-home-grocery-count">
             <span className="home-grocery-number">{toBuy.length}</span>
-            <span className="home-grocery-unit">items for this week</span>
+            <span className="riso-home-grocery-unit">things to grab this week</span>
           </div>
-          <div className="home-progress-track">
-            <div className="home-progress-fill" style={{ width: `${progressPct}%` }} />
+          <div className="riso-home-grocery-track">
+            <div className="riso-home-grocery-fill" style={{ width: `${progressPct}%` }} />
           </div>
-          <div className="home-eyebrow">
-            {checkedCount} of {toBuy.length} checked off
-          </div>
-          {saleCount > 0 && (
-            <p className="home-grocery-sale">
-              {saleCount} item{saleCount === 1 ? "" : "s"} on your list {saleCount === 1 ? "is" : "are"} on sale this
-              week.
-            </p>
-          )}
+          <p className="riso-home-grocery-line">
+            {checkedCount} in the cart{saleCount > 0 ? ` · ${saleCount} on sale` : ""}
+          </p>
+          <button type="button" className="riso-btn ink full" onClick={() => onNavigate("grocery")}>
+            Open list →
+          </button>
         </section>
       </div>
 
-      <section className="home-card home-week-card">
-        <div className="home-card-header">
+      <section className="riso-home-week">
+        <div className="riso-home-week-header">
           <h3>
             {stripWeekOffset === 0 ? "This week's" : "Next week's"} suppers{" "}
-            <span className="home-card-header-sub">
+            <span className="riso-home-week-sub">
               · {DAY_INDICES.filter((d) => dinnerFor(d)).length} of 7 planned
             </span>
           </h3>
-          <button type="button" className="home-card-link" onClick={() => onNavigate("planner")}>
-            Open planner →
-          </button>
+          <div className="riso-chip-row">
+            <button
+              type="button"
+              className={`riso-chip small${stripWeekOffset === 0 ? " active" : ""}`}
+              onClick={() => setStripWeekOffset(0)}
+            >
+              This week
+            </button>
+            <button
+              type="button"
+              className={`riso-chip small${stripWeekOffset === 1 ? " active" : ""}`}
+              onClick={() => setStripWeekOffset(1)}
+            >
+              Next week
+            </button>
+          </div>
         </div>
-        <div className="home-week-toggle">
-          <button
-            type="button"
-            className={`home-week-toggle-btn${stripWeekOffset === 0 ? " active" : ""}`}
-            onClick={() => setStripWeekOffset(0)}
-          >
-            This week
-          </button>
-          <button
-            type="button"
-            className={`home-week-toggle-btn${stripWeekOffset === 1 ? " active" : ""}`}
-            onClick={() => setStripWeekOffset(1)}
-          >
-            Next week
-          </button>
-        </div>
-        <div className="home-week-strip">
+        <div className="riso-home-week-strip">
           {DAY_INDICES.map((d) => {
             const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
             const entry = dinnerFor(d);
@@ -297,105 +310,110 @@ export function Home({
               <button
                 key={d}
                 type="button"
-                className={`home-week-day${isToday ? " today" : ""}`}
+                className={`riso-home-week-day${isToday ? " today" : ""}`}
                 onClick={() => onSelectRecipe(entry.recipe)}
               >
                 {entry.recipe.photoUrl ? (
-                  <img src={entry.recipe.photoUrl} alt="" className="home-week-day-photo" />
+                  <img src={entry.recipe.photoUrl} alt="" className="riso-home-week-day-photo" />
                 ) : (
-                  <div className="home-week-day-photo placeholder" />
+                  <div className="riso-home-week-day-photo placeholder" />
                 )}
-                <div className="home-week-day-body">
-                  <span className="home-week-day-label">{weekday.toUpperCase()} {dayNum}</span>
-                  <span className="home-week-day-title">{entry.recipe.title}</span>
+                <div className="riso-home-week-day-body">
+                  <span className="riso-home-week-day-label">
+                    {weekday.toUpperCase()} {dayNum}
+                  </span>
+                  <span className="riso-home-week-day-title">{entry.recipe.title}</span>
                 </div>
               </button>
             ) : (
               <button
                 key={d}
                 type="button"
-                className={`home-week-day empty${isToday ? " today" : ""}`}
+                className={`riso-home-week-day empty${isToday ? " today" : ""}`}
                 onClick={() => onNavigate("planner")}
               >
-                <span className="home-week-day-label">{weekday.toUpperCase()} {dayNum}</span>
-                <span className="home-week-day-plan">+ Plan</span>
+                <span className="riso-home-week-day-label">
+                  {weekday.toUpperCase()} {dayNum}
+                </span>
+                <span className="riso-home-week-day-plan">+ plan</span>
               </button>
             );
           })}
         </div>
       </section>
 
-      <div className="home-bottom-row">
-        <section className="home-card home-mini-card">
-          <div className="home-card-header">
-            <h3>Use soon</h3>
-            <button type="button" className="home-card-link" onClick={() => onNavigate("inventory")}>
+      <div className="riso-home-bottom-row">
+        <section className="riso-home-mini">
+          <div className="riso-home-mini-header">
+            <h3>Use it up</h3>
+            <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("inventory")}>
               Inventory →
             </button>
           </div>
-          {pantryInventory.filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0).length === 0 ? (
-            <p className="home-empty-note">Nothing expiring soon.</p>
+          {useSoonItems.length === 0 ? (
+            <p className="riso-empty-note">Nothing expiring soon.</p>
           ) : (
-            <div className="home-use-soon-list">
-              {pantryInventory
-                .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0)
-                .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt))
-                .slice(0, 3)
-                .map((item) => (
-                  <div key={item.id} className="home-use-soon-row">
-                    <span>{item.name}</span>
-                    <span className={`home-expiry-badge${daysUntil(item.expiresAt) <= 1 ? " soon" : ""}`}>
-                      {formatExpiry(item.expiresAt)}
-                    </span>
+            <>
+              <div className="riso-sticker-grid">
+                {useSoonItems.map((item, i) => (
+                  <div key={item.id} className="riso-sticker-cell">
+                    <StickerCircle item={item} index={i} tone={i === 0 ? "pink" : i === 1 ? "yellow" : "plain"} />
+                    <span className="riso-sticker-cell-name">{item.name}</span>
                   </div>
                 ))}
-            </div>
+              </div>
+              {soonestUnused && (
+                <p className="riso-home-mini-footer">
+                  {soonestUnused.name} isn't in any meal this week.{" "}
+                  <button type="button" className="riso-home-mini-link" onClick={() => onFindRecipes?.(soonestUnused.name)}>
+                    Find a recipe
+                  </button>
+                </p>
+              )}
+            </>
           )}
         </section>
 
-        <section className="home-card home-mini-card">
-          <div className="home-card-header">
+        <section className="riso-home-mini">
+          <div className="riso-home-mini-header">
             <h3>Makeable now</h3>
-            <button type="button" className="home-card-link" onClick={() => onNavigate("makeable")}>
+            <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("makeable")}>
               All →
             </button>
           </div>
           {makeableNow.length === 0 ? (
-            <p className="home-empty-note">Nothing fully makeable with what's on hand yet.</p>
+            <p className="riso-empty-note">Nothing fully makeable with what's on hand yet.</p>
           ) : (
             <div className="home-makeable-list">
               {makeableNow.map(({ recipe }) => (
-                <MealCard key={recipe.id} recipe={recipe} compact onClick={() => onSelectRecipe(recipe)} />
+                <MakeableRow key={recipe.id} recipe={recipe} onOpen={onSelectRecipe} />
               ))}
             </div>
           )}
         </section>
 
-        <section className="home-card home-mini-card">
-          <div className="home-card-header">
-            <h3>On sale this week</h3>
-            <button type="button" className="home-card-link" onClick={() => onNavigate("flyers")}>
+        <section className="riso-home-mini">
+          <div className="riso-home-mini-header">
+            <h3>On sale</h3>
+            <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("flyers")}>
               Flyers →
             </button>
           </div>
           {deals.length === 0 ? (
-            <p className="home-empty-note">No flyer deals loaded yet.</p>
+            <p className="riso-empty-note">No flyer deals loaded yet.</p>
           ) : (
-            <div className="home-sale-list">
-              {dealsShown.map((d) => (
-                <div key={d.id} className="home-sale-row">
-                  <span>{d.item}</span>
-                  <span className="home-sale-price">{d.price}</span>
-                </div>
+            <div className="riso-price-tag-list">
+              {dealsShown.map((d, i) => (
+                <PriceTag key={d.id} deal={d} index={i} />
               ))}
             </div>
           )}
           {topDealMatch && (
-            <p className="home-sale-footer">
+            <p className="riso-home-mini-footer">
               {topDealMatch.matches.length} of your recipes use {topDealMatch.item.toLowerCase()}.{" "}
               <button
                 type="button"
-                className="home-card-link"
+                className="riso-home-mini-link"
                 onClick={() => onFindRecipes?.(topDealMatch.matches[0].ingredientName)}
               >
                 See them →

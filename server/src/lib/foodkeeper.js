@@ -168,3 +168,16 @@ export function suggestAllLocations(name, purchasedAt) {
   }
   return result;
 }
+
+// "Freezes N months." for a matched ingredient, using the same bundled
+// FoodKeeper freezer data as suggestAllLocations - the Riso Poster Flyers
+// redesign's freeze tip line. Null when nothing matched or the matched
+// entry has no freezer data (e.g. most produce, which FoodKeeper doesn't
+// recommend freezing at all), so the caller can simply omit the tip rather
+// than guessing.
+export function freezeTip(name) {
+  const match = findBestMatch(name);
+  if (!match?.freezeDays) return null;
+  const { min, max } = match.freezeDays;
+  return `Freezes ${formatDayRange(min, max)}.`;
+}

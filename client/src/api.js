@@ -78,6 +78,10 @@ export const api = {
   // through `request()` since this isn't JSON.
   flyerUploadImageUrl: (source) => `${BASE}/flyers/image/${encodeURIComponent(source)}`,
 
+  listWatchlist: () => request("/watchlist"),
+  addToWatchlist: (matchName) => request("/watchlist", { method: "POST", body: JSON.stringify({ matchName }) }),
+  removeFromWatchlist: (matchName) => request(`/watchlist/${encodeURIComponent(matchName)}`, { method: "DELETE" }),
+
   listGroceryExtras: (weekStart) =>
     request(`/grocery-extra-items?week=${encodeURIComponent(weekStart)}`),
   addGroceryExtra: (weekStart, item) =>
