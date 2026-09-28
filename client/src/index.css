@@ -28,6 +28,80 @@
   color-scheme: dark;
 }
 
+/* ---------- "Cobalt Vapor" theme tokens (design handoff) ----------
+   Foundation for the full-app redesign in design_handoff_cookbook_app/
+   README.md - implemented one screen at a time, starting here with just
+   the token layer itself. Prefixed --vp- (Vapor), same pattern as this
+   file's other incremental-redesign token sets (--inv-*, --hm-*), so this
+   is purely additive: nothing reads these yet, and no existing screen's
+   appearance changes until it's migrated in a later pass.
+
+   Cream tint only (the README's default; lilac is optional and explicitly
+   "build only if the owner confirms" - skipped here). Light is the new
+   default per the handoff; dark is the same toggle mechanism screens will
+   opt into as they migrate, same as .home-page[data-theme] does today. */
+.vp-theme[data-theme="light"] {
+  --vp-bg: #f7f3ec;
+  --vp-surface: #fffdf9;
+  --vp-surface2: #f0eae0;
+  --vp-track: #e8e0d3;
+  --vp-border: #e6ddd0;
+  --vp-dash: #d4c9b8;
+  --vp-box-line: #c9bfaf;
+  --vp-miss-line: #b5aa98;
+  --vp-text: #1e1b16;
+  --vp-soft: #463f35;
+  --vp-muted: #6b6358;
+  --vp-nav: #463f35;
+  --vp-accent: #2323ff;
+  --vp-on-accent: #ffffff;
+  --vp-highlight: #2323ff;
+  --vp-hot: #c8106f;
+  --vp-badge: #c8106f;
+  --vp-sale: #0a8a22;
+  --vp-shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 0 0 1px #ece4d6;
+  --vp-glow: none;
+  --vp-scrim: #e4dccf;
+  --vp-photo-overlay: rgba(20, 17, 12, 0.72);
+  color-scheme: light;
+}
+
+.vp-theme[data-theme="dark"] {
+  --vp-bg: #15130f;
+  --vp-surface: #1e1b16;
+  --vp-surface2: #29251f;
+  --vp-track: #0f0d0a;
+  --vp-border: #332e27;
+  --vp-dash: rgba(255, 240, 220, 0.16);
+  --vp-box-line: #4a443a;
+  --vp-miss-line: #6e665a;
+  --vp-text: #f5efe6;
+  --vp-soft: #d6cec2;
+  --vp-muted: #a89f92;
+  --vp-nav: #ddd5c9;
+  --vp-accent: #2323ff;
+  --vp-on-accent: #ffffff;
+  --vp-highlight: #b9a8ff;
+  --vp-hot: #ff4fae;
+  --vp-badge: #e0157f;
+  --vp-sale: #45ff5c;
+  --vp-shadow: none;
+  --vp-glow: 0 0 0 1px rgba(120, 120, 255, 0.55), 0 0 18px rgba(35, 35, 255, 0.5);
+  --vp-scrim: #0d0b08;
+  --vp-photo-overlay: rgba(20, 17, 12, 0.72);
+  color-scheme: dark;
+}
+
+/* Typography tokens for the same redesign - Merriweather replaces Fraunces
+   for display type, JetBrains Mono replaces IBM Plex Mono for labels/meta/
+   quantities (both now loaded in index.html alongside the originals, which
+   stay in place for every screen not yet migrated). Inter is unchanged. */
+.vp-theme {
+  --vp-font-display: "Merriweather", serif;
+  --vp-font-body: "Inter", system-ui, sans-serif;
+  --vp-font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
 * {
   box-sizing: border-box;
 }
