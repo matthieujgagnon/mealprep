@@ -87,6 +87,12 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
 });
 
 test("dragging a card from one shelf to another moves it", async ({ page }) => {
+  // Pantry sits in its own full-width row below Fridge/Freezer in the Riso
+  // layout (see the design handoff), which pushes it below the fold at the
+  // default 1280x720 viewport - a raw page.mouse sequence (needed for
+  // dnd-kit's PointerSensor, see below) doesn't auto-scroll like .click()
+  // does, so both shelves need to already be on screen.
+  await page.setViewportSize({ width: 1280, height: 1000 });
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 

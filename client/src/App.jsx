@@ -551,6 +551,7 @@ export default function App({ user, onLogout }) {
 
         {tab === "inventory" && (
           <Inventory
+            user={user}
             items={pantryInventory}
             onAdd={handleAddPantryItem}
             onUpdate={handleUpdatePantryItem}
@@ -562,7 +563,7 @@ export default function App({ user, onLogout }) {
             recipes={recipes}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
-              setActiveTagFilter(null);
+              setRecipeFilter("All");
               setTab("collection");
             }}
             onFindRecipesForSelection={() => setTab("makeable")}

@@ -4,6 +4,7 @@ import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { api } from "../api.js";
 import { LOCATIONS, daysUntil } from "../lib/pantryInventory.js";
+import { HintStrip } from "./RisoControls.jsx";
 
 // Fridge and Freezer sit side by side, Pantry after - see the design
 // handoff. "Counter" is a fourth USDA location the bundled data supports
@@ -31,6 +32,17 @@ function expiryChip(item) {
   if (d < 60) return `${d}D`;
   if (d < 365) return `${Math.round(d / 30)}MO`;
   return `${Math.round(d / 365)}Y`;
+}
+
+// Urgent items (<=3 days, per isUrgent) swap the calm DM Mono label for a
+// tilted pink sticker instead, matching the handoff's "tomorrow!"/"{n}
+// days" copy.
+function urgentLabel(item) {
+  const d = daysUntil(item.expiresAt);
+  if (d < 0) return "expired!";
+  if (d === 0) return "today!";
+  if (d === 1) return "tomorrow!";
+  return `${d} days`;
 }
 
 // The add form fetches a suggested expiration date and category from the
@@ -273,12 +285,12 @@ function ReceiptScanPanel({ onAdd, onDone, locations }) {
 
 function Modal({ title, onClose, children }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="card modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">
+    <div className="modal-overlay riso-inv-form-overlay" onClick={onClose}>
+      <div className="card modal-content riso-inv-form-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close riso-inv-form-close" onClick={onClose} aria-label="Close">
           ×
         </button>
-        <h3 style={{ marginTop: 0 }}>{title}</h3>
+        <h3 className="riso-inv-form-title">{title}</h3>
         {children}
       </div>
     </div>
@@ -320,27 +332,38 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`inv-card${active ? " active" : ""}${urgent && !active ? " urgent" : ""}${
+      className={`inv-card${active ? " active" : ""}${selected ? " selected" : ""}${
         isDragging ? " dragging" : ""
       }`}
       onClick={onSelect}
     >
       <div className="inv-card-top">
-        <input
-          type="checkbox"
-          className="inv-card-check"
-          checked={selected}
-          onChange={(e) => {
+        <span
+          role="checkbox"
+          aria-checked={selected}
+          tabIndex={0}
+          className={`inv-card-check${selected ? " on" : ""}`}
+          onClick={(e) => {
             e.stopPropagation();
             onToggleSelect();
           }}
-          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleSelect();
+            }
+          }}
           aria-label={`Select ${item.name}`}
-        />
-        <span className="inv-card-name">{item.name}</span>
-        <span className={`inv-card-expiry${days !== null && days <= 3 ? " urgent-text" : ""}`}>
-          {expiryChip(item)}
+        >
+          {selected ? "✓" : ""}
         </span>
+        <span className="inv-card-name">{item.name}</span>
+        {urgent ? (
+          <span className="inv-card-urgent-sticker">{urgentLabel(item)}</span>
+        ) : (
+          <span className="inv-card-expiry">{expiryChip(item)}</span>
+        )}
       </div>
       {(item.quantity != null || item.unit) && (
         <div className="inv-card-qty">
@@ -375,8 +398,15 @@ function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onT
   // and custom sections work identically here.
   const { setNodeRef, isOver } = useDroppable({ id: `inv-shelf-${location.id}` });
 
+  // Pantry spans the full grid width with its own auto-fill sub-grid (it
+  // tends to hold far more items than Fridge/Freezer) - see the design
+  // handoff. Custom sections keep the plain single-column layout, same as
+  // Fridge/Freezer, since the handoff never designed for an arbitrary
+  // number of them.
+  const wide = location.id === "pantry";
+
   return (
-    <div ref={setNodeRef} className={`inv-shelf${isOver ? " drop-active" : ""}`}>
+    <div ref={setNodeRef} className={`inv-shelf${wide ? " wide" : ""}${isOver ? " drop-active" : ""}`}>
       <div className="inv-shelf-header">
         <span>{location.label}</span>
         <span className="inv-shelf-count">{items.length}</span>
@@ -391,20 +421,23 @@ function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onT
             ×
           </button>
         )}
+        <span className="inv-shelf-note">Soonest first</span>
       </div>
       {sorted.length === 0 ? (
         <div className="inv-shelf-empty">Nothing here yet</div>
       ) : (
-        sorted.map((item) => (
-          <ItemCard
-            key={item.id}
-            item={item}
-            active={item.id === activeItemId}
-            selected={selectedIds.has(item.id)}
-            onSelect={() => onSelect(item.id)}
-            onToggleSelect={() => onToggleSelect(item.id)}
-          />
-        ))
+        <div className={`inv-shelf-items${wide ? " grid" : ""}`}>
+          {sorted.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              active={item.id === activeItemId}
+              selected={selectedIds.has(item.id)}
+              onSelect={() => onSelect(item.id)}
+              onToggleSelect={() => onToggleSelect(item.id)}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -587,6 +620,7 @@ function FloatingActionBar({ count, onFindRecipes, onConsume, onFreeze, onClear 
 }
 
 export function Inventory({
+  user,
   items,
   onAdd,
   onUpdate,
@@ -611,6 +645,15 @@ export function Inventory({
   useEffect(() => {
     if (activeItemId && !items.some((i) => i.id === activeItemId)) setActiveItemId(null);
   }, [items, activeItemId]);
+
+  useEffect(() => {
+    if (!activeItemId) return;
+    function handleKey(e) {
+      if (e.key === "Escape") setActiveItemId(null);
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [activeItemId]);
 
   function toggleSelect(id) {
     setSelectedIds((prev) => {
@@ -654,19 +697,30 @@ export function Inventory({
   ];
 
   return (
-    <div className="inv-page">
-      <div className="inv-title-row">
-        <h1>Inventory</h1>
-        <span className="inv-summary">
-          {items.length} item{items.length === 1 ? "" : "s"} · {soonCount} to use soon
-        </span>
-        <button type="button" className="btn primary" onClick={() => setShowAdd(true)}>
-          + Add item
-        </button>
-        <button type="button" className="btn subtle" onClick={() => setShowScan(true)}>
-          Scan receipt
-        </button>
+    <div className="riso-theme riso-inv inv-page" data-theme="light">
+      <div className="riso-inv-header">
+        <div className="riso-inv-title-block">
+          <p className="riso-eyebrow">
+            {items.length} item{items.length === 1 ? "" : "s"} · {soonCount} to use soon
+          </p>
+          <h1 className="riso-inv-title">
+            What you've <span className="accent">got.</span>
+          </h1>
+        </div>
+        <div className="riso-inv-header-actions">
+          <button type="button" className="riso-inv-btn" onClick={() => setShowScan(true)}>
+            Scan receipt
+          </button>
+          <button type="button" className="riso-inv-btn primary" onClick={() => setShowAdd(true)}>
+            + Add item
+          </button>
+        </div>
       </div>
+
+      <HintStrip userId={user.id} screenKey="inventory">
+        Each shelf is sorted by what expires first. Click an item to edit it. Tick several to mark them
+        used up, tossed or frozen all at once. Pink means use it within 3 days.
+      </HintStrip>
 
       {items.length === 0 && (
         <p className="empty-state">
@@ -674,37 +728,48 @@ export function Inventory({
         </p>
       )}
 
-      <div className="inv-main">
-        <div className="inv-shelves">
-          {shelfLocations.map((loc) => (
-            <ShelfColumn
-              key={loc.id}
-              location={loc}
-              items={items.filter((i) => i.location === loc.id)}
-              activeItemId={activeItemId}
-              selectedIds={selectedIds}
-              onSelect={setActiveItemId}
-              onToggleSelect={toggleSelect}
-              onDeleteLocation={onDeleteLocation}
-            />
-          ))}
-          <AddSectionTile onAdd={onAddLocation} />
-        </div>
-        {activeItem && (
-          <EditPanel
-            item={activeItem}
-            recipes={recipes}
-            onUpdate={onUpdate}
-            onDelete={(id) => {
-              setActiveItemId(null);
-              onDelete(id);
-            }}
-            onFindRecipes={onFindRecipes}
-            isStaple={staples.has(activeItem.core)}
-            onToggleStaple={toggleStaple}
+      <div className="inv-shelves">
+        {shelfLocations.map((loc) => (
+          <ShelfColumn
+            key={loc.id}
+            location={loc}
+            items={items.filter((i) => i.location === loc.id)}
+            activeItemId={activeItemId}
+            selectedIds={selectedIds}
+            onSelect={setActiveItemId}
+            onToggleSelect={toggleSelect}
+            onDeleteLocation={onDeleteLocation}
           />
-        )}
+        ))}
+        <AddSectionTile onAdd={onAddLocation} />
       </div>
+
+      {activeItem && (
+        <div className="riso-inv-edit-overlay" onClick={() => setActiveItemId(null)}>
+          <div className="riso-inv-edit-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="riso-inv-edit-close"
+              onClick={() => setActiveItemId(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <EditPanel
+              item={activeItem}
+              recipes={recipes}
+              onUpdate={onUpdate}
+              onDelete={(id) => {
+                setActiveItemId(null);
+                onDelete(id);
+              }}
+              onFindRecipes={onFindRecipes}
+              isStaple={staples.has(activeItem.core)}
+              onToggleStaple={toggleStaple}
+            />
+          </div>
+        </div>
+      )}
 
       {selectedIds.size > 0 && (
         <FloatingActionBar
