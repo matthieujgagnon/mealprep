@@ -32,6 +32,7 @@ model User {
   pantryInventoryItems PantryInventoryItem[]
   pantryConsumptionLogs PantryConsumptionLog[]
   pantryLocations       PantryLocation[]
+  watchlistItems        WatchlistItem[]
 }
 
 // A logged-in session, looked up by the id stored in the browser's httpOnly
@@ -237,6 +238,21 @@ model FlyerDeal {
   @@index([userId, source])
   @@index([userId, isCurrent])
   @@index([userId, matchName])
+}
+
+// A flyer ingredient the user wants to keep an eye on, from the Riso Poster
+// Flyers redesign's ★ toggle - keyed by matchName (lowercase, same matching
+// text FlyerDeal.matchName uses) rather than a specific FlyerDeal row, so a
+// watch survives past whichever week's deal it was toggled from and matches
+// any store/source that later lists the same ingredient.
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchName String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, matchName])
 }
 
 // The raw file behind a manually-uploaded flyer (see POST /api/flyers/upload)
