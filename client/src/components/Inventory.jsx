@@ -300,6 +300,13 @@ function Modal({ title, onClose, children }) {
 function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
   const urgent = isUrgent(item);
+  // Items with no tracked date get the same pink-sticker treatment as a
+  // real countdown (reading "+ DATE" instead of a day count) - a nudge to
+  // set one, per the design handoff. It's cosmetic only: `urgent` (not
+  // `showSticker`) still gates the card's ink shadow and the freshness
+  // bar's color, and the "N to use soon" count only ever counts real
+  // countdowns (see soonCount in the Inventory component below).
+  const showSticker = urgent || !item.expiresAt;
   const pct =
     item.expiresAt && item.shelfLifeDays
       ? Math.min(100, Math.max(6, (Math.max(days, 0) / item.shelfLifeDays) * 100))
@@ -332,7 +339,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`inv-card${active ? " active" : ""}${selected ? " selected" : ""}${
+      className={`inv-card${active ? " active" : ""}${urgent && !active ? " urgent" : ""}${
         isDragging ? " dragging" : ""
       }`}
       onClick={onSelect}
@@ -358,18 +365,20 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
         >
           {selected ? "✓" : ""}
         </span>
-        <span className="inv-card-name">{item.name}</span>
-        {urgent ? (
-          <span className="inv-card-urgent-sticker">{urgentLabel(item)}</span>
+        <div className="inv-card-main">
+          <span className="inv-card-name">{item.name}</span>
+          {(item.quantity != null || item.unit) && (
+            <span className="inv-card-qty">
+              {item.quantity ?? ""} {item.unit || ""}
+            </span>
+          )}
+        </div>
+        {showSticker ? (
+          <span className="inv-card-urgent-sticker">{urgent ? urgentLabel(item) : expiryChip(item)}</span>
         ) : (
           <span className="inv-card-expiry">{expiryChip(item)}</span>
         )}
       </div>
-      {(item.quantity != null || item.unit) && (
-        <div className="inv-card-qty">
-          {item.quantity ?? ""} {item.unit || ""}
-        </div>
-      )}
       {pct !== null && (
         <div className="inv-freshness-track">
           <div

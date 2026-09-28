@@ -1346,7 +1346,7 @@ select {
 .inv-shelves {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
   align-items: start;
 }
 
@@ -1368,10 +1368,10 @@ select {
 .inv-shelf-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-family: var(--riso-font-display);
   font-weight: 800;
-  font-size: 22px;
+  font-size: 24px;
   color: var(--riso-ink);
 }
 
@@ -1382,15 +1382,17 @@ select {
 .inv-shelf-count {
   min-width: 30px;
   height: 30px;
-  padding: 0 6px;
+  padding: 0 9px;
   border-radius: 15px;
   background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 12.5px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 14px;
   color: var(--riso-ink);
 }
 
@@ -1418,15 +1420,13 @@ select {
 }
 
 .inv-shelf-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .inv-shelf-items.grid {
-  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
 }
 
 .inv-shelf-empty {
@@ -1495,7 +1495,7 @@ select {
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   cursor: grab;
   transition: box-shadow 0.15s ease;
   /* touch-action: none — see the long comment on .meal-card above for why
@@ -1508,9 +1508,12 @@ select {
   touch-action: none;
 }
 
-.inv-card.active,
-.inv-card.selected {
+.inv-card.active {
   box-shadow: var(--riso-shadow-selected);
+}
+
+.inv-card.urgent {
+  box-shadow: var(--riso-shadow);
 }
 
 .inv-card.dragging {
@@ -1519,13 +1522,14 @@ select {
 
 .inv-card-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
 .inv-card-check {
   width: 22px;
   height: 22px;
+  margin-top: 1px;
   flex-shrink: 0;
   border-radius: 7px;
   border: 2px solid var(--riso-ink);
@@ -1533,7 +1537,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #fff;
   cursor: pointer;
@@ -1543,21 +1547,30 @@ select {
   background: var(--riso-accent);
 }
 
-.inv-card-name {
+.inv-card-main {
   flex: 1;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.3;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inv-card-name {
+  font-weight: 700;
+  font-size: 14.5px;
+  line-height: 1.25;
   overflow-wrap: anywhere;
   color: var(--riso-ink);
 }
 
 .inv-card-expiry {
+  flex: none;
   font-family: var(--riso-font-mono);
   font-weight: 500;
   font-size: 10.5px;
   white-space: nowrap;
   color: var(--riso-muted);
+  padding-top: 2px;
 }
 
 .inv-card-urgent-sticker {
@@ -1578,6 +1591,7 @@ select {
   font-family: var(--riso-font-mono);
   font-weight: 500;
   font-size: 10.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--riso-muted);
   white-space: nowrap;
@@ -1640,7 +1654,9 @@ select {
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   box-shadow: var(--riso-shadow);
-  font-size: 20px;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 22px;
   line-height: 1;
   color: var(--riso-ink);
   cursor: pointer;
@@ -1652,7 +1668,7 @@ select {
 .inv-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .inv-panel-header {
@@ -1665,7 +1681,8 @@ select {
 .inv-panel-header h3 {
   font-family: var(--riso-font-display);
   font-weight: 800;
-  font-size: 22px;
+  font-size: 26px;
+  line-height: 1.1;
   margin: 0;
   color: var(--riso-ink);
   overflow-wrap: anywhere;
@@ -1673,7 +1690,9 @@ select {
 
 .inv-panel-category {
   font-family: var(--riso-font-mono);
+  font-weight: 500;
   font-size: 10.5px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--riso-muted);
   white-space: nowrap;
@@ -1682,8 +1701,8 @@ select {
 .inv-panel-label {
   font-family: var(--riso-font-mono);
   font-weight: 500;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   color: var(--riso-muted);
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -1692,25 +1711,28 @@ select {
 .inv-qty-stepper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .inv-qty-stepper button {
   width: 40px;
   height: 40px;
   border-radius: 20px;
-  background: var(--riso-surface);
+  background: var(--riso-canvas);
   border: 2px solid var(--riso-ink);
   color: var(--riso-ink);
-  font-size: 16px;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 18px;
   cursor: pointer;
 }
 
 .inv-qty-stepper span {
-  min-width: 64px;
+  min-width: 80px;
   text-align: center;
-  font-size: 15px;
-  font-weight: 600;
+  font-family: var(--riso-font-display);
+  font-size: 18px;
+  font-weight: 800;
   color: var(--riso-ink);
 }
 
@@ -1723,16 +1745,18 @@ select {
 .inv-storage-pill {
   height: 44px;
   border-radius: 22px;
-  padding: 0 14px;
-  font-size: 13.5px;
+  padding: 0 16px;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   background: var(--riso-canvas);
   color: var(--riso-ink);
   border: 2px solid var(--riso-ink);
   cursor: pointer;
-  font-family: var(--riso-font-body);
 }
 
 .inv-storage-pill.active {
@@ -1743,8 +1767,10 @@ select {
 }
 
 .inv-storage-pill-range {
-  opacity: 0.8;
-  font-size: 12.5px;
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
+  font-size: 11.5px;
+  opacity: 0.85;
 }
 
 .inv-use-by {
@@ -1765,9 +1791,9 @@ select {
 }
 
 .inv-panel-footer {
-  border-top: 2px dashed var(--riso-dash);
+  border-top: 1.5px dashed var(--riso-dash-strong);
   padding-top: 14px;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--riso-soft);
   line-height: 1.5;
 }
@@ -1881,7 +1907,7 @@ select {
   transform: translateX(-50%);
   background: var(--riso-ink);
   border: 2px solid var(--riso-ink);
-  border-radius: 24px;
+  border-radius: 999px;
   padding: 8px;
   display: flex;
   align-items: center;
@@ -1891,25 +1917,25 @@ select {
 }
 
 .inv-action-count {
-  font-family: var(--riso-font-mono);
-  font-size: 13.5px;
-  font-weight: 600;
+  font-family: var(--riso-font-display);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--riso-canvas);
   padding: 0 12px;
   white-space: nowrap;
 }
 
 .inv-action-btn {
-  height: 34px;
-  border-radius: 17px;
-  padding: 0 14px;
-  font-size: 13.5px;
+  height: 38px;
+  border-radius: 19px;
+  padding: 0 16px;
+  font-size: 14px;
   border: 2px solid rgba(244, 241, 234, 0.45);
   cursor: pointer;
   background: none;
   color: var(--riso-canvas);
   font-family: var(--riso-font-display);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .inv-action-btn.primary {
