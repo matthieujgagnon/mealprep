@@ -755,6 +755,11 @@ export default function App({ user, onLogout }) {
               setTab("planner");
             }}
             onAddPantryItem={handleAddPantryItem}
+            onDeletePantryItem={handleDeletePantryItem}
+            onNavigate={(t) => {
+              openRecipe(null);
+              setTab(t);
+            }}
           />
         )}
       </div>

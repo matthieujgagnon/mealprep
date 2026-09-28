@@ -108,7 +108,7 @@ test("THIS STEP USES pills show ingredients mentioned in the step, with scaled q
   await page.getByRole("button", { name: "Exit" }).click();
   // 4 -> 8 servings (a clean 2x scale) via the "+" button, four clicks.
   for (let i = 0; i < 4; i++) {
-    await page.locator(".rc-servings-stepper button").nth(1).click();
+    await page.locator(".riso-rc-servings-stepper button").nth(1).click();
   }
   await page.getByRole("button", { name: "Start cooking" }).click();
   await page.waitForTimeout(200);
@@ -137,7 +137,7 @@ test("finishing the last step opens the leftovers sheet and logs the item to inv
   await page.getByRole("button", { name: "Save 4 portions" }).click();
   await expect(page.locator(".cm-overlay")).toHaveCount(0);
 
-  await page.locator(".modal-close").click();
+  await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect(page.getByText("Cook Mode Finish Test (leftovers)")).toBeVisible();
 });
@@ -156,7 +156,7 @@ test("Skip on the leftovers sheet closes cook mode without logging anything", as
   await page.locator(".cm-finish-sheet").getByRole("button", { name: "Skip" }).click();
   await expect(page.locator(".cm-overlay")).toHaveCount(0);
 
-  await page.locator(".modal-close").click();
+  await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect(page.getByText("Cook Mode Skip Test (leftovers)")).toHaveCount(0);
 });
