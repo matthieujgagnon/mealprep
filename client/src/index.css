@@ -3721,7 +3721,7 @@ input[type="date"].planner-week-picker {
 
 .riso-table-row {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) 90px 100px 110px minmax(0, 1.5fr) 150px;
+  grid-template-columns: minmax(0, 2.2fr) 90px 110px 120px minmax(0, 1.6fr) 150px;
   gap: 14px;
   align-items: center;
   padding: 12px 18px;

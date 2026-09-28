@@ -527,6 +527,7 @@ export default function App({ user, onLogout }) {
 
         {tab === "flyers" && (
           <FlyerDeals
+            user={user}
             recipes={recipes}
             customStaples={customStaples}
             weekStart={weekStart}

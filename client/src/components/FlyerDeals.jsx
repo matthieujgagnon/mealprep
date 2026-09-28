@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { canonicalize } from "../lib/groceryList.js";
 import { daysUntil } from "../lib/pantryInventory.js";
+import { HintStrip } from "./RisoControls.jsx";
 
 // Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
 // per the schema, mealType id matches PlannerEntry.mealType).
@@ -258,7 +259,7 @@ function PriceMeter({ deal }) {
   );
 }
 
-export function FlyerDeals({ recipes, customStaples, weekStart, onSelectRecipe, onAddToPlanner }) {
+export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRecipe, onAddToPlanner }) {
   const [deals, setDeals] = useState(null);
   const [watchlist, setWatchlist] = useState(new Set());
   const [storeFilter, setStoreFilter] = useState(null);
@@ -430,6 +431,12 @@ export function FlyerDeals({ recipes, customStaples, weekStart, onSelectRecipe, 
         <p className="riso-flyers-sub">Showing sample data — upload a store's flyer PDF to pull in real deals.</p>
       ) : (
         <>
+          <HintStrip userId={user.id} screenKey="flyers">
+            Deals are compared with the last 6 months of prices. On the meter, a green dot toward
+            the left means it's a real deal. Pink means the deal ends within 2 days. Star an item
+            to watch it.
+          </HintStrip>
+
           <div className="riso-flyers-top-row">
             <section className="riso-block accent">
               <span className="riso-sticker yellow" style={{ top: -14, right: 22, transform: "rotate(5deg)" }}>
