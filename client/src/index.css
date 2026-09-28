@@ -1833,95 +1833,6 @@ select {
   font-style: italic;
 }
 
-/* ---------- Grocery store sections ---------- */
-
-.store-sections-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-}
-
-@media (max-width: 680px) {
-  .store-sections-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.store-section {
-  background: var(--bg-soft);
-  border-radius: 10px;
-  padding: 10px 12px;
-  border: 1px dashed transparent;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.store-section.drop-active {
-  border-color: var(--mustard);
-  background: rgba(35, 35, 255, 0.1);
-}
-
-.store-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.store-section-title {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--paper-soft);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.store-section-reorder {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.store-section-reorder button {
-  background: none;
-  border: none;
-  color: var(--paper-soft);
-  opacity: 0.6; /* below ~0.52 this drops under 4.5:1 against --bg-soft */
-  cursor: pointer;
-  font-size: 11px;
-  padding: 2px 4px;
-  line-height: 1;
-}
-
-.store-section-reorder button:hover:not(:disabled) {
-  opacity: 1;
-  color: var(--sage);
-}
-
-.store-section-reorder button:disabled {
-  opacity: 0.15;
-  cursor: default;
-}
-
-.add-section-form {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.add-section-form input {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  font-size: 13px;
-  background: var(--paper);
-  color: var(--ink);
-}
-
 .manual-form {
   padding: 18px;
   margin-bottom: 18px;
@@ -2241,18 +2152,6 @@ select {
   background: var(--mustard);
   border: 2px solid #fff;
   flex-shrink: 0;
-}
-
-.grocery-recipe-group {
-  margin-bottom: 16px;
-}
-
-.grocery-recipe-heading {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--sage);
-  margin: 0 0 6px;
 }
 
 /* ---------- Import form ---------- */
@@ -3088,226 +2987,6 @@ input[type="date"].planner-week-picker {
 .planner-note-input::placeholder {
   color: rgba(227, 227, 246, 0.45);
   font-weight: 500;
-}
-
-.grocery-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.grocery-item {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  background: var(--bg-soft);
-  border-radius: 8px;
-  padding: 10px 14px;
-}
-
-.grocery-item label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  cursor: pointer;
-}
-
-.grocery-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent-text);
-  cursor: pointer;
-}
-
-.grocery-item-main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.grocery-item-namerow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.grocery-item-name {
-  font-size: 14px;
-}
-
-.grocery-item-variety {
-  font-size: 12px;
-  color: var(--paper-soft);
-  opacity: 0.65;
-}
-
-.grocery-item-qty {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--paper);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 3px 9px;
-  border-radius: 6px;
-  white-space: nowrap;
-  letter-spacing: 0.01em;
-}
-
-.grocery-item-sources {
-  font-size: 11px;
-  color: var(--sage);
-  opacity: 0.85;
-  margin-top: 2px;
-}
-
-.grocery-item.checked .grocery-item-name {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
-
-.deal-flag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  background: var(--mustard);
-  color: #eef0ff;
-  padding: 3px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.deal-flag.sale {
-  background: var(--tomato);
-  color: #fbe9e6;
-}
-
-.grocery-item.draggable {
-  cursor: grab;
-  /* touch-action: none — see .meal-card's comment above; same fix, same
-     reasoning (this list is vertical, single-column). */
-  touch-action: none;
-}
-
-.grocery-item.dragging {
-  opacity: 0.4;
-}
-
-.grocery-week-label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--sage);
-  margin: 0 0 10px;
-}
-
-.grocery-note {
-  background: var(--bg-soft);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-}
-
-.grocery-note p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.85;
-  line-height: 1.5;
-}
-
-.grocery-note p:first-child {
-  margin-bottom: 4px;
-}
-
-.grocery-note strong {
-  color: var(--paper);
-  font-family: var(--font-mono);
-}
-
-.staples-section {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--bg-soft);
-  border-radius: 8px;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.staples-section.drop-active {
-  border-color: var(--mustard);
-  background: rgba(35, 35, 255, 0.1);
-  padding: 10px 8px;
-}
-
-.staples-subsection {
-  border-radius: 8px;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.staples-subsection.drop-active {
-  box-shadow: 0 0 0 2px var(--mustard);
-  background: rgba(35, 35, 255, 0.08);
-  padding: 6px 4px;
-}
-
-.staples-toggle {
-  background: none;
-  border: none;
-  color: var(--paper-soft);
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 4px 0;
-}
-
-.staples-toggle:hover {
-  opacity: 0.85;
-}
-
-.staples-subheading {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sage);
-  margin: 14px 0 6px 4px;
-}
-
-.staples-list {
-  margin-top: 0;
-  opacity: 0.85;
-}
-
-.staple-remove-btn {
-  background: none;
-  border: none;
-  color: var(--paper-soft);
-  opacity: 0.4;
-  font-size: 15px;
-  cursor: pointer;
-  padding: 0 2px;
-  margin-left: 6px;
-}
-
-.staple-remove-btn:hover {
-  opacity: 1;
-  color: var(--tomato);
-}
-
-.staples-empty-hint {
-  font-size: 12px;
-  color: var(--paper-soft);
-  opacity: 0.5;
-  padding: 10px 4px;
-  text-align: center;
 }
 
 /* ---------- Flyers tab (cook what's on sale) ---------- */
@@ -7474,6 +7153,425 @@ input[type="date"].planner-week-picker {
 }
 
 /* ================================================================
+   Riso Poster — Grocery List (screen 6/8)
+   Same .riso-theme token block as the other migrated screens —
+   additive only. Uses the shared .riso-segmented/.riso-hint-strip
+   (RisoControls.jsx's <Segmented>/<HintStrip>) rather than bespoke
+   ones here. Class names are prefixed riso-grocery-/riso-row/
+   riso-group to keep this screen's CSS self-contained.
+   ================================================================ */
+.riso-grocery {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-grocery-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.riso-grocery-title-block {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-grocery-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.riso-grocery-share {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  cursor: pointer;
+  flex: none;
+}
+
+.riso-grocery-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  align-items: flex-start;
+}
+
+.riso-grocery-main {
+  flex: 3 1 600px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.riso-grocery-add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 6px 6px 6px 22px;
+}
+
+.riso-grocery-add input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 500;
+  font-size: 15.5px;
+}
+
+.riso-grocery-add-btn {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 20px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  flex: none;
+}
+
+.riso-group {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 2px solid var(--riso-ink);
+}
+
+.riso-group-name {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 22px;
+}
+
+.riso-group-count {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.riso-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  cursor: pointer;
+}
+
+.riso-row:first-child {
+  border-top: none;
+}
+
+.riso-row:hover {
+  background: var(--riso-canvas);
+}
+
+.riso-row.checked {
+  opacity: 0.5;
+}
+
+.riso-row-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  flex: none;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.riso-row-check.on {
+  background: var(--riso-accent);
+}
+
+.riso-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.riso-row-name {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 15.5px;
+}
+
+.riso-row-name.struck {
+  text-decoration: line-through;
+}
+
+.riso-row-sub {
+  font-family: var(--riso-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
+}
+
+.riso-row-sale {
+  flex: none;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 4px 10px 10px 4px;
+  padding: 2px 9px 2px 12px;
+  font-family: var(--riso-font-mono);
+  font-weight: 700;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.riso-row-store {
+  flex: none;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 14px;
+  background: var(--riso-surface);
+  border: 1.5px solid var(--riso-ink);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-row-qty {
+  flex: none;
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 64px;
+  text-align: right;
+}
+
+.riso-row-delete {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.riso-grocery-aside {
+  flex: 1 1 300px;
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.riso-grocery-cart {
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-grocery-cart-count {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.riso-grocery-cart-num {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 84px;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.riso-grocery-cart-label {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.riso-grocery-cart-track {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  overflow: hidden;
+}
+
+.riso-grocery-cart-fill {
+  height: 100%;
+  background: var(--riso-ink);
+  transition: width 0.25s;
+}
+
+.riso-grocery-cart-btn {
+  height: 44px;
+  border-radius: 22px;
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.riso-grocery-cart-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.riso-grocery-cart-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.riso-grocery-excluded {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-grocery-excluded-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.riso-grocery-excluded-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.riso-grocery-excluded-row span:last-child {
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.riso-grocery-excluded-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--riso-accent);
+  cursor: pointer;
+}
+
+.riso-grocery-sale {
+  position: relative;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-grocery-sale-amt {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.05;
+}
+
+.riso-grocery-sale-copy {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ================================================================
    Mobile responsiveness
    Everything above was built and reviewed on desktop screenshots
    only — this is the first real pass at making it usable on a
@@ -7681,5 +7779,25 @@ input[type="date"].planner-week-picker {
 
   .riso-table-actions {
     justify-content: flex-start;
+  }
+
+  .riso-grocery {
+    padding: 18px 16px 40px;
+  }
+
+  .riso-grocery-title {
+    font-size: 38px;
+  }
+
+  .riso-grocery-aside {
+    position: static;
+  }
+
+  .riso-row {
+    flex-wrap: wrap;
+  }
+
+  .riso-row-qty {
+    text-align: left;
   }
 }

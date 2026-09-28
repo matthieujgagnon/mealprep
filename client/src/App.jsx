@@ -69,7 +69,6 @@ export default function App({ user, onLogout }) {
   const [customStaples, setCustomStaples] = useState([]);
   const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
-  const [grocerySections, setGrocerySections] = useState([]);
   const [pantryInventory, setPantryInventory] = useState([]);
   const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
   const [loadError, setLoadError] = useState(false);
@@ -118,7 +117,6 @@ export default function App({ user, onLogout }) {
           Object.fromEntries(list.filter((s) => s.category).map((s) => [s.core, s.category]))
         );
       }),
-      api.listGrocerySections().then(setGrocerySections),
       api.listPantryInventory().then(setPantryInventory),
       api.listPantryLocations().then(setPantryLocations),
     ]).then((results) => {
@@ -208,38 +206,6 @@ export default function App({ user, onLogout }) {
     setActiveRecipe((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
   }
 
-  async function handleCreateSection(name) {
-    const section = await api.createGrocerySection(name);
-    setGrocerySections((prev) => [...prev, { ...section, assignments: [] }]);
-  }
-
-  async function handleDeleteSection(id) {
-    await api.deleteGrocerySection(id);
-    setGrocerySections((prev) => prev.filter((s) => s.id !== id));
-  }
-
-  async function handleAssignToSection(sectionId, core) {
-    await api.assignToGrocerySection(sectionId, core);
-    setGrocerySections((prev) =>
-      prev.map((s) => ({
-        ...s,
-        // Remove any prior assignment of this ingredient from every section
-        // (it's globally unique), then add it to the target section.
-        assignments:
-          s.id === sectionId
-            ? [...s.assignments.filter((a) => a.core !== core), { core }]
-            : s.assignments.filter((a) => a.core !== core),
-      }))
-    );
-  }
-
-  async function handleUnassignFromSection(core) {
-    await api.unassignFromGrocerySection(core);
-    setGrocerySections((prev) =>
-      prev.map((s) => ({ ...s, assignments: s.assignments.filter((a) => a.core !== core) }))
-    );
-  }
-
   async function handleAddPantryItem(item) {
     const created = await api.addPantryInventoryItem(item);
     setPantryInventory((prev) => [...prev, created]);
@@ -295,23 +261,6 @@ export default function App({ user, onLogout }) {
     setPantryInventory((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
   }
 
-  async function handleReorderSection(id, direction) {
-    const currentOrder = grocerySections.map((s) => s.id);
-    const index = currentOrder.indexOf(id);
-    const swapWith = direction === "up" ? index - 1 : index + 1;
-    if (swapWith < 0 || swapWith >= currentOrder.length) return;
-
-    const newOrder = [...currentOrder];
-    [newOrder[index], newOrder[swapWith]] = [newOrder[swapWith], newOrder[index]];
-
-    setGrocerySections((prev) => {
-      const byId = new Map(prev.map((s) => [s.id, s]));
-      return newOrder.map((sid) => byId.get(sid));
-    });
-
-    await api.reorderGrocerySections(newOrder);
-  }
-
   async function handleDragEnd(event) {
     setIsDragActive(false);
     setActiveDragItem(null);
@@ -334,13 +283,6 @@ export default function App({ user, onLogout }) {
     if (over.id === "staple-category-spice-drop" || over.id === "staple-category-other-drop") {
       const core = active.data.current?.ingredientCore;
       if (core) handleSetStapleCategory(core, over.id === "staple-category-spice-drop" ? "spice" : "other");
-      return;
-    }
-
-    const sectionMatch = /^section-drop-(.+)$/.exec(over.id);
-    if (sectionMatch) {
-      const core = active.data.current?.ingredientCore;
-      if (core) handleAssignToSection(sectionMatch[1], core);
       return;
     }
 
@@ -468,17 +410,16 @@ export default function App({ user, onLogout }) {
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
 
   // "Build grocery list · n" in the Planner header — mirrors exactly how
-  // GroceryList.jsx derives its own shoppingItems count (staples and
-  // section-assigned ingredients excluded), so the number matches once you
-  // actually get to the Grocery tab.
-  const groceryAssignedCores = new Set(grocerySections.flatMap((s) => s.assignments.map((a) => a.core)));
+  // GroceryList.jsx derives its own shoppingItems count (just the non-staple
+  // items; there's no more manual store-section exclusion), so the number
+  // matches once you actually get to the Grocery tab.
   const groceryToBuyCount = buildGroceryList(
     plannerEntries,
     customStaples,
     stapleCategories,
     excludedStaples,
     plannerExtraItems
-  ).filter((i) => !i.isStaple && !groceryAssignedCores.has(i.core)).length;
+  ).filter((i) => !i.isStaple).length;
 
   return (
     <DndContext
@@ -718,17 +659,12 @@ export default function App({ user, onLogout }) {
 
         {tab === "grocery" && (
           <GroceryList
+            user={user}
             plannerEntries={plannerEntries}
             weekStart={weekStart}
             customStaples={customStaples}
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
-            onRemoveStaple={handleRemoveStaple}
-            grocerySections={grocerySections}
-            onCreateSection={handleCreateSection}
-            onDeleteSection={handleDeleteSection}
-            onReorderSection={handleReorderSection}
-            onUnassignFromSection={handleUnassignFromSection}
             onAddPantryItem={handleAddPantryItem}
           />
         )}
