@@ -6656,6 +6656,924 @@ input[type="date"].planner-week-picker {
 }
 
 /* ================================================================
+   Riso Poster — Planner (screen 4/8)
+   Same .riso-theme token block as Flyers/Home above — additive only,
+   no other screen affected. Class names are prefixed riso-planner-
+   to keep this screen's CSS self-contained; riso-add-popover-* and
+   riso-popup-* are small enough, and specific enough to this screen,
+   that they're kept unprefixed-by-planner but still riso-scoped.
+   ================================================================ */
+.riso-planner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-planner-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.riso-planner-header-left {
+  flex: 1 1 320px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-planner-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-planner-nav-arrow {
+  width: 38px;
+  height: 38px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 18px var(--riso-font-display);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-planner-week-label {
+  font: 500 13px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.riso-planner-week-badge {
+  transform: rotate(-4deg);
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font: 800 12.5px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-planner-date-picker {
+  height: 32px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 500 12px var(--riso-font-mono);
+  padding: 0 10px;
+}
+
+.riso-planner-title {
+  font: 800 60px/0.95 var(--riso-font-display);
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+
+.riso-planner-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-planner-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  align-items: flex-start;
+}
+
+.riso-planner-board {
+  flex: 1 1 640px;
+  min-width: 0;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.riso-planner-scroll {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 106px;
+  padding-bottom: 6px;
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.riso-planner-grid {
+  display: grid;
+  grid-template-columns: 84px repeat(7, calc((100% - 84px - 70px) / 5));
+  gap: 14px;
+}
+
+.riso-planner-corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--riso-surface);
+}
+
+.riso-planner-day-header {
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0;
+  border-radius: 14px;
+  background: transparent;
+  border: 2px solid transparent;
+}
+
+.riso-planner-day-header.is-today {
+  background: var(--riso-hot);
+  border-color: var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-planner-day-weekday {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.riso-planner-day-date {
+  font: 800 15px var(--riso-font-display);
+}
+
+.riso-planner-meal-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--riso-surface);
+  font: 800 17px var(--riso-font-display);
+  display: flex;
+  align-items: center;
+  box-shadow: 8px 0 8px -4px var(--riso-surface);
+}
+
+.riso-planner-cell {
+  aspect-ratio: 0.9;
+  min-width: 0;
+  display: flex;
+  scroll-snap-align: start;
+  position: relative;
+}
+
+.riso-planner-cell-empty-wrap,
+.riso-planner-cell-note-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+}
+
+.riso-planner-cell-empty {
+  flex: 1;
+  border-radius: 16px;
+  border: 2px dashed var(--riso-dash-strong);
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 14px var(--riso-font-display);
+  color: var(--riso-accent);
+  cursor: pointer;
+}
+
+.riso-planner-cell-empty:hover {
+  border-color: var(--riso-ink);
+}
+
+.riso-planner-cell-note {
+  flex: 1;
+  border-radius: 16px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.riso-planner-cell-note.editing {
+  background: var(--riso-surface);
+  padding: 6px;
+  cursor: default;
+}
+
+.riso-planner-note-label {
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-planner-note-text {
+  font: 700 14px/1.2 var(--riso-font-display);
+}
+
+.riso-planner-note-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: 700 13px var(--riso-font-display);
+  text-align: center;
+  outline: none;
+  color: var(--riso-ink);
+}
+
+.riso-planner-note-edit-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.riso-planner-card {
+  flex: 1;
+  border-radius: 16px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: grab;
+  position: relative;
+  /* touch-action: none, not pan-y — see .meal-card's comment elsewhere in
+     this file for why: pan-y lets a native scroll steal a held-then-moved
+     touch drag the instant it moves vertically, independent of dnd-kit's
+     own activation delay. Verified via touch-drag.spec.js's real
+     (CDP-dispatched) touch test, not a mouse simulation. */
+  touch-action: none;
+}
+
+.riso-planner-card.dragging {
+  opacity: 0.4;
+}
+
+.riso-planner-card-photo-wrap {
+  height: 60%;
+  flex: none;
+  border-bottom: 2px solid var(--riso-ink);
+  background: var(--riso-track);
+  position: relative;
+}
+
+.riso-planner-card-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-planner-card-photo.placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.riso-planner-card-leftover {
+  position: absolute;
+  right: 6px;
+  bottom: -11px;
+  transform: rotate(-4deg);
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font: 800 11px var(--riso-font-display);
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.riso-planner-card-leftover.stale {
+  background: var(--riso-hot);
+}
+
+.riso-planner-card-have {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.riso-planner-card-status {
+  position: absolute;
+  left: 8px;
+  bottom: calc(40% + 6px);
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.riso-planner-card-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-sizing: border-box;
+  z-index: 2;
+}
+
+.riso-planner-card:hover .riso-planner-card-remove,
+.riso-planner-card:focus-within .riso-planner-card-remove {
+  opacity: 1;
+}
+
+.riso-planner-card-body {
+  padding: 10px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.riso-planner-card-name {
+  font: 800 14.5px/1.2 var(--riso-font-display);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+.riso-planner-legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  font-size: 12.5px;
+  color: var(--riso-soft);
+}
+
+.riso-planner-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.riso-planner-legend-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  box-sizing: border-box;
+}
+
+.riso-planner-legend-leftover {
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 7px;
+  font: 800 10.5px var(--riso-font-display);
+}
+
+.riso-planner-legend-note {
+  font: 500 9.5px var(--riso-font-mono);
+}
+
+.riso-planner-legend-scroll {
+  margin-left: auto;
+  transform: rotate(-2deg);
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font: 800 12px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-planner-empty {
+  font-size: 13.5px;
+  color: var(--riso-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Empty-slot recipe picker popover */
+.riso-add-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 240px;
+  max-width: 70vw;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-add-popover-search {
+  height: 34px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  padding: 0 10px;
+  font-family: var(--riso-font-body);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.riso-add-popover-list {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.riso-add-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.riso-add-popover-row:hover {
+  background: var(--riso-canvas);
+}
+
+.riso-add-popover-row-photo {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-track);
+  flex: none;
+}
+
+.riso-add-popover-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--riso-ink);
+}
+
+.riso-add-popover-empty {
+  font-size: 12.5px;
+  color: var(--riso-muted);
+  padding: 6px;
+  margin: 0;
+}
+
+.riso-add-popover-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1.5px dashed var(--riso-dash);
+  padding-top: 8px;
+}
+
+.riso-add-popover-note-form {
+  display: flex;
+}
+
+.riso-add-popover-note-input {
+  flex: 1;
+  height: 32px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  padding: 0 10px;
+  font-family: var(--riso-font-body);
+  font-size: 12.5px;
+  box-sizing: border-box;
+}
+
+/* Sidebar */
+.riso-planner-sidebar {
+  flex: 0 1 290px;
+  min-width: 260px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+/* The Week overview / Plan around toggle uses the shared .riso-segmented
+   control (RisoControls.jsx's <Segmented>) rather than a bespoke one here —
+   see index.css's "Riso Poster shared components" section. */
+
+.riso-planner-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.riso-planner-overview-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.riso-planner-overview-number {
+  font: 800 80px/0.85 var(--riso-font-display);
+  color: var(--riso-accent);
+  letter-spacing: -0.04em;
+}
+
+.riso-planner-overview-copy {
+  font: 700 15px/1.3 var(--riso-font-display);
+}
+
+.riso-planner-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-planner-section-label {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--riso-muted);
+}
+
+.riso-planner-shared-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.riso-planner-shared-chip {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font: 600 13px var(--riso-font-display);
+  color: var(--riso-ink);
+  cursor: pointer;
+}
+
+.riso-planner-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-planner-suggestion-row {
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.riso-planner-suggestion-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  color: var(--riso-ink);
+}
+
+.riso-planner-suggestion-photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 11px;
+  overflow: hidden;
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  object-fit: cover;
+  background: var(--riso-track);
+  box-sizing: border-box;
+}
+
+.riso-planner-suggestion-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.riso-planner-suggestion-name {
+  font: 700 14px/1.25 var(--riso-font-display);
+}
+
+.riso-planner-suggestion-why {
+  font-size: 12px;
+  color: var(--riso-soft);
+  line-height: 1.35;
+}
+
+.riso-planner-suggestion-add {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font: 700 16px var(--riso-font-display);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-planner-footnote {
+  background: var(--riso-hot);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--riso-ink);
+}
+
+.riso-planner-around {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.riso-planner-around-intro {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+  margin: 0;
+}
+
+.riso-planner-ingredient-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.riso-planner-ingredient-chip {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 13px var(--riso-font-display);
+  box-sizing: border-box;
+}
+
+.riso-planner-ingredient-chip button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0;
+  font-size: 13px;
+}
+
+.riso-planner-add-ingredient-chip {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  border: 2px dashed var(--riso-ink);
+  background: none;
+  display: flex;
+  align-items: center;
+  font: 600 13px var(--riso-font-display);
+  color: var(--riso-ink);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-planner-ingredient-input {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  font: 600 13px var(--riso-font-display);
+  min-width: 120px;
+  box-sizing: border-box;
+}
+
+.riso-planner-quickpicks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-planner-quickpick-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font: 600 14px var(--riso-font-display);
+  color: var(--riso-ink);
+  cursor: pointer;
+}
+
+.riso-planner-quickpick-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.riso-planner-quickpick-badge {
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-family: var(--riso-font-body);
+}
+
+.riso-planner-quickpick-badge.pink {
+  background: var(--riso-hot);
+}
+
+.riso-planner-quickpick-badge.green {
+  background: var(--riso-green);
+}
+
+/* Shared-ingredients / suggestion-preview popup, restyled from the old
+   .shared-ingredients-modal to the Riso look. .modal-overlay itself is
+   shared app-wide (Inventory, RecipeDetailModal, Flyers) and stays as-is. */
+.riso-popup {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 22px;
+  max-width: 360px;
+  width: 90vw;
+  position: relative;
+  font-family: var(--riso-font-body);
+  color: var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.riso-popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-popup-heading {
+  font-size: 12.5px;
+  color: var(--riso-muted);
+  margin: 0 0 4px;
+}
+
+.riso-popup-title {
+  font: 800 20px var(--riso-font-display);
+  margin: 0 0 12px;
+}
+
+.riso-popup-recipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.riso-popup-recipe-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--riso-font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--riso-ink);
+}
+
+.riso-popup-recipe-photo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: none;
+}
+
+.riso-popup-ingredient-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--riso-soft);
+}
+
+/* ================================================================
    Mobile responsiveness
    Everything above was built and reviewed on desktop screenshots
    only — this is the first real pass at making it usable on a
@@ -6692,82 +7610,40 @@ input[type="date"].planner-week-picker {
     font-size: 13px;
   }
 
-  /* Planner: sidebar stacks below the board instead of squeezing into a
-     sliver next to it, and drops its sticky positioning (sticky-while-
-     stacked-below looks broken, not helpful, on a phone-height viewport). */
-  .planner-layout {
+  /* Planner (Riso): sidebar stacks below the board instead of squeezing
+     into a sliver next to it, and the grid shrinks its columns a bit so a
+     day cell stays a usable tap target on a phone width. */
+  .riso-planner {
+    padding: 0;
+  }
+
+  .riso-planner-row {
     flex-direction: column;
   }
 
-  .planner-sidebar {
+  .riso-planner-sidebar {
     width: 100%;
-    position: static;
-    margin-top: 0;
+    flex-basis: auto;
   }
 
-  /* The capped-scroll treatment on these two lists is mainly there to stop
-     a long "plan around" match list from pushing everything below it far
-     down the page when the sidebar sits beside a much shorter grid — on
-     mobile the sidebar already stacks below the grid in normal flow, so
-     there's nothing to protect and this can just size to its content. */
-  .sidebar-suggestions,
-  .sidebar-chips {
-    max-height: none;
-    overflow-y: visible;
+  .riso-planner-title {
+    font-size: 38px;
   }
 
-  /* The 7-day grid itself stays a real grid (shrinking it into a single
-     mobile-only view is a bigger redesign than a CSS pass can safely do
-     blind) — .planner-main already scrolls horizontally, so this keeps
-     that scroll working with touch, more like swiping a calendar than a
-     broken layout. */
-  .planner-main {
+  .riso-planner-header {
+    align-items: flex-start;
+  }
+
+  .riso-planner-board {
+    padding: 14px;
+  }
+
+  .riso-planner-scroll {
     -webkit-overflow-scrolling: touch;
   }
 
-  .planner-grid {
-    grid-template-columns: 72px repeat(7, minmax(128px, 1fr));
-  }
-
-  .planner-week-nav {
-    gap: 6px;
-  }
-
-  .planner-week-label {
-    font-size: 14px;
-  }
-
-  .planner-week-picker {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  /* Freeze the meal-type labels (Breakfast/Lunch/Supper) and day headers
-     (Mon/Tue/...) in place while the grid scrolls, the way a real calendar
-     app does. Without this, scrolling right to see Thursday/Friday loses
-     the row labels entirely — there's nothing left on screen to say which
-     row is which meal, which is the main thing that made this feel "weird"
-     rather than just "a bit cramped." */
-  .planner-day-header {
-    position: sticky;
-    top: 0;
-    z-index: 3;
-    background: var(--bg);
-  }
-
-  .planner-meal-label {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: var(--bg);
-  }
-
-  .planner-grid-corner {
-    position: sticky;
-    top: 0;
-    left: 0;
-    z-index: 4;
-    background: var(--bg);
+  .riso-planner-grid {
+    grid-template-columns: 64px repeat(7, minmax(100px, 1fr));
   }
 
   /* Recipe/edit/cook modals: near-full-screen instead of a small centered
@@ -6844,7 +7720,7 @@ input[type="date"].planner-week-picker {
 
   .meal-card-delete,
   .leftover-dot,
-  .planner-note-edit-btn {
+  .riso-planner-note-edit-btn {
     width: 26px;
     height: 26px;
   }

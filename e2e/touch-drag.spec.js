@@ -110,11 +110,16 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
 });
 
 // The Recipes tab itself lost drag-and-drop when it moved to the Riso
-// unified grid (filter chips + sort replaced manual reordering), so this
-// now exercises the other still-draggable single-column-mobile recipe
-// grid: dragging a card from the Planner tab's own "drag a recipe from
-// your cookbook" picker onto a planner cell.
-test("a real touch drag places a recipe from the Planner's picker grid onto a planner cell without the browser cancelling it", async ({
+// unified grid (filter chips + sort replaced manual reordering), and the
+// Planner's own below-board "drag a recipe from your cookbook" picker grid
+// is gone too (replaced by the empty-slot popover — see
+// planner-picker.spec.js). The one drag-and-drop the Riso Planner still
+// really has is repositioning an already-placed card between cells, so
+// that's what this now covers: place a recipe via the popover, then touch-
+// drag its card from one cell to another (same day, Breakfast -> Lunch —
+// vertically adjacent, exactly the direction a pan-y touch-action would
+// have handed to native scroll).
+test("a real touch drag repositions a placed meal card between planner cells without the browser cancelling it", async ({
   page,
   context,
 }) => {
@@ -133,16 +138,27 @@ test("a real touch drag places a recipe from the Planner's picker grid onto a pl
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.waitForTimeout(300);
 
-  const sourceCard = page.locator(".collection-grid .meal-card", { hasText: "Touch Recipe One" });
-  const targetCell = page.locator(".planner-cell").last();
+  // Place the recipe into the first cell (Monday breakfast) via the
+  // empty-slot popover. Scrolled explicitly to the row's center (rather
+  // than relying on Playwright's own scroll-then-click) — the sticky
+  // meal-label/corner cells in this grid otherwise leave the auto-scroll
+  // landing right at the edge of their overlap, and the click keeps
+  // getting intercepted by a still-covering ancestor.
+  const cells = page.locator(".riso-planner-cell");
+  const firstEmpty = cells.first().locator(".riso-planner-cell-empty");
+  await firstEmpty.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(100);
+  await firstEmpty.click({ force: true });
+  await page.locator(".riso-add-popover-row", { hasText: "Touch Recipe One" }).click({ force: true });
+  await page.waitForTimeout(200);
 
-  // The board (7 days x 3 meals) is taller than the 700px mobile viewport,
-  // with the picker grid below it - scroll so the LAST planner cell (the
-  // one closest to the picker section) and the source card land in view
-  // together, since a touch coordinate outside the viewport can't hit
-  // anything.
-  await targetCell.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, 200));
+  const sourceCard = page.locator(".riso-planner-card", { hasText: "Touch Recipe One" });
+  // Monday's Lunch cell — same day column as the source, one row down, so
+  // this is a vertical drag within the visible (non-horizontally-scrolled)
+  // part of the board.
+  const targetCell = cells.nth(7);
+
+  await sourceCard.scrollIntoViewIfNeeded();
 
   const client = await context.newCDPSession(page);
   const sourceBox = await sourceCard.boundingBox();

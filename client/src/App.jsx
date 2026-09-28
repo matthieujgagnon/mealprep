@@ -3,13 +3,13 @@ import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, u
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
-import { capitalize } from "./lib/groceryList.js";
+import { buildGroceryList, capitalize } from "./lib/groceryList.js";
+import { core, suggestNextRecipes } from "./lib/similarRecipes.js";
 import { Home } from "./components/Home.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
 import { Recipes } from "./components/Recipes.jsx";
-import { MealCard } from "./components/MealCard.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
-import { PlannerBoard } from "./components/PlannerBoard.jsx";
+import { PlannerBoard, PlannerHeader, findNextEmptySlot } from "./components/PlannerBoard.jsx";
 import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
@@ -52,18 +52,6 @@ function DragPreview({ active }) {
   return null;
 }
 
-// Matches on title, tags, and ingredient names — client-side only, no API
-// call, so it stays fast even as the cookbook grows. Case-insensitive,
-// substring match rather than exact-word, so "chick" finds "chickpea".
-function matchesRecipeSearch(recipe, query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  if (recipe.title?.toLowerCase().includes(q)) return true;
-  if (recipe.tags?.some((t) => t.toLowerCase().includes(q))) return true;
-  if (recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))) return true;
-  return false;
-}
-
 export default function App({ user, onLogout }) {
   const [tab, setTab] = useState("home"); // "home" | "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
@@ -77,7 +65,7 @@ export default function App({ user, onLogout }) {
   // true when the currently-open recipe should skip straight to cook mode —
   // set by Makeable's "Cook tonight" action, cleared on every other open.
   const [activeRecipeStartCooking, setActiveRecipeStartCooking] = useState(false);
-  const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
+  const [planAroundIngredients, setPlanAroundIngredients] = useState([]); // sidebar's "Plan around…" tab — plain ingredient names, not recipes
   const [customStaples, setCustomStaples] = useState([]);
   const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
@@ -94,8 +82,7 @@ export default function App({ user, onLogout }) {
   }).length;
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("All");
-  const [plannerGridSearch, setPlannerGridSearch] = useState("");
-  const [plannerGridTag, setPlannerGridTag] = useState(null);
+  const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart — just for the "Build grocery list · n" count
   const [isDragActive, setIsDragActive] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
   // Which droppable id a drag is currently hovering, tracked only to drive
@@ -146,6 +133,13 @@ export default function App({ user, onLogout }) {
 
   useEffect(() => {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setLoadError(true));
+  }, [weekStart]);
+
+  // Just for the header's "Build grocery list · n" count — mirrors exactly
+  // what GroceryList.jsx itself fetches and counts, so the number matches
+  // what the Grocery tab actually shows once you get there.
+  useEffect(() => {
+    api.listGroceryExtras(weekStart).then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
   }, [weekStart]);
 
   function handleImported(recipe) {
@@ -431,11 +425,60 @@ export default function App({ user, onLogout }) {
     setPlannerEntries(copied);
   }
 
+  // "Fill empty slots": walks every day/meal slot in order and, for each
+  // still-empty one, places whatever suggestNextRecipes says best extends
+  // the week's ingredient reuse so far — appending a synthetic (never
+  // persisted) entry to a local working copy after each placement so later
+  // suggestions in the same pass see it, the same way a person filling the
+  // board in by hand would build on their own earlier picks. Falls back to
+  // any not-yet-used recipe when there's no shared-ingredient basis yet
+  // (e.g. a completely blank week), so the button always does something.
+  async function handleFillEmptySlots() {
+    if (plannableRecipes.length === 0) return;
+    let workingEntries = plannerEntries.map((e) => ({ ...e }));
+    let syntheticId = -1;
+    for (let i = 0; i < 21; i++) {
+      const slot = findNextEmptySlot(workingEntries);
+      if (!slot) break;
+      const suggestion = suggestNextRecipes(workingEntries, plannableRecipes, 1)[0];
+      let picked = suggestion?.recipe;
+      if (!picked) {
+        const plannedIds = new Set(
+          workingEntries.filter((e) => !e.recipe?.isPlaceholder).map((e) => e.recipe?.id)
+        );
+        picked = plannableRecipes.find((r) => !plannedIds.has(r.id)) || plannableRecipes[0];
+      }
+      if (!picked) break;
+      await handleAddToPlanner(picked.id, slot.dayOfWeek, slot.mealType);
+      workingEntries = [
+        ...workingEntries,
+        {
+          id: `fill-temp-${syntheticId--}`,
+          recipeId: picked.id,
+          recipe: picked,
+          dayOfWeek: slot.dayOfWeek,
+          mealType: slot.mealType,
+          isLeftover: false,
+          alreadyHave: false,
+        },
+      ];
+    }
+  }
+
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
-  const allTags = [...new Set(recipes.flatMap((r) => r.tags || []))].sort();
-  const plannerGridRecipes = plannableRecipes
-    .filter((r) => !plannerGridTag || r.tags?.includes(plannerGridTag))
-    .filter((r) => matchesRecipeSearch(r, plannerGridSearch));
+
+  // "Build grocery list · n" in the Planner header — mirrors exactly how
+  // GroceryList.jsx derives its own shoppingItems count (staples and
+  // section-assigned ingredients excluded), so the number matches once you
+  // actually get to the Grocery tab.
+  const groceryAssignedCores = new Set(grocerySections.flatMap((s) => s.assignments.map((a) => a.core)));
+  const groceryToBuyCount = buildGroceryList(
+    plannerEntries,
+    customStaples,
+    stapleCategories,
+    excludedStaples,
+    plannerExtraItems
+  ).filter((i) => !i.isStaple && !groceryAssignedCores.has(i.core)).length;
 
   return (
     <DndContext
@@ -621,97 +664,55 @@ export default function App({ user, onLogout }) {
         )}
 
         {tab === "planner" && (
-          <>
+          <div className="riso-theme riso-planner" data-theme="light">
             {plannableRecipes.length === 0 ? (
-              <p className="empty-state">
+              <p className="riso-planner-empty">
                 Import or add a recipe first, then click a meal slot here to add it.
               </p>
             ) : (
               <>
-                <div className="planner-tip">
-                  <div className="planner-tip-legend">
-                    <span className="planner-tip-item">
-                      <span className="leftover-dot-demo" /> Leftover
-                    </span>
-                    <span className="planner-tip-item">
-                      <span className="already-have-dot-demo" /> Already have it
-                    </span>
-                  </div>
-                  <p className="planner-tip-text">
-                    Tap the dot on a placed card to cycle between these — either way it stays on
-                    your calendar but won't be added to the grocery list again. Click an empty
-                    slot to mark it as intentionally blank — or drag a recipe from below to fill
-                    it.
-                  </p>
-                </div>
-                <div className="planner-layout">
-                  <div className="planner-main">
-                    <PlannerBoard
-                      entries={plannerEntries}
-                      weekStart={weekStart}
-                      onChangeWeek={setWeekStart}
-                      onCopyLastWeek={handleCopyLastWeek}
-                      onCardClick={openRecipe}
-                      onRemove={handleRemoveFromPlanner}
-                      onCycleState={handleCycleMealState}
-                      onMarkBlank={handleMarkBlank}
-                      onSetNote={handleSetPlannerNote}
-                    />
-                  </div>
+                <PlannerHeader
+                  user={user}
+                  weekStart={weekStart}
+                  onChangeWeek={setWeekStart}
+                  hasEntries={plannerEntries.length > 0}
+                  onCopyLastWeek={handleCopyLastWeek}
+                  onFillEmptySlots={handleFillEmptySlots}
+                  fillDisabled={plannableRecipes.length === 0}
+                  groceryCount={groceryToBuyCount}
+                  onGoToGrocery={() => setTab("grocery")}
+                />
+                <div className="riso-planner-row">
+                  <PlannerBoard
+                    entries={plannerEntries}
+                    weekStart={weekStart}
+                    plannableRecipes={plannableRecipes}
+                    onCardClick={openRecipe}
+                    onRemove={handleRemoveFromPlanner}
+                    onCycleState={handleCycleMealState}
+                    onMarkBlank={handleMarkBlank}
+                    onSetNote={handleSetPlannerNote}
+                    onAddToPlanner={handleAddToPlanner}
+                  />
                   <PlannerSidebar
                     plannerEntries={plannerEntries}
                     allRecipes={recipes}
-                    anchorRecipes={anchorRecipes}
-                    onClearAnchors={() => setAnchorRecipes([])}
-                    onRemoveAnchor={(id) =>
-                      setAnchorRecipes((prev) => prev.filter((r) => r.id !== id))
+                    planAroundIngredients={planAroundIngredients}
+                    onAddIngredient={(name) =>
+                      setPlanAroundIngredients((prev) => (prev.includes(name) ? prev : [...prev, name]))
                     }
-                    onAddAnchor={(recipe) =>
-                      setAnchorRecipes((prev) =>
-                        prev.some((r) => r.id === recipe.id) ? prev : [...prev, recipe]
-                      )
+                    onRemoveIngredient={(name) =>
+                      setPlanAroundIngredients((prev) => prev.filter((n) => n !== name))
                     }
+                    onSetIngredients={setPlanAroundIngredients}
+                    pantryInventory={pantryInventory}
                     onSelectRecipe={openRecipe}
+                    onQuickAdd={(recipe, dayOfWeek, mealType) => handleAddToPlanner(recipe.id, dayOfWeek, mealType)}
                   />
-                </div>
-                <h3 className="planner-source-heading">Or drag a recipe from your cookbook</h3>
-                <input
-                  type="text"
-                  className="recipe-search-input"
-                  placeholder="🔍 Search recipes by name, tag, or ingredient…"
-                  value={plannerGridSearch}
-                  onChange={(e) => setPlannerGridSearch(e.target.value)}
-                />
-                {allTags.length > 0 && (
-                  <div className="tag-filter-bar">
-                    {allTags.map((tag) => (
-                      <button
-                        key={tag}
-                        className={`tag-chip${plannerGridTag === tag ? " active" : ""}`}
-                        onClick={() => setPlannerGridTag((prev) => (prev === tag ? null : tag))}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                    {plannerGridTag && (
-                      <button className="tag-chip clear" onClick={() => setPlannerGridTag(null)}>
-                        Clear filter ×
-                      </button>
-                    )}
-                  </div>
-                )}
-                <div className="collection-grid" style={{ marginTop: 12 }}>
-                  {plannerGridRecipes.length === 0 ? (
-                    <p className="empty-state">No recipes match your search.</p>
-                  ) : (
-                    plannerGridRecipes.map((r) => (
-                      <MealCard key={r.id} recipe={r} onClick={openRecipe} />
-                    ))
-                  )}
                 </div>
               </>
             )}
-          </>
+          </div>
         )}
 
         {tab === "grocery" && (
@@ -749,7 +750,18 @@ export default function App({ user, onLogout }) {
               openRecipe(null);
             }}
             onPlanAround={(recipe) => {
-              setAnchorRecipes([recipe]);
+              // Seed "Plan around…" with this recipe's non-staple ingredient
+              // names, deduped by canonical core — the sidebar tab works
+              // off plain ingredient names now, not recipe anchors.
+              const seen = new Set();
+              const names = [];
+              for (const ing of recipe.ingredients || []) {
+                const c = core(ing.name);
+                if (!c || seen.has(c)) continue;
+                seen.add(c);
+                names.push(capitalize(c));
+              }
+              setPlanAroundIngredients(names);
               openRecipe(null);
               setWeekStart(currentWeekStart());
               setTab("planner");
