@@ -3379,22 +3379,30 @@ input[type="date"].planner-week-picker {
    for stickers, green for price/savings). Scoped to .riso-theme (Flyers
    only), same prefixed-token pattern as --vp-, --inv-, --hm- elsewhere in
    this file - purely additive, no other screen changes. */
+/* Token names/values mirror design_handoff_riso/README.md's "Design
+   system" table exactly (paper/card/ink/ink-soft/ink-muted/track/rule/
+   blue/pink/green/green-text/green-tint/yellow), prefixed --riso- for this
+   file's usual scoping. "Black paper" dark mode isn't designed yet per the
+   handoff, so only light values exist for now - every color already lives
+   in a token, so dark can be added later without touching markup. */
 .riso-theme {
-  --riso-canvas: #f4f1ea;
-  --riso-surface: #fffdf8;
-  --riso-track: #e9e4d8;
-  --riso-ink: #16181f;
-  --riso-soft: #3f3e37;
-  --riso-muted: #5e5b52;
-  --riso-dash: #d6cfbf;
-  --riso-accent: #2323ff;
+  --riso-canvas: #f4f1ea; /* paper */
+  --riso-surface: #fffdf8; /* card */
+  --riso-track: #e9e4d8; /* track */
+  --riso-ink: #16181f; /* ink */
+  --riso-soft: #3f3e37; /* ink-soft */
+  --riso-muted: #5e5b52; /* ink-muted */
+  --riso-dash: #d6cfbf; /* rule */
+  --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
-  --riso-hot: #ff48b0;
-  --riso-yellow: #ffe14d;
-  --riso-green: #00a95c;
-  --riso-green-text: #00753f;
-  --riso-shadow: 3px 3px 0 var(--riso-ink);
-  --riso-shadow-lg: 6px 6px 0 var(--riso-ink);
+  --riso-hot: #ff48b0; /* pink */
+  --riso-yellow: #ffe14d; /* yellow */
+  --riso-green: #00a95c; /* green */
+  --riso-green-text: #00753f; /* green-text */
+  --riso-green-tint: #e6f5ec; /* green-tint */
+  --riso-shadow: 3px 3px 0 var(--riso-ink); /* buttons, active nav, stickers */
+  --riso-shadow-rail: 5px 5px 0 var(--riso-ink); /* rails */
+  --riso-shadow-lg: 6px 6px 0 var(--riso-ink); /* hero and color blocks */
   --riso-font-display: "Bricolage Grotesque", sans-serif;
   --riso-font-body: "Inter", system-ui, sans-serif;
   --riso-font-mono: "DM Mono", ui-monospace, monospace;
@@ -3801,7 +3809,7 @@ button.riso-price:hover {
    within the same unit basis (lb vs lb, each vs each) - see
    groupDealsByIngredient's bestPriceDealIds. */
 .riso-price.best-price {
-  background: #e6f5ec;
+  background: var(--riso-green-tint);
   border-color: var(--riso-green-text);
 }
 
