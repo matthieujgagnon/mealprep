@@ -596,6 +596,7 @@ export default function App({ user, onLogout }) {
 
         {tab === "makeable" && (
           <WhatCanIMake
+            user={user}
             recipes={recipes}
             plannerEntries={plannerEntries}
             onSelectRecipe={openRecipe}

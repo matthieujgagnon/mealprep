@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Covers the Makeable screen's Cobalt Vapor redesign (first screen of the
-// design_handoff_cookbook_app/README.md migration): ingredients typed into
+// Covers the Makeable screen's Riso Poster redesign: ingredients typed into
 // "ALSO HAVE" group matching recipes into Ready now / One or two short /
 // Needs a shop, and each group's card actions (Cook tonight, + Add to
 // list, Plan).
@@ -33,7 +32,7 @@ async function addRecipe(page, title, ingredients) {
 }
 
 async function addAlsoHave(page, name) {
-  const input = page.locator(".vp-also-have-input");
+  const input = page.locator(".riso-makeable-also-have-input");
   await input.fill(name);
   await input.press("Enter");
 }
@@ -42,8 +41,8 @@ test("a fully-matched recipe lands in Ready now, and a partially-matched one in 
   page,
 }) => {
   await signUp(page, uniqueEmail("makeable-groups"));
-  await addRecipe(page, "Vapor Pancakes", ["flour", "egg"]);
-  await addRecipe(page, "Vapor Soup", ["chicken", "carrot", "celery"]);
+  await addRecipe(page, "Riso Pancakes", ["flour", "egg"]);
+  await addRecipe(page, "Riso Soup", ["chicken", "carrot", "celery"]);
 
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
   await page.waitForTimeout(200);
@@ -52,39 +51,46 @@ test("a fully-matched recipe lands in Ready now, and a partially-matched one in 
   }
   await page.waitForTimeout(200);
 
-  await expect(page.locator(".vp-group-title")).toHaveText(["Ready now", "One or two short"]);
-  const readyCard = page.locator(".vp-group", { hasText: "Ready now" }).locator(".vp-card", { hasText: "Vapor Pancakes" });
+  await expect(page.locator(".riso-makeable-group-title")).toHaveText(["Ready now", "One or two short"]);
+  const readyCard = page
+    .locator(".riso-makeable-group", { hasText: "Ready now" })
+    .locator(".riso-makeable-card", { hasText: "Riso Pancakes" });
   await expect(readyCard).toBeVisible();
   await expect(readyCard.getByRole("button", { name: "Cook tonight", exact: true })).toBeVisible();
 
-  const shortCard = page.locator(".vp-group", { hasText: "One or two short" }).locator(".vp-card", { hasText: "Vapor Soup" });
-  await expect(shortCard.locator(".vp-card-need")).toContainText("Celery");
+  const shortCard = page
+    .locator(".riso-makeable-group", { hasText: "One or two short" })
+    .locator(".riso-makeable-card", { hasText: "Riso Soup" });
+  await expect(shortCard.locator(".riso-makeable-need-text")).toContainText("Celery");
 });
 
 test("Cook tonight opens the recipe straight into cook mode", async ({ page }) => {
   await signUp(page, uniqueEmail("makeable-cook"));
-  await addRecipe(page, "Vapor Cook Tonight Dish", ["salmon"]);
+  await addRecipe(page, "Riso Cook Tonight Dish", ["salmon"]);
 
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
   await page.waitForTimeout(200);
   await addAlsoHave(page, "salmon");
   await page.waitForTimeout(200);
 
-  await page.locator(".vp-card", { hasText: "Vapor Cook Tonight Dish" }).getByRole("button", { name: "Cook tonight", exact: true }).click();
+  await page
+    .locator(".riso-makeable-card", { hasText: "Riso Cook Tonight Dish" })
+    .getByRole("button", { name: "Cook tonight", exact: true })
+    .click();
   await expect(page.locator(".cm-overlay, .cm-screen").first()).toBeVisible();
 });
 
 test("+ Add to list sends a recipe's missing ingredients to the grocery list", async ({ page }) => {
   await signUp(page, uniqueEmail("makeable-grocery"));
-  await addRecipe(page, "Vapor Grocery Dish", ["salmon", "broccoli"]);
+  await addRecipe(page, "Riso Grocery Dish", ["salmon", "broccoli"]);
 
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
   await page.waitForTimeout(200);
   await addAlsoHave(page, "salmon");
   await page.waitForTimeout(200);
 
-  const card = page.locator(".vp-card", { hasText: "Vapor Grocery Dish" });
-  await expect(card.locator(".vp-card-need")).toContainText("Broccoli");
+  const card = page.locator(".riso-makeable-card", { hasText: "Riso Grocery Dish" });
+  await expect(card.locator(".riso-makeable-need-text")).toContainText("Broccoli");
   await card.getByRole("button", { name: /Add \d+ to list/ }).click();
   await page.waitForTimeout(300);
 
@@ -95,27 +101,20 @@ test("+ Add to list sends a recipe's missing ingredients to the grocery list", a
 
 test("Plan places a recipe onto the planner without opening a picker", async ({ page }) => {
   await signUp(page, uniqueEmail("makeable-plan"));
-  await addRecipe(page, "Vapor Plan Dish", ["salmon"]);
+  await addRecipe(page, "Riso Plan Dish", ["salmon"]);
 
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
   await page.waitForTimeout(200);
   await addAlsoHave(page, "salmon");
   await page.waitForTimeout(200);
 
-  await page.locator(".vp-card", { hasText: "Vapor Plan Dish" }).getByRole("button", { name: "Plan", exact: true }).click();
+  await page
+    .locator(".riso-makeable-card", { hasText: "Riso Plan Dish" })
+    .getByRole("button", { name: "Plan", exact: true })
+    .click();
   await page.waitForTimeout(300);
 
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.waitForTimeout(200);
-  await expect(page.getByText("Vapor Plan Dish").first()).toBeVisible();
-});
-
-test("the Light/Dark toggle switches the Makeable screen's theme", async ({ page }) => {
-  await signUp(page, uniqueEmail("makeable-theme"));
-  await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  await page.waitForTimeout(200);
-
-  await expect(page.locator(".vp-makeable")).toHaveAttribute("data-theme", "light");
-  await page.locator(".vp-theme-toggle").click();
-  await expect(page.locator(".vp-makeable")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByText("Riso Plan Dish").first()).toBeVisible();
 });

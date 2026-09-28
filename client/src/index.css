@@ -28,246 +28,112 @@
   color-scheme: dark;
 }
 
-/* ---------- "Cobalt Vapor" theme tokens (design handoff) ----------
-   Foundation for the full-app redesign in design_handoff_cookbook_app/
-   README.md - implemented one screen at a time, starting here with just
-   the token layer itself. Prefixed --vp- (Vapor), same pattern as this
-   file's other incremental-redesign token sets (--inv-*, --hm-*), so this
-   is purely additive: nothing reads these yet, and no existing screen's
-   appearance changes until it's migrated in a later pass.
+/* ---------- Riso Poster: Makeable screen ---------- */
 
-   Cream tint only (the README's default; lilac is optional and explicitly
-   "build only if the owner confirms" - skipped here). Light is the new
-   default per the handoff; dark is the same toggle mechanism screens will
-   opt into as they migrate, same as .home-page[data-theme] does today. */
-.vp-theme[data-theme="light"] {
-  --vp-bg: #f7f3ec;
-  --vp-surface: #fffdf9;
-  --vp-surface2: #f0eae0;
-  --vp-track: #e8e0d3;
-  --vp-border: #e6ddd0;
-  --vp-dash: #d4c9b8;
-  --vp-box-line: #c9bfaf;
-  --vp-miss-line: #b5aa98;
-  --vp-text: #1e1b16;
-  --vp-soft: #463f35;
-  --vp-muted: #6b6358;
-  --vp-nav: #463f35;
-  --vp-accent: #2323ff;
-  --vp-on-accent: #ffffff;
-  --vp-highlight: #2323ff;
-  --vp-hot: #c8106f;
-  --vp-badge: #c8106f;
-  --vp-sale: #0a8a22;
-  --vp-shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 0 0 1px #ece4d6;
-  --vp-glow: none;
-  --vp-scrim: #e4dccf;
-  --vp-photo-overlay: rgba(20, 17, 12, 0.72);
-  color-scheme: light;
-}
-
-.vp-theme[data-theme="dark"] {
-  --vp-bg: #15130f;
-  --vp-surface: #1e1b16;
-  --vp-surface2: #29251f;
-  --vp-track: #0f0d0a;
-  --vp-border: #332e27;
-  --vp-dash: rgba(255, 240, 220, 0.16);
-  --vp-box-line: #4a443a;
-  --vp-miss-line: #6e665a;
-  --vp-text: #f5efe6;
-  --vp-soft: #d6cec2;
-  --vp-muted: #a89f92;
-  --vp-nav: #ddd5c9;
-  --vp-accent: #2323ff;
-  --vp-on-accent: #ffffff;
-  --vp-highlight: #b9a8ff;
-  --vp-hot: #ff4fae;
-  --vp-badge: #e0157f;
-  --vp-sale: #45ff5c;
-  --vp-shadow: none;
-  --vp-glow: 0 0 0 1px rgba(120, 120, 255, 0.55), 0 0 18px rgba(35, 35, 255, 0.5);
-  --vp-scrim: #0d0b08;
-  --vp-photo-overlay: rgba(20, 17, 12, 0.72);
-  color-scheme: dark;
-}
-
-/* Typography tokens for the same redesign - Merriweather replaces Fraunces
-   for display type, JetBrains Mono replaces IBM Plex Mono for labels/meta/
-   quantities (both now loaded in index.html alongside the originals, which
-   stay in place for every screen not yet migrated). Inter is unchanged. */
-.vp-theme {
-  --vp-font-display: "Merriweather", serif;
-  --vp-font-body: "Inter", system-ui, sans-serif;
-  --vp-font-mono: "JetBrains Mono", ui-monospace, monospace;
-}
-
-/* ---------- Vapor shared controls (design handoff's "Standard controls") ----------
-   Reusable across every screen as it migrates - not Makeable-specific,
-   even though Makeable (the first screen implemented) is the only
-   consumer today. */
-
-.vp-theme {
-  background: var(--vp-bg);
-  color: var(--vp-text);
-  font-family: var(--vp-font-body);
+.riso-makeable {
   max-width: 1280px;
   margin: 0 auto;
   padding: 28px 40px 56px;
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
 }
 
-.vp-page-title {
-  font-family: var(--vp-font-display);
+.riso-makeable-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-makeable-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.riso-makeable-controls {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: var(--riso-shadow-ready);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.riso-makeable-toggles {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.riso-makeable-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-makeable-toggle-label {
+  font-family: var(--riso-font-display);
   font-weight: 700;
-  font-size: 30px;
-  line-height: 1.2;
-  margin: 0;
+  font-size: 15px;
 }
 
-.vp-page-subtitle {
-  font-size: 14.5px;
-  color: var(--vp-muted);
-  margin: 4px 0 0;
+.riso-makeable-toggle-meta {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  color: var(--riso-muted);
 }
 
-/* Local per-screen toggle, same pattern Home already uses - a single
-   app-wide header toggle (per the handoff) lands once every screen has
-   migrated; until then each screen gets its own, all reading/writing the
-   same mealprep-vp-theme key so they agree once more than one exists. */
-.vp-theme-toggle {
+.riso-makeable-toggle-divider {
+  width: 0;
+  height: 26px;
+  border-left: 2px dashed var(--riso-dash-strong);
+}
+
+.riso-makeable-also-have {
   display: flex;
-  background: var(--vp-surface2);
-  border-radius: 17px;
-  padding: 3px;
-  border: none;
-  cursor: pointer;
-  font-family: var(--vp-font-body);
-}
-
-.vp-theme-toggle span {
-  padding: 5px 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--vp-muted);
-}
-
-.vp-theme-toggle span.active {
-  background: var(--vp-accent);
-  color: var(--vp-on-accent);
-}
-
-.vp-hint-strip {
-  background: var(--vp-surface2);
-  border-radius: 14px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.vp-hint-icon {
-  flex-shrink: 0;
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  border: 1.5px solid var(--vp-muted);
-  color: var(--vp-muted);
-  font-family: var(--vp-font-display);
-  font-style: italic;
-  font-size: 12px;
-  display: flex;
+  gap: 8px;
   align-items: center;
-  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 44px;
+  padding: 5px 6px 5px 16px;
+  border-radius: 999px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
 }
 
-.vp-hint-text {
-  flex: 1;
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--vp-soft);
+.riso-makeable-also-have-label {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 
-.vp-hint-dismiss {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  color: var(--vp-muted);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.vp-hint-dismiss:hover {
-  color: var(--vp-text);
-}
-
-.vp-toggle {
-  display: inline-flex;
-  align-items: center;
-  width: 38px;
-  height: 22px;
-  border-radius: 11px;
-  background: var(--vp-track);
-  padding: 3px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  flex-shrink: 0;
-}
-
-.vp-toggle.on {
-  background: var(--vp-accent);
-}
-
-.vp-toggle-knob {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #ffffff;
-  transition: transform 0.2s ease;
-}
-
-.vp-toggle.on .vp-toggle-knob {
-  transform: translateX(16px);
-}
-
-.vp-toggle-row {
+.riso-makeable-also-have-chip {
+  height: 32px;
+  padding: 0 8px 0 13px;
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
   display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.vp-toggle-label {
-  font-size: 14px;
-  color: var(--vp-text);
-}
-
-.vp-toggle-meta {
-  margin-left: 6px;
-  font-family: var(--vp-font-mono);
-  font-size: 10.5px;
-  color: var(--vp-muted);
-}
-
-.vp-chip {
-  display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  padding: 0 6px 0 10px;
-  border-radius: 14px;
-  background: var(--vp-accent);
-  color: var(--vp-on-accent);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
   font-size: 13px;
-  font-weight: 500;
 }
 
-.vp-chip button {
+.riso-makeable-also-have-chip button {
   background: none;
   border: none;
   color: inherit;
@@ -278,238 +144,272 @@
   padding: 2px;
 }
 
-.vp-chip button:hover {
+.riso-makeable-also-have-chip button:hover {
   opacity: 1;
 }
 
-.vp-empty-state {
-  color: var(--vp-muted);
-  font-size: 14px;
-}
-
-/* ---------- Makeable screen ---------- */
-
-.vp-makeable-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.vp-control-card {
-  background: var(--vp-surface);
-  border-radius: 20px;
-  box-shadow: var(--vp-shadow);
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.vp-toggle-row-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 28px;
-}
-
-.vp-also-have {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  background: var(--vp-surface2);
-  border-radius: 14px;
-  padding: 10px 14px;
-}
-
-.vp-also-have-label {
-  font-family: var(--vp-font-mono);
-  font-weight: 500;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  color: var(--vp-muted);
-  flex-shrink: 0;
-}
-
-.vp-also-have-input {
+.riso-makeable-also-have-input {
   flex: 1;
-  min-width: 160px;
-  background: none;
+  min-width: 220px;
+  height: 32px;
   border: none;
-  font-size: 14px;
-  color: var(--vp-text);
-  font-family: var(--vp-font-body);
-}
-
-.vp-also-have-input:focus {
   outline: none;
+  background: transparent;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 500;
+  font-size: 14.5px;
 }
 
-.vp-also-have-input::placeholder {
-  color: var(--vp-muted);
+.riso-makeable-also-have-input::placeholder {
+  color: var(--riso-muted);
 }
 
-.vp-group {
+.riso-makeable-empty {
+  font-size: 13.5px;
+  color: var(--riso-soft);
+}
+
+.riso-makeable-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.vp-group-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.vp-group-title {
-  font-family: var(--vp-font-display);
-  font-weight: 700;
-  font-size: 19px;
-  margin: 0;
-}
-
-.vp-group-count {
-  font-family: var(--vp-font-mono);
-  font-size: 12px;
-  color: var(--vp-muted);
-}
-
-.vp-group-note {
-  font-size: 13px;
-  color: var(--vp-muted);
-}
-
-.vp-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
 }
 
-.vp-card {
-  background: var(--vp-surface);
-  border-radius: 18px;
-  box-shadow: var(--vp-shadow);
-  padding: 8px;
+.riso-makeable-group-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.riso-makeable-group-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.riso-makeable-group-pill {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 17px;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.riso-makeable-group-pill.blue {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-makeable-group-pill.yellow {
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+}
+
+.riso-makeable-group-pill.paper {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-makeable-group-note {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-makeable-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 18px;
+}
+
+.riso-makeable-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow: hidden;
 }
 
-.vp-card-thumb-btn {
-  display: block;
-  width: 100%;
+.riso-makeable-card-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.riso-makeable-card-photo {
+  width: 78px;
+  height: 78px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-track);
   padding: 0;
-  border: none;
-  background: none;
   cursor: pointer;
 }
 
-.vp-card-thumb {
+.riso-makeable-card-photo img {
   width: 100%;
-  height: 72px;
-  border-radius: 12px;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.vp-card-thumb-placeholder {
-  background: var(--vp-surface2);
-}
-
-.vp-card-body {
+.riso-makeable-card-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 0 4px 4px;
+  gap: 5px;
 }
 
-.vp-card-title {
+.riso-makeable-card-name {
   background: none;
   border: none;
   padding: 0;
   text-align: left;
-  font-family: var(--vp-font-display);
-  font-weight: 700;
-  font-size: 14.5px;
-  color: var(--vp-text);
   cursor: pointer;
-  line-height: 1.3;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--riso-ink);
 }
 
-.vp-card-meta {
-  margin: 0;
-  font-family: var(--vp-font-mono);
+.riso-makeable-card-meta {
+  font-family: var(--riso-font-mono);
   font-size: 10.5px;
-  letter-spacing: 0.04em;
-  color: var(--vp-muted);
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
 }
 
-.vp-card-uses {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--vp-hot);
-}
-
-.vp-card-need {
-  background: var(--vp-surface2);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 12.5px;
-  color: var(--vp-soft);
-}
-
-.vp-card-need-label {
-  font-family: var(--vp-font-mono);
-  font-weight: 500;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--vp-muted);
-}
-
-.vp-card-actions {
+.riso-makeable-card-uses {
   display: flex;
-  gap: 8px;
-  margin-top: 2px;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.vp-btn-card {
-  height: 34px;
-  border-radius: 17px;
-  padding: 0 14px;
+.riso-makeable-uses-pill {
+  position: static;
+  padding: 0 7px;
+  font-size: 10.5px;
+}
+
+.riso-makeable-card-uses span:last-child {
+  font-size: 12px;
+  color: var(--riso-soft);
+}
+
+.riso-makeable-need {
+  background: var(--riso-canvas);
+  border: 2px dashed var(--riso-ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.riso-makeable-need-text {
+  margin: 0;
   font-size: 13px;
-  font-weight: 600;
-  font-family: var(--vp-font-body);
-  border: none;
-  cursor: pointer;
+  line-height: 1.45;
+}
+
+.riso-makeable-need-label {
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+}
+
+.riso-makeable-need-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.riso-makeable-need-btn {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13px;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.vp-btn-card-primary {
+.riso-makeable-ready-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.riso-makeable-cook-btn {
   flex: 1;
-  background: var(--vp-accent);
-  color: var(--vp-on-accent);
-  box-shadow: var(--vp-glow);
+  height: 38px;
+  border-radius: 19px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
 }
 
-.vp-btn-card-secondary {
-  background: var(--vp-surface2);
-  color: var(--vp-text);
+.riso-makeable-plan-btn {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 @media (max-width: 680px) {
-  .vp-theme {
+  .riso-makeable {
     padding: 18px 16px 40px;
-    gap: 18px;
   }
 
-  .vp-makeable-header {
-    flex-wrap: wrap;
+  .riso-makeable-title {
+    font-size: 40px;
   }
 
-  .vp-toggle-row-group {
+  .riso-makeable-toggles {
     flex-direction: column;
+    align-items: flex-start;
     gap: 12px;
+  }
+
+  .riso-makeable-toggle-divider {
+    display: none;
   }
 }
 
