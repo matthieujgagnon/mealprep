@@ -684,6 +684,21 @@ export default function App({ user, onLogout }) {
     setPlannerEntries((prev) => [...prev, entry]);
   }
 
+  // Sets/edits a custom note ("sandwich", "ordering food") on a blank slot.
+  // A note lives on a placeholder recipe's title (server-side), not a
+  // separate field, so writing one is either placing a new blank/note
+  // entry (no entryId yet) or repointing an existing one at a different
+  // placeholder recipe (entryId given) - see PUT /api/planner/:id/note.
+  async function handleSetPlannerNote({ entryId, dayIndex, mealType, note }) {
+    if (entryId) {
+      const updated = await api.setPlannerEntryNote(entryId, note);
+      setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? updated : e)));
+    } else {
+      const entry = await api.markSlotBlank(weekStart, dayIndex, mealType, note);
+      setPlannerEntries((prev) => [...prev, entry]);
+    }
+  }
+
   async function handleCopyLastWeek() {
     const fromWeekStart = shiftWeek(weekStart, -1);
     const copied = await api.copyPlannerWeek(fromWeekStart, weekStart);
@@ -1089,6 +1104,7 @@ export default function App({ user, onLogout }) {
                       onRemove={handleRemoveFromPlanner}
                       onCycleState={handleCycleMealState}
                       onMarkBlank={handleMarkBlank}
+                      onSetNote={handleSetPlannerNote}
                     />
                   </div>
                   <PlannerSidebar

@@ -45,11 +45,13 @@ export const api = {
   listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
   placeOnPlanner: (payload) =>
     request("/planner", { method: "POST", body: JSON.stringify(payload) }),
-  markSlotBlank: (weekStart, dayOfWeek, mealType) =>
+  markSlotBlank: (weekStart, dayOfWeek, mealType, note) =>
     request("/planner/blank", {
       method: "POST",
-      body: JSON.stringify({ weekStart, dayOfWeek, mealType }),
+      body: JSON.stringify({ weekStart, dayOfWeek, mealType, ...(note ? { note } : {}) }),
     }),
+  setPlannerEntryNote: (id, note) =>
+    request(`/planner/${id}/note`, { method: "PUT", body: JSON.stringify({ note }) }),
   copyPlannerWeek: (fromWeekStart, toWeekStart) =>
     request("/planner/copy-week", {
       method: "POST",
