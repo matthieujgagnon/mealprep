@@ -88,7 +88,7 @@ test("+ Add to list sends a recipe's missing ingredients to the grocery list", a
   await card.getByRole("button", { name: /Add \d+ to list/ }).click();
   await page.waitForTimeout(300);
 
-  await page.getByRole("button", { name: "Grocery List", exact: true }).click();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await page.waitForTimeout(200);
   await expect(page.getByText("Broccoli", { exact: false }).first()).toBeVisible();
 });

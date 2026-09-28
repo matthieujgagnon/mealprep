@@ -141,7 +141,7 @@ test("+ List adds a deal's ingredient to this week's grocery list", async ({ pag
     .click();
   await page.waitForTimeout(300);
 
-  await page.getByRole("button", { name: "Grocery List", exact: true }).click();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.getByText("chicken breast")).toBeVisible();
 });
 

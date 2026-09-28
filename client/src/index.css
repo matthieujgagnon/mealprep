@@ -597,10 +597,11 @@ select {
 
 .app-header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  align-items: center;
+  gap: 20px;
+  margin: -28px -20px 24px;
+  padding: 24px 20px;
+  background: var(--riso-canvas);
   flex-wrap: wrap;
 }
 
@@ -637,23 +638,45 @@ select {
 }
 
 .wordmark {
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
   font-size: 28px;
-  letter-spacing: -0.01em;
+  line-height: 1;
+  letter-spacing: -0.02em;
   margin: 0;
+  color: var(--riso-ink);
+  flex: none;
 }
 
 .wordmark span {
-  color: var(--accent-text);
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  padding: 0 8px;
+  border-radius: 6px;
 }
 
 .tabs {
+  flex: 1;
+  /* A flex item's default min-width is auto (its content's natural width),
+     not 0 - without this override, 7 tab buttons wider than the available
+     row force .tabs (and everything up through <body>) wider than the
+     viewport instead of actually using overflow-x:auto's scrollbar, which
+     on a real mobile viewport triggers the browser's "page wider than
+     device width" auto-zoom-out. That rescales the whole page, so every
+     element's on-screen position stops matching its layout coordinates -
+     exactly what made a real touch tap land on the wrong element anywhere
+     below the header (caught by touch-drag.spec.js, not by any
+     mouse-simulated test, since only a real viewport-width check exposes
+     it). */
+  min-width: 0;
   display: flex;
+  /* Not justify-content:center - combined with overflow-x:auto, centered
+     content whose natural width exceeds the container clips equally off
+     both ends and scrollLeft:0 lands in the middle, making the first tab
+     (Home) unreachable without scrolling backwards past nothing. flex-start
+     keeps every tab reachable by scrolling forward only. */
+  justify-content: flex-start;
   gap: 4px;
-  background: var(--bg-soft);
-  padding: 4px;
-  border-radius: 10px;
   /* Scrolls horizontally rather than squeezing every tab to fit once there
      are enough of them (8, as of adding Home) that a narrow/mobile screen
      can't fit them all at a legible size — see the mobile override below,
@@ -668,10 +691,14 @@ select {
 
 .tab {
   background: none;
-  border: none;
-  color: var(--paper-soft);
-  padding: 8px 16px;
-  border-radius: 7px;
+  border: 2px solid transparent;
+  color: var(--riso-ink);
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -679,34 +706,47 @@ select {
 }
 
 .tab.active {
-  background: var(--mustard);
-  color: #f3f3fb;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border-color: var(--riso-ink);
+  box-shadow: var(--riso-shadow);
 }
 
 .app-header-account {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* flex: 0 1 auto (shrinkable), not flex: none - a long email is real
+     content this can't just refuse to yield width for. Paired with the
+     name's own min-width:0 + ellipsis below, so a long email truncates
+     instead of forcing the row (and on a narrow viewport, the page) wider
+     than expected - see .tabs's own min-width:0 comment for what that
+     causes on a real mobile viewport. */
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .app-header-account-name {
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.85;
+  font-family: var(--riso-font-body);
+  font-size: 14px;
+  color: var(--riso-ink);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-/* .btn.subtle is styled for a light card (light background, dark text),
-   but this sits directly on the dark page background - same fix as
-   .planner-week-nav and .recipe-section-header-actions below. */
+/* .btn.subtle is styled for a dark page (light card, dark text on a dark
+   backdrop) - the header is now its own paper-colored bar, so it needs the
+   inverse: an ink-outlined card-colored button instead. */
 .app-header-account .btn.subtle {
-  background: var(--bg-soft);
-  color: var(--paper-soft);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
 }
 
 .app-header-account .btn.subtle:hover {
-  background: rgba(35, 35, 255, 0.18);
-  color: var(--accent-text);
+  background: var(--riso-track);
 }
 
 /* ---------- Auth (login/signup) page ---------- */
@@ -3372,19 +3412,17 @@ input[type="date"].planner-week-picker {
 
 /* ---------- Flyers tab (cook what's on sale) ---------- */
 
-/* ---------- "Riso" theme tokens (Flyers screen redesign) ----------
-   Neubrutalist style from the Riso Flyers design exploration: thick black
-   borders, offset drop shadows, a cream surface on a warm off-white page,
-   saturated accent blocks (blue for actions, pink for "ends soon", yellow
-   for stickers, green for price/savings). Scoped to .riso-theme (Flyers
-   only), same prefixed-token pattern as --vp-, --inv-, --hm- elsewhere in
-   this file - purely additive, no other screen changes. */
-/* Token names/values mirror design_handoff_riso/README.md's "Design
-   system" table exactly (paper/card/ink/ink-soft/ink-muted/track/rule/
-   blue/pink/green/green-text/green-tint/yellow), prefixed --riso- for this
-   file's usual scoping. "Black paper" dark mode isn't designed yet per the
-   handoff, so only light values exist for now - every color already lives
-   in a token, so dark can be added later without touching markup. */
+/* ---------- "Riso Poster" theme tokens (full-app redesign) ----------
+   Two-ink risograph print look: thick black borders, hard offset shadows,
+   a cream surface on a warm off-white page, saturated accent blocks (blue
+   for action, pink for urgency/today, green for sale, yellow for
+   stickers). Token names/values mirror design_handoff_riso/README.md's
+   "Design system" table exactly, prefixed --riso- per this file's usual
+   scoping (--vp-, --inv-, --hm-). Applied screen by screen - a screen not
+   yet migrated keeps its own look until its turn. "Black paper" dark mode
+   isn't designed yet, so only light values exist for now - every color
+   already lives in a token, so dark can be added later without touching
+   markup. */
 .riso-theme {
   --riso-canvas: #f4f1ea; /* paper */
   --riso-surface: #fffdf8; /* card */
@@ -3392,21 +3430,151 @@ input[type="date"].planner-week-picker {
   --riso-ink: #16181f; /* ink */
   --riso-soft: #3f3e37; /* ink-soft */
   --riso-muted: #5e5b52; /* ink-muted */
-  --riso-dash: #d6cfbf; /* rule */
+  --riso-dash: #d6cfbf; /* rule (dashed dividers) */
+  --riso-dash-strong: #bdb6a6; /* rule (dashed empty slots) */
   --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
   --riso-hot: #ff48b0; /* pink */
   --riso-yellow: #ffe14d; /* yellow */
-  --riso-green: #00a95c; /* green */
+  --riso-green: #10c95c; /* green */
   --riso-green-text: #00753f; /* green-text */
   --riso-green-tint: #e6f5ec; /* green-tint */
-  --riso-shadow: 3px 3px 0 var(--riso-ink); /* buttons, active nav, stickers */
-  --riso-shadow-rail: 5px 5px 0 var(--riso-ink); /* rails */
-  --riso-shadow-lg: 6px 6px 0 var(--riso-ink); /* hero and color blocks */
+  --riso-danger: #c4123f; /* danger (delete text only) */
+  --riso-shadow: 3px 3px 0 var(--riso-ink); /* buttons, active nav, stickers, round icon buttons */
+  --riso-shadow-ready: 5px 5px 0 var(--riso-ink); /* "ready / nothing to buy" cards */
+  --riso-shadow-lg: 8px 8px 0 var(--riso-ink); /* hero/color blocks, recipe card, pop-ups */
+  --riso-shadow-selected: 4px 4px 0 var(--riso-accent); /* selected inventory item */
+  --riso-shadow-today: 4px 4px 0 var(--riso-hot); /* today's Planner column */
   --riso-font-display: "Bricolage Grotesque", sans-serif;
   --riso-font-body: "Inter", system-ui, sans-serif;
   --riso-font-mono: "DM Mono", ui-monospace, monospace;
   color-scheme: light;
+}
+
+/* ---------- Riso Poster shared components ---------- */
+
+/* Segmented control - one outlined pill, the active segment filled ink
+   with paper text (e.g. Grocery's By store/By aisle/By recipe, the
+   Planner side panel's Week overview/Plan around). */
+.riso-segmented {
+  display: inline-flex;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--riso-surface);
+}
+
+.riso-segmented button {
+  border: none;
+  background: none;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  height: 38px;
+  padding: 0 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.riso-segmented button.active {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+/* Switch - 48x28 track, blue border+fill when on, ink-outlined card knob. */
+.riso-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riso-switch-label {
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--riso-ink);
+}
+
+.riso-switch-meta {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  color: var(--riso-muted);
+}
+
+.riso-switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+  border: 2px solid var(--riso-track);
+  background: var(--riso-track);
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.riso-switch.on {
+  border-color: var(--riso-accent);
+  background: var(--riso-accent);
+}
+
+.riso-switch-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+  transition: transform 0.15s ease;
+}
+
+.riso-switch.on .riso-switch-knob {
+  transform: translateX(20px);
+}
+
+/* "How it works" hint strip - dashed card, a tilted yellow sticker, and a
+   dismiss link. Dismissal is saved per user+screen (see dismissedHints in
+   localStorage, keyed the same way). */
+.riso-hint-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--riso-surface);
+  border: 2px dashed var(--riso-ink);
+  border-radius: 18px;
+  padding: 12px 16px;
+}
+
+.riso-hint-sticker {
+  flex: none;
+  transform: rotate(-4deg);
+}
+
+.riso-hint-text {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-hint-dismiss {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--riso-ink);
+  text-decoration: underline;
 }
 
 .riso-flyers {
@@ -5863,7 +6031,8 @@ input[type="date"].planner-week-picker {
 
   .app-header {
     gap: 10px;
-    margin-bottom: 16px;
+    margin: -16px -12px 16px;
+    padding: 16px 12px;
   }
 
   .wordmark {

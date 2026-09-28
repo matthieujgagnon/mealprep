@@ -772,9 +772,9 @@ export default function App({ user, onLogout }) {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
       <div className={`app${isDragActive ? " dnd-active" : ""}`}>
-        <header className="app-header">
+        <header className="app-header riso-theme">
           <h1 className="wordmark">
-            The Matt Mo <span>Cookbook</span>
+            matt mo <span>cookbook</span>
           </h1>
           <nav className="tabs">
             <button
@@ -805,7 +805,7 @@ export default function App({ user, onLogout }) {
               className={`tab${tab === "grocery" ? " active" : ""}`}
               onClick={() => setTab("grocery")}
             >
-              Grocery List
+              Grocery
             </button>
             <button
               className={`tab${tab === "flyers" ? " active" : ""}`}

@@ -57,7 +57,7 @@ test("add a pantry inventory item and mark it a staple", async ({ page }) => {
 
 test("add an extra grocery item and check it off", async ({ page }) => {
   await signUp(page, uniqueEmail("smoke-grocery"));
-  await page.getByRole("button", { name: "Grocery List", exact: true }).click();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
 
   await page.getByRole("button", { name: "+ Add item" }).first().click();
   await page.fill('.add-section-form input[placeholder="e.g. Paper towels"]', "paper towels");
