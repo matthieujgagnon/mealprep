@@ -198,6 +198,9 @@ export default function App({ user, onLogout }) {
   // recipe was opened from a "good next addition" suggestion — null the
   // rest of the time. Set alongside activeRecipe by openRecipe() below.
   const [activeRecipeSharedWith, setActiveRecipeSharedWith] = useState(null);
+  // true when the currently-open recipe should skip straight to cook mode —
+  // set by Makeable's "Cook tonight" action, cleared on every other open.
+  const [activeRecipeStartCooking, setActiveRecipeStartCooking] = useState(false);
   const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
   const [showManualForm, setShowManualForm] = useState(false);
   const [customStaples, setCustomStaples] = useState([]);
@@ -362,9 +365,10 @@ export default function App({ user, onLogout }) {
   // only ever passed by the "good next addition" suggestion click — every
   // other caller passes just the recipe, which naturally clears any
   // leftover context from a previous suggestion-opened recipe.
-  function openRecipe(recipe, sharedWith) {
+  function openRecipe(recipe, sharedWith, startCooking) {
     setActiveRecipe(recipe);
     setActiveRecipeSharedWith(sharedWith || null);
+    setActiveRecipeStartCooking(!!startCooking);
   }
 
   // Keeps the recipes list AND the currently-open modal in sync after an
@@ -858,7 +862,8 @@ export default function App({ user, onLogout }) {
             onSelectRecipe={openRecipe}
             pantryInventory={pantryInventory}
             customStaples={customStaples}
-            onOpenInventory={() => setTab("inventory")}
+            weekStart={weekStart}
+            onAddToPlanner={handleAddToPlanner}
           />
         )}
 
@@ -1184,6 +1189,7 @@ export default function App({ user, onLogout }) {
           <RecipeDetailModal
             recipe={activeRecipe}
             sharedWithWeek={activeRecipeSharedWith}
+            startInCookMode={activeRecipeStartCooking}
             onClose={() => openRecipe(null)}
             allRecipes={recipes}
             plannerEntries={plannerEntries}
