@@ -1,4 +1,10 @@
 :root {
+  /* Riso Poster page background/ink, available outside any .riso-theme
+     scope (e.g. on body itself, which mounts before any screen's own
+     .riso-theme wrapper does, and needs to already be the right color -
+     see the body rule below). .riso-theme's own copy of the same value
+     still wins inside a themed screen; this is only the fallback. */
+  --riso-canvas: #f4f1ea;
   --bg: #0e0e3d;
   --bg-soft: #17174f;
   --paper: #f3f3fb;
@@ -450,8 +456,15 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--paper);
+  /* Every screen is Riso-themed now (light paper, dark ink) - this used to
+     be --bg (dark navy), a leftover from the pre-Riso dark theme. Any gap
+     between differently-sized children (the header bleeds edge to edge,
+     each screen's own wrapper insets itself independently - see .app
+     below) showed that dark navy through, which read as a layout bug
+     ("there's still blue") even though each piece was individually
+     correct. */
+  background: var(--riso-canvas);
+  color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
@@ -485,9 +498,13 @@ select {
 }
 
 .app {
-  max-width: 1180px;
+  /* Matches the shared header/screen container spec (max-width 1280,
+     padding 28px 40px) - was 1180/20px, a leftover pre-Riso value never
+     updated, which made every screen's own (correctly spec'd) inner
+     max-width:1280 wrapper get capped narrower than intended. */
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 28px 20px 80px;
+  padding: 28px 40px 80px;
 }
 
 /* Without this, the cursor reverts to whatever the pointer happens to be
@@ -505,8 +522,8 @@ select {
   display: flex;
   align-items: center;
   gap: 20px;
-  margin: -28px -20px 24px;
-  padding: 24px 20px;
+  margin: -28px -40px 24px;
+  padding: 24px 40px;
   background: var(--riso-canvas);
   flex-wrap: wrap;
 }
