@@ -1,17 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
+  MeasuringStrategy,
+  PointerSensor,
+  pointerWithin,
+  rectIntersection,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore } from "./lib/groceryDedupe.js";
-import { core, suggestNextRecipes } from "./lib/similarRecipes.js";
+import { core } from "./lib/similarRecipes.js";
 import { Home } from "./components/Home.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
 import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
-import { PlannerBoard, PlannerHeader, findNextEmptySlot } from "./components/PlannerBoard.jsx";
-import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
+import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
+import { PlannerTray } from "./components/PlannerTray.jsx";
+import { emptyUpcomingSlots, findNextEmptySlot, todayIndex } from "./lib/plannerSlots.js";
+import { isBreakfastRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
+import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
@@ -26,6 +38,25 @@ function DragPreview({ active }) {
   const recipe = active?.data.current?.recipe;
   const ingredientCore = active?.data.current?.ingredientCore;
   const inventoryItem = active?.data.current?.inventoryItem;
+
+  if (recipe && (active.data.current?.entryId || active.data.current?.fromTray)) {
+    if (recipe.isPlaceholder) {
+      return (
+        <div className="riso-theme riso-planner-drag-preview note">
+          <span className="riso-planner-note-label">✎ NOTE</span>
+          <span className="riso-planner-note-text">
+            {recipe.title === "No meal planned" ? "Skipped" : recipe.title}
+          </span>
+        </div>
+      );
+    }
+    return (
+      <div className="riso-theme riso-planner-drag-preview">
+        {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" /> : <span className="photo-placeholder" />}
+        <span className="riso-planner-drag-preview-name">{recipe.title}</span>
+      </div>
+    );
+  }
 
   if (recipe) {
     return (
@@ -51,6 +82,27 @@ function DragPreview({ active }) {
   }
 
   return null;
+}
+
+// Only a drop target actually visible under the pointer counts. dnd-kit's
+// default (largest overlap with the dragged box) picked the wrong slot for
+// anything wider than a slot, and a plain point-in-rect test still "hits"
+// targets clipped out of view: the Planner's Saturday/Sunday slots sit under
+// the tray, so starting a drag there made them the target, dnd-kit
+// auto-scrolled the board toward the weekend, and the drop landed two days
+// off. elementsFromPoint skips clipped content. Sortable lists keep the
+// overlap fallback so the preview doesn't flicker in the gaps between items.
+function collisionDetection(args) {
+  const { pointerCoordinates, droppableContainers, active } = args;
+  if (pointerCoordinates) {
+    const under = document.elementsFromPoint(pointerCoordinates.x, pointerCoordinates.y);
+    const visible = droppableContainers.filter(
+      (c) => c.node.current && under.some((el) => c.node.current.contains(el))
+    );
+    const hits = pointerWithin({ ...args, droppableContainers: visible });
+    if (hits.length > 0 || !active.data.current?.sortable) return hits;
+  }
+  return rectIntersection(args);
 }
 
 export default function App({ user, onLogout }) {
@@ -81,7 +133,16 @@ export default function App({ user, onLogout }) {
   // true when the currently-open recipe should skip straight to cook mode —
   // set by Makeable's "Cook tonight" action, cleared on every other open.
   const [activeRecipeStartCooking, setActiveRecipeStartCooking] = useState(false);
-  const [planAroundIngredients, setPlanAroundIngredients] = useState([]); // sidebar's "Plan around…" tab — plain ingredient names, not recipes
+  const [planAroundIngredients, setPlanAroundIngredients] = useState([]);
+  const [plannerTarget, setPlannerTarget] = useState(null); // selected slot { dayOfWeek, mealType, note? }
+  const [plannerTrayTab, setPlannerTrayTab] = useState("suggested");
+  const [trayMessage, setTrayMessage] = useState(null);
+  useEffect(() => {
+    if (!plannerTarget) return undefined;
+    const onKey = (e) => e.key === "Escape" && setPlannerTarget(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [plannerTarget]); // sidebar's "Plan around…" tab — plain ingredient names, not recipes
   const [customStaples, setCustomStaples] = useState([]);
   const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
@@ -326,38 +387,84 @@ export default function App({ user, onLogout }) {
       return;
     }
 
-    // Moving an existing planner placement to a different day/meal slot,
-    // rather than creating a brand new placement. Always within the
-    // currently-viewed week — the board only ever shows one week's cells as
-    // drop targets, so a cross-week move isn't reachable via drag.
+    const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
+    if (!cellMatch) return;
+    const slot = { dayOfWeek: Number(cellMatch[1]), mealType: cellMatch[2] };
+
+    // A meal or note dragged between slots: the two slots swap.
     const entryId = active.data.current?.entryId;
     if (entryId) {
-      const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
-      if (!cellMatch) return;
-      const dayOfWeek = Number(cellMatch[1]);
-      const mealType = cellMatch[2];
-      await api.updatePlannerEntry(entryId, { dayOfWeek, mealType });
-      setPlannerEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? { ...e, dayOfWeek, mealType } : e))
-      );
+      await handleMoveEntry(entryId, slot);
       return;
     }
 
+    // A recipe dragged in from the tray replaces whatever was in the slot.
     const recipeId = active.data.current?.recipe?.id;
-    if (!recipeId) return;
-
-    const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
-    if (!cellMatch) return;
-
-    await handleAddToPlanner(recipeId, Number(cellMatch[1]), cellMatch[2]);
+    if (recipeId) await handlePlaceRecipe(recipeId, slot);
   }
 
-  // Shared by the planner drag-and-drop above and any quick "add to
-  // planner" action elsewhere (e.g. the Flyers tab) that isn't dragging
-  // onto a visible planner cell.
+  // Adds a recipe to a slot without touching what's there - for quick "add
+  // to planner" actions outside the Planner tab (Flyers, Makeable's Plan),
+  // which only ever target an empty slot.
   async function handleAddToPlanner(recipeId, dayOfWeek, mealType) {
     const entry = await api.placeOnPlanner({ recipeId, weekStart, dayOfWeek, mealType });
     setPlannerEntries((prev) => [...prev, entry]);
+  }
+
+  function entriesInSlot(slot) {
+    return plannerEntries.filter((e) => e.dayOfWeek === slot.dayOfWeek && e.mealType === slot.mealType);
+  }
+
+  // One thing per slot: placing a recipe replaces whatever was there.
+  async function handlePlaceRecipe(recipeId, slot) {
+    const existing = entriesInSlot(slot);
+    await Promise.all(existing.map((e) => api.removeFromPlanner(e.id)));
+    const entry = await api.placeOnPlanner({ recipeId, weekStart, ...slot });
+    setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), entry]);
+  }
+
+  async function handleMoveEntry(entryId, slot) {
+    const moving = plannerEntries.find((e) => e.id === entryId);
+    if (!moving || (moving.dayOfWeek === slot.dayOfWeek && moving.mealType === slot.mealType)) return;
+    const from = { dayOfWeek: moving.dayOfWeek, mealType: moving.mealType };
+    const displaced = entriesInSlot(slot);
+    await Promise.all([
+      api.updatePlannerEntry(entryId, slot),
+      ...displaced.map((e) => api.updatePlannerEntry(e.id, from)),
+    ]);
+    setPlannerEntries((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, ...slot } : displaced.includes(e) ? { ...e, ...from } : e))
+    );
+  }
+
+  // The tray's "+": the selected slot if there is one, otherwise the next
+  // empty upcoming slot (supper first).
+  async function handlePlaceFromTray(recipe) {
+    const slot = plannerTarget || findNextEmptySlot(plannerEntries, weekStart);
+    if (!slot) {
+      setTrayMessage("Every slot from today on is full - pick a slot on the board to replace it.");
+      return;
+    }
+    setTrayMessage(null);
+    await handlePlaceRecipe(recipe.id, slot);
+    setPlannerTarget(null);
+  }
+
+  async function handleSaveTrayNote(note) {
+    if (!plannerTarget) return;
+    const slot = { dayOfWeek: plannerTarget.dayOfWeek, mealType: plannerTarget.mealType };
+    const existing = entriesInSlot(slot);
+    const existingNote = existing.find((e) => e.recipe?.isPlaceholder);
+    const others = existing.filter((e) => e !== existingNote);
+    await Promise.all(others.map((e) => api.removeFromPlanner(e.id)));
+    let saved;
+    if (existingNote) saved = await api.setPlannerEntryNote(existingNote.id, note);
+    else saved = await api.markSlotBlank(weekStart, slot.dayOfWeek, slot.mealType, note);
+    setPlannerEntries((prev) => [
+      ...prev.filter((e) => !others.includes(e) && e !== existingNote),
+      saved,
+    ]);
+    setPlannerTarget(null);
   }
 
   async function handleRemoveFromPlanner(entryId) {
@@ -381,73 +488,57 @@ export default function App({ user, onLogout }) {
     setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
   }
 
-  async function handleMarkBlank(dayOfWeek, mealType) {
-    const entry = await api.markSlotBlank(weekStart, dayOfWeek, mealType);
-    setPlannerEntries((prev) => [...prev, entry]);
-  }
-
-  // Sets/edits a custom note ("sandwich", "ordering food") on a blank slot.
-  // A note lives on a placeholder recipe's title (server-side), not a
-  // separate field, so writing one is either placing a new blank/note
-  // entry (no entryId yet) or repointing an existing one at a different
-  // placeholder recipe (entryId given) - see PUT /api/planner/:id/note.
-  async function handleSetPlannerNote({ entryId, dayIndex, mealType, note }) {
-    if (entryId) {
-      const updated = await api.setPlannerEntryNote(entryId, note);
-      setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? updated : e)));
-    } else {
-      const entry = await api.markSlotBlank(weekStart, dayIndex, mealType, note);
-      setPlannerEntries((prev) => [...prev, entry]);
-    }
-  }
-
   async function handleCopyLastWeek() {
     const fromWeekStart = shiftWeek(weekStart, -1);
     const copied = await api.copyPlannerWeek(fromWeekStart, weekStart);
     setPlannerEntries(copied);
   }
 
-  // "Fill empty slots": walks every day/meal slot in order and, for each
-  // still-empty one, places whatever suggestNextRecipes says best extends
-  // the week's ingredient reuse so far — appending a synthetic (never
-  // persisted) entry to a local working copy after each placement so later
-  // suggestions in the same pass see it, the same way a person filling the
-  // board in by hand would build on their own earlier picks. Falls back to
-  // any not-yet-used recipe when there's no shared-ingredient basis yet
-  // (e.g. a completely blank week), so the button always does something.
-  async function handleFillEmptySlots() {
-    if (plannableRecipes.length === 0) return;
-    let workingEntries = plannerEntries.map((e) => ({ ...e }));
-    let syntheticId = -1;
-    for (let i = 0; i < 21; i++) {
-      const slot = findNextEmptySlot(workingEntries);
-      if (!slot) break;
-      const suggestion = suggestNextRecipes(workingEntries, plannableRecipes, 1)[0];
-      let picked = suggestion?.recipe;
-      if (!picked) {
-        const plannedIds = new Set(
-          workingEntries.filter((e) => !e.recipe?.isPlaceholder).map((e) => e.recipe?.id)
-        );
-        picked = plannableRecipes.find((r) => !plannedIds.has(r.id)) || plannableRecipes[0];
+  const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
+  const upcomingPlannerEntries = plannerEntries.filter(
+    (e) => weekStart !== currentWeekStart() || e.dayOfWeek >= todayIndex()
+  );
+  const pantryHaveCores = haveCoresFor(pantryInventory, customStaples);
+  const fillPlan = planFill();
+
+  // "Fill empty slots": every empty upcoming slot gets the best-ranked recipe
+  // (the tray's own ranking), breakfast slots from breakfast-tagged recipes,
+  // cycling so one recipe isn't repeated all week. Breakfast slots stay
+  // empty when there are no breakfast recipes.
+  function planFill() {
+    const empty = emptyUpcomingSlots(plannerEntries, weekStart);
+    if (empty.length === 0 || plannableRecipes.length === 0) return [];
+    const { ranked } = rankRecipesForTray({
+      recipes: plannableRecipes,
+      upcomingEntries: upcomingPlannerEntries,
+      pantryInventory,
+      haveCores: pantryHaveCores,
+      saleCores: new Set(),
+    });
+    const breakfast = ranked.filter((x) => isBreakfastRecipe(x.recipe));
+    const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe));
+    const mains = other.length > 0 ? other : ranked;
+    let b = 0;
+    let o = 0;
+    const plan = [];
+    for (const slot of empty) {
+      if (slot.mealType === "breakfast") {
+        if (breakfast.length === 0) continue;
+        plan.push({ slot, recipe: breakfast[b++ % breakfast.length].recipe });
+      } else {
+        plan.push({ slot, recipe: mains[o++ % mains.length].recipe });
       }
-      if (!picked) break;
-      await handleAddToPlanner(picked.id, slot.dayOfWeek, slot.mealType);
-      workingEntries = [
-        ...workingEntries,
-        {
-          id: `fill-temp-${syntheticId--}`,
-          recipeId: picked.id,
-          recipe: picked,
-          dayOfWeek: slot.dayOfWeek,
-          mealType: slot.mealType,
-          isLeftover: false,
-          alreadyHave: false,
-        },
-      ];
     }
+    return plan;
   }
 
-  const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
+  async function handleFillEmptySlots() {
+    const created = await Promise.all(
+      fillPlan.map(({ slot, recipe }) => api.placeOnPlanner({ recipeId: recipe.id, weekStart, ...slot }))
+    );
+    setPlannerEntries((prev) => [...prev, ...created]);
+    setPlannerTarget(null);
+  }
 
   // "Build grocery list · n" in the Planner header — mirrors exactly how
   // GroceryList.jsx derives its own shoppingItems count (just the non-staple
@@ -464,6 +555,8 @@ export default function App({ user, onLogout }) {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={collisionDetection}
+      autoScroll={{ threshold: { x: 0.06, y: 0.12 } }}
       onDragStart={(event) => {
         setIsDragActive(true);
         setActiveDragItem(event.active);
@@ -670,11 +763,14 @@ export default function App({ user, onLogout }) {
                 <PlannerHeader
                   user={user}
                   weekStart={weekStart}
-                  onChangeWeek={setWeekStart}
+                  onChangeWeek={(w) => {
+                    setWeekStart(w);
+                    setPlannerTarget(null);
+                  }}
                   hasEntries={plannerEntries.length > 0}
                   onCopyLastWeek={handleCopyLastWeek}
+                  emptyCount={fillPlan.length}
                   onFillEmptySlots={handleFillEmptySlots}
-                  fillDisabled={plannableRecipes.length === 0}
                   groceryCount={groceryToBuyCount}
                   onGoToGrocery={() => setTab("grocery")}
                 />
@@ -682,28 +778,30 @@ export default function App({ user, onLogout }) {
                   <PlannerBoard
                     entries={plannerEntries}
                     weekStart={weekStart}
-                    plannableRecipes={plannableRecipes}
+                    target={plannerTarget}
+                    onSelectSlot={(slot) => {
+                      setPlannerTarget(slot);
+                      setTrayMessage(null);
+                    }}
                     onCardClick={openRecipe}
                     onRemove={handleRemoveFromPlanner}
                     onCycleState={handleCycleMealState}
-                    onMarkBlank={handleMarkBlank}
-                    onSetNote={handleSetPlannerNote}
-                    onAddToPlanner={handleAddToPlanner}
                   />
-                  <PlannerSidebar
-                    plannerEntries={plannerEntries}
-                    allRecipes={recipes}
-                    planAroundIngredients={planAroundIngredients}
-                    onAddIngredient={(name) =>
-                      setPlanAroundIngredients((prev) => (prev.includes(name) ? prev : [...prev, name]))
-                    }
-                    onRemoveIngredient={(name) =>
-                      setPlanAroundIngredients((prev) => prev.filter((n) => n !== name))
-                    }
-                    onSetIngredients={setPlanAroundIngredients}
+                  <PlannerTray
+                    recipes={plannableRecipes}
+                    upcomingEntries={upcomingPlannerEntries}
                     pantryInventory={pantryInventory}
-                    onSelectRecipe={openRecipe}
-                    onQuickAdd={(recipe, dayOfWeek, mealType) => handleAddToPlanner(recipe.id, dayOfWeek, mealType)}
+                    haveCores={pantryHaveCores}
+                    target={plannerTarget}
+                    onClearTarget={() => setPlannerTarget(null)}
+                    onPlaceRecipe={handlePlaceFromTray}
+                    onSaveNote={handleSaveTrayNote}
+                    onOpenRecipe={openRecipe}
+                    tab={plannerTrayTab}
+                    onTabChange={setPlannerTrayTab}
+                    picks={planAroundIngredients}
+                    onPicksChange={setPlanAroundIngredients}
+                    message={trayMessage}
                   />
                 </div>
               </>
@@ -753,6 +851,7 @@ export default function App({ user, onLogout }) {
                 names.push(capitalize(c));
               }
               setPlanAroundIngredients(names);
+              setPlannerTrayTab("around");
               openRecipe(null);
               setWeekStart(currentWeekStart());
               setTab("planner");

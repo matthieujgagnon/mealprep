@@ -2,6 +2,7 @@ import { useState } from "react";
 import { core, findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { Switch, HintStrip } from "./RisoControls.jsx";
+import { DAY_SHORT, MEAL_LABEL, findNextEmptySlot } from "../lib/plannerSlots.js";
 
 const ALSO_HAVE_STORAGE_KEY = "mealprep-makeable-also-have";
 
@@ -14,22 +15,6 @@ function loadAlsoHave() {
   }
 }
 
-const MEAL_TYPES = ["breakfast", "lunch", "dinner"];
-
-// The first day+mealType this week with nothing planned yet - same order
-// PlannerBoard's own grid walks (Mon breakfast, Mon lunch, Mon dinner, Tue
-// breakfast, ...). Falls back to Monday breakfast if the whole week is
-// already full, which just stacks a second card into that slot - the
-// planner already supports more than one entry per cell.
-function findNextEmptySlot(plannerEntries) {
-  const filled = new Set(plannerEntries.map((e) => `${e.dayOfWeek}-${e.mealType}`));
-  for (let day = 0; day < 7; day++) {
-    for (const mealType of MEAL_TYPES) {
-      if (!filled.has(`${day}-${mealType}`)) return { dayOfWeek: day, mealType };
-    }
-  }
-  return { dayOfWeek: 0, mealType: "breakfast" };
-}
 
 // Matches the design mock's own time formatter exactly (e.g. "1 H 30 MIN",
 // not "1 H 30 MIN" with the zero-minutes remainder dropped).
@@ -43,7 +28,15 @@ function formatMinutes(m) {
 // card several times taller than its neighbours).
 const NEED_ROWS_SHOWN = 4;
 
-function YouNeedBox({ missingIngredients, isOnGroceryList, onAdd, onRemove, onPlan }) {
+function PlanButton({ className, plan }) {
+  return (
+    <button type="button" className={className} onClick={plan.onPlan} disabled={plan.disabled}>
+      {plan.label}
+    </button>
+  );
+}
+
+function YouNeedBox({ missingIngredients, isOnGroceryList, onAdd, onRemove, plan }) {
   const shown = missingIngredients.slice(0, NEED_ROWS_SHOWN);
   const hiddenCount = missingIngredients.length - shown.length;
   const allOn = missingIngredients.every(isOnGroceryList);
@@ -90,15 +83,13 @@ function YouNeedBox({ missingIngredients, isOnGroceryList, onAdd, onRemove, onPl
         >
           {allOn ? "✓ All on your grocery list" : `+ Add all ${missingIngredients.length} to list`}
         </button>
-        <button type="button" className="riso-makeable-need-btn" onClick={onPlan}>
-          Plan
-        </button>
+        <PlanButton className="riso-makeable-need-btn" plan={plan} />
       </div>
     </div>
   );
 }
 
-function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, onPlan, groceryProps }) {
+function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, plan, groceryProps }) {
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
   const ingredientCount = recipe.ingredients?.length || 0;
   const ready = missingIngredients.length === 0;
@@ -131,12 +122,10 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
           <button type="button" className="riso-makeable-cook-btn" onClick={onCookTonight}>
             Cook tonight
           </button>
-          <button type="button" className="riso-makeable-plan-btn" onClick={onPlan}>
-            Plan
-          </button>
+          <PlanButton className="riso-makeable-plan-btn" plan={plan} />
         </div>
       ) : (
-        <YouNeedBox missingIngredients={missingIngredients} onPlan={onPlan} {...groceryProps} />
+        <YouNeedBox missingIngredients={missingIngredients} plan={plan} {...groceryProps} />
       )}
     </div>
   );
@@ -149,6 +138,7 @@ export function WhatCanIMake({
   onSelectRecipe,
   pantryInventory,
   customStaples,
+  weekStart,
   onAddToPlanner,
   isOnGroceryList,
   onAddToGroceryList,
@@ -230,9 +220,17 @@ export function WhatCanIMake({
   );
   const needsAShop = sortGroup(withAtRisk.filter((m) => m.missingIngredients.length >= 3));
 
-  function handlePlan(recipe) {
-    const { dayOfWeek, mealType } = findNextEmptySlot(plannerEntries);
-    onAddToPlanner?.(recipe.id, dayOfWeek, mealType);
+  const nextSlot = findNextEmptySlot(plannerEntries, weekStart);
+
+  // "Plan" drops the recipe in the next empty upcoming slot; once it's on
+  // this week's plan the button says where.
+  function planState(recipe) {
+    const planned = plannerEntries.find((e) => e.recipe?.id === recipe.id);
+    if (planned) {
+      return { label: `✓ ${DAY_SHORT[planned.dayOfWeek]} · ${MEAL_LABEL[planned.mealType]}`, disabled: true };
+    }
+    if (!nextSlot) return { label: "Week full", disabled: true };
+    return { label: "Plan", disabled: false, onPlan: () => onAddToPlanner?.(recipe.id, nextSlot.dayOfWeek, nextSlot.mealType) };
   }
 
   const groups = [
@@ -321,7 +319,7 @@ export function WhatCanIMake({
                   atRiskUsed={expiringFirst ? atRiskUsed : []}
                   onOpen={() => onSelectRecipe(recipe)}
                   onCookTonight={() => onSelectRecipe(recipe, null, true)}
-                  onPlan={() => handlePlan(recipe)}
+                  plan={planState(recipe)}
                   groceryProps={groceryProps}
                 />
               ))}

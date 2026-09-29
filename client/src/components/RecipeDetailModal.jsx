@@ -13,6 +13,7 @@ import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core } from
 import { formatQuantity } from "../lib/units.js";
 import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
+import { buildCombinedHave } from "../lib/onHand.js";
 import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
 
 const WEEKDAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -34,18 +35,6 @@ function clusterByGroup(ingredients) {
   return clusters;
 }
 
-// Everything that counts as "have" without being typed in — same rule
-// Home.jsx and WhatCanIMake.jsx use: non-expired inventory, plus custom
-// pantry staples. Kept independent here rather than imported, matching
-// how those two already each keep their own copy.
-function buildCombinedHave(pantryInventory, customStaples) {
-  const inStock = pantryInventory
-    .filter((item) => !item.expiresAt || daysUntil(item.expiresAt) >= 0)
-    .map((item) => item.name);
-  const haveLower = new Set(inStock.map((n) => n.toLowerCase()));
-  const stapleExtra = (customStaples || []).filter((s) => !haveLower.has(s.toLowerCase()));
-  return [...inStock, ...stapleExtra];
-}
 
 function formatMinutes(totalMinutes) {
   const m = Math.round(totalMinutes);

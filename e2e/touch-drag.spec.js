@@ -36,8 +36,7 @@ async function signUp(page, email) {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  // Phone width: the account name lives behind the avatar button.
-  await expect(page.getByRole("button", { name: "Account" })).toBeVisible();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
 }
 
 // Dispatches a real held-then-moved touch gesture (touchstart, a pause past
@@ -116,7 +115,7 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
 // is gone too (replaced by the empty-slot popover — see
 // planner-picker.spec.js). The one drag-and-drop the Riso Planner still
 // really has is repositioning an already-placed card between cells, so
-// that's what this now covers: place a recipe via the popover, then touch-
+// that's what this now covers: place a recipe, then touch-
 // drag its card from one cell to another (same day, Breakfast -> Lunch —
 // vertically adjacent, exactly the direction a pan-y touch-action would
 // have handed to native scroll).
@@ -124,42 +123,32 @@ test("a real touch drag repositions a placed meal card between planner cells wit
   page,
   context,
 }) => {
+  // Phones (<768px) plan by tap and sheet, not drag (design handoff v3) -
+  // a touch tablet still gets the drag board.
+  await page.setViewportSize({ width: 820, height: 1180 });
   await signUp(page, uniqueEmail("touch-recipe"));
 
-  await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ New recipe" }).click();
-  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Touch Recipe One");
-  await page.fill('input[placeholder="e.g. 4"]', "2");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "flour");
-  await page.fill('input[placeholder="Qty (1/4)"]', "1");
-  await page.fill('textarea[placeholder*="Preheat oven"]', "Cook and serve.");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await page.waitForTimeout(250);
+  const recipe = await (
+    await page.request.post("/api/recipes", { data: { title: "Touch Recipe One", ingredients: [{ name: "flour" }] } })
+  ).json();
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  const weekStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  await page.request.post("/api/planner", {
+    data: { recipeId: recipe.id, weekStart, dayOfWeek: 0, mealType: "breakfast" },
+  });
 
+  await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
-  await page.waitForTimeout(300);
 
-  // Place the recipe into the first cell (Monday breakfast) via the
-  // empty-slot popover. Scrolled explicitly to the row's center (rather
-  // than relying on Playwright's own scroll-then-click) — the sticky
-  // meal-label/corner cells in this grid otherwise leave the auto-scroll
-  // landing right at the edge of their overlap, and the click keeps
-  // getting intercepted by a still-covering ancestor.
   const cells = page.locator(".riso-planner-cell");
-  const firstEmpty = cells.first().locator(".riso-planner-cell-empty");
-  await firstEmpty.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await page.waitForTimeout(100);
-  await firstEmpty.click({ force: true });
-  await page.locator(".riso-add-popover-row", { hasText: "Touch Recipe One" }).click({ force: true });
-  await page.waitForTimeout(200);
-
   const sourceCard = page.locator(".riso-planner-card", { hasText: "Touch Recipe One" });
-  // Monday's Lunch cell — same day column as the source, one row down, so
-  // this is a vertical drag within the visible (non-horizontally-scrolled)
-  // part of the board.
+  await expect(sourceCard).toBeVisible();
+  // Monday's Lunch cell - same day column, one row down: a vertical drag,
+  // exactly the direction a pan-y touch-action would hand to native scroll.
   const targetCell = cells.nth(7);
 
-  await sourceCard.scrollIntoViewIfNeeded();
+  await sourceCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
 
   const client = await context.newCDPSession(page);
   const sourceBox = await sourceCard.boundingBox();
@@ -175,4 +164,5 @@ test("a real touch drag repositions a placed meal card between planner cells wit
   );
 
   expect(canceled).toBe(false);
+  await expect(targetCell.locator(".riso-planner-card-name")).toHaveText("Touch Recipe One");
 });

@@ -4,6 +4,7 @@ import { currentWeekStart, formatDayLabel, shiftWeek } from "../lib/dates.js";
 import { buildGroceryList, findMatchingDeal, canonicalize } from "../lib/groceryList.js";
 import { findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
+import { buildCombinedHave } from "../lib/onHand.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 const RESTAURANT_TITLE = "🍽️ Restaurant";
@@ -39,16 +40,6 @@ function greeting() {
   return "Good evening";
 }
 
-// Everything that counts as "have" without being typed in — same rule
-// WhatCanIMake.jsx uses: non-expired inventory, plus custom pantry staples.
-function buildCombinedHave(pantryInventory, customStaples) {
-  const inStock = pantryInventory
-    .filter((item) => !item.expiresAt || daysUntil(item.expiresAt) >= 0)
-    .map((item) => item.name);
-  const haveLower = new Set(inStock.map((n) => n.toLowerCase()));
-  const stapleExtra = (customStaples || []).filter((s) => !haveLower.has(s.toLowerCase()));
-  return [...inStock, ...stapleExtra];
-}
 
 // True when this expiring item's core ingredient appears in any recipe
 // planned for the current week — used for "Use it up"'s footer nudge.
