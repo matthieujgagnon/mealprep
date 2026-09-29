@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-
-function formatParts(parts) {
-  return (parts || [])
-    .filter((p) => p.quantity != null || p.unit)
-    .map((p) => [p.quantity != null ? Math.round(p.quantity * 100) / 100 : null, p.unit].filter((x) => x != null && x !== "").join(" "))
-    .join(" + ");
-}
+import { formatAmount } from "../lib/groceryList.js";
 
 // Extra-large list for use in the shop (Riso Mobile.dc.html "Store mode"):
 // full-screen on ink, one store at a time, big rows, checked items sink.
@@ -61,7 +55,7 @@ export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose }) 
         {sorted.length === 0 && <li className="store-mode-empty">Nothing on the list for {store}.</li>}
         {sorted.map(({ item, deal }) => {
           const on = !!checked[item.key];
-          const qty = formatParts(item.parts);
+          const qty = item.customQuantity || formatAmount(item.parts);
           return (
             <li key={item.key}>
               <button type="button" className={`store-mode-row${on ? " on" : ""}`} aria-pressed={on} onClick={() => onToggle(item.key)}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
+import { buildGroceryList, findMatchingDeal, formatAmount } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
@@ -23,30 +23,6 @@ function loadStorePrefs() {
   } catch {
     return {};
   }
-}
-
-function formatQuantity(qty) {
-  if (qty === null || qty === undefined) return "";
-  const rounded = Math.round(qty * 100) / 100;
-  const whole = Math.floor(rounded);
-  const frac = rounded - whole;
-  // Plain "1/4" instead of unicode fraction glyphs (¼) — several fonts in the
-  // design system don't carry those glyphs, so they'd render as tofu.
-  const fracMap = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4", 0.33: "1/3", 0.67: "2/3" };
-  const nearestFrac = Object.keys(fracMap).find((f) => Math.abs(f - frac) < 0.05);
-  if (nearestFrac) return `${whole > 0 ? whole + " " : ""}${fracMap[nearestFrac]}`;
-  return String(rounded);
-}
-
-// A row can carry more than one "part" when two recipes measured the same
-// ingredient in ways that can't be combined into a single number — see
-// buildGroceryList's own comment on `parts`.
-function formatParts(parts) {
-  if (!parts || parts.length === 0) return "";
-  return parts
-    .map((p) => (p.quantity != null ? `${formatQuantity(p.quantity)}${p.unit ? " " + p.unit : ""}` : ""))
-    .filter(Boolean)
-    .join(" + ");
 }
 
 // Free-text "2 lemons" -> { name: "lemons", quantity: 2 }. Deliberately
@@ -84,14 +60,93 @@ const VIEWS = [
   { id: "recipe", label: "By recipe" },
 ];
 
-function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCycleStore, sub, onDeleteManual }) {
+// The amount cell: your own amount when you've set one (with what the
+// recipes call for underneath), otherwise the recipe amount. Tap to edit;
+// clearing it goes back to the recipe amount.
+function QuantityCell({ item, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const recipeAmount = formatAmount(item.parts);
+  const [draft, setDraft] = useState("");
+
+  function start(e) {
+    e.stopPropagation();
+    setDraft(item.customQuantity || recipeAmount);
+    setEditing(true);
+  }
+
+  function commit() {
+    setEditing(false);
+    const next = draft.trim();
+    // Typing the recipe amount back in is the same as "no override".
+    const value = !next || next === recipeAmount ? null : next;
+    if (value !== (item.customQuantity || null)) onSave(value);
+  }
+
+  if (editing) {
+    return (
+      <span className="riso-row-qty editing" onClick={(e) => e.stopPropagation()}>
+        <input
+          autoFocus
+          aria-label={`Amount of ${item.name}`}
+          value={draft}
+          placeholder="e.g. 2 packs"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        />
+        {item.customQuantity && recipeAmount && (
+          <button
+            type="button"
+            className="riso-row-qty-reset"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(false);
+              onSave(null);
+            }}
+          >
+            use recipe amount
+          </button>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={`riso-row-qty${item.customQuantity ? " custom" : ""}${!item.customQuantity && !recipeAmount ? " empty" : ""}`}
+      title="Tap to set your own amount"
+      aria-label={`Edit amount of ${item.name}`}
+      onClick={start}
+    >
+      {item.customQuantity ? (
+        <>
+          <span className="riso-row-qty-mine">{item.customQuantity}</span>
+          {recipeAmount && !item.isManual && <span className="riso-row-qty-recipe">recipe: {recipeAmount}</span>}
+        </>
+      ) : (
+        <span className="riso-row-qty-mine">{recipeAmount || "+ amount"}</span>
+      )}
+    </button>
+  );
+}
+
+function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCycleStore, sub, onDelete, onSetQuantity }) {
   return (
     <div
       className={`riso-row${checked ? " checked" : ""}`}
       role="button"
       tabIndex={0}
+      aria-label={`Check off ${item.name}`}
+      aria-pressed={checked}
       onClick={onToggle}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onToggle();
@@ -129,21 +184,19 @@ function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCyc
           {store}
         </span>
       )}
-      <span className="riso-row-qty">{formatParts(item.parts)}</span>
-      {item.isManual && (
-        <button
-          type="button"
-          className="riso-row-delete"
-          aria-label={`Delete ${item.name}`}
-          title="Delete this item"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeleteManual(item.manualId);
-          }}
-        >
-          ×
-        </button>
-      )}
+      <QuantityCell item={item} onSave={onSetQuantity} />
+      <button
+        type="button"
+        className="riso-row-delete"
+        aria-label={`Remove ${item.name}`}
+        title={item.isManual ? "Delete this item" : "Remove from this week's list (the recipe isn't changed)"}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -164,6 +217,7 @@ export function GroceryList({
   // browser's localStorage.
   const [checked, setChecked] = useState({});
   const [extraItems, setExtraItems] = useState([]);
+  const [overrides, setOverrides] = useState([]);
   const [addValue, setAddValue] = useState("");
   const [view, setView] = useState("store");
   const [storeMode, setStoreMode] = useState(false);
@@ -193,10 +247,12 @@ export function GroceryList({
   // Manually-added items are week-scoped too, same as checked state above.
   useEffect(() => {
     api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
+    api.listGroceryOverrides(weekStart).then(setOverrides).catch(() => setOverrides([]));
   }, [weekStart]);
 
-  const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems);
-  const shoppingItems = items.filter((i) => !i.isStaple);
+  const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
+  const shoppingItems = items.filter((i) => !i.isStaple && !i.removed);
+  const removedItems = items.filter((i) => !i.isStaple && i.removed);
   const stapleCount = items.filter((i) => i.isStaple).length;
   const leftoverCount = plannerEntries.filter((e) => e.isLeftover).length;
   const alreadyHaveCount = plannerEntries.filter((e) => e.alreadyHave).length;
@@ -296,10 +352,12 @@ export function GroceryList({
     if (!onAddPantryItem || pantryAddedKeys.has(item.key)) return;
     setPantryAddedKeys((prev) => new Set(prev).add(item.key));
     try {
+      // Your own amount wins ("2 packs" -> 2 packs), else the recipe amount.
+      const own = item.customQuantity?.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s*(.*)$/);
       await onAddPantryItem({
         name: item.name,
-        quantity: item.parts?.[0]?.quantity ?? null,
-        unit: item.parts?.[0]?.unit ?? null,
+        quantity: own ? parseQuantityInput(own[1]) : item.customQuantity ? null : item.parts?.[0]?.quantity ?? null,
+        unit: own ? own[2].trim() || null : item.customQuantity ? null : item.parts?.[0]?.unit ?? null,
       });
     } catch {
       setPantryAddedKeys((prev) => {
@@ -338,6 +396,25 @@ export function GroceryList({
   async function deleteExtraItem(id) {
     setExtraItems((prev) => prev.filter((i) => i.id !== id));
     await api.deleteGroceryExtra(id);
+  }
+
+  // Optimistic, like toggle() above: the row changes right away, then the
+  // server's answer (or the previous state, on failure) wins.
+  async function setOverride(key, patch) {
+    const prev = overrides;
+    const current = prev.find((o) => o.key === key) || { key, quantity: null, removed: false };
+    setOverrides([...prev.filter((o) => o.key !== key), { ...current, ...patch }]);
+    try {
+      const saved = await api.setGroceryOverride(weekStart, key, patch);
+      setOverrides((now) => [...now.filter((o) => o.key !== key), ...(saved ? [saved] : [])]);
+    } catch {
+      setOverrides(prev);
+    }
+  }
+
+  function removeItem(item) {
+    if (item.isManual) deleteExtraItem(item.manualId);
+    else setOverride(item.key, { removed: true });
   }
 
   // Builds the groups for whichever view is active. Every row already knows
@@ -500,11 +577,29 @@ export function GroceryList({
                     onCycleStore={() => cycleStore(row.item, row.store)}
                     canCycleStore={storeOrder.length > 1}
                     sub={subLineFor(row)}
-                    onDeleteManual={deleteExtraItem}
+                    onDelete={() => removeItem(row.item)}
+                    onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
                   />
                 ))}
               </section>
             ))
+          )}
+
+          {removedItems.length > 0 && (
+            <div className="riso-grocery-removed">
+              <span className="riso-grocery-removed-label">Removed this week</span>
+              {removedItems.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="riso-grocery-removed-chip"
+                  aria-label={`Put ${item.name} back on the list`}
+                  onClick={() => setOverride(item.key, { removed: false })}
+                >
+                  {item.name} <span aria-hidden="true">↺</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 

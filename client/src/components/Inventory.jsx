@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { api } from "../api.js";
-import { LOCATIONS, daysUntil } from "../lib/pantryInventory.js";
+import { daysUntil } from "../lib/pantryInventory.js";
 import { BottomSheet, HintStrip } from "./RisoControls.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 
@@ -16,6 +16,48 @@ const SHELF_LOCATIONS = [
   { id: "freezer", label: "Freezer" },
   { id: "pantry", label: "Pantry" },
 ];
+
+// Pantry spans the full row by default (it tends to hold the most); every
+// other section starts at half.
+const DEFAULT_SIZE = { pantry: "full" };
+const SIZES = [
+  { id: "third", label: "1/3" },
+  { id: "half", label: "1/2" },
+  { id: "full", label: "Full" },
+];
+
+// Built-in shelves plus custom sections, in the user's saved order (anything
+// not in the saved layout yet - a brand-new section - goes at the end), with
+// their names and sizes.
+function orderedSections(locations, layout) {
+  const all = [
+    ...SHELF_LOCATIONS.map((l) => ({ id: l.id, defaultLabel: l.label, custom: false })),
+    ...(locations || []).map((l) => ({ id: l.id, defaultLabel: l.name, custom: true })),
+  ];
+  const saved = new Map((layout || []).map((row) => [row.sectionId, row]));
+  const position = (sec) => (saved.has(sec.id) ? saved.get(sec.id).position : Infinity);
+  return all
+    .map((sec, i) => ({ sec, i }))
+    .sort((a, b) => position(a.sec) - position(b.sec) || a.i - b.i)
+    .map(({ sec }) => {
+      const row = saved.get(sec.id);
+      return {
+        id: sec.id,
+        custom: sec.custom,
+        label: sec.custom ? sec.defaultLabel : row?.label || sec.defaultLabel,
+        defaultLabel: sec.defaultLabel,
+        size: row?.size || DEFAULT_SIZE[sec.id] || "half",
+      };
+    });
+}
+
+function layoutPayload(sections) {
+  return sections.map((s) => ({
+    sectionId: s.id,
+    label: !s.custom && s.label !== s.defaultLabel ? s.label : null,
+    size: s.size,
+  }));
+}
 
 function isUrgent(item) {
   if (!item.expiresAt) return false;
@@ -50,7 +92,7 @@ function urgentLabel(item) {
 // bundled USDA FoodKeeper data as soon as there's enough to look up (a name
 // and a location) - both always shown as editable, never locked in, since
 // the suggestion is a starting point, not an authority.
-function AddInventoryItemForm({ onAdd, onDone, locations }) {
+function AddInventoryItemForm({ onAdd, onDone, sections }) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
@@ -140,14 +182,9 @@ function AddInventoryItemForm({ onAdd, onDone, locations }) {
         ))}
       </select>
       <select value={location} onChange={(e) => setLocation(e.target.value)}>
-        {LOCATIONS.map((l) => (
+        {sections.map((l) => (
           <option key={l.id} value={l.id}>
             {l.label}
-          </option>
-        ))}
-        {(locations || []).map((l) => (
-          <option key={l.id} value={l.id}>
-            {l.name}
           </option>
         ))}
       </select>
@@ -170,7 +207,7 @@ function AddInventoryItemForm({ onAdd, onDone, locations }) {
 // misread brand names) that a blind bulk-add would just make a mess to
 // clean up later. Each accepted row goes through the same onAdd as the
 // manual form above, so it gets the same suggested category/expiration.
-function ReceiptScanPanel({ onAdd, onDone, locations }) {
+function ReceiptScanPanel({ onAdd, onDone, sections }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [pending, setPending] = useState(null); // [{ name, quantity, location, selected }] once parsed
@@ -243,14 +280,9 @@ function ReceiptScanPanel({ onAdd, onDone, locations }) {
                 onChange={(e) => updateRow(i, { location: e.target.value })}
                 disabled={!row.selected}
               >
-                {LOCATIONS.map((l) => (
+                {sections.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.label}
-                  </option>
-                ))}
-                {(locations || []).map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
                   </option>
                 ))}
               </select>
@@ -395,7 +427,97 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
   );
 }
 
-function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onToggleSelect, onDeleteLocation, draggable = true }) {
+// Header controls for a section: rename, move earlier/later, size, remove.
+function SectionEditor({ location, isFirst, isLast, showSizes, onRename, onMove, onResize, onDelete, onDone }) {
+  const [name, setName] = useState(location.label);
+  const [error, setError] = useState(null);
+
+  async function commitName() {
+    const next = name.trim();
+    if (!next || next === location.label) {
+      setName(location.label);
+      return true;
+    }
+    try {
+      await onRename(next);
+      setError(null);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    }
+  }
+
+  return (
+    <div className="inv-section-editor">
+      <input
+        aria-label="Section name"
+        value={name}
+        maxLength={40}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={commitName}
+        onKeyDown={async (e) => {
+          if (e.key === "Enter" && (await commitName())) onDone();
+          if (e.key === "Escape") onDone();
+        }}
+      />
+      <div className="inv-section-editor-row">
+        <div className="inv-section-editor-group" role="group" aria-label="Move section">
+          <button type="button" disabled={isFirst} onClick={() => onMove(-1)} aria-label="Move section earlier">
+            ←
+          </button>
+          <button type="button" disabled={isLast} onClick={() => onMove(1)} aria-label="Move section later">
+            →
+          </button>
+        </div>
+        {showSizes && (
+          <div className="inv-section-editor-group" role="group" aria-label="Section width">
+            {SIZES.map((sz) => (
+              <button
+                key={sz.id}
+                type="button"
+                className={location.size === sz.id ? "on" : ""}
+                aria-pressed={location.size === sz.id}
+                aria-label={`Width ${sz.label}`}
+                onClick={() => onResize(sz.id)}
+              >
+                {sz.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {location.custom && (
+          <button type="button" className="inv-section-editor-remove" onClick={onDelete}>
+            Remove
+          </button>
+        )}
+        <button
+          type="button"
+          className="inv-section-editor-done"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={async () => {
+            if (await commitName()) onDone();
+          }}
+        >
+          Done
+        </button>
+      </div>
+      {error && <p className="inv-section-editor-error">{error}</p>}
+    </div>
+  );
+}
+
+function ShelfColumn({
+  location,
+  items,
+  activeItemId,
+  selectedIds,
+  onSelect,
+  onToggleSelect,
+  draggable = true,
+  editorProps,
+}) {
+  const [editing, setEditing] = useState(false);
   const sorted = [...items].sort((a, b) => {
     const da = a.expiresAt ? daysUntil(a.expiresAt) : null;
     const db = b.expiresAt ? daysUntil(b.expiresAt) : null;
@@ -410,31 +532,33 @@ function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onT
   // and custom sections work identically here.
   const { setNodeRef, isOver } = useDroppable({ id: `inv-shelf-${location.id}` });
 
-  // Pantry spans the full grid width with its own auto-fill sub-grid (it
-  // tends to hold far more items than Fridge/Freezer) - see the design
-  // handoff. Custom sections keep the plain single-column layout, same as
-  // Fridge/Freezer, since the handoff never designed for an arbitrary
-  // number of them.
-  const wide = location.id === "pantry";
+  // A full-width section lays its cards out in their own grid.
+  const wide = location.size === "full";
 
   return (
-    <div ref={setNodeRef} className={`inv-shelf${wide ? " wide" : ""}${isOver ? " drop-active" : ""}`}>
-      <div className="inv-shelf-header">
-        <span>{location.label}</span>
-        <span className="inv-shelf-count">{items.length}</span>
-        {location.custom && (
+    <div
+      ref={setNodeRef}
+      className={`inv-shelf size-${location.size}${wide ? " wide" : ""}${isOver ? " drop-active" : ""}`}
+      aria-label={`${location.label} section`}
+    >
+      {editing ? (
+        <SectionEditor location={location} {...editorProps} onDone={() => setEditing(false)} />
+      ) : (
+        <div className="inv-shelf-header">
+          <span>{location.label}</span>
+          <span className="inv-shelf-count">{items.length}</span>
+          <span className="inv-shelf-note">Soonest first</span>
           <button
             type="button"
-            className="inv-shelf-remove"
-            aria-label={`Remove the "${location.label}" section`}
-            title={items.length > 0 ? "Items here move back to Pantry" : "Remove this section"}
-            onClick={() => onDeleteLocation(location.id)}
+            className="inv-shelf-edit"
+            aria-label={`Edit the "${location.label}" section`}
+            title="Rename, move or resize this section"
+            onClick={() => setEditing(true)}
           >
-            ×
+            ✎<span className="inv-shelf-edit-text"> Edit section</span>
           </button>
-        )}
-        <span className="inv-shelf-note">Soonest first</span>
-      </div>
+        </div>
+      )}
       {sorted.length === 0 ? (
         <div className="inv-shelf-empty">Nothing here yet</div>
       ) : (
@@ -508,7 +632,7 @@ function AddSectionTile({ onAdd }) {
   );
 }
 
-function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple, onToggleStaple }) {
+function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple, onToggleStaple, labelFor = {} }) {
   const [nameDraft, setNameDraft] = useState(item.name);
 
   // Resync the draft when a different item opens (or this one's name
@@ -601,7 +725,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
                 disabled={active}
                 onClick={() => onUpdate(item.id, { location: l.id, expiresAt: data ? data.expiresAt : null })}
               >
-                <span>{l.label}</span>
+                <span>{labelFor[l.id] || l.label}</span>
                 {data && <span className="inv-storage-pill-range">{data.rangeLabel}</span>}
               </button>
             );
@@ -676,7 +800,10 @@ export function Inventory({
   onFindRecipes,
   onFindRecipesForSelection,
   locations,
+  layout,
+  onSaveLayout,
   onAddLocation,
+  onRenameLocation,
   onDeleteLocation,
 }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -734,12 +861,29 @@ export function Inventory({
   const activeItem = items.find((i) => i.id === activeItemId);
   const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3).length;
 
-  // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed) followed by the
-  // user's own custom sections, in creation order.
-  const shelfLocations = [
-    ...SHELF_LOCATIONS,
-    ...(locations || []).map((l) => ({ id: l.id, label: l.name, custom: true })),
-  ];
+  // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed) and the user's own
+  // custom sections, in the user's order, with their names and sizes.
+  const sections = orderedSections(locations, layout);
+  const shelfLocations = sections;
+  const labelFor = Object.fromEntries(sections.map((sec) => [sec.id, sec.label]));
+
+  function moveSection(id, dir) {
+    const i = sections.findIndex((sec) => sec.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= sections.length) return;
+    const next = [...sections];
+    [next[i], next[j]] = [next[j], next[i]];
+    onSaveLayout(layoutPayload(next));
+  }
+
+  function updateSection(id, patch) {
+    onSaveLayout(layoutPayload(sections.map((sec) => (sec.id === id ? { ...sec, ...patch } : sec))));
+  }
+
+  async function renameSection(sec, name) {
+    if (sec.custom) await onRenameLocation(sec.id, name);
+    else updateSection(sec.id, { label: name });
+  }
 
   return (
     <div className="riso-theme riso-inv inv-page" data-theme="light">
@@ -802,8 +946,19 @@ export function Inventory({
               selectedIds={selectedIds}
               onSelect={setActiveItemId}
               onToggleSelect={toggleSelect}
-              onDeleteLocation={onDeleteLocation}
               draggable={!isPhone}
+              editorProps={{
+                isFirst: sections[0]?.id === loc.id,
+                isLast: sections[sections.length - 1]?.id === loc.id,
+                showSizes: !isPhone,
+                onRename: (name) => renameSection(loc, name),
+                onMove: (dir) => moveSection(loc.id, dir),
+                onResize: (size) => updateSection(loc.id, { size }),
+                onDelete: () => {
+                  if (isPhone) setPhoneShelf("fridge");
+                  onDeleteLocation(loc.id);
+                },
+              }}
             />
           ))}
         <AddSectionTile onAdd={onAddLocation} />
@@ -822,6 +977,7 @@ export function Inventory({
             onFindRecipes={onFindRecipes}
             isStaple={staples.has(activeItem.core)}
             onToggleStaple={toggleStaple}
+            labelFor={labelFor}
           />
         </BottomSheet>
       )}
@@ -848,6 +1004,7 @@ export function Inventory({
               onFindRecipes={onFindRecipes}
               isStaple={staples.has(activeItem.core)}
               onToggleStaple={toggleStaple}
+              labelFor={labelFor}
             />
           </div>
         </div>
@@ -865,12 +1022,12 @@ export function Inventory({
 
       {showAdd && (
         <Modal title="Add item" onClose={() => setShowAdd(false)}>
-          <AddInventoryItemForm onAdd={onAdd} locations={locations} />
+          <AddInventoryItemForm onAdd={onAdd} sections={sections} />
         </Modal>
       )}
       {showScan && (
         <Modal title="Scan receipt" onClose={() => setShowScan(false)}>
-          <ReceiptScanPanel onAdd={onAdd} onDone={() => setShowScan(false)} locations={locations} />
+          <ReceiptScanPanel onAdd={onAdd} onDone={() => setShowScan(false)} sections={sections} />
         </Modal>
       )}
     </div>

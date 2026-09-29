@@ -70,7 +70,11 @@ function RecipeCard({ recipe, stats, badge, onClick }) {
           </div>
         )}
         <div className="riso-recipe-card-havelabel" style={{ color: nothingToBuy ? "var(--riso-green-text)" : "var(--riso-soft)" }}>
-          {nothingToBuy ? "nothing to buy!" : `${stats.matchedCount} of ${stats.totalCount} on hand`}
+          {nothingToBuy
+            ? "nothing to buy!"
+            : stats.totalCount > 0
+              ? `${stats.missingCount} to buy · ${stats.matchedCount} of ${stats.totalCount} on hand`
+              : "no ingredients listed"}
         </div>
       </div>
     </button>
@@ -137,10 +141,18 @@ export function Recipes({
   if (query && !isUrl) visible = visible.filter((r) => matchesSearch(r, query));
 
   if (sortIndex === 1) {
+    // Fewest to buy first; recipes without any ingredient list can't be
+    // judged, so they go last. Ties: more of it on hand, then by name.
+    const stats = new Map(visible.map((r) => [r.id, recipeHaveStats(r, haveCores)]));
     visible = [...visible].sort((a, b) => {
-      const sa = recipeHaveStats(a, haveCores);
-      const sb = recipeHaveStats(b, haveCores);
-      return sa.missingCount - sb.missingCount;
+      const sa = stats.get(a.id);
+      const sb = stats.get(b.id);
+      if ((sa.totalCount === 0) !== (sb.totalCount === 0)) return sa.totalCount === 0 ? 1 : -1;
+      if (sa.missingCount !== sb.missingCount) return sa.missingCount - sb.missingCount;
+      const fa = sa.totalCount ? sa.matchedCount / sa.totalCount : 0;
+      const fb = sb.totalCount ? sb.matchedCount / sb.totalCount : 0;
+      if (fa !== fb) return fb - fa;
+      return a.title.localeCompare(b.title);
     });
   } else if (sortIndex === 2) {
     visible = [...visible].sort(
@@ -244,13 +256,16 @@ export function Recipes({
         ))}
         <div className="riso-recipes-filters-spacer" />
         <span className="riso-recipes-sort-label">SORT</span>
-        <button
-          type="button"
-          className="riso-recipes-sort-btn"
-          onClick={() => setSortIndex((s) => (s + 1) % SORT_LABELS.length)}
-        >
-          {SORT_LABELS[sortIndex]} ▾
-        </button>
+        <label className="riso-recipes-sort-btn">
+          <select aria-label="Sort recipes" value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
+            {SORT_LABELS.map((label, i) => (
+              <option key={label} value={i}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <span aria-hidden="true">▾</span>
+        </label>
       </div>
 
       <div className="riso-recipes-grid">

@@ -140,6 +140,7 @@ export function Home({
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [checked, setChecked] = useState({});
   const [extraItems, setExtraItems] = useState([]);
+  const [groceryOverrides, setGroceryOverrides] = useState([]);
   const [deals, setDeals] = useState([]);
 
   // The week strip can look ahead to next week without disturbing the
@@ -156,6 +157,7 @@ export function Home({
       .then((cores) => setChecked(Object.fromEntries(cores.map((c) => [c, true]))))
       .catch(() => setChecked({}));
     api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
+    api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
     api.getRealDeals().then(setDeals).catch(() => setDeals([]));
     // weekStart is always "today's" Monday here — this only needs to run once per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,10 +177,10 @@ export function Home({
   const makeableResults = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes) : [];
   const makeableNow = makeableResults.filter((m) => m.missingIngredients.length === 0).slice(0, 3);
 
-  const groceryItems = buildGroceryList(plannerEntries, customStaples, {}, excludedStaples, extraItems);
-  const toBuy = groceryItems.filter((i) => !i.isStaple);
-  const checkedCount = toBuy.filter((i) => checked[i.core]).length;
-  const saleCount = toBuy.filter((i) => !checked[i.core] && findMatchingDeal(i.name, deals)).length;
+  const groceryItems = buildGroceryList(plannerEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
+  const toBuy = groceryItems.filter((i) => !i.isStaple && !i.removed);
+  const checkedCount = toBuy.filter((i) => checked[i.key]).length;
+  const saleCount = toBuy.filter((i) => !checked[i.key] && findMatchingDeal(i.name, deals)).length;
   const progressPct = toBuy.length > 0 ? Math.round((checkedCount / toBuy.length) * 100) : 0;
 
   const todaysDinner = plannerEntries.filter((e) => e.dayOfWeek === todayIndex && e.mealType === "dinner");

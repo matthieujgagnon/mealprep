@@ -17,19 +17,21 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
 
-  sessions             Session[]
-  passwordResetTokens  PasswordResetToken[]
-  recipes              Recipe[]
-  recipeCategories     RecipeCategory[]
-  pantryStaples        PantryStaple[]
-  grocerySections      GrocerySection[]
-  groceryAssignments   GroceryAssignment[]
-  groceryCheckedItems  GroceryCheckedItem[]
-  groceryExtraItems    GroceryExtraItem[]
-  flyerDeals           FlyerDeal[]
-  flyerUploads         FlyerUpload[]
-  plannerEntries       PlannerEntry[]
-  pantryInventoryItems PantryInventoryItem[]
+  sessions              Session[]
+  passwordResetTokens   PasswordResetToken[]
+  recipes               Recipe[]
+  recipeCategories      RecipeCategory[]
+  pantryStaples         PantryStaple[]
+  grocerySections       GrocerySection[]
+  groceryAssignments    GroceryAssignment[]
+  groceryCheckedItems   GroceryCheckedItem[]
+  groceryExtraItems     GroceryExtraItem[]
+  groceryItemOverrides  GroceryItemOverride[]
+  inventorySections     InventorySectionLayout[]
+  flyerDeals            FlyerDeal[]
+  flyerUploads          FlyerUpload[]
+  plannerEntries        PlannerEntry[]
+  pantryInventoryItems  PantryInventoryItem[]
   pantryConsumptionLogs PantryConsumptionLog[]
   pantryLocations       PantryLocation[]
   watchlistItems        WatchlistItem[]
@@ -213,6 +215,25 @@ model GroceryExtraItem {
   @@index([userId, weekStart])
 }
 
+// Per-week changes to one grocery list row (keyed by the row's key - the
+// ingredient core for recipe rows, "extra-<id>" for hand-added ones):
+// `removed` hides a recipe-derived row you don't need this week, and
+// `quantity` is your own amount ("2 packs"), shown next to what the recipes
+// call for. Recipe amounts themselves are never changed.
+model GroceryItemOverride {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart String
+  key       String
+  quantity  String?
+  removed   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekStart, key])
+}
+
 // A single deal extracted from an uploaded flyer PDF or photo via Gemini,
 // replacing the old hardcoded MOCK_DEALS array. Re-uploading under the same
 // source replaces that source's rows outright, since a new upload
@@ -356,6 +377,23 @@ model PantryConsumptionLog {
 // either a built-in id ("fridge"/"pantry"/"freezer") or one of these rows'
 // own id - looked up by id (not name) so renaming a section doesn't strand
 // the items already placed in it.
+// How the Inventory page lays out its sections - the built-in
+// fridge/freezer/pantry ones and custom PantryLocations alike, keyed by the
+// same id items store in `location`. `label` renames a built-in section
+// (custom ones rename through PantryLocation.name); `size` is "third",
+// "half" or "full" of the row. Sections without a row use the defaults.
+model InventorySectionLayout {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sectionId String
+  label     String?
+  position  Int     @default(0)
+  size      String  @default("half")
+
+  @@unique([userId, sectionId])
+}
+
 model PantryLocation {
   id        String   @id @default(cuid())
   userId    String
