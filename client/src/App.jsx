@@ -488,6 +488,26 @@ export default function App({ user, onLogout }) {
     setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
   }
 
+  // Cook mode's "Save leftovers" (fridge): each portion becomes a leftover
+  // lunch over the next few days - inside the 3-4 day fridge window - in
+  // whatever lunch slots are still empty this week.
+  async function handlePlanLeftovers(recipe, portions) {
+    const week = currentWeekStart();
+    const entries = week === weekStart ? plannerEntries : await api.listPlanner(week);
+    const filled = new Set(entries.map((e) => `${e.dayOfWeek}-${e.mealType}`));
+    const today = todayIndex();
+    const days = [];
+    for (let d = today + 1; d <= Math.min(6, today + 3) && days.length < portions; d++) {
+      if (!filled.has(`${d}-lunch`)) days.push(d);
+    }
+    const created = await Promise.all(
+      days.map((dayOfWeek) =>
+        api.placeOnPlanner({ recipeId: recipe.id, weekStart: week, dayOfWeek, mealType: "lunch", isLeftover: true })
+      )
+    );
+    if (week === weekStart) setPlannerEntries((prev) => [...prev, ...created]);
+  }
+
   async function handleCopyLastWeek() {
     const fromWeekStart = shiftWeek(weekStart, -1);
     const copied = await api.copyPlannerWeek(fromWeekStart, weekStart);
@@ -859,6 +879,8 @@ export default function App({ user, onLogout }) {
             onAddPantryItem={handleAddPantryItem}
             onDeletePantryItem={handleDeletePantryItem}
             onAddToGroceryList={addToGroceryList}
+            onConsumePantryItems={handleConsumePantryItems}
+            onPlanLeftovers={handlePlanLeftovers}
             onNavigate={(t) => {
               openRecipe(null);
               setTab(t);
