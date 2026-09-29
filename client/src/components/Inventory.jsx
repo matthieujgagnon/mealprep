@@ -4,7 +4,8 @@ import { UNIT_OPTIONS } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { api } from "../api.js";
 import { LOCATIONS, daysUntil } from "../lib/pantryInventory.js";
-import { HintStrip } from "./RisoControls.jsx";
+import { BottomSheet, HintStrip } from "./RisoControls.jsx";
+import { useIsPhone } from "../hooks/useIsPhone.js";
 
 // Fridge and Freezer sit side by side, Pantry after - see the design
 // handoff. "Counter" is a fourth USDA location the bundled data supports
@@ -297,7 +298,7 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
+function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable = true }) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
   const urgent = isUrgent(item);
   // Items with no tracked date get the same pink-sticker treatment as a
@@ -307,10 +308,12 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
   // bar's color, and the "N to use soon" count only ever counts real
   // countdowns (see soonCount in the Inventory component below).
   const showSticker = urgent || !item.expiresAt;
-  const pct =
-    item.expiresAt && item.shelfLifeDays
-      ? Math.min(100, Math.max(6, (Math.max(days, 0) / item.shelfLifeDays) * 100))
-      : null;
+  // USDA range when there is one; otherwise the span from purchase to the
+  // date the user set (milk has no USDA fridge range - it's on the carton).
+  const span =
+    item.shelfLifeDays ||
+    (item.expiresAt && item.purchasedAt ? (new Date(item.expiresAt) - new Date(item.purchasedAt)) / 86400000 : 0);
+  const pct = item.expiresAt && span > 0 ? Math.min(100, Math.max(6, (Math.max(days, 0) / span) * 100)) : null;
 
   // A fridge item close to expiring that would keep much longer in the
   // freezer gets a one-line nudge, using the freezer range already
@@ -332,13 +335,13 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `inv-item-${item.id}`,
     data: { inventoryItemId: item.id, inventoryItem: item },
+    disabled: !draggable,
   });
 
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
+      {...(draggable ? { ...attributes, ...listeners } : {})}
       className={`inv-card${active ? " active" : ""}${urgent && !active ? " urgent" : ""}${
         isDragging ? " dragging" : ""
       }`}
@@ -392,7 +395,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect }) {
   );
 }
 
-function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onToggleSelect, onDeleteLocation }) {
+function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onToggleSelect, onDeleteLocation, draggable = true }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.expiresAt ? daysUntil(a.expiresAt) : null;
     const db = b.expiresAt ? daysUntil(b.expiresAt) : null;
@@ -443,6 +446,7 @@ function ShelfColumn({ location, items, activeItemId, selectedIds, onSelect, onT
               active={item.id === activeItemId}
               selected={selectedIds.has(item.id)}
               onSelect={() => onSelect(item.id)}
+              draggable={draggable}
               onToggleSelect={() => onToggleSelect(item.id)}
             />
           ))}
@@ -679,6 +683,8 @@ export function Inventory({
   const [activeItemId, setActiveItemId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showScan, setShowScan] = useState(false);
+  const isPhone = useIsPhone();
+  const [phoneShelf, setPhoneShelf] = useState("fridge");
   const staples = new Set(customStaples || []);
 
   useEffect(() => {
@@ -767,23 +773,60 @@ export function Inventory({
         </p>
       )}
 
+      {isPhone && (
+        <div className="riso-inv-shelf-switch" role="tablist" aria-label="Shelf">
+          {shelfLocations.map((loc) => (
+            <button
+              key={loc.id}
+              type="button"
+              role="tab"
+              aria-selected={phoneShelf === loc.id}
+              className={phoneShelf === loc.id ? "on" : ""}
+              onClick={() => setPhoneShelf(loc.id)}
+            >
+              {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="inv-shelves">
-        {shelfLocations.map((loc) => (
-          <ShelfColumn
-            key={loc.id}
-            location={loc}
-            items={items.filter((i) => i.location === loc.id)}
-            activeItemId={activeItemId}
-            selectedIds={selectedIds}
-            onSelect={setActiveItemId}
-            onToggleSelect={toggleSelect}
-            onDeleteLocation={onDeleteLocation}
-          />
-        ))}
+        {shelfLocations
+          .filter((loc) => !isPhone || loc.id === phoneShelf)
+          .map((loc) => (
+            <ShelfColumn
+              key={loc.id}
+              location={loc}
+              items={items.filter((i) => i.location === loc.id)}
+              activeItemId={activeItemId}
+              selectedIds={selectedIds}
+              onSelect={setActiveItemId}
+              onToggleSelect={toggleSelect}
+              onDeleteLocation={onDeleteLocation}
+              draggable={!isPhone}
+            />
+          ))}
         <AddSectionTile onAdd={onAddLocation} />
       </div>
 
-      {activeItem && (
+      {activeItem && isPhone && (
+        <BottomSheet label={`Edit ${activeItem.name}`} onClose={() => setActiveItemId(null)}>
+          <EditPanel
+            item={activeItem}
+            recipes={recipes}
+            onUpdate={onUpdate}
+            onDelete={(id) => {
+              setActiveItemId(null);
+              onDelete(id);
+            }}
+            onFindRecipes={onFindRecipes}
+            isStaple={staples.has(activeItem.core)}
+            onToggleStaple={toggleStaple}
+          />
+        </BottomSheet>
+      )}
+
+      {activeItem && !isPhone && (
         <div className="riso-inv-edit-overlay" onClick={() => setActiveItemId(null)}>
           <div className="riso-inv-edit-modal" onClick={(e) => e.stopPropagation()}>
             <button

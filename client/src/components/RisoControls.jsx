@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isHintDismissed, dismissHint } from "../lib/hints.js";
 
 // 48x28 track switch - design_handoff_riso's shared "Switch" component.
@@ -58,6 +58,29 @@ export function HintStrip({ userId, screenKey, children }) {
       >
         Got it
       </button>
+    </div>
+  );
+}
+
+// Phone bottom sheet (Riso Mobile.dc.html): card-white, 2px top border,
+// 28px top corners, a drag handle, over a 45% ink backdrop that closes it.
+export function BottomSheet({ onClose, label, children }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+  return (
+    <div className="riso-theme riso-sheet-backdrop" onClick={onClose}>
+      <div className="riso-sheet" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
+        <span className="riso-sheet-handle" aria-hidden="true" />
+        {children}
+      </div>
     </div>
   );
 }

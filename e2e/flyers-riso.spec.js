@@ -73,11 +73,15 @@ test("Flyers shows sample data with the Riso layout before any real flyer exists
   await page.getByRole("button", { name: "Flyers", exact: true }).click();
   await expect(page.locator(".riso-flyers")).toBeVisible();
   await expect(page.getByText("deals, sorted.")).toBeVisible();
-  await expect(page.getByText("Showing sample data")).toBeVisible();
-  // The real-deals sections (best deals/stock up/ends soon/table) only
-  // render once there's real (non-mock) data.
-  await expect(page.locator(".riso-block")).toHaveCount(0);
+  // Sample deals fill the layout (so the page shows how it works) under a
+  // clear "sample" note...
+  await expect(page.locator(".riso-flyers-sample-note")).toContainText("example deals");
+  await expect(page.locator(".riso-block").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload flyer" })).toBeVisible();
+
+  // ...but never count as real prices anywhere else.
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(page.getByText("No deals yet")).toBeVisible();
 });
 
 test("real deals show a price meter, a freeze tip, and a best-deals block", async ({ page }) => {

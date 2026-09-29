@@ -1,4 +1,22 @@
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+// A real (uploaded-flyer) deal for the signed-in user - sample deals never
+// count as "on sale" outside the Flyers page.
+async function seedRealDeal(page) {
+  const me = await (await page.request.get("/api/auth/me")).json();
+  const userId = me.user?.id ?? me.id;
+  await prisma.flyerDeal.create({
+    data: {
+      userId, store: "Metro", source: "Metro", category: "meat",
+      item: "Boneless chicken breast", matchName: "boneless chicken breast", price: "$4.99/lb",
+      unitPrice: 4.99, unitBasis: "lb", isCurrent: true, createdAt: new Date(),
+    },
+  });
+  await page.reload();
+}
 
 // Covers pieces specific to the Home redesign: the "N of your recipes use
 // X" sale-deal link, and the Riso Poster "Makeable now" row (its own plain
@@ -52,6 +70,7 @@ test("a makeable recipe shows as a Riso-styled row with its title legible on pap
 
 test("the sale-deal footer link filters Recipes to a matching ingredient", async ({ page }) => {
   await signUp(page, uniqueEmail());
+  await seedRealDeal(page);
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
@@ -66,7 +85,7 @@ test("the sale-deal footer link filters Recipes to a matching ingredient", async
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.waitForTimeout(400);
 
-  // The seeded flyer deals include "Boneless chicken breast" - matches
+  // The seeded deal is "Boneless chicken breast" - matches
   // findMatchingDeal's word-overlap heuristic against "chicken breast".
   const footerLink = page.getByRole("button", { name: "See them →" });
   await expect(footerLink).toBeVisible();
@@ -79,6 +98,7 @@ test("the sale-deal footer link filters Recipes to a matching ingredient", async
 
 test("On sale deals render as Riso price tags", async ({ page }) => {
   await signUp(page, uniqueEmail());
+  await seedRealDeal(page);
 
   await expect(page.locator(".riso-price-tag").first()).toBeVisible();
   await expect(page.locator(".riso-price-tag-amount").first()).toBeVisible();

@@ -73,6 +73,9 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
   page,
   context,
 }) => {
+  // Phones (<768px) show one shelf at a time and move items from the edit
+  // sheet; a touch tablet still drags between shelf columns.
+  await page.setViewportSize({ width: 820, height: 1180 });
   await signUp(page, uniqueEmail("touch-inv"));
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
@@ -88,8 +91,6 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
   const fridgeShelf = page.locator(".inv-shelf", { hasText: "Fridge" });
   const card = fridgeShelf.locator(".inv-card", { hasText: "Touch Drag Item" });
   const cardBox = await card.boundingBox();
-  // Pantry sits below Fridge - a purely vertical drag, the exact direction
-  // a pan-y touch-action would have handed to native scroll.
   const pantryShelf = page.locator(".inv-shelf", { hasText: "Pantry" });
   const pantryBox = await pantryShelf.boundingBox();
 

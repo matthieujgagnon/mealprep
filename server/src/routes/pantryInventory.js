@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { suggestExpiration, suggestAllLocations, suggestCategory, CATEGORIES } from "../lib/foodkeeper.js";
+import { suggestExpiration, suggestAllLocations, suggestCategory, suggestLocation, CATEGORIES } from "../lib/foodkeeper.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -70,7 +70,7 @@ pantryInventoryRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: `category must be one of: ${CATEGORIES.join(", ")}` });
   }
 
-  const location = (await resolveLocation(req.userId, req.body.location)) || "fridge";
+  const location = (await resolveLocation(req.userId, req.body.location)) || suggestLocation(name);
   const purchasedAt = req.body.purchasedAt ? new Date(req.body.purchasedAt) : new Date();
   const resolvedExpiresAt =
     expiresAt !== undefined ? (expiresAt ? new Date(expiresAt) : null) : suggestExpiration(name, location, purchasedAt);

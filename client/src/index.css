@@ -8575,3 +8575,865 @@ input[type="date"].planner-week-picker {
     text-align: left;
   }
 }
+
+/* ================================================================
+   Phone layout, shared (design handoff v3, Riso Mobile.dc.html).
+   Below 768px: 18px container padding, 38px/.95 page titles, 44px
+   tap targets, side panels become bottom sheets.
+   ================================================================ */
+.riso-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(22, 24, 31, 0.45);
+  display: flex;
+  align-items: flex-end;
+}
+
+.riso-sheet {
+  width: 100%;
+  max-height: 78vh;
+  overflow-y: auto;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border-top: 2px solid var(--riso-ink);
+  border-radius: 28px 28px 0 0;
+  padding: 10px 18px calc(22px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--riso-font-body);
+  animation: riso-sheet-up 0.18s ease-out;
+}
+
+.riso-sheet-handle {
+  align-self: center;
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--riso-dash-strong);
+  flex: none;
+}
+
+@keyframes riso-sheet-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0.6;
+  }
+}
+
+@media (max-width: 767px) {
+  .riso-makeable-title,
+  .riso-inv-title,
+  .riso-recipes-title,
+  .riso-grocery-title,
+  .riso-flyers-title,
+  .riso-planner-title,
+  .riso-home-greeting-title {
+    font-size: 38px;
+    line-height: 0.95;
+  }
+
+  /* The how-it-works strip stacks: sticker, copy, then Got it. */
+  .riso-hint-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .riso-hint-text {
+    font-size: 13.5px;
+  }
+
+  .riso-hint-dismiss {
+    align-self: flex-end;
+    min-height: 32px;
+  }
+}
+
+/* ---------- Planner, phone (Riso Mobile.dc.html) ---------- */
+.rpm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rpm-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rpm-head .riso-planner-title {
+  max-width: 6ch;
+}
+
+.rpm-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rpm-week-nav .riso-planner-nav-arrow {
+  width: 34px;
+  height: 34px;
+}
+
+.rpm-week-sticker {
+  transform: rotate(-3deg);
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: 800 12px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.rpm-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.rpm-day {
+  height: 58px;
+  border-radius: 12px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.rpm-day.today {
+  background: var(--riso-hot);
+}
+
+.rpm-day.selected {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+}
+
+.rpm-day-dow {
+  font: 500 8.5px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+}
+
+.rpm-day-num {
+  font: 800 17px var(--riso-font-display);
+}
+
+.rpm-day-dots {
+  display: flex;
+  gap: 2px;
+}
+
+.rpm-day-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.2;
+}
+
+.rpm-day-dots span.on {
+  opacity: 1;
+}
+
+.rpm-date {
+  margin: 4px 0 0;
+  font: 800 22px var(--riso-font-display);
+}
+
+.rpm-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rpm-slot-label {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.rpm-empty {
+  height: 64px;
+  border-radius: 16px;
+  border: 2px dashed var(--riso-dash-strong);
+  background: transparent;
+  color: var(--riso-accent);
+  font: 700 15px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.rpm-note {
+  min-height: 64px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 0;
+}
+
+.rpm-note-body {
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: none;
+  background: none;
+  color: var(--riso-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rpm-note-text {
+  font: 700 15px var(--riso-font-display);
+}
+
+.rpm-meal {
+  position: relative;
+  height: 112px;
+  display: flex;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  overflow: visible;
+}
+
+.rpm-meal.have {
+  border: 3px solid var(--riso-accent);
+  box-shadow: 4px 4px 0 var(--riso-accent);
+}
+
+.rpm-meal-photo {
+  position: relative;
+  width: 128px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-right: 2px solid var(--riso-ink);
+  border-radius: 14px 0 0 14px;
+  background: var(--riso-track);
+  cursor: pointer;
+}
+
+.rpm-meal-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px 0 0 14px;
+}
+
+.rpm-leftover {
+  position: absolute;
+  right: 6px;
+  bottom: -9px;
+  transform: rotate(-4deg);
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font: 800 11px var(--riso-font-display);
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.rpm-leftover.stale {
+  background: var(--riso-hot);
+}
+
+.rpm-have {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  border: 2px dashed var(--riso-ink);
+  background: rgba(255, 253, 248, 0.85);
+  color: var(--riso-on-accent);
+  font-size: 12px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.rpm-have.on {
+  border-style: solid;
+  background: var(--riso-accent);
+}
+
+.rpm-meal-info {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rpm-meal-name {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  color: var(--riso-ink);
+  font: 800 15px/1.2 var(--riso-font-display);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.rpm-meal-meta {
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
+}
+
+.rpm-meal-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.rpm-chip {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.rpm-chip.round {
+  padding: 0;
+  width: 32px;
+}
+
+.rpm-legend {
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  gap: 12px;
+}
+
+.rpm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rpm-actions .riso-btn {
+  width: 100%;
+  justify-content: center;
+  height: 48px;
+}
+
+/* The tray inside the phone suggestions sheet: no card chrome, no drag. */
+.riso-planner-tray.in-sheet {
+  position: static;
+  flex: none;
+  min-width: 0;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+
+.riso-planner-tray.in-sheet .riso-tray-list {
+  max-height: none;
+  overflow: visible;
+}
+
+.riso-tray-tile.static {
+  cursor: default;
+  touch-action: auto;
+}
+
+.riso-planner-tray.in-sheet .riso-tray-tile-add {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+}
+
+/* ---------- Grocery, phone + Store mode (Riso Mobile.dc.html) ---------- */
+.riso-grocery-store-btn {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .riso-grocery-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .riso-grocery-header .riso-segmented {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .riso-grocery-header .riso-segmented button {
+    height: 40px;
+  }
+
+  .riso-grocery-share {
+    display: none;
+  }
+
+  .riso-row {
+    min-height: 52px;
+    gap: 10px;
+    padding: 8px 14px;
+    flex-wrap: nowrap;
+  }
+
+  .riso-row-check {
+    width: 26px;
+    height: 26px;
+    flex: none;
+  }
+
+  .riso-row-sub,
+  .riso-row-store {
+    display: none;
+  }
+
+  .riso-row-name {
+    font-size: 15px;
+  }
+
+  .riso-row-qty {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .riso-grocery-store-btn {
+    position: sticky;
+    bottom: 12px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 56px;
+    margin: 4px 0;
+    border-radius: 28px;
+    border: 2px solid var(--riso-ink);
+    background: var(--riso-hot);
+    color: var(--riso-ink);
+    box-shadow: var(--riso-shadow);
+    font: 800 17px var(--riso-font-display);
+    cursor: pointer;
+  }
+
+  .riso-grocery-store-btn span {
+    font: 500 10.5px var(--riso-font-mono);
+    letter-spacing: 0.1em;
+  }
+}
+
+.store-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  font-family: var(--riso-font-body);
+}
+
+.store-mode-head {
+  padding: calc(14px + env(safe-area-inset-top)) 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 2px solid var(--riso-canvas);
+}
+
+.store-mode-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.store-mode-back {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  border: 2px solid var(--riso-canvas);
+  background: transparent;
+  color: var(--riso-canvas);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.store-mode-stores {
+  display: flex;
+  border: 2px solid var(--riso-canvas);
+  border-radius: 999px;
+  overflow: hidden;
+  max-width: 70%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.store-mode-stores button {
+  height: 40px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--riso-canvas);
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.store-mode-stores button.on {
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+}
+
+.store-mode-count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.store-mode-num {
+  font: 800 64px/1 var(--riso-font-display);
+  color: var(--riso-hot);
+  font-variant-numeric: tabular-nums;
+}
+
+.store-mode-at {
+  font: 700 16px var(--riso-font-display);
+}
+
+.store-mode-track {
+  height: 14px;
+  border-radius: 7px;
+  border: 2px solid var(--riso-canvas);
+  overflow: hidden;
+}
+
+.store-mode-track div {
+  height: 100%;
+  background: var(--riso-green);
+  transition: width 0.2s;
+}
+
+.store-mode-list {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.store-mode-empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--riso-dash-strong);
+}
+
+.store-mode-row {
+  width: 100%;
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 2px solid var(--riso-canvas);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.store-mode-row.on {
+  background: #2b2d36;
+  color: var(--riso-canvas);
+}
+
+.store-mode-check {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 10px;
+  border: 2px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 20px var(--riso-font-display);
+}
+
+.store-mode-row.on .store-mode-check {
+  background: var(--riso-green);
+  border-color: var(--riso-green);
+  color: var(--riso-ink);
+}
+
+.store-mode-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.store-mode-name {
+  font: 800 22px/1.15 var(--riso-font-display);
+}
+
+.store-mode-row.on .store-mode-name {
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.store-mode-qty {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.store-mode-sale {
+  flex: none;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 8px;
+  padding: 3px 7px;
+  font: 500 12px var(--riso-font-mono);
+}
+
+.store-mode-foot {
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 2px solid var(--riso-canvas);
+}
+
+.store-mode-done {
+  width: 100%;
+  height: 60px;
+  border-radius: 30px;
+  border: 2px solid var(--riso-canvas);
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  font: 800 18px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.store-mode-done:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- Inventory, phone (Riso Mobile.dc.html) ---------- */
+@media (max-width: 767px) {
+  .riso-inv-shelf-switch {
+    display: flex;
+    border: 2px solid var(--riso-ink);
+    border-radius: 999px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--riso-surface);
+  }
+
+  .riso-inv-shelf-switch button {
+    flex: 1 0 auto;
+    height: 44px;
+    padding: 0 14px;
+    border: none;
+    background: transparent;
+    color: var(--riso-ink);
+    font: 700 14px var(--riso-font-display);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .riso-inv-shelf-switch button span {
+    font: 500 11px var(--riso-font-mono);
+    opacity: 0.7;
+  }
+
+  .riso-inv-shelf-switch button.on {
+    background: var(--riso-ink);
+    color: var(--riso-canvas);
+  }
+
+  .inv-shelves {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .inv-shelf,
+  .inv-shelf.wide {
+    border: none;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .inv-shelf-header {
+    display: none;
+  }
+
+  .inv-shelf-items.grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* No drag on phones, so cards scroll the page like anything else. */
+  .inv-card {
+    touch-action: auto;
+    min-height: 60px;
+  }
+
+  .riso-inv-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .riso-inv-header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .riso-sheet .inv-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+/* Every screen sits in .app's own container (max-width 1280, 40px sides,
+   18px on phones) - the same edge the header uses - so the screens don't
+   add side padding of their own. They used to, which pushed page content
+   40px in from the logo on desktop and cost a phone ~70px of width. */
+.home-page,
+.riso-grocery,
+.riso-flyers,
+.riso-recipes,
+.riso-inv,
+.riso-makeable {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+}
+
+.riso-flyers-sample-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 12px 16px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-surface);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-flyers-sample-note .riso-sticker {
+  position: static;
+  transform: rotate(-3deg);
+}
+
+/* Recipes on phones (Riso Mobile.dc.html): chips scroll sideways, two-up grid */
+@media (max-width: 767px) {
+  .riso-recipes-searchbar input {
+    min-width: 0;
+  }
+
+  .riso-recipes-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -18px;
+    padding: 2px 18px 6px;
+    scrollbar-width: none;
+  }
+
+  .riso-recipes-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .riso-recipes-filters-spacer {
+    flex: 0 0 4px;
+  }
+
+  .riso-recipes-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .riso-recipe-card {
+    border-radius: 18px;
+  }
+
+  .riso-recipe-card-photo {
+    height: 110px;
+  }
+
+  .riso-recipe-card-body {
+    padding: 10px 11px 12px;
+    gap: 6px;
+  }
+
+  .riso-recipe-card-name {
+    font-size: 14px;
+  }
+
+  .riso-recipe-card-meta {
+    font-size: 9.5px;
+  }
+
+  .riso-recipe-card-havebar {
+    height: 9px;
+  }
+
+  .riso-recipe-card-havelabel {
+    font-size: 11.5px;
+  }
+
+  .riso-recipe-card .riso-sticker {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 767px) {
+  .inv-add-section-tile:not(.form) {
+    min-height: 52px;
+    border-radius: 18px;
+  }
+}

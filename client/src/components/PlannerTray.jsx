@@ -24,22 +24,22 @@ export function slotLabel(slot) {
   return `${DAY_SHORT[slot.dayOfWeek]} · ${MEAL_LABEL[slot.mealType]}`;
 }
 
-function TrayTile({ tile, onAdd, onOpen }) {
+function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
   const { recipe, stats } = tile;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `tray-${recipe.id}`,
     data: { recipe, fromTray: true },
+    disabled: !draggable,
   });
+  const dragProps = draggable ? { ...listeners, ...attributes, "aria-label": `${recipe.title} - drag onto a slot` } : {};
   const time = formatTrayTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
   const buy = stats.missingCount > 0 ? `${stats.missingCount} TO BUY` : "NOTHING TO BUY";
 
   return (
     <div
       ref={setNodeRef}
-      className={`riso-tray-tile${isDragging ? " dragging" : ""}`}
-      {...listeners}
-      {...attributes}
-      aria-label={`${recipe.title} - drag onto a slot`}
+      className={`riso-tray-tile${isDragging ? " dragging" : ""}${draggable ? "" : " static"}`}
+      {...dragProps}
     >
       <button
         type="button"
@@ -110,6 +110,7 @@ export function PlannerTray({
   picks,
   onPicksChange,
   message,
+  inSheet = false,
 }) {
   const [deals, setDeals] = useState([]);
   const [query, setQuery] = useState("");
@@ -117,8 +118,8 @@ export function PlannerTray({
 
   useEffect(() => {
     api
-      .getDeals()
-      .then((d) => setDeals(d.deals || []))
+      .getRealDeals()
+      .then(setDeals)
       .catch(() => setDeals([]));
   }, []);
 
@@ -180,15 +181,17 @@ export function PlannerTray({
     groups = [{ id: "all", title: `ALL RECIPES · ${all.length}`, tone: "paper", tiles: all }];
   }
 
-  const hint = target
+  const hint = inSheet
+    ? "Tap + on a recipe, or type a note below."
+    : target
     ? `Tap + on a recipe to put it in ${slotLabel(target)}, or drag it anywhere.`
     : "Drag a recipe onto the board, or tap + to drop it in the next empty slot.";
 
   return (
-    <aside className="riso-planner-tray" aria-label="Add recipes">
+    <aside className={`riso-planner-tray${inSheet ? " in-sheet" : ""}`} aria-label="Add recipes">
       <div className="riso-tray-head">
-        <h2 className="riso-tray-title">Add recipes</h2>
-        {target && (
+        <h2 className="riso-tray-title">{inSheet && target ? `Add to ${slotLabel(target)}` : "Add recipes"}</h2>
+        {target && !inSheet && (
           <span className="riso-tray-target">
             {slotLabel(target)}
             <button type="button" onClick={onClearTarget} aria-label="Clear selected slot">
@@ -204,7 +207,7 @@ export function PlannerTray({
           type="text"
           className="riso-tray-note-input"
           value={noteDraft}
-          placeholder="…or type a note, e.g. Eating out ↵"
+          placeholder={inSheet ? "✎ Add a note instead, e.g. Eating out ↵" : "…or type a note, e.g. Eating out ↵"}
           aria-label={`Note for ${slotLabel(target)}`}
           onChange={(e) => setNoteDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -251,7 +254,7 @@ export function PlannerTray({
           <div key={group.id} className="riso-tray-group">
             <span className={`riso-tray-group-pill ${group.tone}`}>{group.title}</span>
             {group.tiles.map((t) => (
-              <TrayTile key={t.recipe.id} tile={t} onAdd={onPlaceRecipe} onOpen={onOpenRecipe} />
+              <TrayTile key={t.recipe.id} tile={t} onAdd={onPlaceRecipe} onOpen={onOpenRecipe} draggable={!inSheet} />
             ))}
           </div>
         ))}

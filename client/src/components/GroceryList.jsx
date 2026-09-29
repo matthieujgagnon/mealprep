@@ -4,6 +4,7 @@ import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
+import { StoreMode } from "./StoreMode.jsx";
 
 // Per-item "which store do I usually get this at" preference — new in the
 // Riso redesign (there's no server schema for it yet). Lasting-but-not-
@@ -165,6 +166,7 @@ export function GroceryList({
   const [extraItems, setExtraItems] = useState([]);
   const [addValue, setAddValue] = useState("");
   const [view, setView] = useState("store");
+  const [storeMode, setStoreMode] = useState(false);
   const [storePrefs, setStorePrefs] = useState(loadStorePrefs);
   // core -> USDA FoodKeeper category string ("Produce", "Dairy Products &
   // Eggs", ...), fetched lazily (see the effect below) and cached here so
@@ -177,7 +179,7 @@ export function GroceryList({
   const [pantryAddedKeys, setPantryAddedKeys] = useState(() => new Set());
 
   useEffect(() => {
-    api.getDeals().then((d) => setDeals(d.deals)).catch(() => {});
+    api.getRealDeals().then(setDeals).catch(() => {});
   }, []);
 
   // Switching weeks swaps in that week's own checkmarks instead of carrying
@@ -298,7 +300,6 @@ export function GroceryList({
         name: item.name,
         quantity: item.parts?.[0]?.quantity ?? null,
         unit: item.parts?.[0]?.unit ?? null,
-        location: "fridge",
       });
     } catch {
       setPantryAddedKeys((prev) => {
@@ -416,6 +417,11 @@ export function GroceryList({
   }
 
   const groups = buildGroups();
+  const storeRows = shoppingItems.map((item) => {
+    const deal = findMatchingDeal(item.name, deals);
+    return { item, deal, store: storeForItem(item, deal) };
+  });
+  const storesWithItems = storeOrder.filter((st) => storeRows.some((r) => r.store === st));
 
   const doneCount = shoppingItems.filter((i) => checked[i.key]).length;
   const totalCount = shoppingItems.length;
@@ -502,6 +508,12 @@ export function GroceryList({
           )}
         </div>
 
+        {totalCount > 0 && (
+          <button type="button" className="riso-grocery-store-btn" onClick={() => setStoreMode(true)}>
+            I'm at the store <span>BIG MODE</span>
+          </button>
+        )}
+
         <aside className="riso-grocery-aside">
           <section className="riso-grocery-cart">
             <div className="riso-eyebrow on-pink">In the cart</div>
@@ -571,6 +583,16 @@ export function GroceryList({
           </section>
         </aside>
       </div>
+      {storeMode && (
+        <StoreMode
+          rows={storeRows}
+          stores={storesWithItems.length > 0 ? storesWithItems : storeOrder}
+          checked={checked}
+          onToggle={toggle}
+          onDone={handleDoneShopping}
+          onClose={() => setStoreMode(false)}
+        />
+      )}
     </div>
   );
 }

@@ -21,6 +21,8 @@ import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
 import { PlannerTray } from "./components/PlannerTray.jsx";
+import { PlannerMobile } from "./components/PlannerMobile.jsx";
+import { useIsPhone } from "./hooks/useIsPhone.js";
 import { emptyUpcomingSlots, findNextEmptySlot, todayIndex } from "./lib/plannerSlots.js";
 import { isBreakfastRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
 import { haveCoresFor } from "./lib/onHand.js";
@@ -107,6 +109,7 @@ function collisionDetection(args) {
 
 export default function App({ user, onLogout }) {
   const [tab, setTab] = useState("home"); // "home" | "collection" | "planner"
+  const isPhone = useIsPhone();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
   useEffect(() => {
@@ -552,6 +555,22 @@ export default function App({ user, onLogout }) {
     return plan;
   }
 
+  const trayProps = {
+    recipes: plannableRecipes,
+    upcomingEntries: upcomingPlannerEntries,
+    pantryInventory,
+    haveCores: pantryHaveCores,
+    onClearTarget: () => setPlannerTarget(null),
+    onPlaceRecipe: handlePlaceFromTray,
+    onSaveNote: handleSaveTrayNote,
+    onOpenRecipe: openRecipe,
+    tab: plannerTrayTab,
+    onTabChange: setPlannerTrayTab,
+    picks: planAroundIngredients,
+    onPicksChange: setPlanAroundIngredients,
+    message: trayMessage,
+  };
+
   async function handleFillEmptySlots() {
     const created = await Promise.all(
       fillPlan.map(({ slot, recipe }) => api.placeOnPlanner({ recipeId: recipe.id, weekStart, ...slot }))
@@ -780,24 +799,15 @@ export default function App({ user, onLogout }) {
               </p>
             ) : (
               <>
-                <PlannerHeader
-                  user={user}
-                  weekStart={weekStart}
-                  onChangeWeek={(w) => {
-                    setWeekStart(w);
-                    setPlannerTarget(null);
-                  }}
-                  hasEntries={plannerEntries.length > 0}
-                  onCopyLastWeek={handleCopyLastWeek}
-                  emptyCount={fillPlan.length}
-                  onFillEmptySlots={handleFillEmptySlots}
-                  groceryCount={groceryToBuyCount}
-                  onGoToGrocery={() => setTab("grocery")}
-                />
-                <div className="riso-planner-row">
-                  <PlannerBoard
+                {isPhone ? (
+                  <PlannerMobile
                     entries={plannerEntries}
                     weekStart={weekStart}
+                    onChangeWeek={(w) => {
+                      setWeekStart(w);
+                      setPlannerTarget(null);
+                    }}
+                    haveCores={pantryHaveCores}
                     target={plannerTarget}
                     onSelectSlot={(slot) => {
                       setPlannerTarget(slot);
@@ -806,24 +816,45 @@ export default function App({ user, onLogout }) {
                     onCardClick={openRecipe}
                     onRemove={handleRemoveFromPlanner}
                     onCycleState={handleCycleMealState}
+                    groceryCount={groceryToBuyCount}
+                    onGoToGrocery={() => setTab("grocery")}
+                    emptyCount={fillPlan.length}
+                    onFillEmptySlots={handleFillEmptySlots}
+                    trayProps={trayProps}
                   />
-                  <PlannerTray
-                    recipes={plannableRecipes}
-                    upcomingEntries={upcomingPlannerEntries}
-                    pantryInventory={pantryInventory}
-                    haveCores={pantryHaveCores}
-                    target={plannerTarget}
-                    onClearTarget={() => setPlannerTarget(null)}
-                    onPlaceRecipe={handlePlaceFromTray}
-                    onSaveNote={handleSaveTrayNote}
-                    onOpenRecipe={openRecipe}
-                    tab={plannerTrayTab}
-                    onTabChange={setPlannerTrayTab}
-                    picks={planAroundIngredients}
-                    onPicksChange={setPlanAroundIngredients}
-                    message={trayMessage}
-                  />
-                </div>
+                ) : (
+                  <>
+                    <PlannerHeader
+                      user={user}
+                      weekStart={weekStart}
+                      onChangeWeek={(w) => {
+                        setWeekStart(w);
+                        setPlannerTarget(null);
+                      }}
+                      hasEntries={plannerEntries.length > 0}
+                      onCopyLastWeek={handleCopyLastWeek}
+                      emptyCount={fillPlan.length}
+                      onFillEmptySlots={handleFillEmptySlots}
+                      groceryCount={groceryToBuyCount}
+                      onGoToGrocery={() => setTab("grocery")}
+                    />
+                    <div className="riso-planner-row">
+                      <PlannerBoard
+                        entries={plannerEntries}
+                        weekStart={weekStart}
+                        target={plannerTarget}
+                        onSelectSlot={(slot) => {
+                          setPlannerTarget(slot);
+                          setTrayMessage(null);
+                        }}
+                        onCardClick={openRecipe}
+                        onRemove={handleRemoveFromPlanner}
+                        onCycleState={handleCycleMealState}
+                      />
+                      <PlannerTray {...trayProps} target={plannerTarget} />
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
