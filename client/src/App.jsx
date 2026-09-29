@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
@@ -54,6 +54,21 @@ function DragPreview({ active }) {
 
 export default function App({ user, onLogout }) {
   const [tab, setTab] = useState("home"); // "home" | "collection" | "planner"
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarRef = useRef(null);
+  useEffect(() => {
+    if (!avatarMenuOpen) return undefined;
+    const close = (event) => {
+      if (!avatarRef.current?.contains(event.target)) setAvatarMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [avatarMenuOpen]);
+  // The phone nav is a horizontally scrolling pill row - keep the active pill
+  // on screen when the tab changes from elsewhere (e.g. Home's "Open list →").
+  useEffect(() => {
+    document.querySelector(".tab.active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [tab]);
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [weekStart, setWeekStart] = useState(currentWeekStart()); // Monday, "YYYY-MM-DD" — which week the Planner and Grocery List tabs are showing
@@ -447,6 +462,25 @@ export default function App({ user, onLogout }) {
           <h1 className="wordmark">
             matt mo <span>cookbook</span>
           </h1>
+          <div className="app-header-avatar" ref={avatarRef}>
+            <button
+              type="button"
+              className="app-header-avatar-btn"
+              aria-label="Account"
+              aria-expanded={avatarMenuOpen}
+              onClick={() => setAvatarMenuOpen((open) => !open)}
+            >
+              {(user.name || user.email).charAt(0).toUpperCase()}
+            </button>
+            {avatarMenuOpen && (
+              <div className="app-header-avatar-menu">
+                <span className="app-header-avatar-name">{user.name || user.email}</span>
+                <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
           <nav className="tabs">
             <button
               className={`tab${tab === "home" ? " active" : ""}`}

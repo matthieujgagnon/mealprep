@@ -559,55 +559,16 @@ select {
   border-radius: 6px;
 }
 
+/* Desktop: never a scroll container. Any overflow value other than visible
+   clips on both axes, which sliced the active pill's 3px hard shadow off
+   along its bottom edge. When the row is too narrow for logo + tabs +
+   account, .app-header's flex-wrap drops the tabs onto their own line
+   instead. The phone layout (below 768px) is the one place the tabs scroll
+   - see the mobile block at the end of this file. */
 .tabs {
-  flex: 1;
-  /* A flex item's default min-width is auto (its content's natural width),
-     not 0 - without this override, 7 tab buttons wider than the available
-     row force .tabs (and everything up through <body>) wider than the
-     viewport instead of actually using overflow-x:auto's scrollbar, which
-     on a real mobile viewport triggers the browser's "page wider than
-     device width" auto-zoom-out. That rescales the whole page, so every
-     element's on-screen position stops matching its layout coordinates -
-     exactly what made a real touch tap land on the wrong element anywhere
-     below the header (caught by touch-drag.spec.js, not by any
-     mouse-simulated test, since only a real viewport-width check exposes
-     it). */
-  min-width: 0;
+  flex: none;
   display: flex;
-  /* Not justify-content:center - combined with overflow-x:auto, centered
-     content whose natural width exceeds the container clips equally off
-     both ends and scrollLeft:0 lands in the middle, making the first tab
-     (Home) unreachable without scrolling backwards past nothing. flex-start
-     keeps every tab reachable by scrolling forward only. */
-  justify-content: flex-start;
   gap: 4px;
-  /* Scrolls horizontally rather than squeezing every tab to fit once there
-     are enough of them (8, as of adding Home) that a narrow/mobile screen
-     can't fit them all at a legible size — see the mobile override below,
-     which drops the old flex:1-per-tab squeeze that caused this. */
-  overflow-x: auto;
-  /* A thin, visible thumb rather than hiding the scrollbar entirely - a
-     desktop window between the mobile breakpoint and the design's full
-     1280px width (a laptop that isn't maximized, a half-screen split view)
-     can still overflow here, and with no scrollbar at all the tabs past the
-     fold just silently vanish with no hint they're reachable by scrolling -
-     that's what read as the nav being "broken"/"cut off" rather than
-     scrollable. */
-  scrollbar-width: thin;
-}
-
-.tabs::-webkit-scrollbar {
-  height: 5px;
-}
-
-.tabs::-webkit-scrollbar-thumb {
-  background: var(--riso-ink);
-  opacity: 0.25;
-  border-radius: 3px;
-}
-
-.tabs::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .tab {
@@ -645,6 +606,7 @@ select {
      causes on a real mobile viewport. */
   flex: 0 1 auto;
   min-width: 0;
+  margin-left: auto;
 }
 
 .app-header-account-name {
@@ -660,13 +622,15 @@ select {
 /* .btn.subtle is styled for a dark page (light card, dark text on a dark
    backdrop) - the header is now its own paper-colored bar, so it needs the
    inverse: an ink-outlined card-colored button instead. */
-.app-header-account .btn.subtle {
+.app-header-account .btn.subtle,
+.app-header-avatar-menu .btn.subtle {
   background: var(--riso-surface);
   color: var(--riso-ink);
   border: 2px solid var(--riso-ink);
 }
 
-.app-header-account .btn.subtle:hover {
+.app-header-account .btn.subtle:hover,
+.app-header-avatar-menu .btn.subtle:hover {
   background: var(--riso-track);
 }
 
@@ -7915,22 +7879,130 @@ input[type="date"].planner-week-picker {
   line-height: 1.5;
 }
 
-/* A browser window between the mobile breakpoint below and the design's
-   full 1280px width - an unmaximized laptop window, a half-screen split
-   view - has enough room for the header's wordmark and account controls at
-   full size, but not quite enough left over for all 7 tabs at their full
-   padding, so they silently overflowed past the account controls with no
-   visible scrollbar to reach them (see .tabs's own scrollbar-thumb rule
-   above). Tightening just the tab spacing (not the full mobile layout)
-   buys back enough width that this range needs the scrollbar rarely
-   rather than by default. */
-@media (max-width: 1180px) {
-  .tab {
-    padding: 0 10px;
+/* ---------- Phone header (design: Riso Mobile.dc.html) ----------
+   A sticky paper block with a 2px bottom border: logo + avatar on top,
+   then a horizontally scrolling row of 40px pills. The pill row is the one
+   place the tabs scroll, so it carries vertical padding for the active
+   pill's 3px shadow - a scroll container clips on both axes. */
+.app-header-avatar {
+  display: none;
+}
+
+/* Too narrow for logo + 7 tabs + account on one row: tabs take a full
+   second row, so the account stays top-right rather than wrapping alone
+   onto a third. */
+@media (max-width: 900px) {
+  .tabs {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .app {
+    padding: 0 18px 60px;
+  }
+
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    gap: 0;
+    margin: 0 -18px 18px;
+    padding: 8px 18px 0;
+    border-bottom: 2px solid var(--riso-ink);
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .wordmark {
+    font-size: 21px;
+    white-space: nowrap;
+  }
+
+  .wordmark span {
+    padding: 0 6px;
+    border-radius: 5px;
+  }
+
+  .app-header-account {
+    display: none;
+  }
+
+  .app-header-avatar {
+    display: block;
+    position: relative;
+  }
+
+  .app-header-avatar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    background: var(--riso-yellow);
+    border: 2px solid var(--riso-ink);
+    color: var(--riso-ink);
+    font: 800 14px var(--riso-font-display);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .app-header-avatar-menu {
+    position: absolute;
+    right: 0;
+    top: 44px;
+    z-index: 60;
+    min-width: 180px;
+    background: var(--riso-surface);
+    border: 2px solid var(--riso-ink);
+    border-radius: 16px;
+    box-shadow: var(--riso-shadow);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .app-header-avatar-name {
+    font: 500 14px var(--riso-font-body);
+    color: var(--riso-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .tabs {
-    gap: 2px;
+    order: 3;
+    flex: 1 1 100%;
+    /* min-width:0 + overflow-x:auto keeps 7 pills from forcing the page
+       wider than the phone, which triggers the browser's auto-zoom-out and
+       makes every touch land off-target (see touch-drag.spec.js). */
+    min-width: 0;
+    gap: 6px;
+    margin: 8px -18px 0;
+    padding: 2px 18px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    height: 40px;
+    padding: 0 16px;
+    font-size: 14.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--riso-surface);
+    border-color: var(--riso-ink);
+  }
+
+  .tab.active {
+    background: var(--riso-accent);
   }
 }
 
@@ -7942,35 +8014,6 @@ input[type="date"].planner-week-picker {
    arguably the primary device it needs to work on.
    ================================================================ */
 @media (max-width: 680px) {
-  .app {
-    padding: 16px 12px 60px;
-  }
-
-  .app-header {
-    gap: 10px;
-    margin: -16px -12px 16px;
-    padding: 16px 12px;
-  }
-
-  .wordmark {
-    font-size: 22px;
-  }
-
-  .tabs {
-    width: 100%;
-    /* No flex:1-per-tab squeeze here anymore - with 8 tabs that crushed
-       each one down to an illegibly narrow, wrapped mess on a phone
-       screen. Scrolls horizontally instead (see the base .tabs rule),
-       each tab keeping its natural, readable width. */
-    justify-content: flex-start;
-  }
-
-  .tab {
-    text-align: center;
-    padding: 10px 12px;
-    font-size: 13px;
-  }
-
   /* Planner (Riso): sidebar stacks below the board instead of squeezing
      into a sliver next to it, and the grid shrinks its columns a bit so a
      day cell stays a usable tap target on a phone width. */

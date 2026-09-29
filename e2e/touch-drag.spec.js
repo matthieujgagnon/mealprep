@@ -36,7 +36,8 @@ async function signUp(page, email) {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  // Phone width: the account name lives behind the avatar button.
+  await expect(page.getByRole("button", { name: "Account" })).toBeVisible();
 }
 
 // Dispatches a real held-then-moved touch gesture (touchstart, a pause past
