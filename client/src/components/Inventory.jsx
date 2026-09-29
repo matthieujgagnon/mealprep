@@ -505,6 +505,22 @@ function AddSectionTile({ onAdd }) {
 }
 
 function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple, onToggleStaple }) {
+  const [nameDraft, setNameDraft] = useState(item.name);
+
+  // Resync the draft when a different item opens (or this one's name
+  // changes from elsewhere) - without this, switching straight from one
+  // item's edit panel to another's would carry the previous item's typed
+  // text over.
+  useEffect(() => {
+    setNameDraft(item.name);
+  }, [item.id, item.name]);
+
+  function commitName() {
+    const trimmed = nameDraft.trim();
+    if (trimmed && trimmed !== item.name) onUpdate(item.id, { name: trimmed });
+    else setNameDraft(item.name);
+  }
+
   function adjustQty(delta) {
     const next = Math.max(0, (item.quantity ?? 0) + delta);
     onUpdate(item.id, { quantity: next });
@@ -533,7 +549,21 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
   return (
     <aside className="inv-panel">
       <div className="inv-panel-header">
-        <h3>{item.name}</h3>
+        <input
+          type="text"
+          className="inv-panel-name-input"
+          value={nameDraft}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") {
+              setNameDraft(item.name);
+              e.currentTarget.blur();
+            }
+          }}
+          aria-label="Item name"
+        />
         <span className="inv-panel-category">{item.category}</span>
       </div>
 

@@ -92,10 +92,15 @@ pantryInventoryRouter.post("/", async (req, res) => {
   res.status(201).json(enrichItem(item));
 });
 
-// PUT /api/pantry-inventory/:id { quantity?, unit?, location?, category?, purchasedAt?, expiresAt? } -
+// PUT /api/pantry-inventory/:id { name?, quantity?, unit?, location?, category?, purchasedAt?, expiresAt? } -
 // edits any field, most commonly the suggested expiration date itself.
 pantryInventoryRouter.put("/:id", async (req, res) => {
   const data = {};
+  if (req.body.name !== undefined) {
+    if (!req.body.name.trim()) return res.status(400).json({ error: "name cannot be empty" });
+    data.name = req.body.name.trim();
+    data.core = req.body.name.trim().toLowerCase();
+  }
   if (req.body.quantity !== undefined) data.quantity = typeof req.body.quantity === "number" ? req.body.quantity : null;
   if (req.body.unit !== undefined) data.unit = req.body.unit || null;
   if (req.body.location !== undefined) {

@@ -83,7 +83,7 @@ const VIEWS = [
   { id: "recipe", label: "By recipe" },
 ];
 
-function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, sub, onDeleteManual }) {
+function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCycleStore, sub, onDeleteManual }) {
   return (
     <div
       className={`riso-row${checked ? " checked" : ""}`}
@@ -108,17 +108,26 @@ function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, sub, o
         {sub && <span className="riso-row-sub">{sub}</span>}
       </span>
       {sale && <span className="riso-row-sale">{sale}</span>}
-      <button
-        type="button"
-        className="riso-row-store"
-        title="Tap to move to another store"
-        onClick={(e) => {
-          e.stopPropagation();
-          onCycleStore();
-        }}
-      >
-        {store} ⇄
-      </button>
+      {canCycleStore ? (
+        <button
+          type="button"
+          className="riso-row-store"
+          title="This item's store - tap to switch it to another store you shop at"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCycleStore();
+          }}
+        >
+          {store} ⇄
+        </button>
+      ) : (
+        <span
+          className="riso-row-store static"
+          title="This item's store. Upload a flyer from another store (Flyers tab) to be able to switch it."
+        >
+          {store}
+        </span>
+      )}
       <span className="riso-row-qty">{formatParts(item.parts)}</span>
       {item.isManual && (
         <button
@@ -479,6 +488,7 @@ export function GroceryList({
                     sale={row.deal?.price || ""}
                     store={row.store}
                     onCycleStore={() => cycleStore(row.item, row.store)}
+                    canCycleStore={storeOrder.length > 1}
                     sub={subLineFor(row)}
                     onDeleteManual={deleteExtraItem}
                   />
