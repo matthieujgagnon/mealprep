@@ -100,9 +100,56 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
 
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" }).getByText("Elk")).toBeVisible();
 
-  await page.locator(".inv-shelf", { hasText: "Garage Freezer" }).locator(".inv-shelf-remove").click();
+  await page.getByRole("button", { name: 'Edit the "Garage Freezer" section' }).click();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toHaveCount(0);
   await expect(page.locator(".inv-shelf", { hasText: "Pantry" }).getByText("Elk")).toBeVisible();
+});
+
+test("sections can be renamed, moved and resized, and the layout is saved", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  const order = () => page.locator(".inv-shelf").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  await expect.poll(order).toEqual(["Fridge section", "Freezer section", "Pantry section"]);
+
+  // Rename a built-in section and make it a third of the row.
+  await page.getByRole("button", { name: 'Edit the "Fridge" section' }).click();
+  await page.getByLabel("Section name").fill("Kitchen fridge");
+  await page.getByRole("button", { name: "Width 1/3" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".inv-shelf", { hasText: "Kitchen fridge" })).toHaveClass(/size-third/);
+
+  // Move Pantry to the front, one step at a time.
+  await page.getByRole("button", { name: 'Edit the "Pantry" section' }).click();
+  await page.getByRole("button", { name: "Move section earlier" }).click();
+  await page.getByRole("button", { name: "Move section earlier" }).click();
+  await expect(page.getByRole("button", { name: "Move section earlier" })).toBeDisabled();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect.poll(order).toEqual(["Pantry section", "Kitchen fridge section", "Freezer section"]);
+
+  // A custom section renames too.
+  await page.getByRole("button", { name: "+ Add section" }).click();
+  await page.fill(".inv-add-section-tile.form input", "Garage");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: 'Edit the "Garage" section' }).click();
+  await page.getByLabel("Section name").fill("Garage freezer");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".inv-shelf", { hasText: "Garage freezer" })).toBeVisible();
+
+  // Everything survives a reload, and the new names show in the add form.
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await expect
+    .poll(order)
+    .toEqual(["Pantry section", "Kitchen fridge section", "Freezer section", "Garage freezer section"]);
+  await expect(page.locator(".inv-shelf", { hasText: "Kitchen fridge" })).toHaveClass(/size-third/);
+  await page.getByRole("button", { name: "+ Add item" }).click();
+  await expect(page.locator(".modal-content select").nth(1).locator("option")).toHaveText([
+    "Pantry",
+    "Kitchen fridge",
+    "Freezer",
+    "Garage freezer",
+  ]);
 });
 
 test("dragging a card from one shelf to another moves it", async ({ page }) => {

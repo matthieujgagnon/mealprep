@@ -13,7 +13,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
-import { coresOnGroceryList, groceryCore } from "./lib/groceryDedupe.js";
+import { coresOnGroceryList, groceryCore, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { core } from "./lib/similarRecipes.js";
 import { Home } from "./components/Home.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
@@ -151,10 +151,12 @@ export default function App({ user, onLogout }) {
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [pantryInventory, setPantryInventory] = useState([]);
   const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
+  const [inventoryLayout, setInventoryLayout] = useState([]); // section order/size/built-in names (InventorySectionLayout)
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("All");
-  const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart — just for the "Build grocery list · n" count
+  const [plannerExtraItems, setPlannerExtraItems] = useState([]);
+  const [groceryOverrides, setGroceryOverrides] = useState([]); // this week's removed rows / own quantities (GroceryItemOverride) // manually-added grocery items for weekStart — just for the "Build grocery list · n" count
   const [isDragActive, setIsDragActive] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
   // Which droppable id a drag is currently hovering, tracked only to drive
@@ -192,6 +194,7 @@ export default function App({ user, onLogout }) {
       }),
       api.listPantryInventory().then(setPantryInventory),
       api.listPantryLocations().then(setPantryLocations),
+      api.getInventoryLayout().then(setInventoryLayout),
     ]).then((results) => {
       if (results.some((r) => r.status === "rejected")) setLoadError(true);
     });
@@ -212,9 +215,10 @@ export default function App({ user, onLogout }) {
   // below.
   useEffect(() => {
     api.listGroceryExtras(weekStart).then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
+    api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
   }, [weekStart, tab]);
 
-  const groceryCores = coresOnGroceryList(plannerEntries, plannerExtraItems);
+  const groceryCores = coresOnGroceryList(plannerEntries, plannerExtraItems, groceryOverrides);
 
   function isOnGroceryList(name) {
     return groceryCores.has(groceryCore(name));
@@ -225,23 +229,39 @@ export default function App({ user, onLogout }) {
   // planned recipe already needs, never makes a duplicate row.
   async function addToGroceryList(names) {
     const seen = new Set(groceryCores);
+    const removedRows = removedRecipeRows(plannerEntries, groceryOverrides);
     const created = [];
     for (const name of names) {
       const c = groceryCore(name);
       if (seen.has(c)) continue;
       seen.add(c);
+      if (removedRows.has(c)) {
+        // A planned recipe already needs it but it was removed for this
+        // week - bring that row back rather than adding a second one.
+        await setGroceryOverride(removedRows.get(c), { removed: false });
+        continue;
+      }
       created.push(await api.addGroceryExtra(weekStart, { name, quantity: null, unit: null }));
     }
     if (created.length > 0) setPlannerExtraItems((prev) => [...prev, ...created]);
   }
 
-  // Only hand-added rows can be taken back off - a planned recipe's
-  // ingredients stay on the list for as long as it's planned.
+  async function setGroceryOverride(key, patch) {
+    const saved = await api.setGroceryOverride(weekStart, key, patch);
+    setGroceryOverrides((prev) => [...prev.filter((o) => o.key !== key), ...(saved ? [saved] : [])]);
+  }
+
+  // Hand-added rows are deleted; a planned recipe's row is removed for this
+  // week only (the recipe itself is untouched).
   async function removeFromGroceryList(name) {
     const c = groceryCore(name);
     const matches = plannerExtraItems.filter((item) => groceryCore(item.name) === c);
     await Promise.all(matches.map((item) => api.deleteGroceryExtra(item.id)));
     setPlannerExtraItems((prev) => prev.filter((item) => !matches.includes(item)));
+    const recipeRow = buildGroceryList(plannerEntries, [], {}, [], [], groceryOverrides).find(
+      (item) => item.core === c && !item.removed
+    );
+    if (recipeRow) await setGroceryOverride(recipeRow.key, { removed: true });
   }
 
   function handleImported(recipe) {
@@ -345,7 +365,25 @@ export default function App({ user, onLogout }) {
   async function handleDeletePantryLocation(id) {
     setPantryLocations((prev) => prev.filter((l) => l.id !== id));
     setPantryInventory((prev) => prev.map((i) => (i.location === id ? { ...i, location: "pantry" } : i)));
+    setInventoryLayout((prev) => prev.filter((s) => s.sectionId !== id));
     await api.deletePantryLocation(id);
+  }
+
+  async function handleRenamePantryLocation(id, name) {
+    const saved = await api.renamePantryLocation(id, name);
+    setPantryLocations((prev) => prev.map((l) => (l.id === id ? saved : l)));
+  }
+
+  // Optimistic - the new order/sizes show right away; a failed save
+  // restores the previous layout.
+  async function handleSaveInventoryLayout(sections) {
+    const prev = inventoryLayout;
+    setInventoryLayout(sections.map((s, position) => ({ ...s, position })));
+    try {
+      setInventoryLayout(await api.saveInventoryLayout(sections));
+    } catch {
+      setInventoryLayout(prev);
+    }
   }
 
   // Drag a card from one Inventory shelf onto another - the drag-and-drop
@@ -588,8 +626,9 @@ export default function App({ user, onLogout }) {
     customStaples,
     stapleCategories,
     excludedStaples,
-    plannerExtraItems
-  ).filter((i) => !i.isStaple).length;
+    plannerExtraItems,
+    groceryOverrides
+  ).filter((i) => !i.isStaple && !i.removed).length;
 
   return (
     <DndContext
@@ -752,7 +791,10 @@ export default function App({ user, onLogout }) {
             }}
             onFindRecipesForSelection={() => setTab("makeable")}
             locations={pantryLocations}
+            layout={inventoryLayout}
+            onSaveLayout={handleSaveInventoryLayout}
             onAddLocation={handleAddPantryLocation}
+            onRenameLocation={handleRenamePantryLocation}
             onDeleteLocation={handleDeletePantryLocation}
           />
         )}

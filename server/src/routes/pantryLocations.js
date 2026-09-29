@@ -35,6 +35,23 @@ pantryLocationsRouter.post("/", async (req, res) => {
   }
 });
 
+// PUT /api/pantry-locations/:id { name } - rename a custom section.
+pantryLocationsRouter.put("/:id", async (req, res) => {
+  const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+  if (!name) return res.status(400).json({ error: "name is required" });
+  const existing = await prisma.pantryLocation.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!existing) return res.status(404).json({ error: "Section not found" });
+  try {
+    const location = await prisma.pantryLocation.update({ where: { id: existing.id }, data: { name } });
+    res.json(location);
+  } catch (err) {
+    if (err.code === "P2002") {
+      return res.status(409).json({ error: `A section named "${name}" already exists` });
+    }
+    throw err;
+  }
+});
+
 // DELETE /api/pantry-locations/:id - removes a custom section. Any items
 // still placed in it move back to Pantry rather than being left pointing
 // at a location that no longer exists.

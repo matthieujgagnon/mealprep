@@ -1,4 +1,4 @@
-import { convertToUnit } from "./units.js";
+import { convertToUnit, formatQuantity } from "./units.js";
 
 // Produce/variety adjectives that shouldn't fragment the grocery list into
 // separate line items (a "California avocado" and a plain "avocado" are the
@@ -201,12 +201,18 @@ export function canonicalize(rawName) {
 // adding/removing one never touches what a recipe contributes) but still
 // gets a `core` so it can be dragged into store sections/staples and filed
 // alongside matching recipe ingredients the same way everything else is.
+//
+// overrides are this week's GroceryItemOverride rows, matched by row key:
+// a removed row comes back flagged `removed` (callers leave it off the list
+// but can offer to restore it), and `customQuantity` is the user's own
+// amount, shown alongside what the recipes call for.
 export function buildGroceryList(
   plannerEntries,
   customStaples = [],
   staplesCategoryOverrides = {},
   excludedStaples = [],
-  extraItems = []
+  extraItems = [],
+  overrides = []
 ) {
   const map = new Map(); // core -> { core, name, parts, usedIn, varieties, isStaple, isSpice }
   // Every spice is inherently a pantry staple (you don't buy cumin fresh
@@ -294,7 +300,46 @@ export function buildGroceryList(
     };
   });
 
-  return [...recipeItems, ...manualItems].sort((a, b) => a.name.localeCompare(b.name));
+  const overrideByKey = new Map(overrides.map((o) => [o.key, o]));
+  return [...recipeItems, ...manualItems]
+    .map((item) => {
+      const o = overrideByKey.get(item.key);
+      return { ...item, removed: !!o?.removed, customQuantity: o?.quantity || null };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const METRIC_OR_ABBREVIATED = new Set(["g", "kg", "mg", "ml", "l", "tsp", "tbsp", "oz", "lb", "fl_oz"]);
+
+function unitLabel(unit, qty) {
+  if (unit === "l") return "L";
+  if (unit === "fl_oz") return "fl oz";
+  if (METRIC_OR_ABBREVIATED.has(unit) || qty == null || qty <= 1) return unit;
+  if (/(ch|sh|s|x)$/.test(unit)) return `${unit}es`;
+  return `${unit}s`;
+}
+
+// Bigger units once an amount gets unwieldy (1500 g -> 1.5 kg).
+function scaleUp(qty, unit) {
+  if (qty == null) return { qty, unit };
+  if (unit === "g" && qty >= 1000) return { qty: qty / 1000, unit: "kg" };
+  if (unit === "ml" && qty >= 1000) return { qty: qty / 1000, unit: "l" };
+  if (unit === "tsp" && qty >= 3 && Math.abs(qty / 3 - Math.round(qty / 3)) < 0.01) return { qty: qty / 3, unit: "tbsp" };
+  return { qty, unit };
+}
+
+// A row's combined recipe amount, readable: "1.2 kg", "4 cloves",
+// "2 + 1 cup" when two recipes measured it in ways that don't add up.
+export function formatAmount(parts) {
+  if (!parts || parts.length === 0) return "";
+  return parts
+    .filter((p) => p.quantity != null)
+    .map((p) => {
+      const { qty, unit } = scaleUp(p.quantity, p.unit);
+      const amount = qty >= 10 ? String(Math.round(qty * 10) / 10) : formatQuantity(qty);
+      return unit ? `${amount} ${unitLabel(unit, qty)}` : amount;
+    })
+    .join(" + ");
 }
 
 // Adds a (quantity, unit) pair into a row's part list — merging into an

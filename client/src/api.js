@@ -90,6 +90,13 @@ export const api = {
     request("/grocery-extra-items", { method: "POST", body: JSON.stringify({ weekStart, ...item }) }),
   deleteGroceryExtra: (id) => request(`/grocery-extra-items/${id}`, { method: "DELETE" }),
 
+  listGroceryOverrides: (weekStart) =>
+    request(`/grocery-item-overrides?week=${encodeURIComponent(weekStart)}`),
+  // patch: { quantity?: string | null, removed?: boolean }. Resolves to the
+  // saved override, or null once it has nothing left to change.
+  setGroceryOverride: (weekStart, key, patch) =>
+    request("/grocery-item-overrides", { method: "PUT", body: JSON.stringify({ weekStart, key, ...patch }) }),
+
   listGroceryChecked: (weekStart) =>
     request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`),
   checkGroceryItem: (weekStart, core) =>
@@ -158,4 +165,11 @@ export const api = {
   addPantryLocation: (name) =>
     request("/pantry-locations", { method: "POST", body: JSON.stringify({ name }) }),
   deletePantryLocation: (id) => request(`/pantry-locations/${id}`, { method: "DELETE" }),
+  renamePantryLocation: (id, name) =>
+    request(`/pantry-locations/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
+
+  getInventoryLayout: () => request("/inventory-layout"),
+  // sections: [{ sectionId, label?, size }] in display order.
+  saveInventoryLayout: (sections) =>
+    request("/inventory-layout", { method: "PUT", body: JSON.stringify({ sections }) }),
 };
