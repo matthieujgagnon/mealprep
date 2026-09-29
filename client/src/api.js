@@ -60,6 +60,10 @@ export const api = {
   removeFromPlanner: (id) => request(`/planner/${id}`, { method: "DELETE" }),
 
   getDeals: () => request("/deals"),
+  // Deals to treat as real prices. Without an uploaded flyer the server sends
+  // sample deals (isMockData) so the Flyers page has something to show -
+  // those must never show up as "on sale" anywhere else.
+  getRealDeals: () => request("/deals").then((d) => (d.isMockData ? [] : d.deals)),
   uploadFlyer: async (store, file) => {
     const form = new FormData();
     form.append("store", store);

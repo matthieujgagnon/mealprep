@@ -488,10 +488,14 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
       </div>
       {leRabaisError && <p className="riso-error">{leRabaisError}</p>}
 
-      {deals.isMockData ? (
-        <p className="riso-flyers-sub">Showing sample data — upload a store's flyer PDF to pull in real deals.</p>
-      ) : (
-        <>
+      {deals.isMockData && (
+        <p className="riso-flyers-sample-note">
+          <span className="riso-sticker yellow">sample</span>
+          These are example deals so you can see how this page works. Upload a store's flyer or refresh
+          from Le Rabais to pull in this week's real prices.
+        </p>
+      )}
+      <>
           <HintStrip userId={user.id} screenKey="flyers">
             Deals are compared with the last 6 months of prices. On the meter, a green dot toward
             the left means it's a real deal. Pink means the deal ends within 2 days. Star an item
@@ -677,8 +681,7 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
               </div>
             )}
           </div>
-        </>
-      )}
+      </>
 
       <DealPreviewModal deal={previewDeal} onClose={() => setPreviewDeal(null)} />
     </div>

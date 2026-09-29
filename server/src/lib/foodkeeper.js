@@ -53,7 +53,8 @@ function tokenize(text) {
 // singular.
 function stem(word) {
   if (word.endsWith("ies") && word.length > 4) return word.slice(0, -3) + "y";
-  if (word.endsWith("es") && word.length > 3) return word.slice(0, -2);
+  // "tomatoes", "peaches", "boxes" drop "es"; "apples", "grapes" only "s".
+  if (/(oes|ches|shes|xes|zes|sses)$/.test(word)) return word.slice(0, -2);
   if (word.endsWith("s") && !word.endsWith("ss") && word.length > 3) return word.slice(0, -1);
   return word;
 }
@@ -91,37 +92,104 @@ function isExactPluralMatch(queryWords, nameWords) {
 // back to "Milk (ultra-pasteurized)" - a different, shelf-stable product -
 // just because that one had fridge data. Better to report no suggestion for
 // the location than to guess from the wrong product.
+// How well an entry's base product (its first keyword, e.g. "lemon juice",
+// "citrus fruit", "onions") stands for what was asked. Only breaks ties
+// between entries matching the same number of words - without it a bare
+// "onion" landed on Onion powder (3-4 years in the pantry) and "lemon" on
+// Lemon juice, simply because those display names are shorter.
+//   3 - the base is the query, modulo plurals ("onion" -> Onions)
+//   2 - the base is fully inside the query ("greek yogurt" -> Yogurt)
+//   1 - the query is only a listed member ("lemon" -> Citrus fruit (lemon, ...))
+//   0 - the base is a different, derived product ("lemon" -> Lemon juice)
+function baseTier(entry, stemmedQuery) {
+  const base = tokenize(entry.keywords[0] || entry.name).map(stem);
+  const inQuery = base.filter((w) => stemmedQuery.includes(w));
+  if (inQuery.length === base.length) return base.length === stemmedQuery.length ? 3 : 2;
+  if (inQuery.length > 0) return 0;
+  const listed = /\(([^)]*)\)/.exec(entry.name);
+  const members = listed ? tokenize(listed[1]).map(stem) : [];
+  return stemmedQuery.every((w) => members.includes(w)) ? 1 : 0;
+}
+
+// Everyday grocery names the USDA data files under a different product -
+// each points at an existing entry (by id), never at invented numbers.
+// `null` means "no USDA product fits", so the lookup doesn't fall back to a
+// false keyword hit (plain "sugar" otherwise lands on sugar snap peas).
+const ALIASES = {
+  feta: 7,
+  "feta cheese": 7,
+  mango: 265,
+  pea: 273,
+  "green pea": 273,
+  basil: 509,
+  "fresh basil": 509,
+  chickpea: 333,
+  "garbanzo bean": 333,
+  sugar: null,
+  "brown sugar": null,
+  "white sugar": null,
+};
+const ENTRY_BY_ID = new Map(ENTRIES.map((e) => [e.id, e]));
+
 export function findBestMatch(name) {
   const queryWords = tokenize(name);
   if (queryWords.length === 0) return null;
+  const stemmedQuery = queryWords.map(stem);
+  const aliasKey = stemmedQuery.join(" ");
+  if (aliasKey in ALIASES) return ALIASES[aliasKey] == null ? null : ENTRY_BY_ID.get(ALIASES[aliasKey]) || null;
+
+  // "frozen peas": match the food itself, then keep that match when it has
+  // freezer guidance - otherwise the generic frozen-vegetables entry for
+  // produce ("frozen" alone would hit whichever entry lists it as a keyword).
+  if (queryWords.length > 1 && queryWords.includes("frozen")) {
+    const rest = queryWords.filter((w) => w !== "frozen").join(" ");
+    const inner = findBestMatch(rest);
+    if (inner?.freezeDays) return inner;
+    if (inner?.category === "Produce") return ENTRY_BY_ID.get(331) || inner;
+  }
+
+  return scoreEntries(name, queryWords, stemmedQuery);
+}
+
+function scoreEntries(name, queryWords, stemmedQuery) {
   const normalizedQuery = name.trim().toLowerCase();
-
   let best = null;
-  let bestScore = 0;
-  let bestSpecificity = 0;
+  let bestKey = null;
   for (const entry of ENTRIES) {
-    const keywordSet = new Set(entry.keywords);
-    const matchedCount = queryWords.filter((w) => keywordSet.has(w)).length;
+    const keywordSet = new Set(entry.keywords.flatMap((k) => [k, stem(k)]));
+    // A query word counts when it's a keyword itself, or part of a
+    // multi-word keyword the query contains whole ("cream cheese" - an
+    // entry whose only keyword is that phrase would otherwise never match).
+    const phraseWords = new Set();
+    for (const k of entry.keywords) {
+      const words = tokenize(k).map(stem);
+      if (words.length > 1 && words.every((w) => stemmedQuery.includes(w))) words.forEach((w) => phraseWords.add(w));
+    }
+    const matchedCount = queryWords.filter(
+      (w, i) => keywordSet.has(w) || keywordSet.has(stemmedQuery[i]) || phraseWords.has(stemmedQuery[i])
+    ).length;
     if (matchedCount === 0) continue;
-    const exactBonus = entry.keywords[0] === normalizedQuery ? 100 : 0;
+    const exactBonus =
+      entry.keywords[0] === normalizedQuery || tokenize(entry.keywords[0] || "").map(stem).join(" ") === stemmedQuery.join(" ")
+        ? 100
+        : 0;
     const score = matchedCount + exactBonus;
+    const tier = baseTier(entry, stemmedQuery);
 
-    // Tie-break: what fraction of the entry's own display name (e.g.
-    // "Chicken parts (breast halves, bone-in)") the query's words actually
-    // account for, matched word-for-word. Prefers the plainer, more generic
-    // product when two entries match the same number of query words, since
-    // a query like "chicken breast" shouldn't preferentially surface a
-    // stuffed/prepared variant just because it happens to share as many
-    // keywords - it just has fewer *other* words in its own name that the
-    // query didn't ask for.
+    // Last tie-break: what fraction of the entry's own display name the
+    // query accounts for, word for word - prefers the plainer product (a
+    // "chicken breast" query shouldn't surface a stuffed/prepared variant
+    // just because it shares as many keywords).
     const nameWords = tokenize(entry.name);
     const nameOverlap = nameWords.filter((w) => queryWords.includes(w)).length;
     const specificity = isExactPluralMatch(queryWords, nameWords) ? 1 : nameOverlap / Math.max(1, nameWords.length);
 
-    if (score > bestScore || (score === bestScore && specificity > bestSpecificity)) {
+    const key = [score, tier, specificity];
+    const better =
+      !bestKey || key[0] > bestKey[0] || (key[0] === bestKey[0] && (key[1] > bestKey[1] || (key[1] === bestKey[1] && key[2] > bestKey[2])));
+    if (better) {
       best = entry;
-      bestScore = score;
-      bestSpecificity = specificity;
+      bestKey = key;
     }
   }
   return best;
@@ -136,6 +204,32 @@ export function suggestCategory(name) {
   const match = findBestMatch(name);
   const category = match?.category;
   return category && CATEGORIES.includes(category) ? category : "Other";
+}
+
+// Where an item belongs when nobody said: bought frozen goes to the
+// freezer, shelf-stable groups to the pantry, anything with fridge guidance
+// (produce, meat, dairy...) to the fridge. Falls back to the fridge, the
+// safe choice for something unrecognized.
+const PANTRY_CATEGORIES = new Set([
+  "Shelf Stable Foods",
+  "Grains, Beans & Pasta",
+  "Condiments, Sauces & Canned Goods",
+  "Baked Goods",
+  "Beverages",
+]);
+export function suggestLocation(name) {
+  // The name itself says it: "canned tomatoes" would otherwise match fresh
+  // Tomatoes, "frozen peas" fresh Peas.
+  if (/\b(canned|tinned|jarred|can of|jar of|dried)\b/i.test(name)) return "pantry";
+  if (/\bfrozen\b/i.test(name)) return "freezer";
+  if (/\b(sugar|salt|spices?)\b/i.test(name)) return "pantry";
+  const match = findBestMatch(name);
+  if (!match) return "fridge";
+  if (match.category === "Food Purchased Frozen") return "freezer";
+  if (PANTRY_CATEGORIES.has(match.category) && match.pantryDays) return "pantry";
+  if (match.fridgeDays) return "fridge";
+  if (match.pantryDays) return "pantry";
+  return "fridge";
 }
 
 // Suggests an expiration Date for an item purchased on `purchasedAt`, stored

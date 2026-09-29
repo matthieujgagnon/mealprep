@@ -156,7 +156,7 @@ export function Home({
       .then((cores) => setChecked(Object.fromEntries(cores.map((c) => [c, true]))))
       .catch(() => setChecked({}));
     api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
-    api.getDeals().then((d) => setDeals(d.deals)).catch(() => setDeals([]));
+    api.getRealDeals().then(setDeals).catch(() => setDeals([]));
     // weekStart is always "today's" Monday here — this only needs to run once per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -227,10 +227,8 @@ export function Home({
           )}
           {tonightEntry ? (
             <div className="riso-home-hero-body">
-              {tonightEntry.recipe.photoUrl ? (
+              {tonightEntry.recipe.photoUrl && (
                 <img src={tonightEntry.recipe.photoUrl} alt="" className="riso-home-hero-photo" />
-              ) : (
-                <div className="riso-home-hero-photo placeholder">no photo</div>
               )}
               <div className="riso-home-hero-info">
                 <div className="riso-eyebrow on-accent">Tonight · Supper</div>

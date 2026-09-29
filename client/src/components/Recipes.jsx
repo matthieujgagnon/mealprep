@@ -98,7 +98,7 @@ export function Recipes({
   const [deals, setDeals] = useState([]);
 
   useEffect(() => {
-    api.getDeals().then((d) => setDeals(d.deals)).catch(() => setDeals([]));
+    api.getRealDeals().then(setDeals).catch(() => setDeals([]));
   }, []);
 
   const allRecipes = recipes.filter((r) => !r.isPlaceholder);
