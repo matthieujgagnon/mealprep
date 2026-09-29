@@ -1,25 +1,14 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { core, recipeCores, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
+import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { findMatchingDeal } from "../lib/groceryList.js";
-import { daysUntil } from "../lib/pantryInventory.js";
 import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
+import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 
 const FILTERS = ["All", "Makeable now", "Uses expiring", "On sale", "Breakfast", "Lunch", "Supper"];
 const SORT_LABELS = ["Recently added", "Fewest missing", "Quickest"];
 
-// Same rule Home.jsx/RecipeDetailModal.jsx use for "what's on hand": every
-// non-expired inventory item, plus custom pantry staples not already covered
-// by an inventory item of the same name.
-function buildCombinedHave(pantryInventory, customStaples) {
-  const inStock = pantryInventory
-    .filter((item) => !item.expiresAt || daysUntil(item.expiresAt) >= 0)
-    .map((item) => item.name);
-  const haveLower = new Set(inStock.map((n) => n.toLowerCase()));
-  const stapleExtra = (customStaples || []).filter((s) => !haveLower.has(s.toLowerCase()));
-  return [...inStock, ...stapleExtra];
-}
 
 // Matches on title, tags, and ingredient names — same fields App.jsx's own
 // planner-grid search checks, kept as a separate copy since this one never
@@ -47,14 +36,6 @@ function formatTime(minutes) {
   return `${minutes} MIN`;
 }
 
-// A recipe's ingredient "cores" (staples excluded) against what's on hand —
-// the have-bar's ratio and the grid's "Makeable now" filter both key off
-// this, same matching engine WhatCanIMake/Home already use for consistency.
-function recipeHaveStats(recipe, haveCores) {
-  const cores = [...recipeCores(recipe)];
-  const matched = cores.filter((c) => haveCores.has(c));
-  return { totalCount: cores.length, matchedCount: matched.length, missingCount: cores.length - matched.length };
-}
 
 function RecipeCard({ recipe, stats, badge, onClick }) {
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);

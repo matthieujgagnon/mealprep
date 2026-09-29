@@ -88,7 +88,7 @@ recipesRouter.post("/import", async (req, res) => {
 
 // POST /api/recipes - manual entry (fallback when import fails, or add-your-own)
 recipesRouter.post("/", async (req, res) => {
-  const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients } = req.body;
+  const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, tags } = req.body;
 
   if (!title || !Array.isArray(ingredients)) {
     return res.status(400).json({ error: "title and ingredients[] are required" });
@@ -109,6 +109,7 @@ recipesRouter.post("/", async (req, res) => {
       cookTimeMinutes: cookTimeMinutes || null,
       fridgeLifeDays: fridgeLifeDays || null,
       instructions: JSON.stringify(instructions || []),
+      ...(Array.isArray(tags) && { tags: JSON.stringify(tags) }),
       ingredients: {
         create: ingredients.map((ing, i) => ({
           name: ing.name,

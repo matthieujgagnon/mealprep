@@ -6644,12 +6644,9 @@ input[type="date"].planner-week-picker {
 }
 
 /* ================================================================
-   Riso Poster — Planner (screen 4/8)
-   Same .riso-theme token block as Flyers/Home above — additive only,
-   no other screen affected. Class names are prefixed riso-planner-
-   to keep this screen's CSS self-contained; riso-add-popover-* and
-   riso-popup-* are small enough, and specific enough to this screen,
-   that they're kept unprefixed-by-planner but still riso-scoped.
+   Riso Poster — Planner (design handoff v3, Riso Planner.dc.html)
+   Board of Breakfast/Lunch/Supper x 7 days (Mon–Fri visible, the
+   weekend scrolls) beside a sticky "Add recipes" tray.
    ================================================================ */
 .riso-planner {
   max-width: 1280px;
@@ -6661,6 +6658,11 @@ input[type="date"].planner-week-picker {
   background: var(--riso-canvas);
   color: var(--riso-ink);
   font-family: var(--riso-font-body);
+}
+
+.riso-planner-empty {
+  color: var(--riso-soft);
+  font-size: 14px;
 }
 
 .riso-planner-header {
@@ -6692,6 +6694,7 @@ input[type="date"].planner-week-picker {
   border-radius: 19px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
+  color: var(--riso-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6716,16 +6719,6 @@ input[type="date"].planner-week-picker {
   white-space: nowrap;
 }
 
-.riso-planner-date-picker {
-  height: 32px;
-  border-radius: 16px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 500 12px var(--riso-font-mono);
-  padding: 0 10px;
-}
-
 .riso-planner-title {
   font: 800 60px/0.95 var(--riso-font-display);
   letter-spacing: -0.035em;
@@ -6745,6 +6738,7 @@ input[type="date"].planner-week-picker {
   align-items: flex-start;
 }
 
+/* ---------- Board ---------- */
 .riso-planner-board {
   flex: 1 1 640px;
   min-width: 0;
@@ -6761,11 +6755,9 @@ input[type="date"].planner-week-picker {
 .riso-planner-scroll {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scroll-padding-left: 106px;
-  padding-bottom: 6px;
+  scroll-padding-left: 98px;
+  padding: 4px 4px 8px;
   margin: 0 -4px;
-  padding-left: 4px;
-  padding-right: 4px;
 }
 
 .riso-planner-grid {
@@ -6789,7 +6781,6 @@ input[type="date"].planner-week-picker {
   gap: 2px;
   padding: 8px 0;
   border-radius: 14px;
-  background: transparent;
   border: 2px solid transparent;
 }
 
@@ -6824,111 +6815,70 @@ input[type="date"].planner-week-picker {
   min-width: 0;
   display: flex;
   scroll-snap-align: start;
-  position: relative;
+  border-radius: 16px;
+  outline: 0 solid transparent;
+  outline-offset: 3px;
 }
 
-.riso-planner-cell-empty-wrap,
-.riso-planner-cell-note-wrap {
-  flex: 1;
-  position: relative;
-  display: flex;
+.riso-planner-cell.drop-active {
+  outline: 3px dashed var(--riso-accent);
 }
 
+/* Empty slot: dashed "+ add"; selected turns solid blue with a tint. */
 .riso-planner-cell-empty {
   flex: 1;
   border-radius: 16px;
   border: 2px dashed var(--riso-dash-strong);
-  background: none;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 6px;
+  text-align: center;
   font: 700 14px var(--riso-font-display);
   color: var(--riso-accent);
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .riso-planner-cell-empty:hover {
   border-color: var(--riso-ink);
 }
 
-.riso-planner-cell-note {
-  flex: 1;
-  border-radius: 16px;
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px;
-  text-align: center;
-  cursor: pointer;
+.riso-planner-cell-empty.selected {
+  border: 2px solid var(--riso-accent);
+  background: #e4e4ff;
 }
 
-.riso-planner-cell-note.editing {
-  background: var(--riso-surface);
-  padding: 6px;
-  cursor: default;
-}
-
-.riso-planner-note-label {
-  font: 500 9.5px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
-}
-
-.riso-planner-note-text {
-  font: 700 14px/1.2 var(--riso-font-display);
-}
-
-.riso-planner-note-input {
-  width: 100%;
-  border: none;
-  background: transparent;
-  font: 700 13px var(--riso-font-display);
-  text-align: center;
-  outline: none;
-  color: var(--riso-ink);
-}
-
-.riso-planner-note-edit-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
-  border-radius: 11px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  cursor: pointer;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
+/* Meal card: photo top 60%, name below (2 lines max). */
 .riso-planner-card {
   flex: 1;
+  min-width: 0;
   border-radius: 16px;
   background: var(--riso-surface);
   border: 2px solid var(--riso-ink);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  cursor: grab;
   position: relative;
-  /* touch-action: none, not pan-y — see .meal-card's comment elsewhere in
-     this file for why: pan-y lets a native scroll steal a held-then-moved
-     touch drag the instant it moves vertically, independent of dnd-kit's
-     own activation delay. Verified via touch-drag.spec.js's real
-     (CDP-dispatched) touch test, not a mouse simulation. */
+  cursor: grab;
+  box-sizing: border-box;
   touch-action: none;
 }
 
-.riso-planner-card.dragging {
-  opacity: 0.4;
+.riso-planner-card.have {
+  border: 3px solid var(--riso-accent);
+  box-shadow: 4px 4px 0 var(--riso-accent);
+}
+
+.riso-planner-card.past,
+.riso-planner-note.past {
+  opacity: 0.5;
+}
+
+.riso-planner-card.dragging,
+.riso-planner-note.dragging {
+  opacity: 0.35;
 }
 
 .riso-planner-card-photo-wrap {
@@ -6946,22 +6896,17 @@ input[type="date"].planner-week-picker {
   display: block;
 }
 
-.riso-planner-card-photo.placeholder {
-  width: 100%;
-  height: 100%;
-}
-
 .riso-planner-card-leftover {
   position: absolute;
   right: 6px;
   bottom: -11px;
+  z-index: 1;
   transform: rotate(-4deg);
   background: var(--riso-yellow);
   border: 1.5px solid var(--riso-ink);
   border-radius: 999px;
   padding: 1px 8px;
   font: 800 11px var(--riso-font-display);
-  z-index: 1;
   white-space: nowrap;
 }
 
@@ -6969,92 +6914,115 @@ input[type="date"].planner-week-picker {
   background: var(--riso-hot);
 }
 
-.riso-planner-card-have {
+.riso-planner-card-have,
+.riso-planner-card-remove,
+.riso-planner-note-remove {
   position: absolute;
-  left: 8px;
-  top: 8px;
+  top: 7px;
   width: 26px;
   height: 26px;
   border-radius: 13px;
-  background: var(--riso-accent);
-  color: #fff;
   border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  box-sizing: border-box;
-}
-
-.riso-planner-card-status {
-  position: absolute;
-  left: 8px;
-  bottom: calc(40% + 6px);
-  width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  border: 1.5px solid var(--riso-ink);
   background: var(--riso-surface);
-  cursor: pointer;
-  font-size: 9px;
-  font-weight: 700;
   color: var(--riso-ink);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
-}
-
-.riso-planner-card-remove {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
+  padding: 0;
+  font: 700 14px var(--riso-font-display);
   cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s;
   box-sizing: border-box;
   z-index: 2;
 }
 
-.riso-planner-card:hover .riso-planner-card-remove,
-.riso-planner-card:focus-within .riso-planner-card-remove {
+.riso-planner-card-remove,
+.riso-planner-note-remove {
+  right: 7px;
+}
+
+.riso-planner-note-remove {
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+}
+
+/* "Already have it": the blue ✓ circle. On a plain card it's a faint
+   dashed circle that only shows on hover/focus - click cycles plain ->
+   leftover -> already have it. */
+.riso-planner-card-have {
+  left: 7px;
+  font-size: 12px;
+  opacity: 0;
+  border-style: dashed;
+  transition: opacity 0.12s;
+}
+
+.riso-planner-card:hover .riso-planner-card-have,
+.riso-planner-card-have:focus-visible {
   opacity: 1;
+}
+
+.riso-planner-card-have.on {
+  opacity: 1;
+  border-style: solid;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
 }
 
 .riso-planner-card-body {
   padding: 10px 10px 8px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
 .riso-planner-card-name {
+  margin: 0;
   font: 800 14.5px/1.2 var(--riso-font-display);
   overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin: 0;
 }
 
+/* Note: the user's own text ("Brunch out"). */
+.riso-planner-note {
+  flex: 1;
+  min-width: 0;
+  border-radius: 16px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  text-align: center;
+  position: relative;
+  cursor: grab;
+  box-sizing: border-box;
+  touch-action: none;
+}
+
+.riso-planner-note-label {
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-planner-note-text {
+  font: 700 14.5px/1.2 var(--riso-font-display);
+  overflow-wrap: anywhere;
+}
+
+/* Legend row under the grid. */
 .riso-planner-legend {
   display: flex;
-  gap: 20px;
+  gap: 18px;
   flex-wrap: wrap;
   align-items: center;
   padding-top: 12px;
@@ -7069,18 +7037,13 @@ input[type="date"].planner-week-picker {
   gap: 7px;
 }
 
-.riso-planner-legend-check {
-  width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  background: var(--riso-accent);
-  color: #fff;
-  border: 2px solid var(--riso-ink);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
+.riso-planner-legend-have {
+  width: 22px;
+  height: 16px;
+  border-radius: 5px;
+  border: 3px solid var(--riso-accent);
   box-sizing: border-box;
+  display: inline-block;
 }
 
 .riso-planner-legend-leftover {
@@ -7089,10 +7052,13 @@ input[type="date"].planner-week-picker {
   border-radius: 999px;
   padding: 0 7px;
   font: 800 10.5px var(--riso-font-display);
+  color: var(--riso-ink);
+  white-space: nowrap;
 }
 
 .riso-planner-legend-note {
   font: 500 9.5px var(--riso-font-mono);
+  color: var(--riso-ink);
 }
 
 .riso-planner-legend-scroll {
@@ -7103,462 +7069,332 @@ input[type="date"].planner-week-picker {
   border-radius: 999px;
   padding: 2px 10px;
   font: 800 12px var(--riso-font-display);
+  color: var(--riso-ink);
   white-space: nowrap;
 }
 
-.riso-planner-empty {
-  font-size: 13.5px;
-  color: var(--riso-soft);
-  line-height: 1.5;
-  margin: 0;
-}
-
-/* Empty-slot recipe picker popover */
-.riso-add-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 40;
-  width: 240px;
-  max-width: 70vw;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  box-shadow: var(--riso-shadow-lg);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.riso-add-popover-search {
-  height: 34px;
-  border-radius: 10px;
-  border: 1.5px solid var(--riso-ink);
-  padding: 0 10px;
-  font-family: var(--riso-font-body);
-  font-size: 13px;
-  box-sizing: border-box;
-}
-
-.riso-add-popover-list {
-  max-height: 180px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.riso-add-popover-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px;
-  border-radius: 10px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.riso-add-popover-row:hover {
-  background: var(--riso-canvas);
-}
-
-.riso-add-popover-row-photo {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  object-fit: cover;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-track);
-  flex: none;
-}
-
-.riso-add-popover-row-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--riso-ink);
-}
-
-.riso-add-popover-empty {
-  font-size: 12.5px;
-  color: var(--riso-muted);
-  padding: 6px;
-  margin: 0;
-}
-
-.riso-add-popover-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border-top: 1.5px dashed var(--riso-dash);
-  padding-top: 8px;
-}
-
-.riso-add-popover-note-form {
-  display: flex;
-}
-
-.riso-add-popover-note-input {
-  flex: 1;
-  height: 32px;
-  border-radius: 10px;
-  border: 1.5px solid var(--riso-ink);
-  padding: 0 10px;
-  font-family: var(--riso-font-body);
-  font-size: 12.5px;
-  box-sizing: border-box;
-}
-
-/* Sidebar */
-.riso-planner-sidebar {
-  flex: 0 1 290px;
-  min-width: 260px;
+/* ---------- Recipe tray ("Add recipes") ---------- */
+.riso-planner-tray {
+  flex: 0 1 320px;
+  min-width: 280px;
   background: var(--riso-surface);
   border: 2px solid var(--riso-ink);
   border-radius: 26px;
-  box-shadow: var(--riso-shadow-lg);
+  box-shadow: 6px 6px 0 var(--riso-ink);
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  box-sizing: border-box;
+  position: sticky;
+  top: 20px;
+}
+
+.riso-tray-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.riso-tray-title {
+  margin: 0;
+  font: 800 24px var(--riso-font-display);
+}
+
+.riso-tray-target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: rotate(-2deg);
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 3px 6px 3px 11px;
+  font: 800 12.5px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-tray-target button {
+  width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  border: none;
+  background: var(--riso-ink);
+  color: var(--riso-yellow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.riso-tray-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--riso-soft);
+}
+
+.riso-tray-note-input {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 19px;
+  border: 2px dashed var(--riso-ink);
+  background: var(--riso-canvas);
+  outline: none;
+  color: var(--riso-ink);
+  font: 500 14px var(--riso-font-display);
   box-sizing: border-box;
 }
 
-/* The Week overview / Plan around toggle uses the shared .riso-segmented
-   control (RisoControls.jsx's <Segmented>) rather than a bespoke one here —
-   see index.css's "Riso Poster shared components" section. */
+.riso-tray-search {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  outline: none;
+  color: var(--riso-ink);
+  font: 500 14.5px var(--riso-font-display);
+  box-sizing: border-box;
+}
 
-.riso-planner-overview {
+.riso-tray-tabs .riso-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+}
+
+.riso-tray-tabs .riso-segmented button {
+  height: 36px;
+  padding: 0;
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-tray-chip-groups {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
-.riso-planner-overview-score {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.riso-planner-overview-number {
-  font: 800 80px/0.85 var(--riso-font-display);
-  color: var(--riso-accent);
-  letter-spacing: -0.04em;
-}
-
-.riso-planner-overview-copy {
-  font: 700 15px/1.3 var(--riso-font-display);
-}
-
-.riso-planner-section {
+.riso-tray-chip-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-.riso-planner-section-label {
-  font: 500 11px var(--riso-font-mono);
+.riso-tray-chip-label {
+  font: 500 10.5px var(--riso-font-mono);
   letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin: 0;
-  color: var(--riso-muted);
 }
 
-.riso-planner-shared-row {
+.riso-tray-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.riso-planner-shared-chip {
+.riso-tray-chip {
   height: 30px;
-  padding: 0 12px;
+  padding: 0 11px;
   border-radius: 15px;
-  background: var(--riso-canvas);
   border: 2px solid var(--riso-ink);
+  color: var(--riso-ink);
   display: flex;
   align-items: center;
-  font: 600 13px var(--riso-font-display);
-  color: var(--riso-ink);
+  gap: 3px;
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
   cursor: pointer;
+  user-select: none;
 }
 
-.riso-planner-suggestions {
+.riso-tray-chip.pink {
+  background: var(--riso-hot);
+}
+
+.riso-tray-chip.green {
+  background: var(--riso-green);
+}
+
+.riso-tray-chip.paper {
+  background: var(--riso-surface);
+}
+
+.riso-tray-chip.on {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-tray-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 620px;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 2px 6px 6px;
+}
+
+.riso-tray-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--riso-muted);
+}
+
+.riso-tray-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.riso-planner-suggestion-row {
+.riso-tray-group-pill {
+  align-self: flex-start;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 9px;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  background: var(--riso-surface);
+}
+
+.riso-tray-group-pill.pink {
+  background: var(--riso-hot);
+}
+
+.riso-tray-group-pill.green {
+  background: var(--riso-green);
+}
+
+.riso-tray-group-pill.yellow {
+  background: var(--riso-yellow);
+}
+
+.riso-tray-tile {
   background: var(--riso-canvas);
   border: 2px solid var(--riso-ink);
   border-radius: 16px;
   padding: 6px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  cursor: grab;
+  touch-action: none;
 }
 
-.riso-planner-suggestion-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  padding: 0;
-  color: var(--riso-ink);
+.riso-tray-tile.dragging {
+  opacity: 0.4;
 }
 
-.riso-planner-suggestion-photo {
+.riso-tray-tile-photo {
   width: 52px;
   height: 52px;
   border-radius: 11px;
   overflow: hidden;
   flex: none;
   border: 2px solid var(--riso-ink);
-  object-fit: cover;
   background: var(--riso-track);
-  box-sizing: border-box;
+  padding: 0;
+  cursor: pointer;
 }
 
-.riso-planner-suggestion-info {
+.riso-tray-tile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-tray-tile-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
-.riso-planner-suggestion-name {
-  font: 700 14px/1.25 var(--riso-font-display);
+.riso-tray-tile-name {
+  font: 700 14px/1.2 var(--riso-font-display);
 }
 
-.riso-planner-suggestion-why {
+.riso-tray-tile-meta {
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
+}
+
+.riso-tray-tile-reason {
   font-size: 12px;
+  line-height: 1.3;
   color: var(--riso-soft);
-  line-height: 1.35;
 }
 
-.riso-planner-suggestion-add {
+.riso-tray-tile-add {
   width: 32px;
   height: 32px;
   border-radius: 16px;
   background: var(--riso-accent);
-  color: #fff;
+  color: var(--riso-on-accent);
   border: 2px solid var(--riso-ink);
   box-shadow: 2px 2px 0 var(--riso-ink);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
+  padding: 0;
   font: 700 16px var(--riso-font-display);
   cursor: pointer;
   box-sizing: border-box;
 }
 
-.riso-planner-footnote {
-  background: var(--riso-hot);
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  padding: 12px 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--riso-ink);
-}
-
-.riso-planner-around {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.riso-planner-around-intro {
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--riso-soft);
-  margin: 0;
-}
-
-.riso-planner-ingredient-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.riso-planner-ingredient-chip {
-  height: 32px;
-  padding: 0 13px;
-  border-radius: 16px;
-  background: var(--riso-accent);
-  color: #fff;
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font: 700 13px var(--riso-font-display);
-  box-sizing: border-box;
-}
-
-.riso-planner-ingredient-chip button {
-  background: none;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  font-weight: 700;
-  padding: 0;
-  font-size: 13px;
-}
-
-.riso-planner-add-ingredient-chip {
-  height: 32px;
-  padding: 0 13px;
-  border-radius: 16px;
-  border: 2px dashed var(--riso-ink);
-  background: none;
-  display: flex;
-  align-items: center;
-  font: 600 13px var(--riso-font-display);
-  color: var(--riso-ink);
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.riso-planner-ingredient-input {
-  height: 32px;
-  padding: 0 13px;
-  border-radius: 16px;
-  border: 2px solid var(--riso-ink);
-  font: 600 13px var(--riso-font-display);
-  min-width: 120px;
-  box-sizing: border-box;
-}
-
-.riso-planner-quickpicks {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.riso-planner-quickpick-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  padding: 10px 12px;
-  font: 600 14px var(--riso-font-display);
-  color: var(--riso-ink);
-  cursor: pointer;
-}
-
-.riso-planner-quickpick-row:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.riso-planner-quickpick-badge {
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-size: 12px;
-  font-family: var(--riso-font-body);
-}
-
-.riso-planner-quickpick-badge.pink {
-  background: var(--riso-hot);
-}
-
-.riso-planner-quickpick-badge.green {
-  background: var(--riso-green);
-}
-
-/* Shared-ingredients / suggestion-preview popup, restyled from the old
-   .shared-ingredients-modal to the Riso look. .modal-overlay itself is
-   shared app-wide (Inventory, RecipeDetailModal, Flyers) and stays as-is. */
-.riso-popup {
+/* Floating copy under the pointer while dragging a planner card, note or
+   tray tile. */
+.riso-planner-drag-preview {
+  width: 150px;
   background: var(--riso-surface);
   border: 2px solid var(--riso-ink);
-  border-radius: 22px;
-  box-shadow: var(--riso-shadow-lg);
-  padding: 22px;
-  max-width: 360px;
-  width: 90vw;
-  position: relative;
-  font-family: var(--riso-font-body);
-  color: var(--riso-ink);
-  box-sizing: border-box;
-}
-
-.riso-popup-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.riso-popup-heading {
-  font-size: 12.5px;
-  color: var(--riso-muted);
-  margin: 0 0 4px;
-}
-
-.riso-popup-title {
-  font: 800 20px var(--riso-font-display);
-  margin: 0 0 12px;
-}
-
-.riso-popup-recipe-list {
+  border-radius: 16px;
+  box-shadow: var(--riso-shadow);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 280px;
-  overflow-y: auto;
-}
-
-.riso-popup-recipe-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border-radius: 12px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-canvas);
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--riso-font-body);
-  font-size: 13.5px;
-  font-weight: 600;
+  transform: rotate(-3deg);
+  font-family: var(--riso-font-display);
   color: var(--riso-ink);
 }
 
-.riso-popup-recipe-photo {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+.riso-planner-drag-preview img,
+.riso-planner-drag-preview .photo-placeholder {
+  display: block;
+  width: 100%;
+  height: 90px;
   object-fit: cover;
-  flex: none;
+  background: var(--riso-track);
+  border-bottom: 2px solid var(--riso-ink);
 }
 
-.riso-popup-ingredient-list {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--riso-soft);
+.riso-planner-drag-preview-name {
+  padding: 8px 10px;
+  font: 800 14px/1.2 var(--riso-font-display);
+}
+
+.riso-planner-drag-preview.note {
+  background: var(--riso-canvas);
+  padding: 14px 10px;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+@media (max-width: 1000px) {
+  .riso-planner-tray {
+    position: static;
+    flex: 1 1 100%;
+  }
 }
 
 /* ================================================================
@@ -8137,7 +7973,7 @@ input[type="date"].planner-week-picker {
     flex-direction: column;
   }
 
-  .riso-planner-sidebar {
+  .riso-planner-tray {
     width: 100%;
     flex-basis: auto;
   }
@@ -8235,8 +8071,7 @@ input[type="date"].planner-week-picker {
   }
 
   .meal-card-delete,
-  .leftover-dot,
-  .riso-planner-note-edit-btn {
+  .leftover-dot {
     width: 26px;
     height: 26px;
   }
