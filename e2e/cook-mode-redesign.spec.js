@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-// Covers the redesigned cook mode (full screen, one step at a time): step
-// navigation, the segmented progress bar, per-step timers that keep running
-// across step changes, "THIS STEP USES" ingredient pills, keyboard nav, and
-// the finish sheet that logs leftovers to inventory.
+// Cook mode (design handoff v3): one step at a time with step segments,
+// per-step timers that keep running across step changes, tap-to-check
+// "For this step" pills, keyboard nav, and the finished view (Mark as
+// cooked, Save leftovers).
 
 function uniqueEmail() {
   return `cook-mode+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -15,7 +15,7 @@ async function signUp(page, email) {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
 }
 
 async function addRecipeAndStartCooking(page, { title, servings, ingredientName, steps }) {
@@ -34,7 +34,7 @@ async function addRecipeAndStartCooking(page, { title, servings, ingredientName,
   await page.waitForTimeout(300);
 }
 
-test("steps navigate with Next/Back and the progress bar tracks position", async ({ page }) => {
+test("steps navigate with Next/Previous and the step segments track position", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await addRecipeAndStartCooking(page, {
     title: "Cook Mode Nav Test",
@@ -45,15 +45,21 @@ test("steps navigate with Next/Back and the progress bar tracks position", async
 
   await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 3");
   await expect(page.locator(".cm-step-title")).toHaveText("Prep");
-  await expect(page.locator(".cm-progress-bar.current")).toHaveCount(1);
+  await expect(page.locator(".cm-segment.current")).toHaveCount(1);
+  await expect(page.locator(".cm-up-next")).toContainText("UP NEXT · STEP 2 · FLAVOR");
 
-  await page.getByRole("button", { name: /Next:/ }).click();
+  await page.getByRole("button", { name: "Next step →" }).click();
   await expect(page.locator(".cm-step-count")).toHaveText("STEP 2 OF 3");
   await expect(page.locator(".cm-step-title")).toHaveText("Flavor");
-  await expect(page.locator(".cm-progress-bar.done")).toHaveCount(1);
+  await expect(page.locator(".cm-segment.done")).toHaveCount(1);
 
-  await page.locator(".cm-nav-btn:not(.primary)").click();
+  await page.getByRole("button", { name: "← Previous" }).click();
   await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 3");
+
+  // Segments jump straight to a step; the Up next card goes forward one.
+  await page.getByRole("tab", { name: "Step 3: Assemble" }).click();
+  await expect(page.locator(".cm-step-title")).toHaveText("Assemble");
+  await expect(page.getByRole("button", { name: "Finish ✓" })).toBeVisible();
 });
 
 test("arrow keys navigate steps", async ({ page }) => {
@@ -72,7 +78,7 @@ test("arrow keys navigate steps", async ({ page }) => {
   await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 2");
 });
 
-test("a step's timer keeps running after navigating away and shows a chip in the top bar", async ({ page }) => {
+test("the timer block starts, adds a minute, resets, and keeps running on another step", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await addRecipeAndStartCooking(page, {
     title: "Cook Mode Timer Test",
@@ -81,20 +87,26 @@ test("a step's timer keeps running after navigating away and shows a chip in the
     steps: "Prep: Season the chicken.\nRoast: Roast for 20 minutes.\nServe: Plate and serve.",
   });
 
-  await page.getByRole("button", { name: /Next:/ }).click();
-  await expect(page.locator(".cm-timer-card")).toBeVisible();
+  await page.getByRole("button", { name: "Next step →" }).click();
+  await expect(page.locator(".cm-timer-time")).toHaveText("20:00");
+  await expect(page.locator(".cm-timer-label")).toHaveText("TIMER");
+
+  await page.getByRole("button", { name: "+1 min" }).click();
+  await expect(page.locator(".cm-timer-time")).toHaveText("21:00");
+  await page.getByRole("button", { name: "Reset" }).click();
   await expect(page.locator(".cm-timer-time")).toHaveText("20:00");
 
-  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.keyboard.press(" ");
   await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+  await expect(page.locator(".cm-timer-label")).toHaveText("ROASTING…");
 
-  await page.locator(".cm-nav-btn:not(.primary)").click();
+  await page.getByRole("button", { name: "← Previous" }).click();
   await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 3");
   await expect(page.locator(".cm-running-chip")).toBeVisible();
-  await expect(page.locator(".cm-timer-card")).toHaveCount(0);
+  await expect(page.locator(".cm-timer")).toHaveCount(0);
 });
 
-test("THIS STEP USES pills show ingredients mentioned in the step, with scaled quantities", async ({ page }) => {
+test("For this step pills show scaled quantities and check off when tapped", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await addRecipeAndStartCooking(page, {
     title: "Cook Mode Pills Test",
@@ -103,19 +115,22 @@ test("THIS STEP USES pills show ingredients mentioned in the step, with scaled q
     steps: "Prep: Rinse the chickpeas well.\nServe: Plate and serve.",
   });
 
-  await expect(page.locator(".cm-uses-pill")).toHaveText("chickpeas 2");
+  const pill = page.locator(".cm-uses-pill");
+  await expect(pill.locator(".cm-uses-name")).toHaveText("chickpeas");
+  await expect(pill.locator(".cm-uses-qty")).toHaveText("2");
+  await pill.click();
+  await expect(pill).toHaveAttribute("aria-pressed", "true");
 
-  await page.getByRole("button", { name: "Exit" }).click();
+  await page.getByRole("button", { name: "Exit cook mode" }).click();
   // 4 -> 8 servings (a clean 2x scale) via the "+" button, four clicks.
   for (let i = 0; i < 4; i++) {
     await page.locator(".riso-rc-servings-stepper button").nth(1).click();
   }
   await page.getByRole("button", { name: "Start cooking" }).click();
-  await page.waitForTimeout(200);
-  await expect(page.locator(".cm-uses-pill")).toHaveText("chickpeas 4");
+  await expect(page.locator(".cm-uses-qty")).toHaveText("4");
 });
 
-test("finishing the last step opens the leftovers sheet and logs the item to inventory", async ({ page }) => {
+test("finishing shows Dinner's ready; leftovers go to Inventory and the Planner", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await addRecipeAndStartCooking(page, {
     title: "Cook Mode Finish Test",
@@ -124,41 +139,53 @@ test("finishing the last step opens the leftovers sheet and logs the item to inv
     steps: "Prep: Boil the pasta.\nServe: Toss with sauce.",
   });
 
-  await page.getByRole("button", { name: /Next:/ }).click();
-  await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
-  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Next step →" }).click();
+  await page.getByRole("button", { name: "Finish ✓" }).click();
+  await expect(page.getByRole("heading", { name: "Dinner's ready." })).toBeVisible();
 
-  await expect(page.getByText("How many portions are left?")).toBeVisible();
-  await expect(page.locator(".cm-finish-stepper span")).toHaveText("3"); // servings 4 - 1
+  const portions = page.locator(".cm-stepper span");
+  await expect(portions).toHaveText("3"); // serves 4, minus tonight's
+  await page.getByRole("button", { name: "Fewer portions" }).click();
+  await expect(portions).toHaveText("2");
+  await expect(page.locator(".cm-leftovers-line")).toContainText('show up as "leftover" in the Planner');
 
-  await page.locator(".cm-finish-stepper button").nth(1).click();
-  await expect(page.locator(".cm-finish-stepper span")).toHaveText("4");
+  await page.getByRole("button", { name: "Save leftovers" }).click();
+  await expect(page.getByRole("button", { name: "✓ Saved to Fridge" })).toBeDisabled();
 
-  await page.getByRole("button", { name: "Save 4 portions" }).click();
-  await expect(page.locator(".cm-overlay")).toHaveCount(0);
-
+  await page.getByRole("button", { name: "Exit cook mode" }).click();
   await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect(page.getByText("Cook Mode Finish Test (leftovers)")).toBeVisible();
+
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  const week = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const entries = await (await page.request.get(`/api/planner?week=${week}`)).json();
+  const today = (new Date().getDay() + 6) % 7;
+  const expected = Math.min(2, Math.max(0, Math.min(6, today + 3) - today));
+  const leftovers = entries.filter((e) => e.isLeftover && e.mealType === "lunch");
+  expect(leftovers).toHaveLength(expected);
 });
 
-test("Skip on the leftovers sheet closes cook mode without logging anything", async ({ page }) => {
+test("Mark as cooked takes the recipe's ingredients out of Inventory", async ({ page }) => {
   await signUp(page, uniqueEmail());
+  await page.request.post("/api/pantry-inventory", { data: { name: "eggs", location: "fridge" } });
+  await page.request.post("/api/pantry-inventory", { data: { name: "butter", location: "fridge" } });
+  await page.reload();
   await addRecipeAndStartCooking(page, {
-    title: "Cook Mode Skip Test",
+    title: "Cook Mode Cooked Test",
     servings: "2",
     ingredientName: "eggs",
     steps: "Prep: Whisk the eggs.\nServe: Plate and serve.",
   });
 
-  await page.getByRole("button", { name: /Next:/ }).click();
-  await page.getByRole("button", { name: "Done" }).click();
-  await page.locator(".cm-finish-sheet").getByRole("button", { name: "Skip" }).click();
-  await expect(page.locator(".cm-overlay")).toHaveCount(0);
+  await page.getByRole("button", { name: "Next step →" }).click();
+  await page.getByRole("button", { name: "Finish ✓" }).click();
+  await page.getByRole("button", { name: "Mark as cooked" }).click();
+  await expect(page.getByRole("button", { name: "✓ Removed from Inventory" })).toBeDisabled();
 
-  await page.getByRole("button", { name: "Close" }).click();
-  await page.getByRole("button", { name: "Inventory", exact: true }).click();
-  await expect(page.getByText("Cook Mode Skip Test (leftovers)")).toHaveCount(0);
+  const items = await (await page.request.get("/api/pantry-inventory")).json();
+  expect(items.map((i) => i.name)).toEqual(["butter"]);
 });
 
 test("Exit confirms before closing when a timer is running", async ({ page }) => {
@@ -170,22 +197,22 @@ test("Exit confirms before closing when a timer is running", async ({ page }) =>
     steps: "Prep: Preheat the oven.\nBake: Bake for 10 minutes.",
   });
 
-  await page.getByRole("button", { name: /Next:/ }).click();
-  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByRole("button", { name: "Next step →" }).click();
+  await page.getByRole("button", { name: "▶ Start timer" }).click();
 
   let dialogSeen = false;
   page.once("dialog", async (dialog) => {
     dialogSeen = true;
     await dialog.dismiss();
   });
-  await page.locator(".cm-exit-btn").click();
+  await page.getByRole("button", { name: "Exit cook mode" }).click();
   await page.waitForTimeout(200);
   expect(dialogSeen).toBe(true);
-  await expect(page.locator(".cm-overlay")).toBeVisible(); // dismissed - still open
+  await expect(page.locator(".cm-overlay")).toBeVisible();
 
   page.once("dialog", async (dialog) => {
     await dialog.accept();
   });
-  await page.locator(".cm-exit-btn").click();
+  await page.getByRole("button", { name: "← Recipe", exact: true }).click();
   await expect(page.locator(".cm-overlay")).toHaveCount(0);
 });

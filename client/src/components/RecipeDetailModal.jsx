@@ -278,6 +278,8 @@ export function RecipeDetailModal({
   onAddPantryItem,
   onDeletePantryItem,
   onAddToGroceryList,
+  onConsumePantryItems,
+  onPlanLeftovers,
   onNavigate,
   sharedWithWeek, // ingredient names reused from this week's plan — only set when opened from a "good next addition" suggestion
   startInCookMode, // true when opened via Makeable's "Cook tonight" - skips straight to cook mode instead of the detail view
@@ -772,6 +774,9 @@ export function RecipeDetailModal({
           servings={servings}
           onExit={() => setCookModeOn(false)}
           onAddPantryItem={onAddPantryItem}
+          pantryInventory={pantryInventory}
+          onConsumePantryItems={onConsumePantryItems}
+          onPlanLeftovers={onPlanLeftovers}
         />
       )}
     </div>
