@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { findRecipesByIngredients, findAtRiskPerishables } from "../lib/similarRecipes.js";
+import { core, findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil } from "../lib/pantryInventory.js";
-import { api } from "../api.js";
 import { Switch, HintStrip } from "./RisoControls.jsx";
 
 const ALSO_HAVE_STORAGE_KEY = "mealprep-makeable-also-have";
@@ -39,7 +38,67 @@ function formatMinutes(m) {
   return `${m} MIN`;
 }
 
-function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, onPlan, onAddMissing }) {
+// Rows shown in a card's "You need" box before the rest collapse into one
+// dashed "and n more ingredients" row (a big shop would otherwise make one
+// card several times taller than its neighbours).
+const NEED_ROWS_SHOWN = 4;
+
+function YouNeedBox({ missingIngredients, isOnGroceryList, onAdd, onRemove, onPlan }) {
+  const shown = missingIngredients.slice(0, NEED_ROWS_SHOWN);
+  const hiddenCount = missingIngredients.length - shown.length;
+  const allOn = missingIngredients.every(isOnGroceryList);
+
+  return (
+    <div className="riso-makeable-need">
+      <div className="riso-makeable-need-head">
+        <span className="riso-makeable-need-title">You need</span>
+        <span className="riso-makeable-need-count">{missingIngredients.length}</span>
+        <span className="riso-makeable-need-hint">TAP + TO ADD ONE</span>
+      </div>
+      <ul className="riso-makeable-need-list">
+        {shown.map((name) => {
+          const on = isOnGroceryList(name);
+          return (
+            <li key={name} className="riso-makeable-need-row">
+              <span className="riso-makeable-need-name">{name}</span>
+              <button
+                type="button"
+                className={`riso-makeable-need-add${on ? " on" : ""}`}
+                onClick={() => (on ? onRemove(name) : onAdd([name]))}
+                aria-label={on ? `Remove ${name} from grocery list` : `Add ${name} to grocery list`}
+                title={on ? "On your grocery list" : "Add to grocery list"}
+              >
+                {on ? "✓ on list" : "+"}
+              </button>
+            </li>
+          );
+        })}
+        {hiddenCount > 0 && (
+          <li className="riso-makeable-need-row more">
+            <span className="riso-makeable-need-name">
+              and {hiddenCount} more ingredient{hiddenCount === 1 ? "" : "s"}
+            </span>
+          </li>
+        )}
+      </ul>
+      <div className="riso-makeable-need-actions">
+        <button
+          type="button"
+          className={`riso-makeable-need-all${allOn ? " on" : ""}`}
+          onClick={() => !allOn && onAdd(missingIngredients)}
+          disabled={allOn}
+        >
+          {allOn ? "✓ All on your grocery list" : `+ Add all ${missingIngredients.length} to list`}
+        </button>
+        <button type="button" className="riso-makeable-need-btn" onClick={onPlan}>
+          Plan
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, onPlan, groceryProps }) {
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
   const ingredientCount = recipe.ingredients?.length || 0;
   const ready = missingIngredients.length === 0;
@@ -77,20 +136,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
           </button>
         </div>
       ) : (
-        <div className="riso-makeable-need">
-          <p className="riso-makeable-need-text">
-            <span className="riso-makeable-need-label">NEED · </span>
-            {missingIngredients.join(", ")}
-          </p>
-          <div className="riso-makeable-need-actions">
-            <button type="button" className="riso-makeable-need-btn" onClick={onAddMissing}>
-              + Add {missingIngredients.length} to list
-            </button>
-            <button type="button" className="riso-makeable-need-btn" onClick={onPlan}>
-              Plan
-            </button>
-          </div>
-        </div>
+        <YouNeedBox missingIngredients={missingIngredients} onPlan={onPlan} {...groceryProps} />
       )}
     </div>
   );
@@ -103,9 +149,16 @@ export function WhatCanIMake({
   onSelectRecipe,
   pantryInventory,
   customStaples,
-  weekStart,
   onAddToPlanner,
+  isOnGroceryList,
+  onAddToGroceryList,
+  onRemoveFromGroceryList,
 }) {
+  const groceryProps = {
+    isOnGroceryList,
+    onAdd: onAddToGroceryList,
+    onRemove: onRemoveFromGroceryList,
+  };
   const [useInventory, setUseInventory] = useState(true);
   const [expiringFirst, setExpiringFirst] = useState(true);
   const [alsoHave, setAlsoHave] = useState(loadAlsoHave);
@@ -147,13 +200,19 @@ export function WhatCanIMake({
   const stapleExtra = (customStaples || []).filter((s) => !afterInventoryLower.has(s.toLowerCase()));
   const combinedHave = [...alsoHave, ...inventoryExtra, ...stapleExtra];
 
-  const atRiskNames = findAtRiskPerishables(plannerEntries, recipes);
-  const atRiskLower = new Set(atRiskNames.map((n) => n.toLowerCase()));
+  // "Use it up" = inventory actually expiring within 3 days (the same "use
+  // soon" line as the Recipe card and Inventory), not a guess from the plan.
+  const expiringCores = new Set(
+    (useInventory ? pantryInventory : [])
+      .filter((item) => item.expiresAt && daysUntil(item.expiresAt) >= 0 && daysUntil(item.expiresAt) <= 3)
+      .map((item) => core(item.name))
+      .filter(Boolean)
+  );
 
   const matches = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes) : [];
   const withAtRisk = matches.map((m) => ({
     ...m,
-    atRiskUsed: m.matchedIngredients.filter((n) => atRiskLower.has(n.toLowerCase())),
+    atRiskUsed: m.matchedIngredients.filter((n) => expiringCores.has(core(n))),
   }));
 
   function sortGroup(items) {
@@ -170,13 +229,6 @@ export function WhatCanIMake({
     withAtRisk.filter((m) => m.missingIngredients.length >= 1 && m.missingIngredients.length <= 2)
   );
   const needsAShop = sortGroup(withAtRisk.filter((m) => m.missingIngredients.length >= 3));
-
-  async function handleAddMissing(missingIngredients) {
-    if (!weekStart || missingIngredients.length === 0) return;
-    for (const name of missingIngredients) {
-      await api.addGroceryExtra(weekStart, { name, quantity: null, unit: null });
-    }
-  }
 
   function handlePlan(recipe) {
     const { dayOfWeek, mealType } = findNextEmptySlot(plannerEntries);
@@ -266,11 +318,11 @@ export function WhatCanIMake({
                   key={recipe.id}
                   recipe={recipe}
                   missingIngredients={missingIngredients}
-                  atRiskUsed={atRiskUsed}
+                  atRiskUsed={expiringFirst ? atRiskUsed : []}
                   onOpen={() => onSelectRecipe(recipe)}
                   onCookTonight={() => onSelectRecipe(recipe, null, true)}
                   onPlan={() => handlePlan(recipe)}
-                  onAddMissing={() => handleAddMissing(missingIngredients)}
+                  groceryProps={groceryProps}
                 />
               ))}
             </div>

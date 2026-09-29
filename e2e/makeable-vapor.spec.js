@@ -61,7 +61,7 @@ test("a fully-matched recipe lands in Ready now, and a partially-matched one in 
   const shortCard = page
     .locator(".riso-makeable-group", { hasText: "One or two short" })
     .locator(".riso-makeable-card", { hasText: "Riso Soup" });
-  await expect(shortCard.locator(".riso-makeable-need-text")).toContainText("Celery");
+  await expect(shortCard.locator(".riso-makeable-need-list")).toContainText("Celery");
 });
 
 test("Cook tonight opens the recipe straight into cook mode", async ({ page }) => {
@@ -80,9 +80,9 @@ test("Cook tonight opens the recipe straight into cook mode", async ({ page }) =
   await expect(page.locator(".cm-overlay, .cm-screen").first()).toBeVisible();
 });
 
-test("+ Add to list sends a recipe's missing ingredients to the grocery list", async ({ page }) => {
+test("the You need box adds one item or all of them, once each", async ({ page }) => {
   await signUp(page, uniqueEmail("makeable-grocery"));
-  await addRecipe(page, "Riso Grocery Dish", ["salmon", "broccoli"]);
+  await addRecipe(page, "Riso Grocery Dish", ["salmon", "broccoli", "leeks"]);
 
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
   await page.waitForTimeout(200);
@@ -90,13 +90,20 @@ test("+ Add to list sends a recipe's missing ingredients to the grocery list", a
   await page.waitForTimeout(200);
 
   const card = page.locator(".riso-makeable-card", { hasText: "Riso Grocery Dish" });
-  await expect(card.locator(".riso-makeable-need-text")).toContainText("Broccoli");
-  await card.getByRole("button", { name: /Add \d+ to list/ }).click();
-  await page.waitForTimeout(300);
+  await expect(card.locator(".riso-makeable-need-count")).toHaveText("2");
+
+  // One item: its + turns into "✓ on list".
+  await card.getByRole("button", { name: "Add Broccoli to grocery list" }).click();
+  await expect(card.getByRole("button", { name: "Remove Broccoli from grocery list" })).toHaveText("✓ on list");
+
+  // Add all only adds what isn't already there, then reads as done.
+  await card.getByRole("button", { name: "+ Add all 2 to list" }).click();
+  await expect(card.getByRole("button", { name: "✓ All on your grocery list" })).toBeDisabled();
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await page.waitForTimeout(200);
-  await expect(page.getByText("Broccoli", { exact: false }).first()).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.getByText("Broccoli", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("Leek", { exact: false })).toHaveCount(1);
 });
 
 test("Plan places a recipe onto the planner without opening a picker", async ({ page }) => {

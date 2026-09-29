@@ -326,7 +326,11 @@ export function GroceryList({
     const parsed = parseAddInput(addValue);
     if (!parsed || !parsed.name) return;
     const created = await api.addGroceryExtra(weekStart, { name: parsed.name, quantity: parsed.quantity, unit: null });
-    setExtraItems((prev) => [...prev, created]);
+    // The server hands back the existing row (quantity merged) for a name
+    // already on the list, so replace rather than append.
+    setExtraItems((prev) =>
+      prev.some((i) => i.id === created.id) ? prev.map((i) => (i.id === created.id ? created : i)) : [...prev, created]
+    );
     setAddValue("");
   }
 
