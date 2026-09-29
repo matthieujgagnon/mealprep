@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { canonicalize } from "../lib/groceryList.js";
 import { daysUntil } from "../lib/pantryInventory.js";
-import { HintStrip } from "./RisoControls.jsx";
+import { HintStrip, Segmented } from "./RisoControls.jsx";
 
 // Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
 // per the schema, mealType id matches PlannerEntry.mealType).
@@ -16,6 +16,21 @@ const MEAL_TYPES = [
 
 const ENDS_SOON_DAYS = 2;
 const money = (n) => `$${n.toFixed(2)}`;
+
+// FlyerDeal.category, in a grocery-aisle-ish walking order rather than
+// alphabetical - for the "whole flyer" table's optional By category
+// grouping (see groupByCategory below). Anything outside this list (there
+// shouldn't be any, but old rows or a schema change) falls in at the end
+// via the `?? 99` in the sort compare.
+const CATEGORY_ORDER = ["produce", "dairy", "protein", "bakery", "staple", "other"];
+const CATEGORY_LABELS = {
+  produce: "Produce",
+  dairy: "Dairy",
+  protein: "Meat & protein",
+  bakery: "Bakery",
+  staple: "Pantry staples",
+  other: "Other",
+};
 
 function endsInDays(validUntil) {
   if (!validUntil) return null;
@@ -259,11 +274,47 @@ function PriceMeter({ deal }) {
   );
 }
 
+// One "whole flyer" table row - shared between the flat list and the By
+// category grouped view, so the two only ever differ in what wraps around
+// this, never in the row itself.
+function DealRow({ deal: d, onPreview, onAddToList, onToggleWatch }) {
+  return (
+    <div className="riso-table-row">
+      <div className="riso-table-item">
+        <button type="button" className="riso-deal-photo-btn" onClick={onPreview}>
+          <DealPhoto deal={d} size={48} />
+        </button>
+        <div className="riso-table-item-info">
+          <div className="riso-table-item-name">
+            <span>{d.item}</span>
+            {d.isWatching && <span className="riso-watch-badge">★ WATCHING</span>}
+            {d.endsInDays != null && <span className="riso-ends-badge">{endsSoonLabel(d.endsInDays).toUpperCase()}</span>}
+          </div>
+          {d.freezeTip && <div className="riso-table-freeze">❄ {d.freezeTip}</div>}
+        </div>
+      </div>
+      <div className="riso-table-store">{d.store}</div>
+      <div className="riso-table-price">{d.price}</div>
+      <div className="riso-table-unit">{d.unitPrice != null ? `$${d.unitPrice.toFixed(2)}/${d.unitBasis}` : "—"}</div>
+      <div>
+        <PriceMeter deal={d} />
+      </div>
+      <div className="riso-table-actions">
+        <button type="button" className="riso-btn primary small" onClick={onAddToList}>
+          + List
+        </button>
+        <StarButton active={d.isWatching} onClick={onToggleWatch} />
+      </div>
+    </div>
+  );
+}
+
 export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRecipe, onAddToPlanner }) {
   const [deals, setDeals] = useState(null);
   const [watchlist, setWatchlist] = useState(new Set());
   const [storeFilter, setStoreFilter] = useState(null);
   const [chipFilter, setChipFilter] = useState("everything");
+  const [groupByCategory, setGroupByCategory] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [importingLeRabais, setImportingLeRabais] = useState(false);
   const [leRabaisError, setLeRabaisError] = useState(null);
@@ -354,6 +405,16 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
     if (chipFilter === "endssoon") return d.endsInDays != null;
     return true;
   });
+
+  // Grouped view for the "whole flyer" table - same rows as the flat list,
+  // just bucketed by FlyerDeal.category so a long flyer (50+ items) is
+  // easier to scan than one undivided list. Off by default, matching the
+  // approved mock's own flat table; a toggle switches it on.
+  const categoryGroups = CATEGORY_ORDER.map((cat) => ({
+    id: cat,
+    label: CATEGORY_LABELS[cat],
+    deals: visibleDeals.filter((d) => (d.category || "other") === cat),
+  })).filter((g) => g.deals.length > 0);
 
   const withUnitPrice = allDeals.filter((d) => d.unitPrice != null && d.unitBasis);
   const bestDeals = [...withUnitPrice]
@@ -543,6 +604,14 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
                   </button>
                 ))}
               </div>
+              <Segmented
+                options={[
+                  { id: "flat", label: "All" },
+                  { id: "category", label: "By category" },
+                ]}
+                value={groupByCategory ? "category" : "flat"}
+                onChange={(id) => setGroupByCategory(id === "category")}
+              />
             </div>
             {stores.length > 1 && (
               <div className="riso-chip-row">
@@ -578,35 +647,33 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
                   <div>Vs 6-month range</div>
                   <div />
                 </div>
-                {visibleDeals.map((d) => (
-                  <div key={d.id} className="riso-table-row">
-                    <div className="riso-table-item">
-                      <button type="button" className="riso-deal-photo-btn" onClick={() => setPreviewDeal(d)}>
-                        <DealPhoto deal={d} size={48} />
-                      </button>
-                      <div className="riso-table-item-info">
-                        <div className="riso-table-item-name">
-                          <span>{d.item}</span>
-                          {d.isWatching && <span className="riso-watch-badge">★ WATCHING</span>}
-                          {d.endsInDays != null && <span className="riso-ends-badge">{endsSoonLabel(d.endsInDays).toUpperCase()}</span>}
+                {groupByCategory
+                  ? categoryGroups.map((group) => (
+                      <Fragment key={group.id}>
+                        <div className="riso-table-group-head">
+                          <span>{group.label}</span>
+                          <span className="riso-table-group-count">{group.deals.length}</span>
                         </div>
-                        {d.freezeTip && <div className="riso-table-freeze">❄ {d.freezeTip}</div>}
-                      </div>
-                    </div>
-                    <div className="riso-table-store">{d.store}</div>
-                    <div className="riso-table-price">{d.price}</div>
-                    <div className="riso-table-unit">{d.unitPrice != null ? `$${d.unitPrice.toFixed(2)}/${d.unitBasis}` : "—"}</div>
-                    <div>
-                      <PriceMeter deal={d} />
-                    </div>
-                    <div className="riso-table-actions">
-                      <button type="button" className="riso-btn primary small" onClick={() => addToGroceryList(d)}>
-                        + List
-                      </button>
-                      <StarButton active={d.isWatching} onClick={() => toggleWatch(d)} />
-                    </div>
-                  </div>
-                ))}
+                        {group.deals.map((d) => (
+                          <DealRow
+                            key={d.id}
+                            deal={d}
+                            onPreview={() => setPreviewDeal(d)}
+                            onAddToList={() => addToGroceryList(d)}
+                            onToggleWatch={() => toggleWatch(d)}
+                          />
+                        ))}
+                      </Fragment>
+                    ))
+                  : visibleDeals.map((d) => (
+                      <DealRow
+                        key={d.id}
+                        deal={d}
+                        onPreview={() => setPreviewDeal(d)}
+                        onAddToList={() => addToGroceryList(d)}
+                        onToggleWatch={() => toggleWatch(d)}
+                      />
+                    ))}
               </div>
             )}
           </div>

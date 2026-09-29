@@ -343,7 +343,20 @@ export function Home({
           {DAY_INDICES.map((d) => {
             const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
             const entry = dinnerFor(d);
-            return entry ? (
+            // A custom note or "Restaurant" entry is the placeholder-recipe
+            // mechanism (see isCustomNote/isBlankMarker in PlannerBoard.jsx)
+            // - there's no real recipe or photo behind it, so it renders as
+            // plain text with no click target, instead of a fake recipe card.
+            return entry?.recipe.isPlaceholder ? (
+              <div key={d} className={`riso-home-week-day note${isToday ? " today" : ""}`}>
+                <div className="riso-home-week-day-body">
+                  <span className="riso-home-week-day-label">
+                    {weekday.toUpperCase()} {dayNum}
+                  </span>
+                  <span className="riso-home-week-day-title">{entry.recipe.title}</span>
+                </div>
+              </div>
+            ) : entry ? (
               <button
                 key={d}
                 type="button"

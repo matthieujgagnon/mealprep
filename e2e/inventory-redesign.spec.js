@@ -37,8 +37,27 @@ test("items land on the right shelf and clicking one opens the edit panel", asyn
 
   await page.getByText("Shrimp", { exact: true }).click();
   await expect(page.locator(".inv-panel")).toBeVisible();
-  await expect(page.locator(".inv-panel-header")).toContainText("Shrimp");
+  await expect(page.locator(".inv-panel-header input")).toHaveValue("Shrimp");
   await expect(page.locator(".inv-storage-pill").first()).toBeVisible();
+});
+
+test("the item name in the edit panel can be renamed", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+
+  await addItem(page, "Shrimp", "fridge");
+  await page.getByText("Shrimp", { exact: true }).click();
+  const nameInput = page.locator(".inv-panel-header input");
+  await expect(nameInput).toHaveValue("Shrimp");
+
+  await nameInput.fill("Shrimp, peeled");
+  await nameInput.press("Enter");
+  await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp, peeled")).toBeVisible();
+
+  // Persists after a reload, confirming it actually saved server-side.
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp, peeled")).toBeVisible();
 });
 
 test("selecting items shows the floating action bar, and Used up removes them", async ({ page }) => {

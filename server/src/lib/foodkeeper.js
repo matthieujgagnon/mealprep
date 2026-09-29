@@ -41,6 +41,40 @@ function tokenize(text) {
     .filter(Boolean);
 }
 
+// Naive plural stemmer, used only for the exact-whole-name check in
+// findBestMatch's tie-break below - not for the keyword-set matching
+// itself, since the bundled data already lists both forms in `keywords`
+// where it matters. Without it, a query like "avocado" ties in score
+// between "Avocados" (Produce, 3-4 fridge days) and "Avocado Oil" (Shelf
+// Stable Foods, 2 pantry years), and the tie-break's word-overlap check
+// picks the wrong one: "Avocados" doesn't match its own query word
+// ("avocados" !== "avocado"), while "Avocado Oil" does, so the unrelated
+// shelf-stable product wins purely because its display name happens to be
+// singular.
+function stem(word) {
+  if (word.endsWith("ies") && word.length > 4) return word.slice(0, -3) + "y";
+  if (word.endsWith("es") && word.length > 3) return word.slice(0, -2);
+  if (word.endsWith("s") && !word.endsWith("ss") && word.length > 3) return word.slice(0, -1);
+  return word;
+}
+
+// True when the query and the entry's name are the exact same word(s),
+// modulo plurals - e.g. "avocado" vs. "Avocados", or "tomatoes" vs.
+// "Tomato". Deliberately narrower than a general stemmed-overlap count:
+// widening the overlap check itself (instead of adding this as a special
+// full-match case) also perturbs multi-word disambiguation elsewhere - e.g.
+// "chicken breast" tokenizes to ["chicken","breast"], and stemming
+// "breasts" -> "breast" everywhere would flip "Chicken parts (breast
+// halves, bone-in)" losing its tie-break to "Stuffed, raw chicken
+// breasts", the opposite of the exact case the comment on that tie-break
+// already calls out.
+function isExactPluralMatch(queryWords, nameWords) {
+  if (queryWords.length !== nameWords.length) return false;
+  const stemmedName = nameWords.map(stem).sort();
+  const stemmedQuery = queryWords.map(stem).sort();
+  return stemmedName.every((w, i) => w === stemmedQuery[i]);
+}
+
 // Scores every entry by name/keyword relevance and returns the single best
 // match for the product itself, or null if nothing matched at all - deciding
 // "what product is this" is independent of which location's shelf life the
@@ -82,7 +116,7 @@ export function findBestMatch(name) {
     // query didn't ask for.
     const nameWords = tokenize(entry.name);
     const nameOverlap = nameWords.filter((w) => queryWords.includes(w)).length;
-    const specificity = nameOverlap / Math.max(1, nameWords.length);
+    const specificity = isExactPluralMatch(queryWords, nameWords) ? 1 : nameOverlap / Math.max(1, nameWords.length);
 
     if (score > bestScore || (score === bestScore && specificity > bestSpecificity)) {
       best = entry;
