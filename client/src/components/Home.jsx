@@ -248,7 +248,11 @@ export function Home({
                   {tonightEntry.recipe.isPlaceholder
                     ? "Eating out tonight."
                     : tonightMatch
-                    ? `You have all ${tonightMatch.totalCount} ingredients.`
+                    ? tonightAllHave
+                      ? `You have all ${tonightMatch.totalCount} ingredients.`
+                      : `You have ${tonightMatch.totalCount - tonightMatch.missingIngredients.length} of ${
+                          tonightMatch.totalCount
+                        } ingredients.`
                     : tonightEntry.recipe.ingredients?.length
                     ? "You're missing some ingredients for this one."
                     : null}
