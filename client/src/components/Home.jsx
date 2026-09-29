@@ -11,7 +11,16 @@ const RESTAURANT_TITLE = "🍽️ Restaurant";
 // Small deterministic rotation set for the Riso Poster "stickers" - a
 // fixed-angle sticker looks static/printed, but a fully random one would
 // re-roll (and visually jitter) on every re-render.
-const STICKER_ROTATIONS = [-5, 3, -2];
+const STICKER_ROTATIONS = [-4, 4, -3];
+
+// "Use it up" freshness bar fill - the design's sample values (92%/70%/45%
+// for 1/2/4 days left) decrease roughly 15 points per day, so this reuses
+// that slope rather than a real shelf-life fraction (Home has no per-item
+// total shelf-life to compute a true fraction from - the Inventory screen's
+// own freshness bar, backed by real USDA ranges, is the authoritative one).
+function freshnessPct(daysLeft) {
+  return Math.max(15, Math.min(95, 100 - Math.max(0, daysLeft) * 15));
+}
 
 function matchRecipesForDeal(deal, recipes) {
   return recipes
@@ -50,16 +59,40 @@ function usedThisWeek(itemName, plannerEntries) {
   );
 }
 
-function StickerCircle({ item, index, tone }) {
+// One "Use it up" row: a photo, the item name + urgency marker, and an
+// 8px freshness bar. The two soonest items (sorted by useSoonItems) get a
+// rotated pill sticker; everything after that just gets a plain day count,
+// matching Riso Home.dc.html's pink/yellow/plain three-tier pattern.
+function FreshnessRow({ item, index }) {
   const days = daysUntil(item.expiresAt);
-  const unit = days === 1 ? "DAY" : "DAYS";
+  const tone = index === 0 ? "pink" : index === 1 ? "yellow" : "plain";
+  const label = days <= 0 ? "today!" : days === 1 ? "tomorrow!" : `${days} days`;
   return (
-    <div
-      className={`riso-sticker-circle ${tone}`}
-      style={{ transform: `rotate(${STICKER_ROTATIONS[index]}deg)` }}
-    >
-      <span className="riso-sticker-circle-num">{Math.max(0, days)}</span>
-      <span className="riso-sticker-circle-unit">{unit}</span>
+    <div className="riso-freshness-row">
+      <div className="riso-freshness-row-photo placeholder">{item.name[0]}</div>
+      <div className="riso-freshness-row-info">
+        <div className="riso-freshness-row-top">
+          <span className="riso-freshness-row-name">{item.name}</span>
+          {tone === "plain" ? (
+            <span className="riso-freshness-row-days">
+              {Math.max(0, days)} {days === 1 ? "DAY" : "DAYS"}
+            </span>
+          ) : (
+            <span
+              className={`riso-freshness-row-pill ${tone}`}
+              style={{ transform: `rotate(${STICKER_ROTATIONS[index]}deg)` }}
+            >
+              {label}
+            </span>
+          )}
+        </div>
+        <div className="riso-freshness-bar-track">
+          <div
+            className={`riso-freshness-bar-fill ${tone === "pink" ? "pink" : "ink"}`}
+            style={{ width: `${freshnessPct(days)}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -354,12 +387,9 @@ export function Home({
             <p className="riso-empty-note">Nothing expiring soon.</p>
           ) : (
             <>
-              <div className="riso-sticker-grid">
+              <div className="riso-freshness-list">
                 {useSoonItems.map((item, i) => (
-                  <div key={item.id} className="riso-sticker-cell">
-                    <StickerCircle item={item} index={i} tone={i === 0 ? "pink" : i === 1 ? "yellow" : "plain"} />
-                    <span className="riso-sticker-cell-name">{item.name}</span>
-                  </div>
+                  <FreshnessRow key={item.id} item={item} index={i} />
                 ))}
               </div>
               {soonestUnused && (

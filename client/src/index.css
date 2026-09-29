@@ -28,246 +28,112 @@
   color-scheme: dark;
 }
 
-/* ---------- "Cobalt Vapor" theme tokens (design handoff) ----------
-   Foundation for the full-app redesign in design_handoff_cookbook_app/
-   README.md - implemented one screen at a time, starting here with just
-   the token layer itself. Prefixed --vp- (Vapor), same pattern as this
-   file's other incremental-redesign token sets (--inv-*, --hm-*), so this
-   is purely additive: nothing reads these yet, and no existing screen's
-   appearance changes until it's migrated in a later pass.
+/* ---------- Riso Poster: Makeable screen ---------- */
 
-   Cream tint only (the README's default; lilac is optional and explicitly
-   "build only if the owner confirms" - skipped here). Light is the new
-   default per the handoff; dark is the same toggle mechanism screens will
-   opt into as they migrate, same as .home-page[data-theme] does today. */
-.vp-theme[data-theme="light"] {
-  --vp-bg: #f7f3ec;
-  --vp-surface: #fffdf9;
-  --vp-surface2: #f0eae0;
-  --vp-track: #e8e0d3;
-  --vp-border: #e6ddd0;
-  --vp-dash: #d4c9b8;
-  --vp-box-line: #c9bfaf;
-  --vp-miss-line: #b5aa98;
-  --vp-text: #1e1b16;
-  --vp-soft: #463f35;
-  --vp-muted: #6b6358;
-  --vp-nav: #463f35;
-  --vp-accent: #2323ff;
-  --vp-on-accent: #ffffff;
-  --vp-highlight: #2323ff;
-  --vp-hot: #c8106f;
-  --vp-badge: #c8106f;
-  --vp-sale: #0a8a22;
-  --vp-shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 0 0 1px #ece4d6;
-  --vp-glow: none;
-  --vp-scrim: #e4dccf;
-  --vp-photo-overlay: rgba(20, 17, 12, 0.72);
-  color-scheme: light;
-}
-
-.vp-theme[data-theme="dark"] {
-  --vp-bg: #15130f;
-  --vp-surface: #1e1b16;
-  --vp-surface2: #29251f;
-  --vp-track: #0f0d0a;
-  --vp-border: #332e27;
-  --vp-dash: rgba(255, 240, 220, 0.16);
-  --vp-box-line: #4a443a;
-  --vp-miss-line: #6e665a;
-  --vp-text: #f5efe6;
-  --vp-soft: #d6cec2;
-  --vp-muted: #a89f92;
-  --vp-nav: #ddd5c9;
-  --vp-accent: #2323ff;
-  --vp-on-accent: #ffffff;
-  --vp-highlight: #b9a8ff;
-  --vp-hot: #ff4fae;
-  --vp-badge: #e0157f;
-  --vp-sale: #45ff5c;
-  --vp-shadow: none;
-  --vp-glow: 0 0 0 1px rgba(120, 120, 255, 0.55), 0 0 18px rgba(35, 35, 255, 0.5);
-  --vp-scrim: #0d0b08;
-  --vp-photo-overlay: rgba(20, 17, 12, 0.72);
-  color-scheme: dark;
-}
-
-/* Typography tokens for the same redesign - Merriweather replaces Fraunces
-   for display type, JetBrains Mono replaces IBM Plex Mono for labels/meta/
-   quantities (both now loaded in index.html alongside the originals, which
-   stay in place for every screen not yet migrated). Inter is unchanged. */
-.vp-theme {
-  --vp-font-display: "Merriweather", serif;
-  --vp-font-body: "Inter", system-ui, sans-serif;
-  --vp-font-mono: "JetBrains Mono", ui-monospace, monospace;
-}
-
-/* ---------- Vapor shared controls (design handoff's "Standard controls") ----------
-   Reusable across every screen as it migrates - not Makeable-specific,
-   even though Makeable (the first screen implemented) is the only
-   consumer today. */
-
-.vp-theme {
-  background: var(--vp-bg);
-  color: var(--vp-text);
-  font-family: var(--vp-font-body);
+.riso-makeable {
   max-width: 1280px;
   margin: 0 auto;
   padding: 28px 40px 56px;
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
 }
 
-.vp-page-title {
-  font-family: var(--vp-font-display);
+.riso-makeable-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-makeable-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.riso-makeable-controls {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: var(--riso-shadow-ready);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.riso-makeable-toggles {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.riso-makeable-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-makeable-toggle-label {
+  font-family: var(--riso-font-display);
   font-weight: 700;
-  font-size: 30px;
-  line-height: 1.2;
-  margin: 0;
+  font-size: 15px;
 }
 
-.vp-page-subtitle {
-  font-size: 14.5px;
-  color: var(--vp-muted);
-  margin: 4px 0 0;
+.riso-makeable-toggle-meta {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  color: var(--riso-muted);
 }
 
-/* Local per-screen toggle, same pattern Home already uses - a single
-   app-wide header toggle (per the handoff) lands once every screen has
-   migrated; until then each screen gets its own, all reading/writing the
-   same mealprep-vp-theme key so they agree once more than one exists. */
-.vp-theme-toggle {
+.riso-makeable-toggle-divider {
+  width: 0;
+  height: 26px;
+  border-left: 2px dashed var(--riso-dash-strong);
+}
+
+.riso-makeable-also-have {
   display: flex;
-  background: var(--vp-surface2);
-  border-radius: 17px;
-  padding: 3px;
-  border: none;
-  cursor: pointer;
-  font-family: var(--vp-font-body);
-}
-
-.vp-theme-toggle span {
-  padding: 5px 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--vp-muted);
-}
-
-.vp-theme-toggle span.active {
-  background: var(--vp-accent);
-  color: var(--vp-on-accent);
-}
-
-.vp-hint-strip {
-  background: var(--vp-surface2);
-  border-radius: 14px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.vp-hint-icon {
-  flex-shrink: 0;
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  border: 1.5px solid var(--vp-muted);
-  color: var(--vp-muted);
-  font-family: var(--vp-font-display);
-  font-style: italic;
-  font-size: 12px;
-  display: flex;
+  gap: 8px;
   align-items: center;
-  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 44px;
+  padding: 5px 6px 5px 16px;
+  border-radius: 999px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
 }
 
-.vp-hint-text {
-  flex: 1;
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--vp-soft);
+.riso-makeable-also-have-label {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 
-.vp-hint-dismiss {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  color: var(--vp-muted);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.vp-hint-dismiss:hover {
-  color: var(--vp-text);
-}
-
-.vp-toggle {
-  display: inline-flex;
-  align-items: center;
-  width: 38px;
-  height: 22px;
-  border-radius: 11px;
-  background: var(--vp-track);
-  padding: 3px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  flex-shrink: 0;
-}
-
-.vp-toggle.on {
-  background: var(--vp-accent);
-}
-
-.vp-toggle-knob {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #ffffff;
-  transition: transform 0.2s ease;
-}
-
-.vp-toggle.on .vp-toggle-knob {
-  transform: translateX(16px);
-}
-
-.vp-toggle-row {
+.riso-makeable-also-have-chip {
+  height: 32px;
+  padding: 0 8px 0 13px;
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
   display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.vp-toggle-label {
-  font-size: 14px;
-  color: var(--vp-text);
-}
-
-.vp-toggle-meta {
-  margin-left: 6px;
-  font-family: var(--vp-font-mono);
-  font-size: 10.5px;
-  color: var(--vp-muted);
-}
-
-.vp-chip {
-  display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  padding: 0 6px 0 10px;
-  border-radius: 14px;
-  background: var(--vp-accent);
-  color: var(--vp-on-accent);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
   font-size: 13px;
-  font-weight: 500;
 }
 
-.vp-chip button {
+.riso-makeable-also-have-chip button {
   background: none;
   border: none;
   color: inherit;
@@ -278,238 +144,272 @@
   padding: 2px;
 }
 
-.vp-chip button:hover {
+.riso-makeable-also-have-chip button:hover {
   opacity: 1;
 }
 
-.vp-empty-state {
-  color: var(--vp-muted);
-  font-size: 14px;
-}
-
-/* ---------- Makeable screen ---------- */
-
-.vp-makeable-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.vp-control-card {
-  background: var(--vp-surface);
-  border-radius: 20px;
-  box-shadow: var(--vp-shadow);
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.vp-toggle-row-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 28px;
-}
-
-.vp-also-have {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  background: var(--vp-surface2);
-  border-radius: 14px;
-  padding: 10px 14px;
-}
-
-.vp-also-have-label {
-  font-family: var(--vp-font-mono);
-  font-weight: 500;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  color: var(--vp-muted);
-  flex-shrink: 0;
-}
-
-.vp-also-have-input {
+.riso-makeable-also-have-input {
   flex: 1;
-  min-width: 160px;
-  background: none;
+  min-width: 220px;
+  height: 32px;
   border: none;
-  font-size: 14px;
-  color: var(--vp-text);
-  font-family: var(--vp-font-body);
-}
-
-.vp-also-have-input:focus {
   outline: none;
+  background: transparent;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 500;
+  font-size: 14.5px;
 }
 
-.vp-also-have-input::placeholder {
-  color: var(--vp-muted);
+.riso-makeable-also-have-input::placeholder {
+  color: var(--riso-muted);
 }
 
-.vp-group {
+.riso-makeable-empty {
+  font-size: 13.5px;
+  color: var(--riso-soft);
+}
+
+.riso-makeable-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.vp-group-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.vp-group-title {
-  font-family: var(--vp-font-display);
-  font-weight: 700;
-  font-size: 19px;
-  margin: 0;
-}
-
-.vp-group-count {
-  font-family: var(--vp-font-mono);
-  font-size: 12px;
-  color: var(--vp-muted);
-}
-
-.vp-group-note {
-  font-size: 13px;
-  color: var(--vp-muted);
-}
-
-.vp-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
 }
 
-.vp-card {
-  background: var(--vp-surface);
-  border-radius: 18px;
-  box-shadow: var(--vp-shadow);
-  padding: 8px;
+.riso-makeable-group-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.riso-makeable-group-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.riso-makeable-group-pill {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 17px;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.riso-makeable-group-pill.blue {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-makeable-group-pill.yellow {
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+}
+
+.riso-makeable-group-pill.paper {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-makeable-group-note {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-makeable-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 18px;
+}
+
+.riso-makeable-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow: hidden;
 }
 
-.vp-card-thumb-btn {
-  display: block;
-  width: 100%;
+.riso-makeable-card-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.riso-makeable-card-photo {
+  width: 78px;
+  height: 78px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-track);
   padding: 0;
-  border: none;
-  background: none;
   cursor: pointer;
 }
 
-.vp-card-thumb {
+.riso-makeable-card-photo img {
   width: 100%;
-  height: 72px;
-  border-radius: 12px;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.vp-card-thumb-placeholder {
-  background: var(--vp-surface2);
-}
-
-.vp-card-body {
+.riso-makeable-card-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 0 4px 4px;
+  gap: 5px;
 }
 
-.vp-card-title {
+.riso-makeable-card-name {
   background: none;
   border: none;
   padding: 0;
   text-align: left;
-  font-family: var(--vp-font-display);
-  font-weight: 700;
-  font-size: 14.5px;
-  color: var(--vp-text);
   cursor: pointer;
-  line-height: 1.3;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--riso-ink);
 }
 
-.vp-card-meta {
-  margin: 0;
-  font-family: var(--vp-font-mono);
+.riso-makeable-card-meta {
+  font-family: var(--riso-font-mono);
   font-size: 10.5px;
-  letter-spacing: 0.04em;
-  color: var(--vp-muted);
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
 }
 
-.vp-card-uses {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--vp-hot);
-}
-
-.vp-card-need {
-  background: var(--vp-surface2);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 12.5px;
-  color: var(--vp-soft);
-}
-
-.vp-card-need-label {
-  font-family: var(--vp-font-mono);
-  font-weight: 500;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--vp-muted);
-}
-
-.vp-card-actions {
+.riso-makeable-card-uses {
   display: flex;
-  gap: 8px;
-  margin-top: 2px;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.vp-btn-card {
-  height: 34px;
-  border-radius: 17px;
-  padding: 0 14px;
+.riso-makeable-uses-pill {
+  position: static;
+  padding: 0 7px;
+  font-size: 10.5px;
+}
+
+.riso-makeable-card-uses span:last-child {
+  font-size: 12px;
+  color: var(--riso-soft);
+}
+
+.riso-makeable-need {
+  background: var(--riso-canvas);
+  border: 2px dashed var(--riso-ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.riso-makeable-need-text {
+  margin: 0;
   font-size: 13px;
-  font-weight: 600;
-  font-family: var(--vp-font-body);
-  border: none;
-  cursor: pointer;
+  line-height: 1.45;
+}
+
+.riso-makeable-need-label {
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+}
+
+.riso-makeable-need-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.riso-makeable-need-btn {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13px;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.vp-btn-card-primary {
+.riso-makeable-ready-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.riso-makeable-cook-btn {
   flex: 1;
-  background: var(--vp-accent);
-  color: var(--vp-on-accent);
-  box-shadow: var(--vp-glow);
+  height: 38px;
+  border-radius: 19px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
 }
 
-.vp-btn-card-secondary {
-  background: var(--vp-surface2);
-  color: var(--vp-text);
+.riso-makeable-plan-btn {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 @media (max-width: 680px) {
-  .vp-theme {
+  .riso-makeable {
     padding: 18px 16px 40px;
-    gap: 18px;
   }
 
-  .vp-makeable-header {
-    flex-wrap: wrap;
+  .riso-makeable-title {
+    font-size: 40px;
   }
 
-  .vp-toggle-row-group {
+  .riso-makeable-toggles {
     flex-direction: column;
+    align-items: flex-start;
     gap: 12px;
+  }
+
+  .riso-makeable-toggle-divider {
+    display: none;
   }
 }
 
@@ -597,10 +497,11 @@ select {
 
 .app-header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  align-items: center;
+  gap: 20px;
+  margin: -28px -20px 24px;
+  padding: 24px 20px;
+  background: var(--riso-canvas);
   flex-wrap: wrap;
 }
 
@@ -637,23 +538,45 @@ select {
 }
 
 .wordmark {
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
   font-size: 28px;
-  letter-spacing: -0.01em;
+  line-height: 1;
+  letter-spacing: -0.02em;
   margin: 0;
+  color: var(--riso-ink);
+  flex: none;
 }
 
 .wordmark span {
-  color: var(--accent-text);
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  padding: 0 8px;
+  border-radius: 6px;
 }
 
 .tabs {
+  flex: 1;
+  /* A flex item's default min-width is auto (its content's natural width),
+     not 0 - without this override, 7 tab buttons wider than the available
+     row force .tabs (and everything up through <body>) wider than the
+     viewport instead of actually using overflow-x:auto's scrollbar, which
+     on a real mobile viewport triggers the browser's "page wider than
+     device width" auto-zoom-out. That rescales the whole page, so every
+     element's on-screen position stops matching its layout coordinates -
+     exactly what made a real touch tap land on the wrong element anywhere
+     below the header (caught by touch-drag.spec.js, not by any
+     mouse-simulated test, since only a real viewport-width check exposes
+     it). */
+  min-width: 0;
   display: flex;
+  /* Not justify-content:center - combined with overflow-x:auto, centered
+     content whose natural width exceeds the container clips equally off
+     both ends and scrollLeft:0 lands in the middle, making the first tab
+     (Home) unreachable without scrolling backwards past nothing. flex-start
+     keeps every tab reachable by scrolling forward only. */
+  justify-content: flex-start;
   gap: 4px;
-  background: var(--bg-soft);
-  padding: 4px;
-  border-radius: 10px;
   /* Scrolls horizontally rather than squeezing every tab to fit once there
      are enough of them (8, as of adding Home) that a narrow/mobile screen
      can't fit them all at a legible size — see the mobile override below,
@@ -668,10 +591,14 @@ select {
 
 .tab {
   background: none;
-  border: none;
-  color: var(--paper-soft);
-  padding: 8px 16px;
-  border-radius: 7px;
+  border: 2px solid transparent;
+  color: var(--riso-ink);
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -679,34 +606,47 @@ select {
 }
 
 .tab.active {
-  background: var(--mustard);
-  color: #f3f3fb;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border-color: var(--riso-ink);
+  box-shadow: var(--riso-shadow);
 }
 
 .app-header-account {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* flex: 0 1 auto (shrinkable), not flex: none - a long email is real
+     content this can't just refuse to yield width for. Paired with the
+     name's own min-width:0 + ellipsis below, so a long email truncates
+     instead of forcing the row (and on a narrow viewport, the page) wider
+     than expected - see .tabs's own min-width:0 comment for what that
+     causes on a real mobile viewport. */
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .app-header-account-name {
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.85;
+  font-family: var(--riso-font-body);
+  font-size: 14px;
+  color: var(--riso-ink);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-/* .btn.subtle is styled for a light card (light background, dark text),
-   but this sits directly on the dark page background - same fix as
-   .planner-week-nav and .recipe-section-header-actions below. */
+/* .btn.subtle is styled for a dark page (light card, dark text on a dark
+   backdrop) - the header is now its own paper-colored bar, so it needs the
+   inverse: an ink-outlined card-colored button instead. */
 .app-header-account .btn.subtle {
-  background: var(--bg-soft);
-  color: var(--paper-soft);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
 }
 
 .app-header-account .btn.subtle:hover {
-  background: rgba(35, 35, 255, 0.18);
-  color: var(--accent-text);
+  background: var(--riso-track);
 }
 
 /* ---------- Auth (login/signup) page ---------- */
@@ -1334,62 +1274,105 @@ select {
   flex-direction: column;
 }
 
-.inv-title-row {
+.riso-inv {
+  position: relative;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 32px 56px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 22px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-inv-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 18px;
 }
 
-.inv-title-row h1 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 30px;
-  margin: 0;
-  color: var(--paper);
-}
-
-.inv-summary {
+.riso-inv-title-block {
   flex: 1;
-  font-size: 14px;
-  color: var(--inv-muted);
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.inv-main {
+.riso-inv-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.riso-inv-header-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  align-items: flex-start;
+  gap: 10px;
+  flex: none;
+}
+
+.riso-inv-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  cursor: pointer;
+}
+
+.riso-inv-btn.primary {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-inv .empty-state {
+  font-family: var(--riso-font-body);
+  color: var(--riso-muted);
+  opacity: 1;
 }
 
 .inv-shelves {
-  flex: 4 1 560px;
-  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
   align-items: start;
 }
 
 .inv-shelf {
-  background: var(--bg-soft);
-  border-radius: 20px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   min-height: 240px;
+}
+
+.inv-shelf.wide {
+  grid-column: 1 / -1;
 }
 
 .inv-shelf-header {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
-  color: var(--paper);
+  align-items: center;
+  gap: 10px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 24px;
+  color: var(--riso-ink);
 }
 
 .inv-shelf-header span:first-child {
@@ -1397,28 +1380,57 @@ select {
 }
 
 .inv-shelf-count {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 11px;
-  color: var(--inv-muted);
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 15px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--riso-ink);
+}
+
+.inv-shelf-note {
+  flex: none;
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
 }
 
 .inv-shelf-remove {
   background: none;
   border: none;
-  color: var(--inv-muted);
-  font-size: 16px;
+  color: var(--riso-muted);
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
 }
 
 .inv-shelf-remove:hover {
-  color: var(--inv-neon);
+  color: var(--riso-accent);
+}
+
+.inv-shelf-items {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.inv-shelf-items.grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
 
 .inv-shelf-empty {
-  border: 1.5px dashed var(--inv-dash);
+  border: 1.5px dashed var(--riso-dash);
   border-radius: 12px;
   min-height: 110px;
   display: flex;
@@ -1426,31 +1438,31 @@ select {
   justify-content: center;
   text-align: center;
   font-size: 12.5px;
-  color: var(--inv-muted);
+  color: var(--riso-muted);
 }
 
 .inv-shelf.drop-active {
-  box-shadow: 0 0 0 2px var(--mustard) inset;
+  box-shadow: 0 0 0 2px var(--riso-accent) inset;
 }
 
 .inv-add-section-tile {
-  border: 1.5px dashed var(--inv-dash);
-  border-radius: 20px;
+  border: 1.5px dashed var(--riso-dash-strong);
+  border-radius: 24px;
   min-height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   font-size: 13px;
-  color: var(--inv-muted);
+  color: var(--riso-muted);
   background: none;
   cursor: pointer;
-  font-family: inherit;
+  font-family: var(--riso-font-body);
 }
 
 .inv-add-section-tile:hover {
-  color: var(--paper);
-  border-color: var(--inv-boxline);
+  color: var(--riso-ink);
+  border-color: var(--riso-ink);
 }
 
 .inv-add-section-tile.form {
@@ -1464,10 +1476,11 @@ select {
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid var(--inv-boxline);
-  background: var(--bg);
-  color: var(--paper);
+  border: 1.5px solid var(--riso-dash-strong);
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
   font-size: 13px;
+  font-family: var(--riso-font-body);
 }
 
 .inv-add-section-actions {
@@ -1476,12 +1489,13 @@ select {
 }
 
 .inv-card {
-  background: var(--inv-surface2);
-  border-radius: 12px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   cursor: grab;
   transition: box-shadow 0.15s ease;
   /* touch-action: none — see the long comment on .meal-card above for why
@@ -1495,11 +1509,11 @@ select {
 }
 
 .inv-card.active {
-  box-shadow: 0 0 0 2px var(--mustard);
+  box-shadow: var(--riso-shadow-selected);
 }
 
 .inv-card.urgent {
-  box-shadow: 0 0 0 1.5px var(--inv-neon);
+  box-shadow: var(--riso-shadow);
 }
 
 .inv-card.dragging {
@@ -1508,83 +1522,153 @@ select {
 
 .inv-card-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
 .inv-card-check {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
   flex-shrink: 0;
-  margin: 0;
+  border-radius: 7px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
   cursor: pointer;
-  accent-color: var(--mustard);
+}
+
+.inv-card-check.on {
+  background: var(--riso-accent);
+}
+
+.inv-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .inv-card-name {
-  flex: 1;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.3;
+  font-weight: 700;
+  font-size: 14.5px;
+  line-height: 1.25;
   overflow-wrap: anywhere;
-  color: var(--paper);
+  color: var(--riso-ink);
 }
 
 .inv-card-expiry {
-  font-family: var(--font-mono);
+  flex: none;
+  font-family: var(--riso-font-mono);
   font-weight: 500;
   font-size: 10.5px;
   white-space: nowrap;
-  color: var(--inv-muted);
+  color: var(--riso-muted);
+  padding-top: 2px;
 }
 
-.inv-card-expiry.urgent-text {
-  color: var(--inv-neon);
+.inv-card-urgent-sticker {
+  flex: none;
+  transform: rotate(-4deg);
+  background: var(--riso-hot);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 11.5px;
+  color: var(--riso-ink);
+  white-space: nowrap;
 }
 
 .inv-card-qty {
-  font-family: var(--font-mono);
+  font-family: var(--riso-font-mono);
   font-weight: 500;
   font-size: 10.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--inv-muted);
+  color: var(--riso-muted);
   white-space: nowrap;
 }
 
 .inv-freshness-track {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--bg);
+  height: 8px;
+  border-radius: 4px;
+  background: var(--riso-surface);
+  border: 1.5px solid var(--riso-ink);
   overflow: hidden;
 }
 
 .inv-freshness-fill {
   height: 100%;
-  border-radius: 2px;
-  background: var(--mustard);
+  border-radius: 4px;
+  background: var(--riso-accent);
 }
 
 .inv-freshness-fill.urgent {
-  background: var(--inv-neon);
+  background: var(--riso-hot);
 }
 
 .inv-card-tip {
   margin: 0;
   font-size: 12px;
   line-height: 1.4;
-  color: var(--inv-soft);
+  color: var(--riso-muted);
+}
+
+.riso-inv-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 24, 31, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 250px 20px 40px;
+  z-index: 60;
+}
+
+.riso-inv-edit-modal {
+  position: relative;
+  width: 440px;
+  max-width: calc(100% - 40px);
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 24px;
+}
+
+.riso-inv-edit-close {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  box-shadow: var(--riso-shadow);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--riso-ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .inv-panel {
-  flex: 1 1 280px;
-  position: sticky;
-  top: 20px;
-  background: var(--bg-soft);
-  border-radius: 20px;
-  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .inv-panel-header {
@@ -1595,28 +1679,31 @@ select {
 }
 
 .inv-panel-header h3 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 20px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.1;
   margin: 0;
-  color: var(--paper);
+  color: var(--riso-ink);
   overflow-wrap: anywhere;
 }
 
 .inv-panel-category {
-  font-family: var(--font-mono);
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
   font-size: 10.5px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--inv-muted);
+  color: var(--riso-muted);
   white-space: nowrap;
 }
 
 .inv-panel-label {
-  font-family: var(--font-mono);
+  font-family: var(--riso-font-mono);
   font-weight: 500;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  color: var(--inv-muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--riso-muted);
   text-transform: uppercase;
   margin-bottom: 8px;
 }
@@ -1624,26 +1711,29 @@ select {
 .inv-qty-stepper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .inv-qty-stepper button {
-  width: 34px;
-  height: 34px;
-  border-radius: 17px;
-  background: var(--inv-surface2);
-  border: none;
-  color: var(--paper);
-  font-size: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 18px;
   cursor: pointer;
 }
 
 .inv-qty-stepper span {
-  min-width: 64px;
+  min-width: 80px;
   text-align: center;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--paper);
+  font-family: var(--riso-font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--riso-ink);
 }
 
 .inv-storage-pills {
@@ -1653,35 +1743,40 @@ select {
 }
 
 .inv-storage-pill {
-  height: 38px;
-  border-radius: 19px;
-  padding: 0 14px;
-  font-size: 13.5px;
+  height: 44px;
+  border-radius: 22px;
+  padding: 0 16px;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--inv-surface2);
-  color: var(--paper);
-  border: none;
+  gap: 10px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
   cursor: pointer;
-  font-family: inherit;
 }
 
 .inv-storage-pill.active {
-  background: var(--mustard);
+  background: var(--riso-accent);
   color: #fff;
+  box-shadow: var(--riso-shadow);
   cursor: default;
 }
 
 .inv-storage-pill-range {
-  opacity: 0.8;
-  font-size: 12.5px;
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
+  font-size: 11.5px;
+  opacity: 0.85;
 }
 
 .inv-use-by {
   font-size: 13px;
   line-height: 1.5;
-  color: var(--inv-soft);
+  color: var(--riso-soft);
   margin: 0;
 }
 
@@ -1689,40 +1784,120 @@ select {
   margin-left: 6px;
   font-size: 12px;
   background: none;
-  border: 1px solid var(--inv-boxline);
+  border: 1.5px solid var(--riso-dash-strong);
   border-radius: 6px;
-  color: var(--inv-soft);
+  color: var(--riso-soft);
   padding: 2px 6px;
-  color-scheme: dark;
 }
 
 .inv-panel-footer {
-  border-top: 1px solid var(--inv-border);
+  border-top: 1.5px dashed var(--riso-dash-strong);
   padding-top: 14px;
-  font-size: 13px;
-  color: var(--inv-soft);
+  font-size: 13.5px;
+  color: var(--riso-soft);
   line-height: 1.5;
 }
 
-.link-btn {
+.riso-inv-edit-modal .link-btn {
   background: none;
   border: none;
   padding: 0;
-  color: var(--accent-text);
+  color: var(--riso-accent);
   cursor: pointer;
   font-size: inherit;
   font-family: inherit;
 }
 
-.link-btn:hover {
+.riso-inv-edit-modal .link-btn:hover {
   text-decoration: underline;
 }
 
-.link-btn.subtle {
-  color: var(--inv-muted);
+.riso-inv-edit-modal .link-btn.subtle {
+  color: var(--riso-muted);
   font-size: 12px;
   margin-top: 6px;
   display: inline-block;
+}
+
+.riso-inv .btn,
+.riso-inv-edit-modal .btn,
+.riso-inv-form-modal .btn {
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 20px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  padding: 0 16px;
+  height: 38px;
+  cursor: pointer;
+}
+
+.riso-inv .btn.primary,
+.riso-inv-edit-modal .btn.primary,
+.riso-inv-form-modal .btn.primary {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-inv .btn.subtle,
+.riso-inv-edit-modal .btn.subtle,
+.riso-inv-form-modal .btn.subtle {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-inv .btn.subtle.active,
+.riso-inv-edit-modal .btn.subtle.active {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+.riso-inv .btn-sm,
+.riso-inv-edit-modal .btn-sm,
+.riso-inv-form-modal .btn-sm {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.riso-inv-form-overlay {
+  background: rgba(22, 24, 31, 0.4);
+}
+
+.riso-inv-form-modal {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  box-shadow: var(--riso-shadow-lg);
+  font-family: var(--riso-font-body);
+}
+
+.riso-inv-form-title {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.riso-inv-form-close {
+  color: var(--riso-muted);
+  font-size: 22px;
+}
+
+.riso-inv-form-modal .pantry-add-form input,
+.riso-inv-form-modal .pantry-add-form select,
+.riso-inv-form-modal .flyer-upload-form input,
+.riso-inv-form-modal .receipt-review-row input,
+.riso-inv-form-modal .receipt-review-row select {
+  font-family: var(--riso-font-body);
+  border: 1.5px solid var(--riso-dash-strong);
+  border-radius: 8px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
 }
 
 .inv-action-bar {
@@ -1730,43 +1905,67 @@ select {
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  background: var(--mustard);
-  border-radius: 24px;
+  background: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
   padding: 8px;
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 10px 30px rgba(20, 20, 120, 0.35);
+  box-shadow: 5px 5px 0 var(--riso-accent);
   z-index: 50;
 }
 
 .inv-action-count {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #fff;
+  font-family: var(--riso-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--riso-canvas);
   padding: 0 12px;
   white-space: nowrap;
 }
 
 .inv-action-btn {
-  height: 34px;
-  border-radius: 17px;
-  padding: 0 14px;
-  font-size: 13.5px;
-  border: none;
+  height: 38px;
+  border-radius: 19px;
+  padding: 0 16px;
+  font-size: 14px;
+  border: 2px solid rgba(244, 241, 234, 0.45);
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  font-family: inherit;
+  background: none;
+  color: var(--riso-canvas);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
 }
 
 .inv-action-btn.primary {
-  background: #fff;
-  color: var(--mustard);
-  font-weight: 600;
+  background: var(--riso-yellow);
+  border-color: var(--riso-yellow);
+  color: var(--riso-ink);
 }
 
 @media (max-width: 680px) {
+  .riso-inv {
+    padding: 18px 16px 40px;
+  }
+
+  .riso-inv-title {
+    font-size: 38px;
+  }
+
+  .inv-shelves {
+    grid-template-columns: 1fr;
+  }
+
+  .inv-shelf.wide {
+    grid-column: auto;
+  }
+
+  .riso-inv-edit-overlay {
+    padding: 24px 12px;
+    align-items: center;
+  }
+
   .inv-action-bar {
     flex-wrap: wrap;
     justify-content: center;
@@ -1891,95 +2090,6 @@ select {
 .ingredient-notes {
   color: var(--ink-soft);
   font-style: italic;
-}
-
-/* ---------- Grocery store sections ---------- */
-
-.store-sections-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-}
-
-@media (max-width: 680px) {
-  .store-sections-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.store-section {
-  background: var(--bg-soft);
-  border-radius: 10px;
-  padding: 10px 12px;
-  border: 1px dashed transparent;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.store-section.drop-active {
-  border-color: var(--mustard);
-  background: rgba(35, 35, 255, 0.1);
-}
-
-.store-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.store-section-title {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--paper-soft);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.store-section-reorder {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.store-section-reorder button {
-  background: none;
-  border: none;
-  color: var(--paper-soft);
-  opacity: 0.6; /* below ~0.52 this drops under 4.5:1 against --bg-soft */
-  cursor: pointer;
-  font-size: 11px;
-  padding: 2px 4px;
-  line-height: 1;
-}
-
-.store-section-reorder button:hover:not(:disabled) {
-  opacity: 1;
-  color: var(--sage);
-}
-
-.store-section-reorder button:disabled {
-  opacity: 0.15;
-  cursor: default;
-}
-
-.add-section-form {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.add-section-form input {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  font-size: 13px;
-  background: var(--paper);
-  color: var(--ink);
 }
 
 .manual-form {
@@ -2301,18 +2411,6 @@ select {
   background: var(--mustard);
   border: 2px solid #fff;
   flex-shrink: 0;
-}
-
-.grocery-recipe-group {
-  margin-bottom: 16px;
-}
-
-.grocery-recipe-heading {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--sage);
-  margin: 0 0 6px;
 }
 
 /* ---------- Import form ---------- */
@@ -3150,241 +3248,19 @@ input[type="date"].planner-week-picker {
   font-weight: 500;
 }
 
-.grocery-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.grocery-item {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  background: var(--bg-soft);
-  border-radius: 8px;
-  padding: 10px 14px;
-}
-
-.grocery-item label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  cursor: pointer;
-}
-
-.grocery-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent-text);
-  cursor: pointer;
-}
-
-.grocery-item-main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.grocery-item-namerow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.grocery-item-name {
-  font-size: 14px;
-}
-
-.grocery-item-variety {
-  font-size: 12px;
-  color: var(--paper-soft);
-  opacity: 0.65;
-}
-
-.grocery-item-qty {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--paper);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 3px 9px;
-  border-radius: 6px;
-  white-space: nowrap;
-  letter-spacing: 0.01em;
-}
-
-.grocery-item-sources {
-  font-size: 11px;
-  color: var(--sage);
-  opacity: 0.85;
-  margin-top: 2px;
-}
-
-.grocery-item.checked .grocery-item-name {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
-
-.deal-flag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  background: var(--mustard);
-  color: #eef0ff;
-  padding: 3px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.deal-flag.sale {
-  background: var(--tomato);
-  color: #fbe9e6;
-}
-
-.grocery-item.draggable {
-  cursor: grab;
-  /* touch-action: none — see .meal-card's comment above; same fix, same
-     reasoning (this list is vertical, single-column). */
-  touch-action: none;
-}
-
-.grocery-item.dragging {
-  opacity: 0.4;
-}
-
-.grocery-week-label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--sage);
-  margin: 0 0 10px;
-}
-
-.grocery-note {
-  background: var(--bg-soft);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-}
-
-.grocery-note p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--paper-soft);
-  opacity: 0.85;
-  line-height: 1.5;
-}
-
-.grocery-note p:first-child {
-  margin-bottom: 4px;
-}
-
-.grocery-note strong {
-  color: var(--paper);
-  font-family: var(--font-mono);
-}
-
-.staples-section {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--bg-soft);
-  border-radius: 8px;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.staples-section.drop-active {
-  border-color: var(--mustard);
-  background: rgba(35, 35, 255, 0.1);
-  padding: 10px 8px;
-}
-
-.staples-subsection {
-  border-radius: 8px;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.staples-subsection.drop-active {
-  box-shadow: 0 0 0 2px var(--mustard);
-  background: rgba(35, 35, 255, 0.08);
-  padding: 6px 4px;
-}
-
-.staples-toggle {
-  background: none;
-  border: none;
-  color: var(--paper-soft);
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 4px 0;
-}
-
-.staples-toggle:hover {
-  opacity: 0.85;
-}
-
-.staples-subheading {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sage);
-  margin: 14px 0 6px 4px;
-}
-
-.staples-list {
-  margin-top: 0;
-  opacity: 0.85;
-}
-
-.staple-remove-btn {
-  background: none;
-  border: none;
-  color: var(--paper-soft);
-  opacity: 0.4;
-  font-size: 15px;
-  cursor: pointer;
-  padding: 0 2px;
-  margin-left: 6px;
-}
-
-.staple-remove-btn:hover {
-  opacity: 1;
-  color: var(--tomato);
-}
-
-.staples-empty-hint {
-  font-size: 12px;
-  color: var(--paper-soft);
-  opacity: 0.5;
-  padding: 10px 4px;
-  text-align: center;
-}
-
 /* ---------- Flyers tab (cook what's on sale) ---------- */
 
-/* ---------- "Riso" theme tokens (Flyers screen redesign) ----------
-   Neubrutalist style from the Riso Flyers design exploration: thick black
-   borders, offset drop shadows, a cream surface on a warm off-white page,
-   saturated accent blocks (blue for actions, pink for "ends soon", yellow
-   for stickers, green for price/savings). Scoped to .riso-theme (Flyers
-   only), same prefixed-token pattern as --vp-, --inv-, --hm- elsewhere in
-   this file - purely additive, no other screen changes. */
-/* Token names/values mirror design_handoff_riso/README.md's "Design
-   system" table exactly (paper/card/ink/ink-soft/ink-muted/track/rule/
-   blue/pink/green/green-text/green-tint/yellow), prefixed --riso- for this
-   file's usual scoping. "Black paper" dark mode isn't designed yet per the
-   handoff, so only light values exist for now - every color already lives
-   in a token, so dark can be added later without touching markup. */
+/* ---------- "Riso Poster" theme tokens (full-app redesign) ----------
+   Two-ink risograph print look: thick black borders, hard offset shadows,
+   a cream surface on a warm off-white page, saturated accent blocks (blue
+   for action, pink for urgency/today, green for sale, yellow for
+   stickers). Token names/values mirror design_handoff_riso/README.md's
+   "Design system" table exactly, prefixed --riso- per this file's usual
+   scoping (--vp-, --inv-, --hm-). Applied screen by screen - a screen not
+   yet migrated keeps its own look until its turn. "Black paper" dark mode
+   isn't designed yet, so only light values exist for now - every color
+   already lives in a token, so dark can be added later without touching
+   markup. */
 .riso-theme {
   --riso-canvas: #f4f1ea; /* paper */
   --riso-surface: #fffdf8; /* card */
@@ -3392,21 +3268,151 @@ input[type="date"].planner-week-picker {
   --riso-ink: #16181f; /* ink */
   --riso-soft: #3f3e37; /* ink-soft */
   --riso-muted: #5e5b52; /* ink-muted */
-  --riso-dash: #d6cfbf; /* rule */
+  --riso-dash: #d6cfbf; /* rule (dashed dividers) */
+  --riso-dash-strong: #bdb6a6; /* rule (dashed empty slots) */
   --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
   --riso-hot: #ff48b0; /* pink */
   --riso-yellow: #ffe14d; /* yellow */
-  --riso-green: #00a95c; /* green */
+  --riso-green: #10c95c; /* green */
   --riso-green-text: #00753f; /* green-text */
   --riso-green-tint: #e6f5ec; /* green-tint */
-  --riso-shadow: 3px 3px 0 var(--riso-ink); /* buttons, active nav, stickers */
-  --riso-shadow-rail: 5px 5px 0 var(--riso-ink); /* rails */
-  --riso-shadow-lg: 6px 6px 0 var(--riso-ink); /* hero and color blocks */
+  --riso-danger: #c4123f; /* danger (delete text only) */
+  --riso-shadow: 3px 3px 0 var(--riso-ink); /* buttons, active nav, stickers, round icon buttons */
+  --riso-shadow-ready: 5px 5px 0 var(--riso-ink); /* "ready / nothing to buy" cards */
+  --riso-shadow-lg: 8px 8px 0 var(--riso-ink); /* hero/color blocks, recipe card, pop-ups */
+  --riso-shadow-selected: 4px 4px 0 var(--riso-accent); /* selected inventory item */
+  --riso-shadow-today: 4px 4px 0 var(--riso-hot); /* today's Planner column */
   --riso-font-display: "Bricolage Grotesque", sans-serif;
   --riso-font-body: "Inter", system-ui, sans-serif;
   --riso-font-mono: "DM Mono", ui-monospace, monospace;
   color-scheme: light;
+}
+
+/* ---------- Riso Poster shared components ---------- */
+
+/* Segmented control - one outlined pill, the active segment filled ink
+   with paper text (e.g. Grocery's By store/By aisle/By recipe, the
+   Planner side panel's Week overview/Plan around). */
+.riso-segmented {
+  display: inline-flex;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--riso-surface);
+}
+
+.riso-segmented button {
+  border: none;
+  background: none;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  height: 38px;
+  padding: 0 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.riso-segmented button.active {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+/* Switch - 48x28 track, blue border+fill when on, ink-outlined card knob. */
+.riso-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riso-switch-label {
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--riso-ink);
+}
+
+.riso-switch-meta {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  color: var(--riso-muted);
+}
+
+.riso-switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+  border: 2px solid var(--riso-track);
+  background: var(--riso-track);
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.riso-switch.on {
+  border-color: var(--riso-accent);
+  background: var(--riso-accent);
+}
+
+.riso-switch-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+  transition: transform 0.15s ease;
+}
+
+.riso-switch.on .riso-switch-knob {
+  transform: translateX(20px);
+}
+
+/* "How it works" hint strip - dashed card, a tilted yellow sticker, and a
+   dismiss link. Dismissal is saved per user+screen (see dismissedHints in
+   localStorage, keyed the same way). */
+.riso-hint-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--riso-surface);
+  border: 2px dashed var(--riso-ink);
+  border-radius: 18px;
+  padding: 12px 16px;
+}
+
+.riso-hint-sticker {
+  flex: none;
+  transform: rotate(-4deg);
+}
+
+.riso-hint-text {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-hint-dismiss {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--riso-ink);
+  text-decoration: underline;
 }
 
 .riso-flyers {
@@ -3974,7 +3980,7 @@ input[type="date"].planner-week-picker {
 
 .riso-table-row {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) 90px 100px 110px minmax(0, 1.5fr) 150px;
+  grid-template-columns: minmax(0, 2.2fr) 90px 110px 120px minmax(0, 1.6fr) 150px;
   gap: 14px;
   align-items: center;
   padding: 12px 18px;
@@ -4203,6 +4209,282 @@ input[type="date"].planner-week-picker {
   color: var(--tomato);
 }
 
+/* ---------- Riso Poster: Recipes screen ---------- */
+
+.riso-recipes {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-recipes-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-recipes-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.riso-recipes-searchbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 6px 6px 6px 10px;
+  box-shadow: var(--riso-shadow-ready);
+}
+
+.riso-recipes-searchbar-label {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  flex: none;
+}
+
+.riso-recipes-searchbar input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.riso-recipes-searchbar-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: none;
+}
+
+.riso-recipes-searchbar-btn.primary {
+  padding: 0 22px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.riso-recipes-searchbar-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.riso-recipes-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.riso-recipes-filters-spacer {
+  flex: 1;
+}
+
+.riso-recipes-sort-label {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--riso-ink);
+}
+
+.riso-recipes-sort-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-filter-chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.riso-filter-chip.active {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-filter-chip-count {
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  opacity: 0.75;
+}
+
+.riso-recipes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 20px;
+}
+
+.riso-recipe-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.riso-recipe-card-photo {
+  height: 160px;
+  border-bottom: 2px solid var(--riso-ink);
+  background: var(--riso-track);
+  flex: none;
+}
+
+.riso-recipe-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-recipe-card-badge {
+  position: absolute;
+}
+
+.riso-recipe-card-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.riso-recipe-card-name {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.riso-recipe-card-meta {
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+}
+
+.riso-recipe-card-spacer {
+  flex: 1;
+}
+
+.riso-recipe-card-havebar {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--riso-track);
+  border: 2px solid var(--riso-ink);
+  overflow: hidden;
+}
+
+.riso-recipe-card-havebar-fill {
+  height: 100%;
+  background: var(--riso-accent);
+}
+
+.riso-recipe-card-havelabel {
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.riso-recipes-empty {
+  border: 2px dashed var(--riso-ink);
+  border-radius: 22px;
+  padding: 40px;
+  text-align: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--riso-ink);
+  margin: 0;
+}
+
+@media (max-width: 680px) {
+  .riso-recipes {
+    padding: 18px 16px 40px;
+  }
+
+  .riso-recipes-title {
+    font-size: 40px;
+  }
+
+  .riso-recipes-searchbar {
+    flex-wrap: wrap;
+    border-radius: 24px;
+  }
+
+  .riso-recipes-searchbar input {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 /* ---------- Recipe detail modal ---------- */
 
 .modal-overlay {
@@ -4238,11 +4520,11 @@ input[type="date"].planner-week-picker {
 }
 
 .rc-notes-label {
-  font-family: var(--font-mono);
+  font-family: var(--riso-font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--inv-muted);
+  color: var(--riso-muted);
   margin: 0 0 6px;
 }
 
@@ -4250,7 +4532,7 @@ input[type="date"].planner-week-picker {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
-  color: var(--paper);
+  color: var(--riso-ink);
   white-space: pre-wrap;
 }
 
@@ -4275,216 +4557,6 @@ input[type="date"].planner-week-picker {
    Inventory-specific) rather than defining a second set of near-identical
    custom properties. The Edit view (ManualRecipeForm, .wide-modal) stays
    on the app's usual light .card - only this read view is dark. */
-.rc-modal {
-  max-width: 1040px;
-  background: var(--bg-soft);
-  color: var(--paper);
-}
-
-.rc-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 18px;
-}
-
-.rc-header-left {
-  flex: 1;
-  min-width: 280px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rc-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 28px;
-  line-height: 1.15;
-  margin: 0;
-  padding-right: 24px;
-}
-
-.rc-meta-line {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: var(--inv-neon);
-}
-
-.rc-meta-sep {
-  color: var(--inv-boxline);
-  margin: 0 6px;
-}
-
-.rc-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.rc-btn-primary {
-  height: 40px;
-  padding: 0 20px;
-  border-radius: 20px;
-  background: var(--mustard);
-  color: #fff;
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.rc-btn-secondary {
-  height: 40px;
-  padding: 0 18px;
-  border-radius: 20px;
-  background: var(--inv-surface2);
-  color: var(--paper);
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.rc-btn-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--inv-surface2);
-  color: var(--paper);
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.rc-menu-wrap {
-  position: relative;
-}
-
-.rc-menu-catcher {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-}
-
-.rc-menu {
-  position: absolute;
-  top: 46px;
-  right: 0;
-  z-index: 61;
-  background: var(--inv-surface2);
-  border: 1px solid var(--inv-border);
-  border-radius: 12px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  min-width: 180px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-
-.rc-menu button,
-.rc-menu a {
-  background: none;
-  border: none;
-  color: var(--paper);
-  text-align: left;
-  font-size: 13.5px;
-  font-family: inherit;
-  padding: 9px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.rc-menu button:hover,
-.rc-menu a:hover {
-  background: var(--bg);
-}
-
-.rc-menu button.danger {
-  color: var(--tomato);
-}
-
-.rc-tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 8px 0 11px;
-  border-radius: 13px;
-  background: var(--inv-surface2);
-  color: var(--inv-soft);
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  text-transform: capitalize;
-}
-
-.rc-tag-chip button {
-  background: none;
-  border: none;
-  color: var(--inv-muted);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0 2px;
-  line-height: 1;
-}
-
-.rc-tag-chip button:hover {
-  color: var(--tomato);
-}
-
-.rc-tag-input {
-  border: 1px dashed var(--inv-boxline);
-  background: transparent;
-  color: var(--inv-muted);
-  font-size: 12px;
-  font-family: var(--font-mono);
-  padding: 5px 10px;
-  border-radius: 13px;
-  width: 60px;
-}
-
-.rc-tag-input:focus {
-  outline: none;
-  border-color: var(--mustard);
-  color: var(--paper);
-  width: 110px;
-}
-
-.rc-hero-wrap {
-  position: relative;
-  margin-bottom: 18px;
-}
-
-.rc-hero-photo {
-  width: 100%;
-  height: 340px;
-  object-fit: cover;
-  border-radius: 18px;
-  display: block;
-  cursor: pointer;
-}
-
-.rc-hero-count {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 15px;
-  background: rgba(14, 14, 60, 0.85);
-  color: #fff;
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  cursor: pointer;
-}
-
 .rc-lightbox-overlay {
   position: fixed;
   inset: 0;
@@ -4530,432 +4602,957 @@ input[type="date"].planner-week-picker {
   left: 50%;
   transform: translateX(-50%);
   color: #fff;
-  font-family: var(--font-mono);
+  font-family: var(--riso-font-mono);
   font-size: 12px;
 }
 
-.rc-phone-tabs {
+.riso-rc-modal {
+  max-width: 1100px;
+  width: 95vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 28px;
+  box-shadow: var(--riso-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--riso-font-body);
+  color: var(--riso-ink);
+}
+
+.riso-rc-hero {
+  position: relative;
+  height: 340px;
+  border-bottom: 2px solid var(--riso-ink);
+  background: var(--riso-track);
+  flex: none;
+}
+
+.riso-rc-hero-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+}
+
+.riso-rc-hero-photo.placeholder {
+  background: var(--riso-track);
+}
+
+.riso-rc-back {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.riso-rc-hero-actions {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  gap: 10px;
+}
+
+.riso-rc-round-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 18px;
+  cursor: pointer;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.riso-rc-menu-wrap {
+  position: relative;
+}
+
+.riso-rc-menu-catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+}
+
+.riso-rc-menu {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 230px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  padding: 6px;
+  box-shadow: var(--riso-shadow-ready);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14px;
+  z-index: 56;
+}
+
+.riso-rc-menu button,
+.riso-rc-menu a {
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: var(--riso-ink);
+  text-decoration: none;
+}
+
+.riso-rc-menu button:hover,
+.riso-rc-menu a:hover {
+  background: var(--riso-canvas);
+}
+
+.riso-rc-menu button.danger {
+  color: var(--riso-danger);
+}
+
+.riso-rc-menu-divider {
+  height: 0;
+  border-top: 2px dashed var(--riso-dash);
+  margin: 4px 8px;
+}
+
+.riso-rc-hero-sticker {
+  position: absolute;
+  left: 24px;
+  bottom: -18px;
+  transform: rotate(-4deg);
+  padding: 7px 14px;
+  font-size: 15px;
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-rc-photo-count {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.riso-rc-content {
+  padding: 40px 36px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.riso-rc-titlebar {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.riso-rc-titlebar-main {
+  flex: 1;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-rc-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.riso-rc-meta-line {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: var(--riso-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-rc-meta-sep {
+  margin-right: 10px;
+}
+
+.riso-rc-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.riso-rc-tag-chip {
+  height: 30px;
+  padding: 0 8px 0 12px;
+  border-radius: 15px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.riso-rc-tag-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--riso-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.riso-rc-tag-chip button:hover {
+  color: var(--riso-danger);
+}
+
+.riso-rc-tag-input {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  border: 2px dashed var(--riso-ink);
+  background: none;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--riso-ink);
+  width: 84px;
+  outline: none;
+}
+
+.riso-rc-tag-input:focus {
+  width: 140px;
+}
+
+.riso-rc-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.riso-rc-btn-primary {
+  height: 48px;
+  padding: 0 26px;
+  border-radius: 24px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-rc-btn-secondary {
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 24px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-rc-btn-open-original {
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 24px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.riso-rc-phone-tabs {
   display: none;
 }
 
-.rc-body {
+.riso-rc-body {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 390px minmax(0, 1fr);
+  gap: 28px;
   align-items: start;
 }
 
-.rc-ingredients-panel {
-  position: sticky;
-  top: 0;
-  background: var(--inv-surface2);
-  border-radius: 18px;
+.riso-rc-ingredients-panel {
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.rc-panel-header {
+.riso-rc-panel-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-}
-
-.rc-panel-header h3 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
-  margin: 0;
-  color: var(--paper);
-}
-
-.rc-servings-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  background: var(--bg);
-  border-radius: 17px;
-  padding: 4px 10px;
-}
-
-.rc-servings-stepper button {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
-  background: var(--inv-surface2);
-  color: var(--paper);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.rc-servings-stepper span {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 13px;
-  white-space: nowrap;
-  color: var(--paper);
-}
-
-.rc-have-meter {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--inv-soft);
-}
-
-.rc-have-track {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--bg);
-  overflow: hidden;
-}
-
-.rc-have-fill {
-  height: 100%;
-  background: var(--mustard);
-  border-radius: 3px;
-}
-
-.rc-ingredient-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.rc-ingredient-row {
-  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
-  border-top: 1px solid var(--inv-border);
 }
 
-.rc-ingredient-row:first-child {
-  border-top: none;
+.riso-rc-panel-header h3 {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 24px;
 }
 
-.rc-ingredient-dot {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--inv-boxline);
+.riso-rc-servings-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 4px;
+  border-radius: 19px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.riso-rc-servings-stepper button {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
-  color: #fff;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  box-sizing: border-box;
+  padding: 0;
 }
 
-.rc-ingredient-dot.have {
-  border-color: var(--mustard);
-  background: var(--mustard);
-}
-
-.rc-ingredient-name {
-  flex: 1;
-  min-width: 0;
+.riso-rc-servings-stepper span {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
   font-size: 13.5px;
-  line-height: 1.35;
-  color: var(--paper);
+  padding: 0 6px;
+  white-space: nowrap;
 }
 
-.rc-use-soon-badge {
-  height: 18px;
-  padding: 0 7px;
-  border-radius: 9px;
-  background: #8f1fe0;
-  color: #fff;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
+.riso-rc-have-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.riso-rc-have-label {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.riso-rc-have-track {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  overflow: hidden;
+}
+
+.riso-rc-have-fill {
+  height: 100%;
+  background: var(--riso-accent);
+  transition: width 0.25s;
+}
+
+.riso-rc-why-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--riso-surface);
+  border: 2px dashed var(--riso-ink);
+  border-radius: 16px;
+  padding: 11px 13px;
+}
+
+.riso-rc-why-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-rc-why-sticker {
+  flex: none;
+  transform: rotate(-4deg);
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 11.5px;
+}
+
+.riso-rc-ingredient-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-rc-ingredient {
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.riso-rc-ingredient-row {
   display: flex;
   align-items: center;
-  white-space: nowrap;
-}
-
-.rc-ingredient-qty {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 12px;
-  color: var(--inv-soft);
-  white-space: nowrap;
-}
-
-.rc-add-missing-btn {
-  height: 38px;
-  border-radius: 19px;
-  background: var(--bg);
-  color: var(--paper);
+  gap: 10px;
+  padding: 9px 0;
+  cursor: pointer;
+  width: 100%;
+  background: none;
   border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.riso-rc-ingredient-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  flex: none;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.riso-rc-ingredient-dot.have {
+  background: var(--riso-accent);
+}
+
+.riso-rc-ingredient-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  line-height: 1.3;
+}
+
+.riso-rc-ingredient-note {
+  font-family: var(--riso-font-body);
   font-size: 13px;
-  font-weight: 500;
+  font-style: italic;
+  color: var(--riso-muted);
+}
+
+.riso-rc-use-soon-sticker {
+  transform: rotate(-4deg);
+  background: var(--riso-hot);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.riso-rc-ingredient-qty {
+  font-family: var(--riso-font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--riso-soft);
+}
+
+.riso-rc-ingredient-explainer {
+  margin: 0 0 12px 32px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.riso-rc-ingredient-explainer p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-rc-ingredient-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.riso-rc-ing-action {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.rc-add-missing-btn:disabled {
+.riso-rc-ing-action.primary {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+}
+
+.riso-rc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--riso-soft);
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.riso-rc-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.riso-rc-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.riso-rc-legend-dot.have {
+  background: var(--riso-accent);
+}
+
+.riso-rc-legend-sticker {
+  background: var(--riso-hot);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 10px;
+}
+
+.riso-rc-add-missing-btn {
+  height: 44px;
+  border-radius: 22px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.riso-rc-add-missing-btn:disabled {
   opacity: 0.6;
   cursor: default;
 }
 
-.rc-use-soon-footnote {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--inv-soft);
-  margin: 0;
-}
-
-.rc-steps-wrap {
-  min-width: 0;
-}
-
-.rc-steps-heading {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
-  margin: 0 0 8px;
-  color: var(--paper);
-}
-
-.rc-step-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.rc-step-heading {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--paper);
-  margin: 14px 0 4px;
-  list-style: none;
-}
-
-.rc-step-row {
+.riso-rc-planned-note {
   display: flex;
-  gap: 16px;
-  padding: 16px 0;
-  border-top: 1px solid var(--inv-border);
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 12px 14px;
 }
 
-.rc-step-row:first-child {
-  border-top: none;
-}
-
-.rc-step-number {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--mustard);
-  color: #fff;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 13px;
+.riso-rc-planned-check {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  box-sizing: border-box;
 }
 
-.rc-step-content {
+.riso-rc-planned-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.riso-rc-planned-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  color: var(--riso-accent);
+}
+
+.riso-rc-steps-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-rc-steps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-rc-steps-header h3 {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 24px;
+}
+
+.riso-rc-steps-header span {
+  font-size: 13px;
+  color: var(--riso-soft);
+}
+
+.riso-rc-step-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-rc-step-heading {
+  padding: 10px 0;
+  font-family: var(--riso-font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  color: var(--riso-muted);
+  text-transform: uppercase;
+}
+
+.riso-rc-step-row {
+  display: flex;
+  gap: 18px;
+  padding: 18px 0;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  align-items: flex-start;
+}
+
+.riso-rc-step-list li:first-child {
+  border-top: none;
+}
+
+.riso-rc-step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 17px;
+  box-sizing: border-box;
+}
+
+.riso-rc-step-content {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
-.rc-step-title {
-  font-family: var(--font-mono);
+.riso-rc-step-title {
+  font-family: var(--riso-font-mono);
   font-weight: 500;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  color: var(--riso-muted);
   text-transform: uppercase;
-  color: var(--inv-neon);
 }
 
-.rc-step-text {
+.riso-rc-step-text {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
-  color: var(--paper);
 }
 
-.rc-timer-chip {
+.riso-rc-timer-chip {
   align-self: flex-start;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 15px;
-  background: var(--inv-surface2);
-  color: var(--paper);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 11px;
+  transform: rotate(-2deg);
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 13px;
+  margin-top: 3px;
   cursor: pointer;
+  color: var(--riso-ink);
 }
 
-.rc-timer-chip.running {
-  background: var(--mustard);
-  color: #fff;
+.riso-rc-timer-chip.running {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
 }
 
-.rc-timer-chip.done {
-  background: var(--inv-neon);
-  color: #fff;
+.riso-rc-timer-chip.done {
+  background: var(--riso-green);
+  color: var(--riso-green-text);
 }
 
-.rc-step-thumb {
-  flex-shrink: 0;
-  width: 120px;
-  height: 84px;
-  object-fit: cover;
-  border-radius: 12px;
-}
-
-.rc-footer {
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid var(--inv-border);
-}
-
-.rc-footer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.rc-footer-header h3 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
-  margin: 0;
-  color: var(--paper);
-}
-
-.rc-footer-link {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--inv-neon);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.rc-footer-link:hover {
-  text-decoration: underline;
-}
-
-.rc-similar-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.rc-similar-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--inv-surface2);
+.riso-rc-step-thumb {
+  width: 136px;
+  height: 96px;
   border-radius: 14px;
+  overflow: hidden;
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-track);
+  object-fit: cover;
+  display: block;
+}
+
+.riso-rc-similar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 22px;
+  border-top: 2px solid var(--riso-ink);
+}
+
+.riso-rc-similar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-rc-similar-header h3 {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 24px;
+}
+
+.riso-rc-similar-header span {
+  font-size: 13px;
+  color: var(--riso-soft);
+}
+
+.riso-rc-similar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.riso-rc-similar-card {
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
   padding: 6px;
-  border: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   cursor: pointer;
   text-align: left;
+  font: inherit;
+  color: inherit;
 }
 
-.rc-similar-card img,
-.rc-similar-photo-placeholder {
-  width: 56px;
-  height: 56px;
-  border-radius: 10px;
+.riso-rc-similar-card img,
+.riso-rc-similar-photo-placeholder {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex: none;
+  border: 2px solid var(--riso-ink);
   object-fit: cover;
-  flex-shrink: 0;
-  background: var(--bg);
+  background: var(--riso-track);
 }
 
-.rc-similar-info {
+.riso-rc-similar-info {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
 }
 
-.rc-similar-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--paper);
+.riso-rc-similar-title {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rc-similar-shared {
-  font-family: var(--font-mono);
+.riso-rc-similar-shared {
+  font-family: var(--riso-font-mono);
   font-size: 10.5px;
-  color: var(--inv-muted);
+  margin-top: 3px;
+  color: var(--riso-muted);
 }
 
 @media (max-width: 680px) {
-  .rc-modal {
-    padding: 18px 16px 24px;
+  .riso-rc-modal {
+    width: 100%;
+    max-height: 100%;
+    border-radius: 0;
   }
 
-  .rc-title {
-    font-size: 24px;
+  .riso-rc-content {
+    padding: 20px 18px 24px;
   }
 
-  .rc-hero-photo {
-    height: 200px;
-    border-radius: 14px;
+  .riso-rc-title {
+    font-size: 30px;
   }
 
-  .rc-header-right {
+  .riso-rc-hero {
+    height: 220px;
+  }
+
+  .riso-rc-actions {
     width: 100%;
   }
 
-  .rc-header-right .rc-btn-primary,
-  .rc-header-right .rc-btn-secondary {
+  .riso-rc-actions .riso-rc-btn-primary,
+  .riso-rc-actions .riso-rc-btn-secondary {
     flex: 1;
   }
 
-  .rc-phone-tabs {
+  .riso-rc-phone-tabs {
     display: flex;
     gap: 4px;
-    background: var(--bg);
+    background: var(--riso-canvas);
     padding: 4px;
     border-radius: 14px;
     margin-bottom: 14px;
   }
 
-  .rc-phone-tabs button {
+  .riso-rc-phone-tabs button {
     flex: 1;
     height: 38px;
     border-radius: 11px;
     border: none;
     background: none;
-    color: var(--inv-muted);
+    color: var(--riso-muted);
+    font-family: var(--riso-font-display);
+    font-weight: 600;
     font-size: 13px;
     cursor: pointer;
   }
 
-  .rc-phone-tabs button.active {
-    background: var(--mustard);
-    color: #fff;
+  .riso-rc-phone-tabs button.active {
+    background: var(--riso-accent);
+    color: var(--riso-on-accent);
   }
 
-  .rc-body {
+  .riso-rc-body {
     display: block;
   }
 
-  .rc-ingredients-panel {
-    position: static;
+  .riso-rc-ingredients-panel {
     margin-bottom: 16px;
   }
 
@@ -4963,7 +5560,7 @@ input[type="date"].planner-week-picker {
     display: none;
   }
 
-  .rc-similar-grid {
+  .riso-rc-similar-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -5656,60 +6253,107 @@ input[type="date"].planner-week-picker {
   margin: 0;
 }
 
-.riso-sticker-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+.riso-freshness-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
-.riso-sticker-cell {
+.riso-freshness-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  text-align: center;
+  gap: 10px;
 }
 
-.riso-sticker-circle {
-  width: 100%;
-  max-width: 96px;
-  aspect-ratio: 1;
-  border-radius: 50%;
+.riso-freshness-row-photo {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
+  object-fit: cover;
+  flex: none;
+}
+
+.riso-freshness-row-photo.placeholder {
+  background: var(--riso-track);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--riso-surface);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  color: var(--riso-muted);
 }
 
-.riso-sticker-circle.pink {
+.riso-freshness-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.riso-freshness-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.riso-freshness-row-name {
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.riso-freshness-row-days {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--riso-soft);
+  white-space: nowrap;
+}
+
+.riso-freshness-row-pill {
+  display: inline-block;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.riso-freshness-row-pill.pink {
   background: var(--riso-hot);
 }
 
-.riso-sticker-circle.yellow {
+.riso-freshness-row-pill.yellow {
   background: var(--riso-yellow);
 }
 
-.riso-sticker-circle-num {
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 28px;
-  line-height: 1;
+.riso-freshness-bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--riso-canvas);
+  border: 1.5px solid var(--riso-ink);
+  overflow: hidden;
 }
 
-.riso-sticker-circle-unit {
-  font-family: var(--riso-font-mono);
-  font-size: 9px;
-  letter-spacing: 0.08em;
+.riso-freshness-bar-fill {
+  height: 100%;
 }
 
-.riso-sticker-cell-name {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--riso-soft);
+.riso-freshness-bar-fill.pink {
+  background: var(--riso-hot);
+}
+
+.riso-freshness-bar-fill.ink {
+  background: var(--riso-ink);
 }
 
 .riso-home-mini-footer {
@@ -5850,6 +6494,1343 @@ input[type="date"].planner-week-picker {
 }
 
 /* ================================================================
+   Riso Poster — Planner (screen 4/8)
+   Same .riso-theme token block as Flyers/Home above — additive only,
+   no other screen affected. Class names are prefixed riso-planner-
+   to keep this screen's CSS self-contained; riso-add-popover-* and
+   riso-popup-* are small enough, and specific enough to this screen,
+   that they're kept unprefixed-by-planner but still riso-scoped.
+   ================================================================ */
+.riso-planner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-planner-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.riso-planner-header-left {
+  flex: 1 1 320px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-planner-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-planner-nav-arrow {
+  width: 38px;
+  height: 38px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 18px var(--riso-font-display);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-planner-week-label {
+  font: 500 13px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.riso-planner-week-badge {
+  transform: rotate(-4deg);
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font: 800 12.5px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-planner-date-picker {
+  height: 32px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 500 12px var(--riso-font-mono);
+  padding: 0 10px;
+}
+
+.riso-planner-title {
+  font: 800 60px/0.95 var(--riso-font-display);
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+
+.riso-planner-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-planner-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  align-items: flex-start;
+}
+
+.riso-planner-board {
+  flex: 1 1 640px;
+  min-width: 0;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.riso-planner-scroll {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 106px;
+  padding-bottom: 6px;
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.riso-planner-grid {
+  display: grid;
+  grid-template-columns: 84px repeat(7, calc((100% - 84px - 70px) / 5));
+  gap: 14px;
+}
+
+.riso-planner-corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--riso-surface);
+}
+
+.riso-planner-day-header {
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0;
+  border-radius: 14px;
+  background: transparent;
+  border: 2px solid transparent;
+}
+
+.riso-planner-day-header.is-today {
+  background: var(--riso-hot);
+  border-color: var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-planner-day-weekday {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.riso-planner-day-date {
+  font: 800 15px var(--riso-font-display);
+}
+
+.riso-planner-meal-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--riso-surface);
+  font: 800 17px var(--riso-font-display);
+  display: flex;
+  align-items: center;
+  box-shadow: 8px 0 8px -4px var(--riso-surface);
+}
+
+.riso-planner-cell {
+  aspect-ratio: 0.9;
+  min-width: 0;
+  display: flex;
+  scroll-snap-align: start;
+  position: relative;
+}
+
+.riso-planner-cell-empty-wrap,
+.riso-planner-cell-note-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+}
+
+.riso-planner-cell-empty {
+  flex: 1;
+  border-radius: 16px;
+  border: 2px dashed var(--riso-dash-strong);
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 14px var(--riso-font-display);
+  color: var(--riso-accent);
+  cursor: pointer;
+}
+
+.riso-planner-cell-empty:hover {
+  border-color: var(--riso-ink);
+}
+
+.riso-planner-cell-note {
+  flex: 1;
+  border-radius: 16px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.riso-planner-cell-note.editing {
+  background: var(--riso-surface);
+  padding: 6px;
+  cursor: default;
+}
+
+.riso-planner-note-label {
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-planner-note-text {
+  font: 700 14px/1.2 var(--riso-font-display);
+}
+
+.riso-planner-note-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: 700 13px var(--riso-font-display);
+  text-align: center;
+  outline: none;
+  color: var(--riso-ink);
+}
+
+.riso-planner-note-edit-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.riso-planner-card {
+  flex: 1;
+  border-radius: 16px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: grab;
+  position: relative;
+  /* touch-action: none, not pan-y — see .meal-card's comment elsewhere in
+     this file for why: pan-y lets a native scroll steal a held-then-moved
+     touch drag the instant it moves vertically, independent of dnd-kit's
+     own activation delay. Verified via touch-drag.spec.js's real
+     (CDP-dispatched) touch test, not a mouse simulation. */
+  touch-action: none;
+}
+
+.riso-planner-card.dragging {
+  opacity: 0.4;
+}
+
+.riso-planner-card-photo-wrap {
+  height: 60%;
+  flex: none;
+  border-bottom: 2px solid var(--riso-ink);
+  background: var(--riso-track);
+  position: relative;
+}
+
+.riso-planner-card-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-planner-card-photo.placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.riso-planner-card-leftover {
+  position: absolute;
+  right: 6px;
+  bottom: -11px;
+  transform: rotate(-4deg);
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font: 800 11px var(--riso-font-display);
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.riso-planner-card-leftover.stale {
+  background: var(--riso-hot);
+}
+
+.riso-planner-card-have {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.riso-planner-card-status {
+  position: absolute;
+  left: 8px;
+  bottom: calc(40% + 6px);
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.riso-planner-card-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-sizing: border-box;
+  z-index: 2;
+}
+
+.riso-planner-card:hover .riso-planner-card-remove,
+.riso-planner-card:focus-within .riso-planner-card-remove {
+  opacity: 1;
+}
+
+.riso-planner-card-body {
+  padding: 10px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.riso-planner-card-name {
+  font: 800 14.5px/1.2 var(--riso-font-display);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+.riso-planner-legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  font-size: 12.5px;
+  color: var(--riso-soft);
+}
+
+.riso-planner-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.riso-planner-legend-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  box-sizing: border-box;
+}
+
+.riso-planner-legend-leftover {
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 7px;
+  font: 800 10.5px var(--riso-font-display);
+}
+
+.riso-planner-legend-note {
+  font: 500 9.5px var(--riso-font-mono);
+}
+
+.riso-planner-legend-scroll {
+  margin-left: auto;
+  transform: rotate(-2deg);
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font: 800 12px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-planner-empty {
+  font-size: 13.5px;
+  color: var(--riso-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Empty-slot recipe picker popover */
+.riso-add-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 240px;
+  max-width: 70vw;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-add-popover-search {
+  height: 34px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  padding: 0 10px;
+  font-family: var(--riso-font-body);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.riso-add-popover-list {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.riso-add-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.riso-add-popover-row:hover {
+  background: var(--riso-canvas);
+}
+
+.riso-add-popover-row-photo {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-track);
+  flex: none;
+}
+
+.riso-add-popover-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--riso-ink);
+}
+
+.riso-add-popover-empty {
+  font-size: 12.5px;
+  color: var(--riso-muted);
+  padding: 6px;
+  margin: 0;
+}
+
+.riso-add-popover-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1.5px dashed var(--riso-dash);
+  padding-top: 8px;
+}
+
+.riso-add-popover-note-form {
+  display: flex;
+}
+
+.riso-add-popover-note-input {
+  flex: 1;
+  height: 32px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  padding: 0 10px;
+  font-family: var(--riso-font-body);
+  font-size: 12.5px;
+  box-sizing: border-box;
+}
+
+/* Sidebar */
+.riso-planner-sidebar {
+  flex: 0 1 290px;
+  min-width: 260px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+/* The Week overview / Plan around toggle uses the shared .riso-segmented
+   control (RisoControls.jsx's <Segmented>) rather than a bespoke one here —
+   see index.css's "Riso Poster shared components" section. */
+
+.riso-planner-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.riso-planner-overview-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.riso-planner-overview-number {
+  font: 800 80px/0.85 var(--riso-font-display);
+  color: var(--riso-accent);
+  letter-spacing: -0.04em;
+}
+
+.riso-planner-overview-copy {
+  font: 700 15px/1.3 var(--riso-font-display);
+}
+
+.riso-planner-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-planner-section-label {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--riso-muted);
+}
+
+.riso-planner-shared-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.riso-planner-shared-chip {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font: 600 13px var(--riso-font-display);
+  color: var(--riso-ink);
+  cursor: pointer;
+}
+
+.riso-planner-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-planner-suggestion-row {
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.riso-planner-suggestion-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  color: var(--riso-ink);
+}
+
+.riso-planner-suggestion-photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 11px;
+  overflow: hidden;
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  object-fit: cover;
+  background: var(--riso-track);
+  box-sizing: border-box;
+}
+
+.riso-planner-suggestion-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.riso-planner-suggestion-name {
+  font: 700 14px/1.25 var(--riso-font-display);
+}
+
+.riso-planner-suggestion-why {
+  font-size: 12px;
+  color: var(--riso-soft);
+  line-height: 1.35;
+}
+
+.riso-planner-suggestion-add {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font: 700 16px var(--riso-font-display);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-planner-footnote {
+  background: var(--riso-hot);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--riso-ink);
+}
+
+.riso-planner-around {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.riso-planner-around-intro {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+  margin: 0;
+}
+
+.riso-planner-ingredient-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.riso-planner-ingredient-chip {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: #fff;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 13px var(--riso-font-display);
+  box-sizing: border-box;
+}
+
+.riso-planner-ingredient-chip button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0;
+  font-size: 13px;
+}
+
+.riso-planner-add-ingredient-chip {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  border: 2px dashed var(--riso-ink);
+  background: none;
+  display: flex;
+  align-items: center;
+  font: 600 13px var(--riso-font-display);
+  color: var(--riso-ink);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-planner-ingredient-input {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  font: 600 13px var(--riso-font-display);
+  min-width: 120px;
+  box-sizing: border-box;
+}
+
+.riso-planner-quickpicks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-planner-quickpick-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font: 600 14px var(--riso-font-display);
+  color: var(--riso-ink);
+  cursor: pointer;
+}
+
+.riso-planner-quickpick-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.riso-planner-quickpick-badge {
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-family: var(--riso-font-body);
+}
+
+.riso-planner-quickpick-badge.pink {
+  background: var(--riso-hot);
+}
+
+.riso-planner-quickpick-badge.green {
+  background: var(--riso-green);
+}
+
+/* Shared-ingredients / suggestion-preview popup, restyled from the old
+   .shared-ingredients-modal to the Riso look. .modal-overlay itself is
+   shared app-wide (Inventory, RecipeDetailModal, Flyers) and stays as-is. */
+.riso-popup {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 22px;
+  max-width: 360px;
+  width: 90vw;
+  position: relative;
+  font-family: var(--riso-font-body);
+  color: var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.riso-popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-popup-heading {
+  font-size: 12.5px;
+  color: var(--riso-muted);
+  margin: 0 0 4px;
+}
+
+.riso-popup-title {
+  font: 800 20px var(--riso-font-display);
+  margin: 0 0 12px;
+}
+
+.riso-popup-recipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.riso-popup-recipe-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--riso-font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--riso-ink);
+}
+
+.riso-popup-recipe-photo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: none;
+}
+
+.riso-popup-ingredient-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--riso-soft);
+}
+
+/* ================================================================
+   Riso Poster — Grocery List (screen 6/8)
+   Same .riso-theme token block as the other migrated screens —
+   additive only. Uses the shared .riso-segmented/.riso-hint-strip
+   (RisoControls.jsx's <Segmented>/<HintStrip>) rather than bespoke
+   ones here. Class names are prefixed riso-grocery-/riso-row/
+   riso-group to keep this screen's CSS self-contained.
+   ================================================================ */
+.riso-grocery {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-grocery-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.riso-grocery-title-block {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-grocery-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.riso-grocery-share {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  cursor: pointer;
+  flex: none;
+}
+
+.riso-grocery-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  align-items: flex-start;
+}
+
+.riso-grocery-main {
+  flex: 3 1 600px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.riso-grocery-add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 6px 6px 6px 22px;
+}
+
+.riso-grocery-add input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 500;
+  font-size: 15.5px;
+}
+
+.riso-grocery-add-btn {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 20px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  flex: none;
+}
+
+.riso-group {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 2px solid var(--riso-ink);
+}
+
+.riso-group-name {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 22px;
+}
+
+.riso-group-count {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.riso-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  cursor: pointer;
+}
+
+.riso-row:first-child {
+  border-top: none;
+}
+
+.riso-row:hover {
+  background: var(--riso-canvas);
+}
+
+.riso-row.checked {
+  opacity: 0.5;
+}
+
+.riso-row-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  flex: none;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.riso-row-check.on {
+  background: var(--riso-accent);
+}
+
+.riso-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.riso-row-name {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 15.5px;
+}
+
+.riso-row-name.struck {
+  text-decoration: line-through;
+}
+
+.riso-row-sub {
+  font-family: var(--riso-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
+}
+
+.riso-row-sale {
+  flex: none;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 4px 10px 10px 4px;
+  padding: 2px 9px 2px 12px;
+  font-family: var(--riso-font-mono);
+  font-weight: 700;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.riso-row-store {
+  flex: none;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 14px;
+  background: var(--riso-surface);
+  border: 1.5px solid var(--riso-ink);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-row-qty {
+  flex: none;
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 64px;
+  text-align: right;
+}
+
+.riso-row-delete {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.riso-grocery-aside {
+  flex: 1 1 300px;
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.riso-grocery-cart {
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-grocery-cart-count {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.riso-grocery-cart-num {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 84px;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.riso-grocery-cart-label {
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.riso-grocery-cart-track {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  overflow: hidden;
+}
+
+.riso-grocery-cart-fill {
+  height: 100%;
+  background: var(--riso-ink);
+  transition: width 0.25s;
+}
+
+.riso-grocery-cart-btn {
+  height: 44px;
+  border-radius: 22px;
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.riso-grocery-cart-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.riso-grocery-cart-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.riso-grocery-excluded {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-grocery-excluded-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.riso-grocery-excluded-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.riso-grocery-excluded-row span:last-child {
+  font-family: var(--riso-font-mono);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.riso-grocery-excluded-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--riso-accent);
+  cursor: pointer;
+}
+
+.riso-grocery-sale {
+  position: relative;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-grocery-sale-amt {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.05;
+}
+
+.riso-grocery-sale-copy {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ================================================================
    Mobile responsiveness
    Everything above was built and reviewed on desktop screenshots
    only — this is the first real pass at making it usable on a
@@ -5863,7 +7844,8 @@ input[type="date"].planner-week-picker {
 
   .app-header {
     gap: 10px;
-    margin-bottom: 16px;
+    margin: -16px -12px 16px;
+    padding: 16px 12px;
   }
 
   .wordmark {
@@ -5885,82 +7867,40 @@ input[type="date"].planner-week-picker {
     font-size: 13px;
   }
 
-  /* Planner: sidebar stacks below the board instead of squeezing into a
-     sliver next to it, and drops its sticky positioning (sticky-while-
-     stacked-below looks broken, not helpful, on a phone-height viewport). */
-  .planner-layout {
+  /* Planner (Riso): sidebar stacks below the board instead of squeezing
+     into a sliver next to it, and the grid shrinks its columns a bit so a
+     day cell stays a usable tap target on a phone width. */
+  .riso-planner {
+    padding: 0;
+  }
+
+  .riso-planner-row {
     flex-direction: column;
   }
 
-  .planner-sidebar {
+  .riso-planner-sidebar {
     width: 100%;
-    position: static;
-    margin-top: 0;
+    flex-basis: auto;
   }
 
-  /* The capped-scroll treatment on these two lists is mainly there to stop
-     a long "plan around" match list from pushing everything below it far
-     down the page when the sidebar sits beside a much shorter grid — on
-     mobile the sidebar already stacks below the grid in normal flow, so
-     there's nothing to protect and this can just size to its content. */
-  .sidebar-suggestions,
-  .sidebar-chips {
-    max-height: none;
-    overflow-y: visible;
+  .riso-planner-title {
+    font-size: 38px;
   }
 
-  /* The 7-day grid itself stays a real grid (shrinking it into a single
-     mobile-only view is a bigger redesign than a CSS pass can safely do
-     blind) — .planner-main already scrolls horizontally, so this keeps
-     that scroll working with touch, more like swiping a calendar than a
-     broken layout. */
-  .planner-main {
+  .riso-planner-header {
+    align-items: flex-start;
+  }
+
+  .riso-planner-board {
+    padding: 14px;
+  }
+
+  .riso-planner-scroll {
     -webkit-overflow-scrolling: touch;
   }
 
-  .planner-grid {
-    grid-template-columns: 72px repeat(7, minmax(128px, 1fr));
-  }
-
-  .planner-week-nav {
-    gap: 6px;
-  }
-
-  .planner-week-label {
-    font-size: 14px;
-  }
-
-  .planner-week-picker {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  /* Freeze the meal-type labels (Breakfast/Lunch/Supper) and day headers
-     (Mon/Tue/...) in place while the grid scrolls, the way a real calendar
-     app does. Without this, scrolling right to see Thursday/Friday loses
-     the row labels entirely — there's nothing left on screen to say which
-     row is which meal, which is the main thing that made this feel "weird"
-     rather than just "a bit cramped." */
-  .planner-day-header {
-    position: sticky;
-    top: 0;
-    z-index: 3;
-    background: var(--bg);
-  }
-
-  .planner-meal-label {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: var(--bg);
-  }
-
-  .planner-grid-corner {
-    position: sticky;
-    top: 0;
-    left: 0;
-    z-index: 4;
-    background: var(--bg);
+  .riso-planner-grid {
+    grid-template-columns: 64px repeat(7, minmax(100px, 1fr));
   }
 
   /* Recipe/edit/cook modals: near-full-screen instead of a small centered
@@ -6037,7 +7977,7 @@ input[type="date"].planner-week-picker {
 
   .meal-card-delete,
   .leftover-dot,
-  .planner-note-edit-btn {
+  .riso-planner-note-edit-btn {
     width: 26px;
     height: 26px;
   }
@@ -6098,5 +8038,25 @@ input[type="date"].planner-week-picker {
 
   .riso-table-actions {
     justify-content: flex-start;
+  }
+
+  .riso-grocery {
+    padding: 18px 16px 40px;
+  }
+
+  .riso-grocery-title {
+    font-size: 38px;
+  }
+
+  .riso-grocery-aside {
+    position: static;
+  }
+
+  .riso-row {
+    flex-wrap: wrap;
+  }
+
+  .riso-row-qty {
+    text-align: left;
   }
 }

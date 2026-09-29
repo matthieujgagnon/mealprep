@@ -26,7 +26,7 @@ async function signUp(page, email) {
 
 async function addRecipe(page, title, ingredientName) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
   await page.fill('input[placeholder="e.g. 4"]', "4");
   await page.fill('input[placeholder="Name (e.g. butter)"]', ingredientName);
@@ -141,7 +141,7 @@ test("+ List adds a deal's ingredient to this week's grocery list", async ({ pag
     .click();
   await page.waitForTimeout(300);
 
-  await page.getByRole("button", { name: "Grocery List", exact: true }).click();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.getByText("chicken breast")).toBeVisible();
 });
 

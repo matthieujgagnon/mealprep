@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
-import { capitalize } from "./lib/groceryList.js";
+import { buildGroceryList, capitalize } from "./lib/groceryList.js";
+import { core, suggestNextRecipes } from "./lib/similarRecipes.js";
 import { Home } from "./components/Home.jsx";
-import { ImportRecipeForm } from "./components/ImportRecipeForm.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
-import { MealCard } from "./components/MealCard.jsx";
+import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
-import { PlannerBoard } from "./components/PlannerBoard.jsx";
+import { PlannerBoard, PlannerHeader, findNextEmptySlot } from "./components/PlannerBoard.jsx";
 import { PlannerSidebar } from "./components/PlannerSidebar.jsx";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
@@ -52,142 +52,6 @@ function DragPreview({ active }) {
   return null;
 }
 
-function CookbookDropZone({ children }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "cookbook-drop" });
-  return (
-    <div ref={setNodeRef} className={`cookbook-drop-zone${isOver ? " drop-active" : ""}`}>
-      {children}
-    </div>
-  );
-}
-
-function ImportedDropZone({ children }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "imported-drop" });
-  return (
-    <div ref={setNodeRef} className={`cookbook-drop-zone${isOver ? " drop-active" : ""}`}>
-      {children}
-    </div>
-  );
-}
-
-function RecipeCategorySection({
-  category,
-  recipes,
-  isFirst,
-  isLast,
-  onReorder,
-  onDelete,
-  onSelectRecipe,
-  onDeleteRecipe,
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: `category-drop-${category.id}` });
-  return (
-    <div ref={setNodeRef} className={`recipe-category-section${isOver ? " drop-active" : ""}`}>
-      <div className="recipe-category-header">
-        <h3 className="recipe-category-title">{category.name}</h3>
-        <div className="reorder-buttons">
-          <button disabled={isFirst} title="Move up" onClick={() => onReorder(category.id, "up")}>
-            ▲
-          </button>
-          <button disabled={isLast} title="Move down" onClick={() => onReorder(category.id, "down")}>
-            ▼
-          </button>
-        </div>
-        <button
-          className="staple-remove-btn"
-          title="Delete this category"
-          onClick={() => onDelete(category.id)}
-        >
-          ×
-        </button>
-      </div>
-      {recipes.length === 0 ? (
-        <p className="staples-empty-hint">Drag a recipe here</p>
-      ) : (
-        <SortableContext items={recipes.map((r) => `cookbook-${r.id}`)} strategy={rectSortingStrategy}>
-          <div className="collection-grid">
-            {recipes.map((r) => (
-              <MealCard
-                key={r.id}
-                recipe={r}
-                dragId={`cookbook-${r.id}`}
-                onClick={onSelectRecipe}
-                onDelete={() => onDeleteRecipe(r)}
-                reorderable
-              />
-            ))}
-          </div>
-        </SortableContext>
-      )}
-    </div>
-  );
-}
-
-function UncategorizedDropZone({ children }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "category-drop-none" });
-  return (
-    <div ref={setNodeRef} className={`recipe-category-section${isOver ? " drop-active" : ""}`}>
-      {children}
-    </div>
-  );
-}
-
-function AddCategoryForm({ onCreate }) {
-  const [name, setName] = useState("");
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState(null);
-
-  if (!open) {
-    return (
-      <button className="btn subtle btn-sm" onClick={() => setOpen(true)}>
-        + Add category
-      </button>
-    );
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    try {
-      await onCreate(name.trim());
-      setName("");
-      setOpen(false);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  return (
-    <form className="add-section-form" onSubmit={handleSubmit}>
-      <input
-        autoFocus
-        type="text"
-        placeholder="e.g. Breakfast"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onBlur={() => !name.trim() && !error && setOpen(false)}
-      />
-      <button className="btn primary btn-sm" type="submit">
-        Add
-      </button>
-      {error && <p className="import-error">{error}</p>}
-    </form>
-  );
-}
-
-// Matches on title, tags, and ingredient names — client-side only, no API
-// call, so it stays fast even as the cookbook grows. Case-insensitive,
-// substring match rather than exact-word, so "chick" finds "chickpea".
-function matchesRecipeSearch(recipe, query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  if (recipe.title?.toLowerCase().includes(q)) return true;
-  if (recipe.tags?.some((t) => t.toLowerCase().includes(q))) return true;
-  if (recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))) return true;
-  return false;
-}
-
 export default function App({ user, onLogout }) {
   const [tab, setTab] = useState("home"); // "home" | "collection" | "planner"
   const [recipes, setRecipes] = useState([]);
@@ -201,12 +65,10 @@ export default function App({ user, onLogout }) {
   // true when the currently-open recipe should skip straight to cook mode —
   // set by Makeable's "Cook tonight" action, cleared on every other open.
   const [activeRecipeStartCooking, setActiveRecipeStartCooking] = useState(false);
-  const [anchorRecipes, setAnchorRecipes] = useState([]); // for "plan around this" — can hold 2+ recipes at once
-  const [showManualForm, setShowManualForm] = useState(false);
+  const [planAroundIngredients, setPlanAroundIngredients] = useState([]); // sidebar's "Plan around…" tab — plain ingredient names, not recipes
   const [customStaples, setCustomStaples] = useState([]);
   const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
-  const [grocerySections, setGrocerySections] = useState([]);
   const [pantryInventory, setPantryInventory] = useState([]);
   const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
   const [loadError, setLoadError] = useState(false);
@@ -217,12 +79,9 @@ export default function App({ user, onLogout }) {
     const days = Math.ceil((new Date(item.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
     return days <= 2;
   }).length;
-  const [recipeCategories, setRecipeCategories] = useState([]);
-  const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState("");
-  const [plannerGridSearch, setPlannerGridSearch] = useState("");
-  const [plannerGridTag, setPlannerGridTag] = useState(null);
-  const [showImported, setShowImported] = useState(true);
+  const [recipeFilter, setRecipeFilter] = useState("All");
+  const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart — just for the "Build grocery list · n" count
   const [isDragActive, setIsDragActive] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
   // Which droppable id a drag is currently hovering, tracked only to drive
@@ -258,8 +117,6 @@ export default function App({ user, onLogout }) {
           Object.fromEntries(list.filter((s) => s.category).map((s) => [s.core, s.category]))
         );
       }),
-      api.listGrocerySections().then(setGrocerySections),
-      api.listRecipeCategories().then(setRecipeCategories),
       api.listPantryInventory().then(setPantryInventory),
       api.listPantryLocations().then(setPantryLocations),
     ]).then((results) => {
@@ -276,55 +133,25 @@ export default function App({ user, onLogout }) {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setLoadError(true));
   }, [weekStart]);
 
+  // Just for the header's "Build grocery list · n" count — mirrors exactly
+  // what GroceryList.jsx itself fetches and counts, so the number matches
+  // what the Grocery tab actually shows once you get there.
+  useEffect(() => {
+    api.listGroceryExtras(weekStart).then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
+  }, [weekStart]);
+
   function handleImported(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
   }
 
   function handleManualCreated(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
-    setShowManualForm(false);
   }
 
   async function handleDeleteRecipe(id) {
     await api.deleteRecipe(id);
     setRecipes((prev) => prev.filter((r) => r.id !== id));
     setPlannerEntries((prev) => prev.filter((e) => e.recipeId !== id));
-  }
-
-  // Removing from Imported: if the recipe is ALSO in the cookbook, just unflag
-  // it from Imported (it stays in My Cookbook). Otherwise it'd have nowhere
-  // left to live, so delete it outright.
-  async function handleRemoveFromImported(recipe) {
-    if (recipe.inCookbook) {
-      await api.updateRecipe(recipe.id, { inImported: false });
-      setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? { ...r, inImported: false } : r)));
-    } else {
-      await handleDeleteRecipe(recipe.id);
-    }
-  }
-
-  // Removing from the Cookbook: if the recipe is ALSO an import, just unflag it
-  // (it stays in Imported). If it only ever lived in the cookbook, delete it —
-  // otherwise it'd become an orphaned recipe with nowhere to find it.
-  async function handleRemoveFromCookbook(recipe) {
-    if (recipe.inImported) {
-      await api.updateRecipe(recipe.id, { inCookbook: false });
-      setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? { ...r, inCookbook: false } : r)));
-    } else {
-      await handleDeleteRecipe(recipe.id);
-    }
-  }
-
-  async function handleAddToCookbook(recipeId) {
-    const updated = await api.updateRecipe(recipeId, { inCookbook: true, inImported: false });
-    setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, inCookbook: true, inImported: false } : r)));
-  }
-
-  // Symmetric to handleAddToCookbook — moves a recipe back out of the
-  // Cookbook and into Imported (dragging it the other way).
-  async function handleAddToImported(recipeId) {
-    await api.updateRecipe(recipeId, { inImported: true, inCookbook: false });
-    setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, inImported: true, inCookbook: false } : r)));
   }
 
   async function handleLogout() {
@@ -377,38 +204,6 @@ export default function App({ user, onLogout }) {
   function handleRecipeUpdated(updated) {
     setRecipes((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
     setActiveRecipe((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
-  }
-
-  async function handleCreateSection(name) {
-    const section = await api.createGrocerySection(name);
-    setGrocerySections((prev) => [...prev, { ...section, assignments: [] }]);
-  }
-
-  async function handleDeleteSection(id) {
-    await api.deleteGrocerySection(id);
-    setGrocerySections((prev) => prev.filter((s) => s.id !== id));
-  }
-
-  async function handleAssignToSection(sectionId, core) {
-    await api.assignToGrocerySection(sectionId, core);
-    setGrocerySections((prev) =>
-      prev.map((s) => ({
-        ...s,
-        // Remove any prior assignment of this ingredient from every section
-        // (it's globally unique), then add it to the target section.
-        assignments:
-          s.id === sectionId
-            ? [...s.assignments.filter((a) => a.core !== core), { core }]
-            : s.assignments.filter((a) => a.core !== core),
-      }))
-    );
-  }
-
-  async function handleUnassignFromSection(core) {
-    await api.unassignFromGrocerySection(core);
-    setGrocerySections((prev) =>
-      prev.map((s) => ({ ...s, assignments: s.assignments.filter((a) => a.core !== core) }))
-    );
   }
 
   async function handleAddPantryItem(item) {
@@ -466,72 +261,6 @@ export default function App({ user, onLogout }) {
     setPantryInventory((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
   }
 
-  async function handleReorderSection(id, direction) {
-    const currentOrder = grocerySections.map((s) => s.id);
-    const index = currentOrder.indexOf(id);
-    const swapWith = direction === "up" ? index - 1 : index + 1;
-    if (swapWith < 0 || swapWith >= currentOrder.length) return;
-
-    const newOrder = [...currentOrder];
-    [newOrder[index], newOrder[swapWith]] = [newOrder[swapWith], newOrder[index]];
-
-    setGrocerySections((prev) => {
-      const byId = new Map(prev.map((s) => [s.id, s]));
-      return newOrder.map((sid) => byId.get(sid));
-    });
-
-    await api.reorderGrocerySections(newOrder);
-  }
-
-  async function handleCreateRecipeCategory(name) {
-    const category = await api.createRecipeCategory(name);
-    setRecipeCategories((prev) => [...prev, category]);
-  }
-
-  async function handleDeleteRecipeCategory(id) {
-    await api.deleteRecipeCategory(id);
-    setRecipeCategories((prev) => prev.filter((c) => c.id !== id));
-    // Recipes in this category become uncategorized server-side (onDelete:
-    // SetNull) — reflect that locally too instead of waiting for a refetch.
-    setRecipes((prev) =>
-      prev.map((r) => (r.categoryId === id ? { ...r, categoryId: null } : r))
-    );
-  }
-
-  async function handleReorderRecipeCategory(id, direction) {
-    const currentOrder = recipeCategories.map((c) => c.id);
-    const index = currentOrder.indexOf(id);
-    const swapWith = direction === "up" ? index - 1 : index + 1;
-    if (swapWith < 0 || swapWith >= currentOrder.length) return;
-
-    const newOrder = [...currentOrder];
-    [newOrder[index], newOrder[swapWith]] = [newOrder[swapWith], newOrder[index]];
-
-    setRecipeCategories((prev) => {
-      const byId = new Map(prev.map((c) => [c.id, c]));
-      return newOrder.map((cid) => byId.get(cid));
-    });
-
-    await api.reorderRecipeCategories(newOrder);
-  }
-
-  async function handleAssignRecipeCategory(recipeId, categoryId) {
-    await api.updateRecipe(recipeId, { categoryId });
-    setRecipes((prev) => prev.map((r) => (r.id === recipeId ? { ...r, categoryId } : r)));
-  }
-
-  // Recomputes the dragged recipe's new position among just the given
-  // subset (the grid it's visibly part of), then refetches the full list —
-  // simpler and safer than hand-splicing local state, since `position` is a
-  // single global column shared across every grid a recipe could appear in.
-  async function handleReorderRecipes(subset, oldIndex, newIndex) {
-    const reordered = [...subset];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-    await api.reorderRecipes(reordered.map((r) => r.id));
-    api.listRecipes().then(setRecipes).catch(() => {});
-  }
-
   async function handleDragEnd(event) {
     setIsDragActive(false);
     setActiveDragItem(null);
@@ -557,13 +286,6 @@ export default function App({ user, onLogout }) {
       return;
     }
 
-    const sectionMatch = /^section-drop-(.+)$/.exec(over.id);
-    if (sectionMatch) {
-      const core = active.data.current?.ingredientCore;
-      if (core) handleAssignToSection(sectionMatch[1], core);
-      return;
-    }
-
     // Moving an existing planner placement to a different day/meal slot,
     // rather than creating a brand new placement. Always within the
     // currently-viewed week — the board only ever shows one week's cells as
@@ -583,70 +305,6 @@ export default function App({ user, onLogout }) {
 
     const recipeId = active.data.current?.recipe?.id;
     if (!recipeId) return;
-
-    // Dropped onto another recipe card (not a named zone like "cookbook-
-    // drop"). The dragId prefix says which grid each card belongs to
-    // ("recipe-" = Imported, "cookbook-" = Cookbook) — only same-grid drops
-    // are a reorder. A card dropped on a card from the *other* grid isn't a
-    // reorder at all (e.g. an Imported card landing on top of a Cookbook
-    // card, which is very likely since the cookbook area is usually full of
-    // cards) — that needs to fall through to the normal zone handling below
-    // instead of being swallowed here.
-    const overRecipe = over.data.current?.recipe;
-    if (overRecipe && overRecipe.id !== recipeId) {
-      const draggedFromCookbook = String(active.id).startsWith("cookbook-");
-      const overIsCookbookCard = String(over.id).startsWith("cookbook-");
-
-      if (draggedFromCookbook === overIsCookbookCard) {
-        // Same grid: genuine reorder (Cookbook only reorders within the
-        // dragged recipe's own category — different categories fall
-        // through to a category reassignment instead).
-        const draggedRecipe = recipes.find((r) => r.id === recipeId);
-        if (draggedRecipe) {
-          if (draggedFromCookbook && (overRecipe.categoryId || null) !== (draggedRecipe.categoryId || null)) {
-            handleAssignRecipeCategory(recipeId, overRecipe.categoryId || null);
-            return;
-          }
-          const subset = draggedFromCookbook
-            ? cookbookRecipes.filter((r) => (r.categoryId || null) === (draggedRecipe.categoryId || null))
-            : importedRecipes;
-          const oldIndex = subset.findIndex((r) => r.id === recipeId);
-          const newIndex = subset.findIndex((r) => r.id === overRecipe.id);
-          if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-            await handleReorderRecipes(subset, oldIndex, newIndex);
-          }
-        }
-        return;
-      }
-
-      if (!draggedFromCookbook && overIsCookbookCard) {
-        // Imported card dropped on top of an existing Cookbook card — treat
-        // it the same as dropping on the Cookbook zone itself.
-        handleAddToCookbook(recipeId);
-        return;
-      }
-
-      // Cookbook card dropped on top of an existing Imported card — the
-      // reverse move, treat it the same as dropping on the Imported zone.
-      handleAddToImported(recipeId);
-      return;
-    }
-
-    if (over.id === "cookbook-drop") {
-      handleAddToCookbook(recipeId);
-      return;
-    }
-
-    if (over.id === "imported-drop") {
-      handleAddToImported(recipeId);
-      return;
-    }
-
-    const categoryMatch = /^category-drop-(.+)$/.exec(over.id);
-    if (categoryMatch) {
-      handleAssignRecipeCategory(recipeId, categoryMatch[1] === "none" ? null : categoryMatch[1]);
-      return;
-    }
 
     const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
     if (!cellMatch) return;
@@ -709,39 +367,59 @@ export default function App({ user, onLogout }) {
     setPlannerEntries(copied);
   }
 
-  const importedRecipes = recipes
-    .filter((r) => r.inImported && !r.isPlaceholder)
-    .filter((r) => !activeTagFilter || r.tags?.includes(activeTagFilter))
-    .filter((r) => matchesRecipeSearch(r, recipeSearch));
-  const cookbookRecipes = recipes
-    .filter((r) => r.inCookbook && !r.isPlaceholder)
-    .filter((r) => !activeTagFilter || r.tags?.includes(activeTagFilter))
-    .filter((r) => matchesRecipeSearch(r, recipeSearch));
-  const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
-  const allTags = [...new Set(recipes.flatMap((r) => r.tags || []))].sort();
-  const plannerGridRecipes = plannableRecipes
-    .filter((r) => !plannerGridTag || r.tags?.includes(plannerGridTag))
-    .filter((r) => matchesRecipeSearch(r, plannerGridSearch));
-
-  // While an Imported card hovers over an existing Cookbook card, preview it
-  // moving into the Cookbook grid so the cards there visually slide apart to
-  // make room for it — real reflow, not just a border. Scoped to the flat
-  // (no-categories) Cookbook view: once categories exist the grid splits
-  // into several separate ones and this would need to know which one to
-  // target, so it falls back to the plain .reorder-target border there.
-  const draggedRecipeId = activeDragItem?.data.current?.recipe?.id ?? null;
-  const draggedFromImported = draggedRecipeId != null && !String(activeDragItem.id).startsWith("cookbook-");
-  let displayImportedRecipes = importedRecipes;
-  let displayCookbookRecipes = cookbookRecipes;
-  if (recipeCategories.length === 0 && draggedFromImported && dragOverId) {
-    const overIndex = cookbookRecipes.findIndex((r) => `cookbook-${r.id}` === dragOverId);
-    const draggedRecipe = importedRecipes.find((r) => r.id === draggedRecipeId);
-    if (overIndex !== -1 && draggedRecipe) {
-      displayImportedRecipes = importedRecipes.filter((r) => r.id !== draggedRecipeId);
-      displayCookbookRecipes = cookbookRecipes.slice();
-      displayCookbookRecipes.splice(overIndex, 0, draggedRecipe);
+  // "Fill empty slots": walks every day/meal slot in order and, for each
+  // still-empty one, places whatever suggestNextRecipes says best extends
+  // the week's ingredient reuse so far — appending a synthetic (never
+  // persisted) entry to a local working copy after each placement so later
+  // suggestions in the same pass see it, the same way a person filling the
+  // board in by hand would build on their own earlier picks. Falls back to
+  // any not-yet-used recipe when there's no shared-ingredient basis yet
+  // (e.g. a completely blank week), so the button always does something.
+  async function handleFillEmptySlots() {
+    if (plannableRecipes.length === 0) return;
+    let workingEntries = plannerEntries.map((e) => ({ ...e }));
+    let syntheticId = -1;
+    for (let i = 0; i < 21; i++) {
+      const slot = findNextEmptySlot(workingEntries);
+      if (!slot) break;
+      const suggestion = suggestNextRecipes(workingEntries, plannableRecipes, 1)[0];
+      let picked = suggestion?.recipe;
+      if (!picked) {
+        const plannedIds = new Set(
+          workingEntries.filter((e) => !e.recipe?.isPlaceholder).map((e) => e.recipe?.id)
+        );
+        picked = plannableRecipes.find((r) => !plannedIds.has(r.id)) || plannableRecipes[0];
+      }
+      if (!picked) break;
+      await handleAddToPlanner(picked.id, slot.dayOfWeek, slot.mealType);
+      workingEntries = [
+        ...workingEntries,
+        {
+          id: `fill-temp-${syntheticId--}`,
+          recipeId: picked.id,
+          recipe: picked,
+          dayOfWeek: slot.dayOfWeek,
+          mealType: slot.mealType,
+          isLeftover: false,
+          alreadyHave: false,
+        },
+      ];
     }
   }
+
+  const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
+
+  // "Build grocery list · n" in the Planner header — mirrors exactly how
+  // GroceryList.jsx derives its own shoppingItems count (just the non-staple
+  // items; there's no more manual store-section exclusion), so the number
+  // matches once you actually get to the Grocery tab.
+  const groceryToBuyCount = buildGroceryList(
+    plannerEntries,
+    customStaples,
+    stapleCategories,
+    excludedStaples,
+    plannerExtraItems
+  ).filter((i) => !i.isStaple).length;
 
   return (
     <DndContext
@@ -772,9 +450,9 @@ export default function App({ user, onLogout }) {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
       <div className={`app${isDragActive ? " dnd-active" : ""}`}>
-        <header className="app-header">
+        <header className="app-header riso-theme">
           <h1 className="wordmark">
-            The Matt Mo <span>Cookbook</span>
+            matt mo <span>cookbook</span>
           </h1>
           <nav className="tabs">
             <button
@@ -805,7 +483,7 @@ export default function App({ user, onLogout }) {
               className={`tab${tab === "grocery" ? " active" : ""}`}
               onClick={() => setTab("grocery")}
             >
-              Grocery List
+              Grocery
             </button>
             <button
               className={`tab${tab === "flyers" ? " active" : ""}`}
@@ -849,6 +527,7 @@ export default function App({ user, onLogout }) {
 
         {tab === "flyers" && (
           <FlyerDeals
+            user={user}
             recipes={recipes}
             customStaples={customStaples}
             weekStart={weekStart}
@@ -859,6 +538,7 @@ export default function App({ user, onLogout }) {
 
         {tab === "makeable" && (
           <WhatCanIMake
+            user={user}
             recipes={recipes}
             plannerEntries={plannerEntries}
             onSelectRecipe={openRecipe}
@@ -871,6 +551,7 @@ export default function App({ user, onLogout }) {
 
         {tab === "inventory" && (
           <Inventory
+            user={user}
             items={pantryInventory}
             onAdd={handleAddPantryItem}
             onUpdate={handleUpdatePantryItem}
@@ -882,7 +563,7 @@ export default function App({ user, onLogout }) {
             recipes={recipes}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
-              setActiveTagFilter(null);
+              setRecipeFilter("All");
               setTab("collection");
             }}
             onFindRecipesForSelection={() => setTab("makeable")}
@@ -903,286 +584,89 @@ export default function App({ user, onLogout }) {
             onSelectRecipe={openRecipe}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
-              setActiveTagFilter(null);
+              setRecipeFilter("All");
               setTab("collection");
             }}
           />
         )}
 
         {tab === "collection" && (
-          <>
-            <ImportRecipeForm onImported={handleImported} />
-
-            <input
-              type="text"
-              className="recipe-search-input"
-              placeholder="🔍 Search recipes by name, tag, or ingredient…"
-              value={recipeSearch}
-              onChange={(e) => setRecipeSearch(e.target.value)}
-            />
-
-            {allTags.length > 0 && (
-              <div className="tag-filter-bar">
-                {allTags.map((tag) => (
-                  <button
-                    key={tag}
-                    className={`tag-chip${activeTagFilter === tag ? " active" : ""}`}
-                    onClick={() => setActiveTagFilter((prev) => (prev === tag ? null : tag))}
-                  >
-                    {tag}
-                  </button>
-                ))}
-                {activeTagFilter && (
-                  <button className="tag-chip clear" onClick={() => setActiveTagFilter(null)}>
-                    Clear filter ×
-                  </button>
-                )}
-              </div>
-            )}
-
-            <section className="recipe-section">
-              <div className="recipe-section-header">
-                <button
-                  type="button"
-                  className="recipe-section-toggle"
-                  onClick={() => setShowImported((s) => !s)}
-                >
-                  {showImported ? "▾" : "▸"} Imported
-                </button>
-              </div>
-              {showImported && (
-                <ImportedDropZone>
-                  {importedRecipes.length === 0 ? (
-                    <p className="empty-state">
-                      {recipeSearch || activeTagFilter
-                        ? "No imported recipes match your search."
-                        : "No imported recipes yet — paste a URL above, or drag one back here from My Cookbook."}
-                    </p>
-                  ) : (
-                    <SortableContext
-                      items={displayImportedRecipes.map((r) => `recipe-${r.id}`)}
-                      strategy={rectSortingStrategy}
-                    >
-                      <div className="collection-grid">
-                        {displayImportedRecipes.map((r) => (
-                          <MealCard
-                            key={r.id}
-                            recipe={r}
-                            onClick={openRecipe}
-                            onDelete={() => handleRemoveFromImported(r)}
-                            reorderable
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  )}
-                </ImportedDropZone>
-              )}
-            </section>
-
-            <section className="recipe-section">
-              <div className="recipe-section-header">
-                <h2 className="recipe-section-title">My Cookbook</h2>
-                <div className="recipe-section-header-actions">
-                  {cookbookRecipes.length > 0 && (
-                    <AddCategoryForm onCreate={handleCreateRecipeCategory} />
-                  )}
-                  {!showManualForm && (
-                    <button className="btn primary" onClick={() => setShowManualForm(true)}>
-                      + Add a recipe
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {showManualForm && (
-                <ManualRecipeForm
-                  onCreated={handleManualCreated}
-                  onCancel={() => setShowManualForm(false)}
-                />
-              )}
-
-              <CookbookDropZone>
-                {cookbookRecipes.length === 0 && !showManualForm ? (
-                  <p className="empty-state">
-                    {recipeSearch || activeTagFilter
-                      ? "No cookbook recipes match your search."
-                      : "Drag a recipe here from Imported, or add one by hand — recipes you save stay separate from your imports."}
-                  </p>
-                ) : recipeCategories.length === 0 ? (
-                  <SortableContext
-                    items={displayCookbookRecipes.map((r) =>
-                      r.id === draggedRecipeId ? `recipe-${r.id}` : `cookbook-${r.id}`
-                    )}
-                    strategy={rectSortingStrategy}
-                  >
-                  <div className="collection-grid">
-                    {displayCookbookRecipes.map((r) => (
-                      <MealCard
-                        key={r.id}
-                        recipe={r}
-                        dragId={r.id === draggedRecipeId ? `recipe-${r.id}` : `cookbook-${r.id}`}
-                        onClick={openRecipe}
-                        onDelete={() => handleRemoveFromCookbook(r)}
-                        reorderable
-                      />
-                    ))}
-                  </div>
-                  </SortableContext>
-                ) : (
-                  <>
-                    <UncategorizedDropZone>
-                      {cookbookRecipes.filter((r) => !r.categoryId).length > 0 ? (
-                        <SortableContext
-                          items={cookbookRecipes.filter((r) => !r.categoryId).map((r) => `cookbook-${r.id}`)}
-                          strategy={rectSortingStrategy}
-                        >
-                          <div className="collection-grid">
-                            {cookbookRecipes
-                              .filter((r) => !r.categoryId)
-                              .map((r) => (
-                                <MealCard
-                                  key={r.id}
-                                  recipe={r}
-                                  dragId={`cookbook-${r.id}`}
-                                  onClick={openRecipe}
-                                  onDelete={() => handleRemoveFromCookbook(r)}
-                                  reorderable
-                                />
-                              ))}
-                          </div>
-                        </SortableContext>
-                      ) : (
-                        <p className="staples-empty-hint">Drag a recipe here to remove it from a category</p>
-                      )}
-                    </UncategorizedDropZone>
-                    {recipeCategories.map((cat, i) => (
-                      <RecipeCategorySection
-                        key={cat.id}
-                        category={cat}
-                        recipes={cookbookRecipes.filter((r) => r.categoryId === cat.id)}
-                        isFirst={i === 0}
-                        isLast={i === recipeCategories.length - 1}
-                        onReorder={handleReorderRecipeCategory}
-                        onDelete={handleDeleteRecipeCategory}
-                        onSelectRecipe={openRecipe}
-                        onDeleteRecipe={handleRemoveFromCookbook}
-                      />
-                    ))}
-                  </>
-                )}
-              </CookbookDropZone>
-            </section>
-          </>
+          <Recipes
+            user={user}
+            recipes={recipes}
+            pantryInventory={pantryInventory}
+            customStaples={customStaples}
+            plannerEntries={plannerEntries}
+            search={recipeSearch}
+            onSearchChange={setRecipeSearch}
+            filter={recipeFilter}
+            onFilterChange={setRecipeFilter}
+            onSelectRecipe={openRecipe}
+            onImported={handleImported}
+            onManualCreated={handleManualCreated}
+          />
         )}
 
         {tab === "planner" && (
-          <>
+          <div className="riso-theme riso-planner" data-theme="light">
             {plannableRecipes.length === 0 ? (
-              <p className="empty-state">
+              <p className="riso-planner-empty">
                 Import or add a recipe first, then click a meal slot here to add it.
               </p>
             ) : (
               <>
-                <div className="planner-tip">
-                  <div className="planner-tip-legend">
-                    <span className="planner-tip-item">
-                      <span className="leftover-dot-demo" /> Leftover
-                    </span>
-                    <span className="planner-tip-item">
-                      <span className="already-have-dot-demo" /> Already have it
-                    </span>
-                  </div>
-                  <p className="planner-tip-text">
-                    Tap the dot on a placed card to cycle between these — either way it stays on
-                    your calendar but won't be added to the grocery list again. Click an empty
-                    slot to mark it as intentionally blank — or drag a recipe from below to fill
-                    it.
-                  </p>
-                </div>
-                <div className="planner-layout">
-                  <div className="planner-main">
-                    <PlannerBoard
-                      entries={plannerEntries}
-                      weekStart={weekStart}
-                      onChangeWeek={setWeekStart}
-                      onCopyLastWeek={handleCopyLastWeek}
-                      onCardClick={openRecipe}
-                      onRemove={handleRemoveFromPlanner}
-                      onCycleState={handleCycleMealState}
-                      onMarkBlank={handleMarkBlank}
-                      onSetNote={handleSetPlannerNote}
-                    />
-                  </div>
+                <PlannerHeader
+                  user={user}
+                  weekStart={weekStart}
+                  onChangeWeek={setWeekStart}
+                  hasEntries={plannerEntries.length > 0}
+                  onCopyLastWeek={handleCopyLastWeek}
+                  onFillEmptySlots={handleFillEmptySlots}
+                  fillDisabled={plannableRecipes.length === 0}
+                  groceryCount={groceryToBuyCount}
+                  onGoToGrocery={() => setTab("grocery")}
+                />
+                <div className="riso-planner-row">
+                  <PlannerBoard
+                    entries={plannerEntries}
+                    weekStart={weekStart}
+                    plannableRecipes={plannableRecipes}
+                    onCardClick={openRecipe}
+                    onRemove={handleRemoveFromPlanner}
+                    onCycleState={handleCycleMealState}
+                    onMarkBlank={handleMarkBlank}
+                    onSetNote={handleSetPlannerNote}
+                    onAddToPlanner={handleAddToPlanner}
+                  />
                   <PlannerSidebar
                     plannerEntries={plannerEntries}
                     allRecipes={recipes}
-                    anchorRecipes={anchorRecipes}
-                    onClearAnchors={() => setAnchorRecipes([])}
-                    onRemoveAnchor={(id) =>
-                      setAnchorRecipes((prev) => prev.filter((r) => r.id !== id))
+                    planAroundIngredients={planAroundIngredients}
+                    onAddIngredient={(name) =>
+                      setPlanAroundIngredients((prev) => (prev.includes(name) ? prev : [...prev, name]))
                     }
-                    onAddAnchor={(recipe) =>
-                      setAnchorRecipes((prev) =>
-                        prev.some((r) => r.id === recipe.id) ? prev : [...prev, recipe]
-                      )
+                    onRemoveIngredient={(name) =>
+                      setPlanAroundIngredients((prev) => prev.filter((n) => n !== name))
                     }
+                    onSetIngredients={setPlanAroundIngredients}
+                    pantryInventory={pantryInventory}
                     onSelectRecipe={openRecipe}
+                    onQuickAdd={(recipe, dayOfWeek, mealType) => handleAddToPlanner(recipe.id, dayOfWeek, mealType)}
                   />
-                </div>
-                <h3 className="planner-source-heading">Or drag a recipe from your cookbook</h3>
-                <input
-                  type="text"
-                  className="recipe-search-input"
-                  placeholder="🔍 Search recipes by name, tag, or ingredient…"
-                  value={plannerGridSearch}
-                  onChange={(e) => setPlannerGridSearch(e.target.value)}
-                />
-                {allTags.length > 0 && (
-                  <div className="tag-filter-bar">
-                    {allTags.map((tag) => (
-                      <button
-                        key={tag}
-                        className={`tag-chip${plannerGridTag === tag ? " active" : ""}`}
-                        onClick={() => setPlannerGridTag((prev) => (prev === tag ? null : tag))}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                    {plannerGridTag && (
-                      <button className="tag-chip clear" onClick={() => setPlannerGridTag(null)}>
-                        Clear filter ×
-                      </button>
-                    )}
-                  </div>
-                )}
-                <div className="collection-grid" style={{ marginTop: 12 }}>
-                  {plannerGridRecipes.length === 0 ? (
-                    <p className="empty-state">No recipes match your search.</p>
-                  ) : (
-                    plannerGridRecipes.map((r) => (
-                      <MealCard key={r.id} recipe={r} onClick={openRecipe} />
-                    ))
-                  )}
                 </div>
               </>
             )}
-          </>
+          </div>
         )}
 
         {tab === "grocery" && (
           <GroceryList
+            user={user}
             plannerEntries={plannerEntries}
             weekStart={weekStart}
             customStaples={customStaples}
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
-            onRemoveStaple={handleRemoveStaple}
-            grocerySections={grocerySections}
-            onCreateSection={handleCreateSection}
-            onDeleteSection={handleDeleteSection}
-            onReorderSection={handleReorderSection}
-            onUnassignFromSection={handleUnassignFromSection}
             onAddPantryItem={handleAddPantryItem}
           />
         )}
@@ -1205,12 +689,28 @@ export default function App({ user, onLogout }) {
               openRecipe(null);
             }}
             onPlanAround={(recipe) => {
-              setAnchorRecipes([recipe]);
+              // Seed "Plan around…" with this recipe's non-staple ingredient
+              // names, deduped by canonical core — the sidebar tab works
+              // off plain ingredient names now, not recipe anchors.
+              const seen = new Set();
+              const names = [];
+              for (const ing of recipe.ingredients || []) {
+                const c = core(ing.name);
+                if (!c || seen.has(c)) continue;
+                seen.add(c);
+                names.push(capitalize(c));
+              }
+              setPlanAroundIngredients(names);
               openRecipe(null);
               setWeekStart(currentWeekStart());
               setTab("planner");
             }}
             onAddPantryItem={handleAddPantryItem}
+            onDeletePantryItem={handleDeletePantryItem}
+            onNavigate={(t) => {
+              openRecipe(null);
+              setTab(t);
+            }}
           />
         )}
       </div>

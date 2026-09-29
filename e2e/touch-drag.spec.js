@@ -109,29 +109,62 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
   expect(canceled).toBe(false);
 });
 
-test("a real touch drag reorders a recipe card in the Recipes grid without the browser cancelling it", async ({
+// The Recipes tab itself lost drag-and-drop when it moved to the Riso
+// unified grid (filter chips + sort replaced manual reordering), and the
+// Planner's own below-board "drag a recipe from your cookbook" picker grid
+// is gone too (replaced by the empty-slot popover — see
+// planner-picker.spec.js). The one drag-and-drop the Riso Planner still
+// really has is repositioning an already-placed card between cells, so
+// that's what this now covers: place a recipe via the popover, then touch-
+// drag its card from one cell to another (same day, Breakfast -> Lunch —
+// vertically adjacent, exactly the direction a pan-y touch-action would
+// have handed to native scroll).
+test("a real touch drag repositions a placed meal card between planner cells without the browser cancelling it", async ({
   page,
   context,
 }) => {
   await signUp(page, uniqueEmail("touch-recipe"));
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  for (const [title, ingredient] of [["Touch Recipe One", "flour"], ["Touch Recipe Two", "sugar"]]) {
-    await page.getByRole("button", { name: "+ Add a recipe" }).click();
-    await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
-    await page.fill('input[placeholder="e.g. 4"]', "2");
-    await page.fill('input[placeholder="Name (e.g. butter)"]', ingredient);
-    await page.fill('input[placeholder="Qty (1/4)"]', "1");
-    await page.fill('textarea[placeholder*="Preheat oven"]', "Cook and serve.");
-    await page.getByRole("button", { name: "Save to cookbook" }).click();
-    await page.waitForTimeout(250);
-  }
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Touch Recipe One");
+  await page.fill('input[placeholder="e.g. 4"]', "2");
+  await page.fill('input[placeholder="Name (e.g. butter)"]', "flour");
+  await page.fill('input[placeholder="Qty (1/4)"]', "1");
+  await page.fill('textarea[placeholder*="Preheat oven"]', "Cook and serve.");
+  await page.getByRole("button", { name: "Save to cookbook" }).click();
+  await page.waitForTimeout(250);
+
+  await page.getByRole("button", { name: "Planner", exact: true }).click();
+  await page.waitForTimeout(300);
+
+  // Place the recipe into the first cell (Monday breakfast) via the
+  // empty-slot popover. Scrolled explicitly to the row's center (rather
+  // than relying on Playwright's own scroll-then-click) — the sticky
+  // meal-label/corner cells in this grid otherwise leave the auto-scroll
+  // landing right at the edge of their overlap, and the click keeps
+  // getting intercepted by a still-covering ancestor.
+  const cells = page.locator(".riso-planner-cell");
+  const firstEmpty = cells.first().locator(".riso-planner-cell-empty");
+  await firstEmpty.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(100);
+  await firstEmpty.click({ force: true });
+  await page.locator(".riso-add-popover-row", { hasText: "Touch Recipe One" }).click({ force: true });
+  await page.waitForTimeout(200);
+
+  const sourceCard = page.locator(".riso-planner-card", { hasText: "Touch Recipe One" });
+  // Monday's Lunch cell — same day column as the source, one row down, so
+  // this is a vertical drag within the visible (non-horizontally-scrolled)
+  // part of the board.
+  const targetCell = cells.nth(7);
+
+  await sourceCard.scrollIntoViewIfNeeded();
 
   const client = await context.newCDPSession(page);
-  const sourceCard = page.locator(".meal-card", { hasText: "Touch Recipe One" });
-  const targetCard = page.locator(".meal-card", { hasText: "Touch Recipe Two" });
   const sourceBox = await sourceCard.boundingBox();
-  const targetBox = await targetCard.boundingBox();
+  const targetBox = await targetCell.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
 
   const canceled = await touchDragAndDetectCancel(
     page,

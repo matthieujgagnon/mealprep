@@ -78,6 +78,6 @@ test("the grocery summary and inventory cards reflect real data", async ({ page 
   await page.waitForTimeout(400);
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
-  await expect(page.locator(".riso-sticker-cell-name")).toHaveText("cilantro");
+  await expect(page.locator(".riso-freshness-row-name")).toHaveText("cilantro");
   await expect(page.locator(".home-grocery-number")).toHaveText("0");
 });

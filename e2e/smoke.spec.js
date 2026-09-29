@@ -29,7 +29,7 @@ test("sign up creates an account and loads the app", async ({ page }) => {
 test("add a manual recipe and see it in the cookbook", async ({ page }) => {
   await signUp(page, uniqueEmail("smoke-recipe"));
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
 
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Smoke Test Soup");
   await page.fill('input[placeholder="Name (e.g. butter)"]', "carrots");
@@ -57,11 +57,19 @@ test("add a pantry inventory item and mark it a staple", async ({ page }) => {
 
 test("add an extra grocery item and check it off", async ({ page }) => {
   await signUp(page, uniqueEmail("smoke-grocery"));
-  await page.getByRole("button", { name: "Grocery List", exact: true }).click();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
 
-  await page.getByRole("button", { name: "+ Add item" }).first().click();
-  await page.fill('.add-section-form input[placeholder="e.g. Paper towels"]', "paper towels");
-  await page.locator(".add-section-form button[type='submit']").click();
+  // The Riso redesign's add field is one free-text input ("2 lemons") parsed
+  // into quantity + name, rather than separate name/qty/unit fields.
+  await page.fill('.riso-grocery-add input', "paper towels");
+  await page.locator(".riso-grocery-add-btn").click();
+  await page.waitForTimeout(300);
 
-  await expect(page.getByText("paper towels")).toBeVisible();
+  const row = page.locator(".riso-row").filter({ has: page.locator(".riso-row-name", { hasText: "paper towels" }) });
+  await expect(row).toBeVisible();
+
+  // Checking it off strikes it through and sinks it to the bottom of its group.
+  await row.click();
+  await expect(row).toHaveClass(/checked/);
+  await expect(row.locator(".riso-row-name")).toHaveClass(/struck/);
 });

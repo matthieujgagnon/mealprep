@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Covers the redesigned recipe detail modal: the two-column desktop layout,
+// Covers the Riso Recipe Card detail modal: the two-column desktop layout,
 // servings-scaled ingredient/step text, inline step timers, the options
 // menu, the photo lightbox, and the phone-width tabbed Ingredients/Steps
 // layout.
@@ -20,7 +20,7 @@ async function signUp(page, email) {
 
 async function addRecipe(page, { title, servings, steps }) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
   await page.fill('input[placeholder="e.g. 4"]', servings);
   await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");
@@ -40,19 +40,19 @@ test("servings scaling updates ingredient and step quantities, but not durations
     steps: "Prep: Chop 2 onions and mince the garlic.\nRoast for 20 minutes, flipping halfway.",
   });
 
-  await expect(page.locator(".rc-step-title").first()).toHaveText("Prep");
-  await expect(page.locator(".rc-step-row").nth(0).locator(".rc-step-text")).toContainText("Chop 2 onions");
-  await expect(page.locator(".rc-step-row").nth(1).locator(".rc-step-text")).toContainText("Roast for 20 minutes");
+  await expect(page.locator(".riso-rc-step-title").first()).toHaveText("Prep");
+  await expect(page.locator(".riso-rc-step-row").nth(0).locator(".riso-rc-step-text")).toContainText("Chop 2 onions");
+  await expect(page.locator(".riso-rc-step-row").nth(1).locator(".riso-rc-step-text")).toContainText("Roast for 20 minutes");
 
   // Bump servings 4 -> 8: ingredient/step quantities double, durations don't.
-  await page.locator(".rc-servings-stepper button").nth(1).click();
-  await page.locator(".rc-servings-stepper button").nth(1).click();
-  await page.locator(".rc-servings-stepper button").nth(1).click();
-  await page.locator(".rc-servings-stepper button").nth(1).click();
+  await page.locator(".riso-rc-servings-stepper button").nth(1).click();
+  await page.locator(".riso-rc-servings-stepper button").nth(1).click();
+  await page.locator(".riso-rc-servings-stepper button").nth(1).click();
+  await page.locator(".riso-rc-servings-stepper button").nth(1).click();
 
-  await expect(page.locator(".rc-ingredient-qty").first()).toHaveText("4");
-  await expect(page.locator(".rc-step-row").nth(0).locator(".rc-step-text")).toContainText("Chop 4 onions");
-  await expect(page.locator(".rc-step-row").nth(1).locator(".rc-step-text")).toContainText("Roast for 20 minutes");
+  await expect(page.locator(".riso-rc-ingredient-qty").first()).toHaveText("4");
+  await expect(page.locator(".riso-rc-step-row").nth(0).locator(".riso-rc-step-text")).toContainText("Chop 4 onions");
+  await expect(page.locator(".riso-rc-step-row").nth(1).locator(".riso-rc-step-text")).toContainText("Roast for 20 minutes");
 });
 
 test("step timer chip starts a countdown", async ({ page }) => {
@@ -63,7 +63,7 @@ test("step timer chip starts a countdown", async ({ page }) => {
     steps: "Simmer for 5 minutes, then serve.",
   });
 
-  const timerChip = page.locator(".rc-timer-chip");
+  const timerChip = page.locator(".riso-rc-timer-chip");
   await expect(timerChip).toHaveCount(1);
   await expect(timerChip).toContainText("5 MIN");
   await timerChip.click();
@@ -79,20 +79,20 @@ test("options menu opens and closes on outside click", async ({ page }) => {
     steps: "Serve immediately.",
   });
 
-  await expect(page.locator(".rc-menu")).toHaveCount(0);
-  await page.locator(".rc-btn-icon").click();
-  await expect(page.locator(".rc-menu")).toBeVisible();
-  await expect(page.locator(".rc-menu").getByRole("button", { name: "Edit" })).toBeVisible();
-  await expect(page.locator(".rc-menu").getByRole("button", { name: "Delete" })).toBeVisible();
+  await expect(page.locator(".riso-rc-menu")).toHaveCount(0);
+  await page.getByRole("button", { name: "More actions" }).click();
+  await expect(page.locator(".riso-rc-menu")).toBeVisible();
+  await expect(page.locator(".riso-rc-menu").getByRole("button", { name: "Edit recipe" })).toBeVisible();
+  await expect(page.locator(".riso-rc-menu").getByRole("button", { name: "Delete recipe" })).toBeVisible();
 
-  await page.locator(".rc-menu-catcher").click();
-  await expect(page.locator(".rc-menu")).toHaveCount(0);
+  await page.locator(".riso-rc-menu-catcher").click();
+  await expect(page.locator(".riso-rc-menu")).toHaveCount(0);
 });
 
-test("recipe notes render legibly on the dark card", async ({ page }) => {
+test("recipe notes render legibly on the light card", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add a recipe" }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Redesign Notes Test");
   await page.fill('input[placeholder="e.g. 4"]', "2");
   await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");
@@ -117,13 +117,13 @@ test("phone width shows tabbed Ingredients/Steps layout", async ({ page }) => {
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator(".rc-phone-tabs")).toBeVisible();
+  await expect(page.locator(".riso-rc-phone-tabs")).toBeVisible();
 
   // Ingredients tab shown by default; steps panel hidden.
-  await expect(page.locator(".rc-ingredients-panel")).toBeVisible();
-  await expect(page.locator(".rc-steps-wrap")).toBeHidden();
+  await expect(page.locator(".riso-rc-ingredients-panel")).toBeVisible();
+  await expect(page.locator(".riso-rc-steps-wrap")).toBeHidden();
 
   await page.getByRole("button", { name: /Steps ·/ }).click();
-  await expect(page.locator(".rc-steps-wrap")).toBeVisible();
-  await expect(page.locator(".rc-ingredients-panel")).toBeHidden();
+  await expect(page.locator(".riso-rc-steps-wrap")).toBeVisible();
+  await expect(page.locator(".riso-rc-ingredients-panel")).toBeHidden();
 });

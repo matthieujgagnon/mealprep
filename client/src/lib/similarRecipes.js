@@ -78,7 +78,7 @@ function ingredientWeight(coreName) {
 }
 
 // Get the set of canonical ingredient cores for a recipe
-function recipeCores(recipe) {
+export function recipeCores(recipe) {
   return new Set(
     (recipe.ingredients || []).map((i) => core(i.name)).filter(Boolean)
   );

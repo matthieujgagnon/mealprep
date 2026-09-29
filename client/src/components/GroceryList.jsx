@@ -1,9 +1,28 @@
 import { useEffect, useState } from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { api } from "../api.js";
-import { buildGroceryList, findMatchingDeal, UNIT_OPTIONS } from "../lib/groceryList.js";
+import { buildGroceryList, findMatchingDeal } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
+import { Segmented, HintStrip } from "./RisoControls.jsx";
+
+// Per-item "which store do I usually get this at" preference — new in the
+// Riso redesign (there's no server schema for it yet). Lasting-but-not-
+// critical, so it lives in localStorage the same way Makeable's "also have"
+// list does (see WhatCanIMake.jsx) rather than round-tripping to the server
+// for something this low-stakes. Hint-strip dismissal itself goes through
+// the shared per-user-per-screen mechanism (RisoControls.jsx's <HintStrip>,
+// lib/hints.js) instead of its own key.
+const STORE_PREF_KEY = "mealprep-grocery-store-pref";
+const DEFAULT_STORE = "Metro"; // matches the placeholder store name used elsewhere (FlyerDeals' upload form) when nothing else is known yet
+
+function loadStorePrefs() {
+  try {
+    const raw = localStorage.getItem(STORE_PREF_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 function formatQuantity(qty) {
   if (qty === null || qty === undefined) return "";
@@ -11,9 +30,7 @@ function formatQuantity(qty) {
   const whole = Math.floor(rounded);
   const frac = rounded - whole;
   // Plain "1/4" instead of unicode fraction glyphs (¼) — several fonts in the
-  // design system (IBM Plex Mono in particular) don't carry those glyphs, so
-  // they were rendering as tofu/fallback symbols instead of a fraction. Plain
-  // digits render correctly everywhere.
+  // design system don't carry those glyphs, so they'd render as tofu.
   const fracMap = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4", 0.33: "1/3", 0.67: "2/3" };
   const nearestFrac = Object.keys(fracMap).find((f) => Math.abs(f - frac) < 0.05);
   if (nearestFrac) return `${whole > 0 ? whole + " " : ""}${fracMap[nearestFrac]}`;
@@ -21,10 +38,8 @@ function formatQuantity(qty) {
 }
 
 // A row can carry more than one "part" when two recipes measured the same
-// ingredient in ways that can't be combined into a single number (e.g. "¼
-// red onion" and "¼ cup diced red onion" — a fraction of a whole onion isn't
-// the same kind of quantity as a cup). Render each part and join them, so
-// it's still one row instead of a duplicate line item.
+// ingredient in ways that can't be combined into a single number — see
+// buildGroceryList's own comment on `parts`.
 function formatParts(parts) {
   if (!parts || parts.length === 0) return "";
   return parts
@@ -33,74 +48,82 @@ function formatParts(parts) {
     .join(" + ");
 }
 
-function GroceryItemRow({
-  item,
-  deals,
-  checked,
-  onToggle,
-  draggable,
-  onRemoveStaple,
-  onUnassign,
-  onDeleteManual,
-  onAddToPantry,
-  pantryAdded,
-  showSources,
-  dragId,
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: dragId || `grocery-${item.key}`,
-    data: { ingredientCore: item.core },
-    disabled: !draggable,
-  });
+// Free-text "2 lemons" -> { name: "lemons", quantity: 2 }. Deliberately
+// simple (a leading quantity, then the rest is the name) rather than a real
+// parser — good enough for "2 lemons"/"1/2 cup sugar"/"paper towels" without
+// trying to also recognize a unit in the middle of the phrase.
+function parseAddInput(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s+(.+)$/);
+  if (match) {
+    return { name: match[2].trim(), quantity: parseQuantityInput(match[1]) };
+  }
+  return { name: trimmed, quantity: null };
+}
 
-  const deal = findMatchingDeal(item.name, deals);
+function formatStoreList(stores) {
+  if (stores.length === 0) return "";
+  if (stores.length === 1) return stores[0];
+  if (stores.length === 2) return `${stores[0]} and ${stores[1]}`;
+  return `${stores.slice(0, -1).join(", ")} and ${stores[stores.length - 1]}`;
+}
 
+// Groups shopping items by which recipe(s) they're used in. A shared
+// ingredient (e.g. garlic used in two recipes) appears under both headings —
+// that's intentional, it shows the full picture of what each recipe needs.
+// A manually-added item isn't used in any recipe (usedIn is always empty for
+// those), so it gets its own catch-all heading instead of silently vanishing
+// from this view.
+const MANUAL_GROUP_LABEL = "Added by you";
+
+const VIEWS = [
+  { id: "store", label: "By store" },
+  { id: "aisle", label: "By aisle" },
+  { id: "recipe", label: "By recipe" },
+];
+
+function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, sub, onDeleteManual }) {
   return (
-    <li
-      ref={draggable ? setNodeRef : undefined}
-      className={`grocery-item${checked ? " checked" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}`}
-      {...(draggable ? listeners : {})}
-      {...(draggable ? attributes : {})}
+    <div
+      className={`riso-row${checked ? " checked" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
     >
-      <label onClick={(e) => e.stopPropagation()}>
-        <input type="checkbox" checked={checked} onChange={onToggle} />
-        <span className="grocery-item-main">
-          <span className="grocery-item-namerow">
-            <span className="grocery-item-name">
-              {item.name}
-              {item.varieties.length > 0 && (
-                <span className="grocery-item-variety"> ({item.varieties.join(", ")})</span>
-              )}
-            </span>
-            <span className="grocery-item-qty">{formatParts(item.parts)}</span>
+      <span className={`riso-row-check${checked ? " on" : ""}`}>{checked ? "✓" : ""}</span>
+      <span className="riso-row-main">
+        <span className="riso-row-namerow">
+          <span className={`riso-row-name${checked ? " struck" : ""}`}>
+            {item.name}
+            {item.varieties.length > 0 && ` (${item.varieties.join(", ")})`}
           </span>
-          {showSources && item.usedIn?.length > 0 && (
-            <span className="grocery-item-sources">Used in: {item.usedIn.join(", ")}</span>
-          )}
         </span>
-      </label>
-      {deal && (
-        <span className={`deal-flag${deal.category === "protein" ? " sale" : ""}`}>
-          {deal.price} · {deal.store}
-        </span>
-      )}
-      {checked && onAddToPantry && (
+        {sub && <span className="riso-row-sub">{sub}</span>}
+      </span>
+      {sale && <span className="riso-row-sale">{sale}</span>}
+      <button
+        type="button"
+        className="riso-row-store"
+        title="Tap to move to another store"
+        onClick={(e) => {
+          e.stopPropagation();
+          onCycleStore();
+        }}
+      >
+        {store} ⇄
+      </button>
+      <span className="riso-row-qty">{formatParts(item.parts)}</span>
+      {item.isManual && (
         <button
           type="button"
-          className="btn subtle btn-sm"
-          disabled={pantryAdded}
-          title={pantryAdded ? "Already added to your pantry inventory" : "Add to your pantry inventory"}
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddToPantry(item);
-          }}
-        >
-          {pantryAdded ? "✓ pantry" : "+ pantry"}
-        </button>
-      )}
-      {item.isManual ? (
-        <button
-          className="staple-remove-btn"
+          className="riso-row-delete"
           aria-label={`Delete ${item.name}`}
           title="Delete this item"
           onClick={(e) => {
@@ -110,269 +133,18 @@ function GroceryItemRow({
         >
           ×
         </button>
-      ) : (
-        <>
-          {onRemoveStaple && (
-            <button
-              className="staple-remove-btn"
-              aria-label={`Stop treating ${item.name} as a staple`}
-              title="Remove from staples"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemoveStaple(item.core);
-              }}
-            >
-              ×
-            </button>
-          )}
-          {onUnassign && (
-            <button
-              className="staple-remove-btn"
-              aria-label={`Move ${item.name} back to unsorted`}
-              title="Remove from this section"
-              onClick={(e) => {
-                e.stopPropagation();
-                onUnassign(item.core);
-              }}
-            >
-              ×
-            </button>
-          )}
-        </>
-      )}
-    </li>
-  );
-}
-
-function StoreSection({
-  section,
-  items,
-  deals,
-  checked,
-  onToggle,
-  onUnassign,
-  onDeleteManual,
-  onAddToPantry,
-  pantryAddedKeys,
-  onDelete,
-  onReorder,
-  isFirst,
-  isLast,
-  showSources,
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: `section-drop-${section.id}` });
-
-  return (
-    <div ref={setNodeRef} className={`store-section${isOver ? " drop-active" : ""}`}>
-      <div className="store-section-header">
-        <p className="store-section-title">{section.name}</p>
-        <div className="store-section-reorder">
-          <button
-            disabled={isFirst}
-            aria-label={`Move ${section.name} earlier`}
-            title="Move earlier"
-            onClick={() => onReorder(section.id, "up")}
-          >
-            ▲
-          </button>
-          <button
-            disabled={isLast}
-            aria-label={`Move ${section.name} later`}
-            title="Move later"
-            onClick={() => onReorder(section.id, "down")}
-          >
-            ▼
-          </button>
-          <button
-            className="staple-remove-btn"
-            aria-label={`Delete section ${section.name}`}
-            title="Delete this section"
-            onClick={() => onDelete(section.id)}
-          >
-            ×
-          </button>
-        </div>
-      </div>
-      {items.length === 0 ? (
-        <p className="staples-empty-hint">Drag items here</p>
-      ) : (
-        <ul className="grocery-list">
-          {items.map((item) => (
-            <GroceryItemRow
-              key={item.key}
-              item={item}
-              deals={deals}
-              checked={!!checked[item.key]}
-              onToggle={() => onToggle(item.key)}
-              draggable={false}
-              onUnassign={onUnassign}
-              onDeleteManual={onDeleteManual}
-              onAddToPantry={onAddToPantry}
-              pantryAdded={pantryAddedKeys.has(item.key)}
-              showSources={showSources}
-            />
-          ))}
-        </ul>
       )}
     </div>
   );
-}
-
-function StaplesSubsection({ dropId, children }) {
-  const { setNodeRef, isOver } = useDroppable({ id: dropId });
-  return (
-    <div ref={setNodeRef} className={`staples-subsection${isOver ? " drop-active" : ""}`}>
-      {children}
-    </div>
-  );
-}
-
-function AddSectionForm({ onCreateSection }) {
-  const [name, setName] = useState("");
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState(null);
-
-  if (!open) {
-    return (
-      <button className="btn subtle btn-sm" onClick={() => setOpen(true)}>
-        + Add store section
-      </button>
-    );
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    try {
-      await onCreateSection(name.trim());
-      setName("");
-      setOpen(false);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  return (
-    <form className="add-section-form" onSubmit={handleSubmit}>
-      <input
-        autoFocus
-        type="text"
-        placeholder="e.g. Metro, Super C..."
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onBlur={() => !name.trim() && !error && setOpen(false)}
-      />
-      <button className="btn primary btn-sm" type="submit">
-        Add
-      </button>
-      {error && <p className="import-error">{error}</p>}
-    </form>
-  );
-}
-
-// Lets the user type something onto the list that no planned recipe calls
-// for — "paper towels", or extra onions beyond what's already planned.
-// Quantity/unit are optional since plenty of items (paper towels, dish
-// soap) don't need either.
-function AddExtraItemForm({ onAdd }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
-  const [adding, setAdding] = useState(false);
-
-  if (!open) {
-    return (
-      <button type="button" className="btn subtle btn-sm" onClick={() => setOpen(true)}>
-        + Add item
-      </button>
-    );
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setAdding(true);
-    try {
-      await onAdd(name.trim(), parseQuantityInput(quantity), unit || null);
-      setName("");
-      setQuantity("");
-      setUnit("");
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  return (
-    <form className="add-section-form" onSubmit={handleSubmit}>
-      <input
-        autoFocus
-        type="text"
-        placeholder="e.g. Paper towels"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Qty"
-        value={quantity}
-        onChange={(e) => setQuantity(e.target.value)}
-        style={{ width: 56 }}
-      />
-      <select value={unit} onChange={(e) => setUnit(e.target.value)}>
-        <option value="">unit</option>
-        {UNIT_OPTIONS.map((u) => (
-          <option key={u} value={u}>
-            {u}
-          </option>
-        ))}
-      </select>
-      <button className="btn primary btn-sm" type="submit" disabled={adding}>
-        Add
-      </button>
-      <button type="button" className="btn subtle btn-sm" onClick={() => setOpen(false)}>
-        Cancel
-      </button>
-    </form>
-  );
-}
-
-// Groups shopping items by which recipe(s) they're used in. A shared
-// ingredient (e.g. garlic used in two recipes) appears under both headings —
-// that's intentional, it shows the full picture of what each recipe needs.
-// A manually-added item isn't used in any recipe (usedIn is always empty for
-// those), so it gets its own catch-all heading instead of silently vanishing
-// from this view, sorted last since it's not a "real" recipe name.
-const MANUAL_GROUP_LABEL = "Added by you";
-function groupItemsByRecipe(items) {
-  const map = new Map();
-  for (const item of items) {
-    const recipeNames = item.usedIn.length > 0 ? item.usedIn : [MANUAL_GROUP_LABEL];
-    for (const recipeName of recipeNames) {
-      if (!map.has(recipeName)) map.set(recipeName, []);
-      map.get(recipeName).push(item);
-    }
-  }
-  return [...map.entries()].sort((a, b) => {
-    if (a[0] === MANUAL_GROUP_LABEL) return 1;
-    if (b[0] === MANUAL_GROUP_LABEL) return -1;
-    return a[0].localeCompare(b[0]);
-  });
 }
 
 export function GroceryList({
+  user,
   plannerEntries,
   weekStart,
   customStaples,
   excludedStaples,
   stapleCategories,
-  onRemoveStaple,
-  grocerySections,
-  onCreateSection,
-  onDeleteSection,
-  onReorderSection,
-  onUnassignFromSection,
   onAddPantryItem,
 }) {
   const [deals, setDeals] = useState([]);
@@ -381,13 +153,18 @@ export function GroceryList({
   // on one device shows up on another instead of being stuck in that one
   // browser's localStorage.
   const [checked, setChecked] = useState({});
-  const [showStaples, setShowStaples] = useState(true);
-  const [showSources, setShowSources] = useState(false);
   const [extraItems, setExtraItems] = useState([]);
-  // Tracks which items have been sent to the pantry inventory this session,
-  // just to swap the button to "✓ pantry" and stop double-adding on a
-  // stray extra click — not persisted, since re-adding later (e.g. after
-  // reopening the app) is harmless and arguably correct (you bought it again).
+  const [addValue, setAddValue] = useState("");
+  const [view, setView] = useState("store");
+  const [storePrefs, setStorePrefs] = useState(loadStorePrefs);
+  // core -> USDA FoodKeeper category string ("Produce", "Dairy Products &
+  // Eggs", ...), fetched lazily (see the effect below) and cached here so
+  // flipping between views never re-fetches a core it already has.
+  const [categoryCache, setCategoryCache] = useState({});
+  // Tracks which items have already been sent to the pantry this "Done
+  // shopping" pass, purely to stop a double-click from adding the same item
+  // twice before `checked` resets — not persisted, a stray re-add on reload
+  // is harmless (you bought it again).
   const [pantryAddedKeys, setPantryAddedKeys] = useState(() => new Set());
 
   useEffect(() => {
@@ -407,33 +184,83 @@ export function GroceryList({
     api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
   }, [weekStart]);
 
-  async function addExtraItem(name, quantity, unit) {
-    const created = await api.addGroceryExtra(weekStart, { name, quantity, unit });
-    setExtraItems((prev) => [...prev, created]);
-  }
-
-  async function deleteExtraItem(id) {
-    setExtraItems((prev) => prev.filter((i) => i.id !== id));
-    await api.deleteGroceryExtra(id);
-  }
-
-  const { setNodeRef: setStaplesDropRef, isOver: isOverStaples } = useDroppable({
-    id: "pantry-staples-drop",
-  });
-
   const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems);
-
-  // A core assigned to any store section — excluded from the main unsorted list.
-  const assignedCores = new Set(
-    grocerySections.flatMap((s) => s.assignments.map((a) => a.core))
-  );
-
-  const shoppingItems = items.filter((i) => !i.isStaple && !assignedCores.has(i.core));
-  const spiceStaples = items.filter((i) => i.isStaple && i.isSpice);
-  const otherStaples = items.filter((i) => i.isStaple && !i.isSpice);
-  const stapleCount = spiceStaples.length + otherStaples.length;
+  const shoppingItems = items.filter((i) => !i.isStaple);
+  const stapleCount = items.filter((i) => i.isStaple).length;
   const leftoverCount = plannerEntries.filter((e) => e.isLeftover).length;
   const alreadyHaveCount = plannerEntries.filter((e) => e.alreadyHave).length;
+
+  // Categories feed the aisle grouping itself AND the sub-line text shown in
+  // the store and recipe views ("PRODUCE · SHRIMP TACOS" / "PRODUCE"), so
+  // this can't wait for the user to actually switch to "By aisle" — the
+  // default "By store" view needs it too. It's still lazy in every other
+  // sense: it only ever asks for cores it doesn't already have cached, never
+  // refetches when switching views back and forth, and reuses the existing
+  // single-item suggest endpoint via Promise.all rather than a new batch
+  // endpoint.
+  useEffect(() => {
+    const byCore = new Map(shoppingItems.map((i) => [i.core, i.name]));
+    const missing = [...byCore.keys()].filter((core) => !(core in categoryCache));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      missing.map((core) =>
+        api
+          .suggestPantryExpiration(byCore.get(core), "pantry")
+          .then((r) => [core, r.category || "Other"])
+          .catch(() => [core, "Other"])
+      )
+    ).then((pairs) => {
+      if (cancelled) return;
+      setCategoryCache((prev) => {
+        const next = { ...prev };
+        for (const [core, cat] of pairs) next[core] = cat;
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shoppingItems.map((i) => i.core).sort().join("|")]);
+
+  // The stores the user actually shops at, in the order they first appear in
+  // this week's flyer deals — there's no saved "my stores" list in the
+  // schema, so this is derived instead. Falls back to a single default
+  // bucket before any deals have ever been uploaded.
+  const storeOrder = (() => {
+    const seen = [];
+    for (const d of deals) {
+      if (d.store && !seen.includes(d.store)) seen.push(d.store);
+    }
+    return seen.length > 0 ? seen : [DEFAULT_STORE];
+  })();
+
+  // A manual "move to another store" tap always wins once set — otherwise
+  // tapping the chip on a sale item would look like it did nothing, since
+  // the sale would keep re-claiming the item back every render. Absent an
+  // explicit preference, sale beats default store.
+  function storeForItem(item, deal) {
+    const pref = storePrefs[item.core];
+    if (pref && storeOrder.includes(pref)) return pref;
+    if (deal?.store) return deal.store;
+    return storeOrder[0];
+  }
+
+  function persistStorePrefs(next) {
+    setStorePrefs(next);
+    try {
+      localStorage.setItem(STORE_PREF_KEY, JSON.stringify(next));
+    } catch {
+      // best-effort
+    }
+  }
+
+  function cycleStore(item, currentStore) {
+    const idx = storeOrder.indexOf(currentStore);
+    const next = storeOrder[(idx + 1) % storeOrder.length];
+    persistStorePrefs({ ...storePrefs, [item.core]: next });
+  }
 
   // Optimistic: flip the checkbox immediately, then persist — reverting if
   // the request fails, so a dropped connection doesn't leave the UI showing
@@ -449,11 +276,11 @@ export function GroceryList({
     }
   }
 
-  // Checking something off is exactly the moment you know you bought it, so
-  // that's when this offers to also drop it into the pantry inventory (with
-  // today as the purchase date) - location defaults to fridge since that's
-  // the common case; wrong for a handful of items, but always editable from
-  // the Makeable tab afterward.
+  async function clearChecked() {
+    setChecked({});
+    await api.clearGroceryChecked(weekStart);
+  }
+
   async function addToPantry(item) {
     if (!onAddPantryItem || pantryAddedKeys.has(item.key)) return;
     setPantryAddedKeys((prev) => new Set(prev).add(item.key));
@@ -473,209 +300,262 @@ export function GroceryList({
     }
   }
 
-  async function clearChecked() {
-    setChecked({});
-    await api.clearGroceryChecked(weekStart);
+  // Checking something off is exactly the moment you know you bought it, so
+  // "Done shopping" is when every checked item actually lands in Inventory
+  // (with a USDA use-by date, via the same suggest logic the pantry-add
+  // endpoint already runs) — then the list clears for next week.
+  async function handleDoneShopping() {
+    const toAdd = shoppingItems.filter((i) => checked[i.key]);
+    for (const item of toAdd) {
+      await addToPantry(item);
+    }
+    await clearChecked();
   }
 
-  const hasChecked = Object.values(checked).some(Boolean);
-
-  function itemsForSection(section) {
-    const cores = new Set(section.assignments.map((a) => a.core));
-    return items.filter((i) => cores.has(i.core));
+  async function handleAddSubmit(e) {
+    e.preventDefault();
+    const parsed = parseAddInput(addValue);
+    if (!parsed || !parsed.name) return;
+    const created = await api.addGroceryExtra(weekStart, { name: parsed.name, quantity: parsed.quantity, unit: null });
+    setExtraItems((prev) => [...prev, created]);
+    setAddValue("");
   }
+
+  async function deleteExtraItem(id) {
+    setExtraItems((prev) => prev.filter((i) => i.id !== id));
+    await api.deleteGroceryExtra(id);
+  }
+
+  // Builds the groups for whichever view is active. Every row already knows
+  // its own store/deal/category, computed once here rather than re-derived
+  // per row.
+  function buildGroups() {
+    const rows = shoppingItems.map((item) => {
+      const deal = findMatchingDeal(item.name, deals);
+      return { item, deal, store: storeForItem(item, deal), category: categoryCache[item.core] || null };
+    });
+
+    const buckets = new Map();
+    let order = [];
+
+    if (view === "store") {
+      order = [...storeOrder];
+      for (const store of storeOrder) buckets.set(store, []);
+      for (const row of rows) {
+        if (!buckets.has(row.store)) {
+          buckets.set(row.store, []);
+          order.push(row.store);
+        }
+        buckets.get(row.store).push(row);
+      }
+    } else if (view === "aisle") {
+      for (const row of rows) {
+        const key = row.category || "Other";
+        if (!buckets.has(key)) {
+          buckets.set(key, []);
+          order.push(key);
+        }
+        buckets.get(key).push(row);
+      }
+      order.sort((a, b) => a.localeCompare(b));
+    } else {
+      for (const row of rows) {
+        const names = row.item.usedIn.length > 0 ? row.item.usedIn : [MANUAL_GROUP_LABEL];
+        for (const name of names) {
+          if (!buckets.has(name)) {
+            buckets.set(name, []);
+            order.push(name);
+          }
+          buckets.get(name).push(row);
+        }
+      }
+      order.sort((a, b) => {
+        if (a === MANUAL_GROUP_LABEL) return 1;
+        if (b === MANUAL_GROUP_LABEL) return -1;
+        return a.localeCompare(b);
+      });
+    }
+
+    return order
+      .filter((key) => buckets.get(key)?.length > 0)
+      .map((key) => {
+        const groupRows = buckets.get(key);
+        const sales = groupRows.filter((r) => r.deal).length;
+        const remaining = groupRows.filter((r) => !checked[r.item.key]).length;
+        const sorted = [...groupRows].sort((a, b) => (checked[a.item.key] ? 1 : 0) - (checked[b.item.key] ? 1 : 0));
+        return {
+          key,
+          name: key,
+          sorted,
+          count: `${remaining} LEFT${view === "store" && sales ? ` · ${sales} ON SALE` : ""}`,
+        };
+      });
+  }
+
+  function subLineFor(row) {
+    const category = row.category || "";
+    if (view === "aisle") return row.item.usedIn.join(" · ").toUpperCase();
+    if (view === "store") {
+      const first = row.item.usedIn[0] || "";
+      return category ? `${category}${first ? " · " + first : ""}`.toUpperCase() : first.toUpperCase();
+    }
+    return category.toUpperCase();
+  }
+
+  const groups = buildGroups();
+
+  const doneCount = shoppingItems.filter((i) => checked[i.key]).length;
+  const totalCount = shoppingItems.length;
+  const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+  const onSaleRows = shoppingItems
+    .map((item) => ({ item, deal: findMatchingDeal(item.name, deals) }))
+    .filter((r) => r.deal && !checked[r.item.key]);
+  const onSaleStores = [...new Set(onSaleRows.map((r) => r.deal.store).filter(Boolean))];
 
   const weekLabel = isCurrentWeek(weekStart)
-    ? `this week (${formatWeekRangeLabel(weekStart)})`
-    : `the week of ${formatWeekRangeLabel(weekStart)}`;
+    ? formatWeekRangeLabel(weekStart)
+    : `week of ${formatWeekRangeLabel(weekStart)}`;
+  const subLabel = `${weekLabel.toUpperCase()} · ${totalCount - doneCount} TO BUY`;
 
-  if (plannerEntries.length === 0 && extraItems.length === 0) {
-    return (
-      <div>
-        <p className="empty-state">
-          Nothing planned for {weekLabel} yet — plan a few meals on the Planner
-          tab first and your grocery list builds itself. You can still add
-          items by hand below.
-        </p>
-        <AddExtraItemForm onAdd={addExtraItem} />
-      </div>
-    );
-  }
+  const hintText =
+    view === "store"
+      ? "Sale items go to the store with the deal. Everything else goes to your usual store. Tap a store tag to move an item."
+      : "This list is built from your Planner. Tap an item to check it off. Checked items drop to the bottom.";
 
   return (
-    <div>
-      <p className="grocery-week-label">Groceries for {weekLabel}</p>
-      <div className="grocery-note">
-        <p>
-          <strong>{shoppingItems.length}</strong> item{shoppingItems.length !== 1 ? "s" : ""} to
-          buy.
-        </p>
-        <p>
-          Drag an item onto a store section or "Pantry staples" below to sort it.
-          {leftoverCount > 0 &&
-            ` ${leftoverCount} leftover meal${leftoverCount !== 1 ? "s" : ""} excluded.`}
-          {alreadyHaveCount > 0 &&
-            ` ${alreadyHaveCount} meal${alreadyHaveCount !== 1 ? "s" : ""} you already have the stuff for excluded.`}
-        </p>
-      </div>
-
-      <button
-        className={`btn btn-sm ${showSources ? "primary" : "subtle"}`}
-        style={{ marginBottom: 10 }}
-        onClick={() => setShowSources((s) => !s)}
-      >
-        {showSources ? "✓ " : ""}Group by recipe
-      </button>
-      {hasChecked && (
-        <button
-          className="btn btn-sm subtle"
-          style={{ marginBottom: 10, marginLeft: 8 }}
-          onClick={clearChecked}
-        >
-          Clear checked items
-        </button>
-      )}
-      <div style={{ marginBottom: 10 }}>
-        <AddExtraItemForm onAdd={addExtraItem} />
-      </div>
-
-      {showSources ? (
-        groupItemsByRecipe(shoppingItems).map(([recipeName, recipeItems]) => (
-          <div key={recipeName} className="grocery-recipe-group">
-            <p className="grocery-recipe-heading">{recipeName}</p>
-            <ul className="grocery-list">
-              {recipeItems.map((item) => (
-                <GroceryItemRow
-                  key={`${item.key}-${recipeName}`}
-                  dragId={`grocery-${item.key}-${recipeName}`}
-                  item={item}
-                  deals={deals}
-                  checked={!!checked[item.key]}
-                  onToggle={() => toggle(item.key)}
-                  draggable
-                  onDeleteManual={deleteExtraItem}
-                  onAddToPantry={addToPantry}
-                  pantryAdded={pantryAddedKeys.has(item.key)}
-                />
-              ))}
-            </ul>
-          </div>
-        ))
-      ) : (
-        <ul className="grocery-list">
-          {shoppingItems.map((item) => (
-            <GroceryItemRow
-              key={item.key}
-              item={item}
-              deals={deals}
-              checked={!!checked[item.key]}
-              onToggle={() => toggle(item.key)}
-              draggable
-              onDeleteManual={deleteExtraItem}
-              onAddToPantry={addToPantry}
-              pantryAdded={pantryAddedKeys.has(item.key)}
-            />
-          ))}
-        </ul>
-      )}
-
-      {grocerySections.length > 0 && (
-        <div className="store-sections-row">
-          {grocerySections.map((section, i) => (
-            <StoreSection
-              key={section.id}
-              section={section}
-              items={itemsForSection(section)}
-              deals={deals}
-              checked={checked}
-              onToggle={toggle}
-              onUnassign={onUnassignFromSection}
-              onDeleteManual={deleteExtraItem}
-              onAddToPantry={addToPantry}
-              pantryAddedKeys={pantryAddedKeys}
-              onDelete={onDeleteSection}
-              onReorder={onReorderSection}
-              isFirst={i === 0}
-              isLast={i === grocerySections.length - 1}
-              showSources={showSources}
-            />
-          ))}
+    <div className="riso-theme riso-grocery" data-theme="light">
+      <div className="riso-grocery-header">
+        <div className="riso-grocery-title-block">
+          <div className="riso-eyebrow">{subLabel}</div>
+          <h1 className="riso-grocery-title">
+            Grocery <span className="accent">list.</span>
+          </h1>
         </div>
-      )}
-
-      <div style={{ marginTop: 12 }}>
-        <AddSectionForm onCreateSection={onCreateSection} />
+        <Segmented options={VIEWS} value={view} onChange={setView} />
+        <button type="button" className="riso-grocery-share" title="Coming soon">
+          Share
+        </button>
       </div>
 
-      <div
-        ref={setStaplesDropRef}
-        className={`staples-section${isOverStaples ? " drop-active" : ""}`}
-      >
-        <button className="staples-toggle" onClick={() => setShowStaples((s) => !s)}>
-          {showStaples ? "▾" : "▸"} Pantry staples you probably have ({stapleCount})
-        </button>
+      <div className="riso-grocery-body">
+        <div className="riso-grocery-main">
+          <HintStrip userId={user.id} screenKey="grocery">
+            {hintText}
+          </HintStrip>
 
-        {showStaples && (
-          <>
-            {stapleCount === 0 && (
-              <p className="staples-empty-hint">Drag items here to remember them as staples</p>
-            )}
+          <form className="riso-grocery-add" onSubmit={handleAddSubmit}>
+            <input
+              type="text"
+              placeholder="Add an item, e.g. 2 lemons"
+              value={addValue}
+              onChange={(e) => setAddValue(e.target.value)}
+            />
+            <button type="submit" className="riso-grocery-add-btn">
+              Add
+            </button>
+          </form>
 
-            {stapleCount > 0 && (
+          {plannerEntries.length === 0 && extraItems.length === 0 ? (
+            <p className="riso-empty">
+              Nothing planned for {weekLabel} yet — plan a few meals on the Planner tab and your
+              grocery list builds itself. You can still add items by hand above.
+            </p>
+          ) : groups.length === 0 ? (
+            <p className="riso-empty">Nothing to buy — everything's a leftover, already on hand, or a pantry staple.</p>
+          ) : (
+            groups.map((group) => (
+              <section key={group.key} className="riso-group">
+                <div className="riso-group-head" style={{ background: view === "store" ? "var(--riso-track)" : "var(--riso-canvas)" }}>
+                  <p className="riso-group-name">{group.name}</p>
+                  <span className="riso-group-count">{group.count}</span>
+                </div>
+                {group.sorted.map((row) => (
+                  <GroceryRow
+                    key={`${group.key}-${row.item.key}`}
+                    item={row.item}
+                    checked={!!checked[row.item.key]}
+                    onToggle={() => toggle(row.item.key)}
+                    sale={row.deal?.price || ""}
+                    store={row.store}
+                    onCycleStore={() => cycleStore(row.item, row.store)}
+                    sub={subLineFor(row)}
+                    onDeleteManual={deleteExtraItem}
+                  />
+                ))}
+              </section>
+            ))
+          )}
+        </div>
+
+        <aside className="riso-grocery-aside">
+          <section className="riso-grocery-cart">
+            <div className="riso-eyebrow on-pink">In the cart</div>
+            <div className="riso-grocery-cart-count">
+              <span className="riso-grocery-cart-num">{doneCount}</span>
+              <span className="riso-grocery-cart-label">of {totalCount} items</span>
+            </div>
+            <div className="riso-grocery-cart-track">
+              <div className="riso-grocery-cart-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <button type="button" className="riso-grocery-cart-btn" disabled={doneCount === 0} onClick={handleDoneShopping}>
+              Done shopping · add {doneCount} to inventory
+            </button>
+            <p className="riso-grocery-cart-note">
+              Checked items go to the Fridge, Freezer or Pantry with a USDA use-by date.
+            </p>
+          </section>
+
+          <section className="riso-grocery-excluded">
+            <div className="riso-eyebrow">Not on the list</div>
+            <div className="riso-grocery-excluded-rows">
+              <div className="riso-grocery-excluded-row">
+                <span>Leftover meals</span>
+                <span>{leftoverCount}</span>
+              </div>
+              <div className="riso-grocery-excluded-row">
+                <span>Meals you already have food for</span>
+                <span>{alreadyHaveCount}</span>
+              </div>
+              <div className="riso-grocery-excluded-row">
+                <span>Pantry staples (salt, oil…)</span>
+                <span>{stapleCount}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="riso-grocery-excluded-link"
+              title="Coming soon"
+              onClick={(e) => e.preventDefault()}
+            >
+              Review what's left off →
+            </button>
+          </section>
+
+          <section className="riso-grocery-sale">
+            <span className="riso-sticker yellow" style={{ top: -14, right: 18, transform: "rotate(5deg)" }}>
+              save!
+            </span>
+            <div className="riso-eyebrow">On sale</div>
+            {onSaleRows.length > 0 ? (
               <>
-                <p className="staples-subheading">Spices</p>
-                <StaplesSubsection dropId="staple-category-spice-drop">
-                  {spiceStaples.length === 0 ? (
-                    <p className="staples-empty-hint">Drag a staple here to file it as a spice</p>
-                  ) : (
-                    <ul className="grocery-list staples-list">
-                      {spiceStaples.map((item) => (
-                        <GroceryItemRow
-                          key={item.key}
-                          dragId={`staple-${item.key}`}
-                          item={item}
-                          deals={deals}
-                          checked={!!checked[item.key]}
-                          onToggle={() => toggle(item.key)}
-                          draggable
-                          onRemoveStaple={onRemoveStaple}
-                          onDeleteManual={deleteExtraItem}
-                          onAddToPantry={addToPantry}
-                          pantryAdded={pantryAddedKeys.has(item.key)}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </StaplesSubsection>
-
-                <p className="staples-subheading">Staples</p>
-                <StaplesSubsection dropId="staple-category-other-drop">
-                  {otherStaples.length === 0 ? (
-                    <p className="staples-empty-hint">Drag a staple here to file it here instead</p>
-                  ) : (
-                    <ul className="grocery-list staples-list">
-                      {otherStaples.map((item) => (
-                        <GroceryItemRow
-                          key={item.key}
-                          dragId={`staple-${item.key}`}
-                          item={item}
-                          deals={deals}
-                          checked={!!checked[item.key]}
-                          onToggle={() => toggle(item.key)}
-                          draggable
-                          onRemoveStaple={onRemoveStaple}
-                          onDeleteManual={deleteExtraItem}
-                          onAddToPantry={addToPantry}
-                          pantryAdded={pantryAddedKeys.has(item.key)}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </StaplesSubsection>
+                <p className="riso-grocery-sale-amt">
+                  {onSaleRows.length} item{onSaleRows.length !== 1 ? "s" : ""} on sale
+                </p>
+                <p className="riso-grocery-sale-copy">
+                  {onSaleRows.length} item{onSaleRows.length !== 1 ? "s" : ""} on this list{" "}
+                  {onSaleRows.length !== 1 ? "are" : "is"} on sale at {formatStoreList(onSaleStores)}. They're
+                  already sorted under the store with the deal.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="riso-grocery-sale-amt">No deals yet</p>
+                <p className="riso-grocery-sale-copy">Nothing on this list matches a current flyer deal.</p>
               </>
             )}
-          </>
-        )}
+          </section>
+        </aside>
       </div>
     </div>
   );
