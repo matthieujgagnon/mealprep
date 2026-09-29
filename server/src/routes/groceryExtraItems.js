@@ -21,6 +21,23 @@ groceryExtraItemsRouter.post("/", async (req, res) => {
   if (!weekStart || !name || !name.trim()) {
     return res.status(400).json({ error: "weekStart and name are required" });
   }
+  // Hand-added rows are never merged on the list, so the same name twice in
+  // a week (a double-tap, two screens adding the same item) would be two
+  // identical rows. Hand back the existing one instead.
+  const existing = await prisma.groceryExtraItem.findFirst({
+    where: { userId: req.userId, weekStart, name: { equals: name.trim(), mode: "insensitive" } },
+  });
+  if (existing) {
+    const sameUnit = (existing.unit || null) === (unit || null);
+    if (typeof quantity === "number" && sameUnit) {
+      const merged = await prisma.groceryExtraItem.update({
+        where: { id: existing.id },
+        data: { quantity: (existing.quantity ?? 0) + quantity },
+      });
+      return res.json(merged);
+    }
+    return res.json(existing);
+  }
   const item = await prisma.groceryExtraItem.create({
     data: {
       userId: req.userId,

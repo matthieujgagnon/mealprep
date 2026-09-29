@@ -288,6 +288,7 @@ export function RecipeDetailModal({
   onPlanAround,
   onAddPantryItem,
   onDeletePantryItem,
+  onAddToGroceryList,
   onNavigate,
   sharedWithWeek, // ingredient names reused from this week's plan — only set when opened from a "good next addition" suggestion
   startInCookMode, // true when opened via Makeable's "Cook tonight" - skips straight to cook mode instead of the detail view
@@ -390,9 +391,7 @@ export function RecipeDetailModal({
     if (missingIngredients.length === 0 || !weekStart) return;
     setAddingMissing(true);
     try {
-      for (const ing of missingIngredients) {
-        await api.addGroceryExtra(weekStart, { name: ing.name, quantity: null, unit: null });
-      }
+      await onAddToGroceryList(missingIngredients.map((ing) => ing.name));
       setAddedMissing(true);
     } finally {
       setAddingMissing(false);
@@ -401,7 +400,7 @@ export function RecipeDetailModal({
 
   async function handleAddOneToGroceryList(ing) {
     if (!weekStart) return;
-    await api.addGroceryExtra(weekStart, { name: ing.name, quantity: null, unit: null });
+    await onAddToGroceryList([ing.name]);
   }
 
   async function handleRemoveFromInventory(ing) {

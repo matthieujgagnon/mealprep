@@ -4,6 +4,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
+import { coresOnGroceryList, groceryCore } from "./lib/groceryDedupe.js";
 import { core, suggestNextRecipes } from "./lib/similarRecipes.js";
 import { Home } from "./components/Home.jsx";
 import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
@@ -141,12 +142,43 @@ export default function App({ user, onLogout }) {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setLoadError(true));
   }, [weekStart]);
 
-  // Just for the header's "Build grocery list · n" count — mirrors exactly
-  // what GroceryList.jsx itself fetches and counts, so the number matches
-  // what the Grocery tab actually shows once you get there.
+  // Hand-added grocery items for the week. Re-fetched on tab change too,
+  // since the Grocery and Home tabs add/remove items through their own
+  // state. Drives the "Build grocery list · n" count and the de-duplication
+  // below.
   useEffect(() => {
     api.listGroceryExtras(weekStart).then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
-  }, [weekStart]);
+  }, [weekStart, tab]);
+
+  const groceryCores = coresOnGroceryList(plannerEntries, plannerExtraItems);
+
+  function isOnGroceryList(name) {
+    return groceryCores.has(groceryCore(name));
+  }
+
+  // Adds only what isn't already on this week's list (from a planned recipe
+  // or added earlier), so tapping "+ Add all" twice, or adding an item a
+  // planned recipe already needs, never makes a duplicate row.
+  async function addToGroceryList(names) {
+    const seen = new Set(groceryCores);
+    const created = [];
+    for (const name of names) {
+      const c = groceryCore(name);
+      if (seen.has(c)) continue;
+      seen.add(c);
+      created.push(await api.addGroceryExtra(weekStart, { name, quantity: null, unit: null }));
+    }
+    if (created.length > 0) setPlannerExtraItems((prev) => [...prev, ...created]);
+  }
+
+  // Only hand-added rows can be taken back off - a planned recipe's
+  // ingredients stay on the list for as long as it's planned.
+  async function removeFromGroceryList(name) {
+    const c = groceryCore(name);
+    const matches = plannerExtraItems.filter((item) => groceryCore(item.name) === c);
+    await Promise.all(matches.map((item) => api.deleteGroceryExtra(item.id)));
+    setPlannerExtraItems((prev) => prev.filter((item) => !matches.includes(item)));
+  }
 
   function handleImported(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
@@ -563,6 +595,9 @@ export default function App({ user, onLogout }) {
             customStaples={customStaples}
             weekStart={weekStart}
             onAddToPlanner={handleAddToPlanner}
+            isOnGroceryList={isOnGroceryList}
+            onAddToGroceryList={addToGroceryList}
+            onRemoveFromGroceryList={removeFromGroceryList}
           />
         )}
 
@@ -724,6 +759,7 @@ export default function App({ user, onLogout }) {
             }}
             onAddPantryItem={handleAddPantryItem}
             onDeletePantryItem={handleDeletePantryItem}
+            onAddToGroceryList={addToGroceryList}
             onNavigate={(t) => {
               openRecipe(null);
               setTab(t);

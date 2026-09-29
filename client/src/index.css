@@ -329,35 +329,132 @@
 
 .riso-makeable-need {
   background: var(--riso-canvas);
-  border: 2px dashed var(--riso-ink);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 9px;
 }
 
-.riso-makeable-need-text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
+.riso-makeable-need-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.riso-makeable-need-label {
-  font-family: var(--riso-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
+.riso-makeable-need-title {
+  font: 800 15px var(--riso-font-display);
+}
+
+.riso-makeable-need-count {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 12px;
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 13px var(--riso-font-display);
+  box-sizing: border-box;
+}
+
+.riso-makeable-need-hint {
+  margin-left: auto;
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+  white-space: nowrap;
+}
+
+.riso-makeable-need-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-makeable-need-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  padding: 6px 6px 6px 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.riso-makeable-need-row.more {
+  background: transparent;
+  border: 2px dashed var(--riso-dash-strong);
+  color: var(--riso-muted);
+}
+
+.riso-makeable-need-name {
+  flex: 1;
+  min-width: 0;
+  font: 700 14.5px/1.25 var(--riso-font-display);
+}
+
+.riso-makeable-need-add {
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 14px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-makeable-need-add.on {
+  padding: 0 10px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
 }
 
 .riso-makeable-need-actions {
   display: flex;
   gap: 6px;
+  padding-top: 2px;
+}
+
+.riso-makeable-need-all {
+  flex: 1;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font: 700 13.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-makeable-need-all.on {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  box-shadow: none;
+  cursor: default;
 }
 
 .riso-makeable-need-btn {
-  height: 32px;
-  padding: 0 13px;
-  border-radius: 16px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
   background: var(--riso-surface);
   border: 2px solid var(--riso-ink);
   display: flex;
@@ -3296,6 +3393,21 @@ input[type="date"].planner-week-picker {
 }
 
 /* ---------- Riso Poster shared components ---------- */
+
+/* Stickers and pills are one-line labels - a narrow column must never
+   wrap "nothing to buy!" onto two lines (design handoff v3). */
+.riso-makeable-group-pill,
+.leftover-badge,
+.riso-ends-badge,
+.riso-watch-badge,
+.riso-rc-why-sticker,
+.riso-rc-legend-sticker,
+.riso-rc-timer-chip,
+.riso-rc-tag-chip,
+.tag-chip,
+.inv-storage-pill {
+  white-space: nowrap;
+}
 
 /* Segmented control - one outlined pill, the active segment filled ink
    with paper text (e.g. Grocery's By store/By aisle/By recipe, the
