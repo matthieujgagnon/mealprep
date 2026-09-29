@@ -72,13 +72,6 @@ export default function App({ user, onLogout }) {
   const [pantryInventory, setPantryInventory] = useState([]);
   const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
   const [loadError, setLoadError] = useState(false);
-  // Same "expiring" window WhatCanIMake's pantry rows use (<=2 days out,
-  // expired items included) so the banner and the list agree on what counts.
-  const expiringPantryCount = pantryInventory.filter((item) => {
-    if (!item.expiresAt) return false;
-    const days = Math.ceil((new Date(item.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-    return days <= 2;
-  }).length;
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("All");
   const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart — just for the "Build grocery list · n" count
@@ -513,16 +506,6 @@ export default function App({ user, onLogout }) {
               Try again
             </button>
           </div>
-        )}
-
-        {expiringPantryCount > 0 && tab !== "inventory" && (
-          <button
-            type="button"
-            className="pantry-expiry-banner"
-            onClick={() => setTab("inventory")}
-          >
-            {expiringPantryCount} pantry item{expiringPantryCount === 1 ? "" : "s"} expiring soon — tap to review
-          </button>
         )}
 
         {tab === "flyers" && (
