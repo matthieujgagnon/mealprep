@@ -528,25 +528,6 @@ select {
   flex-wrap: wrap;
 }
 
-.pantry-expiry-banner {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: var(--tomato);
-  color: #fbe9e6;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 16px;
-  margin: -12px 0 24px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.pantry-expiry-banner:hover {
-  filter: brightness(1.08);
-}
-
 .load-error-banner {
   display: flex;
   align-items: center;
@@ -605,11 +586,28 @@ select {
      can't fit them all at a legible size — see the mobile override below,
      which drops the old flex:1-per-tab squeeze that caused this. */
   overflow-x: auto;
-  scrollbar-width: none;
+  /* A thin, visible thumb rather than hiding the scrollbar entirely - a
+     desktop window between the mobile breakpoint and the design's full
+     1280px width (a laptop that isn't maximized, a half-screen split view)
+     can still overflow here, and with no scrollbar at all the tabs past the
+     fold just silently vanish with no hint they're reachable by scrolling -
+     that's what read as the nav being "broken"/"cut off" rather than
+     scrollable. */
+  scrollbar-width: thin;
 }
 
 .tabs::-webkit-scrollbar {
-  display: none;
+  height: 5px;
+}
+
+.tabs::-webkit-scrollbar-thumb {
+  background: var(--riso-ink);
+  opacity: 0.25;
+  border-radius: 3px;
+}
+
+.tabs::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .tab {
@@ -7915,6 +7913,25 @@ input[type="date"].planner-week-picker {
   margin: 0;
   font-size: 13.5px;
   line-height: 1.5;
+}
+
+/* A browser window between the mobile breakpoint below and the design's
+   full 1280px width - an unmaximized laptop window, a half-screen split
+   view - has enough room for the header's wordmark and account controls at
+   full size, but not quite enough left over for all 7 tabs at their full
+   padding, so they silently overflowed past the account controls with no
+   visible scrollbar to reach them (see .tabs's own scrollbar-thumb rule
+   above). Tightening just the tab spacing (not the full mobile layout)
+   buys back enough width that this range needs the scrollbar rarely
+   rather than by default. */
+@media (max-width: 1180px) {
+  .tab {
+    padding: 0 10px;
+  }
+
+  .tabs {
+    gap: 2px;
+  }
 }
 
 /* ================================================================
