@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { freezeTip } from "../lib/foodkeeper.js";
+import { loadBaselines } from "../lib/baselines.js";
+import { compareToBaseline, findBaseline } from "../lib/statcan.js";
 
 export const dealsRouter = Router();
 
@@ -93,6 +95,21 @@ async function attachPriceHistory(userId, deals) {
   return withPriceHistory(deals, history);
 }
 
+// Attaches Quebec's average price for the same product (Statistics Canada,
+// see lib/statcan.js) and how this deal compares: `baseline` = { product,
+// price, month, pct, verdict }. Only for deals priced in the same unit.
+export function attachBaselines(deals, baselines) {
+  if (baselines.length === 0) return deals;
+  return deals.map((deal) => {
+    const match = findBaseline(deal, baselines);
+    if (!match) return deal;
+    return {
+      ...deal,
+      baseline: { product: match.product, price: match.price, month: match.month, ...compareToBaseline(deal.unitPrice, match.price) },
+    };
+  });
+}
+
 // Attaches a "Freezes N months." tip (see foodkeeper.js's freezeTip) to
 // every deal whose matched FoodKeeper entry has freezer data - meat/fish
 // mostly, per the bundled dataset. Independent of price history, so it
@@ -142,7 +159,7 @@ dealsRouter.get("/", async (req, res) => {
   }
 
   const stores = [...new Set(rows.map((r) => r.store))];
-  const deals = attachFreezeTips(await attachPriceHistory(req.userId, rows));
+  const deals = attachBaselines(attachFreezeTips(await attachPriceHistory(req.userId, rows)), await loadBaselines());
   res.json({
     region: "Montreal, QC (H1W)",
     stores,

@@ -194,3 +194,37 @@ test("a matching recipe appears in What to cook with a save sticker", async ({ p
   await expect(card).toBeVisible();
   await expect(card.locator(".riso-sticker")).toContainText("save $2.50");
 });
+
+test("a deal with no history yet is compared with Quebec's average price", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  // A made-up product so this shared (all-accounts) row can't touch other tests.
+  const product = `Quokkafruit ${Date.now()}, per kilogram`;
+  await prisma.priceBaseline.create({
+    data: { product, item: product.split(",")[0].toLowerCase(), unitBasis: "lb", price: 5.0, month: "2026-08" },
+  });
+  try {
+    await prisma.flyerDeal.create({
+      data: {
+        userId: user.id, store: "Metro", source: "Flipp", category: "produce",
+        item: `${product.split(",")[0]} bunch`, matchName: `${product.split(",")[0].toLowerCase()} bunch`,
+        price: "$3.50/lb", unitPrice: 3.5, unitBasis: "lb", isCurrent: true,
+      },
+    });
+
+    await page.getByRole("button", { name: "Flyers", exact: true }).click();
+    const row = page.locator(".riso-table-row", { hasText: "Quokkafruit" });
+    await expect(row.locator(".riso-meter-new.vs-avg.good")).toHaveText("30% UNDER QC AVG");
+    await expect(page.locator(".riso-block.accent")).toContainText("Quokkafruit");
+
+    await row.click();
+    const avg = page.getByRole("dialog").locator(".riso-deal-detail-avg");
+    await expect(avg).toHaveClass(/stock-up/);
+    await expect(avg).toContainText("QUEBEC AVERAGE · AUG 2026");
+    await expect(avg).toContainText("$5.00/lb");
+    await expect(avg).toContainText("Stock-up price · 30% less than it usually costs in Quebec");
+  } finally {
+    await prisma.priceBaseline.delete({ where: { product } });
+  }
+});

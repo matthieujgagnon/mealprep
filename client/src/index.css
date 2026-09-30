@@ -12425,3 +12425,60 @@ body.no-select {
     flex: 1;
   }
 }
+
+/* Flyers: Quebec average price (Statistics Canada) next to a deal. */
+.riso-meter-new.vs-avg.good {
+  color: var(--riso-green-text);
+}
+
+.riso-deal-detail-avg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 10px 12px;
+}
+
+.riso-deal-detail-avg > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.riso-deal-detail-avg-label {
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+}
+
+.riso-deal-detail-avg strong {
+  font: 800 17px var(--riso-font-display);
+}
+
+.riso-deal-detail-avg p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--riso-soft);
+}
+
+.riso-deal-detail-avg b {
+  color: var(--riso-ink);
+}
+
+.riso-deal-detail-avg.stock-up,
+.riso-deal-detail-avg.good {
+  background: var(--riso-green-tint);
+}
+
+.riso-deal-detail-avg.stock-up b,
+.riso-deal-detail-avg.good b {
+  color: var(--riso-green-text);
+}
+
+.riso-deal-detail-avg-source {
+  font-size: 11.5px;
+  color: var(--riso-muted);
+}

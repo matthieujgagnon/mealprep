@@ -5,6 +5,7 @@
 import { prisma } from "./prisma.js";
 import { fetchFlippDeals, isValidPostalCode, normalizePostalCode } from "./flipp.js";
 import { mapPastWeeks, mapToFlyerDeals, parseLeRabaisMarkdown } from "./leRabais.js";
+import { refreshBaselinesIfDue } from "./baselines.js";
 
 export const FLIPP_SOURCE = "Flipp";
 export const LE_RABAIS_SOURCE = "Le Rabais";
@@ -265,9 +266,12 @@ export function runDueImports({ now = new Date(), fetchImpl = fetch } = {}) {
 export function startFlyerScheduler() {
   if (String(process.env.FLYER_AUTO_IMPORT).toLowerCase() === "off") return;
   const tick = () =>
-    runDueImports().catch((err) => {
-      console.error("Flyer auto-import failed:", err);
-    });
+    Promise.all([
+      runDueImports().catch((err) => {
+        console.error("Flyer auto-import failed:", err);
+      }),
+      refreshBaselinesIfDue(),
+    ]);
   setTimeout(tick, 60 * 1000).unref?.();
   setInterval(tick, 60 * 60 * 1000).unref?.();
 }

@@ -96,6 +96,13 @@ Flipp has no official API; the import reads the same data Flipp's own website lo
 break if Flipp changes it. When that happens the Flyers tab says so under the Import now button
 and Le Rabais fills in.
 
+### Quebec average prices
+Until an item has its own price history, deals are compared with Quebec's average price for the
+same product from Statistics Canada (table 18-10-0245-01, monthly retail prices from checkout
+data): "23% under QC avg", and a Quebec-average box in each deal's detail. The app refreshes those
+averages about once a week through Statistics Canada's public Web Data Service - no key needed,
+on the same hourly check and weekly wake-up as the flyer import.
+
 ### Updating the live site after future code changes
 ```bash
 git add .
