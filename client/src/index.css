@@ -10173,3 +10173,14 @@ body.no-select {
   user-select: none;
   -webkit-user-select: none;
 }
+
+.photo-main-badge {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1.5px solid var(--riso-ink, currentColor);
+  background: var(--riso-yellow, #ffe066);
+  color: var(--riso-ink, #111);
+  font-weight: 700;
+  font-size: 12px;
+}

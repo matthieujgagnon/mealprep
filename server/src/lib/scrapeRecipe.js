@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { assertSafeRecipeUrl } from "./urlSafety.js";
+import { NOISE_PATTERN, candidatesFromImg, cleanImageUrl, selectPhotos } from "./recipePhotos.js";
 
 /**
  * Fetches a recipe URL and extracts structured recipe data.
@@ -71,7 +72,7 @@ export async function scrapeRecipe(url) {
     // (Vice/Munchies, food blogs, newspaper sites) write recipes as prose
     // articles with "Ingredients" and "Directions" headings, no JSON-LD.
     const articleRecipe = extractRecipeFromArticleBody($, url);
-    if (articleRecipe) return articleRecipe;
+    if (articleRecipe) return withBestPhotos(articleRecipe, $, url, null, extractDomImages($, url));
 
     throw new Error(
       "NO_STRUCTURED_DATA: Could not find recipe data on this page. Try manual entry."
@@ -82,7 +83,68 @@ export async function scrapeRecipe(url) {
   const domGroups = extractIngredientGroupsFromDom($);
   const domStepImages = extractStepImagesFromDom($, url);
 
-  return normalizeRecipe(recipeNode, url, domPhotos, domGroups, domStepImages);
+  const recipe = normalizeRecipe(recipeNode, url, [], domGroups, domStepImages);
+  return withBestPhotos(recipe, $, url, recipeNode.image, domPhotos);
+}
+
+// The recipe's own image(s) from its structured data, with sizes when given
+// (ImageObject width/height, sometimes as { value } objects).
+function structuredImageCandidates(image, baseUrl) {
+  const out = [];
+  const size = (v) => parseInt(typeof v === "object" && v ? v.value : v, 10) || null;
+  const collect = (val) => {
+    if (!val) return;
+    if (typeof val === "string") out.push({ url: cleanImageUrl(val, baseUrl), source: "ld" });
+    else if (Array.isArray(val)) val.forEach(collect);
+    else if (typeof val === "object") {
+      const url = cleanImageUrl(val.url || val.contentUrl, baseUrl);
+      out.push({ url, width: size(val.width), height: size(val.height), source: "ld" });
+    }
+  };
+  collect(image);
+  return out.filter((c) => c.url);
+}
+
+// The page's share image - what Facebook/Pinterest/iMessage show for the
+// link. Nearly every recipe page sets one, usually a large landscape photo.
+function metaImageCandidates($, baseUrl) {
+  const width = parseInt($('meta[property="og:image:width"]').attr("content"), 10) || null;
+  const height = parseInt($('meta[property="og:image:height"]').attr("content"), 10) || null;
+  const out = [];
+  const selectors = [
+    ['meta[property="og:image:secure_url"]', "content", true],
+    ['meta[property="og:image"]', "content", true],
+    ['meta[property="og:image:url"]', "content", true],
+    ['meta[name="twitter:image"]', "content", false],
+    ['meta[name="twitter:image:src"]', "content", false],
+    ['meta[itemprop="image"]', "content", false],
+    ['link[rel="image_src"]', "href", false],
+  ];
+  for (const [selector, attr, isOg] of selectors) {
+    $(selector).each((i, el) => {
+      const url = cleanImageUrl($(el).attr(attr), baseUrl);
+      if (url) out.push({ url, width: isOg && i === 0 ? width : null, height: isOg && i === 0 ? height : null, source: "meta" });
+    });
+  }
+  return out;
+}
+
+// Replaces a scraped recipe's photos with the best ones on the page (see
+// recipePhotos.js). Step photos stay with their steps, not the gallery.
+async function withBestPhotos(recipe, $, pageUrl, structuredImage, domCandidates) {
+  const candidates = [
+    ...structuredImageCandidates(structuredImage, pageUrl),
+    ...metaImageCandidates($, pageUrl),
+    ...domCandidates,
+  ];
+  const stepImages = (recipe.instructions || []).map((s) => s.image).filter(Boolean);
+  try {
+    const { photoUrl, photos } = await selectPhotos(candidates, { referer: pageUrl, exclude: stepImages });
+    if (photoUrl) return { ...recipe, photoUrl, photos };
+  } catch {
+    // Photo checks are a bonus - keep whatever the page declared.
+  }
+  return recipe;
 }
 
 // Splits a <p>/<li>'s inner HTML on <br> tags and returns the trimmed text
@@ -244,7 +306,7 @@ function extractRecipeFromArticleBody($, sourceUrl) {
       image: null,
     }));
 
-    const domPhotos = extractDomImages($, sourceUrl);
+    const domPhotos = extractDomImages($, sourceUrl).map((c) => c.url);
     const photoUrl = domPhotos[0] || null;
     const photos = [...new Set(domPhotos)];
 
@@ -281,9 +343,6 @@ const SPECIFIC_RECIPE_CONTAINERS = [
   '[class*="recipe-card" i]',
 ];
 
-const NOISE_PATTERN =
-  /(logo|icon|avatar|sprite|pixel|badge|share|social|advert|gravatar|blank|spacer|placeholder|author|headshot|profile|byline|comment|nav|widget|sidebar|footer|menu|wp-content\/plugins|wp-includes|-\d{2,3}x\d{2,3}\.(?:png|jpe?g|gif|webp))/i;
-
 function extractDomImages($, baseUrl) {
   try {
     let scope = null;
@@ -302,26 +361,15 @@ function extractDomImages($, baseUrl) {
       scope = broad.length ? broad : $("body");
     }
 
-    const urls = [];
+    // Every version each <img> offers (srcset sizes, lazy-load originals,
+    // Pinterest's full-size pin image) - recipePhotos.js keeps the best.
+    const candidates = [];
     scope.find("img").each((_, el) => {
-      const $el = $(el);
-      const candidate = [
-        $el.attr("src"),
-        $el.attr("data-src"),
-        $el.attr("data-lazy-src"),
-        $el.attr("data-original"),
-      ].find((v) => v && !v.startsWith("data:"));
-
-      if (!candidate || NOISE_PATTERN.test(candidate)) return;
-
-      try {
-        urls.push(new URL(candidate, baseUrl).href);
-      } catch {
-        // malformed URL — skip it
+      for (const c of candidatesFromImg($, el, baseUrl)) {
+        if (!NOISE_PATTERN.test(c.url)) candidates.push({ ...c, source: "dom" });
       }
     });
-
-    return [...new Set(urls)].slice(0, 12);
+    return candidates.slice(0, 60);
   } catch {
     // Any unexpected DOM shape shouldn't break the import — just skip this bonus step.
     return [];
@@ -605,23 +653,9 @@ function extractStepImagesFromDom($, baseUrl) {
 
     const images = [];
     $steps.each((_, el) => {
-      const $img = $(el).find("img").first();
-      const candidate = [
-        $img.attr("src"),
-        $img.attr("data-src"),
-        $img.attr("data-lazy-src"),
-        $img.attr("data-original"),
-      ].find((v) => v && !v.startsWith("data:"));
-
-      if (!candidate || NOISE_PATTERN.test(candidate)) {
-        images.push(null);
-        return;
-      }
-      try {
-        images.push(new URL(candidate, baseUrl).href);
-      } catch {
-        images.push(null);
-      }
+      const img = $(el).find("img").get(0);
+      const best = img ? candidatesFromImg($, img, baseUrl).find((c) => !NOISE_PATTERN.test(c.url)) : null;
+      images.push(best ? best.url : null);
     });
     return images;
   } catch {

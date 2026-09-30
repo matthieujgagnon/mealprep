@@ -5,6 +5,7 @@ import { findMatchingDeal } from "../lib/groceryList.js";
 import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const FILTERS = ["All", "Makeable now", "Uses expiring", "On sale", "Breakfast", "Lunch", "Supper"];
 const SORT_LABELS = ["Recently added", "Fewest missing", "Quickest"];
@@ -50,7 +51,7 @@ function RecipeCard({ recipe, stats, badge, onClick }) {
       onClick={() => onClick(recipe)}
     >
       <div className="riso-recipe-card-photo">
-        {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" /> : null}
+        {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}
         <span className={`riso-recipe-card-time${totalTime > 0 ? "" : " unknown"}`}>
           {totalTime > 0 ? `⏱ ${formatTime(totalTime).toLowerCase()}` : "time not set"}
         </span>

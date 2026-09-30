@@ -6,6 +6,7 @@ import { addDays, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, parseDate
 import { MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
 import { recipeHaveStats } from "../lib/onHand.js";
 import { formatTrayTime } from "../lib/plannerSuggestions.js";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const LONG_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const LONG_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -18,7 +19,7 @@ function MealRow({ entry, haveCores, isStale, onOpen, onSwap, onRemove, onCycleS
   return (
     <div className={`rpm-meal${entry.alreadyHave ? " have" : ""}`}>
       <button type="button" className="rpm-meal-photo" onClick={onOpen} aria-label={`Open ${recipe.title}`}>
-        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" />}
+        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
         {entry.isLeftover && <span className={`rpm-leftover${isStale ? " stale" : ""}`}>{isStale ? "⚠ past fridge life" : "leftover"}</span>}
       </button>
       <button

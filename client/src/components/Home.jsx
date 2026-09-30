@@ -5,6 +5,7 @@ import { buildGroceryList, findMatchingDeal, canonicalize } from "../lib/grocery
 import { findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 const RESTAURANT_TITLE = "🍽️ Restaurant";
@@ -93,7 +94,7 @@ function MakeableRow({ recipe, onOpen }) {
   return (
     <button type="button" className="riso-makeable-row" onClick={() => onOpen(recipe)}>
       {recipe.photoUrl ? (
-        <img src={recipe.photoUrl} alt="" className="riso-makeable-row-thumb" />
+        <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-makeable-row-thumb" />
       ) : (
         <div className="riso-makeable-row-thumb placeholder">{recipe.title[0]}</div>
       )}
@@ -233,7 +234,7 @@ export function Home({
           {tonightEntry ? (
             <div className="riso-home-hero-body">
               {tonightEntry.recipe.photoUrl && !tonightIsNote && (
-                <img src={tonightEntry.recipe.photoUrl} alt="" className="riso-home-hero-photo" />
+                <img src={tonightEntry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-home-hero-photo" />
               )}
               <div className="riso-home-hero-info">
                 <div className="riso-eyebrow on-accent">Tonight · Supper</div>
@@ -375,7 +376,7 @@ export function Home({
                 onClick={() => onSelectRecipe(entry.recipe)}
               >
                 {entry.recipe.photoUrl ? (
-                  <img src={entry.recipe.photoUrl} alt="" className="riso-home-week-day-photo" />
+                  <img src={entry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-home-week-day-photo" />
                 ) : (
                   <div className="riso-home-week-day-photo placeholder" />
                 )}

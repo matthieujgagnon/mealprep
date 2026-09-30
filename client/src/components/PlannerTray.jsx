@@ -13,6 +13,7 @@ import {
   searchRecipes,
   suggestedGroups,
 } from "../lib/plannerSuggestions.js";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const TABS = [
   { id: "suggested", label: "Suggested" },
@@ -48,7 +49,7 @@ function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
         onClick={() => onOpen(recipe)}
         aria-label={`Open ${recipe.title}`}
       >
-        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" draggable="false" />}
+        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} draggable="false" />}
       </button>
       <div className="riso-tray-tile-info">
         <span className="riso-tray-tile-name">{recipe.title}</span>

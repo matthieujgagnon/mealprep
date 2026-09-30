@@ -78,3 +78,29 @@ test("an ingredient can be a count of units", async ({ page }) => {
   await page.locator(".riso-recipe-card", { hasText: "Stuffed peppers" }).click();
   await expect(page.locator(".riso-rc-ingredient-qty").first()).toHaveText("3 units");
 });
+
+test("any photo can be made the main one", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.fill('input[type="email"]', `recipes-photo+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Two photo stew");
+  await page.getByLabel("Main photo link").fill("https://example.com/first.jpg");
+  await page.getByRole("button", { name: "+ Add photo" }).click();
+  await page.getByLabel("Photo 2 link").fill("https://example.com/second.jpg");
+  await page.getByRole("button", { name: "Make main" }).click();
+  await expect(page.getByLabel("Main photo link")).toHaveValue("https://example.com/second.jpg");
+  await page.fill('input[placeholder="Name (e.g. butter)"]', "beef");
+  await page.fill('textarea[placeholder*="Preheat oven"]', "Stew it.");
+  await page.getByRole("button", { name: "Save to cookbook" }).click();
+
+  const recipes = await (await page.request.get("/api/recipes")).json();
+  const saved = recipes.find((r) => r.title === "Two photo stew");
+  expect(saved.photoUrl).toBe("https://example.com/second.jpg");
+  expect(saved.photos).toEqual(["https://example.com/second.jpg", "https://example.com/first.jpg"]);
+});

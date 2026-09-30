@@ -3,6 +3,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { HintStrip } from "./RisoControls.jsx";
 import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, shiftWeek } from "../lib/dates.js";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 
@@ -139,7 +140,7 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
     >
       <div className="riso-planner-card-photo-wrap">
         {recipe.photoUrl ? (
-          <img src={recipe.photoUrl} alt="" className="riso-planner-card-photo" draggable="false" />
+          <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-planner-card-photo" draggable="false" />
         ) : (
           <div className="riso-planner-card-photo placeholder" />
         )}

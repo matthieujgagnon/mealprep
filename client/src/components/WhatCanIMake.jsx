@@ -4,6 +4,7 @@ import { daysUntil } from "../lib/pantryInventory.js";
 import { Switch, HintStrip } from "./RisoControls.jsx";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, findNextEmptySlot, todayIndex } from "../lib/plannerSlots.js";
 import { formatDayLabel, isCurrentWeek } from "../lib/dates.js";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const ALSO_HAVE_STORAGE_KEY = "mealprep-makeable-also-have";
 
@@ -182,7 +183,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
     <div className="riso-makeable-card" style={{ boxShadow: ready ? "var(--riso-shadow-ready)" : "none" }}>
       <div className="riso-makeable-card-top">
         <button type="button" className="riso-makeable-card-photo" onClick={onOpen} title={recipe.title}>
-          {recipe.photoUrl && <img src={recipe.photoUrl} alt="" />}
+          {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
         </button>
         <div className="riso-makeable-card-info">
           <button type="button" className="riso-makeable-card-name" onClick={onOpen}>
