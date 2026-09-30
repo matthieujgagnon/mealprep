@@ -102,10 +102,11 @@ export function PlannerHeader({
         </div>
       </div>
 
-      <HintStrip userId={user.id} screenKey="planner-v4">
+      <HintStrip userId={user.id} screenKey="planner-v5">
         Drag a recipe from the tray onto any slot, or drag meals between days to move them. Click an empty
         slot to write on it (like "Hockey pool"); click a blank card again to clear it. The grocery list
-        builds itself from what's planned. A blue outline means you already have everything for that meal.
+        builds itself from what's planned. The round button on a card marks it as leftovers, then as
+        already have everything (blue outline); either way nothing from that meal goes on the grocery list.
       </HintStrip>
     </>
   );
@@ -124,12 +125,8 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
     data: { recipe, entryId: entry.id },
   });
 
-  // Leftovers and "already have everything" meals add nothing to the
-  // grocery list - the card says so.
-  const offList = entry.isLeftover || entry.alreadyHave;
   const classes = ["riso-planner-card"];
   if (entry.alreadyHave) classes.push("have");
-  if (offList) classes.push("off-list");
   if (isPast) classes.push("past");
   if (isDragging) classes.push("dragging");
 
@@ -151,11 +148,6 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
         {entry.isLeftover && (
           <span className={`riso-planner-card-leftover${isStale ? " stale" : ""}`}>
             {isStale ? "⚠ past fridge life" : "leftover"}
-          </span>
-        )}
-        {offList && (
-          <span className="riso-planner-card-offlist" title="Nothing from this meal goes on the grocery list">
-            🛒 off the list
           </span>
         )}
       </div>
@@ -375,9 +367,6 @@ export function PlannerBoard({
         </span>
         <span className="riso-planner-legend-item">
           <span className="riso-planner-legend-leftover">leftover</span>From an earlier meal
-        </span>
-        <span className="riso-planner-legend-item">
-          <span className="riso-planner-card-offlist in-legend">🛒 off the list</span>Adds nothing to the grocery list
         </span>
         <span className="riso-planner-legend-item">
           <span className="riso-planner-legend-blank" />

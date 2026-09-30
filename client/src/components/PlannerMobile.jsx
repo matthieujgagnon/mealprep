@@ -17,7 +17,7 @@ function MealRow({ entry, haveCores, isStale, onOpen, onSwap, onRemove, onCycleS
   const time = formatTrayTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
   const buy =
     entry.isLeftover || entry.alreadyHave
-      ? "🛒 OFF THE GROCERY LIST"
+      ? "NOTHING TO BUY"
       : stats.missingCount > 0
         ? `${stats.missingCount} TO BUY`
         : "NOTHING TO BUY";

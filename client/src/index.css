@@ -8100,10 +8100,6 @@ input[type="date"].planner-week-picker {
   background: var(--riso-hot);
 }
 
-.riso-tray-chip.green {
-  background: var(--riso-green);
-}
-
 .riso-tray-chip.paper {
   background: var(--riso-surface);
 }
@@ -8148,10 +8144,6 @@ input[type="date"].planner-week-picker {
 
 .riso-tray-group-pill.pink {
   background: var(--riso-hot);
-}
-
-.riso-tray-group-pill.green {
-  background: var(--riso-green);
 }
 
 .riso-tray-group-pill.yellow {
@@ -10686,30 +10678,6 @@ body.no-select {
   width: 36px;
   height: 36px;
   border-radius: 18px;
-}
-
-/* Leftover / already-have meals add nothing to the grocery list. */
-.riso-planner-card.off-list .riso-planner-card-photo {
-  filter: saturate(0.55);
-}
-
-.riso-planner-card-offlist {
-  position: absolute;
-  left: 6px;
-  top: 38px;
-  z-index: 1;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  font: 700 10.5px var(--riso-font-display);
-  color: var(--riso-ink);
-  white-space: nowrap;
-}
-
-.riso-planner-card-offlist.in-legend {
-  position: static;
-  margin-right: 6px;
 }
 
 /* ================================================================

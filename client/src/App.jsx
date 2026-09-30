@@ -673,7 +673,6 @@ export default function App({ user, onLogout }) {
       upcomingEntries: upcomingPlannerEntries,
       pantryInventory,
       haveCores: pantryHaveCores,
-      saleCores: new Set(),
     });
     const breakfast = ranked.filter((x) => isBreakfastRecipe(x.recipe));
     const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe) && !isPrepRecipe(x.recipe));

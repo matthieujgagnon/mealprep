@@ -30,7 +30,7 @@ function joinNames(cores) {
 // Ranks every recipe for the tray. `upcomingEntries` are this week's
 // placements from today on - what "already in a meal" means for expiring
 // food, and what "shared with the week" counts against.
-export function rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, haveCores, saleCores }) {
+export function rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, haveCores }) {
   const expiring = pantryInventory
     .filter((item) => item.expiresAt && daysUntil(item.expiresAt) >= 0 && daysUntil(item.expiresAt) <= EXPIRING_WITHIN_DAYS)
     .sort((a, b) => daysUntil(a.expiresAt) - daysUntil(b.expiresAt));
@@ -54,15 +54,13 @@ export function rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, 
       const cores = [...recipeCores(recipe)];
       const stats = recipeHaveStats(recipe, haveCores);
       const expUsed = cores.filter((c) => expiringFocus.has(c));
-      const saleUsed = cores.filter((c) => saleCores.has(c));
       const sharedCount = cores.filter((c) => plannedCoreCounts.has(c)).length;
       const score =
         expUsed.length * 2 +
-        saleUsed.length +
         (stats.missingCount > 0 ? -stats.missingCount * 0.5 : 2) +
         sharedCount * 0.5 -
         (plannedIds.has(recipe.id) ? 1.5 : 0);
-      return { recipe, cores, stats, expUsed, saleUsed, sharedCount, score };
+      return { recipe, cores, stats, expUsed, sharedCount, score };
     })
     .sort((a, b) => b.score - a.score || a.recipe.title.localeCompare(b.recipe.title));
 
@@ -86,16 +84,14 @@ export function suggestedGroups(ranked) {
     ranked.filter((x) => x.expUsed.length > 0).sort((a, b) => b.expUsed.length - a.expUsed.length || b.score - a.score),
     3
   );
-  const sale = pick(ranked.filter((x) => x.saleUsed.length > 0), 2);
   const nothing = pick(ranked.filter((x) => x.stats.totalCount > 0 && x.stats.missingCount === 0), 2);
 
   const groups = [
     { id: "expiring", title: "USES WHAT'S EXPIRING", tone: "pink", tiles: expiring.map((x) => tile(x, `Uses ${joinNames(x.expUsed)}`)) },
-    { id: "sale", title: "ON SALE THIS WEEK", tone: "green", tiles: sale.map((x) => tile(x, `${capitalize(joinNames(x.saleUsed))} on sale`)) },
     { id: "nothing", title: "NOTHING TO BUY", tone: "yellow", tiles: nothing.map((x) => tile(x, "Everything is in your kitchen")) },
   ].filter((g) => g.tiles.length > 0);
 
-  // No inventory or flyer yet: still offer something rather than an empty tray.
+  // No inventory yet: still offer something rather than an empty tray.
   if (groups.length === 0) {
     const top = pick(ranked, 5);
     if (top.length > 0) {

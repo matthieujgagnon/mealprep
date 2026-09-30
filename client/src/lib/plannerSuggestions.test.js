@@ -50,13 +50,12 @@ describe("tray suggestions", () => {
   ];
   const haveCores = new Set(["spinach", "feta", "egg"]);
 
-  it("groups expiring, on sale and nothing-to-buy, each recipe once", () => {
+  it("groups expiring and nothing-to-buy, each recipe once", () => {
     const { ranked } = rankRecipesForTray({
       recipes,
       upcomingEntries: [],
       pantryInventory,
       haveCores,
-      saleCores: new Set(["chicken thigh"]),
     });
     const groups = suggestedGroups(ranked);
     const ids = groups.flatMap((g) => g.tiles.map((t) => t.recipe.id));
@@ -72,13 +71,12 @@ describe("tray suggestions", () => {
       upcomingEntries: [{ recipe: recipes[0], dayOfWeek: 3, mealType: "dinner" }],
       pantryInventory,
       haveCores,
-      saleCores: new Set(),
     });
     expect(unusedExpiringCores).not.toContain("spinach");
   });
 
   it("plan around ranks recipes by how many picked ingredients they use", () => {
-    const { ranked } = rankRecipesForTray({ recipes, upcomingEntries: [], pantryInventory, haveCores, saleCores: new Set() });
+    const { ranked } = rankRecipesForTray({ recipes, upcomingEntries: [], pantryInventory, haveCores });
     const matches = planAroundMatches(ranked, new Set(["spinach", "feta"]));
     expect(matches[0].recipe.id).toBe("a");
     expect(matches.every((m) => m.recipe.id !== "b")).toBe(true);
