@@ -79,7 +79,7 @@ test("clicking an empty slot makes a blank card; clicking the blank card clears 
   expect(entries).toHaveLength(0);
 });
 
-test("with no slot selected, + fills the next empty upcoming slot, supper first", async ({ page }) => {
+test("with no slot selected, + fills the next empty upcoming slot, dinner first", async ({ page }) => {
   await setup(page, [{ title: "Next Slot Stew" }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "All", exact: true }).click();

@@ -15,7 +15,7 @@ const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString();
 afterEach(() => vi.useRealTimers());
 
 describe("upcomingSlots", () => {
-  it("starts at today for the current week, supper first", () => {
+  it("starts at today for the current week, dinner first", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 30, 12)); // a Wednesday
     const slots = upcomingSlots(currentWeekStart());

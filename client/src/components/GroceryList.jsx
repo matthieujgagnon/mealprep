@@ -60,7 +60,7 @@ function formatStoreList(stores) {
 // from this view.
 const MANUAL_GROUP_LABEL = "Added by you";
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MEAL_NAMES = { breakfast: "breakfast", lunch: "lunch", dinner: "supper" };
+const MEAL_NAMES = { breakfast: "breakfast", lunch: "lunch", dinner: "dinner" };
 
 const VIEWS = [
   { id: "store", label: "By store" },

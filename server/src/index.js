@@ -21,6 +21,7 @@ import { pantryInventoryRouter } from "./routes/pantryInventory.js";
 import { receiptsRouter } from "./routes/receipts.js";
 import { pantryLocationsRouter } from "./routes/pantryLocations.js";
 import { watchlistRouter } from "./routes/watchlist.js";
+import { recipeImagesRouter } from "./routes/recipeImages.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -53,6 +54,7 @@ app.use("/api/pantry-inventory", requireAuth, pantryInventoryRouter);
 app.use("/api/receipts", requireAuth, receiptsRouter);
 app.use("/api/pantry-locations", requireAuth, pantryLocationsRouter);
 app.use("/api/watchlist", requireAuth, watchlistRouter);
+app.use("/api/recipe-images", requireAuth, recipeImagesRouter);
 
 // In production, this one server hosts both the API and the already-built
 // React app (client/dist) — one deployment, one URL, no CORS to worry about.

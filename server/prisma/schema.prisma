@@ -35,6 +35,7 @@ model User {
   pantryConsumptionLogs PantryConsumptionLog[]
   pantryLocations       PantryLocation[]
   watchlistItems        WatchlistItem[]
+  recipeImages          RecipeImage[]
 }
 
 // A logged-in session, looked up by the id stored in the browser's httpOnly
@@ -84,6 +85,7 @@ model Recipe {
   fridgeLifeDays  Int? // how many days this keeps well as a fridge leftover; user-set, powers the "past its fridge life" warning on leftover-marked planner cards
   instructions    String // JSON-stringified array of step strings
   tags            String          @default("[]") // JSON-stringified array of tag strings, e.g. ["shrimp","summer"]
+  mealSlot        String? // where it sits on the Planner: "breakfast" | "lunch" | "dinner" | "snack" (any slot) | "prep" (pantry/prep - no calendar slot); null = not set yet
   categoryId      String? // user-created cookbook category, e.g. "Breakfast", "Sides"; null = uncategorized
   category        RecipeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   position        Int             @default(0) // manual drag-to-reorder position within whichever grid (Imported / Cookbook / a category) it's shown in
@@ -412,4 +414,18 @@ model PantryLocation {
 
   // Real unique constraint - see RecipeCategory's @@unique comment above.
   @@unique([userId, name])
+}
+
+// A photo uploaded from the recipe editor (dropped or picked from disk),
+// stored as-is and served back at /api/recipe-images/:id - Recipe.photos
+// stores that path like any other photo URL.
+model RecipeImage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

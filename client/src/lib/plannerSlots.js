@@ -3,9 +3,9 @@ import { currentWeekStart } from "./dates.js";
 export const MEAL_TYPES = [
   { id: "breakfast", label: "Breakfast" },
   { id: "lunch", label: "Lunch" },
-  { id: "dinner", label: "Supper" },
+  { id: "dinner", label: "Dinner" },
 ];
-export const MEAL_LABEL = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Supper" };
+export const MEAL_LABEL = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 export const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function todayIndex() {
@@ -33,7 +33,7 @@ export function isNoteEntry(entry) {
 
 // Slots in the order "+" and "Fill empty slots" use them: upcoming days
 // first (today onward for this week - earlier days are already gone), and
-// within a day supper, then lunch, then breakfast.
+// within a day dinner, then lunch, then breakfast.
 export function upcomingSlots(weekStart) {
   const first = weekStart === currentWeekStart() ? todayIndex() : 0;
   const slots = [];

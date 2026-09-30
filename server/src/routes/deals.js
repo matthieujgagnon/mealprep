@@ -18,6 +18,17 @@ function historyKey(deal) {
   return `${(deal.matchName || deal.item).trim().toLowerCase()}|${deal.store}|${deal.unitBasis}`;
 }
 
+// Six calendar months ending with `now`'s month, oldest first, as
+// "YYYY-MM" keys.
+export function lastSixMonths(now = new Date()) {
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    months.push(d.toISOString().slice(0, 7));
+  }
+  return months;
+}
+
 // Attaches sixMonthLow/sixMonthHigh/isNew to each deal that has a usable
 // unitPrice, computed from every deal (isCurrent true or false) sharing its
 // historyKey within the last 26 weeks - including the deal's own current
@@ -25,18 +36,19 @@ function historyKey(deal) {
 // high == current), not an empty range. isNew is true only when there's
 // truly nothing but the current price to compare against, per the
 // handoff's "no history yet -> hide the meter, show NEW" behavior.
-async function attachPriceHistory(userId, deals) {
-  const eligible = deals.filter((d) => d.unitPrice != null && d.unitBasis);
-  if (eligible.length === 0) return deals;
-
-  const cutoff = new Date(Date.now() - SIX_MONTHS_MS);
-  const history = await prisma.flyerDeal.findMany({
-    where: { userId, unitPrice: { not: null }, unitBasis: { not: null }, createdAt: { gte: cutoff } },
-    select: { matchName: true, item: true, store: true, unitBasis: true, unitPrice: true },
-  });
-
+//
+// Also attaches `history`: one entry per calendar month for the last six
+// (oldest first), each the lowest price seen that month, or null for a
+// month with no price on record - the Flyers detail view's bar chart.
+// The current month always includes the deal's own price.
+export function withPriceHistory(deals, history, now = new Date()) {
+  const cutoff = now.getTime() - SIX_MONTHS_MS;
+  const months = lastSixMonths(now);
   const ranges = new Map();
+  const monthly = new Map();
   for (const row of history) {
+    if (row.unitPrice == null || !row.unitBasis) continue;
+    if (row.createdAt && new Date(row.createdAt).getTime() < cutoff) continue;
     const key = historyKey(row);
     const range = ranges.get(key);
     if (!range) {
@@ -46,14 +58,39 @@ async function attachPriceHistory(userId, deals) {
       range.high = Math.max(range.high, row.unitPrice);
       range.count += 1;
     }
+    const month = new Date(row.createdAt || now).toISOString().slice(0, 7);
+    if (!months.includes(month)) continue;
+    if (!monthly.has(key)) monthly.set(key, new Map());
+    const byMonth = monthly.get(key);
+    byMonth.set(month, Math.min(byMonth.get(month) ?? Infinity, row.unitPrice));
   }
 
   return deals.map((deal) => {
     if (deal.unitPrice == null || !deal.unitBasis) return deal;
-    const range = ranges.get(historyKey(deal));
-    if (!range || range.count < 2) return { ...deal, isNew: true };
-    return { ...deal, sixMonthLow: range.low, sixMonthHigh: range.high, isNew: false };
+    const key = historyKey(deal);
+    const byMonth = monthly.get(key) || new Map();
+    const thisMonth = months[months.length - 1];
+    const series = months.map((month) => {
+      let price = byMonth.get(month) ?? null;
+      if (month === thisMonth) price = price == null ? deal.unitPrice : Math.min(price, deal.unitPrice);
+      return { month, price };
+    });
+    const range = ranges.get(key);
+    if (!range || range.count < 2) return { ...deal, isNew: true, history: series };
+    return { ...deal, sixMonthLow: range.low, sixMonthHigh: range.high, isNew: false, history: series };
   });
+}
+
+async function attachPriceHistory(userId, deals) {
+  const eligible = deals.filter((d) => d.unitPrice != null && d.unitBasis);
+  if (eligible.length === 0) return deals;
+
+  const cutoff = new Date(Date.now() - SIX_MONTHS_MS);
+  const history = await prisma.flyerDeal.findMany({
+    where: { userId, unitPrice: { not: null }, unitBasis: { not: null }, createdAt: { gte: cutoff } },
+    select: { matchName: true, item: true, store: true, unitBasis: true, unitPrice: true, createdAt: true },
+  });
+  return withPriceHistory(deals, history);
 }
 
 // Attaches a "Freezes N months." tip (see foodkeeper.js's freezeTip) to

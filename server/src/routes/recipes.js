@@ -1,9 +1,30 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { scrapeRecipe } from "../lib/scrapeRecipe.js";
+import { scrapeRecipe, parseIngredientText } from "../lib/scrapeRecipe.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
 export const recipesRouter = Router();
+
+// Where a recipe sits on the Planner - see Recipe.mealSlot.
+export const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack", "prep"];
+
+// undefined = leave as-is (PUT), null/"" = clear, anything else must be a
+// known slot.
+function readMealSlot(value) {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (value === null || value === "") return { ok: true, value: null };
+  return MEAL_SLOTS.includes(value) ? { ok: true, value } : { ok: false };
+}
+
+function scrapeErrorResponse(res, err) {
+  const needsManualEntry =
+    String(err.message).startsWith("NO_STRUCTURED_DATA") ||
+    String(err.message).startsWith("FETCH_FAILED");
+  return res.status(needsManualEntry ? 422 : 502).json({
+    error: err.message.replace(/^(NO_STRUCTURED_DATA|FETCH_FAILED):\s*/, ""),
+    needsManualEntry,
+  });
+}
 
 function serializeRecipe(recipe) {
   return {
@@ -47,13 +68,7 @@ recipesRouter.post("/import", async (req, res) => {
   try {
     parsed = await scrapeRecipe(url);
   } catch (err) {
-    const needsManualEntry =
-      String(err.message).startsWith("NO_STRUCTURED_DATA") ||
-      String(err.message).startsWith("FETCH_FAILED");
-    return res.status(needsManualEntry ? 422 : 502).json({
-      error: err.message.replace(/^(NO_STRUCTURED_DATA|FETCH_FAILED):\s*/, ""),
-      needsManualEntry,
-    });
+    return scrapeErrorResponse(res, err);
   }
 
   const recipe = await prisma.recipe.create({
@@ -86,6 +101,31 @@ recipesRouter.post("/import", async (req, res) => {
   res.status(201).json(serializeRecipe(recipe));
 });
 
+// POST /api/recipes/scrape { url } - reads a recipe link without saving
+// anything, for the editor's "Re-import" (which only fills fields that are
+// still empty - that merge happens client-side).
+recipesRouter.post("/scrape", async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "url is required" });
+  try {
+    const parsed = await scrapeRecipe(url);
+    res.json({
+      ...parsed,
+      fridgeLifeDays: estimateFridgeLifeDays(parsed.ingredients.map((i) => i.name)),
+    });
+  } catch (err) {
+    return scrapeErrorResponse(res, err);
+  }
+});
+
+// POST /api/recipes/parse-ingredients { text } - splits a pasted ingredient
+// list into qty/unit/name/note rows with the importer's own parser.
+recipesRouter.post("/parse-ingredients", async (req, res) => {
+  const { text } = req.body;
+  if (typeof text !== "string") return res.status(400).json({ error: "text is required" });
+  res.json({ ingredients: parseIngredientText(text.slice(0, 20000)) });
+});
+
 // POST /api/recipes - manual entry (fallback when import fails, or add-your-own)
 recipesRouter.post("/", async (req, res) => {
   const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, tags } = req.body;
@@ -93,6 +133,8 @@ recipesRouter.post("/", async (req, res) => {
   if (!title || !Array.isArray(ingredients)) {
     return res.status(400).json({ error: "title and ingredients[] are required" });
   }
+  const mealSlot = readMealSlot(req.body.mealSlot);
+  if (!mealSlot.ok) return res.status(400).json({ error: `mealSlot must be one of ${MEAL_SLOTS.join(", ")}` });
 
   const recipe = await prisma.recipe.create({
     data: {
@@ -108,6 +150,7 @@ recipesRouter.post("/", async (req, res) => {
       prepTimeMinutes: prepTimeMinutes || null,
       cookTimeMinutes: cookTimeMinutes || null,
       fridgeLifeDays: fridgeLifeDays || null,
+      mealSlot: mealSlot.value ?? null,
       instructions: JSON.stringify(instructions || []),
       ...(Array.isArray(tags) && { tags: JSON.stringify(tags) }),
       ingredients: {
@@ -146,6 +189,8 @@ recipesRouter.put("/reorder", async (req, res) => {
 // PUT /api/recipes/:id - edit a recipe (title, servings, ingredients, instructions)
 recipesRouter.put("/:id", async (req, res) => {
   const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
+  const mealSlot = readMealSlot(req.body.mealSlot);
+  if (!mealSlot.ok) return res.status(400).json({ error: `mealSlot must be one of ${MEAL_SLOTS.join(", ")}` });
 
   const { count } = await prisma.recipe.updateMany({
     where: { id: req.params.id, userId: req.userId },
@@ -163,6 +208,7 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(inImported !== undefined && { inImported }),
       ...(tags !== undefined && { tags: JSON.stringify(tags) }),
       ...(categoryId !== undefined && { categoryId }),
+      ...(mealSlot.value !== undefined && { mealSlot: mealSlot.value }),
       ...(instructions !== undefined && { instructions: JSON.stringify(instructions) }),
     },
   });

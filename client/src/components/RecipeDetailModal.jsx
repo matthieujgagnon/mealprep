@@ -14,11 +14,10 @@ import { formatQuantity, unitLabel } from "../lib/units.js";
 import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
 import { buildCombinedHave } from "../lib/onHand.js";
-import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
 
 const WEEKDAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const MEAL_LABEL = { breakfast: "breakfast", lunch: "lunch", dinner: "supper" };
+const MEAL_LABEL = { breakfast: "breakfast", lunch: "lunch", dinner: "dinner" };
 
 // Ingredients are already sorted by position server-side, and group
 // assignment happened in that same order, so same-group ingredients are
@@ -276,6 +275,7 @@ export function RecipeDetailModal({
   weekStart,
   onSelectRecipe,
   onRecipeUpdated,
+  onEdit,
   onDelete,
   onPlanAround,
   onAddPantryItem,
@@ -290,7 +290,6 @@ export function RecipeDetailModal({
   const defaultServings = recipe.baseServings || 4;
   const [servings, setServings] = useState(defaultServings);
   const [cookModeOn, setCookModeOn] = useState(!!startInCookMode);
-  const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -323,6 +322,15 @@ export function RecipeDetailModal({
   const rawGallery = recipe.photos?.length ? recipe.photos : recipe.photoUrl ? [recipe.photoUrl] : [];
   const gallery = [...new Set(rawGallery)].filter((u) => !stepImageUrls.has(u) && !brokenPhotos.has(u));
   const heroPhoto = gallery[activePhotoIndex] ?? gallery[0] ?? null;
+
+  // Open on the cover photo (photoUrl), wherever it sits in the gallery.
+  const coverIndex = Math.max(0, gallery.indexOf(recipe.photoUrl));
+  const coverKey = `${recipe.id}|${coverIndex}`;
+  const [seenCoverKey, setSeenCoverKey] = useState(null);
+  if (seenCoverKey !== coverKey) {
+    setSeenCoverKey(coverKey);
+    setActivePhotoIndex(coverIndex);
+  }
 
   const combinedHave = buildCombinedHave(pantryInventory, customStaples);
   const haveCores = new Set(combinedHave.map((n) => core(n)).filter(Boolean));
@@ -406,27 +414,6 @@ export function RecipeDetailModal({
     }
   }
 
-  if (editing) {
-    return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="card modal-content wide-modal" onClick={(e) => e.stopPropagation()}>
-          <button className="modal-close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-          <h2 className="recipe-modal-title">Edit recipe</h2>
-          <ManualRecipeForm
-            recipe={recipe}
-            onSaved={(updated) => {
-              onRecipeUpdated?.(updated);
-              setEditing(false);
-            }}
-            onCancel={() => setEditing(false)}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const stickerText = recipe.isPlaceholder
     ? null
     : missingIngredients.length > 0
@@ -468,7 +455,7 @@ export function RecipeDetailModal({
                   <OptionsMenu
                     onEdit={() => {
                       setMenuOpen(false);
-                      setEditing(true);
+                      onEdit?.(recipe);
                     }}
                     onDelete={handleDeleteClick}
                     onEditLeftoverDays={handleEditLeftoverDays}
@@ -558,11 +545,24 @@ export function RecipeDetailModal({
               </div>
             </div>
             <div className="riso-rc-actions">
-              {recipe.instructions?.length > 0 && (
-                <button type="button" className="riso-rc-btn-primary" onClick={() => setCookModeOn(true)}>
-                  Start cooking
-                </button>
-              )}
+              <div className="riso-rc-actions-row">
+                {recipe.instructions?.length > 0 && (
+                  <button type="button" className="riso-rc-btn-primary" onClick={() => setCookModeOn(true)}>
+                    Start cooking
+                  </button>
+                )}
+                {recipe.sourceUrl && (
+                  <a
+                    href={recipe.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Opens ${new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} in a new tab`}
+                    className="riso-rc-btn-open-original"
+                  >
+                    Open original ↗
+                  </a>
+                )}
+              </div>
               {onPlanAround && !recipe.isPlaceholder && (
                 <button
                   type="button"
@@ -574,17 +574,6 @@ export function RecipeDetailModal({
                 >
                   Plan around this
                 </button>
-              )}
-              {recipe.sourceUrl && (
-                <a
-                  href={recipe.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={`Opens ${new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} in a new tab`}
-                  className="riso-rc-btn-open-original"
-                >
-                  Open original ↗
-                </a>
               )}
             </div>
           </div>

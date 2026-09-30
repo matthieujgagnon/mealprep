@@ -46,12 +46,12 @@ test("a makeable recipe shows as a Riso-styled row with its title legible on pap
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Home Redesign Test Dish");
-  await page.fill('input[placeholder="e.g. 4"]', "2");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "test ingredient");
-  await page.fill('input[placeholder="Qty (1/4)"]', "1");
-  await page.fill('textarea[placeholder*="Preheat oven"]', "Combine and serve.");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await page.waitForTimeout(300);
+  await page.fill('input[aria-label="FRIDGE LIFE"]', "2");
+  await page.fill('input[aria-label="Ingredient"]', "test ingredient");
+  await page.fill('input[aria-label="Quantity"]', "1");
+  await page.fill('textarea[placeholder="Describe this step"]', "Combine and serve.");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await page.getByRole("button", { name: "+ Add item" }).click();
@@ -75,12 +75,12 @@ test("the sale-deal footer link filters Recipes to a matching ingredient", async
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Home Redesign Chicken Dish");
-  await page.fill('input[placeholder="e.g. 4"]', "2");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "chicken breast");
-  await page.fill('input[placeholder="Qty (1/4)"]', "1");
-  await page.fill('textarea[placeholder*="Preheat oven"]', "Grill until done.");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await page.waitForTimeout(300);
+  await page.fill('input[aria-label="FRIDGE LIFE"]', "2");
+  await page.fill('input[aria-label="Ingredient"]', "chicken breast");
+  await page.fill('input[aria-label="Quantity"]', "1");
+  await page.fill('textarea[placeholder="Describe this step"]', "Grill until done.");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.waitForTimeout(400);

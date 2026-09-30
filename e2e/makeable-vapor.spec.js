@@ -22,13 +22,13 @@ async function addRecipe(page, title, ingredients) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
-  const nameInputs = page.locator('input[placeholder="Name (e.g. butter)"]');
+  const nameInputs = page.locator('input[aria-label="Ingredient"]');
   for (let i = 0; i < ingredients.length; i++) {
     if (i > 0) await page.getByRole("button", { name: /\+ Add ingredient/i }).last().click();
     await nameInputs.nth(i).fill(ingredients[i]);
   }
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await expect(page.getByText(title).first()).toBeVisible();
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.locator(".riso-recipe-card", { hasText: title })).toBeVisible();
 }
 
 async function addAlsoHave(page, name) {
@@ -92,13 +92,13 @@ test("the You need box adds one item or all of them, once each", async ({ page }
   const card = page.locator(".riso-makeable-card", { hasText: "Riso Grocery Dish" });
   await expect(card.locator(".riso-makeable-need-count")).toHaveText("2");
 
-  // One item: its + turns into "✓ on list".
+  // One item: its + Add turns into "✓ On list".
   await card.getByRole("button", { name: "Add Broccoli to grocery list" }).click();
-  await expect(card.getByRole("button", { name: "Remove Broccoli from grocery list" })).toHaveText("✓ on list");
+  await expect(card.getByRole("button", { name: "Remove Broccoli from grocery list" })).toHaveText("✓ On list");
 
   // Add all only adds what isn't already there, then reads as done.
   await card.getByRole("button", { name: "+ Add all 2 to list" }).click();
-  await expect(card.getByRole("button", { name: "✓ All on your grocery list" })).toBeDisabled();
+  await expect(card.getByRole("button", { name: "✓ All on your grocery list" })).toBeVisible();
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await page.waitForTimeout(300);

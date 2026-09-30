@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { findMatchingDeal } from "../lib/groceryList.js";
-import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { RECIPE_SLOTS, formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 
-const FILTERS = ["All", "Makeable now", "Uses expiring", "On sale", "Breakfast", "Lunch", "Supper"];
+const SLOT_FILTERS = Object.fromEntries(RECIPE_SLOTS.map((s) => [s.label, s.id]));
+const FILTERS = ["All", "Makeable now", "Uses expiring", "On sale", ...RECIPE_SLOTS.map((s) => s.label)];
 const SORT_LABELS = ["Recently added", "Fewest missing", "Quickest"];
 
 
@@ -28,43 +29,32 @@ function isUrlLike(text) {
   return /^https?:\/\//i.test(q) || /\.\w{2,}\//.test(q);
 }
 
-function formatTime(minutes) {
-  if (minutes >= 60) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h} H${m ? ` ${m} MIN` : ""}`;
-  }
-  return `${minutes} MIN`;
-}
-
-
-function RecipeCard({ recipe, stats, badge, onClick }) {
-  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+// Photo on top (nothing printed over it), then the title and a column of
+// chips: total time (yellow, dashed "add time" when unset), then pink
+// "uses expiring" and green "on sale" - a recipe can carry both.
+function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
+  const totalTime = recipeTotalMinutes(recipe);
   const nothingToBuy = stats.totalCount > 0 && stats.missingCount === 0;
   const pct = stats.totalCount > 0 ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
 
   return (
     <button
       type="button"
-      className="riso-recipe-card"
-      style={{ boxShadow: nothingToBuy ? "var(--riso-shadow-ready)" : "none" }}
+      className={`riso-recipe-card${nothingToBuy ? " ready" : ""}`}
       onClick={() => onClick(recipe)}
     >
       <div className="riso-recipe-card-photo">
         {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}
-        <span className={`riso-recipe-card-time${totalTime > 0 ? "" : " unknown"}`}>
-          {totalTime > 0 ? `⏱ ${formatTime(totalTime).toLowerCase()}` : "time not set"}
-        </span>
-        {badge && (
-          <span className="riso-sticker riso-recipe-card-badge" style={{ background: badge.bg, top: 12, left: 12, transform: "rotate(-4deg)" }}>
-            {badge.text}
-          </span>
-        )}
       </div>
       <div className="riso-recipe-card-body">
         <div className="riso-recipe-card-name">{recipe.title}</div>
-        <div className="riso-recipe-card-meta">
-          {stats.totalCount} INGREDIENT{stats.totalCount === 1 ? "" : "S"}
+        <div className="riso-recipe-card-chips">
+          <span className={`riso-recipe-chip time${totalTime > 0 ? "" : " unset"}`}>
+            <span className="riso-recipe-chip-clock" aria-hidden="true">⏱</span>
+            {totalTime > 0 ? formatRecipeTime(totalTime) : "add time"}
+          </span>
+          {usesExpiring && <span className="riso-recipe-chip expiring">uses expiring ingredients</span>}
+          {onSale && <span className="riso-recipe-chip sale">on sale</span>}
         </div>
         <div className="riso-recipe-card-spacer" />
         {stats.totalCount > 0 && (
@@ -72,11 +62,11 @@ function RecipeCard({ recipe, stats, badge, onClick }) {
             <div className="riso-recipe-card-havebar-fill" style={{ width: `${pct}%` }} />
           </div>
         )}
-        <div className="riso-recipe-card-havelabel" style={{ color: nothingToBuy ? "var(--riso-green-text)" : "var(--riso-soft)" }}>
+        <div className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
           {nothingToBuy
-            ? "nothing to buy!"
+            ? `all ${stats.totalCount} on hand · nothing to buy!`
             : stats.totalCount > 0
-              ? `${stats.missingCount} to buy · ${stats.matchedCount} of ${stats.totalCount} on hand`
+              ? `${stats.matchedCount} of ${stats.totalCount} on hand · ${stats.missingCount} to buy`
               : "no ingredients listed"}
         </div>
       </div>
@@ -96,10 +86,9 @@ export function Recipes({
   onFilterChange,
   onSelectRecipe,
   onImported,
-  onManualCreated,
+  onNewRecipe,
 }) {
   const [sortIndex, setSortIndex] = useState(0);
-  const [showManualForm, setShowManualForm] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
   const [deals, setDeals] = useState([]);
@@ -127,12 +116,8 @@ export function Recipes({
         return findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes, 3).size > 0;
       case "On sale":
         return recipe.ingredients?.some((i) => findMatchingDeal(i.name, deals)) || false;
-      case "Breakfast":
-      case "Lunch":
-      case "Supper":
-        return recipe.tags?.some((t) => t.toLowerCase() === filterId.toLowerCase()) || false;
       default:
-        return true;
+        return filterId in SLOT_FILTERS ? recipeSlot(recipe) === SLOT_FILTERS[filterId] : true;
     }
   }
 
@@ -159,7 +144,7 @@ export function Recipes({
     });
   } else if (sortIndex === 2) {
     // Quickest first; recipes with no time set can't be ranked, so they go last.
-    const minutes = (r) => (r.prepTimeMinutes || 0) + (r.cookTimeMinutes || 0) || Infinity;
+    const minutes = (r) => recipeTotalMinutes(r) || Infinity;
     visible = [...visible].sort((a, b) => minutes(a) - minutes(b) || a.title.localeCompare(b.title));
   } else {
     visible = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -210,11 +195,7 @@ export function Recipes({
             {importing ? "Importing…" : "Import recipe"}
           </button>
         ) : (
-          <button
-            type="button"
-            className="riso-recipes-searchbar-btn"
-            onClick={() => setShowManualForm((s) => !s)}
-          >
+          <button type="button" className="riso-recipes-searchbar-btn" onClick={onNewRecipe}>
             + New recipe
           </button>
         )}
@@ -229,20 +210,10 @@ export function Recipes({
         </p>
       )}
 
-      {showManualForm && (
-        <ManualRecipeForm
-          onCreated={(recipe) => {
-            onManualCreated(recipe);
-            setShowManualForm(false);
-          }}
-          onCancel={() => setShowManualForm(false)}
-        />
-      )}
-
-      <HintStrip userId={user.id} screenKey="recipes">
-        Type to search your recipes, or paste a link from any recipe site to import it. The bar on each
-        card shows how many ingredients are already in your Inventory. Cards with a shadow need nothing
-        from the store.
+      <HintStrip userId={user.id} screenKey="recipes-v2">
+        Type to search your recipes, or paste a link from any recipe site to import it. The yellow chip is
+        total prep and cook time; pink and green chips flag expiring and on-sale ingredients. The bar shows
+        how many ingredients are already in your Inventory. Cards with a shadow need nothing from the store.
       </HintStrip>
 
       <div className="riso-recipes-filters">
@@ -258,17 +229,19 @@ export function Recipes({
           </button>
         ))}
         <div className="riso-recipes-filters-spacer" />
-        <span className="riso-recipes-sort-label">SORT</span>
-        <label className="riso-recipes-sort-btn">
-          <select aria-label="Sort recipes" value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
-            {SORT_LABELS.map((label, i) => (
-              <option key={label} value={i}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <span aria-hidden="true">▾</span>
-        </label>
+        <div className="riso-recipes-sort-group">
+          <span className="riso-recipes-sort-label">SORT</span>
+          <label className="riso-recipes-sort-btn">
+            <select aria-label="Sort recipes" value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
+              {SORT_LABELS.map((label, i) => (
+                <option key={label} value={i}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden="true">▾</span>
+          </label>
+        </div>
       </div>
 
       <div className="riso-recipes-grid">
@@ -277,13 +250,8 @@ export function Recipes({
             key={r.id}
             recipe={r}
             stats={recipeHaveStats(r, haveCores)}
-            badge={
-              findExpiringSoonInRecipe(r, pantryInventory, plannerEntries, allRecipes, 3).size > 0
-                ? { text: "uses expiring!", bg: "var(--riso-hot)" }
-                : r.ingredients?.some((i) => findMatchingDeal(i.name, deals))
-                  ? { text: "on sale!", bg: "var(--riso-green)" }
-                  : null
-            }
+            usesExpiring={matchesFilter(r, "Uses expiring")}
+            onSale={matchesFilter(r, "On sale")}
             onClick={onSelectRecipe}
           />
         ))}
