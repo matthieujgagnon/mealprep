@@ -196,6 +196,19 @@ function isoDate(value) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
+// The item's own product photo. Flipp names it differently depending on
+// the endpoint: a cutout (just the product) is best, then a cleaned-up
+// crop, then the raw crop of the flyer page.
+const IMAGE_FIELDS = ["cutout_image_url", "clean_image_url", "x_large_image_url", "large_image_url", "image_url", "clipping_image_url"];
+export function flippImage(item) {
+  for (const field of IMAGE_FIELDS) {
+    const url = item[field];
+    if (typeof url === "string" && /^https?:\/\//i.test(url.trim())) return url.trim().replace(/^http:/i, "https:");
+    if (typeof url === "string" && url.startsWith("//")) return `https:${url}`;
+  }
+  return null;
+}
+
 // One Flipp flyer item -> the app's FlyerDeal shape, or null for the
 // banners, section headers and unpriced "save 30%" tiles a flyer also
 // carries.
@@ -214,7 +227,7 @@ export function normalizeFlippItem(item, flyer) {
     unitBasis: priced.unitBasis,
     category: categorize(`${name} ${item.category || ""}`),
     validUntil: isoDate(item.valid_to ?? flyer.validTo),
-    imageUrl: item.cutout_image_url || item.clean_image_url || item.clipping_image_url || item.image_url || null,
+    imageUrl: flippImage(item),
   };
 }
 

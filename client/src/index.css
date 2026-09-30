@@ -4235,18 +4235,23 @@ input[type="date"].planner-week-picker {
 .riso-deal-photo {
   border-radius: 11px;
   border: 2px solid var(--riso-ink);
-  object-fit: cover;
   flex: none;
   background: var(--riso-track);
+  box-sizing: border-box;
+}
+
+/* Flyer product shots are cut-outs on white: show the whole product. */
+img.riso-deal-photo {
+  object-fit: contain;
+  padding: 3px;
+  background: #fff;
 }
 
 .riso-deal-photo.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  color: var(--riso-muted);
+  line-height: 1;
 }
 
 .riso-deal-row-info {
@@ -11910,7 +11915,10 @@ body.no-select {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  box-sizing: border-box;
+  padding: 24px;
+  object-fit: contain;
+  background: #fff;
 }
 
 .riso-deal-detail-letter {

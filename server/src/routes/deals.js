@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { freezeTip } from "../lib/foodkeeper.js";
 import { loadBaselines } from "../lib/baselines.js";
 import { compareToBaseline, findBaseline } from "../lib/statcan.js";
+import { tidyDealTitle } from "../lib/dealTitle.js";
 
 export const dealsRouter = Router();
 
@@ -143,10 +144,12 @@ const MOCK_DEALS = [
 // showing just what's actually on sale right now; the superseded rows stay
 // in the table as price history for later features.
 dealsRouter.get("/", async (req, res) => {
-  const rows = await prisma.flyerDeal.findMany({
-    where: { userId: req.userId, isCurrent: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const rows = (
+    await prisma.flyerDeal.findMany({
+      where: { userId: req.userId, isCurrent: true },
+      orderBy: { createdAt: "desc" },
+    })
+  ).map((row) => ({ ...row, item: tidyDealTitle(row.item) })); // stored as printed; shown tidy
 
   if (rows.length === 0) {
     return res.json({

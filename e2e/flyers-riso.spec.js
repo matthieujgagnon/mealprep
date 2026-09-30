@@ -228,3 +228,24 @@ test("a deal with no history yet is compared with Quebec's average price", async
     await prisma.priceBaseline.delete({ where: { product } });
   }
 });
+
+test("deal names read the same way, with the product photo or a food emoji", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const photo =
+    "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>');
+  const base = { userId: user.id, store: "Metro", source: "Flipp", price: "$9.99", unitPrice: 9.99, unitBasis: "each", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, category: "protein", item: "PC BLACK LABEL SALMON FILLETS (400G)", matchName: "salmon fillets", imageUrl: photo },
+      { ...base, category: "produce", item: "Seedless Navel Oranges 3 Lb", matchName: "oranges", imageUrl: "http://127.0.0.1:9/missing.jpg" },
+    ],
+  });
+
+  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  const salmon = page.locator(".riso-table-row", { hasText: "PC black label salmon fillets, 400 g" });
+  await expect(salmon.locator("img.riso-deal-photo")).toHaveAttribute("src", photo);
+  const oranges = page.locator(".riso-table-row", { hasText: "Seedless navel oranges, 3 lb" });
+  await expect(oranges.locator(".riso-deal-photo.placeholder")).toHaveText("🍊");
+});
