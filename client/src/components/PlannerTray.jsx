@@ -112,7 +112,6 @@ function ChipGroup({ label, tone, names, picked, onToggle }) {
 }
 
 export function PlannerTray({
-  deals: sharedDeals,
   recipes,
   upcomingEntries,
   pantryInventory,
@@ -129,19 +128,16 @@ export function PlannerTray({
   message,
   inSheet = false,
 }) {
-  const [ownDeals, setOwnDeals] = useState([]);
+  const [deals, setDeals] = useState([]);
   const [query, setQuery] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
 
-  // App passes this week's deals in; loads them itself only when used alone.
   useEffect(() => {
-    if (sharedDeals) return;
     api
       .getRealDeals()
-      .then(setOwnDeals)
-      .catch(() => setOwnDeals([]));
-  }, [sharedDeals]);
-  const deals = sharedDeals || ownDeals;
+      .then(setDeals)
+      .catch(() => setDeals([]));
+  }, []);
 
   // Selecting a note slot pre-fills its text for editing; selecting an empty
   // slot starts blank.
