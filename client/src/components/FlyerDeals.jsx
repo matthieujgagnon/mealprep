@@ -3,7 +3,7 @@ import { api } from "../api.js";
 import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { canonicalize } from "../lib/groceryList.js";
 import { daysUntil } from "../lib/pantryInventory.js";
-import { HintStrip, Segmented } from "./RisoControls.jsx";
+import { HintStrip, Segmented, Switch } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
 
 // Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
@@ -416,6 +416,169 @@ function DealRow({ deal: d, onOpen, onToggleList }) {
   );
 }
 
+function formatPostal(pc) {
+  return pc && pc.length === 6 ? `${pc.slice(0, 3)} ${pc.slice(3)}` : pc || "";
+}
+
+function formatWhen(iso) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+// Where the weekly import reads from: postal code, which stores, on/off.
+// The store chips come from the flyers Flipp actually has near that postal
+// code, plus whatever was picked before.
+function ImportSettings({ settings, onSaved, onClose }) {
+  const [postalCode, setPostalCode] = useState(formatPostal(settings.postalCode));
+  const [stores, setStores] = useState(settings.stores);
+  const [autoImport, setAutoImport] = useState(settings.autoImport);
+  const [nearby, setNearby] = useState(null);
+  const [nearbyError, setNearbyError] = useState(null);
+  const [custom, setCustom] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  function loadNearby(pc) {
+    setNearby(null);
+    setNearbyError(null);
+    api
+      .listFlyerStores(pc.replace(/\s/g, ""))
+      .then((r) => setNearby(r.stores))
+      .catch((err) => setNearbyError(err.message));
+  }
+
+  useEffect(() => {
+    loadNearby(settings.postalCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isOn = (name) => stores.some((s) => s.toLowerCase() === name.toLowerCase());
+  const toggle = (name) =>
+    setStores((prev) => (isOn(name) ? prev.filter((s) => s.toLowerCase() !== name.toLowerCase()) : [...prev, name]));
+  const choices = [...new Set([...stores, ...(nearby || [])])];
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      onSaved(await api.updateFlyerSettings({ postalCode, stores, autoImport }));
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="riso-import-settings">
+      <div className="riso-import-settings-row">
+        <label className="riso-import-field">
+          <span>POSTAL CODE</span>
+          <input
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
+            onBlur={() => /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/.test(postalCode.trim()) && loadNearby(postalCode)}
+            placeholder="H2T 2S3"
+            maxLength={7}
+          />
+        </label>
+        <div className="riso-import-auto">
+          <Switch on={autoImport} onToggle={() => setAutoImport((v) => !v)} label="Import every week" />
+          <span>Import every Thursday</span>
+        </div>
+      </div>
+      <div className="riso-import-field">
+        <span>STORES {stores.length === 0 ? "· NONE PICKED = EVERY GROCERY FLYER NEAR YOU" : `· ${stores.length} PICKED`}</span>
+        <div className="riso-import-stores">
+          {choices.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={`riso-chip${isOn(name) ? " active" : ""}`}
+              aria-pressed={isOn(name)}
+              onClick={() => toggle(name)}
+            >
+              {isOn(name) ? "✓ " : ""}
+              {name}
+            </button>
+          ))}
+          <form
+            className="riso-import-custom"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (custom.trim() && !isOn(custom.trim())) setStores((prev) => [...prev, custom.trim()]);
+              setCustom("");
+            }}
+          >
+            <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="+ Another store" aria-label="Another store" />
+          </form>
+        </div>
+        <p className="riso-import-note">
+          {nearbyError
+            ? `${nearbyError}. You can still type store names; the import will try them.`
+            : nearby
+              ? nearby.length
+                ? `Flipp has grocery flyers near ${formatPostal(postalCode.replace(/\s/g, ""))} from ${nearby.length} store${nearby.length === 1 ? "" : "s"}.`
+                : "Flipp has no grocery flyers near this postal code."
+              : "Looking up the stores near you on Flipp…"}
+        </p>
+      </div>
+      {error && <p className="riso-error">{error}</p>}
+      <div className="riso-import-actions">
+        <button type="button" className="riso-btn" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" className="riso-btn primary" onClick={save} disabled={saving}>
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// The strip under the title: what the weekly import does, how the last
+// run went, Import now and its settings.
+function AutoImportStrip({ settings, importing, onImport, onSettingsSaved }) {
+  const [open, setOpen] = useState(false);
+  const where = settings.stores.length ? settings.stores.join(", ") : "every grocery flyer";
+  const last = settings.lastImportAt
+    ? settings.lastImportOk
+      ? `Last import ${formatWhen(settings.lastImportAt)}: ${settings.lastImportCount} deals from ${settings.lastImportSource}.`
+      : `Last import ${formatWhen(settings.lastImportAt)} didn't work.`
+    : "Nothing imported yet.";
+
+  return (
+    <section className={`riso-auto-import${settings.lastImportAt && !settings.lastImportOk ? " failed" : ""}`}>
+      <div className="riso-auto-import-main">
+        <span className={`riso-auto-import-badge${settings.autoImport ? " on" : ""}`}>
+          {settings.autoImport ? "auto-import on" : "auto-import off"}
+        </span>
+        <div className="riso-auto-import-text">
+          <p>
+            {settings.autoImport ? "Every Thursday" : "When you press Import now"}, this week's flyers from{" "}
+            <strong>{where}</strong> near {formatPostal(settings.postalCode)} are pulled in from Flipp (Le Rabais if Flipp
+            is down), and each week's prices are kept for the 6-month history.
+          </p>
+          <p className="riso-auto-import-last">
+            {last}
+            {settings.lastImportMessage && <span> {settings.lastImportMessage}</span>}
+          </p>
+        </div>
+        <div className="riso-auto-import-buttons">
+          <button type="button" className="riso-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+            Settings
+          </button>
+          <button type="button" className="riso-btn primary" onClick={onImport} disabled={importing}>
+            {importing ? "Importing…" : "Import now"}
+          </button>
+        </div>
+      </div>
+      {open && <ImportSettings settings={settings} onSaved={onSettingsSaved} onClose={() => setOpen(false)} />}
+    </section>
+  );
+}
+
 export function FlyerDeals({
   user,
   recipes,
@@ -435,6 +598,8 @@ export function FlyerDeals({
   const [importingLeRabais, setImportingLeRabais] = useState(false);
   const [leRabaisError, setLeRabaisError] = useState(null);
   const [detailId, setDetailId] = useState(null);
+  const [importSettings, setImportSettings] = useState(null);
+  const [runningImport, setRunningImport] = useState(false);
 
   function loadDeals() {
     api.getDeals().then(setDeals).catch(() => setDeals(null));
@@ -442,6 +607,7 @@ export function FlyerDeals({
 
   useEffect(() => {
     loadDeals();
+    api.getFlyerSettings().then(setImportSettings).catch(() => setImportSettings(null));
     api
       .listWatchlist()
       .then((items) => setWatchlist(new Set(items.map((i) => i.matchName))))
@@ -488,6 +654,18 @@ export function FlyerDeals({
       loadDeals();
     } finally {
       setClearing(false);
+    }
+  }
+
+  async function runImport() {
+    setRunningImport(true);
+    try {
+      setImportSettings(await api.runFlyerImport());
+      loadDeals();
+    } catch (err) {
+      setImportSettings((prev) => (prev ? { ...prev, lastImportOk: false, lastImportAt: new Date().toISOString(), lastImportMessage: err.message } : prev));
+    } finally {
+      setRunningImport(false);
     }
   }
 
@@ -603,18 +781,27 @@ export function FlyerDeals({
             </button>
           )}
           <UploadFlyerForm onUploaded={loadDeals} />
-          <button type="button" className="riso-btn primary" onClick={importLeRabais} disabled={importingLeRabais}>
+          <button type="button" className="riso-btn" onClick={importLeRabais} disabled={importingLeRabais}>
             {importingLeRabais ? "Importing…" : "Refresh from Le Rabais"}
           </button>
         </div>
       </div>
       {leRabaisError && <p className="riso-error">{leRabaisError}</p>}
 
+      {importSettings && (
+        <AutoImportStrip
+          settings={importSettings}
+          importing={runningImport}
+          onImport={runImport}
+          onSettingsSaved={setImportSettings}
+        />
+      )}
+
       {deals.isMockData && (
         <p className="riso-flyers-sample-note">
           <span className="riso-sticker yellow">sample</span>
-          These are example deals so you can see how this page works. Upload a store's flyer or refresh
-          from Le Rabais to pull in this week's real prices.
+          These are example deals so you can see how this page works. Press Import now to pull in this
+          week's real flyers.
         </p>
       )}
       <>

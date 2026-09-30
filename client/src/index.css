@@ -12264,3 +12264,164 @@ body.no-select {
     font-size: 38px;
   }
 }
+
+/* Flyers: weekly auto-import strip and its settings. */
+.riso-auto-import {
+  background: var(--riso-surface);
+  border: 2px dashed var(--riso-ink);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.riso-auto-import.failed {
+  border-style: solid;
+  border-color: var(--riso-hot);
+  box-shadow: 4px 4px 0 var(--riso-hot);
+}
+
+.riso-auto-import-main {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.riso-auto-import-badge {
+  flex: none;
+  transform: rotate(-3deg);
+  background: var(--riso-track);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font: 800 12.5px var(--riso-font-display);
+  color: #16181f;
+  white-space: nowrap;
+}
+
+.riso-auto-import-badge.on {
+  background: var(--riso-green);
+}
+
+.riso-auto-import-text {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-auto-import-text p {
+  margin: 0;
+}
+
+.riso-auto-import-text strong {
+  color: var(--riso-ink);
+}
+
+.riso-auto-import-last {
+  font-size: 12.5px;
+  color: var(--riso-muted);
+}
+
+.riso-auto-import.failed .riso-auto-import-last {
+  color: var(--riso-danger);
+}
+
+.riso-auto-import-buttons {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.riso-import-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 2px dashed var(--riso-dash-strong);
+}
+
+.riso-import-settings-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.riso-import-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-import-field > span {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.riso-import-field input {
+  width: 140px;
+  height: 40px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  background: var(--riso-surface);
+  padding: 0 14px;
+  font: 700 15px var(--riso-font-mono);
+  color: var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.riso-import-auto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  font: 700 14px var(--riso-font-display);
+}
+
+.riso-import-stores {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.riso-import-custom input {
+  width: 160px;
+  height: 34px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 17px;
+  background: transparent;
+  padding: 0 12px;
+  font: 600 13px var(--riso-font-display);
+  color: var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.riso-import-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--riso-muted);
+}
+
+.riso-import-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 767px) {
+  .riso-auto-import-buttons {
+    width: 100%;
+  }
+
+  .riso-auto-import-buttons .riso-btn {
+    flex: 1;
+  }
+}

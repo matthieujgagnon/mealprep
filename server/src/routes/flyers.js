@@ -2,7 +2,14 @@ import { Router } from "express";
 import multer from "multer";
 import { GoogleGenAI, Type, ApiError } from "@google/genai";
 import { prisma } from "../lib/prisma.js";
-import { parseLeRabaisMarkdown, mapToFlyerDeals } from "../lib/leRabais.js";
+import { listFlippStores, isValidPostalCode } from "../lib/flipp.js";
+import {
+  getOrCreateSettings,
+  importLeRabais,
+  runImportForUser,
+  serializeSettings,
+  updateSettings,
+} from "../lib/flyerImport.js";
 
 export const flyersRouter = Router();
 
@@ -203,52 +210,57 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// Le Rabais (lerabais.com) publishes a pre-compiled table of current grocery
-// deals across several Montreal-area stores, itself pulled from Flipp - see
-// server/src/lib/leRabais.js for how that file is parsed. This bypasses the
-// PDF/photo upload path (and the Gemini call it relies on) entirely: the
-// data's already structured and the per-lb prices are already computed, so
-// there's nothing to OCR or guess.
-const LE_RABAIS_URL = "https://lerabais.com/Liste/Tableau.md";
-const LE_RABAIS_SOURCE = "Le Rabais";
-const MONTREAL_POSTAL_CODE = "H2T2S3";
-
-// POST /api/flyers/import-le-rabais - fetches and imports this week's deals
-// from Le Rabais. Re-running it supersedes its own previous rows only
-// (scoped by source, same as a re-upload under the same name - see
-// isCurrent's comment on the FlyerDeal model), leaving any manually
-// uploaded flyers untouched.
+// POST /api/flyers/import-le-rabais - this week's deals from Le Rabais
+// (lerabais.com, a pre-compiled Montreal table built from Flipp - see
+// lib/leRabais.js), plus any past week in its file not stored yet, as
+// price history. Supersedes only its own previous rows.
 flyersRouter.post("/import-le-rabais", async (req, res) => {
-  let response;
   try {
-    response = await fetch(LE_RABAIS_URL);
+    const result = await importLeRabais(req.userId);
+    res.status(201).json({ store: "Le Rabais", count: result.count, backfilled: result.backfilled });
   } catch (err) {
-    console.error("Le Rabais fetch failed:", err);
-    return res.status(502).json({ error: "Could not reach Le Rabais - try again shortly." });
+    console.error("Le Rabais import failed:", err);
+    res.status(502).json({ error: `Could not import from Le Rabais: ${err.message}` });
   }
-  if (!response.ok) {
-    return res.status(502).json({ error: `Le Rabais returned an error (${response.status}).` });
+});
+
+// GET /api/flyers/settings - where and what the weekly auto-import reads,
+// and how its last run went.
+flyersRouter.get("/settings", async (req, res) => {
+  res.json(serializeSettings(await getOrCreateSettings(req.userId)));
+});
+
+// PUT /api/flyers/settings { postalCode?, stores?, autoImport? }
+flyersRouter.put("/settings", async (req, res) => {
+  try {
+    const row = await updateSettings(req.userId, req.body || {});
+    res.json(serializeSettings(row));
+  } catch (err) {
+    if (err.status === 400) return res.status(400).json({ error: err.message });
+    throw err;
   }
+});
 
-  const text = await response.text();
-  const rows = parseLeRabaisMarkdown(text);
-  if (rows.length === 0) {
-    return res.status(502).json({ error: "Could not parse any deals from Le Rabais - its format may have changed." });
+// POST /api/flyers/import - run the import now (Flipp, else Le Rabais).
+// Always answers 200 with the updated settings; lastImportOk says whether
+// it worked.
+flyersRouter.post("/import", async (req, res) => {
+  res.json(await runImportForUser(req.userId));
+});
+
+// GET /api/flyers/stores?postalCode=H2T2S3 - grocery stores with a flyer on
+// Flipp near that postal code, for the store picker (and a quick check
+// that Flipp can be reached at all).
+flyersRouter.get("/stores", async (req, res) => {
+  const postalCode = req.query.postalCode || (await getOrCreateSettings(req.userId)).postalCode;
+  if (!isValidPostalCode(postalCode)) {
+    return res.status(400).json({ error: "That doesn't look like a Canadian postal code (e.g. H2T 2S3)." });
   }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const mapped = mapToFlyerDeals(rows, { postalCode: MONTREAL_POSTAL_CODE, today });
-  const deals = mapped.map((d) => ({ ...d, userId: req.userId, source: LE_RABAIS_SOURCE }));
-
-  await prisma.$transaction([
-    prisma.flyerDeal.updateMany({
-      where: { userId: req.userId, source: LE_RABAIS_SOURCE, isCurrent: true },
-      data: { isCurrent: false },
-    }),
-    ...(deals.length > 0 ? [prisma.flyerDeal.createMany({ data: deals })] : []),
-  ]);
-
-  res.status(201).json({ store: LE_RABAIS_SOURCE, count: deals.length });
+  try {
+    res.json({ stores: await listFlippStores(postalCode) });
+  } catch (err) {
+    res.status(502).json({ error: `Couldn't reach Flipp: ${err.message}` });
+  }
 });
 
 // DELETE /api/flyers - clear every uploaded flyer's deals at once (e.g. to
