@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { groupDealsByIngredient } from "../lib/similarRecipes.js";
+import { dealEmoji } from "../lib/dealEmoji.js";
 import { canonicalize } from "../lib/groceryList.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { HintStrip, Segmented, Switch } from "./RisoControls.jsx";
@@ -87,12 +88,25 @@ function isStapleDeal(deal, customStaples) {
   return (customStaples || []).some((s) => canonicalize(s).core === core);
 }
 
+// The item's own photo from the flyer; a food emoji when there isn't one or
+// it won't load. No referrer: some flyer sites refuse images linked from
+// other sites.
 function DealPhoto({ deal, size }) {
-  return deal.imageUrl ? (
-    <img className="riso-deal-photo" src={deal.imageUrl} alt="" style={{ width: size, height: size }} />
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [deal.imageUrl]);
+  return deal.imageUrl && !failed ? (
+    <img
+      className="riso-deal-photo"
+      src={deal.imageUrl}
+      alt=""
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      style={{ width: size, height: size }}
+    />
   ) : (
-    <div className="riso-deal-photo placeholder" style={{ width: size, height: size }}>
-      {(deal.item || "?")[0]}
+    <div className="riso-deal-photo placeholder" style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }} aria-hidden="true">
+      {dealEmoji(deal)}
     </div>
   );
 }
@@ -287,9 +301,11 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
       >
         <div className="riso-deal-detail-photo">
           {deal.imageUrl && !photoFailed ? (
-            <img src={deal.imageUrl} alt="" onError={() => setPhotoFailed(true)} />
+            <img src={deal.imageUrl} alt="" referrerPolicy="no-referrer" onError={() => setPhotoFailed(true)} />
           ) : (
-            <span className="riso-deal-detail-letter">{(deal.item || "?")[0]}</span>
+            <span className="riso-deal-detail-letter" aria-hidden="true">
+              {dealEmoji(deal)}
+            </span>
           )}
           {isLow && <span className="riso-deal-detail-low">6-month low!</span>}
           {flyerPage && (
