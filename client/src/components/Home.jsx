@@ -8,6 +8,12 @@ import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
+const ALL_MEALS_KEY = "mealprep-home-all-meals";
+const STRIP_MEALS = [
+  { id: "breakfast", short: "B", label: "Breakfast" },
+  { id: "lunch", short: "L", label: "Lunch" },
+  { id: "dinner", short: "S", label: "Supper" },
+];
 const RESTAURANT_TITLE = "🍽️ Restaurant";
 
 // Small deterministic rotation set for the Riso Poster "stickers" - a
@@ -150,6 +156,25 @@ export function Home({
   const [stripWeekOffset, setStripWeekOffset] = useState(0);
   const stripWeekStart = shiftWeek(weekStart, stripWeekOffset);
   const [stripEntries, setStripEntries] = useState([]);
+  // The week strip shows suppers; "all meals" (a quiet link, remembered on
+  // this device) shows breakfast and lunch too.
+  const [allMeals, setAllMeals] = useState(() => {
+    try {
+      return localStorage.getItem(ALL_MEALS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  function toggleAllMeals() {
+    setAllMeals((on) => {
+      try {
+        localStorage.setItem(ALL_MEALS_KEY, on ? "0" : "1");
+      } catch {
+        // best-effort
+      }
+      return !on;
+    });
+  }
 
   useEffect(() => {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setPlannerEntries([]));
@@ -192,6 +217,10 @@ export function Home({
   const tonightIsNote = !!tonightEntry?.recipe?.isPlaceholder;
   const tonightMatch = tonightEntry ? makeableResults.find((m) => m.recipe.id === tonightEntry.recipe.id) : null;
   const tonightAllHave = !!tonightMatch && tonightMatch.missingIngredients.length === 0;
+
+  function mealFor(dayIndex, mealType) {
+    return stripEntries.find((e) => e.dayOfWeek === dayIndex && e.mealType === mealType && !isBlankMarker(e));
+  }
 
   function dinnerFor(dayIndex) {
     return stripEntries.find((e) => e.dayOfWeek === dayIndex && e.mealType === "dinner" && !isBlankMarker(e));
@@ -299,7 +328,7 @@ export function Home({
           )}
         </section>
 
-        <section className="riso-home-grocery">
+        <section className={`riso-home-grocery${groceriesDone ? " done" : ""}`}>
           <div className="riso-eyebrow on-pink">Grocery list</div>
           {groceriesDone ? (
             <div className="riso-home-grocery-done">
@@ -320,7 +349,11 @@ export function Home({
           <p className="riso-home-grocery-line">
             {checkedCount} of {toBuy.length} in the cart{saleCount > 0 ? ` · ${saleCount} on sale` : ""}
           </p>
-          <button type="button" className="riso-btn ink full" onClick={() => onNavigate("grocery")}>
+          <button
+            type="button"
+            className={`riso-btn ${groceriesDone ? "hot" : "ink"} full`}
+            onClick={() => onNavigate("grocery")}
+          >
             Open list →
           </button>
         </section>
@@ -329,9 +362,12 @@ export function Home({
       <section className="riso-home-week">
         <div className="riso-home-week-header">
           <h3>
-            {stripWeekOffset === 0 ? "This week's" : "Next week's"} suppers{" "}
+            {stripWeekOffset === 0 ? "This week's" : "Next week's"} {allMeals ? "meals" : "suppers"}{" "}
             <span className="riso-home-week-sub">
-              · {DAY_INDICES.filter((d) => dinnerFor(d)).length} of 7 planned
+              ·{" "}
+              {allMeals
+                ? `${DAY_INDICES.reduce((n, d) => n + STRIP_MEALS.filter((m) => mealFor(d, m.id)).length, 0)} of 21 planned`
+                : `${DAY_INDICES.filter((d) => dinnerFor(d)).length} of 7 planned`}
             </span>
           </h3>
           <div className="riso-chip-row">
@@ -349,8 +385,57 @@ export function Home({
             >
               Next week
             </button>
+            <button type="button" className="riso-home-week-toggle" aria-pressed={allMeals} onClick={toggleAllMeals}>
+              {allMeals ? "Suppers only" : "All meals"}
+            </button>
           </div>
         </div>
+        {allMeals ? (
+          <div className="riso-home-week-strip all-meals">
+            {DAY_INDICES.map((d) => {
+              const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
+              return (
+                <div key={d} className={`riso-home-week-col${isToday ? " today" : ""}`}>
+                  <span className="riso-home-week-day-label">
+                    {isToday ? "TODAY" : weekday.toUpperCase()} {dayNum}
+                  </span>
+                  {STRIP_MEALS.map((m) => {
+                    const entry = mealFor(d, m.id);
+                    const title = entry?.recipe.title;
+                    return entry && !entry.recipe.isPlaceholder ? (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className="riso-home-week-meal"
+                        title={`${m.label}: ${title}`}
+                        onClick={() => onSelectRecipe(entry.recipe)}
+                      >
+                        <i>{m.short}</i>
+                        <span>{title}</span>
+                      </button>
+                    ) : entry ? (
+                      <div key={m.id} className="riso-home-week-meal note" title={`${m.label}: ${title}`}>
+                        <i>{m.short}</i>
+                        <span>{title}</span>
+                      </div>
+                    ) : (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className="riso-home-week-meal empty"
+                        aria-label={`Plan ${m.label.toLowerCase()} for ${weekday}`}
+                        onClick={() => onNavigate("planner")}
+                      >
+                        <i>{m.short}</i>
+                        <span>—</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
         <div className="riso-home-week-strip">
           {DAY_INDICES.map((d) => {
             const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
@@ -402,6 +487,7 @@ export function Home({
             );
           })}
         </div>
+        )}
       </section>
 
       <div className="riso-home-bottom-row">

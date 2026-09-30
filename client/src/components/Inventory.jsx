@@ -20,10 +20,16 @@ const SHELF_LOCATIONS = [
 // Sections sit on a 6-column grid. Pantry spans the full row by default (it
 // tends to hold the most); every other section starts at half.
 const GRID_COLUMNS = 6;
+// Preset sizes, so sections line up: widths of 1/3, 1/2, 2/3 or the whole
+// row, heights in fixed steps (or "fit" - as tall as its items).
+const SPAN_STEPS = [2, 3, 4, 6];
+const SPAN_LABEL = { 2: "1/3", 3: "1/2", 4: "2/3", 6: "Full" };
+const HEIGHT_STEPS = [240, 360, 480, 600, 720, 840];
+const nearest = (steps, value) => steps.reduce((best, s) => (Math.abs(s - value) < Math.abs(best - value) ? s : best));
 const LEGACY_SPAN = { third: 2, half: 3, full: 6 };
 function spanOf(size, id) {
   const n = LEGACY_SPAN[size] ?? parseInt(size, 10);
-  if (n >= 1 && n <= GRID_COLUMNS) return n;
+  if (n >= 1 && n <= GRID_COLUMNS) return nearest(SPAN_STEPS, n);
   return id === "pantry" ? 6 : 3;
 }
 
@@ -48,7 +54,7 @@ function orderedSections(locations, layout) {
         label: sec.custom ? sec.defaultLabel : row?.label || sec.defaultLabel,
         defaultLabel: sec.defaultLabel,
         span: spanOf(row?.size, sec.id),
-        height: row?.height ?? null,
+        height: row?.height ? nearest(HEIGHT_STEPS, row.height) : null,
       };
     });
 }
@@ -479,9 +485,10 @@ function SectionEditor({ location, onRename, onDelete, onDone }) {
   );
 }
 
-// Drag the corner handle to resize: the width snaps to grid columns, the
-// height is free (the cards scroll inside when it's shorter than they
-// are). Arrow keys on the handle do the same, a column or 40px at a time.
+// Drag the corner handle to resize: the width snaps to 1/3, 1/2, 2/3 or
+// full, the height to fixed steps, so neighbouring sections line up (cards
+// scroll inside a section shorter than they are). Arrow keys step through
+// the same sizes; Home goes back to fitting its items.
 function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
   function measure() {
     const shelf = shelfRef.current;
@@ -507,10 +514,8 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
     const move = (ev) => {
       const widthNow = startWidth + (ev.clientX - startX);
       const newSpan =
-        m.cols === GRID_COLUMNS
-          ? Math.min(GRID_COLUMNS, Math.max(1, Math.round((widthNow + m.gap) / (m.colWidth + m.gap))))
-          : span;
-      const newHeight = Math.max(160, Math.round(startHeight + (ev.clientY - startY)));
+        m.cols === GRID_COLUMNS ? nearest(SPAN_STEPS, (widthNow + m.gap) / (m.colWidth + m.gap)) : span;
+      const newHeight = nearest(HEIGHT_STEPS, startHeight + (ev.clientY - startY));
       next = { span: newSpan, height: newHeight };
       onPreview(next);
     };
@@ -527,11 +532,13 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
 
   function onKeyDown(e) {
     const shelfHeight = Math.round(shelfRef.current?.getBoundingClientRect().height || 240);
+    const si = SPAN_STEPS.indexOf(span);
+    const hi = HEIGHT_STEPS.indexOf(nearest(HEIGHT_STEPS, height ?? shelfHeight));
     const steps = {
-      ArrowLeft: { span: Math.max(1, span - 1), height },
-      ArrowRight: { span: Math.min(GRID_COLUMNS, span + 1), height },
-      ArrowUp: { span, height: Math.max(160, (height ?? shelfHeight) - 40) },
-      ArrowDown: { span, height: (height ?? shelfHeight) + 40 },
+      ArrowLeft: { span: SPAN_STEPS[Math.max(0, si - 1)], height },
+      ArrowRight: { span: SPAN_STEPS[Math.min(SPAN_STEPS.length - 1, si + 1)], height },
+      ArrowUp: { span, height: HEIGHT_STEPS[Math.max(0, hi - 1)] },
+      ArrowDown: { span, height: HEIGHT_STEPS[Math.min(HEIGHT_STEPS.length - 1, hi + (height ? 1 : 0))] },
     };
     if (e.key in steps) {
       e.preventDefault();
@@ -595,6 +602,7 @@ function ShelfColumn({
   if (height) classes.push("fixed-height");
   if (isOver) classes.push("drop-active");
   if (preview) classes.push("resizing");
+  const sizeBadge = preview ? `${SPAN_LABEL[span] || span} · ${height ? `${height}px` : "fit"}` : null;
   if (moveState?.id === location.id) classes.push("moving");
   if (moveState?.overId === location.id) classes.push(moveState.after ? "drop-after" : "drop-before");
 
@@ -659,6 +667,7 @@ function ShelfColumn({
           ))}
         </div>
       )}
+      {sizeBadge && <span className="inv-shelf-size-badge">{sizeBadge}</span>}
       {arrangeable && (
         <ResizeHandle
           label={`Resize the "${location.label}" section`}

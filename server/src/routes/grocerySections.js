@@ -50,6 +50,25 @@ grocerySectionsRouter.put("/reorder", async (req, res) => {
   res.status(204).send();
 });
 
+// PUT /api/grocery-sections/:id { name } - rename a section/store.
+grocerySectionsRouter.put("/:id", async (req, res) => {
+  const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+  if (!name) return res.status(400).json({ error: "name is required" });
+  const section = await prisma.grocerySection.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!section) return res.status(404).json({ error: "Section not found" });
+  try {
+    const saved = await prisma.grocerySection.update({
+      where: { id: section.id },
+      data: { name },
+      include: { assignments: true },
+    });
+    res.json(saved);
+  } catch (err) {
+    if (err.code === "P2002") return res.status(409).json({ error: `A store named "${name}" already exists` });
+    throw err;
+  }
+});
+
 // DELETE /api/grocery-sections/:id - remove a section (its items go back to unsorted)
 grocerySectionsRouter.delete("/:id", async (req, res) => {
   await prisma.grocerySection.deleteMany({ where: { id: req.params.id, userId: req.userId } });

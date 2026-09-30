@@ -107,7 +107,7 @@ test("Share copies what's left to buy as a text list", async ({ page, context })
   expect(text).not.toContain("Lemon"); // already in the cart
 });
 
-test("Review what's left off lists leftovers and staples, and puts them back", async ({ page }) => {
+test("Left off this week lists leftovers and staples, and puts them back", async ({ page }) => {
   await setup(page);
   const soup = await (
     await page.request.post("/api/recipes", { data: { title: "Leftover soup", ingredients: [{ name: "leek", quantity: 2 }] } })
@@ -124,14 +124,68 @@ test("Review what's left off lists leftovers and staples, and puts them back", a
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(row(page, "Leek")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Review what's left off →" }).click();
-  const review = page.locator(".riso-grocery-review");
-  await expect(review).toContainText("Leftover soup");
-  await review.locator(".riso-grocery-review-row", { hasText: "Salt" }).getByRole("button", { name: "+ List" }).click();
+  const card = page.locator(".riso-grocery-excluded");
+  await expect(card).toContainText("Left off this week");
+  await expect(card).toContainText("Leftover soup");
+  await card.getByRole("button", { name: "Add Salt to the list" }).click();
   await expect(row(page, "Salt")).toBeVisible();
 
-  await review.locator(".riso-grocery-review-row", { hasText: "Leftover soup" }).getByRole("button", { name: "Shop for it" }).click();
+  await card.locator(".riso-grocery-review-row", { hasText: "Leftover soup" }).getByRole("button", { name: "Shop for it" }).click();
   await expect(row(page, "Leek")).toBeVisible();
+});
+
+test("Clear empties the Removed this week strip and the rows stay off the list", async ({ page }) => {
+  await setup(page);
+  await page.getByRole("button", { name: "Remove Lemon", exact: true }).click();
+  await expect(page.locator(".riso-grocery-removed")).toContainText("Lemon");
+  await page.locator(".riso-grocery-removed").getByRole("button", { name: "Clear" }).click();
+  await expect(page.locator(".riso-grocery-removed")).toHaveCount(0);
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(row(page, "Garlic")).toBeVisible();
+  await expect(row(page, "Lemon")).toHaveCount(0);
+  await expect(page.locator(".riso-grocery-removed")).toHaveCount(0);
+});
+
+test("checked items never show as unchecked while the list loads", async ({ page }) => {
+  await setup(page);
+  await row(page, "Garlic").click();
+  await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "true");
+  // Slow the checkmarks down: the rows must wait for them.
+  await page.route("**/api/grocery-checked?**", async (route) => {
+    await new Promise((r) => setTimeout(r, 800));
+    await route.continue();
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  const garlic = row(page, "Garlic");
+  await garlic.waitFor();
+  expect(await garlic.getAttribute("aria-pressed")).toBe("true");
+});
+
+test("stores: add one and drag an item into it; it stays there", async ({ page }) => {
+  await setup(page);
+  await page.getByRole("button", { name: "+ Add store" }).click();
+  await page.getByLabel("Store name").fill("Costco");
+  await page.getByRole("button", { name: "Add", exact: true }).last().click();
+  const costco = page.getByRole("region", { name: "Costco store" });
+  await expect(costco).toContainText("Drag items here");
+
+  const grip = page.getByLabel("Move Garlic to another store");
+  const from = await grip.boundingBox();
+  const to = await costco.boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 20, from.y + 10, { steps: 4 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect(costco.getByRole("button", { name: "Check off Garlic", exact: true })).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Costco store" }).getByRole("button", { name: "Check off Garlic", exact: true })
+  ).toBeVisible();
 });
 
 test("Done shopping keeps items bought, adds them to Inventory once, and says the groceries are done", async ({ page }) => {

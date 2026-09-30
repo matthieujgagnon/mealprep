@@ -231,6 +231,8 @@ model GroceryItemOverride {
   key       String
   quantity  String?
   removed   Boolean  @default(false)
+  // A removed row cleared from the "Removed this week" strip.
+  hidden    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
