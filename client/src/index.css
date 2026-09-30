@@ -8100,10 +8100,6 @@ input[type="date"].planner-week-picker {
   background: var(--riso-hot);
 }
 
-.riso-tray-chip.green {
-  background: var(--riso-green);
-}
-
 .riso-tray-chip.paper {
   background: var(--riso-surface);
 }
@@ -8148,10 +8144,6 @@ input[type="date"].planner-week-picker {
 
 .riso-tray-group-pill.pink {
   background: var(--riso-hot);
-}
-
-.riso-tray-group-pill.green {
-  background: var(--riso-green);
 }
 
 .riso-tray-group-pill.yellow {
@@ -10688,30 +10680,6 @@ body.no-select {
   border-radius: 18px;
 }
 
-/* Leftover / already-have meals add nothing to the grocery list. */
-.riso-planner-card.off-list .riso-planner-card-photo {
-  filter: saturate(0.55);
-}
-
-.riso-planner-card-offlist {
-  position: absolute;
-  left: 6px;
-  top: 38px;
-  z-index: 1;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  font: 700 10.5px var(--riso-font-display);
-  color: var(--riso-ink);
-  white-space: nowrap;
-}
-
-.riso-planner-card-offlist.in-legend {
-  position: static;
-  margin-right: 6px;
-}
-
 /* ================================================================
    Recipe editor (design handoff: Riso Recipe Editor.dc.html).
    Full page on the Recipes tab: numbered form sections, a sticky
@@ -12481,93 +12449,4 @@ body.no-select {
 .riso-deal-detail-avg-source {
   font-size: 11.5px;
   color: var(--riso-muted);
-}
-
-/* Planner: meals using ingredients at a good flyer price this week. */
-.riso-planner-card-deal {
-  align-self: flex-start;
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 4px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-green-tint);
-  color: #16181f;
-  font: 800 10.5px var(--riso-font-display);
-  box-sizing: border-box;
-}
-
-.riso-planner-card-deal.stock-up {
-  background: var(--riso-green);
-}
-
-.riso-planner-card-deal.in-legend {
-  margin-top: 0;
-}
-
-.riso-planner-deals {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 18px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  color: var(--riso-ink);
-}
-
-.riso-planner-deals-badge {
-  flex: none;
-  transform: rotate(-3deg);
-  background: var(--riso-green);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 4px 11px;
-  font: 800 12.5px var(--riso-font-display);
-  color: #16181f;
-  white-space: nowrap;
-}
-
-.riso-planner-deals ul {
-  flex: 1;
-  min-width: 240px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13.5px;
-  line-height: 1.45;
-}
-
-.riso-planner-deals li strong {
-  font-family: var(--riso-font-display);
-  text-transform: capitalize;
-}
-
-.riso-planner-deals li.stock-up strong {
-  color: var(--riso-green-text);
-}
-
-.riso-planner-deals-why,
-.riso-planner-deals-for,
-.riso-planner-deals li.more {
-  color: var(--riso-muted);
-}
-
-.riso-planner-deals-for button {
-  border: none;
-  background: none;
-  padding: 0;
-  font: inherit;
-  color: var(--riso-accent);
-  text-decoration: underline;
-  cursor: pointer;
 }

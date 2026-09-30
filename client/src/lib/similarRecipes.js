@@ -273,7 +273,7 @@ const SIZE_TOKEN = /^\d+(\.\d+)?(g|kg|ml|l|lb|lbs|oz|ct|pk)?$/;
 // The deal-side counterpart to core(): strips retail noise, then hands off to
 // the same core() every other matcher here uses, so a deal and a recipe end
 // up compared on identical terms.
-export function dealCore(itemName) {
+function dealCore(itemName) {
   const stripped = itemName
     .toLowerCase()
     // Everything before the first comma or bracket is the product; the rest

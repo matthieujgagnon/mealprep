@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { api } from "../api.js";
 import { Segmented } from "./RisoControls.jsx";
-import { core, groupDealsByIngredient } from "../lib/similarRecipes.js";
+import { core } from "../lib/similarRecipes.js";
 import { capitalize } from "../lib/groceryList.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { DAY_SHORT, MEAL_LABEL } from "../lib/plannerSlots.js";
@@ -112,7 +111,6 @@ function ChipGroup({ label, tone, names, picked, onToggle }) {
 }
 
 export function PlannerTray({
-  deals: sharedDeals,
   recipes,
   upcomingEntries,
   pantryInventory,
@@ -129,19 +127,8 @@ export function PlannerTray({
   message,
   inSheet = false,
 }) {
-  const [ownDeals, setOwnDeals] = useState([]);
   const [query, setQuery] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
-
-  // App passes this week's deals in; loads them itself only when used alone.
-  useEffect(() => {
-    if (sharedDeals) return;
-    api
-      .getRealDeals()
-      .then(setOwnDeals)
-      .catch(() => setOwnDeals([]));
-  }, [sharedDeals]);
-  const deals = sharedDeals || ownDeals;
 
   // Selecting a note slot pre-fills its text for editing; selecting an empty
   // slot starts blank.
@@ -149,14 +136,11 @@ export function PlannerTray({
     setNoteDraft(target?.note || "");
   }, [target?.dayOfWeek, target?.mealType, target?.note]);
 
-  const dealGroups = groupDealsByIngredient(deals, recipes).filter((g) => g.recipeCount > 0);
-  const saleCores = new Set(dealGroups.map((g) => g.core));
   const { ranked, expiringCores } = rankRecipesForTray({
     recipes,
     upcomingEntries,
     pantryInventory,
     haveCores,
-    saleCores,
   });
 
   const pickedCores = new Set(picks.map((p) => core(p) || p.toLowerCase()));
@@ -168,8 +152,7 @@ export function PlannerTray({
   }
 
   const expiringNames = expiringCores.slice(0, 8).map(capitalize);
-  const saleNames = dealGroups.slice(0, 8).map((g) => g.label);
-  const shownCores = new Set([...expiringCores, ...dealGroups.slice(0, 8).map((g) => g.core)]);
+  const shownCores = new Set(expiringCores);
   const kitchenNames = [
     ...new Set(
       pantryInventory
@@ -248,11 +231,10 @@ export function PlannerTray({
       {tab === "around" && (
         <div className="riso-tray-chip-groups">
           <ChipGroup label="EXPIRING" tone="pink" names={expiringNames} picked={pickedCores} onToggle={togglePick} />
-          <ChipGroup label="ON SALE" tone="green" names={saleNames} picked={pickedCores} onToggle={togglePick} />
           <ChipGroup label="IN YOUR KITCHEN" tone="paper" names={kitchenNames} picked={pickedCores} onToggle={togglePick} />
           <ChipGroup label="YOUR PICKS" tone="paper" names={otherPicks} picked={pickedCores} onToggle={togglePick} />
-          {expiringNames.length + saleNames.length + kitchenNames.length + otherPicks.length === 0 && (
-            <p className="riso-tray-empty">Add items to your Inventory, or upload a flyer, to plan around them.</p>
+          {expiringNames.length + kitchenNames.length + otherPicks.length === 0 && (
+            <p className="riso-tray-empty">Add items to your Inventory to plan around them.</p>
           )}
         </div>
       )}

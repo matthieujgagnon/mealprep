@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -19,8 +19,7 @@ import { Home } from "./components/Home.jsx";
 import { RecipeEditor } from "./components/RecipeEditor.jsx";
 import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
-import { PlannerBoard, PlannerDealsStrip, PlannerHeader } from "./components/PlannerBoard.jsx";
-import { goodDealsByCore } from "./lib/dealQuality.js";
+import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
 import { PlannerTray } from "./components/PlannerTray.jsx";
 import { PlannerMobile } from "./components/PlannerMobile.jsx";
 import { useIsPhone } from "./hooks/useIsPhone.js";
@@ -160,15 +159,6 @@ export default function App({ user, onLogout }) {
   // The full-page recipe editor on the Recipes tab: { recipe } to edit one,
   // { recipe: null } for a new one, null when closed.
   const [recipeEditor, setRecipeEditor] = useState(null);
-  // This week's real flyer deals, for the Planner's "good price" chips and
-  // tray - reloaded each time the Planner opens, since an import may have
-  // run since.
-  const [deals, setDeals] = useState([]);
-  useEffect(() => {
-    if (tab !== "planner") return;
-    api.getRealDeals().then(setDeals).catch(() => {});
-  }, [tab]);
-  const dealsByCore = useMemo(() => goodDealsByCore(deals), [deals]);
   const editorDirty = useRef(false);
   const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart
   const [groceryOverrides, setGroceryOverrides] = useState([]); // this week's removed rows / own quantities (GroceryItemOverride)
@@ -683,7 +673,6 @@ export default function App({ user, onLogout }) {
       upcomingEntries: upcomingPlannerEntries,
       pantryInventory,
       haveCores: pantryHaveCores,
-      saleCores: new Set(),
     });
     const breakfast = ranked.filter((x) => isBreakfastRecipe(x.recipe));
     const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe) && !isPrepRecipe(x.recipe));
@@ -704,7 +693,6 @@ export default function App({ user, onLogout }) {
   }
 
   const trayProps = {
-    deals,
     recipes: plannableRecipes,
     upcomingEntries: upcomingPlannerEntries,
     pantryInventory,
@@ -980,7 +968,6 @@ export default function App({ user, onLogout }) {
                     emptyCount={fillPlan.length}
                     onFillEmptySlots={handleFillEmptySlots}
                     trayProps={trayProps}
-                    dealsByCore={dealsByCore}
                   />
                 ) : (
                   <>
@@ -996,7 +983,6 @@ export default function App({ user, onLogout }) {
                       emptyCount={fillPlan.length}
                       onFillEmptySlots={handleFillEmptySlots}
                     />
-                    <PlannerDealsStrip entries={plannerEntries} dealsByCore={dealsByCore} onOpenRecipe={openRecipe} />
                     <div className="riso-planner-row">
                       <PlannerBoard
                         entries={plannerEntries}
@@ -1008,7 +994,6 @@ export default function App({ user, onLogout }) {
                         onWriteInSlot={handleWriteInSlot}
                         onEditNote={setEditingNoteId}
                         onSaveNote={handleSaveNote}
-                        dealsByCore={dealsByCore}
                       />
                       <PlannerTray {...trayProps} target={plannerTarget} />
                     </div>
