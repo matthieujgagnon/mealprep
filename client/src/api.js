@@ -83,6 +83,13 @@ export const api = {
   },
   clearFlyerDeals: () => request("/flyers", { method: "DELETE" }),
   importLeRabaisDeals: () => request("/flyers/import-le-rabais", { method: "POST" }),
+  // Weekly auto-import: where and what to read, and how the last run went.
+  getFlyerSettings: () => request("/flyers/settings"),
+  updateFlyerSettings: (payload) => request("/flyers/settings", { method: "PUT", body: JSON.stringify(payload) }),
+  // Runs the import now; resolves to the updated settings (lastImportOk
+  // says whether it worked).
+  runFlyerImport: () => request("/flyers/import", { method: "POST" }),
+  listFlyerStores: (postalCode) => request(`/flyers/stores?postalCode=${encodeURIComponent(postalCode)}`),
   // The stored file behind a manually-uploaded flyer - used directly as an
   // <iframe> src, so the browser's own PDF/image viewer renders it. Not run
   // through `request()` since this isn't JSON.

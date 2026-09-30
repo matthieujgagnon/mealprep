@@ -103,18 +103,29 @@ export const LE_RABAIS_IMAGE_BASE_URL = "https://lerabais.com/images/weekly-groc
 export function mapToFlyerDeals(rows, { postalCode, today }) {
   return rows
     .filter((r) => r.postalCode === postalCode && r.dateDebut <= today && today <= r.dateFin)
-    .map((r) => {
-      const { unitPrice, unitBasis } = parsePrixString(r.prix);
-      return {
-        store: r.magasin,
-        item: r.produit,
-        matchName: r.product || r.produit,
-        price: r.prix,
-        unitPrice,
-        unitBasis,
-        category: TYPE_TO_CATEGORY[r.type] || "other",
-        validUntil: r.dateFin || null,
-        imageUrl: r.nomImage ? LE_RABAIS_IMAGE_BASE_URL + r.nomImage : null,
-      };
-    });
+    .map(toFlyerDeal);
+}
+
+// The weeks that already ended - the file keeps about ten of them - as
+// price history: each row dated to the day its flyer started, so the
+// Flyers chart puts it in the right month.
+export function mapPastWeeks(rows, { postalCode, today }) {
+  return rows
+    .filter((r) => r.postalCode === postalCode && r.dateFin && r.dateFin < today && /^\d{4}-\d{2}-\d{2}$/.test(r.dateDebut))
+    .map((r) => ({ ...toFlyerDeal(r), createdAt: new Date(`${r.dateDebut}T12:00:00Z`) }));
+}
+
+function toFlyerDeal(r) {
+  const { unitPrice, unitBasis } = parsePrixString(r.prix);
+  return {
+    store: r.magasin,
+    item: r.produit,
+    matchName: r.product || r.produit,
+    price: r.prix,
+    unitPrice,
+    unitBasis,
+    category: TYPE_TO_CATEGORY[r.type] || "other",
+    validUntil: r.dateFin || null,
+    imageUrl: r.nomImage ? LE_RABAIS_IMAGE_BASE_URL + r.nomImage : null,
+  };
 }

@@ -1,0 +1,36 @@
+name: Weekly flyer import
+
+# Quebec grocery flyers change on Thursdays. The app imports them itself
+# while it's awake (lib/flyerImport.js), but a free Render service sleeps
+# when nobody uses it - this wakes it and asks for the import. Friday is a
+# retry in case Thursday's flyers weren't up yet.
+#
+# Needs two repository secrets (Settings -> Secrets and variables ->
+# Actions): APP_URL (e.g. https://mattmocookbook.onrender.com) and
+# CRON_SECRET (the same value as the CRON_SECRET environment variable on
+# Render). Without them this job does nothing.
+on:
+  schedule:
+    - cron: "20 13 * * 4" # Thursday 13:20 UTC (9:20 am in Montreal)
+    - cron: "20 13 * * 5" # Friday, same time
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the app to import this week's flyers
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL or CRON_SECRET isn't set - skipping."
+            exit 0
+          fi
+          # A sleeping free Render service takes up to a minute to wake.
+          curl -fsS --retry 5 --retry-delay 20 --retry-all-errors --max-time 60 "$APP_URL/api/health"
+          echo
+          curl -fsS --max-time 300 -X POST "$APP_URL/api/cron/flyer-import" \
+            -H "Authorization: Bearer $CRON_SECRET"
+          echo

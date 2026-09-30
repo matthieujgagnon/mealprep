@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LE_RABAIS_IMAGE_BASE_URL, mapToFlyerDeals, parseLeRabaisMarkdown, parsePrixString } from "./leRabais.js";
+import { LE_RABAIS_IMAGE_BASE_URL, mapPastWeeks, mapToFlyerDeals, parseLeRabaisMarkdown, parsePrixString } from "./leRabais.js";
 
 // A real excerpt of lerabais.com/Liste/Tableau.md, pasted by hand from the
 // live site - locks in the parser against the actual format, not a guess.
@@ -80,5 +80,20 @@ describe("mapToFlyerDeals", () => {
     const mapped = mapToFlyerDeals(rows, { postalCode: "H2T2S3", today: "2026-07-05" });
     const cheese = mapped.find((d) => d.item.includes("Fromage"));
     expect(cheese.category).toBe("dairy");
+  });
+});
+
+describe("mapPastWeeks", () => {
+  it("keeps the weeks that already ended, dated to when each flyer started", () => {
+    const rows = parseLeRabaisMarkdown(REAL_SAMPLE);
+    const past = mapPastWeeks(rows, { postalCode: "H2T2S3", today: "2026-07-20" });
+    expect(past).toHaveLength(3);
+    expect(past[0].createdAt.toISOString()).toBe("2026-07-02T12:00:00.000Z");
+    expect(past[0]).toMatchObject({ store: "Adonis", unitBasis: "each" });
+  });
+
+  it("leaves out the current week", () => {
+    const rows = parseLeRabaisMarkdown(REAL_SAMPLE);
+    expect(mapPastWeeks(rows, { postalCode: "H2T2S3", today: "2026-07-05" })).toHaveLength(0);
   });
 });

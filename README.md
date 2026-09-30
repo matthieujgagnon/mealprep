@@ -78,6 +78,24 @@ and bookmark it (or "Add to Home Screen" for an app-like icon).
 20–50 seconds to wake back up on the next visit. Upgrading to a paid instance (~$7/month)
 removes this delay if it ever becomes annoying.
 
+### Weekly flyer import
+The Flyers tab imports this week's flyers on its own every Thursday: every priced item from
+the stores picked under **Flyers → Settings** (Metro, IGA, Maxi, Super C and Provigo by default),
+read from Flipp, with Le Rabais as the fallback. Each week's prices are kept, which is what the
+6-month price history on each deal is built from. **Import now** runs it any time.
+
+The app checks hourly while it's awake. Because a free Render service sleeps, a GitHub Action
+(`.github/workflows/flyer-import.yml`) wakes it on Thursday and Friday mornings. To turn that on:
+1. Make up a long random password, e.g. from `openssl rand -hex 32`.
+2. On Render, add the environment variable `CRON_SECRET` with that value.
+3. On GitHub, under the repo's **Settings → Secrets and variables → Actions**, add two
+   repository secrets: `CRON_SECRET` (the same value) and `APP_URL` (your Render URL).
+4. Optional: run it once by hand from the **Actions** tab (**Weekly flyer import → Run workflow**).
+
+Flipp has no official API; the import reads the same data Flipp's own website loads, so it can
+break if Flipp changes it. When that happens the Flyers tab says so under the Import now button
+and Le Rabais fills in.
+
 ### Updating the live site after future code changes
 ```bash
 git add .
@@ -87,8 +105,9 @@ git push
 Render automatically redeploys on every push to `main`.
 
 ## Running tests
-- **Unit tests** (pure logic — date math, quantity/price parsing, the Le Rabais scraper, the
-  recipe-import SSRF guard — no database needed):
+- **Unit tests** (mostly pure logic — date math, quantity/price parsing, the Flipp and Le Rabais
+  readers, the recipe-import SSRF guard; the flyer-import test also uses the database when one
+  is reachable, and skips itself otherwise):
   ```bash
   npm test
   ```

@@ -36,6 +36,7 @@ model User {
   pantryLocations       PantryLocation[]
   watchlistItems        WatchlistItem[]
   recipeImages          RecipeImage[]
+  flyerSettings         FlyerSettings?
 }
 
 // A logged-in session, looked up by the id stored in the browser's httpOnly
@@ -428,4 +429,24 @@ model RecipeImage {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// Where and what to import flyers from automatically (Flyers tab ->
+// Auto-import), plus how the last run went. One row per account; an
+// account without a row never auto-imports.
+model FlyerSettings {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postalCode        String    @default("H2T2S3")
+  stores            String    @default("[\"Metro\",\"IGA\",\"Maxi\",\"Super C\",\"Provigo\"]") // JSON array of store names as the user picked them
+  autoImport        Boolean   @default(true)
+  lastImportAt      DateTime? // when the last run finished, successful or not
+  lastImportOk      Boolean?
+  lastImportCount   Int? // deals written by the last run
+  lastImportSource  String? // "Flipp" or "Le Rabais" (the fallback)
+  lastImportMessage String? // a short note for the Flyers screen, e.g. which store's flyer couldn't be read
+  lastSuccessAt     DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }

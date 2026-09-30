@@ -22,6 +22,8 @@ import { receiptsRouter } from "./routes/receipts.js";
 import { pantryLocationsRouter } from "./routes/pantryLocations.js";
 import { watchlistRouter } from "./routes/watchlist.js";
 import { recipeImagesRouter } from "./routes/recipeImages.js";
+import { cronRouter } from "./routes/cron.js";
+import { startFlyerScheduler } from "./lib/flyerImport.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +38,8 @@ app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRouter);
+// Machine-to-machine: checks its own shared secret instead of a session.
+app.use("/api/cron", cronRouter);
 
 // Everything below is per-account data - requireAuth attaches req.userId,
 // which every route uses to scope its own queries.
@@ -87,4 +91,5 @@ process.on("unhandledRejection", (err) => {
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+  startFlyerScheduler();
 });

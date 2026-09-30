@@ -14,6 +14,13 @@ export default defineConfig({
   },
   webServer: {
     command: "npm start",
+    // No real flyer imports during tests: no weekly timer, and Import now
+    // talks to an address that refuses the connection.
+    env: {
+      FLYER_AUTO_IMPORT: "off",
+      FLIPP_BASE_URL: "http://127.0.0.1:9/flipp",
+      LE_RABAIS_URL: "http://127.0.0.1:9/Tableau.md",
+    },
     url: "http://localhost:4000/api/health",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
