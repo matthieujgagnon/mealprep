@@ -4,6 +4,7 @@ import { HintStrip } from "./RisoControls.jsx";
 import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, shiftWeek } from "../lib/dates.js";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { describeDeal, recipeGoodDeals } from "../lib/dealQuality.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 
@@ -117,7 +118,15 @@ function stateLabel(entry) {
   return "Click to mark as leftover (keeps it off the grocery list), click again for already have everything";
 }
 
-function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleState }) {
+// "on sale: chicken" / "stock-up: chicken +1" - ingredients of a meal that
+// are at a good price this week. Meals that buy nothing don't show it.
+export function dealChipText(found) {
+  const lead = found[0];
+  const more = found.length > 1 ? ` +${found.length - 1}` : "";
+  return `${lead.quality.level === "stock-up" ? "stock-up" : "on sale"}: ${lead.name}${more}`;
+}
+
+function PlannerMealCard({ entry, isPast, isStale, dealsByCore, onClick, onRemove, onCycleState }) {
   const { recipe } = entry;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
@@ -127,6 +136,7 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
   // Leftovers and "already have everything" meals add nothing to the
   // grocery list - the card says so.
   const offList = entry.isLeftover || entry.alreadyHave;
+  const goodDeals = offList || isPast ? [] : recipeGoodDeals(recipe, dealsByCore);
   const classes = ["riso-planner-card"];
   if (entry.alreadyHave) classes.push("have");
   if (offList) classes.push("off-list");
@@ -187,6 +197,14 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
       </button>
       <div className="riso-planner-card-body">
         <p className="riso-planner-card-name">{recipe.title}</p>
+        {goodDeals.length > 0 && (
+          <span
+            className={`riso-planner-card-deal ${goodDeals[0].quality.level}`}
+            title={goodDeals.map(describeDeal).join("\n")}
+          >
+            🏷 {dealChipText(goodDeals)}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -253,6 +271,7 @@ function PlannerCell({
   mealType,
   entries,
   staleIds,
+  dealsByCore,
   isPast,
   onCardClick,
   onRemove,
@@ -290,6 +309,7 @@ function PlannerCell({
           entry={entry}
           isPast={isPast}
           isStale={staleIds.has(entry.id)}
+          dealsByCore={dealsByCore}
           onClick={() => onCardClick(entry.recipe)}
           onRemove={() => onRemove(entry.id)}
           onCycleState={() => onCycleState(entry.id)}
@@ -309,6 +329,7 @@ export function PlannerBoard({
   onWriteInSlot,
   onEditNote,
   onSaveNote,
+  dealsByCore,
 }) {
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
@@ -353,6 +374,7 @@ export function PlannerBoard({
                   mealType={meal.id}
                   entries={grouped[slotKey(dayIndex, meal.id)] || []}
                   staleIds={staleIds}
+                  dealsByCore={dealsByCore}
                   isPast={currentWeek && dayIndex < today}
                   onCardClick={onCardClick}
                   onRemove={onRemove}
@@ -380,6 +402,9 @@ export function PlannerBoard({
           <span className="riso-planner-card-offlist in-legend">🛒 off the list</span>Adds nothing to the grocery list
         </span>
         <span className="riso-planner-legend-item">
+          <span className="riso-planner-card-deal good in-legend">🏷 on sale</span>An ingredient is at a good price this week
+        </span>
+        <span className="riso-planner-legend-item">
           <span className="riso-planner-legend-blank" />
           Click an empty slot to write on it
         </span>
@@ -394,6 +419,53 @@ export function PlannerBoard({
           {atWeekend ? "← back to the weekdays" : "scroll for the weekend →"}
         </button>
       </div>
+    </section>
+  );
+}
+
+// Above the board: this week's planned meals that use good flyer prices,
+// with what's on sale where - so the list can be shopped at the right store.
+export function PlannerDealsStrip({ entries, dealsByCore, onOpenRecipe }) {
+  const byIngredient = new Map();
+  for (const entry of entries) {
+    if (!entry.recipe || entry.isLeftover || entry.alreadyHave || isNoteEntry(entry)) continue;
+    for (const found of recipeGoodDeals(entry.recipe, dealsByCore)) {
+      if (!byIngredient.has(found.core)) byIngredient.set(found.core, { ...found, recipes: [] });
+      const row = byIngredient.get(found.core);
+      if (!row.recipes.some((r) => r.id === entry.recipe.id)) row.recipes.push(entry.recipe);
+    }
+  }
+  const rows = [...byIngredient.values()].sort(
+    (a, b) => (a.quality.level === "stock-up" ? 0 : 1) - (b.quality.level === "stock-up" ? 0 : 1)
+  );
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="riso-planner-deals" aria-label="Good prices in this week's plan">
+      <span className="riso-planner-deals-badge">
+        {rows.length} good price{rows.length === 1 ? "" : "s"} in your plan
+      </span>
+      <ul>
+        {rows.slice(0, 6).map((row) => (
+          <li key={row.core} className={row.quality.level}>
+            <strong>{row.name}</strong> {row.deal.price} at {row.deal.store}
+            <span className="riso-planner-deals-why"> · {row.quality.reason}</span>
+            <span className="riso-planner-deals-for">
+              {" "}
+              for{" "}
+              {row.recipes.map((r, i) => (
+                <span key={r.id}>
+                  {i > 0 && ", "}
+                  <button type="button" onClick={() => onOpenRecipe(r)}>
+                    {r.title}
+                  </button>
+                </span>
+              ))}
+            </span>
+          </li>
+        ))}
+        {rows.length > 6 && <li className="more">and {rows.length - 6} more</li>}
+      </ul>
     </section>
   );
 }

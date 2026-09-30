@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { BottomSheet } from "./RisoControls.jsx";
 import { PlannerTray } from "./PlannerTray.jsx";
-import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
+import { NoteTextarea, PlannerDealsStrip, computeStaleLeftoverIds, dealChipText } from "./PlannerBoard.jsx";
+import { recipeGoodDeals } from "../lib/dealQuality.js";
 import { addDays, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, parseDateKey, shiftWeek } from "../lib/dates.js";
 import { MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
 import { recipeHaveStats } from "../lib/onHand.js";
@@ -11,8 +12,9 @@ import { hideBrokenPhoto } from "../lib/photos.js";
 const LONG_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const LONG_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function MealRow({ entry, haveCores, isStale, onOpen, onSwap, onRemove, onCycleState }) {
+function MealRow({ entry, haveCores, dealsByCore, isStale, onOpen, onSwap, onRemove, onCycleState }) {
   const { recipe } = entry;
+  const goodDeals = entry.isLeftover || entry.alreadyHave ? [] : recipeGoodDeals(recipe, dealsByCore);
   const stats = recipeHaveStats(recipe, haveCores);
   const time = formatTrayTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
   const buy =
@@ -46,6 +48,9 @@ function MealRow({ entry, haveCores, isStale, onOpen, onSwap, onRemove, onCycleS
           {recipe.title}
         </button>
         <span className="rpm-meal-meta">{time ? `${time} · ${buy}` : buy}</span>
+        {goodDeals.length > 0 && (
+          <span className={`riso-planner-card-deal ${goodDeals[0].quality.level}`}>🏷 {dealChipText(goodDeals)}</span>
+        )}
         <div className="rpm-meal-actions">
           <button type="button" className="rpm-chip" onClick={onSwap}>
             Swap
@@ -76,6 +81,7 @@ export function PlannerMobile({
   emptyCount,
   onFillEmptySlots,
   trayProps,
+  dealsByCore,
 }) {
   const currentWeek = isCurrentWeek(weekStart);
   const [day, setDay] = useState(currentWeek ? todayIndex() : 0);
@@ -105,6 +111,8 @@ export function PlannerMobile({
           </button>
         </div>
       </div>
+
+      <PlannerDealsStrip entries={entries} dealsByCore={dealsByCore} onOpenRecipe={onCardClick} />
 
       <div className="rpm-days" role="tablist" aria-label="Day">
         {LONG_DAYS.map((name, i) => {
@@ -178,6 +186,7 @@ export function PlannerMobile({
               <MealRow
                 entry={entry}
                 haveCores={haveCores}
+                dealsByCore={dealsByCore}
                 isStale={staleIds.has(entry.id)}
                 onOpen={() => onCardClick(entry.recipe)}
                 onSwap={() => onSelectSlot(slot)}
