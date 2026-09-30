@@ -244,6 +244,7 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
 
   const deals = [];
   const failed = [];
+  const needsPhoto = new Map(); // deal -> Flipp item id
   const queue = [...wanted];
   async function worker() {
     while (queue.length) {
@@ -253,7 +254,9 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
         const named = { ...flyer, merchant: storeFor(flyer.merchant) };
         for (const item of items) {
           const deal = normalizeFlippItem(item, named);
-          if (deal) deals.push(deal);
+          if (!deal) continue;
+          deals.push(deal);
+          if (!deal.imageUrl && item.id != null) needsPhoto.set(deal, item.id);
         }
       } catch (err) {
         failed.push(`${flyer.merchant}: ${err.message}`);
@@ -261,6 +264,8 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, wanted.length) }, worker));
+
+  await fillMissingPhotos(needsPhoto, fetchImpl);
 
   const seen = new Set();
   const unique = deals.filter((d) => {
@@ -274,6 +279,34 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
     flyers: wanted.map((f) => ({ merchant: storeFor(f.merchant), validTo: isoDate(f.validTo) })),
     failed,
   };
+}
+
+// A flyer's item list doesn't always carry the product photo; the item's
+// own page does. Looked up for at most MAX_PHOTO_LOOKUPS items, and given
+// up on if the first few lookups all fail (the endpoint moved).
+const MAX_PHOTO_LOOKUPS = 200;
+async function fillMissingPhotos(needsPhoto, fetchImpl) {
+  const queue = [...needsPhoto].slice(0, MAX_PHOTO_LOOKUPS);
+  let tried = 0;
+  let found = 0;
+  async function worker() {
+    while (queue.length) {
+      if (tried >= 6 && found === 0) return;
+      const [deal, itemId] = queue.shift();
+      tried++;
+      try {
+        const data = await getJson(`${flippBase()}/items/${encodeURIComponent(itemId)}?locale=${LOCALE}`, fetchImpl);
+        const url = flippImage(data?.item ?? data ?? {});
+        if (url) {
+          deal.imageUrl = url;
+          found++;
+        }
+      } catch {
+        // No photo for this one.
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(4, queue.length) }, worker));
 }
 
 // Which grocery stores have a flyer near this postal code right now - for

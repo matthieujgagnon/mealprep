@@ -136,6 +136,22 @@ describe("fetchFlippDeals", () => {
     expect(result.deals[3]).toMatchObject({ imageUrl: "https://f.wishabi.net/m.jpg", validUntil: "2026-09-30", category: "dairy" });
   });
 
+  it("looks up the photo of an item its flyer lists without one", async () => {
+    const lookups = [];
+    const fetchWithItems = (url) => {
+      const u = new URL(url);
+      if (u.pathname.includes("/flipp/items/")) {
+        lookups.push(u.pathname.split("/").pop());
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: { cutout_image_url: `https://f.wishabi.net/${lookups.at(-1)}.jpg` } }) });
+      }
+      return fakeFetch(url);
+    };
+    const result = await fetchFlippDeals({ postalCode: "H2T2S3", stores: ["Metro"], fetchImpl: fetchWithItems });
+    const pasta = result.deals.find((d) => d.item.startsWith("Barilla"));
+    expect(lookups).toContain(String(pasta && ITEMS["101"].items.find((i) => i.name.startsWith("Barilla")).id));
+    expect(pasta.imageUrl).toMatch(/^https:\/\/f\.wishabi\.net\/.+\.jpg$/);
+  });
+
   it("takes every grocery flyer when no stores are chosen, and reports a flyer that fails", async () => {
     const failing = (url) =>
       url.includes("/flyers/104") ? Promise.resolve({ ok: false, status: 500 }) : fakeFetch(url);

@@ -101,7 +101,7 @@ export async function importFlipp(userId, settings, { fetchImpl = fetch } = {}) 
     throw new Error(`Flipp: ${why}`);
   }
   const saved = await saveCurrentDeals(userId, FLIPP_SOURCE, result.deals);
-  return { count: result.deals.length, stores: saved, failed: result.failed };
+  return { count: result.deals.length, photos: countPhotos(result.deals), stores: saved, failed: result.failed };
 }
 
 // This week's Le Rabais deals, plus any past week in its file that isn't
@@ -137,7 +137,14 @@ export async function importLeRabais(userId, { fetchImpl = fetch, today = new Da
   );
   await saveCurrentDeals(userId, LE_RABAIS_SOURCE, current);
   const backfilled = await backfillLeRabais(userId, mapPastWeeks(rows, { postalCode: LE_RABAIS_POSTAL_CODE, today }));
-  return { count: current.length, backfilled, stores: [...new Set(current.map((d) => d.store))] };
+  return { count: current.length, photos: countPhotos(current), backfilled, stores: [...new Set(current.map((d) => d.store))] };
+}
+
+const countPhotos = (deals) => deals.filter((d) => d.imageUrl).length;
+
+// "812 items, 790 with photos" - so a week without photos shows up.
+function photoNote({ count, photos }) {
+  return `${count} item${count === 1 ? "" : "s"}, ${photos === count ? "all" : photos} with photos.`;
 }
 
 async function backfillLeRabais(userId, past) {
@@ -180,7 +187,7 @@ export async function runImportForUser(userId, { fetchImpl = fetch } = {}) {
         lastImportOk: true,
         lastImportCount: result.count,
         lastImportSource: FLIPP_SOURCE,
-        lastImportMessage: note ? `${result.stores.join(", ")}. ${note}` : result.stores.join(", "),
+        lastImportMessage: `${result.stores.join(", ")}: ${photoNote(result)}${note ? ` ${note}` : ""}`,
       })
     );
   } catch (flippErr) {
@@ -191,7 +198,7 @@ export async function runImportForUser(userId, { fetchImpl = fetch } = {}) {
           lastImportOk: true,
           lastImportCount: result.count,
           lastImportSource: LE_RABAIS_SOURCE,
-          lastImportMessage: `Flipp couldn't be read (${flippErr.message.replace(/^Flipp: /, "")}), so this week's deals came from Le Rabais.`,
+          lastImportMessage: `Flipp couldn't be read (${flippErr.message.replace(/^Flipp: /, "")}), so this week's deals came from Le Rabais: ${photoNote(result)}`,
         })
       );
     } catch (rabaisErr) {
