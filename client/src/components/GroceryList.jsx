@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { api } from "../api.js";
 import { buildGroceryList, findMatchingDeal, formatAmount } from "../lib/groceryList.js";
 import { parseQuantityInput } from "../lib/units.js";
@@ -14,7 +15,12 @@ import { StoreMode } from "./StoreMode.jsx";
 // the shared per-user-per-screen mechanism (RisoControls.jsx's <HintStrip>,
 // lib/hints.js) instead of its own key.
 const STORE_PREF_KEY = "mealprep-grocery-store-pref";
-const DEFAULT_STORE = "Metro"; // matches the placeholder store name used elsewhere (FlyerDeals' upload form) when nothing else is known yet
+const DEFAULT_STORE = "Metro";
+const ANY_STORE = "Any store"; // unfiled items, once you've made stores of your own // matches the placeholder store name used elsewhere (FlyerDeals' upload form) when nothing else is known yet
+
+// The last loaded state of each week's list, so coming back to the tab shows
+// it straight away instead of every item unchecked until the server answers.
+const weekCache = new Map();
 
 function loadStorePrefs() {
   try {
@@ -54,6 +60,7 @@ function formatStoreList(stores) {
 // from this view.
 const MANUAL_GROUP_LABEL = "Added by you";
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MEAL_NAMES = { breakfast: "breakfast", lunch: "lunch", dinner: "supper" };
 
 const VIEWS = [
   { id: "store", label: "By store" },
@@ -137,10 +144,10 @@ function QuantityCell({ item, onSave }) {
   );
 }
 
-function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCycleStore, sub, onDelete, onSetQuantity }) {
+function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCycleStore, sub, onDelete, onSetQuantity, dragHandle, dragging }) {
   return (
     <div
-      className={`riso-row${checked ? " checked" : ""}`}
+      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}`}
       role="button"
       tabIndex={0}
       aria-label={`Check off ${item.name}`}
@@ -154,6 +161,7 @@ function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCyc
         }
       }}
     >
+      {dragHandle}
       <span className={`riso-row-check${checked ? " on" : ""}`}>{checked ? "✓" : ""}</span>
       <span className="riso-row-main">
         <span className="riso-row-namerow">
@@ -202,6 +210,119 @@ function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCyc
   );
 }
 
+// In "By store", a row can be dragged by its grip into another store.
+function DraggableGroceryRow(props) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `grocery-${props.item.key}`,
+    data: { item: props.item },
+  });
+  const handle = (
+    <span
+      ref={setNodeRef}
+      className="riso-row-grip"
+      aria-label={`Move ${props.item.name} to another store`}
+      title="Drag to another store"
+      onClick={(e) => e.stopPropagation()}
+      {...listeners}
+      {...attributes}
+    >
+      ⠿
+    </span>
+  );
+  return <GroceryRow {...props} dragHandle={handle} dragging={isDragging} />;
+}
+
+function StoreGroup({ storeName, children, className }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `grocery-store-${storeName}`, data: { store: storeName } });
+  return (
+    <section ref={setNodeRef} className={`${className}${isOver ? " drop-active" : ""}`} aria-label={`${storeName} store`}>
+      {children}
+    </section>
+  );
+}
+
+// A store's heading. Stores you made can be renamed (click the name) or
+// removed (their items go back to where they'd land on their own).
+function StoreGroupHead({ group, section, onRename, onRemove }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(group.name);
+  return (
+    <div className="riso-group-head" style={{ background: "var(--riso-track)" }}>
+      {editing ? (
+        <input
+          autoFocus
+          className="riso-group-name-input"
+          aria-label="Store name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={async () => {
+            setEditing(false);
+            if (name.trim() && name.trim() !== group.name) await onRename(name.trim()).catch(() => setName(group.name));
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") {
+              setName(group.name);
+              setEditing(false);
+            }
+          }}
+        />
+      ) : section ? (
+        <button type="button" className="riso-group-name as-button" title="Rename this store" onClick={() => setEditing(true)}>
+          {group.name}
+        </button>
+      ) : (
+        <p className="riso-group-name">{group.name}</p>
+      )}
+      <span className="riso-group-count">{group.count}</span>
+      {section && (
+        <button type="button" className="riso-group-remove" aria-label={`Remove the ${group.name} store`} title="Remove this store" onClick={onRemove}>
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AddStoreForm({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState(null);
+  if (!open) {
+    return (
+      <button type="button" className="riso-grocery-add-store" onClick={() => setOpen(true)}>
+        + Add store
+      </button>
+    );
+  }
+  return (
+    <form
+      className="riso-grocery-add-store form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        try {
+          await onAdd(name.trim());
+          setName("");
+          setOpen(false);
+          setError(null);
+        } catch (err) {
+          setError(err.message);
+        }
+      }}
+    >
+      <input autoFocus aria-label="Store name" placeholder="e.g. Costco" value={name} onChange={(e) => setName(e.target.value)} />
+      <button type="submit" className="riso-grocery-add-btn">
+        Add
+      </button>
+      <button type="button" className="riso-grocery-add-store-cancel" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+      {error && <p className="riso-grocery-add-store-error">{error}</p>}
+    </form>
+  );
+}
+
 export function GroceryList({
   user,
   plannerEntries,
@@ -223,7 +344,10 @@ export function GroceryList({
   // Checked items already added to Inventory by "Done shopping" - they stay
   // checked (you bought them) but are never added twice.
   const [inInventory, setInInventory] = useState(() => new Set());
-  const [reviewOpen, setReviewOpen] = useState(false);
+  // Your own stores/sections (GrocerySection) and which ingredient goes where.
+  const [sections, setSections] = useState([]);
+  const [loadedWeek, setLoadedWeek] = useState(null);
+  const [draggingItem, setDraggingItem] = useState(null);
   const [shareNote, setShareNote] = useState(null);
   const [addValue, setAddValue] = useState("");
   const [view, setView] = useState("store");
@@ -243,30 +367,54 @@ export function GroceryList({
     api.getRealDeals().then(setDeals).catch(() => {});
   }, []);
 
-  // Switching weeks swaps in that week's own checkmarks instead of carrying
-  // the previous week's over.
+  // Everything week-specific (checkmarks, hand-added items, removed rows /
+  // own amounts, what's gone to Inventory) loads together, and the list
+  // waits for it - showing the rows first made every item flash unchecked.
+  // A week seen before shows its cached state straight away.
   useEffect(() => {
-    api.listGroceryChecked(weekStart)
-      .then((cores) => setChecked(Object.fromEntries(cores.map((c) => [c, true]))))
-      .catch(() => setChecked({}));
+    let cancelled = false;
+    const cached = weekCache.get(weekStart);
+    if (cached) {
+      setChecked(cached.checked);
+      setExtraItems(cached.extraItems);
+      setOverrides(cached.overrides);
+      setInInventory(cached.inInventory);
+      setLoadedWeek(weekStart);
+    } else {
+      setLoadedWeek(null);
+    }
+    const fallback = (p, value) => p.catch(() => value);
+    Promise.all([
+      fallback(api.listGroceryChecked(weekStart), []),
+      fallback(api.listGroceryExtras(weekStart), []),
+      fallback(api.listGroceryOverrides(weekStart), []),
+      fallback(api.listGroceryInInventory(weekStart), []),
+    ]).then(([cores, extras, overrideRows, sent]) => {
+      if (cancelled) return;
+      setChecked(Object.fromEntries(cores.map((c) => [c, true])));
+      setExtraItems(extras);
+      setOverrides(overrideRows);
+      setInInventory(new Set(sent));
+      setLoadedWeek(weekStart);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [weekStart]);
 
-  // Manually-added items are week-scoped too, same as checked state above.
+  const loaded = loadedWeek === weekStart;
   useEffect(() => {
-    api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
-    api.listGroceryOverrides(weekStart).then(setOverrides).catch(() => setOverrides([]));
-    api
-      .listGroceryInInventory(weekStart)
-      .then((keys) => setInInventory(new Set(keys)))
-      .catch(() => setInInventory(new Set()));
-  }, [weekStart]);
+    if (loaded) weekCache.set(weekStart, { checked, extraItems, overrides, inInventory });
+  }, [loaded, weekStart, checked, extraItems, overrides, inInventory]);
+
+  useEffect(() => {
+    api.listGrocerySections().then(setSections).catch(() => setSections([]));
+  }, []);
 
   const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
   const shoppingItems = items.filter((i) => !i.isStaple && !i.removed);
-  const removedItems = items.filter((i) => !i.isStaple && i.removed);
-  const stapleCount = items.filter((i) => i.isStaple).length;
-  const leftoverCount = plannerEntries.filter((e) => e.isLeftover).length;
-  const alreadyHaveCount = plannerEntries.filter((e) => e.alreadyHave).length;
+  const hiddenKeys = new Set(overrides.filter((o) => o.hidden).map((o) => o.key));
+  const removedItems = items.filter((i) => !i.isStaple && i.removed && !hiddenKeys.has(i.key));
 
   // Categories feed the aisle grouping itself AND the sub-line text shown in
   // the store and recipe views ("PRODUCE · SHRIMP TACOS" / "PRODUCE"), so
@@ -306,23 +454,31 @@ export function GroceryList({
   // this week's flyer deals — there's no saved "my stores" list in the
   // schema, so this is derived instead. Falls back to a single default
   // bucket before any deals have ever been uploaded.
+  // Your own stores (in your order) plus any store with a flyer deal. Items
+  // you haven't filed land in the first flyer store - or, with no flyers,
+  // in "Any store" once you've made stores of your own.
+  const flyerStores = [...new Set(deals.map((d) => d.store).filter(Boolean))];
+  const fallbackStore = flyerStores[0] || (sections.length > 0 ? ANY_STORE : DEFAULT_STORE);
   const storeOrder = (() => {
-    const seen = [];
-    for (const d of deals) {
-      if (d.store && !seen.includes(d.store)) seen.push(d.store);
-    }
-    return seen.length > 0 ? seen : [DEFAULT_STORE];
+    const seen = sections.map((s) => s.name);
+    for (const store of flyerStores) if (!seen.includes(store)) seen.push(store);
+    if (!seen.includes(fallbackStore)) seen.unshift(fallbackStore);
+    return seen;
   })();
+  const sectionByName = new Map(sections.map((s) => [s.name, s]));
+  const assignedStore = new Map(sections.flatMap((s) => (s.assignments || []).map((a) => [a.core, s.name])));
 
   // A manual "move to another store" tap always wins once set — otherwise
   // tapping the chip on a sale item would look like it did nothing, since
   // the sale would keep re-claiming the item back every render. Absent an
   // explicit preference, sale beats default store.
   function storeForItem(item, deal) {
+    const assigned = assignedStore.get(item.core);
+    if (assigned) return assigned;
     const pref = storePrefs[item.core];
     if (pref && storeOrder.includes(pref)) return pref;
     if (deal?.store) return deal.store;
-    return storeOrder[0];
+    return fallbackStore;
   }
 
   function persistStorePrefs(next) {
@@ -336,9 +492,59 @@ export function GroceryList({
 
   function cycleStore(item, currentStore) {
     const idx = storeOrder.indexOf(currentStore);
-    const next = storeOrder[(idx + 1) % storeOrder.length];
-    persistStorePrefs({ ...storePrefs, [item.core]: next });
+    moveToStore(item, storeOrder[(idx + 1) % storeOrder.length]);
   }
+
+  // Filing an item under a store saves it for every week (by ingredient).
+  // A flyer store you haven't made your own yet becomes one on first use.
+  async function moveToStore(item, storeName) {
+    if (storeForItem(item, findMatchingDeal(item.name, deals)) === storeName) return;
+    if (storeName === ANY_STORE) {
+      setSections((prev) => prev.map((s) => ({ ...s, assignments: (s.assignments || []).filter((a) => a.core !== item.core) })));
+      await api.unassignFromGrocerySection(item.core);
+      return;
+    }
+    let section = sectionByName.get(storeName);
+    if (!section) {
+      section = await api.createGrocerySection(storeName);
+      setSections((prev) => [...prev, section]);
+    }
+    const core = item.core;
+    setSections((prev) =>
+      prev.map((s) => ({
+        ...s,
+        assignments: [
+          ...(s.assignments || []).filter((a) => a.core !== core),
+          ...(s.id === section.id ? [{ core, sectionId: s.id }] : []),
+        ],
+      }))
+    );
+    await api.assignToGrocerySection(section.id, core);
+    if (storePrefs[core]) {
+      const { [core]: _dropped, ...rest } = storePrefs;
+      persistStorePrefs(rest);
+    }
+  }
+
+  async function addStore(name) {
+    const section = await api.createGrocerySection(name);
+    setSections((prev) => [...prev, section]);
+  }
+
+  async function renameStore(section, name) {
+    const saved = await api.renameGrocerySection(section.id, name);
+    setSections((prev) => prev.map((s) => (s.id === section.id ? saved : s)));
+  }
+
+  async function removeStore(section) {
+    setSections((prev) => prev.filter((s) => s.id !== section.id));
+    await api.deleteGrocerySection(section.id);
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
+  );
 
   // Optimistic: flip the checkbox immediately, then persist — reverting if
   // the request fails, so a dropped connection doesn't leave the UI showing
@@ -482,6 +688,11 @@ export function GroceryList({
     else setOverride(item.key, { removed: true });
   }
 
+  // "Clear" on the removed strip: they stay off the list, just not listed.
+  function clearRemoved() {
+    for (const item of removedItems) setOverride(item.key, { hidden: true });
+  }
+
   // Builds the groups for whichever view is active. Every row already knows
   // its own store/deal/category, computed once here rather than re-derived
   // per row.
@@ -533,7 +744,7 @@ export function GroceryList({
     }
 
     return order
-      .filter((key) => buckets.get(key)?.length > 0)
+      .filter((key) => buckets.get(key)?.length > 0 || (view === "store" && sectionByName.has(key)))
       .map((key) => {
         const groupRows = buckets.get(key);
         const sales = groupRows.filter((r) => r.deal).length;
@@ -572,6 +783,7 @@ export function GroceryList({
   const alreadyHaveEntries = plannerEntries.filter((e) => e.alreadyHave && e.recipe && !e.recipe.isPlaceholder);
   const stapleItems = items.filter((i) => i.isStaple);
   const manualCores = new Set(extraItems.map((x) => items.find((i) => i.manualId === x.id)?.core).filter(Boolean));
+  const leftOffCount = leftoverEntries.length + alreadyHaveEntries.length + stapleItems.length;
   const totalCount = shoppingItems.length;
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
@@ -587,7 +799,7 @@ export function GroceryList({
 
   const hintText =
     view === "store"
-      ? "Sale items go to the store with the deal. Everything else goes to your usual store. Tap a store tag to move an item."
+      ? "Sale items go to the store with the deal. Drag an item by its ⠿ grip into another store (or tap its store tag), and it stays there every week. Add your own stores below the list."
       : "This list is built from your Planner. Tap an item to check it off. Checked items drop to the bottom.";
 
   return (
@@ -636,17 +848,69 @@ export function GroceryList({
             </button>
           </form>
 
-          {plannerEntries.length === 0 && extraItems.length === 0 ? (
+          {!loaded ? (
+            <div className="riso-grocery-loading" aria-busy="true" aria-label="Loading your list">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="riso-grocery-loading-row" />
+              ))}
+            </div>
+          ) : plannerEntries.length === 0 && extraItems.length === 0 && sections.length === 0 ? (
             <p className="riso-empty">
               Nothing planned for {weekLabel} yet — plan a few meals on the Planner tab and your
               grocery list builds itself. You can still add items by hand above.
             </p>
           ) : groups.length === 0 ? (
             <p className="riso-empty">Nothing to buy — everything's a leftover, already on hand, or a pantry staple.</p>
+          ) : view === "store" ? (
+            <DndContext
+              sensors={sensors}
+              onDragStart={(e) => setDraggingItem(e.active.data.current?.item || null)}
+              onDragCancel={() => setDraggingItem(null)}
+              onDragEnd={(e) => {
+                setDraggingItem(null);
+                const store = e.over?.data.current?.store;
+                const item = e.active.data.current?.item;
+                if (store && item) moveToStore(item, store);
+              }}
+            >
+              {groups.map((group) => {
+                const section = sectionByName.get(group.name);
+                return (
+                  <StoreGroup key={group.key} storeName={group.name} className="riso-group">
+                    <StoreGroupHead
+                      group={group}
+                      section={section}
+                      onRename={(name) => renameStore(section, name)}
+                      onRemove={() => removeStore(section)}
+                    />
+                    {group.sorted.length === 0 && <p className="riso-group-empty">Drag items here</p>}
+                    {group.sorted.map((row) => (
+                      <DraggableGroceryRow
+                        key={`${group.key}-${row.item.key}`}
+                        item={row.item}
+                        checked={!!checked[row.item.key]}
+                        onToggle={() => toggle(row.item.key)}
+                        sale={row.deal?.price || ""}
+                        store={row.store}
+                        onCycleStore={() => cycleStore(row.item, row.store)}
+                        canCycleStore={storeOrder.length > 1}
+                        sub={subLineFor(row)}
+                        onDelete={() => removeItem(row.item)}
+                        onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
+                      />
+                    ))}
+                  </StoreGroup>
+                );
+              })}
+              <AddStoreForm onAdd={addStore} />
+              <DragOverlay dropAnimation={null}>
+                {draggingItem && <div className="riso-grocery-drag-chip">{draggingItem.name}</div>}
+              </DragOverlay>
+            </DndContext>
           ) : (
             groups.map((group) => (
               <section key={group.key} className="riso-group">
-                <div className="riso-group-head" style={{ background: view === "store" ? "var(--riso-track)" : "var(--riso-canvas)" }}>
+                <div className="riso-group-head" style={{ background: "var(--riso-canvas)" }}>
                   <p className="riso-group-name">{group.name}</p>
                   <span className="riso-group-count">{group.count}</span>
                 </div>
@@ -683,6 +947,9 @@ export function GroceryList({
                   {item.name} <span aria-hidden="true">↺</span>
                 </button>
               ))}
+              <button type="button" className="riso-grocery-removed-clear" onClick={clearRemoved}>
+                Clear
+              </button>
             </div>
           )}
         </div>
@@ -694,7 +961,7 @@ export function GroceryList({
         )}
 
         <aside className="riso-grocery-aside">
-          <section className="riso-grocery-cart">
+          <section className={`riso-grocery-cart${allBought ? " done" : ""}`}>
             <div className="riso-eyebrow on-pink">In the cart</div>
             <div className="riso-grocery-cart-count">
               <span className="riso-grocery-cart-num">{doneCount}</span>
@@ -715,79 +982,66 @@ export function GroceryList({
             </p>
           </section>
 
-          <section className="riso-grocery-excluded">
-            <div className="riso-eyebrow">Not on the list</div>
-            <div className="riso-grocery-excluded-rows">
-              <div className="riso-grocery-excluded-row">
-                <span>Leftover meals</span>
-                <span>{leftoverCount}</span>
-              </div>
-              <div className="riso-grocery-excluded-row">
-                <span>Meals you already have food for</span>
-                <span>{alreadyHaveCount}</span>
-              </div>
-              <div className="riso-grocery-excluded-row">
-                <span>Pantry staples (salt, oil…)</span>
-                <span>{stapleCount}</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="riso-grocery-excluded-link"
-              aria-expanded={reviewOpen}
-              onClick={() => setReviewOpen((o) => !o)}
-            >
-              {reviewOpen ? "Hide what's left off ↑" : "Review what's left off →"}
-            </button>
-            {reviewOpen && (
-              <div className="riso-grocery-review">
-                {leftoverEntries.length + alreadyHaveEntries.length + stapleItems.length === 0 && (
-                  <p className="riso-grocery-review-empty">Nothing is being left off this week.</p>
-                )}
-                {[
-                  { title: "Leftover meals", entries: leftoverEntries },
-                  { title: "Already have the food", entries: alreadyHaveEntries },
-                ].map(
-                  ({ title, entries }) =>
-                    entries.length > 0 && (
-                      <div key={title} className="riso-grocery-review-group">
-                        <p className="riso-grocery-review-title">{title}</p>
-                        {entries.map((e) => (
-                          <div key={e.id} className="riso-grocery-review-row">
-                            <span>
-                              {e.recipe.title}
-                              <small>{DAY_NAMES[e.dayOfWeek]}</small>
-                            </span>
-                            <button type="button" onClick={() => onShopForEntry?.(e.id)}>
-                              Shop for it
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                )}
-                {stapleItems.length > 0 && (
-                  <div className="riso-grocery-review-group">
-                    <p className="riso-grocery-review-title">Pantry staples</p>
+          {leftOffCount > 0 && (
+            <section className="riso-grocery-excluded">
+              <div className="riso-eyebrow">Left off this week</div>
+              <p className="riso-grocery-excluded-intro">
+                Not on your list because you won't need to buy {leftOffCount === 1 ? "it" : "them"}. Changed your
+                mind? Put it back.
+              </p>
+              {[
+                { title: "Leftovers", note: "made earlier", entries: leftoverEntries },
+                { title: "Already have the food", note: "marked on the planner", entries: alreadyHaveEntries },
+              ].map(
+                ({ title, note, entries }) =>
+                  entries.length > 0 && (
+                    <div key={title} className="riso-grocery-review-group">
+                      <p className="riso-grocery-review-title">
+                        {title} <span>· {note}</span>
+                      </p>
+                      {entries.map((e) => (
+                        <div key={e.id} className="riso-grocery-review-row">
+                          <span>
+                            {e.recipe.title}
+                            <small>
+                              {DAY_NAMES[e.dayOfWeek]} {MEAL_NAMES[e.mealType]}
+                            </small>
+                          </span>
+                          <button type="button" onClick={() => onShopForEntry?.(e.id)}>
+                            Shop for it
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )
+              )}
+              {stapleItems.length > 0 && (
+                <div className="riso-grocery-review-group">
+                  <p className="riso-grocery-review-title">
+                    Pantry staples <span>· you keep these</span>
+                  </p>
+                  <div className="riso-grocery-staple-chips">
                     {stapleItems.map((item) => {
                       const onList = manualCores.has(item.core);
                       return (
-                        <div key={item.key} className="riso-grocery-review-row">
-                          <span>
-                            {item.name}
-                            {formatAmount(item.parts) && <small>{formatAmount(item.parts)}</small>}
-                          </span>
-                          <button type="button" disabled={onList} onClick={() => addStapleToList(item)}>
-                            {onList ? "On the list ✓" : "+ List"}
-                          </button>
-                        </div>
+                        <button
+                          key={item.key}
+                          type="button"
+                          className={`riso-grocery-staple-chip${onList ? " on" : ""}`}
+                          disabled={onList}
+                          aria-label={onList ? `${item.name} is on the list` : `Add ${item.name} to the list`}
+                          title={formatAmount(item.parts) || undefined}
+                          onClick={() => addStapleToList(item)}
+                        >
+                          {onList ? "✓" : "+"} {item.name}
+                        </button>
                       );
                     })}
                   </div>
-                )}
-              </div>
-            )}
-          </section>
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="riso-grocery-sale">
             <span className="riso-sticker yellow" style={{ top: -14, right: 18, transform: "rotate(5deg)" }}>

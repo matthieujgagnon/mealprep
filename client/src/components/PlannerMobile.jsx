@@ -15,7 +15,12 @@ function MealRow({ entry, haveCores, isStale, onOpen, onSwap, onRemove, onCycleS
   const { recipe } = entry;
   const stats = recipeHaveStats(recipe, haveCores);
   const time = formatTrayTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
-  const buy = stats.missingCount > 0 ? `${stats.missingCount} TO BUY` : "NOTHING TO BUY";
+  const buy =
+    entry.isLeftover || entry.alreadyHave
+      ? "🛒 OFF THE GROCERY LIST"
+      : stats.missingCount > 0
+        ? `${stats.missingCount} TO BUY`
+        : "NOTHING TO BUY";
   return (
     <div className={`rpm-meal${entry.alreadyHave ? " have" : ""}`}>
       <button type="button" className="rpm-meal-photo" onClick={onOpen} aria-label={`Open ${recipe.title}`}>

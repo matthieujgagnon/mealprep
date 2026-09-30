@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { HintStrip } from "./RisoControls.jsx";
 import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, shiftWeek } from "../lib/dates.js";
@@ -112,9 +112,9 @@ export function PlannerHeader({
 }
 
 function stateLabel(entry) {
-  if (entry.alreadyHave) return "Already have everything - click to clear";
-  if (entry.isLeftover) return "Leftover - click to mark as already have everything";
-  return "Click to mark as leftover, click again for already have everything";
+  if (entry.alreadyHave) return "Already have everything (off the grocery list) - click to clear";
+  if (entry.isLeftover) return "Leftover (off the grocery list) - click to mark as already have everything";
+  return "Click to mark as leftover (keeps it off the grocery list), click again for already have everything";
 }
 
 function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleState }) {
@@ -124,8 +124,12 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
     data: { recipe, entryId: entry.id },
   });
 
+  // Leftovers and "already have everything" meals add nothing to the
+  // grocery list - the card says so.
+  const offList = entry.isLeftover || entry.alreadyHave;
   const classes = ["riso-planner-card"];
   if (entry.alreadyHave) classes.push("have");
+  if (offList) classes.push("off-list");
   if (isPast) classes.push("past");
   if (isDragging) classes.push("dragging");
 
@@ -147,6 +151,11 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
         {entry.isLeftover && (
           <span className={`riso-planner-card-leftover${isStale ? " stale" : ""}`}>
             {isStale ? "⚠ past fridge life" : "leftover"}
+          </span>
+        )}
+        {offList && (
+          <span className="riso-planner-card-offlist" title="Nothing from this meal goes on the grocery list">
+            🛒 off the list
           </span>
         )}
       </div>
@@ -307,10 +316,19 @@ export function PlannerBoard({
   const staleIds = computeStaleLeftoverIds(entries);
   const today = todayIndex();
   const currentWeek = isCurrentWeek(weekStart);
+  const scrollRef = useRef(null);
+  const [atWeekend, setAtWeekend] = useState(false);
 
   return (
     <section className="riso-planner-board">
-      <div className="riso-planner-scroll">
+      <div
+        className="riso-planner-scroll"
+        ref={scrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setAtWeekend(el.scrollLeft + el.clientWidth >= el.scrollWidth - 20);
+        }}
+      >
         <div className="riso-planner-grid">
           <div className="riso-planner-corner" />
           {DAY_INDICES.map((dayIndex) => {
@@ -359,10 +377,22 @@ export function PlannerBoard({
           <span className="riso-planner-legend-leftover">leftover</span>From an earlier meal
         </span>
         <span className="riso-planner-legend-item">
+          <span className="riso-planner-card-offlist in-legend">🛒 off the list</span>Adds nothing to the grocery list
+        </span>
+        <span className="riso-planner-legend-item">
           <span className="riso-planner-legend-blank" />
           Click an empty slot to write on it
         </span>
-        <span className="riso-planner-legend-scroll">scroll for the weekend →</span>
+        <button
+          type="button"
+          className="riso-planner-legend-scroll"
+          onClick={() => {
+            const el = scrollRef.current;
+            if (el) el.scrollTo({ left: atWeekend ? 0 : el.scrollWidth, behavior: "smooth" });
+          }}
+        >
+          {atWeekend ? "← back to the weekdays" : "scroll for the weekend →"}
+        </button>
       </div>
     </section>
   );

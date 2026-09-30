@@ -14,7 +14,7 @@ groceryItemOverridesRouter.get("/", async (req, res) => {
   res.json(overrides);
 });
 
-// PUT /api/grocery-item-overrides { weekStart, key, quantity?, removed? }
+// PUT /api/grocery-item-overrides { weekStart, key, quantity?, removed?, hidden? }
 // Only the fields sent change. A row left with no custom quantity and not
 // removed is deleted, so "reset" and "restore" leave nothing behind.
 // Responds with the override, or null once there's nothing left of it.
@@ -28,6 +28,8 @@ groceryItemOverridesRouter.put("/", async (req, res) => {
     data.quantity = q ? q.slice(0, 60) : null;
   }
   if ("removed" in req.body) data.removed = !!req.body.removed;
+  if ("hidden" in req.body) data.hidden = !!req.body.hidden;
+  if (data.removed === false) data.hidden = false; // put back = visible again
 
   const where = { userId_weekStart_key: { userId: req.userId, weekStart, key } };
   const saved = await prisma.groceryItemOverride.upsert({

@@ -132,6 +132,12 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.mouse.up();
   await expect.poll(async () => (await fridge.boundingBox()).width).toBeLessThan(widthBefore - 100);
   await expect(fridge).toHaveClass(/fixed-height/);
+  // Sizes snap to presets: a third of the row, and a height step.
+  const height = await fridge.evaluate((el) => el.style.height);
+  expect(["240px", "360px", "480px", "600px", "720px", "840px"]).toContain(height);
+  const grid = await page.locator(".inv-shelves").boundingBox();
+  const w = (await fridge.boundingBox()).width;
+  expect(Math.abs(w - (grid.width - 18 * 2) / 3)).toBeLessThan(4);
 
   // Drag Pantry by its grip onto the left half of the fridge: it goes first.
   const grip = page.getByRole("button", { name: 'Move the "Pantry" section' });

@@ -25,6 +25,9 @@ export function slotLabel(slot) {
   return `${DAY_SHORT[slot.dayOfWeek]} · ${MEAL_LABEL[slot.mealType]}`;
 }
 
+// A recipe in the tray, drawn like a card on the Recipes page: photo with
+// the time on it, name, how much of it is on hand. Drag it onto a slot, or
+// + drops it in the next empty one.
 function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
   const { recipe, stats } = tile;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -34,28 +37,24 @@ function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
   });
   const dragProps = draggable ? { ...listeners, ...attributes, "aria-label": `${recipe.title} - drag onto a slot` } : {};
   const time = formatTrayTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
-  const buy = stats.missingCount > 0 ? `${stats.missingCount} TO BUY` : "NOTHING TO BUY";
+  const nothingToBuy = stats.totalCount > 0 && stats.missingCount === 0;
+  const pct = stats.totalCount > 0 ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
 
   return (
     <div
       ref={setNodeRef}
-      className={`riso-tray-tile${isDragging ? " dragging" : ""}${draggable ? "" : " static"}`}
+      className={`riso-tray-tile${isDragging ? " dragging" : ""}${draggable ? "" : " static"}${nothingToBuy ? " ready" : ""}`}
       {...dragProps}
     >
       <button
         type="button"
         className="riso-tray-tile-photo"
-        onPointerDown={(e) => e.stopPropagation()}
         onClick={() => onOpen(recipe)}
         aria-label={`Open ${recipe.title}`}
       >
         {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} draggable="false" />}
+        {time && <span className="riso-tray-tile-time">⏱ {time.toLowerCase()}</span>}
       </button>
-      <div className="riso-tray-tile-info">
-        <span className="riso-tray-tile-name">{recipe.title}</span>
-        <span className="riso-tray-tile-meta">{time ? `${time} · ${buy}` : buy}</span>
-        {tile.reason && <span className="riso-tray-tile-reason">{tile.reason}</span>}
-      </div>
       <button
         type="button"
         className="riso-tray-tile-add"
@@ -66,6 +65,22 @@ function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
       >
         +
       </button>
+      <div className="riso-tray-tile-info">
+        <span className="riso-tray-tile-name">{recipe.title}</span>
+        {stats.totalCount > 0 && (
+          <span className="riso-tray-tile-bar" aria-hidden="true">
+            <span style={{ width: `${pct}%` }} />
+          </span>
+        )}
+        <span className={`riso-tray-tile-meta${nothingToBuy ? " ready" : ""}`}>
+          {nothingToBuy
+            ? "nothing to buy!"
+            : stats.totalCount > 0
+              ? `${stats.missingCount} to buy · ${stats.matchedCount} of ${stats.totalCount} on hand`
+              : "no ingredients listed"}
+        </span>
+        {tile.reason && <span className="riso-tray-tile-reason">{tile.reason}</span>}
+      </div>
     </div>
   );
 }
@@ -254,9 +269,11 @@ export function PlannerTray({
         {groups.map((group) => (
           <div key={group.id} className="riso-tray-group">
             <span className={`riso-tray-group-pill ${group.tone}`}>{group.title}</span>
-            {group.tiles.map((t) => (
-              <TrayTile key={t.recipe.id} tile={t} onAdd={onPlaceRecipe} onOpen={onOpenRecipe} draggable={!inSheet} />
-            ))}
+            <div className="riso-tray-cards">
+              {group.tiles.map((t) => (
+                <TrayTile key={t.recipe.id} tile={t} onAdd={onPlaceRecipe} onOpen={onOpenRecipe} draggable={!inSheet} />
+              ))}
+            </div>
           </div>
         ))}
       </div>

@@ -130,6 +130,8 @@ export const api = {
   createGrocerySection: (name) =>
     request("/grocery-sections", { method: "POST", body: JSON.stringify({ name }) }),
   deleteGrocerySection: (id) => request(`/grocery-sections/${id}`, { method: "DELETE" }),
+  renameGrocerySection: (id, name) =>
+    request(`/grocery-sections/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
   assignToGrocerySection: (sectionId, core) =>
     request(`/grocery-sections/${sectionId}/assign`, {
       method: "POST",
