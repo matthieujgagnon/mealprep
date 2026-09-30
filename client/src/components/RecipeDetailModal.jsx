@@ -10,11 +10,12 @@ import {
   scaleStepText,
 } from "../lib/steps.js";
 import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core } from "../lib/similarRecipes.js";
-import { formatQuantity } from "../lib/units.js";
+import { formatQuantity, unitLabel } from "../lib/units.js";
 import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { ManualRecipeForm } from "./ManualRecipeForm.jsx";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const WEEKDAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_LABEL = { breakfast: "breakfast", lunch: "lunch", dinner: "supper" };
@@ -230,7 +231,9 @@ function IngredientRow({
         </span>
         {status === "soon" && <span className="riso-rc-use-soon-sticker">use soon!</span>}
         <span className="riso-rc-ingredient-qty">
-          {scaledQty != null ? `${formatQuantity(scaledQty)}${ing.unit ? " " + ing.unit : ""}` : ing.unit || ""}
+          {scaledQty != null
+            ? `${formatQuantity(scaledQty)}${ing.unit ? " " + unitLabel(ing.unit, scaledQty) : ""}`
+            : unitLabel(ing.unit)}
         </span>
       </button>
       {isOpen && (
@@ -753,7 +756,7 @@ export function RecipeDetailModal({
                 {similar.map(({ recipe: match, sharedCount }) => (
                   <button key={match.id} type="button" className="riso-rc-similar-card" onClick={() => onSelectRecipe?.(match)}>
                     {match.photoUrl ? (
-                      <img src={match.photoUrl} alt="" />
+                      <img src={match.photoUrl} alt="" onError={hideBrokenPhoto} />
                     ) : (
                       <div className="riso-rc-similar-photo-placeholder" />
                     )}

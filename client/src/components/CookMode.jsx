@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { formatQuantity } from "../lib/units.js";
+import { formatQuantity, unitLabel } from "../lib/units.js";
 import { core } from "../lib/similarRecipes.js";
 import {
   stepBody,
@@ -487,7 +487,7 @@ export function CookMode({
                       {qty != null && (
                         <span className="cm-uses-qty">
                           {formatQuantity(qty)}
-                          {ing.unit ? ` ${ing.unit}` : ""}
+                          {ing.unit ? ` ${unitLabel(ing.unit, qty)}` : ""}
                         </span>
                       )}
                       <span className="cm-uses-name">{ing.name}</span>

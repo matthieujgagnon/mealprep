@@ -17,6 +17,38 @@ groceryCheckedRouter.get("/", async (req, res) => {
   res.json(rows.map((r) => r.core));
 });
 
+// GET /api/grocery-checked/in-inventory?week=YYYY-MM-DD - checked items
+// already added to Inventory by "Done shopping".
+groceryCheckedRouter.get("/in-inventory", async (req, res) => {
+  const { week } = req.query;
+  if (!week) return res.status(400).json({ error: "week is required" });
+  const rows = await prisma.groceryCheckedItem.findMany({
+    where: { weekStart: week, userId: req.userId, inInventory: true },
+    select: { core: true },
+  });
+  res.json(rows.map((r) => r.core));
+});
+
+// POST /api/grocery-checked/in-inventory { weekStart, cores } - mark checked
+// items as added to Inventory (checking them first if needed).
+groceryCheckedRouter.post("/in-inventory", async (req, res) => {
+  const { weekStart, cores } = req.body;
+  if (!weekStart || !Array.isArray(cores)) {
+    return res.status(400).json({ error: "weekStart and cores are required" });
+  }
+  const normalized = [...new Set(cores.filter((c) => typeof c === "string" && c.trim()).map((c) => c.trim().toLowerCase()))];
+  await prisma.$transaction(
+    normalized.map((core) =>
+      prisma.groceryCheckedItem.upsert({
+        where: { userId_weekStart_core: { userId: req.userId, weekStart, core } },
+        create: { userId: req.userId, weekStart, core, inInventory: true },
+        update: { inInventory: true },
+      })
+    )
+  );
+  res.json(normalized);
+});
+
 // POST /api/grocery-checked { weekStart, core } - check an item off.
 // Idempotent: checking the same item twice just no-ops the second time.
 groceryCheckedRouter.post("/", async (req, res) => {

@@ -107,6 +107,11 @@ export const api = {
     }),
   clearGroceryChecked: (weekStart) =>
     request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`, { method: "DELETE" }),
+  // Checked items "Done shopping" already put in Inventory.
+  listGroceryInInventory: (weekStart) =>
+    request(`/grocery-checked/in-inventory?week=${encodeURIComponent(weekStart)}`),
+  markGroceryInInventory: (weekStart, cores) =>
+    request("/grocery-checked/in-inventory", { method: "POST", body: JSON.stringify({ weekStart, cores }) }),
 
   listPantryStaples: () => request("/pantry-staples"),
   addPantryStaple: (core) =>

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { BottomSheet } from "./RisoControls.jsx";
 import { PlannerTray } from "./PlannerTray.jsx";
-import { computeStaleLeftoverIds } from "./PlannerBoard.jsx";
+import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
 import { addDays, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, parseDateKey, shiftWeek } from "../lib/dates.js";
-import { MEAL_TYPES, isBlankMarker, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
+import { MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
 import { recipeHaveStats } from "../lib/onHand.js";
 import { formatTrayTime } from "../lib/plannerSuggestions.js";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const LONG_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const LONG_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -18,7 +19,7 @@ function MealRow({ entry, haveCores, isStale, onOpen, onSwap, onRemove, onCycleS
   return (
     <div className={`rpm-meal${entry.alreadyHave ? " have" : ""}`}>
       <button type="button" className="rpm-meal-photo" onClick={onOpen} aria-label={`Open ${recipe.title}`}>
-        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" />}
+        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
         {entry.isLeftover && <span className={`rpm-leftover${isStale ? " stale" : ""}`}>{isStale ? "⚠ past fridge life" : "leftover"}</span>}
       </button>
       <button
@@ -63,8 +64,10 @@ export function PlannerMobile({
   onCardClick,
   onRemove,
   onCycleState,
-  groceryCount,
-  onGoToGrocery,
+  editingNoteId,
+  onWriteInSlot,
+  onEditNote,
+  onSaveNote,
   emptyCount,
   onFillEmptySlots,
   trayProps,
@@ -135,23 +138,37 @@ export function PlannerMobile({
           <section key={meal.id} className="rpm-slot">
             <span className="rpm-slot-label">{meal.label.toUpperCase()}</span>
             {!entry ? (
-              <button type="button" className="rpm-empty" onClick={() => onSelectSlot(slot)}>
-                + add {meal.label.toLowerCase()}
-              </button>
-            ) : isNoteEntry(entry) ? (
-              <div className="rpm-note">
+              <div className="rpm-empty-row">
                 <button
                   type="button"
-                  className="rpm-note-body"
-                  onClick={() => onSelectSlot({ ...slot, note: isBlankMarker(entry) ? "" : entry.recipe.title })}
-                >
-                  <span className="riso-planner-note-label">✎ NOTE</span>
-                  <span className="rpm-note-text">{isCustomNote(entry) ? entry.recipe.title : "Skipped"}</span>
-                </button>
-                <button type="button" className="rpm-chip round" onClick={() => onRemove(entry.id)} aria-label="Remove note">
-                  ×
+                  className="rpm-empty"
+                  aria-label={`Write on ${meal.label.toLowerCase()}`}
+                  onClick={() => onWriteInSlot(slot)}
+                />
+                <button type="button" className="rpm-chip" onClick={() => onSelectSlot(slot)}>
+                  + recipe
                 </button>
               </div>
+            ) : isNoteEntry(entry) ? (
+              editingNoteId === entry.id ? (
+                <div className="rpm-note editing">
+                  <NoteTextarea
+                    initial={isCustomNote(entry) ? entry.recipe.title : ""}
+                    label={`Write on ${meal.label.toLowerCase()}`}
+                    onSave={(text) => onSaveNote(entry.id, text)}
+                    className="riso-planner-note-input"
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={`rpm-note${isCustomNote(entry) ? "" : " blank"}`}
+                  onClick={() => (isCustomNote(entry) ? onEditNote(entry.id) : onRemove(entry.id))}
+                  aria-label={isCustomNote(entry) ? `${entry.recipe.title} - tap to edit` : "Blank - tap to clear"}
+                >
+                  {isCustomNote(entry) && <span className="rpm-note-text">{entry.recipe.title}</span>}
+                </button>
+              )
             ) : (
               <MealRow
                 entry={entry}
@@ -183,9 +200,7 @@ export function PlannerMobile({
             Fill {emptyCount} empty slot{emptyCount === 1 ? "" : "s"}
           </button>
         )}
-        <button type="button" className="riso-btn primary rpm-build" onClick={onGoToGrocery}>
-          Build grocery list · {groceryCount}
-        </button>
+
       </div>
 
       {target && (

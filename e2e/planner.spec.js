@@ -59,20 +59,24 @@ async function drag(page, from, to) {
   await page.mouse.up();
 }
 
-test("selecting an empty slot and tapping + puts the recipe there", async ({ page }) => {
-  await setup(page, [{ title: "Slot Chili" }]);
+test("clicking an empty slot makes a blank card; clicking the blank card clears it", async ({ page }) => {
+  await setup(page, [{ title: "Unused" }]);
   await openPlanner(page);
-  await page.getByRole("button", { name: "All", exact: true }).click();
 
   const day = visibleDay();
   const target = cell(page, day, "lunch");
-  await target.getByRole("button", { name: "+ add" }).click();
-  await expect(target.getByRole("button", { name: "pick a recipe →" })).toBeVisible();
-  await expect(page.locator(".riso-tray-target")).toBeVisible();
-
-  await page.getByRole("button", { name: "Add Slot Chili to the plan" }).click();
-  await expect(target.locator(".riso-planner-card-name")).toHaveText("Slot Chili");
+  await target.locator(".riso-planner-cell-empty").click();
+  // Straight into writing - no recipe picker.
+  await expect(target.getByRole("textbox", { name: "Write on this slot" })).toBeFocused();
   await expect(page.locator(".riso-tray-target")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  await expect(target.locator(".riso-planner-note.blank")).toBeVisible();
+  await expect(target.getByRole("button", { name: /Remove/ })).toHaveCount(0);
+  await target.locator(".riso-planner-note.blank").click();
+  await expect(target.locator(".riso-planner-cell-empty")).toBeVisible();
+  const entries = await (await page.request.get(`/api/planner?week=${mondayOf(new Date())}`)).json();
+  expect(entries).toHaveLength(0);
 });
 
 test("with no slot selected, + fills the next empty upcoming slot, supper first", async ({ page }) => {
@@ -88,20 +92,21 @@ test("with no slot selected, + fills the next empty upcoming slot, supper first"
   expect(entries[0].mealType).toBe("dinner");
 });
 
-test("a selected slot takes a typed note, which can be edited and removed", async ({ page }) => {
+test("an empty slot takes typed text, which can be edited and cleared", async ({ page }) => {
   await setup(page, [{ title: "Unused" }]);
   await openPlanner(page);
 
   const day = visibleDay();
   const target = cell(page, day, "breakfast");
-  await target.getByRole("button", { name: "+ add" }).click();
-  const input = page.getByPlaceholder("…or type a note, e.g. Eating out ↵");
-  await input.fill("Brunch out");
+  await target.locator(".riso-planner-cell-empty").click();
+  const input = target.getByRole("textbox", { name: "Write on this slot" });
+  await input.fill("Hockey pool @ Normal");
   await input.press("Enter");
-  await expect(target.locator(".riso-planner-note-text")).toHaveText("Brunch out");
+  await expect(target.locator(".riso-planner-note-text")).toHaveText("Hockey pool @ Normal");
+  await expect(target).not.toContainText("NOTE");
 
   await target.locator(".riso-planner-note").click();
-  await expect(input).toHaveValue("Brunch out");
+  await expect(input).toHaveValue("Hockey pool @ Normal");
   await input.fill("Work breakfast");
   await input.press("Enter");
   await expect(target.locator(".riso-planner-note-text")).toHaveText("Work breakfast");
@@ -110,8 +115,13 @@ test("a selected slot takes a typed note, which can be edited and removed", asyn
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await expect(target.locator(".riso-planner-note-text")).toHaveText("Work breakfast");
 
-  await target.getByRole("button", { name: 'Remove note "Work breakfast"' }).click();
-  await expect(target.getByRole("button", { name: "+ add" })).toBeVisible();
+  // Clearing the text leaves a blank card; clicking that empties the slot.
+  await target.locator(".riso-planner-note").click();
+  await input.fill("");
+  await input.press("Enter");
+  await expect(target.locator(".riso-planner-note.blank")).toBeVisible();
+  await target.locator(".riso-planner-note.blank").click();
+  await expect(target.locator(".riso-planner-cell-empty")).toBeVisible();
 });
 
 test("dragging a recipe from the tray onto a filled slot replaces it", async ({ page }) => {

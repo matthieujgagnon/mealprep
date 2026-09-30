@@ -4,7 +4,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { stepText, stepImage, stepIsHeading } from "../lib/steps.js";
-import { UNIT_OPTIONS } from "../lib/groceryList.js";
+import { UnitSelect } from "./UnitSelect.jsx";
 import { parseQuantityInput } from "../lib/units.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
@@ -268,6 +268,11 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
     setPhotos((prev) => prev.filter((_, idx) => idx !== i));
   }
 
+  // The first photo is the one shown on cards and the planner.
+  function makeMainPhoto(i) {
+    setPhotos((prev) => [prev[i], ...prev.filter((_, idx) => idx !== i)]);
+  }
+
   // A step's photo is looked up by its exact text — stable across reordering
   // or inserting new lines (unlike an index), and consistent with how an
   // imported photo already only survives if the step's text is unchanged.
@@ -368,12 +373,25 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
           <div className="form-row photo-row" key={i}>
             <input
               type="url"
+              aria-label={i === 0 ? "Main photo link" : `Photo ${i + 1} link`}
               placeholder="https://…"
               value={url}
               onChange={(e) => updatePhoto(i, e.target.value)}
               style={{ flex: 1 }}
             />
             {url.trim() && <PhotoPreview url={url.trim()} />}
+            {i === 0 && url.trim() && photos.length > 1 && <span className="photo-main-badge">Main</span>}
+            {i > 0 && url.trim() && (
+              <button
+                type="button"
+                className="btn subtle"
+                style={{ padding: "6px 10px" }}
+                onClick={() => makeMainPhoto(i)}
+                title="Show this photo on cards and the planner"
+              >
+                Make main
+              </button>
+            )}
             {photos.length > 1 && (
               <button
                 type="button"
@@ -488,18 +506,12 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
                     onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
                     style={{ flex: 1 }}
                   />
-                  <select
+                  <UnitSelect
+                    aria-label="Unit"
                     value={item.unit}
-                    onChange={(e) => updateIngredient(i, "unit", e.target.value)}
+                    onChange={(u) => updateIngredient(i, "unit", u)}
                     style={{ flex: 1 }}
-                  >
-                    <option value="">(none)</option>
-                    {UNIT_OPTIONS.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <input
                     type="text"
                     placeholder="Notes (e.g. melted)"

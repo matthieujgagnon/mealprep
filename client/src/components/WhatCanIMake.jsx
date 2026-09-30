@@ -2,7 +2,9 @@ import { useState } from "react";
 import { core, findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { Switch, HintStrip } from "./RisoControls.jsx";
-import { DAY_SHORT, MEAL_LABEL, findNextEmptySlot } from "../lib/plannerSlots.js";
+import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, findNextEmptySlot, todayIndex } from "../lib/plannerSlots.js";
+import { formatDayLabel, isCurrentWeek } from "../lib/dates.js";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 const ALSO_HAVE_STORAGE_KEY = "mealprep-makeable-also-have";
 
@@ -30,9 +32,90 @@ const NEED_ROWS_SHOWN = 4;
 
 function PlanButton({ className, plan }) {
   return (
-    <button type="button" className={className} onClick={plan.onPlan} disabled={plan.disabled}>
+    <button type="button" className={className} onClick={plan.onToggle} aria-expanded={plan.open}>
       {plan.label}
     </button>
+  );
+}
+
+// "Plan" opens this inside the card: pick the day and the meal, then place
+// it. A slot that already holds something says so, and planning there
+// replaces it.
+function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, onClose }) {
+  const firstDay = isCurrentWeek(weekStart) ? todayIndex() : 0;
+  const [day, setDay] = useState(initialSlot?.dayOfWeek ?? firstDay);
+  const [meal, setMeal] = useState(initialSlot?.mealType ?? "dinner");
+  const [busy, setBusy] = useState(false);
+  const occupant = (d, m) => plannerEntries.find((e) => e.dayOfWeek === d && e.mealType === m);
+  const taken = occupant(day, meal);
+  const takenLabel = taken
+    ? taken.recipe?.isPlaceholder
+      ? taken.recipe.title === "No meal planned"
+        ? "a blank card"
+        : `"${taken.recipe.title}"`
+      : taken.recipe?.title
+    : null;
+
+  return (
+    <div className="riso-makeable-plan" role="group" aria-label={`Plan ${recipe.title}`}>
+      <div className="riso-makeable-plan-days">
+        {DAY_SHORT.map((label, d) => {
+          const { dayNum, isToday } = formatDayLabel(weekStart, d);
+          const past = d < firstDay;
+          const filled = MEAL_TYPES.filter((m) => occupant(d, m.id)).length;
+          return (
+            <button
+              key={label}
+              type="button"
+              className={`riso-makeable-plan-day${d === day ? " on" : ""}${isToday ? " today" : ""}`}
+              disabled={past}
+              aria-pressed={d === day}
+              aria-label={`${label} ${dayNum}${isToday ? " (today)" : ""}`}
+              onClick={() => setDay(d)}
+            >
+              <span>{label.slice(0, 2)}</span>
+              <strong>{dayNum}</strong>
+              <i aria-hidden="true">{"•".repeat(filled)}</i>
+            </button>
+          );
+        })}
+      </div>
+      <div className="riso-makeable-plan-meals">
+        {MEAL_TYPES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className={`riso-makeable-plan-meal${m.id === meal ? " on" : ""}${occupant(day, m.id) ? " taken" : ""}`}
+            aria-pressed={m.id === meal}
+            onClick={() => setMeal(m.id)}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+      {takenLabel && <p className="riso-makeable-plan-note">Replaces {takenLabel}.</p>}
+      <div className="riso-makeable-plan-actions">
+        <button type="button" className="riso-makeable-plan-cancel" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="riso-makeable-plan-go"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onPlace(recipe.id, { dayOfWeek: day, mealType: meal });
+              onClose();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Plan for {DAY_SHORT[day]} · {MEAL_LABEL[meal]}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -89,7 +172,9 @@ function YouNeedBox({ missingIngredients, isOnGroceryList, onAdd, onRemove, plan
   );
 }
 
-function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, plan, groceryProps }) {
+function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, planFor, pickerProps, groceryProps }) {
+  const [planning, setPlanning] = useState(false);
+  const plan = { ...planFor(recipe), open: planning, onToggle: () => setPlanning((p) => !p) };
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
   const ingredientCount = recipe.ingredients?.length || 0;
   const ready = missingIngredients.length === 0;
@@ -98,7 +183,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
     <div className="riso-makeable-card" style={{ boxShadow: ready ? "var(--riso-shadow-ready)" : "none" }}>
       <div className="riso-makeable-card-top">
         <button type="button" className="riso-makeable-card-photo" onClick={onOpen} title={recipe.title}>
-          {recipe.photoUrl && <img src={recipe.photoUrl} alt="" />}
+          {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
         </button>
         <div className="riso-makeable-card-info">
           <button type="button" className="riso-makeable-card-name" onClick={onOpen}>
@@ -127,6 +212,10 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
       ) : (
         <YouNeedBox missingIngredients={missingIngredients} plan={plan} {...groceryProps} />
       )}
+
+      {planning && (
+        <PlanPicker recipe={recipe} {...pickerProps} initialSlot={plan.nextSlot} onClose={() => setPlanning(false)} />
+      )}
     </div>
   );
 }
@@ -139,7 +228,7 @@ export function WhatCanIMake({
   pantryInventory,
   customStaples,
   weekStart,
-  onAddToPlanner,
+  onPlaceOnPlanner,
   isOnGroceryList,
   onAddToGroceryList,
   onRemoveFromGroceryList,
@@ -222,16 +311,21 @@ export function WhatCanIMake({
 
   const nextSlot = findNextEmptySlot(plannerEntries, weekStart);
 
-  // "Plan" drops the recipe in the next empty upcoming slot; once it's on
-  // this week's plan the button says where.
+  // "Plan" opens a day + meal picker (starting on the next empty slot); once
+  // the recipe is on this week's plan the button says where - tapping it
+  // again plans it somewhere else too.
   function planState(recipe) {
     const planned = plannerEntries.find((e) => e.recipe?.id === recipe.id);
-    if (planned) {
-      return { label: `✓ ${DAY_SHORT[planned.dayOfWeek]} · ${MEAL_LABEL[planned.mealType]}`, disabled: true };
-    }
-    if (!nextSlot) return { label: "Week full", disabled: true };
-    return { label: "Plan", disabled: false, onPlan: () => onAddToPlanner?.(recipe.id, nextSlot.dayOfWeek, nextSlot.mealType) };
+    return {
+      label: planned ? `✓ ${DAY_SHORT[planned.dayOfWeek]} · ${MEAL_LABEL[planned.mealType]}` : "Plan",
+      nextSlot,
+    };
   }
+  const pickerProps = {
+    weekStart,
+    plannerEntries,
+    onPlace: (recipeId, slot) => onPlaceOnPlanner?.(recipeId, slot),
+  };
 
   const groups = [
     { key: "ready", title: "Ready now", note: "NOTHING TO BUY", pillClass: "blue", items: readyNow },
@@ -319,7 +413,8 @@ export function WhatCanIMake({
                   atRiskUsed={expiringFirst ? atRiskUsed : []}
                   onOpen={() => onSelectRecipe(recipe)}
                   onCookTonight={() => onSelectRecipe(recipe, null, true)}
-                  plan={planState(recipe)}
+                  planFor={planState}
+                  pickerProps={pickerProps}
                   groceryProps={groceryProps}
                 />
               ))}

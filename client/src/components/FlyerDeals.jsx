@@ -4,6 +4,7 @@ import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { canonicalize } from "../lib/groceryList.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { HintStrip, Segmented } from "./RisoControls.jsx";
+import { hideBrokenPhoto } from "../lib/photos.js";
 
 // Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
 // per the schema, mealType id matches PlannerEntry.mealType).
@@ -143,7 +144,7 @@ function CookCard({ entry, onOpen, onAdd }) {
   return (
     <div className="riso-cook-card">
       <div className="riso-cook-thumb">
-        {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" /> : <div className="riso-cook-thumb-placeholder">{recipe.title[0]}</div>}
+        {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : <div className="riso-cook-thumb-placeholder">{recipe.title[0]}</div>}
         {savings > 0 && (
           <span className="riso-sticker yellow" style={{ top: -10, right: 10, transform: "rotate(4deg)" }}>
             save {money(savings)}

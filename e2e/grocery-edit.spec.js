@@ -90,3 +90,63 @@ test("any row can be removed, and a removed recipe row can be put back", async (
   await expect(row(page, "Lemon")).toBeVisible();
   await expect(page.locator(".riso-grocery-removed")).toHaveCount(0);
 });
+
+test("Share copies what's left to buy as a text list", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await setup(page);
+  await page.evaluate(() => {
+    // Desktop browsers without a share sheet fall back to the clipboard.
+    delete navigator.share;
+  });
+  await row(page, "Lemon").click();
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(page.getByText("Copied - paste it anywhere")).toBeVisible();
+  const text = await page.evaluate(() => navigator.clipboard.readText());
+  expect(text).toContain("Grocery list");
+  expect(text).toContain("- Garlic (4 cloves)");
+  expect(text).not.toContain("Lemon"); // already in the cart
+});
+
+test("Review what's left off lists leftovers and staples, and puts them back", async ({ page }) => {
+  await setup(page);
+  const soup = await (
+    await page.request.post("/api/recipes", { data: { title: "Leftover soup", ingredients: [{ name: "leek", quantity: 2 }] } })
+  ).json();
+  const fries = await (
+    await page.request.post("/api/recipes", { data: { title: "Fries", ingredients: [{ name: "potatoes" }, { name: "salt" }] } })
+  ).json();
+  const week = mondayOf(new Date());
+  await page.request.post("/api/planner", {
+    data: { recipeId: soup.id, weekStart: week, dayOfWeek: 1, mealType: "lunch", isLeftover: true },
+  });
+  await page.request.post("/api/planner", { data: { recipeId: fries.id, weekStart: week, dayOfWeek: 2, mealType: "lunch" } });
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(row(page, "Leek")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Review what's left off →" }).click();
+  const review = page.locator(".riso-grocery-review");
+  await expect(review).toContainText("Leftover soup");
+  await review.locator(".riso-grocery-review-row", { hasText: "Salt" }).getByRole("button", { name: "+ List" }).click();
+  await expect(row(page, "Salt")).toBeVisible();
+
+  await review.locator(".riso-grocery-review-row", { hasText: "Leftover soup" }).getByRole("button", { name: "Shop for it" }).click();
+  await expect(row(page, "Leek")).toBeVisible();
+});
+
+test("Done shopping keeps items bought, adds them to Inventory once, and says the groceries are done", async ({ page }) => {
+  await setup(page);
+  for (const name of ["Garlic", "Lemon", "Spaghetti"]) await row(page, name).click();
+  await page.getByRole("button", { name: "Done shopping · add 3 to inventory" }).click();
+  await expect(page.getByText("Groceries done ✓")).toBeVisible();
+  // Still checked after a reload, and not added a second time.
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Groceries done ✓")).toBeVisible();
+  const inventory = await (await page.request.get("/api/pantry-inventory")).json();
+  expect(inventory.filter((i) => /garlic/i.test(i.name))).toHaveLength(1);
+
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator(".riso-home-grocery")).toContainText("Groceries done ✓");
+});

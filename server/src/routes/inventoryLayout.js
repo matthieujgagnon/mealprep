@@ -3,7 +3,12 @@ import { prisma } from "../lib/prisma.js";
 
 export const inventoryLayoutRouter = Router();
 
-const SIZES = ["third", "half", "full"];
+// Width in grid columns, "1"-"6" (the older named sizes still read fine).
+const LEGACY_SIZES = { third: "2", half: "3", full: "6" };
+function normalizeSize(size) {
+  const value = LEGACY_SIZES[size] || String(size ?? "");
+  return /^[1-6]$/.test(value) ? value : "3";
+}
 
 // GET /api/inventory-layout - the user's section order, sizes and built-in
 // section names (see InventorySectionLayout).
@@ -15,7 +20,7 @@ inventoryLayoutRouter.get("/", async (req, res) => {
   res.json(rows);
 });
 
-// PUT /api/inventory-layout { sections: [{ sectionId, label?, size? }] }
+// PUT /api/inventory-layout { sections: [{ sectionId, label?, size?, height? }] }
 // Replaces the whole layout; list order is the display order.
 inventoryLayoutRouter.put("/", async (req, res) => {
   const { sections } = req.body;
@@ -31,13 +36,33 @@ inventoryLayoutRouter.put("/", async (req, res) => {
       sectionId: s.sectionId,
       label,
       position: data.length,
-      size: SIZES.includes(s.size) ? s.size : "half",
+      size: normalizeSize(s.size),
+      height: Number.isInteger(s.height) && s.height >= 120 && s.height <= 2000 ? s.height : null,
     });
   }
-  await prisma.$transaction([
-    prisma.inventorySectionLayout.deleteMany({ where: { userId: req.userId } }),
-    prisma.inventorySectionLayout.createMany({ data }),
-  ]);
+  // Upsert row by row (and drop sections no longer listed) rather than
+  // delete-all-then-insert: two saves landing together - a rename right
+  // before a drag - would otherwise both insert and trip the unique key.
+  const save = () =>
+    prisma.$transaction(async (tx) => {
+      await tx.inventorySectionLayout.deleteMany({
+        where: { userId: req.userId, sectionId: { notIn: data.map((d) => d.sectionId) } },
+      });
+      for (const row of data) {
+        const { userId, sectionId, ...fields } = row;
+        await tx.inventorySectionLayout.upsert({
+          where: { userId_sectionId: { userId, sectionId } },
+          create: row,
+          update: fields,
+        });
+      }
+    });
+  try {
+    await save();
+  } catch (err) {
+    if (err.code !== "P2002" && err.code !== "P2034") throw err;
+    await save(); // the other save won the insert; this one now updates
+  }
   const rows = await prisma.inventorySectionLayout.findMany({
     where: { userId: req.userId },
     orderBy: { position: "asc" },

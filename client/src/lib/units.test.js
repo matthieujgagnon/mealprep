@@ -105,3 +105,17 @@ describe("convertIngredient", () => {
     expect(convertIngredient(2, "clove", "oz")).toEqual({ quantity: 2, unit: "clove", approximate: false });
   });
 });
+
+describe("unitLabel", () => {
+  it("pluralizes count units and leaves abbreviations alone", async () => {
+    const { unitLabel, UNIT_GROUPS } = await import("./units.js");
+    expect(unitLabel("unit", 3)).toBe("units");
+    expect(unitLabel("unit", 1)).toBe("unit");
+    expect(unitLabel("bunch", 2)).toBe("bunches");
+    expect(unitLabel("dozen", 2)).toBe("dozen");
+    expect(unitLabel("g", 500)).toBe("g");
+    expect(unitLabel("l", 2)).toBe("L");
+    expect(unitLabel("fl_oz", 4)).toBe("fl oz");
+    expect(UNIT_GROUPS[0].units[0]).toBe("unit");
+  });
+});
