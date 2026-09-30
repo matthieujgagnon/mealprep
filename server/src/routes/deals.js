@@ -4,6 +4,7 @@ import { freezeTip } from "../lib/foodkeeper.js";
 import { loadBaselines } from "../lib/baselines.js";
 import { compareToBaseline, findBaseline } from "../lib/statcan.js";
 import { tidyDealTitle } from "../lib/dealTitle.js";
+import { loadDealPhoto } from "../lib/dealPhoto.js";
 
 export const dealsRouter = Router();
 
@@ -170,4 +171,19 @@ dealsRouter.get("/", async (req, res) => {
     deals,
     isMockData: false,
   });
+});
+
+// GET /api/deals/:id/photo - the deal's product photo, fetched by the
+// server (see lib/dealPhoto.js). 404 when there's none or it can't be
+// fetched; the page then shows a food emoji instead.
+dealsRouter.get("/:id/photo", async (req, res) => {
+  const deal = await prisma.flyerDeal.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    select: { imageUrl: true },
+  });
+  const photo = deal?.imageUrl ? await loadDealPhoto(deal.imageUrl) : null;
+  if (!photo) return res.status(404).end();
+  res.set("Content-Type", photo.type);
+  res.set("Cache-Control", "private, max-age=604800");
+  res.send(photo.body);
 });

@@ -88,19 +88,25 @@ function isStapleDeal(deal, customStaples) {
   return (customStaples || []).some((s) => canonicalize(s).core === core);
 }
 
+// Web photos come through the app's own server (GET /api/deals/:id/photo),
+// since flyer sites may refuse to show their images on another site.
+function dealPhotoSrc(deal) {
+  if (!deal.imageUrl) return null;
+  return /^https?:/i.test(deal.imageUrl) ? api.dealPhotoUrl(deal.id) : deal.imageUrl;
+}
+
 // The item's own photo from the flyer; a food emoji when there isn't one or
-// it won't load. No referrer: some flyer sites refuse images linked from
-// other sites.
+// it won't load.
 function DealPhoto({ deal, size }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [deal.imageUrl]);
-  return deal.imageUrl && !failed ? (
+  const src = dealPhotoSrc(deal);
+  return src && !failed ? (
     <img
       className="riso-deal-photo"
-      src={deal.imageUrl}
+      src={src}
       alt=""
       loading="lazy"
-      referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
       style={{ width: size, height: size }}
     />
@@ -301,7 +307,7 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
       >
         <div className="riso-deal-detail-photo">
           {deal.imageUrl && !photoFailed ? (
-            <img src={deal.imageUrl} alt="" referrerPolicy="no-referrer" onError={() => setPhotoFailed(true)} />
+            <img src={dealPhotoSrc(deal)} alt="" onError={() => setPhotoFailed(true)} />
           ) : (
             <span className="riso-deal-detail-letter" aria-hidden="true">
               {dealEmoji(deal)}

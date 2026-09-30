@@ -42,7 +42,7 @@ describe.skipIf(!dbUp)("runImportForUser", () => {
 
   it("imports Flipp as this week's deals and adds Le Rabais' past weeks as history", async () => {
     const settings = await runImportForUser(user.id, { fetchImpl: fetchWith() });
-    expect(settings).toMatchObject({ lastImportOk: true, lastImportCount: 1, lastImportSource: "Flipp", lastImportMessage: "Metro" });
+    expect(settings).toMatchObject({ lastImportOk: true, lastImportCount: 1, lastImportSource: "Flipp", lastImportMessage: "Metro: 1 item, 0 with photos." });
 
     const current = await prisma.flyerDeal.findMany({ where: { userId: user.id, isCurrent: true } });
     expect(current.map((d) => [d.source, d.store, d.price, d.unitPrice])).toEqual([["Flipp", "Metro", "$4.49/lb", 4.49]]);
