@@ -450,3 +450,17 @@ model FlyerSettings {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
+
+// Quebec's average price for one product, from Statistics Canada's monthly
+// retail price table (see lib/statcan.js) - the same for every account, so
+// no userId. Refreshed about weekly; StatCan publishes monthly.
+model PriceBaseline {
+  id        String   @id @default(cuid())
+  product   String   @unique // StatCan's own name, e.g. "Chicken breasts, per kilogram"
+  item      String // the part before the comma, lowercase: what deals are matched on
+  unitBasis String // "lb" | "L" | "each", same bases as FlyerDeal.unitBasis
+  price     Float // latest month, converted to unitBasis
+  month     String // "YYYY-MM" of that latest price
+  history   String   @default("[]") // JSON [{ month, price }] oldest first, up to 12 months
+  updatedAt DateTime @updatedAt
+}

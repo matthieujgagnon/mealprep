@@ -59,6 +59,29 @@ function meterFor(deal) {
   return { low, high, pos: `${Math.round(clamped * 100)}%`, dot: good ? "var(--riso-green)" : "var(--riso-surface)", verdict, good };
 }
 
+// How far this deal is under (or over) Quebec's average price for the same
+// product (Statistics Canada), for deals with no history of their own yet.
+function baselineLabel(baseline) {
+  if (!baseline) return null;
+  const { pct } = baseline;
+  if (pct <= -1) return `${-pct}% UNDER QC AVG`;
+  if (pct >= 1) return `${pct}% OVER QC AVG`;
+  return "SAME AS QC AVG";
+}
+
+const BASELINE_VERDICT = {
+  "stock-up": "Stock-up price",
+  good: "Good price",
+  normal: "About usual",
+  high: "Pricier than usual",
+};
+
+function monthLabel(month) {
+  const [y, m] = String(month || "").split("-").map(Number);
+  if (!y || !m) return "";
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(undefined, { month: "short", year: "numeric", timeZone: "UTC" });
+}
+
 function isStapleDeal(deal, customStaples) {
   const core = canonicalize(deal.matchName || deal.item).core;
   return (customStaples || []).some((s) => canonicalize(s).core === core);
@@ -248,7 +271,10 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
   const unit = unitText && unitText.replace(/\s/g, "") !== deal.price.replace(/\s/g, "") ? unitText : null;
   // A manually uploaded flyer keeps its page; Le Rabais items have their own photo.
   const flyerPage =
-    !deal.imageUrl && deal.source && deal.source !== "Le Rabais" ? api.flyerUploadImageUrl(deal.source) : null;
+    !deal.imageUrl && deal.source && !["Le Rabais", "Flipp"].includes(deal.source) ? api.flyerUploadImageUrl(deal.source) : null;
+  // This month's bar is green for a good price: by its own history, or
+  // - with none yet - against Quebec's average.
+  const goodNow = meter ? meter.good : ["good", "stock-up"].includes(deal.baseline?.verdict);
 
   return (
     <div className="riso-theme riso-deal-backdrop" onClick={onClose}>
@@ -287,6 +313,24 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
             <strong>{deal.price}</strong>
             {unit && <span>{unit}</span>}
           </div>
+          {deal.baseline && (
+            <div className={`riso-deal-detail-avg ${deal.baseline.verdict}`}>
+              <div>
+                <span className="riso-deal-detail-avg-label">QUEBEC AVERAGE · {monthLabel(deal.baseline.month).toUpperCase()}</span>
+                <strong>
+                  {money(deal.baseline.price)}/{deal.unitBasis}
+                </strong>
+              </div>
+              <p>
+                <b>{BASELINE_VERDICT[deal.baseline.verdict]}</b>
+                {" · "}
+                {deal.baseline.pct === 0
+                  ? "the same as what it usually costs in Quebec"
+                  : `${Math.abs(deal.baseline.pct)}% ${deal.baseline.pct < 0 ? "less" : "more"} than it usually costs in Quebec`}{" "}
+                <span className="riso-deal-detail-avg-source">(Statistics Canada: {deal.baseline.product})</span>
+              </p>
+            </div>
+          )}
           {history.length > 0 && (
             <div className="riso-deal-detail-history">
               <div className="riso-deal-detail-history-head">
@@ -300,7 +344,7 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
                     <div key={m.month} className="riso-deal-bar-col">
                       <span className="riso-deal-bar-price">{m.price != null ? money(m.price) : "—"}</span>
                       <div
-                        className={`riso-deal-bar${m.price == null ? " empty" : ""}${current ? (meter?.good ? " now good" : " now") : ""}`}
+                        className={`riso-deal-bar${m.price == null ? " empty" : ""}${current ? (goodNow ? " now good" : " now") : ""}`}
                         style={{ height: m.price != null ? `${Math.round(18 + ((m.price - floor) / span) * 82)}%` : "12%" }}
                       />
                     </div>
@@ -347,6 +391,13 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
 
 function PriceMeter({ deal }) {
   const meter = meterFor(deal);
+  if (!meter && deal.baseline) {
+    return (
+      <span className={`riso-meter-new vs-avg${deal.baseline.pct <= -10 ? " good" : ""}`} title={`Quebec average: ${deal.baseline.product}`}>
+        {baselineLabel(deal.baseline)}
+      </span>
+    );
+  }
   if (!meter) return <span className="riso-meter-new">NEW</span>;
   return (
     <div className="riso-meter">
@@ -716,15 +767,22 @@ export function FlyerDeals({
     deals: visibleDeals.filter((d) => (d.category || "other") === cat),
   })).filter((g) => g.deals.length > 0);
 
+  // Best deals: where each price sits in its own 6-month range, or - with
+  // no history yet - how far under Quebec's average it is (10% under
+  // counts like the top of the "good" range, 40% under like a 6-month low).
+  const dealScore = (d) =>
+    !d.isNew && d.sixMonthHigh != null
+      ? (d.unitPrice - d.sixMonthLow) / (d.sixMonthHigh - d.sixMonthLow || 1)
+      : d.baseline && d.baseline.pct <= -10
+        ? Math.max(0, (d.baseline.pct + 40) / 75)
+        : null;
   const withUnitPrice = allDeals.filter((d) => d.unitPrice != null && d.unitBasis);
-  const bestDeals = [...withUnitPrice]
-    .filter((d) => !d.isNew)
-    .sort((a, b) => {
-      const ta = (a.unitPrice - a.sixMonthLow) / (a.sixMonthHigh - a.sixMonthLow || 1);
-      const tb = (b.unitPrice - b.sixMonthLow) / (b.sixMonthHigh - b.sixMonthLow || 1);
-      return ta - tb;
-    })
-    .slice(0, 4);
+  const bestDeals = withUnitPrice
+    .map((d) => ({ d, score: dealScore(d) }))
+    .filter((x) => x.score != null)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 4)
+    .map((x) => x.d);
 
   const stockUpDeals = allDeals
     .filter((d) => d.isStaple && !d.isNew && d.sixMonthHigh != null && d.unitPrice != null)
@@ -805,9 +863,10 @@ export function FlyerDeals({
         </p>
       )}
       <>
-          <HintStrip userId={user.id} screenKey="flyers">
+          <HintStrip userId={user.id} screenKey="flyers-v2">
             Deals are compared with the last 6 months of prices. On the meter, a green dot toward
-            the left means it's a real deal. Pink means the deal ends within 2 days. Click any item
+            the left means it's a real deal; until an item has its own history, it's compared with
+            Quebec's average price from Statistics Canada instead. Pink means the deal ends within 2 days. Click any item
             to see its price history, add it to your list or watch it.
           </HintStrip>
 
@@ -833,7 +892,7 @@ export function FlyerDeals({
                       </div>
                       <div className="riso-deal-row-price">
                         <span className="price-amt">{d.price.split("/")[0]}</span>
-                        <span className="riso-deal-row-verdict">{meterFor(d)?.verdict}</span>
+                        <span className="riso-deal-row-verdict">{meterFor(d)?.verdict || baselineLabel(d.baseline)}</span>
                       </div>
                     </button>
                   ))
