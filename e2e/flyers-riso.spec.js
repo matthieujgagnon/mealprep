@@ -105,7 +105,7 @@ test("real deals show a price meter, a freeze tip, and a best-deals block", asyn
   await expect(newRow).toContainText("NEW");
 });
 
-test("the ★ watchlist toggle persists and the Watchlist filter narrows the table", async ({ page }) => {
+test("watching from the detail view persists and the Watchlist filter narrows the table", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -115,14 +115,17 @@ test("the ★ watchlist toggle persists and the Watchlist filter narrows the tab
   await page.waitForTimeout(400);
 
   const chickenRow = page.locator(".riso-table-row", { hasText: "Chicken breast" });
-  await chickenRow.locator(".riso-star-btn").click();
-  await expect(chickenRow.locator(".riso-star-btn.active")).toBeVisible();
+  await chickenRow.click();
+  const detail = page.getByRole("dialog", { name: "Chicken breast" });
+  await detail.getByRole("button", { name: "☆ Watch this" }).click();
+  await expect(detail.getByRole("button", { name: "★ Watching" })).toBeVisible();
+  await detail.getByRole("button", { name: "Close" }).click();
   await expect(chickenRow.locator(".riso-watch-badge")).toHaveText("★ WATCHING");
 
   await page.reload();
   await page.getByRole("button", { name: "Flyers", exact: true }).click();
   await page.waitForTimeout(400);
-  await expect(page.locator(".riso-table-row", { hasText: "Chicken breast" }).locator(".riso-star-btn.active")).toBeVisible();
+  await expect(page.locator(".riso-table-row", { hasText: "Chicken breast" }).locator(".riso-watch-badge")).toBeVisible();
 
   await page.getByRole("button", { name: "★ Watchlist" }).click();
   const rows = page.locator(".riso-table-row:not(.riso-table-header)");
@@ -139,14 +142,42 @@ test("+ List adds a deal's ingredient to this week's grocery list", async ({ pag
   await page.getByRole("button", { name: "Flyers", exact: true }).click();
   await page.waitForTimeout(400);
 
-  await page
-    .locator(".riso-table-row", { hasText: "Chicken breast" })
-    .locator(".riso-btn.primary.small", { hasText: "+ List" })
-    .click();
-  await page.waitForTimeout(300);
+  const row = page.locator(".riso-table-row", { hasText: "Chicken breast" });
+  await row.locator(".riso-list-pill").click();
+  await expect(row.locator(".riso-list-pill")).toHaveText("✓ Listed");
+  // The pill doesn't open the detail view.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.getByText("chicken breast")).toBeVisible();
+});
+
+test("clicking a deal opens its detail with the 6-month history", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  await seedChickenHistory(user.id);
+
+  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await page.locator(".riso-block.accent .riso-deal-row", { hasText: "Chicken breast" }).click();
+
+  const detail = page.getByRole("dialog", { name: "Chicken breast" });
+  await expect(detail).toContainText("METRO · MEAT & PROTEIN");
+  await expect(detail.locator(".riso-deal-detail-price strong")).toHaveText("$4.49/lb");
+  await expect(detail.locator(".riso-deal-detail-history-head span")).toHaveText("6-MO LOW");
+  await expect(detail.locator(".riso-deal-bar-col")).toHaveCount(6);
+  await expect(detail.locator(".riso-deal-bar.now.good")).toHaveCount(1);
+  await expect(detail.locator(".riso-deal-stats")).toContainText("LOWEST$4.49");
+  await expect(detail.locator(".riso-deal-stats")).toContainText("HIGHEST$6.99");
+  await expect(detail).toContainText("❄ Freezes");
+  await expect(detail.locator(".riso-deal-detail-low")).toHaveText("6-month low!");
+
+  await detail.getByRole("button", { name: "+ Add to grocery list" }).click();
+  await expect(detail.getByRole("button", { name: "✓ On your grocery list" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".riso-table-row", { hasText: "Chicken breast" }).locator(".riso-list-pill")).toHaveText("✓ Listed");
 });
 
 test("a matching recipe appears in What to cook with a save sticker", async ({ page }) => {

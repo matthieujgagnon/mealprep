@@ -74,20 +74,6 @@ function DealPhoto({ deal, size }) {
   );
 }
 
-function StarButton({ active, onClick, small }) {
-  return (
-    <button
-      type="button"
-      className={`riso-star-btn${active ? " active" : ""}${small ? " small" : ""}`}
-      onClick={onClick}
-      aria-label={active ? "Remove from watchlist" : "Add to watchlist"}
-      title={active ? "On your watchlist" : "Watch this item"}
-    >
-      ★
-    </button>
-  );
-}
-
 function AddToPlannerButton({ recipe, onAdd, label }) {
   const [open, setOpen] = useState(false);
   const [day, setDay] = useState(0);
@@ -224,35 +210,136 @@ function UploadFlyerForm({ onUploaded }) {
   );
 }
 
-function DealPreviewModal({ deal, onClose }) {
-  const [imageFailed, setImageFailed] = useState(false);
+const MONTH_SHORT = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
+function endsLabel(days) {
+  if (days <= 0) return "ENDS TODAY";
+  if (days === 1) return "ENDS TOMORROW";
+  return `ENDS IN ${days} DAYS`;
+}
+
+// A deal's own detail: its picture, the price, the last 6 months as bars
+// (lowest price seen each month) with the lowest/average/highest, any
+// storage tip, and add-to-list / watch.
+function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
   useEffect(() => {
-    setImageFailed(false);
-  }, [deal]);
+    function onKey(e) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const [photoFailed, setPhotoFailed] = useState(false);
 
-  if (!deal) return null;
+  const meter = meterFor(deal);
+  const history = deal.history || [];
+  const prices = history.map((m) => m.price).filter((p) => p != null);
+  // The same 6-month range the table's meter uses; the bars are each
+  // month's lowest price, so a mid-month high only shows up here.
+  const low = deal.sixMonthLow ?? (prices.length ? Math.min(...prices) : null);
+  const high = deal.sixMonthHigh ?? (prices.length ? Math.max(...prices) : null);
+  const avg = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : null;
+  const barMax = prices.length ? Math.max(...prices) : 0;
+  const floor = low != null ? low * 0.9 : 0;
+  const span = barMax > floor ? barMax - floor : 1;
+  const isLow = meter && meter.verdict === "6-MO LOW";
+  const unitText = deal.unitPrice != null ? `${money(deal.unitPrice)}/${deal.unitBasis}` : null;
+  // Skip the unit price when the printed price already says the same thing.
+  const unit = unitText && unitText.replace(/\s/g, "") !== deal.price.replace(/\s/g, "") ? unitText : null;
+  // A manually uploaded flyer keeps its page; Le Rabais items have their own photo.
+  const flyerPage =
+    !deal.imageUrl && deal.source && deal.source !== "Le Rabais" ? api.flyerUploadImageUrl(deal.source) : null;
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="card modal-content riso-preview-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-        <h3 className="riso-preview-title">
-          {deal.item} <span className="riso-preview-store">— {deal.store}</span>
-        </h3>
-        {imageFailed ? (
-          <p className="riso-preview-missing">No flyer image available for this item.</p>
-        ) : deal.imageUrl ? (
-          <img className="riso-preview-image" src={deal.imageUrl} alt={deal.item} onError={() => setImageFailed(true)} />
-        ) : (
-          <iframe
-            className="riso-preview-frame"
-            src={api.flyerUploadImageUrl(deal.source || deal.store)}
-            title={`${deal.source || deal.store} flyer`}
-            onError={() => setImageFailed(true)}
-          />
-        )}
+    <div className="riso-theme riso-deal-backdrop" onClick={onClose}>
+      <div
+        className="riso-deal-detail"
+        role="dialog"
+        aria-modal="true"
+        aria-label={deal.item}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="riso-deal-detail-photo">
+          {deal.imageUrl && !photoFailed ? (
+            <img src={deal.imageUrl} alt="" onError={() => setPhotoFailed(true)} />
+          ) : (
+            <span className="riso-deal-detail-letter">{(deal.item || "?")[0]}</span>
+          )}
+          {isLow && <span className="riso-deal-detail-low">6-month low!</span>}
+          {flyerPage && (
+            <a className="riso-deal-detail-page" href={flyerPage} target="_blank" rel="noreferrer">
+              See the flyer page ↗
+            </a>
+          )}
+        </div>
+        <div className="riso-deal-detail-body">
+          <button type="button" className="riso-deal-detail-close" aria-label="Close" title="Close" onClick={onClose}>
+            ×
+          </button>
+          <div className="riso-deal-detail-head">
+            <span className="riso-deal-detail-eyebrow">
+              {deal.store.toUpperCase()} · {(CATEGORY_LABELS[deal.category] || "Other").toUpperCase()}
+            </span>
+            <h3 className="riso-deal-detail-name">{deal.item}</h3>
+            {deal.endsInDays != null && <span className="riso-deal-detail-ends">{endsLabel(deal.endsInDays)}</span>}
+          </div>
+          <div className="riso-deal-detail-price">
+            <strong>{deal.price}</strong>
+            {unit && <span>{unit}</span>}
+          </div>
+          {history.length > 0 && (
+            <div className="riso-deal-detail-history">
+              <div className="riso-deal-detail-history-head">
+                <strong>Last 6 months</strong>
+                <span className={meter?.good ? "good" : ""}>{meter ? meter.verdict : "NEW · NO HISTORY YET"}</span>
+              </div>
+              <div className="riso-deal-bars">
+                {history.map((m, i) => {
+                  const current = i === history.length - 1;
+                  return (
+                    <div key={m.month} className="riso-deal-bar-col">
+                      <span className="riso-deal-bar-price">{m.price != null ? money(m.price) : "—"}</span>
+                      <div
+                        className={`riso-deal-bar${m.price == null ? " empty" : ""}${current ? (meter?.good ? " now good" : " now") : ""}`}
+                        style={{ height: m.price != null ? `${Math.round(18 + ((m.price - floor) / span) * 82)}%` : "12%" }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="riso-deal-bar-months">
+                {history.map((m, i) => (
+                  <span key={m.month} className={i === history.length - 1 ? "now" : ""}>
+                    {MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]}
+                  </span>
+                ))}
+              </div>
+              <div className="riso-deal-stats">
+                <div>
+                  <span>LOWEST</span>
+                  <strong className="good">{low != null ? money(low) : "—"}</strong>
+                </div>
+                <div>
+                  <span>AVERAGE</span>
+                  <strong>{avg != null ? money(avg) : "—"}</strong>
+                </div>
+                <div>
+                  <span>HIGHEST</span>
+                  <strong>{high != null ? money(high) : "—"}</strong>
+                </div>
+              </div>
+            </div>
+          )}
+          {deal.freezeTip && <p className="riso-deal-detail-tip">❄ {deal.freezeTip}</p>}
+          <div className="riso-deal-detail-actions">
+            <button type="button" className={`riso-deal-detail-list${deal.isListed ? " on" : ""}`} onClick={onList}>
+              {deal.isListed ? "✓ On your grocery list" : "+ Add to grocery list"}
+            </button>
+            <button type="button" className={`riso-deal-detail-watch${deal.isWatching ? " on" : ""}`} onClick={onToggleWatch}>
+              {deal.isWatching ? "★ Watching" : "☆ Watch this"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -278,13 +365,24 @@ function PriceMeter({ deal }) {
 // One "whole flyer" table row - shared between the flat list and the By
 // category grouped view, so the two only ever differ in what wraps around
 // this, never in the row itself.
-function DealRow({ deal: d, onPreview, onAddToList, onToggleWatch }) {
+function DealRow({ deal: d, onOpen, onToggleList }) {
   return (
-    <div className="riso-table-row">
+    <div
+      className="riso-table-row clickable"
+      role="button"
+      tabIndex={0}
+      aria-label={`${d.item} details`}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <div className="riso-table-item">
-        <button type="button" className="riso-deal-photo-btn" onClick={onPreview}>
-          <DealPhoto deal={d} size={48} />
-        </button>
+        <DealPhoto deal={d} size={48} />
         <div className="riso-table-item-info">
           <div className="riso-table-item-name">
             <span>{d.item}</span>
@@ -301,16 +399,33 @@ function DealRow({ deal: d, onPreview, onAddToList, onToggleWatch }) {
         <PriceMeter deal={d} />
       </div>
       <div className="riso-table-actions">
-        <button type="button" className="riso-btn primary small" onClick={onAddToList}>
-          + List
+        <span className="riso-table-details">Details →</span>
+        <button
+          type="button"
+          className={`riso-list-pill${d.isListed ? " on" : ""}`}
+          aria-label={d.isListed ? `Remove ${d.item} from grocery list` : `Add ${d.item} to grocery list`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleList();
+          }}
+        >
+          {d.isListed ? "✓ Listed" : "+ List"}
         </button>
-        <StarButton active={d.isWatching} onClick={onToggleWatch} />
       </div>
     </div>
   );
 }
 
-export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRecipe, onAddToPlanner }) {
+export function FlyerDeals({
+  user,
+  recipes,
+  customStaples,
+  onSelectRecipe,
+  onAddToPlanner,
+  isOnGroceryList,
+  onAddToGroceryList,
+  onRemoveFromGroceryList,
+}) {
   const [deals, setDeals] = useState(null);
   const [watchlist, setWatchlist] = useState(new Set());
   const [storeFilter, setStoreFilter] = useState(null);
@@ -319,7 +434,7 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
   const [clearing, setClearing] = useState(false);
   const [importingLeRabais, setImportingLeRabais] = useState(false);
   const [leRabaisError, setLeRabaisError] = useState(null);
-  const [previewDeal, setPreviewDeal] = useState(null);
+  const [detailId, setDetailId] = useState(null);
 
   function loadDeals() {
     api.getDeals().then(setDeals).catch(() => setDeals(null));
@@ -356,8 +471,12 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
     }
   }
 
-  async function addToGroceryList(deal) {
-    await api.addGroceryExtra(weekStart, { name: deal.matchName || deal.item, quantity: null, unit: null });
+  // The grocery list works in plain ingredient names, so a deal goes on
+  // (and comes off) under its matchName.
+  function toggleListed(deal) {
+    const name = deal.matchName || deal.item;
+    if (isOnGroceryList(name)) onRemoveFromGroceryList(name);
+    else onAddToGroceryList([name]);
   }
 
   async function clearAllDeals() {
@@ -392,7 +511,9 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
     isWatching: watchlist.has((d.matchName || d.item).trim().toLowerCase()),
     endsInDays: endsInDays(d.validUntil),
     isStaple: isStapleDeal(d, customStaples),
+    isListed: isOnGroceryList(d.matchName || d.item),
   }));
+  const detailDeal = detailId != null ? allDeals.find((d) => d.id === detailId) : null;
 
   const groups = groupDealsByIngredient(allDeals, recipes);
   const dealIdToGroup = new Map();
@@ -499,8 +620,8 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
       <>
           <HintStrip userId={user.id} screenKey="flyers">
             Deals are compared with the last 6 months of prices. On the meter, a green dot toward
-            the left means it's a real deal. Pink means the deal ends within 2 days. Star an item
-            to watch it.
+            the left means it's a real deal. Pink means the deal ends within 2 days. Click any item
+            to see its price history, add it to your list or watch it.
           </HintStrip>
 
           <div className="riso-flyers-top-row">
@@ -515,7 +636,7 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
                   <p className="riso-block-empty">Not enough price history yet — check back after a few more uploads.</p>
                 ) : (
                   bestDeals.map((d) => (
-                    <button key={d.id} type="button" className="riso-deal-row" onClick={() => setPreviewDeal(d)}>
+                    <button key={d.id} type="button" className="riso-deal-row" onClick={() => setDetailId(d.id)}>
                       <DealPhoto deal={d} size={52} />
                       <div className="riso-deal-row-info">
                         <span className="riso-deal-row-name">{d.item}</span>
@@ -660,31 +781,26 @@ export function FlyerDeals({ user, recipes, customStaples, weekStart, onSelectRe
                           <span className="riso-table-group-count">{group.deals.length}</span>
                         </div>
                         {group.deals.map((d) => (
-                          <DealRow
-                            key={d.id}
-                            deal={d}
-                            onPreview={() => setPreviewDeal(d)}
-                            onAddToList={() => addToGroceryList(d)}
-                            onToggleWatch={() => toggleWatch(d)}
-                          />
+                          <DealRow key={d.id} deal={d} onOpen={() => setDetailId(d.id)} onToggleList={() => toggleListed(d)} />
                         ))}
                       </Fragment>
                     ))
                   : visibleDeals.map((d) => (
-                      <DealRow
-                        key={d.id}
-                        deal={d}
-                        onPreview={() => setPreviewDeal(d)}
-                        onAddToList={() => addToGroceryList(d)}
-                        onToggleWatch={() => toggleWatch(d)}
-                      />
+                      <DealRow key={d.id} deal={d} onOpen={() => setDetailId(d.id)} onToggleList={() => toggleListed(d)} />
                     ))}
               </div>
             )}
           </div>
       </>
 
-      <DealPreviewModal deal={previewDeal} onClose={() => setPreviewDeal(null)} />
+      {detailDeal && (
+        <DealDetailModal
+          deal={detailDeal}
+          onClose={() => setDetailId(null)}
+          onList={() => toggleListed(detailDeal)}
+          onToggleWatch={() => toggleWatch(detailDeal)}
+        />
+      )}
     </div>
   );
 }

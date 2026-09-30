@@ -838,9 +838,11 @@ export default function App({ user, onLogout }) {
             user={user}
             recipes={recipes}
             customStaples={customStaples}
-            weekStart={weekStart}
             onSelectRecipe={openRecipe}
             onAddToPlanner={handleAddToPlanner}
+            isOnGroceryList={isOnGroceryList}
+            onAddToGroceryList={addToGroceryList}
+            onRemoveFromGroceryList={removeFromGroceryList}
           />
         )}
 

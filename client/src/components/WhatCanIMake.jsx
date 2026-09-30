@@ -30,17 +30,9 @@ function formatMinutes(m) {
 // card several times taller than its neighbours).
 const NEED_ROWS_SHOWN = 4;
 
-function PlanButton({ className, plan }) {
-  return (
-    <button type="button" className={className} onClick={plan.onToggle} aria-expanded={plan.open}>
-      {plan.label}
-    </button>
-  );
-}
-
-// "Plan" opens this inside the card: pick the day and the meal, then place
-// it. A slot that already holds something says so, and planning there
-// replaces it.
+// "Plan it" opens inside the card: pick the day and the meal, then place
+// it. The note under the meals says whether that slot is free or what
+// planning there replaces.
 function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, onClose }) {
   const firstDay = isCurrentWeek(weekStart) ? todayIndex() : 0;
   const [day, setDay] = useState(initialSlot?.dayOfWeek ?? firstDay);
@@ -58,11 +50,14 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
 
   return (
     <div className="riso-makeable-plan" role="group" aria-label={`Plan ${recipe.title}`}>
+      <div className="riso-makeable-plan-head">
+        <strong>Plan it</strong>
+        <span>PICK A DAY AND A MEAL</span>
+      </div>
       <div className="riso-makeable-plan-days">
         {DAY_SHORT.map((label, d) => {
           const { dayNum, isToday } = formatDayLabel(weekStart, d);
           const past = d < firstDay;
-          const filled = MEAL_TYPES.filter((m) => occupant(d, m.id)).length;
           return (
             <button
               key={label}
@@ -73,9 +68,8 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
               aria-label={`${label} ${dayNum}${isToday ? " (today)" : ""}`}
               onClick={() => setDay(d)}
             >
-              <span>{label.slice(0, 2)}</span>
+              <span>{label.slice(0, 2).toUpperCase()}</span>
               <strong>{dayNum}</strong>
-              <i aria-hidden="true">{"•".repeat(filled)}</i>
             </button>
           );
         })}
@@ -85,7 +79,7 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
           <button
             key={m.id}
             type="button"
-            className={`riso-makeable-plan-meal${m.id === meal ? " on" : ""}${occupant(day, m.id) ? " taken" : ""}`}
+            className={`riso-makeable-plan-meal${m.id === meal ? " on" : ""}`}
             aria-pressed={m.id === meal}
             onClick={() => setMeal(m.id)}
           >
@@ -93,10 +87,12 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
           </button>
         ))}
       </div>
-      {takenLabel && <p className="riso-makeable-plan-note">Replaces {takenLabel}.</p>}
+      <p className="riso-makeable-plan-note">
+        {takenLabel ? `Replaces ${takenLabel} in that slot.` : "That slot is free."}
+      </p>
       <div className="riso-makeable-plan-actions">
-        <button type="button" className="riso-makeable-plan-cancel" onClick={onClose}>
-          Cancel
+        <button type="button" className="riso-makeable-plan-close" aria-label="Close" title="Close" onClick={onClose}>
+          ×
         </button>
         <button
           type="button"
@@ -119,72 +115,38 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
   );
 }
 
-function YouNeedBox({ missingIngredients, isOnGroceryList, onAdd, onRemove, plan }) {
-  const shown = missingIngredients.slice(0, NEED_ROWS_SHOWN);
-  const hiddenCount = missingIngredients.length - shown.length;
-  const allOn = missingIngredients.every(isOnGroceryList);
-
-  return (
-    <div className="riso-makeable-need">
-      <div className="riso-makeable-need-head">
-        <span className="riso-makeable-need-title">You need</span>
-        <span className="riso-makeable-need-count">{missingIngredients.length}</span>
-        <span className="riso-makeable-need-hint">TAP + TO ADD ONE</span>
-      </div>
-      <ul className="riso-makeable-need-list">
-        {shown.map((name) => {
-          const on = isOnGroceryList(name);
-          return (
-            <li key={name} className="riso-makeable-need-row">
-              <span className="riso-makeable-need-name">{name}</span>
-              <button
-                type="button"
-                className={`riso-makeable-need-add${on ? " on" : ""}`}
-                onClick={() => (on ? onRemove(name) : onAdd([name]))}
-                aria-label={on ? `Remove ${name} from grocery list` : `Add ${name} to grocery list`}
-                title={on ? "On your grocery list" : "Add to grocery list"}
-              >
-                {on ? "✓ on list" : "+"}
-              </button>
-            </li>
-          );
-        })}
-        {hiddenCount > 0 && (
-          <li className="riso-makeable-need-row more">
-            <span className="riso-makeable-need-name">
-              and {hiddenCount} more ingredient{hiddenCount === 1 ? "" : "s"}
-            </span>
-          </li>
-        )}
-      </ul>
-      <div className="riso-makeable-need-actions">
-        <button
-          type="button"
-          className={`riso-makeable-need-all${allOn ? " on" : ""}`}
-          onClick={() => !allOn && onAdd(missingIngredients)}
-          disabled={allOn}
-        >
-          {allOn ? "✓ All on your grocery list" : `+ Add all ${missingIngredients.length} to list`}
-        </button>
-        <PlanButton className="riso-makeable-need-btn" plan={plan} />
-      </div>
-    </div>
-  );
-}
-
+// Photo on top, then the title, then (when something's missing) "You need
+// n" with a + Add pill per item, and one right-aligned row of same-size
+// actions pinned to the bottom so cards in a row line up.
 function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, planFor, pickerProps, groceryProps }) {
   const [planning, setPlanning] = useState(false);
-  const plan = { ...planFor(recipe), open: planning, onToggle: () => setPlanning((p) => !p) };
+  const plan = planFor(recipe);
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
   const ingredientCount = recipe.ingredients?.length || 0;
   const ready = missingIngredients.length === 0;
+  const { isOnGroceryList, onAdd, onRemove } = groceryProps;
+  const shown = missingIngredients.slice(0, NEED_ROWS_SHOWN);
+  const hiddenCount = missingIngredients.length - shown.length;
+  const allOn = !ready && missingIngredients.every(isOnGroceryList);
+
+  const planButton = (
+    <button
+      type="button"
+      className={`riso-makeable-action plan${plan.planned ? " done" : ""}`}
+      onClick={() => setPlanning((p) => !p)}
+      aria-expanded={planning}
+    >
+      {plan.label}
+    </button>
+  );
 
   return (
-    <div className="riso-makeable-card" style={{ boxShadow: ready ? "var(--riso-shadow-ready)" : "none" }}>
-      <div className="riso-makeable-card-top">
-        <button type="button" className="riso-makeable-card-photo" onClick={onOpen} title={recipe.title}>
-          {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
-        </button>
+    <div className="riso-makeable-card">
+      <button type="button" className="riso-makeable-card-photo" onClick={onOpen} title={recipe.title}>
+        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
+        {ready && <span className="riso-makeable-ready-sticker">nothing to buy!</span>}
+      </button>
+      <div className="riso-makeable-card-body">
         <div className="riso-makeable-card-info">
           <button type="button" className="riso-makeable-card-name" onClick={onOpen}>
             {recipe.title}
@@ -195,27 +157,74 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
           </div>
           {atRiskUsed.length > 0 && (
             <div className="riso-makeable-card-uses">
-              <span className="riso-sticker pink riso-makeable-uses-pill">use it up</span>
+              <span className="riso-makeable-uses-pill">use it up</span>
               <span>{atRiskUsed.join(", ")}</span>
             </div>
           )}
         </div>
-      </div>
 
-      {ready ? (
-        <div className="riso-makeable-ready-actions">
-          <button type="button" className="riso-makeable-cook-btn" onClick={onCookTonight}>
-            Cook tonight
-          </button>
-          <PlanButton className="riso-makeable-plan-btn" plan={plan} />
+        {!ready && (
+          <div className="riso-makeable-need">
+            <div className="riso-makeable-need-head">
+              <span className="riso-makeable-need-title">
+                You need <span className="riso-makeable-need-count">{missingIngredients.length}</span>
+              </span>
+              <span className="riso-makeable-need-hint">Add one at a time, or all at once</span>
+            </div>
+            <ul className="riso-makeable-need-list">
+              {shown.map((name) => {
+                const on = isOnGroceryList(name);
+                return (
+                  <li key={name} className="riso-makeable-need-row">
+                    <span className="riso-makeable-need-name">{name}</span>
+                    <button
+                      type="button"
+                      className={`riso-makeable-need-add${on ? " on" : ""}`}
+                      onClick={() => (on ? onRemove(name) : onAdd([name]))}
+                      aria-label={on ? `Remove ${name} from grocery list` : `Add ${name} to grocery list`}
+                      title={on ? "On your grocery list" : "Add to grocery list"}
+                    >
+                      {on ? "✓ On list" : "+ Add"}
+                    </button>
+                  </li>
+                );
+              })}
+              {hiddenCount > 0 && (
+                <li className="riso-makeable-need-row more">
+                  <span className="riso-makeable-need-name">
+                    and {hiddenCount} more ingredient{hiddenCount === 1 ? "" : "s"}
+                  </span>
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        <div className="riso-makeable-actions">
+          {ready ? (
+            <button type="button" className="riso-makeable-action cook" onClick={onCookTonight}>
+              Cook tonight
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`riso-makeable-action add-all${allOn ? " done" : ""}`}
+              onClick={() =>
+                allOn
+                  ? missingIngredients.forEach((name) => onRemove(name))
+                  : onAdd(missingIngredients.filter((name) => !isOnGroceryList(name)))
+              }
+            >
+              {allOn ? "✓ All on your grocery list" : `+ Add all ${missingIngredients.length} to list`}
+            </button>
+          )}
+          {planButton}
         </div>
-      ) : (
-        <YouNeedBox missingIngredients={missingIngredients} plan={plan} {...groceryProps} />
-      )}
 
-      {planning && (
-        <PlanPicker recipe={recipe} {...pickerProps} initialSlot={plan.nextSlot} onClose={() => setPlanning(false)} />
-      )}
+        {planning && (
+          <PlanPicker recipe={recipe} {...pickerProps} initialSlot={plan.nextSlot} onClose={() => setPlanning(false)} />
+        )}
+      </div>
     </div>
   );
 }
@@ -318,6 +327,7 @@ export function WhatCanIMake({
     const planned = plannerEntries.find((e) => e.recipe?.id === recipe.id);
     return {
       label: planned ? `✓ ${DAY_SHORT[planned.dayOfWeek]} · ${MEAL_LABEL[planned.mealType]}` : "Plan",
+      planned: !!planned,
       nextSlot,
     };
   }
@@ -342,9 +352,9 @@ export function WhatCanIMake({
         </h1>
       </div>
 
-      <HintStrip userId={user.id} screenKey="makeable">
-        Recipes are matched against what's in your Inventory. Add anything else you have on hand
-        below. "Use expiring items first" moves recipes that finish food expiring soon to the top
+      <HintStrip userId={user.id} screenKey="makeable-v2">
+        Recipes are matched against what's in your Inventory. Each card lists what you still need; add
+        items one by one, or all at once. Add anything else you have on hand below. "Use expiring items first" moves recipes that finish food expiring soon to the top
         of each group.
       </HintStrip>
 
