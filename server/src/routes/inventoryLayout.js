@@ -40,10 +40,29 @@ inventoryLayoutRouter.put("/", async (req, res) => {
       height: Number.isInteger(s.height) && s.height >= 120 && s.height <= 2000 ? s.height : null,
     });
   }
-  await prisma.$transaction([
-    prisma.inventorySectionLayout.deleteMany({ where: { userId: req.userId } }),
-    prisma.inventorySectionLayout.createMany({ data }),
-  ]);
+  // Upsert row by row (and drop sections no longer listed) rather than
+  // delete-all-then-insert: two saves landing together - a rename right
+  // before a drag - would otherwise both insert and trip the unique key.
+  const save = () =>
+    prisma.$transaction(async (tx) => {
+      await tx.inventorySectionLayout.deleteMany({
+        where: { userId: req.userId, sectionId: { notIn: data.map((d) => d.sectionId) } },
+      });
+      for (const row of data) {
+        const { userId, sectionId, ...fields } = row;
+        await tx.inventorySectionLayout.upsert({
+          where: { userId_sectionId: { userId, sectionId } },
+          create: row,
+          update: fields,
+        });
+      }
+    });
+  try {
+    await save();
+  } catch (err) {
+    if (err.code !== "P2002" && err.code !== "P2034") throw err;
+    await save(); // the other save won the insert; this one now updates
+  }
   const rows = await prisma.inventorySectionLayout.findMany({
     where: { userId: req.userId },
     orderBy: { position: "asc" },

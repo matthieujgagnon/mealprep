@@ -376,14 +376,22 @@ export default function App({ user, onLogout }) {
 
   // Optimistic - the new order/sizes show right away; a failed save
   // restores the previous layout.
-  async function handleSaveInventoryLayout(sections) {
+  // Saves go out one at a time, in order (a rename then a quick drag used to
+  // race each other); only the newest one's answer is applied.
+  const layoutSaves = useRef({ chain: Promise.resolve(), latest: 0 });
+  function handleSaveInventoryLayout(sections) {
     const prev = inventoryLayout;
-    setInventoryLayout(sections.map((s, position) => ({ ...s, position })));
-    try {
-      setInventoryLayout(await api.saveInventoryLayout(sections));
-    } catch {
-      setInventoryLayout(prev);
-    }
+    setInventoryLayout(sections.map((s, position) => ({ ...s, sectionId: s.sectionId, position })));
+    const ticket = ++layoutSaves.current.latest;
+    layoutSaves.current.chain = layoutSaves.current.chain.then(async () => {
+      try {
+        const saved = await api.saveInventoryLayout(sections);
+        if (ticket === layoutSaves.current.latest) setInventoryLayout(saved);
+      } catch {
+        if (ticket === layoutSaves.current.latest) setInventoryLayout(prev);
+      }
+    });
+    return layoutSaves.current.chain;
   }
 
   // Drag a card from one Inventory shelf onto another - the drag-and-drop

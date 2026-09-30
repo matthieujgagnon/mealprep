@@ -1,3 +1,4 @@
+import "./lib/asyncErrors.js";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -63,6 +64,19 @@ app.get(/^(?!\/api).*/, (req, res, next) => {
   res.sendFile(path.join(clientDistPath, "index.html"), (err) => {
     if (err) next(); // no built frontend present (local dev) — fall through
   });
+});
+
+// Anything a route throws ends here as a JSON error instead of crashing the
+// server (see lib/asyncErrors.js).
+app.use((err, req, res, next) => {
+  console.error(`${req.method} ${req.originalUrl} failed:`, err);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({ error: "Something went wrong - please try again." });
+});
+
+// Last line of defence: log a stray rejection rather than exiting.
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled rejection:", err);
 });
 
 // Placeholder recipes (the "quick add" Restaurant/YOLO/N-A cards) now belong
