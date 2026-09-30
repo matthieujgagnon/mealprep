@@ -140,3 +140,36 @@ export function convertIngredient(quantity, unit, targetSystem) {
 
   return { quantity, unit, approximate: false };
 }
+
+// Units offered when entering an ingredient, grouped the way a cook thinks
+// about them. "unit" is the plain count ("3 units red bell pepper").
+export const UNIT_GROUPS = [
+  {
+    label: "Count",
+    units: ["unit", "piece", "clove", "slice", "head", "bunch", "stalk", "sprig", "handful", "dozen"],
+  },
+  { label: "Package", units: ["can", "jar", "bottle", "package", "box", "bag"] },
+  { label: "Volume", units: ["tsp", "tbsp", "cup", "fl_oz", "ml", "l"] },
+  { label: "Weight", units: ["g", "kg", "oz", "lb"] },
+  { label: "A little", units: ["pinch", "dash"] },
+];
+
+const ABBREVIATED = new Set(["g", "kg", "mg", "ml", "l", "tsp", "tbsp", "oz", "lb", "fl_oz"]);
+const IRREGULAR_PLURAL = { dozen: "dozen" };
+
+// How a unit reads next to an amount: "3 units", "1 clove", "2 bunches",
+// "250 ml", "1 L", "4 fl oz". Abbreviations never take a plural.
+export function unitLabel(unit, qty = 1) {
+  if (!unit) return "";
+  if (unit === "l") return "L";
+  if (unit === "fl_oz") return "fl oz";
+  if (ABBREVIATED.has(unit) || qty == null || qty <= 1) return unit;
+  if (IRREGULAR_PLURAL[unit]) return IRREGULAR_PLURAL[unit];
+  if (/(ch|sh|s|x)$/.test(unit)) return `${unit}es`;
+  return `${unit}s`;
+}
+
+// Dropdown label for a unit on its own ("units", "fl oz", "L").
+export function unitOptionLabel(unit) {
+  return unitLabel(unit, 2);
+}

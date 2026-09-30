@@ -399,7 +399,158 @@
 .riso-makeable-need-name {
   flex: 1;
   min-width: 0;
-  font: 700 14.5px/1.25 var(--riso-font-display);
+  font: 400 14px/1.3 var(--riso-font-body);
+  color: var(--riso-ink);
+}
+
+/* Day + meal picker opened by a card's Plan button. */
+.riso-makeable-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-canvas);
+}
+
+.riso-makeable-plan-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.riso-makeable-plan-day.today:not(.on) strong {
+  color: var(--riso-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.riso-makeable-plan-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 6px 0 4px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+  cursor: pointer;
+}
+
+.riso-makeable-plan-day span {
+  font-family: var(--riso-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.riso-makeable-plan-day strong {
+  font-family: var(--riso-font-display);
+  font-size: 16px;
+}
+
+.riso-makeable-plan-day i {
+  height: 8px;
+  font-style: normal;
+  font-size: 10px;
+  line-height: 8px;
+  color: var(--riso-accent);
+}
+
+.riso-makeable-plan-day.on {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+.riso-makeable-plan-day.on i {
+  color: var(--riso-yellow);
+}
+
+.riso-makeable-plan-day:disabled {
+  border-style: dashed;
+  color: var(--riso-muted);
+  cursor: default;
+}
+
+.riso-makeable-plan-meals {
+  display: flex;
+  gap: 6px;
+}
+
+.riso-makeable-plan-meal {
+  flex: 1;
+  height: 34px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 17px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.riso-makeable-plan-meal.taken:not(.on) {
+  border-style: dashed;
+  color: var(--riso-soft);
+}
+
+.riso-makeable-plan-meal.on {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-makeable-plan-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--riso-soft);
+}
+
+.riso-makeable-plan-actions {
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.riso-makeable-plan-actions .riso-makeable-plan-go {
+  flex: 1 1 auto;
+}
+
+.riso-makeable-plan-actions .riso-makeable-plan-cancel {
+  border: none;
+  background: none;
+  padding: 0 6px;
+  text-decoration: underline;
+}
+
+.riso-makeable-plan-cancel,
+.riso-makeable-plan-go {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 2px solid var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.riso-makeable-plan-cancel {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-makeable-plan-go {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 3px 3px 0 var(--riso-ink);
 }
 
 .riso-makeable-need-add {
@@ -1432,17 +1583,14 @@ select {
   align-items: start;
 }
 
-/* Section widths (the user picks one per section): a third, half or the
-   whole row of the 6-column grid. */
-.inv-shelf.size-third {
-  grid-column: span 2;
+/* Section widths: each section spans --span of the 6 grid columns (set by
+   dragging its corner handle); on narrower screens the grid has 2 columns
+   and a wide section takes both. */
+.inv-shelves > .inv-shelf {
+  grid-column: span var(--span, 3);
+  position: relative;
 }
 
-.inv-shelf.size-half {
-  grid-column: span 3;
-}
-
-.inv-shelf.size-full,
 .inv-add-section-tile {
   grid-column: 1 / -1;
 }
@@ -1452,10 +1600,82 @@ select {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .inv-shelf.size-third,
-  .inv-shelf.size-half {
-    grid-column: span 1;
+  .inv-shelves > .inv-shelf {
+    grid-column: span var(--span-md, 1);
   }
+}
+
+.inv-shelf.fixed-height {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.inv-shelf.fixed-height .inv-shelf-items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.inv-shelf.resizing {
+  outline: 3px dashed var(--riso-accent);
+  outline-offset: 3px;
+}
+
+.inv-shelf.moving {
+  opacity: 0.5;
+}
+
+.inv-shelf.drop-before {
+  box-shadow: -6px 0 0 var(--riso-accent);
+}
+
+.inv-shelf.drop-after {
+  box-shadow: 6px 0 0 var(--riso-accent);
+}
+
+.inv-shelf-grip {
+  flex: none;
+  width: 26px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--riso-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  padding: 0;
+}
+
+.inv-shelf-grip:hover,
+.inv-shelf-grip:focus-visible {
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+}
+
+.inv-shelf-resize {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background:
+    linear-gradient(135deg, transparent 45%, var(--riso-dash-strong) 45%, var(--riso-dash-strong) 55%, transparent 55%),
+    linear-gradient(135deg, transparent 70%, var(--riso-dash-strong) 70%, var(--riso-dash-strong) 80%, transparent 80%);
+  cursor: nwse-resize;
+  touch-action: none;
+  border-radius: 0 0 18px 0;
+}
+
+.inv-shelf-resize:hover,
+.inv-shelf-resize:focus-visible {
+  background:
+    linear-gradient(135deg, transparent 45%, var(--riso-ink) 45%, var(--riso-ink) 55%, transparent 55%),
+    linear-gradient(135deg, transparent 70%, var(--riso-ink) 70%, var(--riso-ink) 80%, transparent 80%);
 }
 
 .inv-shelf-edit {
@@ -1585,9 +1805,6 @@ select {
   min-height: 240px;
 }
 
-.inv-shelf.wide {
-  grid-column: 1 / -1;
-}
 
 .inv-shelf-header {
   display: flex;
@@ -1599,8 +1816,9 @@ select {
   color: var(--riso-ink);
 }
 
-.inv-shelf-header span:first-child {
+.inv-shelf-title {
   flex: 1;
+  min-width: 0;
 }
 
 .inv-shelf-count {
@@ -2202,11 +2420,9 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .inv-shelf.wide,
-  .inv-shelf.size-third,
-  .inv-shelf.size-half,
-  .inv-shelf.size-full {
+  .inv-shelves > .inv-shelf {
     grid-column: auto;
+    height: auto !important;
   }
 
   .riso-inv-edit-overlay {
@@ -4715,6 +4931,33 @@ input[type="date"].planner-week-picker {
   position: absolute;
 }
 
+.riso-recipe-card-photo {
+  position: relative;
+}
+
+/* Total time, always on the card (the Quickest sort is by this). */
+.riso-recipe-card-time {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.riso-recipe-card-time.unknown {
+  border-style: dashed;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--riso-soft);
+}
+
 .riso-recipe-card-body {
   padding: 14px 16px 16px;
   display: flex;
@@ -6801,6 +7044,26 @@ input[type="date"].planner-week-picker {
   line-height: 1.15;
 }
 
+.riso-home-grocery-done {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.riso-home-grocery-done-title {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--riso-ink);
+}
+
+.riso-home-grocery-unit.wide {
+  max-width: none;
+}
+
 .riso-home-grocery-track {
   height: 14px;
   border-radius: 7px;
@@ -8038,6 +8301,32 @@ input[type="date"].planner-week-picker {
   flex: none;
 }
 
+.riso-grocery-share:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.riso-grocery-share-wrap {
+  position: relative;
+  flex: none;
+}
+
+.riso-grocery-share-note {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
 .riso-grocery-body {
   display: flex;
   flex-wrap: wrap;
@@ -8437,6 +8726,19 @@ button.riso-row-qty:focus-visible {
   line-height: 1.5;
 }
 
+.riso-grocery-cart-done {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 24px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 15px;
+  text-align: center;
+}
+
 .riso-grocery-excluded {
   background: var(--riso-surface);
   border: 2px solid var(--riso-ink);
@@ -8478,6 +8780,72 @@ button.riso-row-qty:focus-visible {
   font-size: 13.5px;
   color: var(--riso-accent);
   cursor: pointer;
+}
+
+.riso-grocery-review {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--riso-dash);
+}
+
+.riso-grocery-review-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--riso-soft);
+}
+
+.riso-grocery-review-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-grocery-review-title {
+  margin: 0;
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-grocery-review-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.riso-grocery-review-row small {
+  margin-left: 6px;
+  font-family: var(--riso-font-mono);
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--riso-muted);
+}
+
+.riso-grocery-review-row button {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.riso-grocery-review-row button:disabled {
+  border-style: dashed;
+  color: var(--riso-muted);
+  cursor: default;
 }
 
 .riso-grocery-sale {
@@ -9711,4 +10079,97 @@ button.riso-row-qty:focus-visible {
     min-height: 52px;
     border-radius: 18px;
   }
+}
+
+/* Planner: an empty slot is just a dashed box; click it to write on it.
+   A blank card is plain paper (click again to clear), a written one shows
+   its text. */
+.riso-planner-cell-empty:hover::after {
+  content: "write…";
+  font: 500 12px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.riso-planner-note {
+  background: var(--riso-surface);
+}
+
+.riso-planner-note.blank {
+  cursor: pointer;
+}
+
+.riso-planner-note.blank:hover::after {
+  content: "clear";
+  font: 500 11px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.riso-planner-note.editing {
+  padding: 6px;
+  cursor: text;
+  border-color: var(--riso-accent);
+}
+
+.riso-planner-note-input {
+  width: 100%;
+  height: 100%;
+  min-height: 48px;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: 700 14.5px/1.2 var(--riso-font-display);
+  color: var(--riso-ink);
+  text-align: center;
+}
+
+.riso-planner-legend-blank {
+  width: 18px;
+  height: 14px;
+  border-radius: 5px;
+  border: 1.5px dashed var(--riso-dash-strong);
+}
+
+.rpm-empty-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.rpm-empty-row .rpm-empty {
+  flex: 1;
+}
+
+.rpm-empty-row .rpm-chip {
+  align-self: center;
+}
+
+.rpm-note {
+  width: 100%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  padding: 0 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rpm-note.editing {
+  padding: 8px 12px;
+  border-color: var(--riso-accent);
+}
+
+.rpm-note.editing .riso-planner-note-input {
+  text-align: left;
+}
+
+@media (max-width: 767px) {
+  .inv-shelves > .inv-shelf {
+    height: auto !important;
+  }
+}
+
+/* While a section is being dragged or resized. */
+body.no-select {
+  user-select: none;
+  -webkit-user-select: none;
 }

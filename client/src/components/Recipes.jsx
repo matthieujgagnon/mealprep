@@ -51,6 +51,9 @@ function RecipeCard({ recipe, stats, badge, onClick }) {
     >
       <div className="riso-recipe-card-photo">
         {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" /> : null}
+        <span className={`riso-recipe-card-time${totalTime > 0 ? "" : " unknown"}`}>
+          {totalTime > 0 ? `⏱ ${formatTime(totalTime).toLowerCase()}` : "time not set"}
+        </span>
         {badge && (
           <span className="riso-sticker riso-recipe-card-badge" style={{ background: badge.bg, top: 12, left: 12, transform: "rotate(-4deg)" }}>
             {badge.text}
@@ -60,7 +63,6 @@ function RecipeCard({ recipe, stats, badge, onClick }) {
       <div className="riso-recipe-card-body">
         <div className="riso-recipe-card-name">{recipe.title}</div>
         <div className="riso-recipe-card-meta">
-          {totalTime > 0 ? `${formatTime(totalTime)} · ` : ""}
           {stats.totalCount} INGREDIENT{stats.totalCount === 1 ? "" : "S"}
         </div>
         <div className="riso-recipe-card-spacer" />
@@ -155,9 +157,9 @@ export function Recipes({
       return a.title.localeCompare(b.title);
     });
   } else if (sortIndex === 2) {
-    visible = [...visible].sort(
-      (a, b) => (a.prepTimeMinutes || 0) + (a.cookTimeMinutes || 0) - ((b.prepTimeMinutes || 0) + (b.cookTimeMinutes || 0))
-    );
+    // Quickest first; recipes with no time set can't be ranked, so they go last.
+    const minutes = (r) => (r.prepTimeMinutes || 0) + (r.cookTimeMinutes || 0) || Infinity;
+    visible = [...visible].sort((a, b) => minutes(a) - minutes(b) || a.title.localeCompare(b.title));
   } else {
     visible = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }

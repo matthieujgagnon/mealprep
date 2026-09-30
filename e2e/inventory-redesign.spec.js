@@ -106,26 +106,47 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await expect(page.locator(".inv-shelf", { hasText: "Pantry" }).getByText("Elk")).toBeVisible();
 });
 
-test("sections can be renamed, moved and resized, and the layout is saved", async ({ page }) => {
+test("sections can be renamed, dragged to move and resized, and the layout is saved", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1000 });
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   const order = () => page.locator(".inv-shelf").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
   await expect.poll(order).toEqual(["Fridge section", "Freezer section", "Pantry section"]);
+  // No arrow or size buttons any more.
+  await expect(page.getByRole("button", { name: /Move section earlier|Width 1\/3/ })).toHaveCount(0);
 
-  // Rename a built-in section and make it a third of the row.
+  // Rename a built-in section.
   await page.getByRole("button", { name: 'Edit the "Fridge" section' }).click();
   await page.getByLabel("Section name").fill("Kitchen fridge");
-  await page.getByRole("button", { name: "Width 1/3" }).click();
   await page.getByRole("button", { name: "Done" }).click();
-  await expect(page.locator(".inv-shelf", { hasText: "Kitchen fridge" })).toHaveClass(/size-third/);
+  const fridge = page.locator(".inv-shelf", { hasText: "Kitchen fridge" });
+  await expect(fridge).toBeVisible();
 
-  // Move Pantry to the front, one step at a time.
-  await page.getByRole("button", { name: 'Edit the "Pantry" section' }).click();
-  await page.getByRole("button", { name: "Move section earlier" }).click();
-  await page.getByRole("button", { name: "Move section earlier" }).click();
-  await expect(page.getByRole("button", { name: "Move section earlier" })).toBeDisabled();
-  await page.getByRole("button", { name: "Done" }).click();
+  // Drag the corner handle left: the section narrows by whole columns.
+  const widthBefore = (await fridge.boundingBox()).width;
+  const handle = page.getByRole("button", { name: 'Resize the "Kitchen fridge" section' });
+  const hb = await handle.boundingBox();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x - 200, hb.y + 120, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(async () => (await fridge.boundingBox()).width).toBeLessThan(widthBefore - 100);
+  await expect(fridge).toHaveClass(/fixed-height/);
+
+  // Drag Pantry by its grip onto the left half of the fridge: it goes first.
+  const grip = page.getByRole("button", { name: 'Move the "Pantry" section' });
+  const gb = await grip.boundingBox();
+  const fb = await fridge.boundingBox();
+  await page.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(fb.x + 20, fb.y + fb.height / 2, { steps: 12 });
+  await page.mouse.up();
   await expect.poll(order).toEqual(["Pantry section", "Kitchen fridge section", "Freezer section"]);
+
+  // The grip also moves with the arrow keys.
+  await page.getByRole("button", { name: 'Move the "Freezer" section' }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section"]);
 
   // A custom section renames too.
   await page.getByRole("button", { name: "+ Add section" }).click();
@@ -137,20 +158,22 @@ test("sections can be renamed, moved and resized, and the layout is saved", asyn
   await expect(page.locator(".inv-shelf", { hasText: "Garage freezer" })).toBeVisible();
 
   // Everything survives a reload, and the new names show in the add form.
+  const fridgeWidth = (await fridge.boundingBox()).width;
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect
     .poll(order)
-    .toEqual(["Pantry section", "Kitchen fridge section", "Freezer section", "Garage freezer section"]);
-  await expect(page.locator(".inv-shelf", { hasText: "Kitchen fridge" })).toHaveClass(/size-third/);
+    .toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Garage freezer section"]);
+  await expect.poll(async () => Math.round((await fridge.boundingBox()).width)).toBe(Math.round(fridgeWidth));
   await page.getByRole("button", { name: "+ Add item" }).click();
   await expect(page.locator(".modal-content select").nth(1).locator("option")).toHaveText([
     "Pantry",
-    "Kitchen fridge",
     "Freezer",
+    "Kitchen fridge",
     "Garage freezer",
   ]);
 });
+
 
 test("dragging a card from one shelf to another moves it", async ({ page }) => {
   // Pantry sits in its own full-width row below Fridge/Freezer in the Riso

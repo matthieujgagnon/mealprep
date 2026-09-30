@@ -564,14 +564,24 @@ function normalizeRecipe(node, sourceUrl, domPhotos = [], domGroups = null, domS
 
   const baseServings = extractServings(node.recipeYield) ?? 4;
 
+  // Many sites publish only totalTime. Keep the prep/cook split when given;
+  // otherwise whatever the total leaves over counts as cooking time, so the
+  // recipe still shows how long it takes.
+  const prepTimeMinutes = parseIsoDuration(node.prepTime);
+  let cookTimeMinutes = parseIsoDuration(node.cookTime);
+  const totalTimeMinutes = parseIsoDuration(node.totalTime);
+  if (cookTimeMinutes == null && totalTimeMinutes != null && totalTimeMinutes > (prepTimeMinutes || 0)) {
+    cookTimeMinutes = totalTimeMinutes - (prepTimeMinutes || 0);
+  }
+
   return {
     title,
     sourceUrl,
     photoUrl,
     photos,
     baseServings,
-    prepTimeMinutes: parseIsoDuration(node.prepTime),
-    cookTimeMinutes: parseIsoDuration(node.cookTime),
+    prepTimeMinutes,
+    cookTimeMinutes,
     instructions,
     ingredients,
   };
@@ -714,6 +724,8 @@ const UNIT_WORDS = [
   "g", "gram", "grams", "kg", "kilogram", "kilograms", "oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds",
   "ml", "milliliter", "milliliters", "l", "liter", "liters", "pinch", "pinches",
   "clove", "cloves", "can", "cans", "slice", "slices",
+  "bunch", "bunches", "sprig", "sprigs", "stalk", "stalks", "head", "heads", "dash", "dashes",
+  "jar", "jars", "package", "packages", "handful", "handfuls",
 ];
 
 // Canonical short form for each recognized unit — several ways of writing the
@@ -733,6 +745,14 @@ const UNIT_ALIASES = {
   clove: "clove", cloves: "clove",
   can: "can", cans: "can",
   slice: "slice", slices: "slice",
+  bunch: "bunch", bunches: "bunch",
+  sprig: "sprig", sprigs: "sprig",
+  stalk: "stalk", stalks: "stalk",
+  head: "head", heads: "head",
+  dash: "dash", dashes: "dash",
+  jar: "jar", jars: "jar",
+  package: "package", packages: "package",
+  handful: "handful", handfuls: "handful",
 };
 
 // Recipe sites commonly use unicode fraction characters ("¼ cup") instead of

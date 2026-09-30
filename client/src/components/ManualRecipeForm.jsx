@@ -4,7 +4,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { stepText, stepImage, stepIsHeading } from "../lib/steps.js";
-import { UNIT_OPTIONS } from "../lib/groceryList.js";
+import { UnitSelect } from "./UnitSelect.jsx";
 import { parseQuantityInput } from "../lib/units.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 
@@ -488,18 +488,12 @@ export function ManualRecipeForm({ recipe, onCreated, onSaved, onCancel }) {
                     onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
                     style={{ flex: 1 }}
                   />
-                  <select
+                  <UnitSelect
+                    aria-label="Unit"
                     value={item.unit}
-                    onChange={(e) => updateIngredient(i, "unit", e.target.value)}
+                    onChange={(u) => updateIngredient(i, "unit", u)}
                     style={{ flex: 1 }}
-                  >
-                    <option value="">(none)</option>
-                    {UNIT_OPTIONS.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <input
                     type="text"
                     placeholder="Notes (e.g. melted)"

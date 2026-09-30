@@ -23,7 +23,7 @@ import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
 import { PlannerTray } from "./components/PlannerTray.jsx";
 import { PlannerMobile } from "./components/PlannerMobile.jsx";
 import { useIsPhone } from "./hooks/useIsPhone.js";
-import { emptyUpcomingSlots, findNextEmptySlot, todayIndex } from "./lib/plannerSlots.js";
+import { emptyUpcomingSlots, findNextEmptySlot, isCustomNote, todayIndex } from "./lib/plannerSlots.js";
 import { isBreakfastRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
@@ -138,6 +138,7 @@ export default function App({ user, onLogout }) {
   const [activeRecipeStartCooking, setActiveRecipeStartCooking] = useState(false);
   const [planAroundIngredients, setPlanAroundIngredients] = useState([]);
   const [plannerTarget, setPlannerTarget] = useState(null); // selected slot { dayOfWeek, mealType, note? }
+  const [editingNoteId, setEditingNoteId] = useState(null); // blank/written card being typed on
   const [plannerTrayTab, setPlannerTrayTab] = useState("suggested");
   const [trayMessage, setTrayMessage] = useState(null);
   useEffect(() => {
@@ -155,8 +156,8 @@ export default function App({ user, onLogout }) {
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("All");
-  const [plannerExtraItems, setPlannerExtraItems] = useState([]);
-  const [groceryOverrides, setGroceryOverrides] = useState([]); // this week's removed rows / own quantities (GroceryItemOverride) // manually-added grocery items for weekStart — just for the "Build grocery list · n" count
+  const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart
+  const [groceryOverrides, setGroceryOverrides] = useState([]); // this week's removed rows / own quantities (GroceryItemOverride)
   const [isDragActive, setIsDragActive] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
   // Which droppable id a drag is currently hovering, tracked only to drive
@@ -211,8 +212,7 @@ export default function App({ user, onLogout }) {
 
   // Hand-added grocery items for the week. Re-fetched on tab change too,
   // since the Grocery and Home tabs add/remove items through their own
-  // state. Drives the "Build grocery list · n" count and the de-duplication
-  // below.
+  // state. Drives the grocery de-duplication below.
   useEffect(() => {
     api.listGroceryExtras(weekStart).then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
     api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
@@ -508,9 +508,59 @@ export default function App({ user, onLogout }) {
     setPlannerTarget(null);
   }
 
+  // Clicking an empty slot turns it into a blank card to write on. The card
+  // (and its text box) shows at once, so nothing typed is lost while the
+  // server saves it; the real entry swaps in underneath when it arrives.
+  const pendingBlanks = useRef(new Map()); // temp id -> Promise<saved entry>
+  function handleWriteInSlot(slot) {
+    const tempId = `pending-${Date.now()}`;
+    const temp = {
+      id: tempId,
+      weekStart,
+      ...slot,
+      recipe: { id: null, title: "No meal planned", isPlaceholder: true, ingredients: [] },
+    };
+    setPlannerEntries((prev) => [...prev, temp]);
+    setEditingNoteId(tempId);
+    const created = api.markSlotBlank(weekStart, slot.dayOfWeek, slot.mealType);
+    pendingBlanks.current.set(tempId, created);
+    created
+      .then((saved) => {
+        setPlannerEntries((prev) => prev.map((e) => (e.id === tempId ? saved : e)));
+        setEditingNoteId((id) => (id === tempId ? saved.id : id));
+      })
+      .catch(() => setPlannerEntries((prev) => prev.filter((e) => e.id !== tempId)))
+      .finally(() => pendingBlanks.current.delete(tempId));
+  }
+
+  // Saves what was typed on a blank/written card ("" leaves it blank).
+  async function handleSaveNote(entryId, text) {
+    setEditingNoteId((id) => (id === entryId ? null : id));
+    let id = entryId;
+    let entry = plannerEntries.find((e) => e.id === entryId);
+    if (pendingBlanks.current.has(entryId)) {
+      entry = await pendingBlanks.current.get(entryId);
+      id = entry.id;
+    }
+    const next = text.trim();
+    const current = entry && isCustomNote(entry) ? entry.recipe.title : "";
+    if (!entry || next === current) return;
+    // Shown right away; the server copy replaces it.
+    setPlannerEntries((prev) =>
+      prev.map((e) =>
+        e.id === id || e.id === entryId ? { ...e, recipe: { ...e.recipe, title: next || "No meal planned" } } : e
+      )
+    );
+    const saved = await api.setPlannerEntryNote(id, next);
+    setPlannerEntries((prev) => prev.map((e) => (e.id === id ? saved : e)));
+  }
+
   async function handleRemoveFromPlanner(entryId) {
-    await api.removeFromPlanner(entryId);
     setPlannerEntries((prev) => prev.filter((e) => e.id !== entryId));
+    const pending = pendingBlanks.current.get(entryId);
+    const id = pending ? (await pending).id : entryId;
+    setPlannerEntries((prev) => prev.filter((e) => e.id !== id));
+    await api.removeFromPlanner(id);
   }
 
   // One control cycles a placed card through three states: plain -> leftover
@@ -525,6 +575,14 @@ export default function App({ user, onLogout }) {
       : entry.alreadyHave
       ? { isLeftover: false, alreadyHave: false }
       : { isLeftover: true, alreadyHave: false };
+    await api.updatePlannerEntry(entryId, next);
+    setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
+  }
+
+  // Grocery's "Review what's left off": put a leftover / already-have meal's
+  // ingredients back on the list.
+  async function handleShopForEntry(entryId) {
+    const next = { isLeftover: false, alreadyHave: false };
     await api.updatePlannerEntry(entryId, next);
     setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
   }
@@ -617,18 +675,6 @@ export default function App({ user, onLogout }) {
     setPlannerTarget(null);
   }
 
-  // "Build grocery list · n" in the Planner header — mirrors exactly how
-  // GroceryList.jsx derives its own shoppingItems count (just the non-staple
-  // items; there's no more manual store-section exclusion), so the number
-  // matches once you actually get to the Grocery tab.
-  const groceryToBuyCount = buildGroceryList(
-    plannerEntries,
-    customStaples,
-    stapleCategories,
-    excludedStaples,
-    plannerExtraItems,
-    groceryOverrides
-  ).filter((i) => !i.isStaple && !i.removed).length;
 
   return (
     <DndContext
@@ -765,7 +811,7 @@ export default function App({ user, onLogout }) {
             pantryInventory={pantryInventory}
             customStaples={customStaples}
             weekStart={weekStart}
-            onAddToPlanner={handleAddToPlanner}
+            onPlaceOnPlanner={handlePlaceRecipe}
             isOnGroceryList={isOnGroceryList}
             onAddToGroceryList={addToGroceryList}
             onRemoveFromGroceryList={removeFromGroceryList}
@@ -858,8 +904,10 @@ export default function App({ user, onLogout }) {
                     onCardClick={openRecipe}
                     onRemove={handleRemoveFromPlanner}
                     onCycleState={handleCycleMealState}
-                    groceryCount={groceryToBuyCount}
-                    onGoToGrocery={() => setTab("grocery")}
+                    editingNoteId={editingNoteId}
+                    onWriteInSlot={handleWriteInSlot}
+                    onEditNote={setEditingNoteId}
+                    onSaveNote={handleSaveNote}
                     emptyCount={fillPlan.length}
                     onFillEmptySlots={handleFillEmptySlots}
                     trayProps={trayProps}
@@ -877,21 +925,18 @@ export default function App({ user, onLogout }) {
                       onCopyLastWeek={handleCopyLastWeek}
                       emptyCount={fillPlan.length}
                       onFillEmptySlots={handleFillEmptySlots}
-                      groceryCount={groceryToBuyCount}
-                      onGoToGrocery={() => setTab("grocery")}
                     />
                     <div className="riso-planner-row">
                       <PlannerBoard
                         entries={plannerEntries}
                         weekStart={weekStart}
-                        target={plannerTarget}
-                        onSelectSlot={(slot) => {
-                          setPlannerTarget(slot);
-                          setTrayMessage(null);
-                        }}
                         onCardClick={openRecipe}
                         onRemove={handleRemoveFromPlanner}
                         onCycleState={handleCycleMealState}
+                        editingNoteId={editingNoteId}
+                        onWriteInSlot={handleWriteInSlot}
+                        onEditNote={setEditingNoteId}
+                        onSaveNote={handleSaveNote}
                       />
                       <PlannerTray {...trayProps} target={plannerTarget} />
                     </div>
@@ -911,6 +956,7 @@ export default function App({ user, onLogout }) {
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
             onAddPantryItem={handleAddPantryItem}
+            onShopForEntry={handleShopForEntry}
           />
         )}
 

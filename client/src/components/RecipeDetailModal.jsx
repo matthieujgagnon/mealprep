@@ -10,7 +10,7 @@ import {
   scaleStepText,
 } from "../lib/steps.js";
 import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core } from "../lib/similarRecipes.js";
-import { formatQuantity } from "../lib/units.js";
+import { formatQuantity, unitLabel } from "../lib/units.js";
 import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
 import { buildCombinedHave } from "../lib/onHand.js";
@@ -230,7 +230,9 @@ function IngredientRow({
         </span>
         {status === "soon" && <span className="riso-rc-use-soon-sticker">use soon!</span>}
         <span className="riso-rc-ingredient-qty">
-          {scaledQty != null ? `${formatQuantity(scaledQty)}${ing.unit ? " " + ing.unit : ""}` : ing.unit || ""}
+          {scaledQty != null
+            ? `${formatQuantity(scaledQty)}${ing.unit ? " " + unitLabel(ing.unit, scaledQty) : ""}`
+            : unitLabel(ing.unit)}
         </span>
       </button>
       {isOpen && (

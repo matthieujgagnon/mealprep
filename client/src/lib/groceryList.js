@@ -1,4 +1,4 @@
-import { convertToUnit, formatQuantity } from "./units.js";
+import { UNIT_GROUPS, convertToUnit, formatQuantity, unitLabel } from "./units.js";
 
 // Produce/variety adjectives that shouldn't fragment the grocery list into
 // separate line items (a "California avocado" and a plain "avocado" are the
@@ -45,9 +45,24 @@ const UNIT_ALIASES = {
   ml: "ml", milliliter: "ml", milliliters: "ml",
   l: "l", liter: "l", liters: "l",
   pinch: "pinch", pinches: "pinch",
+  dash: "dash", dashes: "dash",
   clove: "clove", cloves: "clove",
   can: "can", cans: "can",
   slice: "slice", slices: "slice",
+  unit: "unit", units: "unit",
+  piece: "piece", pieces: "piece", pc: "piece", pcs: "piece",
+  head: "head", heads: "head",
+  bunch: "bunch", bunches: "bunch",
+  stalk: "stalk", stalks: "stalk",
+  sprig: "sprig", sprigs: "sprig",
+  handful: "handful", handfuls: "handful",
+  dozen: "dozen",
+  jar: "jar", jars: "jar",
+  bottle: "bottle", bottles: "bottle",
+  package: "package", packages: "package", pkg: "package",
+  box: "box", boxes: "box",
+  bag: "bag", bags: "bag",
+  "fl oz": "fl_oz", fl_oz: "fl_oz",
 };
 
 function canonicalUnit(unit) {
@@ -56,10 +71,16 @@ function canonicalUnit(unit) {
   return UNIT_ALIASES[lower] || lower;
 }
 
+// On the grocery list "3 units" and "2" of the same thing are one count.
+function groceryUnit(unit) {
+  const u = canonicalUnit(unit);
+  return u === "unit" || u === "piece" ? "" : u;
+}
+
 // Canonical unit list for the manual-entry dropdown, derived from the same
 // alias map that powers grocery-list merging — so a unit picked from this
 // list is guaranteed to already be in its canonical form.
-export const UNIT_OPTIONS = [...new Set(Object.values(UNIT_ALIASES))];
+export const UNIT_OPTIONS = UNIT_GROUPS.flatMap((g) => g.units);
 
 export function capitalize(str) {
   if (!str) return str;
@@ -230,7 +251,7 @@ export function buildGroceryList(
     const scale = (entry.servings || base) / base;
 
     for (const ing of recipe.ingredients || []) {
-      const unit = canonicalUnit(ing.unit);
+      const unit = groceryUnit(ing.unit);
       const { core, varieties } = canonicalize(ing.name);
       const resolvedCore = core || ing.name.toLowerCase();
       const qty = ing.quantity != null ? ing.quantity * scale : null;
@@ -291,7 +312,9 @@ export function buildGroceryList(
       unit: extra.unit || null,
       usedIn: [],
       varieties: varieties.map(capitalize),
-      isStaple: staplesSet.has(resolvedCore),
+      // Typed in by hand means you're buying it, staple or not ("salt"
+      // added by hand used to vanish from the list).
+      isStaple: false,
       isSpice: staplesCategoryOverrides[resolvedCore]
         ? staplesCategoryOverrides[resolvedCore] === "spice"
         : SPICE_WORDS.includes(resolvedCore),
@@ -307,16 +330,6 @@ export function buildGroceryList(
       return { ...item, removed: !!o?.removed, customQuantity: o?.quantity || null };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-const METRIC_OR_ABBREVIATED = new Set(["g", "kg", "mg", "ml", "l", "tsp", "tbsp", "oz", "lb", "fl_oz"]);
-
-function unitLabel(unit, qty) {
-  if (unit === "l") return "L";
-  if (unit === "fl_oz") return "fl oz";
-  if (METRIC_OR_ABBREVIATED.has(unit) || qty == null || qty <= 1) return unit;
-  if (/(ch|sh|s|x)$/.test(unit)) return `${unit}es`;
-  return `${unit}s`;
 }
 
 // Bigger units once an amount gets unwieldy (1500 g -> 1.5 kg).

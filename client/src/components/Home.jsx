@@ -181,11 +181,14 @@ export function Home({
   const toBuy = groceryItems.filter((i) => !i.isStaple && !i.removed);
   const checkedCount = toBuy.filter((i) => checked[i.key]).length;
   const saleCount = toBuy.filter((i) => !checked[i.key] && findMatchingDeal(i.name, deals)).length;
+  const groceriesDone = toBuy.length > 0 && checkedCount === toBuy.length;
   const progressPct = toBuy.length > 0 ? Math.round((checkedCount / toBuy.length) * 100) : 0;
 
   const todaysDinner = plannerEntries.filter((e) => e.dayOfWeek === todayIndex && e.mealType === "dinner");
   const tonightBlank = todaysDinner.some(isBlankMarker);
   const tonightEntry = todaysDinner.find((e) => !isBlankMarker(e));
+  // A written note ("Hockey pool @ Normal") or eating out - nothing to cook.
+  const tonightIsNote = !!tonightEntry?.recipe?.isPlaceholder;
   const tonightMatch = tonightEntry ? makeableResults.find((m) => m.recipe.id === tonightEntry.recipe.id) : null;
   const tonightAllHave = !!tonightMatch && tonightMatch.missingIngredients.length === 0;
 
@@ -229,7 +232,7 @@ export function Home({
           )}
           {tonightEntry ? (
             <div className="riso-home-hero-body">
-              {tonightEntry.recipe.photoUrl && (
+              {tonightEntry.recipe.photoUrl && !tonightIsNote && (
                 <img src={tonightEntry.recipe.photoUrl} alt="" className="riso-home-hero-photo" />
               )}
               <div className="riso-home-hero-info">
@@ -237,7 +240,9 @@ export function Home({
                 <h2 className="riso-home-hero-title">{tonightEntry.recipe.title}</h2>
                 <p className="riso-home-hero-blurb">
                   {tonightEntry.recipe.isPlaceholder
-                    ? "Eating out tonight."
+                    ? tonightEntry.recipe.title === RESTAURANT_TITLE
+                      ? "Eating out tonight."
+                      : null
                     : tonightMatch
                     ? tonightAllHave
                       ? `You have all ${tonightMatch.totalCount} ingredients.`
@@ -249,13 +254,19 @@ export function Home({
                     : null}
                 </p>
                 <div className="riso-home-hero-actions">
-                  <button
-                    type="button"
-                    className="riso-btn hot"
-                    onClick={() => onSelectRecipe(tonightEntry.recipe, null, true)}
-                  >
-                    Start cooking
-                  </button>
+                  {tonightIsNote ? (
+                    <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
+                      Change in planner
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="riso-btn hot"
+                      onClick={() => onSelectRecipe(tonightEntry.recipe, null, true)}
+                    >
+                      Start cooking
+                    </button>
+                  )}
                   {!tonightEntry.recipe.isPlaceholder && (
                     <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
                       Swap
@@ -289,15 +300,24 @@ export function Home({
 
         <section className="riso-home-grocery">
           <div className="riso-eyebrow on-pink">Grocery list</div>
-          <div className="riso-home-grocery-count">
-            <span className="home-grocery-number">{toBuy.length}</span>
-            <span className="riso-home-grocery-unit">things to grab this week</span>
-          </div>
+          {groceriesDone ? (
+            <div className="riso-home-grocery-done">
+              <span className="riso-home-grocery-done-title">Groceries done ✓</span>
+              <span className="riso-home-grocery-unit wide">All {toBuy.length} things are bought for this week.</span>
+            </div>
+          ) : (
+            <div className="riso-home-grocery-count">
+              <span className="home-grocery-number">{toBuy.length - checkedCount}</span>
+              <span className="riso-home-grocery-unit">
+                {toBuy.length === 0 ? "nothing to buy yet" : `thing${toBuy.length - checkedCount === 1 ? "" : "s"} left to grab`}
+              </span>
+            </div>
+          )}
           <div className="riso-home-grocery-track">
             <div className="riso-home-grocery-fill" style={{ width: `${progressPct}%` }} />
           </div>
           <p className="riso-home-grocery-line">
-            {checkedCount} in the cart{saleCount > 0 ? ` · ${saleCount} on sale` : ""}
+            {checkedCount} of {toBuy.length} in the cart{saleCount > 0 ? ` · ${saleCount} on sale` : ""}
           </p>
           <button type="button" className="riso-btn ink full" onClick={() => onNavigate("grocery")}>
             Open list →

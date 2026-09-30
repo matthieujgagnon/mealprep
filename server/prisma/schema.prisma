@@ -184,12 +184,15 @@ model GroceryAssignment {
 // (per-device only), which meant checking something off on one phone didn't
 // show up on another — this table is what makes the list actually sync.
 model GroceryCheckedItem {
-  id        String   @id @default(cuid())
-  userId    String? // nullable only pre-backfill - see Recipe.userId
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekStart String
-  core      String // normalized ingredient name, matches the grocery list's item.key
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String? // nullable only pre-backfill - see Recipe.userId
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart   String
+  core        String // normalized ingredient name, matches the grocery list's item.key
+  // Set by "Done shopping" once the item has been added to Inventory, so
+  // it stays checked (bought) without being added a second time.
+  inInventory Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   // Real unique constraint - see RecipeCategory's @@unique comment above.
   @@unique([userId, weekStart, core])
@@ -380,8 +383,10 @@ model PantryConsumptionLog {
 // How the Inventory page lays out its sections - the built-in
 // fridge/freezer/pantry ones and custom PantryLocations alike, keyed by the
 // same id items store in `location`. `label` renames a built-in section
-// (custom ones rename through PantryLocation.name); `size` is "third",
-// "half" or "full" of the row. Sections without a row use the defaults.
+// (custom ones rename through PantryLocation.name); `size` is its width in
+// columns of the 6-column grid ("1"-"6"; older rows say "third", "half" or
+// "full") and `height` its height in px (null = fits its items). Sections
+// without a row use the defaults.
 model InventorySectionLayout {
   id        String  @id @default(cuid())
   userId    String
@@ -390,6 +395,7 @@ model InventorySectionLayout {
   label     String?
   position  Int     @default(0)
   size      String  @default("half")
+  height    Int?
 
   @@unique([userId, sectionId])
 }

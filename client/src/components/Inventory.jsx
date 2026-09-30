@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { UNIT_OPTIONS } from "../lib/groceryList.js";
-import { parseQuantityInput } from "../lib/units.js";
+import { parseQuantityInput, unitLabel } from "../lib/units.js";
+import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { BottomSheet, HintStrip } from "./RisoControls.jsx";
@@ -17,18 +17,19 @@ const SHELF_LOCATIONS = [
   { id: "pantry", label: "Pantry" },
 ];
 
-// Pantry spans the full row by default (it tends to hold the most); every
-// other section starts at half.
-const DEFAULT_SIZE = { pantry: "full" };
-const SIZES = [
-  { id: "third", label: "1/3" },
-  { id: "half", label: "1/2" },
-  { id: "full", label: "Full" },
-];
+// Sections sit on a 6-column grid. Pantry spans the full row by default (it
+// tends to hold the most); every other section starts at half.
+const GRID_COLUMNS = 6;
+const LEGACY_SPAN = { third: 2, half: 3, full: 6 };
+function spanOf(size, id) {
+  const n = LEGACY_SPAN[size] ?? parseInt(size, 10);
+  if (n >= 1 && n <= GRID_COLUMNS) return n;
+  return id === "pantry" ? 6 : 3;
+}
 
 // Built-in shelves plus custom sections, in the user's saved order (anything
 // not in the saved layout yet - a brand-new section - goes at the end), with
-// their names and sizes.
+// their names, widths (in grid columns) and heights.
 function orderedSections(locations, layout) {
   const all = [
     ...SHELF_LOCATIONS.map((l) => ({ id: l.id, defaultLabel: l.label, custom: false })),
@@ -46,7 +47,8 @@ function orderedSections(locations, layout) {
         custom: sec.custom,
         label: sec.custom ? sec.defaultLabel : row?.label || sec.defaultLabel,
         defaultLabel: sec.defaultLabel,
-        size: row?.size || DEFAULT_SIZE[sec.id] || "half",
+        span: spanOf(row?.size, sec.id),
+        height: row?.height ?? null,
       };
     });
 }
@@ -55,7 +57,8 @@ function layoutPayload(sections) {
   return sections.map((s) => ({
     sectionId: s.id,
     label: !s.custom && s.label !== s.defaultLabel ? s.label : null,
-    size: s.size,
+    size: String(s.span),
+    height: s.height,
   }));
 }
 
@@ -173,14 +176,7 @@ function AddInventoryItemForm({ onAdd, onDone, sections }) {
         onChange={(e) => setQuantity(e.target.value)}
         style={{ width: 56 }}
       />
-      <select value={unit} onChange={(e) => setUnit(e.target.value)}>
-        <option value="">unit</option>
-        {UNIT_OPTIONS.map((u) => (
-          <option key={u} value={u}>
-            {u}
-          </option>
-        ))}
-      </select>
+      <UnitSelect aria-label="Unit" value={unit} onChange={setUnit} emptyLabel="unit" />
       <select value={location} onChange={(e) => setLocation(e.target.value)}>
         {sections.map((l) => (
           <option key={l.id} value={l.id}>
@@ -404,7 +400,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
           <span className="inv-card-name">{item.name}</span>
           {(item.quantity != null || item.unit) && (
             <span className="inv-card-qty">
-              {item.quantity ?? ""} {item.unit || ""}
+              {item.quantity ?? ""} {unitLabel(item.unit, item.quantity)}
             </span>
           )}
         </div>
@@ -428,7 +424,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
 }
 
 // Header controls for a section: rename, move earlier/later, size, remove.
-function SectionEditor({ location, isFirst, isLast, showSizes, onRename, onMove, onResize, onDelete, onDone }) {
+function SectionEditor({ location, onRename, onDelete, onDone }) {
   const [name, setName] = useState(location.label);
   const [error, setError] = useState(null);
 
@@ -462,30 +458,6 @@ function SectionEditor({ location, isFirst, isLast, showSizes, onRename, onMove,
         }}
       />
       <div className="inv-section-editor-row">
-        <div className="inv-section-editor-group" role="group" aria-label="Move section">
-          <button type="button" disabled={isFirst} onClick={() => onMove(-1)} aria-label="Move section earlier">
-            ←
-          </button>
-          <button type="button" disabled={isLast} onClick={() => onMove(1)} aria-label="Move section later">
-            →
-          </button>
-        </div>
-        {showSizes && (
-          <div className="inv-section-editor-group" role="group" aria-label="Section width">
-            {SIZES.map((sz) => (
-              <button
-                key={sz.id}
-                type="button"
-                className={location.size === sz.id ? "on" : ""}
-                aria-pressed={location.size === sz.id}
-                aria-label={`Width ${sz.label}`}
-                onClick={() => onResize(sz.id)}
-              >
-                {sz.label}
-              </button>
-            ))}
-          </div>
-        )}
         {location.custom && (
           <button type="button" className="inv-section-editor-remove" onClick={onDelete}>
             Remove
@@ -507,6 +479,81 @@ function SectionEditor({ location, isFirst, isLast, showSizes, onRename, onMove,
   );
 }
 
+// Drag the corner handle to resize: the width snaps to grid columns, the
+// height is free (the cards scroll inside when it's shorter than they
+// are). Arrow keys on the handle do the same, a column or 40px at a time.
+function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
+  function measure() {
+    const shelf = shelfRef.current;
+    const grid = shelf?.parentElement;
+    if (!grid) return null;
+    const style = getComputedStyle(grid);
+    const cols = style.gridTemplateColumns.split(" ").filter(Boolean).length;
+    const gap = parseFloat(style.columnGap) || 0;
+    return { cols, gap, colWidth: (grid.clientWidth - gap * (cols - 1)) / cols, shelf };
+  }
+
+  function onPointerDown(e) {
+    const m = measure();
+    if (!m) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = m.shelf.getBoundingClientRect().width;
+    const startHeight = m.shelf.getBoundingClientRect().height;
+    let next = { span, height };
+    document.body.classList.add("no-select");
+    const move = (ev) => {
+      const widthNow = startWidth + (ev.clientX - startX);
+      const newSpan =
+        m.cols === GRID_COLUMNS
+          ? Math.min(GRID_COLUMNS, Math.max(1, Math.round((widthNow + m.gap) / (m.colWidth + m.gap))))
+          : span;
+      const newHeight = Math.max(160, Math.round(startHeight + (ev.clientY - startY)));
+      next = { span: newSpan, height: newHeight };
+      onPreview(next);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.classList.remove("no-select");
+      onPreview(null);
+      if (next.span !== span || next.height !== height) onCommit(next);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  function onKeyDown(e) {
+    const shelfHeight = Math.round(shelfRef.current?.getBoundingClientRect().height || 240);
+    const steps = {
+      ArrowLeft: { span: Math.max(1, span - 1), height },
+      ArrowRight: { span: Math.min(GRID_COLUMNS, span + 1), height },
+      ArrowUp: { span, height: Math.max(160, (height ?? shelfHeight) - 40) },
+      ArrowDown: { span, height: (height ?? shelfHeight) + 40 },
+    };
+    if (e.key in steps) {
+      e.preventDefault();
+      onCommit(steps[e.key]);
+    } else if (e.key === "Home" || e.key === "Delete") {
+      e.preventDefault();
+      onCommit({ span, height: null }); // back to fitting its items
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className="inv-shelf-resize"
+      aria-label={label}
+      title="Drag to resize (arrow keys work too)"
+      onPointerDown={onPointerDown}
+      onKeyDown={onKeyDown}
+    />
+  );
+}
+
 function ShelfColumn({
   location,
   items,
@@ -516,8 +563,15 @@ function ShelfColumn({
   onToggleSelect,
   draggable = true,
   editorProps,
+  arrangeable,
+  onResize,
+  onStartMove,
+  onMoveByKey,
+  moveState,
 }) {
   const [editing, setEditing] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const shelfRef = useRef(null);
   const sorted = [...items].sort((a, b) => {
     const da = a.expiresAt ? daysUntil(a.expiresAt) : null;
     const db = b.expiresAt ? daysUntil(b.expiresAt) : null;
@@ -532,27 +586,56 @@ function ShelfColumn({
   // and custom sections work identically here.
   const { setNodeRef, isOver } = useDroppable({ id: `inv-shelf-${location.id}` });
 
-  // A full-width section lays its cards out in their own grid.
-  const wide = location.size === "full";
+  const span = preview?.span ?? location.span;
+  const height = preview ? preview.height : location.height;
+  // A wide section lays its cards out in their own grid.
+  const wide = span >= 4;
+  const classes = ["inv-shelf"];
+  if (wide) classes.push("wide");
+  if (height) classes.push("fixed-height");
+  if (isOver) classes.push("drop-active");
+  if (preview) classes.push("resizing");
+  if (moveState?.id === location.id) classes.push("moving");
+  if (moveState?.overId === location.id) classes.push(moveState.after ? "drop-after" : "drop-before");
 
   return (
     <div
-      ref={setNodeRef}
-      className={`inv-shelf size-${location.size}${wide ? " wide" : ""}${isOver ? " drop-active" : ""}`}
+      ref={(node) => {
+        setNodeRef(node);
+        shelfRef.current = node;
+      }}
+      className={classes.join(" ")}
+      style={{ "--span": span, "--span-md": span >= 4 ? 2 : 1, height: height ? `${height}px` : undefined }}
+      data-section-id={location.id}
       aria-label={`${location.label} section`}
     >
       {editing ? (
         <SectionEditor location={location} {...editorProps} onDone={() => setEditing(false)} />
       ) : (
         <div className="inv-shelf-header">
-          <span>{location.label}</span>
+          {arrangeable && (
+            <button
+              type="button"
+              className="inv-shelf-grip"
+              aria-label={`Move the "${location.label}" section`}
+              title="Drag to move this section (arrow keys work too)"
+              onPointerDown={(e) => onStartMove(location.id, e)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft" || e.key === "ArrowUp") onMoveByKey(location.id, -1, e);
+                if (e.key === "ArrowRight" || e.key === "ArrowDown") onMoveByKey(location.id, 1, e);
+              }}
+            >
+              ⠿
+            </button>
+          )}
+          <span className="inv-shelf-title">{location.label}</span>
           <span className="inv-shelf-count">{items.length}</span>
           <span className="inv-shelf-note">Soonest first</span>
           <button
             type="button"
             className="inv-shelf-edit"
             aria-label={`Edit the "${location.label}" section`}
-            title="Rename, move or resize this section"
+            title="Rename this section"
             onClick={() => setEditing(true)}
           >
             ✎<span className="inv-shelf-edit-text"> Edit section</span>
@@ -575,6 +658,16 @@ function ShelfColumn({
             />
           ))}
         </div>
+      )}
+      {arrangeable && (
+        <ResizeHandle
+          label={`Resize the "${location.label}" section`}
+          span={location.span}
+          height={location.height}
+          shelfRef={shelfRef}
+          onPreview={setPreview}
+          onCommit={onResize}
+        />
       )}
     </div>
   );
@@ -703,7 +796,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
           </button>
           <span>
             {item.quantity ?? 0}
-            {item.unit ? ` ${item.unit}` : ""}
+            {item.unit ? ` ${unitLabel(item.unit, item.quantity ?? 0)}` : ""}
           </span>
           <button type="button" onClick={() => adjustQty(1)} aria-label="Increase quantity">
             +
@@ -867,13 +960,55 @@ export function Inventory({
   const shelfLocations = sections;
   const labelFor = Object.fromEntries(sections.map((sec) => [sec.id, sec.label]));
 
-  function moveSection(id, dir) {
+  function moveSectionTo(id, overId, after) {
+    if (!overId || overId === id) return;
+    const moving = sections.find((sec) => sec.id === id);
+    const rest = sections.filter((sec) => sec.id !== id);
+    const at = rest.findIndex((sec) => sec.id === overId) + (after ? 1 : 0);
+    rest.splice(at, 0, moving);
+    onSaveLayout(layoutPayload(rest));
+  }
+
+  function moveSectionByKey(id, dir, e) {
+    e.preventDefault();
     const i = sections.findIndex((sec) => sec.id === id);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= sections.length) return;
-    const next = [...sections];
-    [next[i], next[j]] = [next[j], next[i]];
-    onSaveLayout(layoutPayload(next));
+    const target = sections[i + dir];
+    if (target) moveSectionTo(id, target.id, dir > 0);
+  }
+
+  // Drag a section by its grip onto another one: it lands before or after
+  // it, whichever half of that section the pointer is over.
+  const [moveState, setMoveState] = useState(null);
+  function startMove(id, e) {
+    e.preventDefault();
+    let state = { id, overId: null, after: false };
+    setMoveState(state);
+    document.body.classList.add("no-select");
+    const move = (ev) => {
+      const over = document
+        .elementsFromPoint(ev.clientX, ev.clientY)
+        .map((el) => el.closest?.("[data-section-id]"))
+        .find(Boolean);
+      const overId = over?.dataset.sectionId;
+      if (!overId || overId === id) {
+        state = { id, overId: null, after: false };
+      } else {
+        const r = over.getBoundingClientRect();
+        const sameRow = r.width < (over.parentElement?.clientWidth || 0) - 4;
+        const after = sameRow ? ev.clientX > r.left + r.width / 2 : ev.clientY > r.top + r.height / 2;
+        state = { id, overId, after };
+      }
+      setMoveState(state);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.classList.remove("no-select");
+      setMoveState(null);
+      moveSectionTo(state.id, state.overId, state.after);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
   }
 
   function updateSection(id, patch) {
@@ -948,17 +1083,17 @@ export function Inventory({
               onToggleSelect={toggleSelect}
               draggable={!isPhone}
               editorProps={{
-                isFirst: sections[0]?.id === loc.id,
-                isLast: sections[sections.length - 1]?.id === loc.id,
-                showSizes: !isPhone,
                 onRename: (name) => renameSection(loc, name),
-                onMove: (dir) => moveSection(loc.id, dir),
-                onResize: (size) => updateSection(loc.id, { size }),
                 onDelete: () => {
                   if (isPhone) setPhoneShelf("fridge");
                   onDeleteLocation(loc.id);
                 },
               }}
+              arrangeable={!isPhone}
+              onResize={({ span, height }) => updateSection(loc.id, { span, height })}
+              onStartMove={startMove}
+              onMoveByKey={moveSectionByKey}
+              moveState={moveState}
             />
           ))}
         <AddSectionTile onAdd={onAddLocation} />

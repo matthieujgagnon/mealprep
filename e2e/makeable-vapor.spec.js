@@ -106,7 +106,7 @@ test("the You need box adds one item or all of them, once each", async ({ page }
   await expect(page.getByText("Leek", { exact: false })).toHaveCount(1);
 });
 
-test("Plan places a recipe onto the planner without opening a picker", async ({ page }) => {
+test("Plan lets you pick the day and the meal", async ({ page }) => {
   await signUp(page, uniqueEmail("makeable-plan"));
   await addRecipe(page, "Riso Plan Dish", ["salmon"]);
 
@@ -115,13 +115,18 @@ test("Plan places a recipe onto the planner without opening a picker", async ({ 
   await addAlsoHave(page, "salmon");
   await page.waitForTimeout(200);
 
-  await page
-    .locator(".riso-makeable-card", { hasText: "Riso Plan Dish" })
-    .getByRole("button", { name: "Plan", exact: true })
-    .click();
-  await page.waitForTimeout(300);
+  const card = page.locator(".riso-makeable-card", { hasText: "Riso Plan Dish" });
+  await card.getByRole("button", { name: "Plan", exact: true }).click();
+  // Sunday is never in the past this week.
+  await card.getByRole("button", { name: /^Sun \d+/ }).click();
+  await card.getByRole("button", { name: "Lunch", exact: true }).click();
+  await card.getByRole("button", { name: "Plan for Sun · Lunch" }).click();
+  await expect(card.getByRole("button", { name: "✓ Sun · Lunch" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Planner", exact: true }).click();
-  await page.waitForTimeout(200);
-  await expect(page.getByText("Riso Plan Dish").first()).toBeVisible();
+  const monday = new Date();
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const week = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+  const entries = await (await page.request.get(`/api/planner?week=${week}`)).json();
+  const placed = entries.find((e) => e.recipe?.title === "Riso Plan Dish");
+  expect(placed).toMatchObject({ dayOfWeek: 6, mealType: "lunch" });
 });

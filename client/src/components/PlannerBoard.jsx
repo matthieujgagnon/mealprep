@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { HintStrip } from "./RisoControls.jsx";
 import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, shiftWeek } from "../lib/dates.js";
-import { MEAL_TYPES, isBlankMarker, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
+import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 
@@ -79,8 +79,6 @@ export function PlannerHeader({
   onCopyLastWeek,
   emptyCount,
   onFillEmptySlots,
-  groceryCount,
-  onGoToGrocery,
 }) {
   return (
     <>
@@ -100,16 +98,13 @@ export function PlannerHeader({
           <button type="button" className="riso-btn" onClick={onFillEmptySlots} disabled={emptyCount === 0}>
             {emptyCount > 0 ? `Fill ${emptyCount} empty slot${emptyCount === 1 ? "" : "s"}` : "All slots filled ✓"}
           </button>
-          <button type="button" className="riso-btn primary" onClick={onGoToGrocery}>
-            Build grocery list · {groceryCount}
-          </button>
         </div>
       </div>
 
-      <HintStrip userId={user.id} screenKey="planner-v3">
-        Drag a recipe from the tray onto any slot, or click an empty slot and pick one. Drag meals between
-        days to move them. A blue outline means you already have everything for that meal, so it stays off
-        the grocery list.
+      <HintStrip userId={user.id} screenKey="planner-v4">
+        Drag a recipe from the tray onto any slot, or drag meals between days to move them. Click an empty
+        slot to write on it (like "Hockey pool"); click a blank card again to clear it. The grocery list
+        builds itself from what's planned. A blue outline means you already have everything for that meal.
       </HintStrip>
     </>
   );
@@ -187,38 +182,58 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
   );
 }
 
-function PlannerNoteCard({ entry, isPast, onEdit, onRemove }) {
+// A slot you've written on (or clicked to leave blank). Click written text
+// to edit it; click a blank card to clear the slot again.
+export function NoteTextarea({ initial, label, onSave, className }) {
+  return (
+    <textarea
+      autoFocus
+      className={className}
+      aria-label={label}
+      defaultValue={initial}
+      placeholder="Write anything…"
+      rows={2}
+      maxLength={80}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onBlur={(e) => onSave(e.target.value)}
+      onKeyDown={(e) => {
+        if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
+function PlannerNoteCard({ entry, isPast, editing, onEdit, onSave, onClear }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
     data: { recipe: entry.recipe, entryId: entry.id },
+    disabled: editing,
   });
-  const text = isCustomNote(entry) ? entry.recipe.title : "Skipped";
+  const text = isCustomNote(entry) ? entry.recipe.title : "";
+
+  if (editing) {
+    return (
+      <div ref={setNodeRef} className={`riso-planner-note editing${isPast ? " past" : ""}`}>
+        <NoteTextarea initial={text} label="Write on this slot" onSave={onSave} className="riso-planner-note-input" />
+      </div>
+    );
+  }
 
   return (
     <div
       ref={setNodeRef}
-      className={`riso-planner-note${isPast ? " past" : ""}${isDragging ? " dragging" : ""}`}
-      onClick={onEdit}
-      title="Click to edit the note"
+      className={`riso-planner-note${text ? "" : " blank"}${isPast ? " past" : ""}${isDragging ? " dragging" : ""}`}
+      onClick={text ? onEdit : onClear}
+      title={text ? "Click to edit" : "Click to clear this slot"}
       {...listeners}
       {...attributes}
-      aria-label={`Note: ${text} - edit, or drag to another slot`}
+      aria-label={text ? `${text} - click to edit, or drag to another slot` : "Blank - click to clear"}
     >
-      <button
-        type="button"
-        className="riso-planner-note-remove"
-        aria-label={`Remove note "${text}"`}
-        title="Remove"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-      >
-        ×
-      </button>
-      <span className="riso-planner-note-label">✎ NOTE</span>
-      <span className="riso-planner-note-text">{text}</span>
+      {text && <span className="riso-planner-note-text">{text}</span>}
     </div>
   );
 }
@@ -229,11 +244,13 @@ function PlannerCell({
   entries,
   staleIds,
   isPast,
-  selected,
-  onSelect,
   onCardClick,
   onRemove,
   onCycleState,
+  editingNoteId,
+  onWriteInSlot,
+  onEditNote,
+  onSaveNote,
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}-${mealType}` });
   // One thing per slot. Older plans can hold two; show the first, and
@@ -245,18 +262,18 @@ function PlannerCell({
       {!entry ? (
         <button
           type="button"
-          className={`riso-planner-cell-empty${selected ? " selected" : ""}`}
-          aria-pressed={selected}
-          onClick={() => onSelect(selected ? null : { dayOfWeek: dayIndex, mealType })}
-        >
-          {selected ? "pick a recipe →" : "+ add"}
-        </button>
+          className="riso-planner-cell-empty"
+          aria-label={`Write on ${MEAL_LABEL[mealType]}, ${DAY_SHORT[dayIndex]}`}
+          onClick={() => onWriteInSlot({ dayOfWeek: dayIndex, mealType })}
+        />
       ) : isNoteEntry(entry) ? (
         <PlannerNoteCard
           entry={entry}
           isPast={isPast}
-          onEdit={() => onSelect({ dayOfWeek: dayIndex, mealType, note: isBlankMarker(entry) ? "" : entry.recipe.title })}
-          onRemove={() => onRemove(entry.id)}
+          editing={editingNoteId === entry.id}
+          onEdit={() => onEditNote(entry.id)}
+          onSave={(text) => onSaveNote(entry.id, text)}
+          onClear={() => onRemove(entry.id)}
         />
       ) : (
         <PlannerMealCard
@@ -272,7 +289,17 @@ function PlannerCell({
   );
 }
 
-export function PlannerBoard({ entries, weekStart, target, onSelectSlot, onCardClick, onRemove, onCycleState }) {
+export function PlannerBoard({
+  entries,
+  weekStart,
+  onCardClick,
+  onRemove,
+  onCycleState,
+  editingNoteId,
+  onWriteInSlot,
+  onEditNote,
+  onSaveNote,
+}) {
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
 
@@ -308,11 +335,13 @@ export function PlannerBoard({ entries, weekStart, target, onSelectSlot, onCardC
                   entries={grouped[slotKey(dayIndex, meal.id)] || []}
                   staleIds={staleIds}
                   isPast={currentWeek && dayIndex < today}
-                  selected={target?.dayOfWeek === dayIndex && target?.mealType === meal.id}
-                  onSelect={onSelectSlot}
                   onCardClick={onCardClick}
                   onRemove={onRemove}
                   onCycleState={onCycleState}
+                  editingNoteId={editingNoteId}
+                  onWriteInSlot={onWriteInSlot}
+                  onEditNote={onEditNote}
+                  onSaveNote={onSaveNote}
                 />
               ))}
             </Fragment>
@@ -329,7 +358,8 @@ export function PlannerBoard({ entries, weekStart, target, onSelectSlot, onCardC
           <span className="riso-planner-legend-leftover">leftover</span>From an earlier meal
         </span>
         <span className="riso-planner-legend-item">
-          <span className="riso-planner-legend-note">✎ NOTE</span>Your own text
+          <span className="riso-planner-legend-blank" />
+          Click an empty slot to write on it
         </span>
         <span className="riso-planner-legend-scroll">scroll for the weekend →</span>
       </div>
