@@ -22,13 +22,13 @@ async function addRecipe(page, title, ingredients) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
-  const nameInputs = page.locator('input[placeholder="Name (e.g. butter)"]');
+  const nameInputs = page.locator('input[aria-label="Ingredient"]');
   for (let i = 0; i < ingredients.length; i++) {
     if (i > 0) await page.getByRole("button", { name: /\+ Add ingredient/i }).last().click();
     await nameInputs.nth(i).fill(ingredients[i]);
   }
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await expect(page.getByText(title).first()).toBeVisible();
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.locator(".riso-recipe-card", { hasText: title })).toBeVisible();
 }
 
 async function addAlsoHave(page, name) {

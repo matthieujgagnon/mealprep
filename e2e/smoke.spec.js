@@ -32,8 +32,8 @@ test("add a manual recipe and see it in the cookbook", async ({ page }) => {
   await page.getByRole("button", { name: "+ New recipe" }).click();
 
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Smoke Test Soup");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "carrots");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
+  await page.fill('input[aria-label="Ingredient"]', "carrots");
+  await page.getByRole("button", { name: "Save recipe" }).click();
 
   await expect(page.getByText("Smoke Test Soup")).toBeVisible();
 });

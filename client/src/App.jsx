@@ -16,7 +16,7 @@ import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { core } from "./lib/similarRecipes.js";
 import { Home } from "./components/Home.jsx";
-import { ManualRecipeForm } from "./components/ManualRecipeForm.jsx";
+import { RecipeEditor } from "./components/RecipeEditor.jsx";
 import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
@@ -24,7 +24,7 @@ import { PlannerTray } from "./components/PlannerTray.jsx";
 import { PlannerMobile } from "./components/PlannerMobile.jsx";
 import { useIsPhone } from "./hooks/useIsPhone.js";
 import { emptyUpcomingSlots, findNextEmptySlot, isCustomNote, todayIndex } from "./lib/plannerSlots.js";
-import { isBreakfastRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
+import { isBreakfastRecipe, isPrepRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
@@ -156,6 +156,10 @@ export default function App({ user, onLogout }) {
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("All");
+  // The full-page recipe editor on the Recipes tab: { recipe } to edit one,
+  // { recipe: null } for a new one, null when closed.
+  const [recipeEditor, setRecipeEditor] = useState(null);
+  const editorDirty = useRef(false);
   const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart
   const [groceryOverrides, setGroceryOverrides] = useState([]); // this week's removed rows / own quantities (GroceryItemOverride)
   const [isDragActive, setIsDragActive] = useState(false);
@@ -268,8 +272,37 @@ export default function App({ user, onLogout }) {
     setRecipes((prev) => [recipe, ...prev]);
   }
 
-  function handleManualCreated(recipe) {
-    setRecipes((prev) => [recipe, ...prev]);
+  function openRecipeEditor(recipe) {
+    editorDirty.current = false;
+    setActiveRecipe(null);
+    setRecipeEditor({ recipe: recipe || null });
+    setTab("collection");
+  }
+
+  // An edit goes back to the recipe's card (where it was opened from); a
+  // new recipe goes back to the list, where it now sits first.
+  function handleEditorSaved(saved, isNew) {
+    setRecipeEditor(null);
+    if (isNew) {
+      setRecipes((prev) => [saved, ...prev]);
+      return;
+    }
+    setRecipes((prev) => prev.map((r) => (r.id === saved.id ? { ...r, ...saved } : r)));
+    openRecipe(saved);
+  }
+
+  function handleEditorCancel() {
+    const editing = recipeEditor?.recipe;
+    setRecipeEditor(null);
+    if (editing) openRecipe(recipes.find((r) => r.id === editing.id) || editing);
+  }
+
+  // Header nav: leaving the editor with unsaved changes asks first.
+  function goToTab(next) {
+    if (recipeEditor && editorDirty.current && !window.confirm("Leave without saving your changes?")) return;
+    setRecipeEditor(null);
+    editorDirty.current = false;
+    setTab(next);
   }
 
   async function handleDeleteRecipe(id) {
@@ -487,7 +520,7 @@ export default function App({ user, onLogout }) {
   }
 
   // The tray's "+": the selected slot if there is one, otherwise the next
-  // empty upcoming slot (supper first).
+  // empty upcoming slot (dinner first).
   async function handlePlaceFromTray(recipe) {
     const slot = plannerTarget || findNextEmptySlot(plannerEntries, weekStart);
     if (!slot) {
@@ -643,8 +676,8 @@ export default function App({ user, onLogout }) {
       saleCores: new Set(),
     });
     const breakfast = ranked.filter((x) => isBreakfastRecipe(x.recipe));
-    const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe));
-    const mains = other.length > 0 ? other : ranked;
+    const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe) && !isPrepRecipe(x.recipe));
+    const mains = other.length > 0 ? other : ranked.filter((x) => !isPrepRecipe(x.recipe));
     let b = 0;
     let o = 0;
     const plan = [];
@@ -653,6 +686,7 @@ export default function App({ user, onLogout }) {
         if (breakfast.length === 0) continue;
         plan.push({ slot, recipe: breakfast[b++ % breakfast.length].recipe });
       } else {
+        if (mains.length === 0) continue;
         plan.push({ slot, recipe: mains[o++ % mains.length].recipe });
       }
     }
@@ -741,43 +775,43 @@ export default function App({ user, onLogout }) {
           <nav className="tabs">
             <button
               className={`tab${tab === "home" ? " active" : ""}`}
-              onClick={() => setTab("home")}
+              onClick={() => goToTab("home")}
             >
               Home
             </button>
             <button
               className={`tab${tab === "collection" ? " active" : ""}`}
-              onClick={() => setTab("collection")}
+              onClick={() => goToTab("collection")}
             >
               Recipes
             </button>
             <button
               className={`tab${tab === "planner" ? " active" : ""}`}
-              onClick={() => setTab("planner")}
+              onClick={() => goToTab("planner")}
             >
               Planner
             </button>
             <button
               className={`tab${tab === "makeable" ? " active" : ""}`}
-              onClick={() => setTab("makeable")}
+              onClick={() => goToTab("makeable")}
             >
               Makeable
             </button>
             <button
               className={`tab${tab === "grocery" ? " active" : ""}`}
-              onClick={() => setTab("grocery")}
+              onClick={() => goToTab("grocery")}
             >
               Grocery
             </button>
             <button
               className={`tab${tab === "flyers" ? " active" : ""}`}
-              onClick={() => setTab("flyers")}
+              onClick={() => goToTab("flyers")}
             >
               Flyers
             </button>
             <button
               className={`tab${tab === "inventory" ? " active" : ""}`}
-              onClick={() => setTab("inventory")}
+              onClick={() => goToTab("inventory")}
             >
               Inventory
             </button>
@@ -870,7 +904,21 @@ export default function App({ user, onLogout }) {
           />
         )}
 
-        {tab === "collection" && (
+        {tab === "collection" && recipeEditor && (
+          <RecipeEditor
+            key={recipeEditor.recipe?.id || "new"}
+            recipe={recipeEditor.recipe}
+            pantryInventory={pantryInventory}
+            customStaples={customStaples}
+            onSaved={handleEditorSaved}
+            onCancel={handleEditorCancel}
+            onDirtyChange={(d) => {
+              editorDirty.current = d;
+            }}
+          />
+        )}
+
+        {tab === "collection" && !recipeEditor && (
           <Recipes
             user={user}
             recipes={recipes}
@@ -883,7 +931,7 @@ export default function App({ user, onLogout }) {
             onFilterChange={setRecipeFilter}
             onSelectRecipe={openRecipe}
             onImported={handleImported}
-            onManualCreated={handleManualCreated}
+            onNewRecipe={() => openRecipeEditor(null)}
           />
         )}
 
@@ -981,6 +1029,7 @@ export default function App({ user, onLogout }) {
             weekStart={weekStart}
             onSelectRecipe={openRecipe}
             onRecipeUpdated={handleRecipeUpdated}
+            onEdit={openRecipeEditor}
             onDelete={async (id) => {
               await handleDeleteRecipe(id);
               openRecipe(null);

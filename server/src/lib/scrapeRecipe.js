@@ -530,6 +530,18 @@ function isGroupHeader(text) {
   return false;
 }
 
+// A whole ingredient list pasted into the recipe editor ("Paste a whole
+// list") - one ingredient per line, same parser an import uses, so "For the
+// sauce:" style lines become section headers here too. Bullet markers and
+// blank lines from copying out of another app are dropped first.
+export function parseIngredientText(text) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[*\-•▢□☐]\s*/, "").trim())
+    .filter(Boolean);
+  return parseIngredientsWithGroups(lines, null);
+}
+
 function parseIngredientsWithGroups(rawLines, domGroups) {
   const hasJsonLdHeaders = rawLines.some((line) => isGroupHeader(decodeHtmlEntities(line)));
 

@@ -12,7 +12,7 @@ const ALL_MEALS_KEY = "mealprep-home-all-meals";
 const STRIP_MEALS = [
   { id: "breakfast", short: "B", label: "Breakfast" },
   { id: "lunch", short: "L", label: "Lunch" },
-  { id: "dinner", short: "S", label: "Supper" },
+  { id: "dinner", short: "D", label: "Dinner" },
 ];
 const RESTAURANT_TITLE = "🍽️ Restaurant";
 
@@ -156,7 +156,7 @@ export function Home({
   const [stripWeekOffset, setStripWeekOffset] = useState(0);
   const stripWeekStart = shiftWeek(weekStart, stripWeekOffset);
   const [stripEntries, setStripEntries] = useState([]);
-  // The week strip shows suppers; "all meals" (a quiet link, remembered on
+  // The week strip shows dinners; "all meals" (a quiet link, remembered on
   // this device) shows breakfast and lunch too.
   const [allMeals, setAllMeals] = useState(() => {
     try {
@@ -266,7 +266,7 @@ export function Home({
                 <img src={tonightEntry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-home-hero-photo" />
               )}
               <div className="riso-home-hero-info">
-                <div className="riso-eyebrow on-accent">Tonight · Supper</div>
+                <div className="riso-eyebrow on-accent">Tonight · Dinner</div>
                 <h2 className="riso-home-hero-title">{tonightEntry.recipe.title}</h2>
                 <p className="riso-home-hero-blurb">
                   {tonightEntry.recipe.isPlaceholder
@@ -312,7 +312,7 @@ export function Home({
             </div>
           ) : (
             <div className="riso-home-hero-empty">
-              <div className="riso-eyebrow on-accent">Tonight · Supper</div>
+              <div className="riso-eyebrow on-accent">Tonight · Dinner</div>
               <p>{tonightBlank ? "Marked as no meal planned tonight." : "Nothing planned for tonight yet."}</p>
               <div className="riso-home-hero-actions">
                 <button type="button" className="riso-btn hot" onClick={() => onNavigate("planner")}>
@@ -362,7 +362,7 @@ export function Home({
       <section className="riso-home-week">
         <div className="riso-home-week-header">
           <h3>
-            {stripWeekOffset === 0 ? "This week's" : "Next week's"} {allMeals ? "meals" : "suppers"}{" "}
+            {stripWeekOffset === 0 ? "This week's" : "Next week's"} {allMeals ? "meals" : "dinners"}{" "}
             <span className="riso-home-week-sub">
               ·{" "}
               {allMeals
@@ -386,7 +386,7 @@ export function Home({
               Next week
             </button>
             <button type="button" className="riso-home-week-toggle" aria-pressed={allMeals} onClick={toggleAllMeals}>
-              {allMeals ? "Suppers only" : "All meals"}
+              {allMeals ? "Dinners only" : "All meals"}
             </button>
           </div>
         </div>

@@ -22,12 +22,12 @@ async function addRecipe(page, { title, servings, steps }) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
-  await page.fill('input[placeholder="e.g. 4"]', servings);
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");
-  await page.fill('input[placeholder="Qty (1/4)"]', "2");
-  await page.fill('textarea[placeholder*="Preheat oven"]', steps);
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await page.waitForTimeout(300);
+  await page.fill('input[aria-label="FRIDGE LIFE"]', servings);
+  await page.fill('input[aria-label="Ingredient"]', "eggs");
+  await page.fill('input[aria-label="Quantity"]', "2");
+  await page.fill('textarea[placeholder="Describe this step"]', steps);
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
   await page.getByText(title, { exact: true }).click();
   await page.waitForTimeout(300);
 }
@@ -94,13 +94,13 @@ test("recipe notes render legibly on the light card", async ({ page }) => {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Redesign Notes Test");
-  await page.fill('input[placeholder="e.g. 4"]', "2");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "eggs");
-  await page.fill('input[placeholder="Qty (1/4)"]', "2");
-  await page.fill('textarea[placeholder*="Preheat oven"]', "Serve immediately.");
+  await page.fill('input[aria-label="FRIDGE LIFE"]', "2");
+  await page.fill('input[aria-label="Ingredient"]', "eggs");
+  await page.fill('input[aria-label="Quantity"]', "2");
+  await page.fill('textarea[placeholder="Describe this step"]', "Serve immediately.");
   await page.fill('textarea[placeholder*="Used less salt"]', "Great with a squeeze of lemon.");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
   await page.getByText("Redesign Notes Test", { exact: true }).click();
   await page.waitForTimeout(300);
 

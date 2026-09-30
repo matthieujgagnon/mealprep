@@ -52,10 +52,8 @@ test("cards show the total time, and Quickest puts recipes without a time last",
   await page.getByLabel("Sort recipes").selectOption({ label: "Quickest" });
 
   await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Quick salad", "Slow braise", "No time given"]);
-  await expect(page.locator(".riso-recipe-card", { hasText: "Slow braise" }).locator(".riso-recipe-card-time")).toHaveText("⏱ 3 h");
-  await expect(page.locator(".riso-recipe-card", { hasText: "No time given" }).locator(".riso-recipe-card-time")).toHaveText(
-    "time not set"
-  );
+  await expect(page.locator(".riso-recipe-card", { hasText: "Slow braise" }).locator(".riso-recipe-chip.time")).toHaveText("⏱3 h");
+  await expect(page.locator(".riso-recipe-card", { hasText: "No time given" }).locator(".riso-recipe-chip.time")).toHaveText("⏱add time");
 });
 
 test("an ingredient can be a count of units", async ({ page }) => {
@@ -69,17 +67,17 @@ test("an ingredient can be a count of units", async ({ page }) => {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Stuffed peppers");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "red bell pepper");
-  await page.fill('input[placeholder="Qty (1/4)"]', "3");
+  await page.fill('input[aria-label="Ingredient"]', "red bell pepper");
+  await page.fill('input[aria-label="Quantity"]', "3");
   await page.getByLabel("Unit").first().selectOption("unit");
-  await page.fill('textarea[placeholder*="Preheat oven"]', "Stuff them.");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
+  await page.fill('textarea[placeholder="Describe this step"]', "Stuff them.");
+  await page.getByRole("button", { name: "Save recipe" }).click();
 
   await page.locator(".riso-recipe-card", { hasText: "Stuffed peppers" }).click();
   await expect(page.locator(".riso-rc-ingredient-qty").first()).toHaveText("3 units");
 });
 
-test("any photo can be made the main one", async ({ page }) => {
+test("any photo can be made the cover, and photos keep their order", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-photo+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
@@ -90,17 +88,21 @@ test("any photo can be made the main one", async ({ page }) => {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Two photo stew");
-  await page.getByLabel("Main photo link").fill("https://example.com/first.jpg");
-  await page.getByRole("button", { name: "+ Add photo" }).click();
-  await page.getByLabel("Photo 2 link").fill("https://example.com/second.jpg");
-  await page.getByRole("button", { name: "Make main" }).click();
-  await expect(page.getByLabel("Main photo link")).toHaveValue("https://example.com/second.jpg");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', "beef");
-  await page.fill('textarea[placeholder*="Preheat oven"]', "Stew it.");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
+  await page.getByLabel("Photo URL").fill("https://example.com/first.jpg");
+  await page.getByLabel("Photo URL").press("Enter");
+  await page.getByLabel("Photo URL").fill("https://example.com/second.jpg");
+  await page.getByLabel("Photo URL").press("Enter");
+  await expect(page.locator(".re-photo")).toHaveCount(2);
+  await expect(page.locator(".re-photo").first()).toHaveClass(/cover/);
+  await page.getByRole("button", { name: "Make this the cover photo" }).click();
+  await expect(page.locator(".re-photo").nth(1)).toHaveClass(/cover/);
+  await page.fill('input[aria-label="Ingredient"]', "beef");
+  await page.fill('textarea[placeholder="Describe this step"]', "Stew it.");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.locator(".riso-recipe-card", { hasText: "Two photo stew" })).toBeVisible();
 
   const recipes = await (await page.request.get("/api/recipes")).json();
   const saved = recipes.find((r) => r.title === "Two photo stew");
   expect(saved.photoUrl).toBe("https://example.com/second.jpg");
-  expect(saved.photos).toEqual(["https://example.com/second.jpg", "https://example.com/first.jpg"]);
+  expect(saved.photos).toEqual(["https://example.com/first.jpg", "https://example.com/second.jpg"]);
 });

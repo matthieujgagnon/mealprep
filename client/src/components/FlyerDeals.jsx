@@ -12,7 +12,7 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEAL_TYPES = [
   { id: "breakfast", label: "Breakfast" },
   { id: "lunch", label: "Lunch" },
-  { id: "dinner", label: "Supper" },
+  { id: "dinner", label: "Dinner" },
 ];
 
 const ENDS_SOON_DAYS = 2;

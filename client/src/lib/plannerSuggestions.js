@@ -3,13 +3,19 @@ import { daysUntil } from "./pantryInventory.js";
 import { capitalize } from "./groceryList.js";
 import { recipeHaveStats } from "./onHand.js";
 import { isNoteEntry } from "./plannerSlots.js";
+import { recipeSlot } from "./mealSlots.js";
 
 // The planner looks a week ahead, so "expiring" here is anything going off
 // within 7 days - wider than the 3-day "use soon" line elsewhere.
 const EXPIRING_WITHIN_DAYS = 7;
 
 export function isBreakfastRecipe(recipe) {
-  return recipe.tags?.some((t) => t.toLowerCase() === "breakfast") || false;
+  return recipeSlot(recipe) === "breakfast";
+}
+
+// Pantry / Prep recipes (pickles, sauces, roasted veg) never fill a meal.
+export function isPrepRecipe(recipe) {
+  return recipeSlot(recipe) === "prep";
 }
 
 export function formatTrayTime(minutes) {

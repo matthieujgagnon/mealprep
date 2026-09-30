@@ -39,6 +39,14 @@ export const api = {
   updateRecipe: (id, payload) =>
     request(`/recipes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteRecipe: (id) => request(`/recipes/${id}`, { method: "DELETE" }),
+  // Reads a recipe link without saving it (the editor's Re-import).
+  scrapeRecipe: (url) =>
+    request("/recipes/scrape", { method: "POST", body: JSON.stringify({ url }) }),
+  parseIngredients: (text) =>
+    request("/recipes/parse-ingredients", { method: "POST", body: JSON.stringify({ text }) }),
+  // Body is the image itself; returns { url } to store as a recipe photo.
+  uploadRecipeImage: (blob) =>
+    request("/recipe-images", { method: "POST", headers: { "Content-Type": blob.type }, body: blob }),
 
   listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
   placeOnPlanner: (payload) =>

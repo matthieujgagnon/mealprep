@@ -28,12 +28,12 @@ async function addRecipe(page, title, ingredientName) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
-  await page.fill('input[placeholder="e.g. 4"]', "4");
-  await page.fill('input[placeholder="Name (e.g. butter)"]', ingredientName);
-  await page.fill('input[placeholder="Qty (1/4)"]', "1");
-  await page.fill('textarea[placeholder*="Preheat oven"]', "Cook it.");
-  await page.getByRole("button", { name: "Save to cookbook" }).click();
-  await page.waitForTimeout(300);
+  await page.fill('input[aria-label="FRIDGE LIFE"]', "4");
+  await page.fill('input[aria-label="Ingredient"]', ingredientName);
+  await page.fill('input[aria-label="Quantity"]', "1");
+  await page.fill('textarea[placeholder="Describe this step"]', "Cook it.");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 }
 
 const weeksAgo = (n) => new Date(Date.now() - n * 7 * 24 * 60 * 60 * 1000);
