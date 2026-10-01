@@ -13648,6 +13648,13 @@ body.no-select {
   .riso-ing-variant-price {
     justify-self: end;
   }
+
+  /* No wider than + List, so the name keeps its width. */
+  .riso-ing-variant-price small.per {
+    padding: 1px 3px;
+    font-size: 10px;
+    letter-spacing: -0.02em;
+  }
 }
 
 /* Import check (Flyers): what the latest import brought in. */
