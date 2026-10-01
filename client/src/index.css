@@ -12905,6 +12905,20 @@ body.no-select {
   box-shadow: 3px 3px 0 var(--riso-accent);
 }
 
+/* "Sales only": yellow like the savings badges, and set apart from the
+   slice chips that follow. */
+.riso-slice-chip.sale {
+  margin-right: 10px;
+  background: var(--riso-yellow);
+  color: #16181f;
+  font-weight: 800;
+}
+
+.riso-slice-chip.sale.active {
+  background: var(--riso-ink);
+  color: var(--riso-yellow);
+}
+
 .riso-flyer-summary {
   margin: 0;
   font: 500 12px var(--riso-font-mono);
@@ -13078,7 +13092,8 @@ body.no-select {
 }
 
 .riso-ing-ends,
-.riso-ing-low {
+.riso-ing-low,
+.riso-ing-save {
   position: absolute;
   top: 10px;
   border: 2px solid var(--riso-ink);
@@ -13097,6 +13112,16 @@ body.no-select {
 .riso-ing-low {
   right: 10px;
   background: var(--riso-green);
+}
+
+/* The best real saving on this ingredient this week ("41% OFF"). */
+.riso-ing-save {
+  right: 10px;
+  background: var(--riso-yellow);
+}
+
+.riso-ing-low + .riso-ing-save {
+  top: 36px;
 }
 
 .riso-ing-head {
