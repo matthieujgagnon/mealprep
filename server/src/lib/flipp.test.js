@@ -7,6 +7,7 @@ import {
   parseFlippPrice,
   readFlyerItems,
   readFlyerList,
+  regularPriceFor,
   toMatchName,
 } from "./flipp.js";
 
@@ -116,6 +117,7 @@ describe("normalizeFlippItem", () => {
       unitBasis: "lb",
       category: "protein",
       validUntil: "2026-09-30",
+      regularPrice: null,
       imageUrl: "https://f.wishabi.net/c1.jpg",
     });
     expect(normalizeFlippItem({ name: "", price: "1" }, flyer)).toBe(null);
@@ -158,5 +160,21 @@ describe("fetchFlippDeals", () => {
     const result = await fetchFlippDeals({ postalCode: "H2T2S3", fetchImpl: failing });
     expect(result.flyers.map((f) => f.merchant)).toEqual(["Metro", "Super C", "IGA"]);
     expect(result.failed).toEqual(["IGA: Flipp answered 500 for /flipp/flyers/104"]);
+  });
+});
+
+describe("regularPriceFor", () => {
+  const priced = { unitPrice: 4.49 };
+  it("reads the usual price from Save / Reg. texts", () => {
+    expect(regularPriceFor({ sale_story: "SAVE $2.00" }, priced)).toBe(6.49);
+    expect(regularPriceFor({ sale_story: "Économisez 1,50 $" }, priced)).toBe(5.99);
+    expect(regularPriceFor({ sale_story: "SAVE 25%" }, priced)).toBe(5.99);
+    expect(regularPriceFor({ description: "Reg. $6.99" }, priced)).toBe(6.99);
+  });
+
+  it("ignores up-to savings and prices that don't add up", () => {
+    expect(regularPriceFor({ sale_story: "SAVE UP TO $3" }, priced)).toBeNull();
+    expect(regularPriceFor({ description: "Reg. $3.99" }, priced)).toBeNull();
+    expect(regularPriceFor({}, priced)).toBeNull();
   });
 });

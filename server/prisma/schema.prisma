@@ -259,6 +259,7 @@ model FlyerDeal {
   unitPrice  Float? // price/quantity reduced to a single number in unitBasis's unit (e.g. "2 for $5" -> 2.5, "900g for $1.99" -> converted to price per lb) — null when extraction couldn't confidently reduce the printed price to one comparable number
   unitBasis  String? // "lb" | "each" | "L" — the unit unitPrice is expressed in, so deals are only ever compared within the same basis; null alongside a null unitPrice
   validUntil String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
+  regularPrice Float? // the usual price the flyer itself states ("Save $2.00", "Reg. $6.99"), in the same unit as unitPrice - null when it doesn't say
   imageUrl   String? // this item's own photo on the flyer, when the source provides one per item (currently only Le Rabais, which hosts one) — null for manually-uploaded flyers, which show the whole uploaded page instead (see FlyerUpload)
   isCurrent  Boolean  @default(true) // true = still on the active flyer for its source; a re-upload/re-import under the same source flips its previous rows to false instead of deleting them, so price history accumulates over time rather than being wiped every week. GET /api/deals (and anything showing "what's on sale now") filters to isCurrent: true; a superseded row is kept only so later price-history features (6-month low/high, "is this a real deal") have real data to compare against.
   createdAt  DateTime @default(now())

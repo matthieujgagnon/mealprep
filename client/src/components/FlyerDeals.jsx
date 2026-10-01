@@ -80,16 +80,51 @@ function endsSoonLabel(days) {
 // verdict/color that position earns - see design_handoff_riso/README.md's
 // "Price meter" component spec. null when there's no real range yet
 // (isNew, or no unitPrice at all) - the caller shows "NEW" instead.
+// "Reg. $6.49 · 31% off" when the flyer states the usual price.
+function regularLabel(deal) {
+  if (!deal.regularPrice || deal.unitPrice == null) return null;
+  const off = Math.round(((deal.regularPrice - deal.unitPrice) / deal.regularPrice) * 100);
+  const per = deal.unitBasis && deal.unitBasis !== "each" ? `/${deal.unitBasis}` : "";
+  return `Reg. ${money(deal.regularPrice)}${per} · ${off}% off`;
+}
+
+// Where a deal's usual range comes from (GET /api/deals -> rangeSource).
+const RANGE_SOURCE = {
+  store: { short: "6 mo · this store", long: "at this store" },
+  stores: { short: "6 mo · all stores", long: "at every store" },
+  quebec: { short: "Quebec avg · 6 mo", long: "Quebec average (Statistics Canada)" },
+};
+
+// The deal's price on the same footing as its range: per lb / per L when
+// the package size is known.
+const comparePriceOf = (deal) => deal.comparePrice ?? deal.unitPrice;
+const compareBasisOf = (deal) => deal.compareBasis || deal.unitBasis;
+
 function meterFor(deal) {
   if (deal.isNew || deal.sixMonthLow == null || deal.sixMonthHigh == null) return null;
-  const { sixMonthLow: low, sixMonthHigh: high, unitPrice: cur } = deal;
+  const { sixMonthLow: low, sixMonthHigh: high } = deal;
+  const cur = comparePriceOf(deal);
+  const source = RANGE_SOURCE[deal.rangeSource] || RANGE_SOURCE.store;
+  const quebec = deal.rangeSource === "quebec";
   // The same price every week isn't a low.
-  if (high <= low) return { low, high, pos: "50%", dot: "var(--riso-surface)", verdict: "SAME PRICE", good: false };
-  const t = (cur - low) / (high - low);
+  if (high <= low && !quebec) return { low, high, pos: "50%", dot: "var(--riso-surface)", verdict: "SAME PRICE", good: false, source };
+  const t = high > low ? (cur - low) / (high - low) : cur < low ? -1 : cur > high ? 2 : 0.5;
   const clamped = Math.max(0, Math.min(1, t));
-  const verdict = t <= 0.02 ? "6-MO LOW" : t < 0.4 ? "GOOD PRICE" : "USUAL · WAIT";
+  const verdict = quebec
+    ? t <= 0.02
+      ? "UNDER QC AVG"
+      : t < 0.4
+        ? "GOOD VS QC"
+        : "QC USUAL"
+    : t <= 0.02
+      ? deal.rangeSource === "stores"
+        ? "LOWEST AROUND"
+        : "6-MO LOW"
+      : t < 0.4
+        ? "GOOD PRICE"
+        : "USUAL · WAIT";
   const good = t < 0.4;
-  return { low, high, pos: `${Math.round(clamped * 100)}%`, dot: good ? "var(--riso-green)" : "var(--riso-surface)", verdict, good };
+  return { low, high, pos: `${Math.round(clamped * 100)}%`, dot: good ? "var(--riso-green)" : "var(--riso-surface)", verdict, good, source };
 }
 
 // How far this deal is under (or over) Quebec's average price for the same
@@ -341,7 +376,8 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
   const floor = low != null ? low * 0.9 : 0;
   const span = barMax > floor ? barMax - floor : 1;
   const isLow = meter && meter.verdict === "6-MO LOW";
-  const unitText = deal.unitPrice != null ? `${money(deal.unitPrice)}/${deal.unitBasis}` : null;
+  const unitText = comparePriceOf(deal) != null ? `${money(comparePriceOf(deal))}/${compareBasisOf(deal)}` : null;
+  const quebecRange = deal.rangeSource === "quebec";
   // Skip the unit price when the printed price already says the same thing.
   const unit = unitText && unitText.replace(/\s/g, "") !== deal.price.replace(/\s/g, "") ? unitText : null;
   // A manually uploaded flyer keeps its page; Le Rabais items have their own photo.
@@ -402,12 +438,13 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
             <strong>{deal.price}</strong>
             {unit && <span>{unit}</span>}
           </div>
+          {regularLabel(deal) && <p className="riso-deal-detail-reg">{regularLabel(deal)}, says the flyer</p>}
           {deal.baseline && (
             <div className={`riso-deal-detail-avg ${deal.baseline.verdict}`}>
               <div>
                 <span className="riso-deal-detail-avg-label">QUEBEC AVERAGE · {monthLabel(deal.baseline.month).toUpperCase()}</span>
                 <strong>
-                  {money(deal.baseline.price)}/{deal.unitBasis}
+                  {money(deal.baseline.price)}/{deal.baseline.basis || compareBasisOf(deal)}
                 </strong>
               </div>
               <p>
@@ -423,12 +460,17 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
           {history.length > 0 && (
             <div className="riso-deal-detail-history">
               <div className="riso-deal-detail-history-head">
-                <strong>Last 6 months</strong>
+                <strong>
+                  {quebecRange ? "Quebec average, last 6 months" : "Last 6 months"}
+                  <small className="riso-deal-detail-history-source">
+                    {meter ? ` · ${meter.source.long}` : ""} · per {compareBasisOf(deal)}
+                  </small>
+                </strong>
                 <span className={meter?.good ? "good" : ""}>{meter ? meter.verdict : "NEW · NO HISTORY YET"}</span>
               </div>
               <div className="riso-deal-bars">
                 {history.map((m, i) => {
-                  const current = i === history.length - 1;
+                  const current = !quebecRange && i === history.length - 1;
                   return (
                     <div key={m.month} className="riso-deal-bar-col">
                       <span className="riso-deal-bar-price">{m.price != null ? money(m.price) : "—"}</span>
@@ -442,7 +484,7 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
               </div>
               <div className="riso-deal-bar-months">
                 {history.map((m, i) => (
-                  <span key={m.month} className={i === history.length - 1 ? "now" : ""}>
+                  <span key={m.month} className={!quebecRange && i === history.length - 1 ? "now" : ""}>
                     {MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]}
                   </span>
                 ))}
@@ -489,7 +531,7 @@ function PriceMeter({ deal }) {
   }
   if (!meter) return <span className="riso-meter-new">NEW</span>;
   return (
-    <div className="riso-meter">
+    <div className="riso-meter" title={`Usual price range per ${compareBasisOf(deal)}, ${meter.source.long}`}>
       <div className="riso-meter-track">
         <span className="riso-meter-dot" style={{ left: meter.pos, background: meter.dot }} />
       </div>
@@ -497,6 +539,9 @@ function PriceMeter({ deal }) {
         <span>{money(meter.low)}</span>
         <span style={{ color: meter.good ? "var(--riso-green-text)" : "var(--riso-muted)" }}>{meter.verdict}</span>
         <span>{money(meter.high)}</span>
+      </div>
+      <div className="riso-meter-source">
+        {meter.source.short} · per {compareBasisOf(deal)}
       </div>
     </div>
   );
@@ -529,12 +574,13 @@ function DealRow({ deal: d, onOpen, onToggleList }) {
             {d.isWatching && <span className="riso-watch-badge">★ WATCHING</span>}
             {d.endsInDays != null && <span className="riso-ends-badge">{endsSoonLabel(d.endsInDays).toUpperCase()}</span>}
           </div>
+          {regularLabel(d) && <div className="riso-table-reg">{regularLabel(d)}</div>}
           {d.freezeTip && <div className="riso-table-freeze">❄ {d.freezeTip}</div>}
         </div>
       </div>
       <div className="riso-table-store">{d.store}</div>
       <div className="riso-table-price">{d.price}</div>
-      <div className="riso-table-unit">{d.unitPrice != null ? `$${d.unitPrice.toFixed(2)}/${d.unitBasis}` : "—"}</div>
+      <div className="riso-table-unit">{comparePriceOf(d) != null ? `$${comparePriceOf(d).toFixed(2)}/${compareBasisOf(d)}` : "—"}</div>
       <div>
         <PriceMeter deal={d} />
       </div>
@@ -910,10 +956,12 @@ export function FlyerDeals({
   // counts like the top of the "good" range, 40% under like a 6-month low).
   const dealScore = (d) =>
     !d.isNew && d.sixMonthHigh != null
-      ? (d.unitPrice - d.sixMonthLow) / (d.sixMonthHigh - d.sixMonthLow || 1)
+      ? (comparePriceOf(d) - d.sixMonthLow) / (d.sixMonthHigh - d.sixMonthLow || 1)
       : d.baseline && d.baseline.pct <= -10
         ? Math.max(0, (d.baseline.pct + 40) / 75)
-        : null;
+        : d.regularPrice && d.regularPrice > d.unitPrice * 1.15
+          ? Math.max(0, 1 - (d.regularPrice - d.unitPrice) / d.regularPrice / 0.4)
+          : null;
   const withUnitPrice = allDeals.filter((d) => d.unitPrice != null && d.unitBasis);
   const bestDeals = withUnitPrice
     .map((d) => ({ d, score: dealScore(d) }))
@@ -924,7 +972,7 @@ export function FlyerDeals({
 
   const stockUpDeals = allDeals
     .filter((d) => d.isStaple && !d.isNew && d.sixMonthHigh != null && d.unitPrice != null)
-    .filter((d) => (d.unitPrice - d.sixMonthLow) / (d.sixMonthHigh - d.sixMonthLow || 1) < 0.4)
+    .filter((d) => (comparePriceOf(d) - d.sixMonthLow) / (d.sixMonthHigh - d.sixMonthLow || 1) < 0.4)
     .slice(0, 3);
 
   const endingSoonDeals = allDeals.filter((d) => d.endsInDays != null).sort((a, b) => a.endsInDays - b.endsInDays).slice(0, 3);
@@ -937,8 +985,15 @@ export function FlyerDeals({
   const recipeCookMap = new Map();
   for (const group of groups) {
     if (group.recipeCount === 0) continue;
-    const best = group.deals.reduce((min, d) => (d.unitPrice != null && (min == null || d.unitPrice < min.unitPrice) ? d : min), null);
-    const savingsForGroup = best && best.sixMonthHigh != null ? Math.max(0, best.sixMonthHigh - best.unitPrice) : 0;
+    // How far under its usual high the best deal is: per lb for a
+    // per-lb price, else dollars off the pack you'd buy.
+    const savingsFor = (d) => {
+      if (d.unitPrice == null || !(d.sixMonthHigh > 0) || d.isNew) return 0;
+      const under = Math.max(0, d.sixMonthHigh - comparePriceOf(d));
+      const amount = compareBasisOf(d) === d.unitBasis ? under : d.unitPrice * (under / d.sixMonthHigh);
+      return Math.round(amount * 100) / 100;
+    };
+    const savingsForGroup = Math.max(0, ...group.deals.map(savingsFor));
     for (const recipe of group.recipes) {
       if (!recipeCookMap.has(recipe.id)) recipeCookMap.set(recipe.id, { recipe, savings: 0, usedNames: [] });
       const entry = recipeCookMap.get(recipe.id);

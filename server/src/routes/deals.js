@@ -5,6 +5,7 @@ import { loadBaselines } from "../lib/baselines.js";
 import { compareToBaseline, findBaseline } from "../lib/statcan.js";
 import { tidyDealTitle } from "../lib/dealTitle.js";
 import { AISLES, aisleFor } from "../lib/dealAisle.js";
+import { buildHistoryIndex, comparablePrice, findHistory, monthlySeries } from "../lib/priceCompare.js";
 import { checkDealPhoto, loadDealPhoto } from "../lib/dealPhoto.js";
 
 export const dealsRouter = Router();
@@ -13,15 +14,6 @@ export const dealsRouter = Router();
 // against its own 6-month range - 26 weeks, matching the handoff's "last 26
 // weeks" spec exactly rather than a calendar-month approximation.
 const SIX_MONTHS_MS = 26 * 7 * 24 * 60 * 60 * 1000;
-
-// Same key a deal is grouped/compared under everywhere else (matchName,
-// falling back to item for pre-matchName rows) plus store and unitBasis -
-// price history is only ever compared within the same unit basis (see
-// FlyerDeal.unitBasis's own comment), and per store since two stores'
-// prices for the same ingredient aren't the same "deal."
-function historyKey(deal) {
-  return `${(deal.matchName || deal.item).trim().toLowerCase()}|${deal.store}|${deal.unitBasis}`;
-}
 
 // Six calendar months ending with `now`'s month, oldest first, as
 // "YYYY-MM" keys.
@@ -34,64 +26,67 @@ export function lastSixMonths(now = new Date()) {
   return months;
 }
 
-// Attaches sixMonthLow/sixMonthHigh/isNew to each deal that has a usable
-// unitPrice, computed from every deal (isCurrent true or false) sharing its
-// historyKey within the last 26 weeks - including the deal's own current
-// price. isNew is true until there are prices from at least two different
-// weeks, per the handoff's "no history yet -> hide the meter, show NEW"
-// behavior.
-//
-// Also attaches `history`: one entry per calendar month for the last six
-// (oldest first), each the lowest price seen that month, or null for a
-// month with no price on record - the Flyers detail view's bar chart.
-// The current month always includes the deal's own price.
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const weekOf = (date) => Math.floor(new Date(date).getTime() / WEEK_MS);
-
-export function withPriceHistory(deals, history, now = new Date()) {
+// Attaches what each deal's price is compared with (see lib/priceCompare.js):
+//   sixMonthLow / sixMonthHigh - the usual range, in compareBasis
+//   comparePrice / compareBasis - this deal's price on the same footing
+//                                 (a 454 g pack becomes a per-lb price)
+//   rangeSource - "store" (same store, 6 months of flyers), "stores" (same
+//                 product, any store) or "quebec" (Statistics Canada's
+//                 monthly Quebec average) - the first one that exists
+//   history     - one bar per month for the detail chart; for "quebec",
+//                 StatCan's last six published months
+//   isNew       - true when none of the three exists yet.
+export function withPriceHistory(deals, history, now = new Date(), baselines = []) {
   const cutoff = now.getTime() - SIX_MONTHS_MS;
   const months = lastSixMonths(now);
-  const ranges = new Map();
-  const monthly = new Map();
-  for (const row of history) {
-    if (row.unitPrice == null || !row.unitBasis) continue;
-    if (row.createdAt && new Date(row.createdAt).getTime() < cutoff) continue;
-    const key = historyKey(row);
-    const week = weekOf(row.createdAt || now);
-    const range = ranges.get(key);
-    if (!range) {
-      ranges.set(key, { low: row.unitPrice, high: row.unitPrice, weeks: new Set([week]) });
-    } else {
-      range.low = Math.min(range.low, row.unitPrice);
-      range.high = Math.max(range.high, row.unitPrice);
-      range.weeks.add(week);
-    }
-    const month = new Date(row.createdAt || now).toISOString().slice(0, 7);
-    if (!months.includes(month)) continue;
-    if (!monthly.has(key)) monthly.set(key, new Map());
-    const byMonth = monthly.get(key);
-    byMonth.set(month, Math.min(byMonth.get(month) ?? Infinity, row.unitPrice));
-  }
+  const recent = history.filter(
+    (row) => row.unitPrice != null && row.unitBasis && (!row.createdAt || new Date(row.createdAt).getTime() >= cutoff)
+  );
+  const index = buildHistoryIndex(recent, now);
 
   return deals.map((deal) => {
-    if (deal.unitPrice == null || !deal.unitBasis) return deal;
-    const key = historyKey(deal);
-    const byMonth = monthly.get(key) || new Map();
-    const thisMonth = months[months.length - 1];
-    const series = months.map((month) => {
-      let price = byMonth.get(month) ?? null;
-      if (month === thisMonth) price = price == null ? deal.unitPrice : Math.min(price, deal.unitPrice);
-      return { month, price };
-    });
-    const range = ranges.get(key);
-    // Prices from one week only (this week's flyer, however many times it
-    // was imported) aren't a range yet.
-    if (!range || range.weeks.size < 2) return { ...deal, isNew: true, history: series };
-    return { ...deal, sixMonthLow: range.low, sixMonthHigh: range.high, isNew: false, history: series };
+    const compare = comparablePrice(deal);
+    if (!compare) return deal;
+    const base = { ...deal, comparePrice: compare.price, compareBasis: compare.basis };
+
+    const found = findHistory(deal, index);
+    if (found) {
+      const series = monthlySeries(found.entries, months);
+      const last = series[series.length - 1];
+      last.price = last.price == null ? compare.price : Math.min(last.price, compare.price);
+      const prices = [...found.entries.map((e) => e.price), compare.price];
+      return {
+        ...base,
+        isNew: false,
+        rangeSource: found.source,
+        sixMonthLow: Math.min(...prices),
+        sixMonthHigh: Math.max(...prices),
+        history: series,
+      };
+    }
+
+    const quebec = findBaseline({ ...deal, unitPrice: compare.price, unitBasis: compare.basis }, baselines);
+    const qcSeries = (quebec?.history || []).slice(-6);
+    if (qcSeries.length >= 2) {
+      const prices = qcSeries.map((m) => m.price);
+      return {
+        ...base,
+        isNew: false,
+        rangeSource: "quebec",
+        rangeProduct: quebec.product,
+        sixMonthLow: Math.min(...prices),
+        sixMonthHigh: Math.max(...prices),
+        history: qcSeries,
+      };
+    }
+
+    const series = months.map((month) => ({ month, price: null }));
+    series[series.length - 1].price = compare.price;
+    return { ...base, isNew: true, history: series };
   });
 }
 
-async function attachPriceHistory(userId, deals) {
+async function attachPriceHistory(userId, deals, baselines) {
   const eligible = deals.filter((d) => d.unitPrice != null && d.unitBasis);
   if (eligible.length === 0) return deals;
 
@@ -100,7 +95,7 @@ async function attachPriceHistory(userId, deals) {
     where: { userId, unitPrice: { not: null }, unitBasis: { not: null }, createdAt: { gte: cutoff } },
     select: { matchName: true, item: true, store: true, unitBasis: true, unitPrice: true, createdAt: true },
   });
-  return withPriceHistory(deals, history);
+  return withPriceHistory(deals, history, new Date(), baselines);
 }
 
 // Attaches Quebec's average price for the same product (Statistics Canada,
@@ -109,11 +104,19 @@ async function attachPriceHistory(userId, deals) {
 export function attachBaselines(deals, baselines) {
   if (baselines.length === 0) return deals;
   return deals.map((deal) => {
-    const match = findBaseline(deal, baselines);
+    const compare = comparablePrice(deal);
+    if (!compare) return deal;
+    const match = findBaseline({ ...deal, unitPrice: compare.price, unitBasis: compare.basis }, baselines);
     if (!match) return deal;
     return {
       ...deal,
-      baseline: { product: match.product, price: match.price, month: match.month, ...compareToBaseline(deal.unitPrice, match.price) },
+      baseline: {
+        product: match.product,
+        price: match.price,
+        month: match.month,
+        basis: compare.basis,
+        ...compareToBaseline(compare.price, match.price),
+      },
     };
   });
 }
@@ -170,7 +173,8 @@ dealsRouter.get("/", async (req, res) => {
   }
 
   const stores = [...new Set(rows.map((r) => r.store))];
-  const deals = attachBaselines(attachFreezeTips(await attachPriceHistory(req.userId, rows)), await loadBaselines());
+  const baselines = await loadBaselines();
+  const deals = attachBaselines(attachFreezeTips(await attachPriceHistory(req.userId, rows, baselines)), baselines);
   res.json({
     region: "Montreal, QC (H1W)",
     stores,
