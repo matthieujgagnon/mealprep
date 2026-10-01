@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { currentWeekStart, formatDayLabel, shiftWeek } from "../lib/dates.js";
-import { buildGroceryList, findMatchingDeal, canonicalize } from "../lib/groceryList.js";
-import { findRecipesByIngredients } from "../lib/similarRecipes.js";
+import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
+import { findBestDeal, findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
@@ -32,7 +32,7 @@ function freshnessPct(daysLeft) {
 
 function matchRecipesForDeal(deal, recipes) {
   return recipes
-    .map((recipe) => ({ recipe, ingredientName: recipe.ingredients?.find((i) => findMatchingDeal(i.name, [deal]))?.name }))
+    .map((recipe) => ({ recipe, ingredientName: recipe.ingredients?.find((i) => findBestDeal(i.name, [deal]))?.name }))
     .filter((m) => m.ingredientName);
 }
 
@@ -206,7 +206,7 @@ export function Home({
   const groceryItems = buildGroceryList(plannerEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
   const toBuy = groceryItems.filter((i) => !i.isStaple && !i.removed);
   const checkedCount = toBuy.filter((i) => checked[i.key]).length;
-  const saleCount = toBuy.filter((i) => !checked[i.key] && findMatchingDeal(i.name, deals)).length;
+  const saleCount = toBuy.filter((i) => !checked[i.key] && findBestDeal(i.name, deals)).length;
   const groceriesDone = toBuy.length > 0 && checkedCount === toBuy.length;
   const progressPct = toBuy.length > 0 ? Math.round((checkedCount / toBuy.length) * 100) : 0;
 

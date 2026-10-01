@@ -375,18 +375,3 @@ function addQuantityPart(parts, qty, unit) {
   }
   parts.push({ quantity: qty, unit: unit || null });
 }
-
-// Crude but useful: flags a grocery-list item if a significant word from its
-// name shows up in a deal's item description (e.g. "chicken breast" ingredient
-// matches "Boneless chicken breast" deal). Not exact matching — just a nudge.
-export function findMatchingDeal(ingredientName, deals) {
-  const words = ingredientName
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((w) => w.length > 3);
-
-  return deals.find((deal) => {
-    const item = deal.item.toLowerCase();
-    return words.some((w) => item.includes(w));
-  });
-}

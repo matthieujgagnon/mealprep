@@ -315,3 +315,46 @@ test("a deal with no history at its own store is compared with other stores, per
   await expect(row.locator(".riso-meter-labels")).toContainText("LOWEST AROUND");
   await expect(row.locator(".riso-table-unit")).toHaveText("$4.49/lb");
 });
+
+test("on the grocery list, a sale item's tag shows where it's cheapest, wherever it's filed, and opens the flyer item", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const recipe = await (
+    await page.request.post("/api/recipes", { data: { title: "BLT", ingredients: [{ name: "bacon" }, { name: "lemon juice" }, { name: "red bell pepper" }] } })
+  ).json();
+  const monday = new Date();
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const weekStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: 2, mealType: "dinner" } });
+  const base = { userId: user.id, source: "Flipp", category: "other", unitBasis: "each", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, store: "Super C", item: "Maple Leaf bacon, 375 g", matchName: "maple leaf bacon", price: "$3.99", unitPrice: 3.99 },
+      { ...base, store: "Metro", item: "Bacon, 500 g", matchName: "bacon", price: "$5.99", unitPrice: 5.99 },
+      // Shares words with list items but isn't them.
+      { ...base, store: "Metro", item: "Orange juice", matchName: "orange juice", price: "$2.99", unitPrice: 2.99 },
+      { ...base, store: "Maxi", item: "Red pepper flakes", matchName: "red pepper flakes", price: "$2.49", unitPrice: 2.49 },
+    ],
+  });
+
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  const bacon = page.getByRole("button", { name: "Check off Bacon", exact: true });
+  await expect(bacon.locator(".riso-row-deal")).toHaveText("Super C$3.99");
+  await expect(page.getByRole("button", { name: "Check off Lemon juice", exact: true }).locator(".riso-row-deal")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Check off Red bell pepper", exact: true }).locator(".riso-row-deal")).toHaveCount(0);
+
+  await bacon.locator(".riso-row-deal").click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Maple Leaf bacon, 375 g");
+  await expect(dialog.locator(".riso-deal-detail-others")).toContainText("Metro · $5.99");
+  // Opening it didn't check the item off.
+  await expect(bacon).toHaveAttribute("aria-pressed", "false");
+
+  // Aisles: lemon juice is pantry, red bell pepper is produce.
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "By aisle" }).click();
+  await expect(page.locator(".riso-group", { hasText: "Pantry" })).toContainText("Lemon juice");
+  await expect(page.locator(".riso-group", { hasText: "Fruits & vegetables" })).toContainText("Red bell pepper");
+});

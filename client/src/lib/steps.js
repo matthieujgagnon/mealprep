@@ -105,7 +105,7 @@ export function scaleStepText(step, scale) {
 }
 
 // Which of the recipe's ingredients this step's text actually mentions —
-// same crude word-overlap heuristic as findMatchingDeal/matchRecipesForDeal
+// same crude word-overlap heuristic as matchRecipesForDeal
 // elsewhere in the app: a significant word (>3 letters) from the ingredient
 // name shows up in the step text. Good enough for "THIS STEP USES" pills in
 // cook mode; doesn't attempt to resolve a reference to an earlier step's

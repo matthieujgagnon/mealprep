@@ -8653,6 +8653,129 @@ button.riso-table-group-head:disabled {
   font-weight: 500;
 }
 
+/* Where it's cheapest this week and the price - opens the flyer item. */
+.riso-row-deal {
+  flex: none;
+  display: inline-flex;
+  align-items: stretch;
+  height: 28px;
+  padding: 0;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--riso-green);
+  color: #16181f;
+  font: 700 12px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-row-deal-store {
+  display: flex;
+  align-items: center;
+  padding: 0 9px 0 11px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border-right: 1.5px solid var(--riso-ink);
+}
+
+.riso-row-deal-price {
+  display: flex;
+  align-items: center;
+  padding: 0 11px 0 9px;
+  font-family: var(--riso-font-mono);
+}
+
+.riso-row-deal:hover .riso-row-deal-price {
+  text-decoration: underline;
+}
+
+.riso-row.draggable {
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.riso-row.draggable:active {
+  cursor: grabbing;
+}
+
+.riso-group-grip {
+  flex: none;
+  margin-right: 4px;
+  padding: 4px 2px;
+  color: var(--riso-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.riso-group-grip:hover {
+  color: var(--riso-ink);
+}
+
+.riso-group.store-dragging {
+  position: relative;
+  z-index: 5;
+  opacity: 0.9;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.riso-deal-detail-others {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.riso-deal-detail-others-label {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+  margin-right: 4px;
+}
+
+.riso-deal-detail-flyer {
+  align-self: flex-start;
+  font: 600 13px var(--riso-font-body, inherit);
+  color: var(--riso-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.riso-flyer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.riso-flyer-links span {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-flyer-links a {
+  color: var(--riso-ink);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.riso-import-dropped {
+  color: var(--riso-ink);
+  font-weight: 600;
+}
+
+.riso-deal-detail-other {
+  padding: 3px 9px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  font: 600 12px var(--riso-font-display);
+}
+
 .riso-row-qty {
   flex: none;
   font-family: var(--riso-font-mono);
@@ -10242,6 +10365,17 @@ body.no-select {
 
 .riso-grocery-cart.done .riso-grocery-cart-fill {
   background: var(--riso-hot);
+}
+
+.riso-grocery-cart.done .riso-grocery-cart-btn {
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  border-color: var(--riso-hot);
+}
+
+.riso-grocery-cart.done .riso-grocery-cart-note {
+  color: var(--riso-canvas);
+  opacity: 0.8;
 }
 
 .riso-grocery-cart.done .riso-grocery-cart-done {
@@ -12356,18 +12490,6 @@ body.no-select {
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-}
-
-.riso-import-custom input {
-  width: 160px;
-  height: 34px;
-  border: 2px dashed var(--riso-ink);
-  border-radius: 17px;
-  background: transparent;
-  padding: 0 12px;
-  font: 600 13px var(--riso-font-display);
-  color: var(--riso-ink);
-  box-sizing: border-box;
 }
 
 .riso-import-note {
