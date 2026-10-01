@@ -1,10 +1,19 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { dealEmoji } from "../lib/dealEmoji.js";
-import { canonicalize } from "../lib/groceryList.js";
+import { groceryCore } from "../lib/groceryDedupe.js";
+import {
+  buildIngredients,
+  foldText,
+  RANKS,
+  sliceIngredients,
+  splitBilingual,
+  tilePrice,
+  unitLabel,
+} from "../lib/flyerIngredients.js";
 import { daysUntil } from "../lib/pantryInventory.js";
-import { HintStrip, Segmented, Switch } from "./RisoControls.jsx";
+import { HintStrip, Switch } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { flyerUrl, merchantMatches } from "../lib/flyerLinks.js";
 
@@ -38,9 +47,6 @@ const DEFAULT_AISLES = [
   { id: "other", label: "Other" },
 ];
 const AISLE_LABEL = Object.fromEntries(DEFAULT_AISLES.map((a) => [a.id, a.label]));
-const PAGE_SIZE = 50;
-const OPEN_AISLES_KEY = "flyers-open-aisles";
-const VIEW_KEY = "flyers-view";
 
 function readStored(key, fallback) {
   try {
@@ -59,23 +65,10 @@ function writeStored(key, value) {
   }
 }
 
-// Lowercase without accents, so "epinards" finds "Épinards".
-const fold = (text) =>
-  String(text || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
 function endsInDays(validUntil) {
   if (!validUntil) return null;
   const days = daysUntil(validUntil);
   return days >= 0 && days <= ENDS_SOON_DAYS ? days : null;
-}
-
-function endsSoonLabel(days) {
-  if (days <= 0) return "Ends today";
-  if (days === 1) return "Ends tomorrow";
-  return `Ends in ${days}d`;
 }
 
 // Where this deal's unitPrice sits in its own 6-month range, and the
@@ -118,7 +111,7 @@ function meterFor(deal) {
       : t < 0.4
         ? "GOOD VS QC"
         : "QC USUAL"
-    : t <= 0.02
+    : t <= 0.05
       ? deal.rangeSource === "stores"
         ? "LOWEST AROUND"
         : "6-MO LOW"
@@ -127,16 +120,6 @@ function meterFor(deal) {
         : "USUAL · WAIT";
   const good = t < 0.4;
   return { low, high, pos: `${Math.round(clamped * 100)}%`, dot: good ? "var(--riso-green)" : "var(--riso-surface)", verdict, good, source };
-}
-
-// How far this deal is under (or over) Quebec's average price for the same
-// product (Statistics Canada), for deals with no history of their own yet.
-function baselineLabel(baseline) {
-  if (!baseline) return null;
-  const { pct } = baseline;
-  if (pct <= -1) return `${-pct}% UNDER QC AVG`;
-  if (pct >= 1) return `${pct}% OVER QC AVG`;
-  return "SAME AS QC AVG";
 }
 
 const BASELINE_VERDICT = {
@@ -150,11 +133,6 @@ function monthLabel(month) {
   const [y, m] = String(month || "").split("-").map(Number);
   if (!y || !m) return "";
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(undefined, { month: "short", year: "numeric", timeZone: "UTC" });
-}
-
-function isStapleDeal(deal, customStaples) {
-  const core = canonicalize(deal.matchName || deal.item).core;
-  return (customStaples || []).some((s) => canonicalize(s).core === core);
 }
 
 // Web photos come through the app's own server (GET /api/deals/:id/photo),
@@ -545,105 +523,6 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
   );
 }
 
-function PriceMeter({ deal }) {
-  const meter = meterFor(deal);
-  if (!meter && deal.baseline) {
-    return (
-      <span className={`riso-meter-new vs-avg${deal.baseline.pct <= -10 ? " good" : ""}`} title={`Quebec average: ${deal.baseline.product}`}>
-        {baselineLabel(deal.baseline)}
-      </span>
-    );
-  }
-  if (!meter) return <span className="riso-meter-new">NEW</span>;
-  return (
-    <div className="riso-meter" title={`Usual price range per ${compareBasisOf(deal)}, ${meter.source.long}`}>
-      <div className="riso-meter-track">
-        <span className="riso-meter-dot" style={{ left: meter.pos, background: meter.dot }} />
-      </div>
-      <div className="riso-meter-labels">
-        <span>{money(meter.low)}</span>
-        <span style={{ color: meter.good ? "var(--riso-green-text)" : "var(--riso-muted)" }}>{meter.verdict}</span>
-        <span>{money(meter.high)}</span>
-      </div>
-      <div className="riso-meter-source">
-        {meter.source.short} · per {compareBasisOf(deal)}
-      </div>
-    </div>
-  );
-}
-
-// One "whole flyer" table row - shared between the flat list and the By
-// category grouped view, so the two only ever differ in what wraps around
-// this, never in the row itself.
-function DealRow({ deal: d, onOpen, onToggleList }) {
-  return (
-    <div
-      className="riso-table-row clickable"
-      role="button"
-      tabIndex={0}
-      aria-label={`${d.item} details`}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-    >
-      <div className="riso-table-item">
-        <DealPhoto deal={d} size={48} />
-        <div className="riso-table-item-info">
-          <div className="riso-table-item-name">
-            <span>{d.item}</span>
-            {d.isWatching && <span className="riso-watch-badge">★ WATCHING</span>}
-            {d.endsInDays != null && <span className="riso-ends-badge">{endsSoonLabel(d.endsInDays).toUpperCase()}</span>}
-          </div>
-          {regularLabel(d) && <div className="riso-table-reg">{regularLabel(d)}</div>}
-          {d.freezeTip && <div className="riso-table-freeze">❄ {d.freezeTip}</div>}
-        </div>
-      </div>
-      <div className="riso-table-store">{d.store}</div>
-      <div className="riso-table-price">{d.price}</div>
-      <div className="riso-table-unit">{comparePriceOf(d) != null ? `$${comparePriceOf(d).toFixed(2)}/${compareBasisOf(d)}` : "—"}</div>
-      <div>
-        <PriceMeter deal={d} />
-      </div>
-      <div className="riso-table-actions">
-        <span className="riso-table-details">Details →</span>
-        <button
-          type="button"
-          className={`riso-list-pill${d.isListed ? " on" : ""}`}
-          aria-label={d.isListed ? `Remove ${d.item} from grocery list` : `Add ${d.item} to grocery list`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleList();
-          }}
-        >
-          {d.isListed ? "✓ Listed" : "+ List"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// An open aisle's rows, 50 at a time.
-function AisleRows({ deals, onOpen, onToggleList }) {
-  const [shown, setShown] = useState(PAGE_SIZE);
-  return (
-    <>
-      {deals.slice(0, shown).map((d) => (
-        <DealRow key={d.id} deal={d} onOpen={() => onOpen(d)} onToggleList={() => onToggleList(d)} />
-      ))}
-      {deals.length > shown && (
-        <button type="button" className="riso-table-more" onClick={() => setShown((n) => n + PAGE_SIZE)}>
-          Show {Math.min(PAGE_SIZE, deals.length - shown)} more · {deals.length - shown} left
-        </button>
-      )}
-    </>
-  );
-}
-
 function formatPostal(pc) {
   return pc && pc.length === 6 ? `${pc.slice(0, 3)} ${pc.slice(3)}` : pc || "";
 }
@@ -818,10 +697,219 @@ function AutoImportStrip({ settings, importing, onImport, onSettingsSaved }) {
   );
 }
 
+const SLICES = [
+  { id: "category", label: "Category" },
+  { id: "ends", label: "Ends soon" },
+  { id: "freeze", label: "Can freeze" },
+];
+const SLICE_KEY = "flyers-slice";
+const RANK_KEY = "flyers-rank";
+const LOW_T = 0.05;
+
+// "$0.79/lb" on the same footing the tiles compare on, or the flyer's own
+// price text when it couldn't be read as one number.
+function priceText(deal) {
+  const p = tilePrice(deal);
+  if (!p) return deal.price;
+  return `${money(p.price)}${p.basis === "each" ? "" : `/${p.basis}`}`;
+}
+
+function endsText(days) {
+  if (days <= 0) return "ends today";
+  if (days === 1) return "ends tomorrow";
+  return `ends in ${days} days`;
+}
+
+const cardId = (key) => `flyer-ing-${key.replace(/[^a-z0-9]+/gi, "-")}`;
+
+// The product photo across the top of an ingredient card; a food emoji on
+// the striped placeholder when there's none.
+function CoverPhoto({ deal }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [deal.imageUrl]);
+  const src = dealPhotoSrc(deal);
+  return src && !failed ? (
+    <img className="riso-ing-cover" src={src} alt="" loading="lazy" onError={() => setFailed(true)} />
+  ) : (
+    <span className="riso-ing-cover-emoji" aria-hidden="true">
+      {dealEmoji(deal)}
+    </span>
+  );
+}
+
+// One of the three briefing panels: up to 4 ingredients, each opening its
+// card in the list below.
+function BriefPanel({ tone, kicker, title, rows, emptyText, onOpen }) {
+  return (
+    <section className={`riso-brief ${tone}`}>
+      {tone === "accent" && <span className="riso-brief-sticker">real deals!</span>}
+      <p className="riso-brief-kicker">{kicker}</p>
+      <h3 className="riso-brief-title">{title}</h3>
+      {rows.length === 0 ? (
+        <p className="riso-brief-empty">{emptyText}</p>
+      ) : (
+        rows.map(({ g, sub, deal }) => (
+          <button key={g.key} type="button" className="riso-brief-row" onClick={() => onOpen(g)}>
+            <DealPhoto deal={g.photoDeal} size={56} />
+            <span className="riso-brief-row-info">
+              <span className="riso-brief-row-name">{g.name}</span>
+              <span className="riso-brief-row-sub">{sub}</span>
+            </span>
+            <span className="riso-brief-row-price">
+              <span className="riso-brief-row-amt">{priceText(deal)}</span>
+              <span className="riso-brief-row-store">{deal.store}</span>
+            </span>
+          </button>
+        ))
+      )}
+    </section>
+  );
+}
+
+// "30% UNDER QC AVG": a no-history deal against Quebec's average price.
+function baselineVerdict({ pct }) {
+  if (pct <= -1) return `${-pct}% UNDER QC AVG`;
+  if (pct >= 1) return `${pct}% OVER QC AVG`;
+  return "SAME AS QC AVG";
+}
+
+// The 6-month range of the ingredient's cheapest product, on an open card.
+function RangeBlock({ deal }) {
+  const meter = meterFor(deal);
+  return (
+    <div className="riso-ing-range">
+      <div className="riso-ing-range-head">
+        <span>6-month price range</span>
+        <span className={meter?.good || (!meter && deal.baseline?.pct <= -10) ? "good" : ""}>
+          {meter ? meter.verdict : deal.baseline ? baselineVerdict(deal.baseline) : "NO HISTORY YET"}
+        </span>
+      </div>
+      {meter ? (
+        <>
+          <div className="riso-ing-range-track">
+            <span className="riso-ing-range-dot" style={{ left: meter.pos, background: meter.dot }} />
+          </div>
+          <div className="riso-ing-range-labels">
+            <span>LOW {money(meter.low)}</span>
+            <span>HIGH {money(meter.high)}</span>
+          </div>
+          <p className="riso-ing-range-source">
+            {meter.source.short} · per {compareBasisOf(deal)}
+          </p>
+        </>
+      ) : deal.baseline ? (
+        <p className="riso-ing-range-none">
+          No history for this item yet, so it's compared with Quebec's average: {money(deal.baseline.price)}/
+          {deal.baseline.basis || compareBasisOf(deal)} (Statistics Canada).
+        </p>
+      ) : (
+        <p className="riso-ing-range-none">No history for this item yet. It builds each week from the imports.</p>
+      )}
+    </div>
+  );
+}
+
+const MAX_TILES = 3;
+
+// One ingredient: its photo, names and a price tile per store (the
+// cheapest tinted green). Open, it spans the row and lists every store's
+// product, cheapest first, with + List and the 6-month range.
+function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
+  const low = g.t != null && g.t <= LOW_T;
+  const multi = g.tiles.filter((d) => tilePrice(d)?.basis === g.mainBasis).length > 1;
+  // At most 3 tiles: the cheapest stores, shown in the usual store order.
+  const tiles =
+    g.tiles.length > MAX_TILES
+      ? g.tiles.filter((d) => [...g.tiles].sort((a, b) => (tilePrice(a)?.price ?? Infinity) - (tilePrice(b)?.price ?? Infinity)).slice(0, MAX_TILES).includes(d))
+      : g.tiles;
+  const isBest = (d) => multi && tilePrice(d)?.basis === g.mainBasis && tilePrice(d)?.price === g.lo;
+  const sub = [g.sub, g.freeze ? `freezes ${g.freeze}` : null].filter(Boolean).join(" · ");
+
+  return (
+    <article id={cardId(g.key)} className={`riso-ing-card${open ? " open" : ""}${low ? " low" : ""}`}>
+      <div
+        className="riso-ing-main"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={`${g.name}: every store's price`}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        <div className="riso-ing-photo">
+          <CoverPhoto deal={g.photoDeal} />
+          {g.endsIn != null && g.endsIn <= ENDS_SOON_DAYS && (
+            <span className="riso-ing-ends">{g.endsIn <= 0 ? "ENDS TODAY" : g.endsIn === 1 ? "ENDS TOMORROW" : `ENDS IN ${g.endsIn}D`}</span>
+          )}
+          {low && <span className="riso-ing-low">6-MO LOW</span>}
+        </div>
+        <div className="riso-ing-head">
+          <h4 className="riso-ing-name">{g.name}</h4>
+          {sub && <p className="riso-ing-sub">{sub}</p>}
+        </div>
+        <div className={`riso-ing-tiles n${tiles.length}`} style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
+          {tiles.map((d) => {
+            const p = tilePrice(d);
+            const best = isBest(d);
+            return (
+              <div key={d.store} className={`riso-ing-tile${best ? " best" : ""}`}>
+                <div className="riso-ing-tile-store">
+                  <span>{d.store.toUpperCase()}</span>
+                  {best && <span className="riso-ing-dot" title="Cheapest" aria-label="cheapest" />}
+                </div>
+                <div className="riso-ing-tile-price">{p ? money(p.price) : d.price}</div>
+                <div className="riso-ing-tile-unit">{p ? unitLabel(p.basis) : ""}</div>
+              </div>
+            );
+          })}
+        </div>
+        {g.tiles.length > tiles.length && (
+          <p className="riso-ing-more">+{g.tiles.length - tiles.length} more store{g.tiles.length - tiles.length === 1 ? "" : "s"}</p>
+        )}
+      </div>
+      {open && (
+        <div className="riso-ing-panel">
+          <p className="riso-ing-panel-label">ALL STORES, CHEAPEST FIRST</p>
+          {g.variants.map((d) => {
+            const { en, fr } = splitBilingual(d.item);
+            const listed = isListedAt(g, d.store);
+            return (
+              <div key={d.id} className="riso-ing-variant">
+                <DealPhoto deal={d} size={40} />
+                <span className="riso-ing-variant-store">{d.store.toUpperCase()}</span>
+                <button type="button" className="riso-ing-variant-names" aria-label={`${d.item} details`} onClick={() => onOpenDeal(d)}>
+                  <span className="riso-ing-variant-name">{en}</span>
+                  {(fr || regularLabel(d)) && <span className="riso-ing-variant-fr">{fr || regularLabel(d)}</span>}
+                </button>
+                <span className="riso-ing-variant-price">{priceText(d)}</span>
+                <button
+                  type="button"
+                  className={`riso-ing-list${listed ? " on" : ""}`}
+                  aria-pressed={listed}
+                  aria-label={listed ? `Take ${g.name} at ${d.store} off the grocery list` : `Add ${g.name} at ${d.store} to the grocery list`}
+                  onClick={() => onList(g, d)}
+                >
+                  {listed ? "✓" : "+ List"}
+                </button>
+              </div>
+            );
+          })}
+          <RangeBlock deal={g.best} />
+        </div>
+      )}
+    </article>
+  );
+}
+
 export function FlyerDeals({
   user,
   recipes,
-  customStaples,
   onSelectRecipe,
   onAddToPlanner,
   isOnGroceryList,
@@ -831,11 +919,11 @@ export function FlyerDeals({
   const [deals, setDeals] = useState(null);
   const [watchlist, setWatchlist] = useState(new Set());
   const [storeFilter, setStoreFilter] = useState(null);
-  const [chipFilter, setChipFilter] = useState("everything");
-  const [groupByCategory, setGroupByCategory] = useState(() => readStored(VIEW_KEY, "category") === "category");
-  const [openAisles, setOpenAisles] = useState(() => new Set(readStored(OPEN_AISLES_KEY, [])));
+  const [slice, setSlice] = useState(() => readStored(SLICE_KEY, "category"));
+  const [rank, setRank] = useState(() => readStored(RANK_KEY, "best"));
   const [query, setQuery] = useState("");
-  const [shown, setShown] = useState(PAGE_SIZE);
+  const [expanded, setExpanded] = useState(() => new Set());
+  const [sections, setSections] = useState([]);
   const [clearing, setClearing] = useState(false);
   const [importingLeRabais, setImportingLeRabais] = useState(false);
   const [leRabaisError, setLeRabaisError] = useState(null);
@@ -854,6 +942,10 @@ export function FlyerDeals({
       .listWatchlist()
       .then((items) => setWatchlist(new Set(items.map((i) => i.matchName))))
       .catch(() => setWatchlist(new Set()));
+    api
+      .listGrocerySections()
+      .then(setSections)
+      .catch(() => setSections([]));
   }, []);
 
   async function toggleWatch(deal) {
@@ -879,12 +971,49 @@ export function FlyerDeals({
     }
   }
 
-  // The grocery list works in plain ingredient names, so a deal goes on
-  // (and comes off) under its matchName.
-  function toggleListed(deal) {
-    const name = deal.matchName || deal.item;
-    if (isOnGroceryList(name)) onRemoveFromGroceryList(name);
-    else onAddToGroceryList([name]);
+  // The grocery store each listed ingredient is filed under.
+  const storeOfCore = useMemo(() => {
+    const map = new Map();
+    for (const s of sections) for (const a of s.assignments || []) map.set(a.core, s.name);
+    return map;
+  }, [sections]);
+  const sameStore = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+  function isListedAt(g, store) {
+    return isOnGroceryList(g.name) && sameStore(storeOfCore.get(groceryCore(g.name)), store);
+  }
+
+  function fileUnder(core, sectionId) {
+    setSections((prev) =>
+      prev.map((s) => ({
+        ...s,
+        assignments: [...(s.assignments || []).filter((a) => a.core !== core), ...(s.id === sectionId ? [{ core, sectionId }] : [])],
+      }))
+    );
+  }
+
+  // + List puts the ingredient on this week's list under that store; again
+  // takes it off.
+  async function listAt(g, deal) {
+    const core = groceryCore(g.name);
+    if (isListedAt(g, deal.store)) {
+      onRemoveFromGroceryList(g.name);
+      fileUnder(core, null);
+      api.unassignFromGrocerySection(core).catch(() => {});
+      return;
+    }
+    if (!isOnGroceryList(g.name)) await onAddToGroceryList([g.name]);
+    try {
+      let section = sections.find((s) => sameStore(s.name, deal.store));
+      if (!section) {
+        section = await api.createGrocerySection(deal.store);
+        setSections((prev) => [...prev, section]);
+      }
+      fileUnder(core, section.id);
+      await api.assignToGrocerySection(section.id, core);
+    } catch {
+      // Still on the list; it just isn't filed under that store.
+    }
   }
 
   async function clearAllDeals() {
@@ -924,105 +1053,87 @@ export function FlyerDeals({
     }
   }
 
-  const aisles = deals?.aisles?.length ? deals.aisles : DEFAULT_AISLES;
-  const aisleLabels = useMemo(() => Object.fromEntries(aisles.map((a) => [a.id, a.label])), [aisles]);
-
-  // Recomputed only when the deals or the things they're checked against
-  // change - not on every click (a week of flyers is 1,500+ items).
-  const allDeals = useMemo(
-    () =>
-      (deals?.deals || []).map((d) => ({
-        ...d,
-        aisle: d.aisle || "other",
-        aisleLabel: aisleLabels[d.aisle] || "Other",
-        search: fold(`${d.item} ${d.matchName || ""} ${d.store}`),
-        isWatching: watchlist.has((d.matchName || d.item).trim().toLowerCase()),
-        endsInDays: endsInDays(d.validUntil),
-        isStaple: isStapleDeal(d, customStaples),
-        isListed: isOnGroceryList(d.matchName || d.item),
-      })),
-    [deals, aisleLabels, watchlist, customStaples, isOnGroceryList]
-  );
-  const groups = useMemo(() => groupDealsByIngredient(deals?.deals || [], recipes), [deals, recipes]);
-
-  // A new filter or search starts the list from the top again.
-  useEffect(() => setShown(PAGE_SIZE), [storeFilter, chipFilter, query, groupByCategory]);
-
-  if (!deals) return <p className="riso-theme riso-flyers riso-empty">Loading this week's deals…</p>;
-
-  const detailDeal = detailId != null ? allDeals.find((d) => d.id === detailId) : null;
-
-  const dealIdToGroup = new Map();
-  groups.forEach((g) => g.deals.forEach((d) => dealIdToGroup.set(d.id, g)));
-
-  const words = fold(query).split(/\s+/).filter(Boolean);
-  const visibleDeals = allDeals.filter((d) => {
-    if (storeFilter && d.store !== storeFilter) return false;
-    if (words.length && !words.every((w) => d.search.includes(w))) return false;
-    if (chipFilter === "recipes") return dealIdToGroup.get(d.id)?.recipeCount > 0;
-    if (chipFilter === "watchlist") return d.isWatching;
-    if (chipFilter === "stockup") return d.isStaple;
-    if (chipFilter === "endssoon") return d.endsInDays != null;
-    return true;
-  });
-
-  // "By category": the same rows bucketed by grocery aisle, each aisle
-  // folded away until opened (a search opens every aisle with a match).
-  const categoryGroups = aisles
-    .map((a) => ({ ...a, deals: visibleDeals.filter((d) => d.aisle === a.id) }))
-    .filter((g) => g.deals.length > 0);
-  const searching = words.length > 0;
-  const isOpen = (id) => searching || openAisles.has(id);
-  function toggleAisle(id) {
-    setOpenAisles((prev) => {
+  function pickSlice(id) {
+    setSlice(id);
+    writeStored(SLICE_KEY, id);
+  }
+  function pickRank(id) {
+    setRank(id);
+    writeStored(RANK_KEY, id);
+  }
+  function toggleCard(key) {
+    setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      writeStored(OPEN_AISLES_KEY, [...next]);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
-  function setView(id) {
-    setGroupByCategory(id === "category");
-    writeStored(VIEW_KEY, id);
+  // A briefing row opens its ingredient's card and brings it into view.
+  function openCard(g) {
+    setExpanded((prev) => new Set(prev).add(g.key));
+    requestAnimationFrame(() => document.getElementById(cardId(g.key))?.scrollIntoView({ behavior: "smooth", block: "center" }));
   }
 
-  // Best deals: where each price sits in its own 6-month range, or - with
-  // no history yet - how far under Quebec's average it is (10% under
-  // counts like the top of the "good" range, 40% under like a 6-month low).
-  const dealScore = (d) =>
-    !d.isNew && d.sixMonthHigh != null
-      ? (comparePriceOf(d) - d.sixMonthLow) / (d.sixMonthHigh - d.sixMonthLow || 1)
-      : d.baseline && d.baseline.pct <= -10
-        ? Math.max(0, (d.baseline.pct + 40) / 75)
-        : d.regularPrice && d.regularPrice > d.unitPrice * 1.15
-          ? Math.max(0, 1 - (d.regularPrice - d.unitPrice) / d.regularPrice / 0.4)
-          : null;
-  const withUnitPrice = allDeals.filter((d) => d.unitPrice != null && d.unitBasis);
-  const bestDeals = withUnitPrice
-    .map((d) => ({ d, score: dealScore(d) }))
-    .filter((x) => x.score != null)
-    .sort((a, b) => a.score - b.score)
+  const aisles = deals?.aisles?.length ? deals.aisles : DEFAULT_AISLES;
+  const aisleLabels = useMemo(() => Object.fromEntries(aisles.map((a) => [a.id, a.label])), [aisles]);
+  const stores = deals?.stores || [];
+
+  // Recomputed only when the deals or the store change - not on every
+  // click (a week of flyers is 1,500+ items).
+  const ingredients = useMemo(
+    () => buildIngredients(deals?.deals || [], { store: storeFilter, storeOrder: stores }),
+    [deals, storeFilter, stores]
+  );
+  const groups = useMemo(() => groupDealsByIngredient(deals?.deals || [], recipes), [deals, recipes]);
+
+  if (!deals) return <p className="riso-theme riso-flyers riso-empty">Loading this week's deals…</p>;
+
+  const detailRaw = detailId != null ? deals.deals.find((d) => d.id === detailId) : null;
+  const detailDeal = detailRaw && {
+    ...detailRaw,
+    aisleLabel: aisleLabels[detailRaw.aisle] || "Other",
+    isWatching: watchlist.has((detailRaw.matchName || detailRaw.item).trim().toLowerCase()),
+    endsInDays: endsInDays(detailRaw.validUntil),
+  };
+
+  const words = foldText(query).split(/\s+/).filter(Boolean);
+  const shownIngredients = words.length ? ingredients.filter((g) => words.every((w) => g.search.includes(w))) : ingredients;
+  const ranked = [...shownIngredients].sort(RANKS[rank]?.sort || RANKS.best.sort);
+  const sliced = sliceIngredients(ranked, slice, aisles);
+
+  // The briefing reads the same filtered set, one row per ingredient.
+  const bestSort = RANKS.best.sort;
+  const lows = shownIngredients
+    .filter((g) => g.t != null && g.t <= LOW_T)
+    .sort(bestSort)
     .slice(0, 4)
-    .map((x) => x.d);
-
-  const stockUpDeals = allDeals
-    .filter((d) => d.isStaple && !d.isNew && d.sixMonthHigh != null && d.unitPrice != null)
-    .filter((d) => (comparePriceOf(d) - d.sixMonthLow) / (d.sixMonthHigh - d.sixMonthLow || 1) < 0.4)
-    .slice(0, 3);
-
-  const endingSoonDeals = allDeals.filter((d) => d.endsInDays != null).sort((a, b) => a.endsInDays - b.endsInDays).slice(0, 3);
+    .map((g) => ({ g, deal: g.best, sub: "6-month low" }));
+  const gaps = shownIngredients
+    .filter((g) => g.gap > 0)
+    .sort(RANKS.gap.sort)
+    .slice(0, 4)
+    .map((g) => {
+      const priciest = [...g.tiles].filter((d) => tilePrice(d)?.basis === g.mainBasis).sort((a, b) => tilePrice(b).price - tilePrice(a).price)[0];
+      const per = g.mainBasis && g.mainBasis !== "each" ? `/${g.mainBasis}` : "";
+      return { g, deal: g.best, sub: `save ${money(g.hi - g.lo)}${per} vs ${priciest.store.toLowerCase()}` };
+    });
+  const endingSoon = shownIngredients
+    .filter((g) => g.endsIn != null && g.endsIn <= ENDS_SOON_DAYS)
+    .sort((a, b) => a.endsIn - b.endsIn || bestSort(a, b))
+    .slice(0, 4)
+    .map((g) => {
+      const deal = g.variants.find((d) => d.validUntil && daysUntil(d.validUntil) === g.endsIn) || g.best;
+      return { g, deal, sub: endsText(g.endsIn) };
+    });
+  const goneBy = new Date(Date.now() + ENDS_SOON_DAYS * 24 * 60 * 60 * 1000).toLocaleDateString("en-CA", { weekday: "long" }).toUpperCase();
 
   // "What to cook": every recipe used by at least one on-sale ingredient,
-  // ranked by total savings (sum of each matched deal's sixMonthHigh minus
-  // its current price - "usual" vs "sale," per the handoff's savings
-  // formula - contributing 0 when there's no history yet to compare
-  // against, rather than guessing a baseline).
+  // ranked by total savings (each matched deal's sixMonthHigh minus its
+  // current price, 0 with no history yet).
   const recipeCookMap = new Map();
   for (const group of groups) {
     if (group.recipeCount === 0) continue;
-    // How far under its usual high the best deal is: per lb for a
-    // per-lb price, else dollars off the pack you'd buy.
     const savingsFor = (d) => {
       if (d.unitPrice == null || !(d.sixMonthHigh > 0) || d.isNew) return 0;
       const under = Math.max(0, d.sixMonthHigh - comparePriceOf(d));
@@ -1039,16 +1150,8 @@ export function FlyerDeals({
   }
   const cookEntries = [...recipeCookMap.values()].sort((a, b) => b.savings - a.savings).slice(0, 3);
 
-  const stores = deals.stores;
   const itemCount = deals.deals.length;
-
-  const chips = [
-    { id: "everything", label: "Everything" },
-    { id: "recipes", label: "My recipes" },
-    { id: "watchlist", label: "★ Watchlist" },
-    { id: "stockup", label: "Stock up" },
-    { id: "endssoon", label: "Ends soon" },
-  ];
+  const itemCountText = itemCount.toLocaleString("en-CA");
 
   return (
     <div className="riso-theme riso-flyers">
@@ -1076,244 +1179,167 @@ export function FlyerDeals({
       {leRabaisError && <p className="riso-error">{leRabaisError}</p>}
 
       {importSettings && (
-        <AutoImportStrip
-          settings={importSettings}
-          importing={runningImport}
-          onImport={runImport}
-          onSettingsSaved={setImportSettings}
-        />
+        <AutoImportStrip settings={importSettings} importing={runningImport} onImport={runImport} onSettingsSaved={setImportSettings} />
       )}
 
       {deals.isMockData && (
         <p className="riso-flyers-sample-note">
           <span className="riso-sticker yellow">sample</span>
-          These are example deals so you can see how this page works. Press Import now to pull in this
-          week's real flyers.
+          These are example deals so you can see how this page works. Press Import now to pull in this week's real flyers.
         </p>
       )}
-      <>
-          <HintStrip userId={user.id} screenKey="flyers-v2">
-            Deals are compared with the last 6 months of prices. On the meter, a green dot toward
-            the left means it's a real deal; until an item has its own history, it's compared with
-            Quebec's average price from Statistics Canada instead. Pink means the deal ends within 2 days. Click any item
-            to see its price history, add it to your list or watch it.
-          </HintStrip>
 
-          <div className="riso-flyers-top-row">
-            <section className="riso-block accent">
-              <span className="riso-sticker yellow" style={{ top: -14, right: 22, transform: "rotate(5deg)" }}>
-                real deals!
-              </span>
-              <p className="riso-eyebrow on-accent">This week's best deals</p>
-              <h3 className="riso-block-title">The lowest prices in 6 months</h3>
-              <div className="riso-block-rows">
-                {bestDeals.length === 0 ? (
-                  <p className="riso-block-empty">Not enough price history yet — check back after a few more uploads.</p>
-                ) : (
-                  bestDeals.map((d) => (
-                    <button key={d.id} type="button" className="riso-deal-row" onClick={() => setDetailId(d.id)}>
-                      <DealPhoto deal={d} size={52} />
-                      <div className="riso-deal-row-info">
-                        <span className="riso-deal-row-name">{d.item}</span>
-                        <span className="riso-deal-row-meta">
-                          {d.price} · {d.store}
-                        </span>
-                      </div>
-                      <div className="riso-deal-row-price">
-                        <span className="price-amt">{d.price.split("/")[0]}</span>
-                        <span className="riso-deal-row-verdict">{meterFor(d)?.verdict || baselineLabel(d.baseline)}</span>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </section>
+      <HintStrip userId={user.id} screenKey="flyers-v4">
+        Each card is one ingredient. The tiles show the best price at each store, and the green dot marks the cheapest.
+        Click a card to see every store, the French names and the 6-month price range. Until an item has its own
+        history, it is compared with Quebec's average price from Statistics Canada. Pink means the deal ends within 2
+        days.
+      </HintStrip>
 
-            <section className="riso-block">
-              <p className="riso-eyebrow">Stock up</p>
-              <h3 className="riso-block-title">Pantry staples at a low</h3>
-              <div className="riso-block-rows plain">
-                {stockUpDeals.length === 0 ? (
-                  <p className="riso-block-empty">No staples at a low price right now.</p>
-                ) : (
-                  stockUpDeals.map((d) => (
-                    <div key={d.id} className="riso-dash-row">
-                      <div className="riso-deal-row-info">
-                        <span className="riso-deal-row-name">{d.item}</span>
-                        <span className="riso-deal-row-meta">
-                          {d.price} · {d.store}
-                        </span>
-                      </div>
-                      <span className="riso-deal-row-price-amt">{d.price.split("/")[0]}</span>
-                      {d.isWatching && <span className="riso-watch-dot" title="On your watchlist">★</span>}
-                    </div>
-                  ))
-                )}
-              </div>
-              <p className="riso-block-note">These are the lowest prices in 6 months and they keep for a long time. ★ marks items on your watchlist.</p>
-            </section>
+      <div className="riso-briefing">
+        <BriefPanel
+          tone="accent"
+          kicker="LOWEST IN 6 MONTHS"
+          title="Lows to grab"
+          rows={lows}
+          emptyText="No 6-month lows this week yet. History builds from each Thursday import."
+          onOpen={openCard}
+        />
+        <BriefPanel
+          tone="plain"
+          kicker="SAME ITEM, DIFFERENT STORE"
+          title="Biggest store gaps"
+          rows={gaps}
+          emptyText="Only one store has these items."
+          onOpen={openCard}
+        />
+        <BriefPanel
+          tone="hot"
+          kicker={`GONE BY ${goneBy}`}
+          title="Ends soon"
+          rows={endingSoon}
+          emptyText={`Nothing ends in the next ${ENDS_SOON_DAYS} days.`}
+          onOpen={openCard}
+        />
+      </div>
 
-            <section className="riso-block hot">
-              <p className="riso-eyebrow on-pink">Ends soon</p>
-              <h3 className="riso-block-title">Gone by {WEEKDAY_LABELS[Math.min(6, new Date().getDay() + ENDS_SOON_DAYS - 1)] || "soon"}</h3>
-              <div className="riso-block-rows">
-                {endingSoonDeals.length === 0 ? (
-                  <p className="riso-block-empty">Nothing ends in the next {ENDS_SOON_DAYS} days.</p>
-                ) : (
-                  endingSoonDeals.map((d) => (
-                    <div key={d.id} className="riso-deal-row static">
-                      <div className="riso-deal-row-info">
-                        <span className="riso-deal-row-name">{d.item}</span>
-                        <span className="riso-deal-row-meta">
-                          {endsSoonLabel(d.endsInDays)} · {d.store}
-                        </span>
-                      </div>
-                      <span className="riso-deal-row-price-amt">{d.price.split("/")[0]}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
+      {cookEntries.length > 0 && (
+        <div className="riso-cook-section">
+          <div className="riso-cook-header">
+            <p className="riso-eyebrow">What to cook</p>
+            <h3 className="riso-block-title">Meals built on this week's deals</h3>
           </div>
+          <div className="riso-cook-grid">
+            {cookEntries.map((entry) => (
+              <CookCard key={entry.recipe.id} entry={entry} onOpen={onSelectRecipe} onAdd={onAddToPlanner} />
+            ))}
+          </div>
+        </div>
+      )}
 
-          {cookEntries.length > 0 && (
-            <div className="riso-cook-section">
-              <div className="riso-cook-header">
-                <p className="riso-eyebrow">What to cook</p>
-                <h3 className="riso-block-title">Meals built on this week's deals</h3>
-              </div>
-              <div className="riso-cook-grid">
-                {cookEntries.map((entry) => (
-                  <CookCard key={entry.recipe.id} entry={entry} onOpen={onSelectRecipe} onAdd={onAddToPlanner} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="riso-whole-flyer">
-            <div className="riso-whole-flyer-header">
-              <h3 className="riso-block-title">The whole flyer</h3>
-              <div className="riso-chip-row">
-                {chips.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`riso-chip${chipFilter === c.id ? " active" : ""}`}
-                    onClick={() => setChipFilter(c.id)}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-              <Segmented
-                options={[
-                  { id: "flat", label: "All" },
-                  { id: "category", label: "By category" },
-                ]}
-                value={groupByCategory ? "category" : "flat"}
-                onChange={setView}
-              />
-            </div>
+      <div className="riso-whole-flyer">
+        <h3 className="riso-whole-flyer-title">The whole flyer</h3>
+        <div className="riso-flyer-controls">
+          <div className="riso-flyer-controls-row">
             <input
               type="search"
               className="riso-flyer-search"
               value={query}
-              placeholder={`Search ${itemCount} flyer items, e.g. chicken, Metro, fromage`}
+              placeholder={`Search ${itemCountText} flyer items, e.g. chicken, fromage`}
               aria-label="Search flyer items"
               onChange={(e) => setQuery(e.target.value)}
             />
             {stores.length > 1 && (
-              <div className="riso-chip-row">
-                <button
-                  type="button"
-                  className={`riso-chip small${storeFilter === null ? " active" : ""}`}
-                  onClick={() => setStoreFilter(null)}
-                >
-                  All stores
-                </button>
-                {stores.map((s) => (
+              <div className="riso-store-switch" role="group" aria-label="Store">
+                {[null, ...stores].map((s) => (
                   <button
-                    key={s}
+                    key={s || "all"}
                     type="button"
-                    className={`riso-chip small${storeFilter === s ? " active" : ""}`}
-                    onClick={() => setStoreFilter((prev) => (prev === s ? null : s))}
+                    className={storeFilter === s ? "active" : ""}
+                    aria-pressed={storeFilter === s}
+                    onClick={() => setStoreFilter(s)}
                   >
-                    {s}
+                    {s || "All stores"}
                   </button>
                 ))}
-              </div>
-            )}
-            {stores.length > 0 && (
-              <p className="riso-flyer-links">
-                <span>OPEN THE FLYER</span>
-                {(storeFilter ? [storeFilter] : stores).map((s) => (
-                  <a key={s} href={flyerUrl(s, importSettings?.postalCode)} target="_blank" rel="noreferrer">
-                    {s} ↗
-                  </a>
-                ))}
-              </p>
-            )}
-
-            {visibleDeals.length === 0 ? (
-              <p className="riso-empty">{searching ? `Nothing on the flyers matches "${query.trim()}".` : "No deals match this filter."}</p>
-            ) : (
-              <div className="riso-table">
-                <div className="riso-table-row riso-table-header">
-                  <div>Item</div>
-                  <div>Store</div>
-                  <div>Price</div>
-                  <div>Per unit</div>
-                  <div>Vs 6-month range</div>
-                  <div />
-                </div>
-                {groupByCategory
-                  ? categoryGroups.map((group) => {
-                      const open = isOpen(group.id);
-                      return (
-                        <Fragment key={group.id}>
-                          <button
-                            type="button"
-                            className={`riso-table-group-head${open ? " open" : ""}`}
-                            aria-expanded={open}
-                            onClick={() => toggleAisle(group.id)}
-                            disabled={searching}
-                          >
-                            <span className="riso-table-group-caret" aria-hidden="true">
-                              {open ? "▾" : "▸"}
-                            </span>
-                            <span>{group.label}</span>
-                            <span className="riso-table-group-count">{group.deals.length}</span>
-                          </button>
-                          {open && (
-                            <AisleRows
-                              deals={group.deals}
-                              onOpen={(d) => setDetailId(d.id)}
-                              onToggleList={toggleListed}
-                            />
-                          )}
-                        </Fragment>
-                      );
-                    })
-                  : visibleDeals
-                      .slice(0, shown)
-                      .map((d) => (
-                        <DealRow key={d.id} deal={d} onOpen={() => setDetailId(d.id)} onToggleList={() => toggleListed(d)} />
-                      ))}
-                {!groupByCategory && visibleDeals.length > shown && (
-                  <button type="button" className="riso-table-more" onClick={() => setShown((n) => n + PAGE_SIZE)}>
-                    Show {Math.min(PAGE_SIZE, visibleDeals.length - shown)} more · {visibleDeals.length - shown} left
-                  </button>
-                )}
               </div>
             )}
           </div>
-      </>
+          <div className="riso-flyer-controls-row">
+            <span className="riso-flyer-controls-label">SLICE BY</span>
+            {SLICES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`riso-slice-chip${slice === c.id ? " active" : ""}`}
+                aria-pressed={slice === c.id}
+                onClick={() => pickSlice(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+            <span className="riso-flyer-controls-label rank">RANK BY</span>
+            {Object.entries(RANKS).map(([id, r]) => (
+              <button
+                key={id}
+                type="button"
+                className={`riso-slice-chip${rank === id ? " active" : ""}`}
+                aria-pressed={rank === id}
+                onClick={() => pickRank(id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="riso-flyer-summary">
+          {shownIngredients.length} ingredient{shownIngredients.length === 1 ? "" : "s"} · tap a card for every store,
+          bilingual names and the price range
+        </p>
+        {stores.length > 0 && (
+          <p className="riso-flyer-links">
+            <span>OPEN THE FLYER</span>
+            {(storeFilter ? [storeFilter] : stores).map((s) => (
+              <a key={s} href={flyerUrl(s, importSettings?.postalCode)} target="_blank" rel="noreferrer">
+                {s} ↗
+              </a>
+            ))}
+          </p>
+        )}
+
+        {sliced.length === 0 ? (
+          <p className="riso-ing-empty">{words.length ? `Nothing on the flyers matches "${query.trim()}".` : "No ingredients match."}</p>
+        ) : (
+          sliced.map((group) => (
+            <section key={group.name} className="riso-ing-group" aria-label={group.name}>
+              <div className="riso-ing-group-head">
+                <h4>{group.name}</h4>
+                <span className="riso-ing-group-count">{group.items.length}</span>
+                <span className="riso-ing-group-rule" />
+              </div>
+              <div className="riso-ing-grid">
+                {group.items.map((g) => (
+                  <IngredientCard
+                    key={g.key}
+                    g={g}
+                    open={expanded.has(g.key)}
+                    onToggle={() => toggleCard(g.key)}
+                    isListedAt={isListedAt}
+                    onList={listAt}
+                    onOpenDeal={(d) => setDetailId(d.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
 
       {detailDeal && (
         <DealDetailModal
           deal={detailDeal}
+          others={(ingredients.find((g) => g.variants.some((d) => d.id === detailDeal.id))?.variants || []).filter((d) => d.id !== detailDeal.id)}
           onClose={() => setDetailId(null)}
-          onList={() => toggleListed(detailDeal)}
           onToggleWatch={() => toggleWatch(detailDeal)}
           postalCode={importSettings?.postalCode}
         />

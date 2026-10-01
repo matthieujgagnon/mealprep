@@ -390,6 +390,7 @@ export default function App({ user, onLogout }) {
   async function handleAddPantryLocation(name) {
     const created = await api.addPantryLocation(name);
     setPantryLocations((prev) => [...prev, created]);
+    return created;
   }
 
   // Items still in a deleted section move back to Pantry server-side (see

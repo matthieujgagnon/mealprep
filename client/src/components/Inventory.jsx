@@ -17,20 +17,26 @@ const SHELF_LOCATIONS = [
   { id: "pantry", label: "Pantry" },
 ];
 
-// Sections sit on a 6-column grid. Pantry spans the full row by default (it
-// tends to hold the most); every other section starts at half.
-const GRID_COLUMNS = 6;
-// Preset sizes, so sections line up: widths of 1/3, 1/2, 2/3 or the whole
-// row, heights in fixed steps (or "fit" - as tall as its items).
-const SPAN_STEPS = [2, 3, 4, 6];
-const SPAN_LABEL = { 2: "1/3", 3: "1/2", 4: "2/3", 6: "Full" };
-const HEIGHT_STEPS = [240, 360, 480, 600, 720, 840];
-const nearest = (steps, value) => steps.reduce((best, s) => (Math.abs(s - value) < Math.abs(best - value) ? s : best));
+// Shelves sit on a 12-column grid (Riso Inventory handoff): Fridge and
+// Freezer at half, Pantry the whole row. A width snaps to whole columns,
+// never under a quarter, and 10 or more fills the row; a height is any
+// size from 200px, or "auto" - as tall as its items.
+const GRID_COLUMNS = 12;
+const MIN_SPAN = 3;
+const MIN_HEIGHT = 200;
+function snapSpan(n) {
+  const cols = Math.round(n);
+  if (cols >= 10) return GRID_COLUMNS;
+  return Math.max(MIN_SPAN, cols);
+}
+// Saved as "c12:<columns>"; anything else is an older 6-column size.
 const LEGACY_SPAN = { third: 2, half: 3, full: 6 };
 function spanOf(size, id) {
+  const m = /^c12:(\d+)$/.exec(String(size || ""));
+  if (m) return snapSpan(Number(m[1]));
   const n = LEGACY_SPAN[size] ?? parseInt(size, 10);
-  if (n >= 1 && n <= GRID_COLUMNS) return nearest(SPAN_STEPS, n);
-  return id === "pantry" ? 6 : 3;
+  if (n >= 1 && n <= 6) return snapSpan(n * 2);
+  return id === "pantry" ? GRID_COLUMNS : 6;
 }
 
 // Built-in shelves plus custom sections, in the user's saved order (anything
@@ -54,7 +60,7 @@ function orderedSections(locations, layout) {
         label: sec.custom ? sec.defaultLabel : row?.label || sec.defaultLabel,
         defaultLabel: sec.defaultLabel,
         span: spanOf(row?.size, sec.id),
-        height: row?.height ? nearest(HEIGHT_STEPS, row.height) : null,
+        height: row?.height ? Math.max(MIN_HEIGHT, row.height) : null,
       };
     });
 }
@@ -63,38 +69,9 @@ function layoutPayload(sections) {
   return sections.map((s) => ({
     sectionId: s.id,
     label: !s.custom && s.label !== s.defaultLabel ? s.label : null,
-    size: String(s.span),
+    size: `c12:${s.span}`,
     height: s.height,
   }));
-}
-
-function isUrgent(item) {
-  if (!item.expiresAt) return false;
-  return daysUntil(item.expiresAt) <= 3;
-}
-
-// Card/panel expiry chip - a compact variant of formatExpiry's fuller
-// sentence, matching the design handoff's exact label rules.
-function expiryChip(item) {
-  if (!item.expiresAt) return "+ DATE";
-  const d = daysUntil(item.expiresAt);
-  if (d < 0) return "EXPIRED";
-  if (d === 0) return "TODAY";
-  if (d === 1) return "TOMORROW";
-  if (d < 60) return `${d}D`;
-  if (d < 365) return `${Math.round(d / 30)}MO`;
-  return `${Math.round(d / 365)}Y`;
-}
-
-// Urgent items (<=3 days, per isUrgent) swap the calm DM Mono label for a
-// tilted pink sticker instead, matching the handoff's "tomorrow!"/"{n}
-// days" copy.
-function urgentLabel(item) {
-  const d = daysUntil(item.expiresAt);
-  if (d < 0) return "expired!";
-  if (d === 0) return "today!";
-  if (d === 1) return "tomorrow!";
-  return `${d} days`;
 }
 
 // The add form fetches a suggested expiration date and category from the
@@ -332,40 +309,40 @@ function Modal({ title, onClose, children }) {
   );
 }
 
+const LOCATION_WORD = { fridge: "fridge", freezer: "freezer", pantry: "pantry" };
+
+// The card's storage tip, from the USDA FoodKeeper ranges the server sends
+// (item.locations): in the freezer "Keeps 3-6 months frozen"; elsewhere
+// "Freeze for 3-6 months" when it freezes, else "5-7 days in the fridge".
+function storageTip(item) {
+  const here = item.locations?.[item.location];
+  const freezer = item.locations?.freezer;
+  if (item.location === "freezer") return here ? `Keeps ${here.rangeLabel} frozen` : null;
+  if (freezer) return `Freeze for ${freezer.rangeLabel}`;
+  if (here && LOCATION_WORD[item.location]) return `${here.rangeLabel} in the ${LOCATION_WORD[item.location]}`;
+  return null;
+}
+
+// The status strip's fill: days left on a 4-week scale, pink within 3
+// days, yellow within a week, blue after that. Nothing from 28 days on,
+// or with no date.
+const STRIP_DAYS = 28;
+function stripFor(item) {
+  if (!item.expiresAt) return null;
+  const d = daysUntil(item.expiresAt);
+  if (d >= STRIP_DAYS) return null;
+  const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
+  const label = d < 0 ? "expired!" : d === 0 ? "today!" : d === 1 ? "tomorrow!" : d <= 7 ? `${d} days` : `${d}D`;
+  return { pct: `${Math.max(8, (Math.max(d, 0) / STRIP_DAYS) * 100)}%`, color, label };
+}
+
 function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable = true }) {
-  const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
-  const urgent = isUrgent(item);
-  // Items with no tracked date get the same pink-sticker treatment as a
-  // real countdown (reading "+ DATE" instead of a day count) - a nudge to
-  // set one, per the design handoff. It's cosmetic only: `urgent` (not
-  // `showSticker`) still gates the card's ink shadow and the freshness
-  // bar's color, and the "N to use soon" count only ever counts real
-  // countdowns (see soonCount in the Inventory component below).
-  const showSticker = urgent || !item.expiresAt;
-  // USDA range when there is one; otherwise the span from purchase to the
-  // date the user set (milk has no USDA fridge range - it's on the carton).
-  const span =
-    item.shelfLifeDays ||
-    (item.expiresAt && item.purchasedAt ? (new Date(item.expiresAt) - new Date(item.purchasedAt)) / 86400000 : 0);
-  const pct = item.expiresAt && span > 0 ? Math.min(100, Math.max(6, (Math.max(days, 0) / span) * 100)) : null;
+  const strip = stripFor(item);
+  const tip = storageTip(item);
 
-  // A fridge item close to expiring that would keep much longer in the
-  // freezer gets a one-line nudge, using the freezer range already
-  // computed server-side (see pantryInventory.js's GET / enrichment) - no
-  // extra lookup needed here.
-  const freezeTip =
-    urgent && item.location === "fridge" && item.locations?.freezer
-      ? `Freeze it to keep until ${new Date(item.locations.freezer.expiresAt).toLocaleDateString("en-US", {
-          month: "long",
-        })}.`
-      : null;
-
-  // Draggable onto any other shelf column (see App.jsx's handleDragEnd,
-  // routed via the "inv-shelf-<location>" droppable id below) - the
-  // general-purpose way to move an item, since the edit panel's storage
-  // pills only cover the three USDA-backed locations, not custom sections.
-  // PointerSensor's activation delay (App.jsx) is what keeps a quick click
-  // working as a click rather than always starting a drag.
+  // Draggable onto any other shelf (see App.jsx's handleDragEnd, routed via
+  // the "inv-shelf-<location>" droppable ids below). PointerSensor's
+  // activation distance (App.jsx) keeps a quick click a click.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `inv-item-${item.id}`,
     data: { inventoryItemId: item.id, inventoryItem: item },
@@ -376,12 +353,17 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
     <div
       ref={setNodeRef}
       {...(draggable ? { ...attributes, ...listeners } : {})}
-      className={`inv-card${active ? " active" : ""}${urgent && !active ? " urgent" : ""}${
-        isDragging ? " dragging" : ""
-      }`}
+      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}`}
       onClick={onSelect}
+      aria-label={`${item.name}${strip ? `, ${strip.label}` : ""}`}
     >
-      <div className="inv-card-top">
+      <div className="inv-card-strip">
+        {strip && (
+          <>
+            <span className={`inv-card-fill ${strip.color}`} style={{ width: strip.pct }} />
+            <span className="inv-card-days">{strip.label}</span>
+          </>
+        )}
         <span
           role="checkbox"
           aria-checked={selected}
@@ -391,6 +373,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
             e.stopPropagation();
             onToggleSelect();
           }}
+          onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -402,6 +385,8 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
         >
           {selected ? "✓" : ""}
         </span>
+      </div>
+      <div className="inv-card-body">
         <div className="inv-card-main">
           <span className="inv-card-name">{item.name}</span>
           {(item.quantity != null || item.unit) && (
@@ -410,85 +395,97 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
             </span>
           )}
         </div>
-        {showSticker ? (
-          <span className="inv-card-urgent-sticker">{urgent ? urgentLabel(item) : expiryChip(item)}</span>
-        ) : (
-          <span className="inv-card-expiry">{expiryChip(item)}</span>
+        {tip && (
+          <div className="inv-card-tip">
+            {tip}
+            <span className="inv-card-source">USDA</span>
+          </div>
         )}
       </div>
-      {pct !== null && (
-        <div className="inv-freshness-track">
-          <div
-            className={`inv-freshness-fill${days !== null && days <= 3 ? " urgent" : ""}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
-      {freezeTip && <p className="inv-card-tip">{freezeTip}</p>}
     </div>
   );
 }
 
-// Header controls for a section: rename, move earlier/later, size, remove.
-function SectionEditor({ location, onRename, onDelete, onDone }) {
+const WIDTH_PRESETS = [
+  { label: "Full width", span: GRID_COLUMNS },
+  { label: "Half", span: 6 },
+  { label: "Third", span: 4 },
+];
+
+// A shelf's header in edit mode: its name as an input, the size presets
+// and (for your own shelves) Delete shelf.
+function useShelfEditor({ location, span, height, onRename, onResize, onDelete, onDone }) {
   const [name, setName] = useState(location.label);
   const [error, setError] = useState(null);
+  useEffect(() => setName(location.label), [location.label]);
 
   async function commitName() {
     const next = name.trim();
     if (!next || next === location.label) {
       setName(location.label);
-      return true;
+      return;
     }
     try {
       await onRename(next);
       setError(null);
-      return true;
     } catch (err) {
       setError(err.message);
-      return false;
     }
   }
 
-  return (
-    <div className="inv-section-editor">
+  return {
+    nameInput: (
       <input
+        className="inv-shelf-name-input"
         aria-label="Section name"
         value={name}
         maxLength={40}
+        autoFocus
+        onFocus={(e) => e.target.select()}
         onChange={(e) => setName(e.target.value)}
         onBlur={commitName}
         onKeyDown={async (e) => {
-          if (e.key === "Enter" && (await commitName())) onDone();
-          if (e.key === "Escape") onDone();
+          if (e.key === "Enter") {
+            e.preventDefault();
+            await commitName();
+            onDone();
+          }
+          if (e.key === "Escape") {
+            setName(location.label);
+            onDone();
+          }
         }}
       />
-      <div className="inv-section-editor-row">
+    ),
+    commitName,
+    controls: (
+      <div className="inv-shelf-controls">
+        {WIDTH_PRESETS.map((p) => (
+          <button key={p.label} type="button" className={span === p.span ? "on" : ""} onClick={() => onResize({ span: p.span, height })}>
+            {p.label}
+          </button>
+        ))}
+        <button type="button" className={height ? "" : "on"} onClick={() => onResize({ span, height: null })}>
+          Auto height
+        </button>
         {location.custom && (
-          <button type="button" className="inv-section-editor-remove" onClick={onDelete}>
-            Remove
+          <button type="button" className="danger" onClick={onDelete}>
+            Delete shelf
           </button>
         )}
-        <button
-          type="button"
-          className="inv-section-editor-done"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={async () => {
-            if (await commitName()) onDone();
-          }}
-        >
-          Done
-        </button>
+        <span className="inv-shelf-controls-note">
+          {location.custom ? "Its items move to the Pantry. " : ""}Drag cards between shelves any time.
+        </span>
+        {error && <p className="inv-section-editor-error">{error}</p>}
       </div>
-      {error && <p className="inv-section-editor-error">{error}</p>}
-    </div>
-  );
+    ),
+  };
 }
 
-// Drag the corner handle to resize: the width snaps to 1/3, 1/2, 2/3 or
-// full, the height to fixed steps, so neighbouring sections line up (cards
-// scroll inside a section shorter than they are). Arrow keys step through
-// the same sizes; Home goes back to fitting its items.
+// Drag the corner grip to resize: the width snaps to whole columns of 12
+// (at least 3; 10 or more fills the row), the height is free from 200px
+// and the items scroll inside. Double-click (or Home) goes back to auto
+// height; arrow keys change it a step at a time.
 function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
   function measure() {
     const shelf = shelfRef.current;
@@ -513,9 +510,8 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
     document.body.classList.add("no-select");
     const move = (ev) => {
       const widthNow = startWidth + (ev.clientX - startX);
-      const newSpan =
-        m.cols === GRID_COLUMNS ? nearest(SPAN_STEPS, (widthNow + m.gap) / (m.colWidth + m.gap)) : span;
-      const newHeight = nearest(HEIGHT_STEPS, startHeight + (ev.clientY - startY));
+      const newSpan = m.cols === GRID_COLUMNS ? snapSpan((widthNow + m.gap) / (m.colWidth + m.gap)) : span;
+      const newHeight = Math.max(MIN_HEIGHT, Math.round((startHeight + (ev.clientY - startY)) / 10) * 10);
       next = { span: newSpan, height: newHeight };
       onPreview(next);
     };
@@ -531,21 +527,20 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
   }
 
   function onKeyDown(e) {
-    const shelfHeight = Math.round(shelfRef.current?.getBoundingClientRect().height || 240);
-    const si = SPAN_STEPS.indexOf(span);
-    const hi = HEIGHT_STEPS.indexOf(nearest(HEIGHT_STEPS, height ?? shelfHeight));
+    const shelfHeight = Math.round(shelfRef.current?.getBoundingClientRect().height || 300);
+    const h = height ?? shelfHeight;
     const steps = {
-      ArrowLeft: { span: SPAN_STEPS[Math.max(0, si - 1)], height },
-      ArrowRight: { span: SPAN_STEPS[Math.min(SPAN_STEPS.length - 1, si + 1)], height },
-      ArrowUp: { span, height: HEIGHT_STEPS[Math.max(0, hi - 1)] },
-      ArrowDown: { span, height: HEIGHT_STEPS[Math.min(HEIGHT_STEPS.length - 1, hi + (height ? 1 : 0))] },
+      ArrowLeft: { span: snapSpan(span - 1), height },
+      ArrowRight: { span: snapSpan(span + 1), height },
+      ArrowUp: { span, height: Math.max(MIN_HEIGHT, h - 40) },
+      ArrowDown: { span, height: h + 40 },
     };
     if (e.key in steps) {
       e.preventDefault();
       onCommit(steps[e.key]);
     } else if (e.key === "Home" || e.key === "Delete") {
       e.preventDefault();
-      onCommit({ span, height: null }); // back to fitting its items
+      onCommit({ span, height: null });
     }
   }
 
@@ -554,8 +549,9 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
       type="button"
       className="inv-shelf-resize"
       aria-label={label}
-      title="Drag to resize (arrow keys work too)"
+      title="Drag to resize. Double-click for auto height."
       onPointerDown={onPointerDown}
+      onDoubleClick={() => onCommit({ span, height: null })}
       onKeyDown={onKeyDown}
     />
   );
@@ -569,14 +565,16 @@ function ShelfColumn({
   onSelect,
   onToggleSelect,
   draggable = true,
-  editorProps,
+  editing,
+  onEdit,
+  onRename,
+  onDelete,
   arrangeable,
   onResize,
   onStartMove,
   onMoveByKey,
   moveState,
 }) {
-  const [editing, setEditing] = useState(false);
   const [preview, setPreview] = useState(null);
   const shelfRef = useRef(null);
   const sorted = [...items].sort((a, b) => {
@@ -588,86 +586,91 @@ function ShelfColumn({
     return da - db;
   });
 
-  // Every shelf is a drop target for a dragged card (see ItemCard above and
-  // App.jsx's handleDragEnd, which routes "inv-shelf-<id>" ids) - built-in
-  // and custom sections work identically here.
+  // Every shelf is a drop target for a dragged card (see App.jsx's
+  // handleDragEnd, which routes "inv-shelf-<id>" ids).
   const { setNodeRef, isOver } = useDroppable({ id: `inv-shelf-${location.id}` });
 
   const span = preview?.span ?? location.span;
   const height = preview ? preview.height : location.height;
-  // A wide section lays its cards out in their own grid.
-  const wide = span >= 4;
   const classes = ["inv-shelf"];
-  if (wide) classes.push("wide");
   if (height) classes.push("fixed-height");
   if (isOver) classes.push("drop-active");
   if (preview) classes.push("resizing");
-  const sizeBadge = preview ? `${SPAN_LABEL[span] || span} · ${height ? `${height}px` : "fit"}` : null;
+  if (editing) classes.push("editing");
   if (moveState?.id === location.id) classes.push("moving");
   if (moveState?.overId === location.id) classes.push(moveState.after ? "drop-after" : "drop-before");
+  const sizeLabel = `${span}/${GRID_COLUMNS} · ${height ? `${height}PX` : "AUTO"}`;
+
+  const editor = useShelfEditor({
+    location,
+    span: location.span,
+    height: location.height,
+    onRename,
+    onResize,
+    onDelete,
+    onDone: () => onEdit(false),
+  });
 
   return (
-    <div
+    <section
       ref={(node) => {
         setNodeRef(node);
         shelfRef.current = node;
       }}
       className={classes.join(" ")}
-      style={{ "--span": span, "--span-md": span >= 4 ? 2 : 1, height: height ? `${height}px` : undefined }}
+      style={{ "--span": span, height: height ? `${height}px` : undefined }}
       data-section-id={location.id}
       aria-label={`${location.label} section`}
     >
-      {editing ? (
-        <SectionEditor location={location} {...editorProps} onDone={() => setEditing(false)} />
-      ) : (
-        <div className="inv-shelf-header">
-          {arrangeable && (
-            <button
-              type="button"
-              className="inv-shelf-grip"
-              aria-label={`Move the "${location.label}" section`}
-              title="Drag to move this section (arrow keys work too)"
-              onPointerDown={(e) => onStartMove(location.id, e)}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowLeft" || e.key === "ArrowUp") onMoveByKey(location.id, -1, e);
-                if (e.key === "ArrowRight" || e.key === "ArrowDown") onMoveByKey(location.id, 1, e);
-              }}
-            >
-              ⠿
-            </button>
-          )}
-          <span className="inv-shelf-title">{location.label}</span>
-          <span className="inv-shelf-count">{items.length}</span>
-          <span className="inv-shelf-note">Soonest first</span>
+      <div className="inv-shelf-header">
+        {arrangeable && (
           <button
             type="button"
-            className="inv-shelf-edit"
-            aria-label={`Edit the "${location.label}" section`}
-            title="Rename this section"
-            onClick={() => setEditing(true)}
+            className="inv-shelf-grip"
+            aria-label={`Move the "${location.label}" section`}
+            title="Drag to move this shelf (arrow keys work too)"
+            onPointerDown={(e) => onStartMove(location.id, e)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft" || e.key === "ArrowUp") onMoveByKey(location.id, -1, e);
+              if (e.key === "ArrowRight" || e.key === "ArrowDown") onMoveByKey(location.id, 1, e);
+            }}
           >
-            ✎<span className="inv-shelf-edit-text"> Edit section</span>
+            ⠿
           </button>
-        </div>
-      )}
-      {sorted.length === 0 ? (
-        <div className="inv-shelf-empty">Nothing here yet</div>
-      ) : (
-        <div className={`inv-shelf-items${wide ? " grid" : ""}`}>
-          {sorted.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              active={item.id === activeItemId}
-              selected={selectedIds.has(item.id)}
-              onSelect={() => onSelect(item.id)}
-              draggable={draggable}
-              onToggleSelect={() => onToggleSelect(item.id)}
-            />
-          ))}
-        </div>
-      )}
-      {sizeBadge && <span className="inv-shelf-size-badge">{sizeBadge}</span>}
+        )}
+        {editing ? editor.nameInput : <h3 className="inv-shelf-title">{location.label}</h3>}
+        <span className="inv-shelf-count">{items.length}</span>
+        <span className="inv-shelf-spacer" />
+        {(editing || preview) && <span className="inv-shelf-size">{sizeLabel}</span>}
+        <button
+          type="button"
+          className={`inv-shelf-edit${editing ? " on" : ""}`}
+          aria-label={editing ? `Done editing the "${location.label}" section` : `Edit the "${location.label}" section`}
+          title={editing ? "Done" : "Edit shelf"}
+          onMouseDown={(e) => editing && e.preventDefault()}
+          onClick={async () => {
+            if (editing) await editor.commitName();
+            onEdit(!editing);
+          }}
+        >
+          {editing ? "✓" : "✎"}
+        </button>
+      </div>
+      {editing && editor.controls}
+      <div className="inv-shelf-items">
+        {sorted.map((item) => (
+          <ItemCard
+            key={item.id}
+            item={item}
+            active={item.id === activeItemId}
+            selected={selectedIds.has(item.id)}
+            onSelect={() => onSelect(item.id)}
+            draggable={draggable}
+            onToggleSelect={() => onToggleSelect(item.id)}
+          />
+        ))}
+        {sorted.length === 0 && <div className="inv-shelf-empty">Drop items here</div>}
+      </div>
       {arrangeable && (
         <ResizeHandle
           label={`Resize the "${location.label}" section`}
@@ -678,59 +681,30 @@ function ShelfColumn({
           onCommit={onResize}
         />
       )}
-    </div>
+    </section>
   );
 }
 
-// A trailing tile in the shelves grid for creating a new custom section
-// (e.g. "Garage Freezer", "Wine Cellar") - plain storage bins with no USDA
-// backing, so items in one just don't get a freshness bar or a suggested
-// expiry (same as any item whose name has no FoodKeeper match at all).
+// "+ Add shelf" at the end of the grid makes a new shelf and opens it
+// ready to rename.
 function AddSectionTile({ onAdd }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setSaving(true);
-    try {
-      await onAdd(name.trim());
-      setName("");
-      setOpen(false);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!open) {
-    return (
-      <button type="button" className="inv-add-section-tile" onClick={() => setOpen(true)}>
-        + Add section
-      </button>
-    );
-  }
-
+  const [adding, setAdding] = useState(false);
   return (
-    <form className="inv-add-section-tile form" onSubmit={handleSubmit}>
-      <input
-        autoFocus
-        type="text"
-        placeholder="e.g. Garage Freezer"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        disabled={saving}
-      />
-      <div className="inv-add-section-actions">
-        <button type="submit" className="btn primary btn-sm" disabled={saving || !name.trim()}>
-          Add
-        </button>
-        <button type="button" className="btn subtle btn-sm" onClick={() => setOpen(false)}>
-          Cancel
-        </button>
-      </div>
-    </form>
+    <button
+      type="button"
+      className="inv-add-section-tile"
+      disabled={adding}
+      onClick={async () => {
+        setAdding(true);
+        try {
+          await onAdd();
+        } finally {
+          setAdding(false);
+        }
+      }}
+    >
+      {adding ? "Adding…" : "+ Add shelf"}
+    </button>
   );
 }
 
@@ -751,10 +725,24 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
     else setNameDraft(item.name);
   }
 
-  function adjustQty(delta) {
-    const next = Math.max(0, (item.quantity ?? 0) + delta);
+  // Grams go 50 at a time, bottles and loaves a quarter at a time.
+  const step = item.unit === "g" || item.unit === "ml" ? 50 : item.unit === "bottle" || item.unit === "loaf" ? 0.25 : 1;
+  function adjustQty(dir) {
+    const next = Math.max(0, Math.round(((item.quantity ?? 0) + dir * step) * 100) / 100);
     onUpdate(item.id, { quantity: next });
   }
+  const dateRef = useRef(null);
+  function pickDate() {
+    const input = dateRef.current;
+    if (!input) return;
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+      input.click();
+    }
+  }
+  const tip = storageTip(item);
 
   // Union of every location with real USDA data for this item, plus its
   // current location even if that one happens to have none (e.g. an item
@@ -770,7 +758,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
         day: "numeric",
         year: daysUntil(item.expiresAt) > 300 ? "numeric" : undefined,
       })}.`
-    : "No date yet. Pick a storage spot above to use the USDA estimate, or pick a date.";
+    : "No date yet.";
 
   const recipeCount = recipes.filter(
     (r) => !r.isPlaceholder && r.ingredients?.some((i) => i.name?.toLowerCase().includes(item.name.toLowerCase()))
@@ -800,14 +788,14 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
       <div>
         <div className="inv-panel-label">Quantity</div>
         <div className="inv-qty-stepper">
-          <button type="button" onClick={() => adjustQty(-1)} aria-label="Decrease quantity">
+          <button type="button" onClick={() => adjustQty(-1)} aria-label={`Decrease quantity by ${step}`}>
             −
           </button>
           <span>
             {item.quantity ?? 0}
             {item.unit ? ` ${unitLabel(item.unit, item.quantity ?? 0)}` : ""}
           </span>
-          <button type="button" onClick={() => adjustQty(1)} aria-label="Increase quantity">
+          <button type="button" onClick={() => adjustQty(1)} aria-label={`Increase quantity by ${step}`}>
             +
           </button>
         </div>
@@ -835,11 +823,27 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
         </div>
       </div>
 
+      {tip && (
+        <div className="inv-panel-tip">
+          <span>❄ {tip}</span>
+          <span className="inv-panel-tip-source">
+            SOURCE
+            <br />
+            USDA FOODKEEPER
+          </span>
+        </div>
+      )}
+
       <p className="inv-use-by">
         {useByText}{" "}
+        <button type="button" className="link-btn" onClick={pickDate}>
+          Pick a date
+        </button>
         <input
+          ref={dateRef}
           type="date"
           className="inv-use-by-picker"
+          aria-label="Use-by date"
           value={item.expiresAt ? item.expiresAt.slice(0, 10) : ""}
           onChange={(e) => onUpdate(item.id, { expiresAt: e.target.value || null })}
         />
@@ -914,6 +918,7 @@ export function Inventory({
   const [showScan, setShowScan] = useState(false);
   const isPhone = useIsPhone();
   const [phoneShelf, setPhoneShelf] = useState("fridge");
+  const [editingId, setEditingId] = useState(null);
   const staples = new Set(customStaples || []);
 
   useEffect(() => {
@@ -1024,6 +1029,19 @@ export function Inventory({
     onSaveLayout(layoutPayload(sections.map((sec) => (sec.id === id ? { ...sec, ...patch } : sec))));
   }
 
+  // A new shelf is named "New shelf" (or "New shelf 2"...) and opens in
+  // rename mode.
+  async function addShelf() {
+    const taken = new Set(sections.map((sec) => sec.label.toLowerCase()));
+    let name = "New shelf";
+    for (let n = 2; taken.has(name.toLowerCase()); n++) name = `New shelf ${n}`;
+    const created = await onAddLocation(name);
+    if (created?.id) {
+      setEditingId(created.id);
+      if (isPhone) setPhoneShelf(created.id);
+    }
+  }
+
   async function renameSection(sec, name) {
     if (sec.custom) await onRenameLocation(sec.id, name);
     else updateSection(sec.id, { label: name });
@@ -1050,9 +1068,10 @@ export function Inventory({
         </div>
       </div>
 
-      <HintStrip userId={user.id} screenKey="inventory">
-        Each shelf is sorted by what expires first. Click an item to edit it. Tick several to mark them
-        used up, tossed or frozen all at once. Pink means use it within 3 days.
+      <HintStrip userId={user.id} screenKey="inventory-v2">
+        Shelves are sorted by what expires first. Click an item to edit it. Storage tips come from USDA
+        FoodKeeper. Tick several to mark them used up, tossed or frozen all at once. Pink means use it within 3
+        days.
       </HintStrip>
 
       {items.length === 0 && (
@@ -1091,12 +1110,13 @@ export function Inventory({
               onSelect={setActiveItemId}
               onToggleSelect={toggleSelect}
               draggable={!isPhone}
-              editorProps={{
-                onRename: (name) => renameSection(loc, name),
-                onDelete: () => {
-                  if (isPhone) setPhoneShelf("fridge");
-                  onDeleteLocation(loc.id);
-                },
+              editing={editingId === loc.id}
+              onEdit={(on) => setEditingId(on ? loc.id : null)}
+              onRename={(name) => renameSection(loc, name)}
+              onDelete={() => {
+                setEditingId(null);
+                if (isPhone) setPhoneShelf("fridge");
+                onDeleteLocation(loc.id);
               }}
               arrangeable={!isPhone}
               onResize={({ span, height }) => updateSection(loc.id, { span, height })}
@@ -1105,7 +1125,7 @@ export function Inventory({
               moveState={moveState}
             />
           ))}
-        <AddSectionTile onAdd={onAddLocation} />
+        <AddSectionTile onAdd={addShelf} />
       </div>
 
       {activeItem && isPhone && (

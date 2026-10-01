@@ -3,11 +3,13 @@ import { prisma } from "../lib/prisma.js";
 
 export const inventoryLayoutRouter = Router();
 
-// Width in grid columns, "1"-"6" (the older named sizes still read fine).
+// Width in grid columns: "c12:3"-"c12:12" on the 12-column grid, or an
+// older 6-column "1"-"6" (the older named sizes still read fine).
 const LEGACY_SIZES = { third: "2", half: "3", full: "6" };
 function normalizeSize(size) {
   const value = LEGACY_SIZES[size] || String(size ?? "");
-  return /^[1-6]$/.test(value) ? value : "3";
+  if (/^c12:([3-9]|1[0-2])$/.test(value)) return value;
+  return /^[1-6]$/.test(value) ? value : "c12:6";
 }
 
 // GET /api/inventory-layout - the user's section order, sizes and built-in

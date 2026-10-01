@@ -36,10 +36,17 @@ async function addRecipe(page, title, ingredientName) {
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 }
 
-// The table opens on collapsed categories; most checks here want every row.
-async function openFlyersFlat(page) {
+async function openFlyers(page) {
   await page.getByRole("button", { name: "Flyers", exact: true }).click();
-  await page.locator(".riso-whole-flyer").getByRole("button", { name: "All", exact: true }).click();
+  await expect(page.locator(".riso-flyer-controls")).toBeVisible();
+}
+
+// One ingredient's card, and the same card opened to every store's product.
+const card = (page, name) => page.locator(".riso-ing-card").filter({ has: page.getByRole("heading", { name, exact: true }) });
+async function openCard(page, name) {
+  await page.getByRole("button", { name: `${name}: every store's price` }).click();
+  await expect(card(page, name).locator(".riso-ing-panel")).toBeVisible();
+  return card(page, name);
 }
 
 const weeksAgo = (n) => new Date(Date.now() - n * 7 * 24 * 60 * 60 * 1000);
@@ -76,13 +83,13 @@ async function seedChickenHistory(userId) {
 test("Flyers shows sample data with the Riso layout before any real flyer exists", async ({ page }) => {
   await signUp(page, uniqueEmail());
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
-  await expect(page.locator(".riso-flyers")).toBeVisible();
+  await openFlyers(page);
   await expect(page.getByText("deals, sorted.")).toBeVisible();
   // Sample deals fill the layout (so the page shows how it works) under a
   // clear "sample" note...
   await expect(page.locator(".riso-flyers-sample-note")).toContainText("example deals");
-  await expect(page.locator(".riso-block").first()).toBeVisible();
+  await expect(page.locator(".riso-brief")).toHaveCount(3);
+  await expect(page.locator(".riso-ing-card").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload flyer" })).toBeVisible();
 
   // ...but never count as real prices anywhere else.
@@ -90,82 +97,126 @@ test("Flyers shows sample data with the Riso layout before any real flyer exists
   await expect(page.getByText("No deals yet")).toBeVisible();
 });
 
-test("real deals show a price meter, a freeze tip, and a best-deals block", async ({ page }) => {
+test("real deals show as ingredient cards with a 6-month low, a freeze tip and the briefing", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await openFlyersFlat(page);
-  await page.waitForTimeout(400);
+  await openFlyers(page);
+  const lows = page.locator(".riso-brief.accent");
+  await expect(lows).toContainText("Lows to grab");
+  await expect(lows.locator(".riso-brief-row")).toHaveText([/Chicken breast.*6-month low.*\$4\.49\/lb.*Metro/i]);
 
-  await expect(page.locator(".riso-block.accent")).toContainText("The lowest prices in 6 months");
-  await expect(page.locator(".riso-block.accent")).toContainText("Chicken breast");
+  const chicken = card(page, "Chicken breast");
+  await expect(chicken.locator(".riso-ing-low")).toHaveText("6-MO LOW");
+  await expect(chicken.locator(".riso-ing-sub")).toContainText("freezes");
+  await expect(chicken.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$4\.49\s*per lb/]);
 
-  const row = page.locator(".riso-table-row", { hasText: "Chicken breast" });
-  await expect(row).toBeVisible();
-  await expect(row).toContainText("6-MO LOW");
-  await expect(row.locator(".riso-table-freeze")).toContainText("Freezes");
+  const opened = await openCard(page, "Chicken breast");
+  await expect(opened.locator(".riso-ing-range-head")).toContainText("6-MO LOW");
+  await expect(opened.locator(".riso-ing-range-labels")).toHaveText(/LOW \$4\.49\s*HIGH \$6\.99/);
 
-  const newRow = page.locator(".riso-table-row", { hasText: "Bell peppers" });
-  await expect(newRow).toContainText("NEW");
+  const peppers = await openCard(page, "Bell peppers");
+  await expect(peppers.locator(".riso-ing-range-head")).toContainText("NO HISTORY YET");
 });
 
-test("watching from the detail view persists and the Watchlist filter narrows the table", async ({ page }) => {
+test("the same ingredient at several stores is one card, cheapest tile in green", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, source: "Flipp", category: "produce", unitBasis: "lb", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, store: "Metro", item: "Bananas | bananes importées", matchName: "bananas", price: "$0.89/lb", unitPrice: 0.89 },
+      { ...base, store: "Super C", item: "Bananas", matchName: "bananas", price: "$0.79/lb", unitPrice: 0.79 },
+      { ...base, store: "Maxi", item: "Bananas", matchName: "bananas", price: "$0.84/lb", unitPrice: 0.84 },
+      { ...base, store: "Metro", item: "Kiwis | kiwis", matchName: "kiwis", price: "$3.99", unitPrice: 3.99, unitBasis: "each" },
+    ],
+  });
+
+  await openFlyers(page);
+  const bananas = card(page, "Bananas");
+  await expect(bananas.locator(".riso-ing-sub")).toContainText("bananes importées");
+  await expect(bananas.locator(".riso-ing-tile")).toHaveCount(3);
+  await expect(bananas.locator(".riso-ing-tile.best")).toHaveText(/SUPER C\s*\$0\.79/);
+  await expect(page.locator(".riso-brief.plain .riso-brief-row")).toHaveText([/Bananas.*save \$0\.10\/lb vs metro/i]);
+
+  // Open: every store's product, cheapest first.
+  const opened = await openCard(page, "Bananas");
+  await expect(opened.locator(".riso-ing-variant-store")).toHaveText(["SUPER C", "MAXI", "METRO"]);
+
+  // One store at a time: an ingredient it doesn't carry disappears.
+  await page.locator(".riso-store-switch").getByRole("button", { name: "Super C" }).click();
+  await expect(card(page, "Kiwis")).toHaveCount(0);
+  await expect(card(page, "Bananas").locator(".riso-ing-tile")).toHaveCount(1);
+
+  // Slice and rank.
+  await page.locator(".riso-store-switch").getByRole("button", { name: "All stores" }).click();
+  await page.getByRole("button", { name: "Can freeze" }).click();
+  await expect(page.locator(".riso-ing-group-head h4").first()).toHaveText("Freezes well");
+  await expect(page.getByRole("region", { name: "Freezes well" })).toContainText("Bananas");
+  await page.getByRole("button", { name: "A to Z" }).click();
+  await expect(page.locator(".riso-ing-name")).toHaveText(["Bananas", "Kiwis"]);
+});
+
+test("watching from the detail view persists", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await openFlyersFlat(page);
-  await page.waitForTimeout(400);
-
-  const chickenRow = page.locator(".riso-table-row", { hasText: "Chicken breast" });
-  await chickenRow.click();
+  await openFlyers(page);
+  let chicken = await openCard(page, "Chicken breast");
+  await chicken.getByRole("button", { name: "Chicken breast details" }).click();
   const detail = page.getByRole("dialog", { name: "Chicken breast" });
   await detail.getByRole("button", { name: "☆ Watch this" }).click();
   await expect(detail.getByRole("button", { name: "★ Watching" })).toBeVisible();
   await detail.getByRole("button", { name: "Close" }).click();
-  await expect(chickenRow.locator(".riso-watch-badge")).toHaveText("★ WATCHING");
 
   await page.reload();
-  await openFlyersFlat(page);
-  await page.waitForTimeout(400);
-  await expect(page.locator(".riso-table-row", { hasText: "Chicken breast" }).locator(".riso-watch-badge")).toBeVisible();
-
-  await page.getByRole("button", { name: "★ Watchlist" }).click();
-  const rows = page.locator(".riso-table-row:not(.riso-table-header)");
-  await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText("Chicken breast");
+  await openFlyers(page);
+  chicken = await openCard(page, "Chicken breast");
+  await chicken.getByRole("button", { name: "Chicken breast details" }).click();
+  await expect(page.getByRole("dialog").getByRole("button", { name: "★ Watching" })).toBeVisible();
 });
 
-test("+ List adds a deal's ingredient to this week's grocery list", async ({ page }) => {
+test("+ List puts the ingredient on this week's list under that store", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await openFlyersFlat(page);
-  await page.waitForTimeout(400);
-
-  const row = page.locator(".riso-table-row", { hasText: "Chicken breast" });
-  await row.locator(".riso-list-pill").click();
-  await expect(row.locator(".riso-list-pill")).toHaveText("✓ Listed");
-  // The pill doesn't open the detail view.
+  await openFlyers(page);
+  const chicken = await openCard(page, "Chicken breast");
+  await chicken.getByRole("button", { name: "Add Chicken breast at Metro to the grocery list" }).click();
+  await expect(chicken.locator(".riso-ing-list")).toHaveText("✓");
+  // The button doesn't open the detail view.
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(page.getByText("chicken breast")).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Metro store" }).getByRole("button", { name: "Check off Chicken breast", exact: true })
+  ).toBeVisible();
+
+  // Again takes it off.
+  await openFlyers(page);
+  const again = await openCard(page, "Chicken breast");
+  await again.getByRole("button", { name: "Take Chicken breast at Metro off the grocery list" }).click();
+  await expect(again.locator(".riso-ing-list")).toHaveText("+ List");
 });
 
-test("clicking a deal opens its detail with the 6-month history", async ({ page }) => {
+test("a briefing row opens its card, and the detail view keeps the 6-month history", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await openFlyersFlat(page);
-  await page.locator(".riso-block.accent .riso-deal-row", { hasText: "Chicken breast" }).click();
+  await openFlyers(page);
+  await page.locator(".riso-brief.accent .riso-brief-row", { hasText: "Chicken breast" }).click();
+  const chicken = card(page, "Chicken breast");
+  await expect(chicken.locator(".riso-ing-panel")).toBeVisible();
+  await chicken.getByRole("button", { name: "Chicken breast details" }).click();
 
   const detail = page.getByRole("dialog", { name: "Chicken breast" });
   await expect(detail).toContainText("METRO · MEAT & POULTRY");
@@ -178,12 +229,8 @@ test("clicking a deal opens its detail with the 6-month history", async ({ page 
   await expect(detail).toContainText("❄ Freezes");
   await expect(detail.locator(".riso-deal-detail-low")).toHaveText("6-month low!");
 
-  await detail.getByRole("button", { name: "+ Add to grocery list" }).click();
-  await expect(detail.getByRole("button", { name: "✓ On your grocery list" })).toBeVisible();
-
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator(".riso-table-row", { hasText: "Chicken breast" }).locator(".riso-list-pill")).toHaveText("✓ Listed");
 });
 
 test("a matching recipe appears in What to cook with a save sticker", async ({ page }) => {
@@ -193,12 +240,10 @@ test("a matching recipe appears in What to cook with a save sticker", async ({ p
   await seedChickenHistory(user.id);
   await addRecipe(page, "Riso Cook Test Dish", "chicken breast");
 
-  await openFlyersFlat(page);
-  await page.waitForTimeout(400);
-
-  const card = page.locator(".riso-cook-card", { hasText: "Riso Cook Test Dish" });
-  await expect(card).toBeVisible();
-  await expect(card.locator(".riso-sticker")).toContainText("save $2.50");
+  await openFlyers(page);
+  const cook = page.locator(".riso-cook-card", { hasText: "Riso Cook Test Dish" });
+  await expect(cook).toBeVisible();
+  await expect(cook.locator(".riso-sticker")).toContainText("save $2.50");
 });
 
 test("a deal with no history yet is compared with Quebec's average price", async ({ page }) => {
@@ -219,12 +264,13 @@ test("a deal with no history yet is compared with Quebec's average price", async
       },
     });
 
-    await openFlyersFlat(page);
-    const row = page.locator(".riso-table-row", { hasText: "Quokkafruit" });
-    await expect(row.locator(".riso-meter-new.vs-avg.good")).toHaveText("30% UNDER QC AVG");
-    await expect(page.locator(".riso-block.accent")).toContainText("Quokkafruit");
+    await openFlyers(page);
+    const name = await page.locator(".riso-ing-name", { hasText: "Quokkafruit" }).innerText();
+    const fruit = await openCard(page, name);
+    await expect(fruit.locator(".riso-ing-range-head")).toContainText("30% UNDER QC AVG");
+    await expect(fruit.locator(".riso-ing-range-none")).toContainText("Quebec's average: $5.00/lb");
 
-    await row.click();
+    await fruit.getByRole("button", { name: /Quokkafruit .* details/ }).click();
     const avg = page.getByRole("dialog").locator(".riso-deal-detail-avg");
     await expect(avg).toHaveClass(/stock-up/);
     await expect(avg).toContainText("QUEBEC AVERAGE · AUG 2026");
@@ -235,7 +281,7 @@ test("a deal with no history yet is compared with Quebec's average price", async
   }
 });
 
-test("deal names read the same way, with the product photo or a food emoji", async ({ page }) => {
+test("cards show the product photo or a food emoji, and the detail says why a photo didn't load", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -249,51 +295,44 @@ test("deal names read the same way, with the product photo or a food emoji", asy
     ],
   });
 
-  await openFlyersFlat(page);
-  const salmon = page.locator(".riso-table-row", { hasText: "PC black label salmon fillets, 400 g" });
-  await expect(salmon.locator("img.riso-deal-photo")).toHaveAttribute("src", photo);
-  const oranges = page.locator(".riso-table-row", { hasText: "Seedless navel oranges, 3 lb" });
-  await expect(oranges.locator(".riso-deal-photo.placeholder")).toHaveText("🍊");
+  await openFlyers(page);
+  await expect(card(page, "Salmon fillets").locator("img.riso-ing-cover")).toHaveAttribute("src", photo);
+  const oranges = card(page, "Oranges");
+  await expect(oranges.locator(".riso-ing-cover-emoji")).toHaveText("🍊");
 
-  // The detail view says why the photo didn't show.
-  await oranges.click();
+  // The tidy flyer name is in the open card; its detail says why the photo didn't show.
+  const opened = await openCard(page, "Oranges");
+  await expect(opened.locator(".riso-ing-variant-name")).toHaveText("Seedless navel oranges, 3 lb");
+  await opened.getByRole("button", { name: "Seedless navel oranges, 3 lb details" }).click();
   const why = page.getByRole("dialog").locator(".riso-deal-detail-photo-why");
   await expect(why).toContainText("Photo didn't load: 127.0.0.1");
   await expect(why.getByRole("link", { name: "Open the photo ↗" })).toHaveAttribute("href", "http://127.0.0.1:9/missing.jpg");
 });
 
-test("categories fold away, open on click, and search finds items across them", async ({ page }) => {
+test("cards group by aisle, and search finds French or English names", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   const base = { userId: user.id, store: "Metro", source: "Flipp", category: "other", price: "$3.99", unitPrice: 3.99, unitBasis: "each", isCurrent: true };
   await prisma.flyerDeal.createMany({
     data: [
-      { ...base, item: "Épinards bébé", matchName: "spinach" },
+      { ...base, item: "Baby spinach | épinards bébé", matchName: "spinach" },
       { ...base, item: "Lean ground beef", matchName: "ground beef" },
       { ...base, item: "Paper towels, 6 rolls", matchName: "paper towels" },
     ],
   });
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
-  const flyer = page.locator(".riso-whole-flyer");
-  const produce = flyer.getByRole("button", { name: /Fruits & vegetables/ });
-  await expect(produce).toHaveAttribute("aria-expanded", "false");
-  await expect(flyer.getByRole("button", { name: /Meat & poultry/ })).toBeVisible();
-  await expect(flyer.getByRole("button", { name: /Household & personal care/ })).toBeVisible();
-  await expect(flyer.locator(".riso-table-row.clickable")).toHaveCount(0);
+  await openFlyers(page);
+  await expect(page.locator(".riso-ing-group-head h4")).toHaveText(["Fruits & vegetables", "Meat & poultry", "Household & personal care"]);
 
-  await produce.click();
-  await expect(flyer.locator(".riso-table-row.clickable")).toHaveText([/Épinards bébé/]);
-
-  // Accents don't matter, and matches show even in folded categories.
+  // Accents don't matter.
   await page.getByLabel("Search flyer items").fill("epinards");
-  await expect(flyer.locator(".riso-table-row.clickable")).toHaveCount(1);
+  await expect(page.locator(".riso-ing-name")).toHaveText(["Spinach"]);
   await page.getByLabel("Search flyer items").fill("beef");
-  await expect(flyer.locator(".riso-table-row.clickable")).toHaveText([/Lean ground beef/]);
+  await expect(page.locator(".riso-ing-name")).toHaveText(["Ground beef"]);
 });
 
-test("a deal with no history at its own store is compared with other stores, per lb, and shows the flyer's regular price", async ({ page }) => {
+test("a deal with no history at its own store is compared with other stores, per lb", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -308,12 +347,13 @@ test("a deal with no history at its own store is compared with other stores, per
     ],
   });
 
-  await openFlyersFlat(page);
-  const row = page.locator(".riso-table-row", { hasText: "Lactantia salted butter, 454 g" });
-  await expect(row).toContainText("Reg. $6.49 · 31% off");
-  await expect(row.locator(".riso-meter-source")).toHaveText("6 mo · all stores · per lb");
-  await expect(row.locator(".riso-meter-labels")).toContainText("LOWEST AROUND");
-  await expect(row.locator(".riso-table-unit")).toHaveText("$4.49/lb");
+  await openFlyers(page);
+  const butter = card(page, "Salted butter");
+  await expect(butter.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$4\.49\s*per lb/]);
+  const opened = await openCard(page, "Salted butter");
+  await expect(opened.locator(".riso-ing-variant-fr")).toHaveText("Reg. $6.49 · 31% off");
+  await expect(opened.locator(".riso-ing-range-source")).toHaveText("6 mo · all stores · per lb");
+  await expect(opened.locator(".riso-ing-range-head")).toContainText("LOWEST AROUND");
 });
 
 test("on the grocery list, a sale item's tag shows where it's cheapest, wherever it's filed, and opens the flyer item", async ({ page }) => {
