@@ -13233,6 +13233,13 @@ body.no-select {
 .riso-ing-variant-price {
   font: 800 16px var(--riso-font-display);
   white-space: nowrap;
+  text-align: right;
+}
+
+.riso-ing-variant-price small {
+  display: block;
+  font: 500 10.5px var(--riso-font-mono);
+  color: var(--riso-muted);
 }
 
 .riso-ing-list {
@@ -13413,6 +13420,18 @@ body.no-select {
   color: var(--riso-green-text);
 }
 
+.riso-ing-more-btn {
+  align-self: flex-start;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 20px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
 .riso-ing-empty {
   margin: 0;
   border: 2px dashed var(--riso-dash-strong);
@@ -13456,4 +13475,123 @@ body.no-select {
     border-left: none;
     border-top: 2px solid var(--riso-ink);
   }
+}
+
+/* Import check (Flyers): what the latest import brought in. */
+.riso-report {
+  border-top: 2px dashed var(--riso-ink);
+  margin-top: 16px;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--riso-font-display);
+}
+
+.riso-report-title {
+  margin: 0;
+  font: 800 20px var(--riso-font-display);
+}
+
+.riso-report-table {
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  overflow-x: auto;
+  background: var(--riso-surface);
+}
+
+.riso-report-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.7fr 1fr 0.9fr 0.8fr 0.8fr 0.9fr;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  min-width: 640px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.riso-report-row.head {
+  border-top: none;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-report-row .warn {
+  color: var(--riso-danger);
+  font-weight: 700;
+}
+
+.riso-report-line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.riso-report-weeks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.riso-report-weeks span {
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font: 500 11px var(--riso-font-mono);
+  background: var(--riso-surface);
+}
+
+.riso-report-details summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.riso-report-details ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--riso-soft);
+}
+
+.riso-report-fix {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+
+.riso-report-fix p {
+  margin: 0;
+  flex: 1;
+  min-width: 240px;
+  font-size: 14px;
+}
+
+/* "Super C $3.99" next to an ingredient you need, wherever it's on sale. */
+.riso-sale-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-green-tint);
+  padding: 1px 8px;
+  font: 700 11.5px var(--riso-font-display);
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.riso-sale-tag-price {
+  color: var(--riso-green-text);
+  font-weight: 800;
 }

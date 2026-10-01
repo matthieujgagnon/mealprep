@@ -66,3 +66,12 @@ describe("price comparisons from day one", () => {
     expect(out.rangeSource).toBeUndefined();
   });
 });
+
+describe("bag vs loose", () => {
+  it("prices a sized bag per lb, so it lines up with a per-lb price", () => {
+    expect(comparablePrice({ item: "McIntosh Apples, 3 lb bag", unitPrice: 5.99, unitBasis: "each" })).toEqual({ price: 2.0, basis: "lb" });
+    expect(comparablePrice({ item: "McIntosh Apples", unitPrice: 0.99, unitBasis: "lb" })).toEqual({ price: 0.99, basis: "lb" });
+    // Without a size, a bag can't be compared with a per-lb price at all.
+    expect(comparablePrice({ item: "McIntosh Apples, bag", unitPrice: 5.99, unitBasis: "each" })).toEqual({ price: 5.99, basis: "each" });
+  });
+});

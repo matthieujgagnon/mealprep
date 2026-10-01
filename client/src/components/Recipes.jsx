@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api } from "../api.js";
 import { core, findBestDeal, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { useDeals } from "../lib/dealsStore.js";
 import { RECIPE_SLOTS, formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 
 const SLOT_FILTERS = Object.fromEntries(RECIPE_SLOTS.map((s) => [s.label, s.id]));
@@ -90,11 +91,7 @@ export function Recipes({
   const [sortIndex, setSortIndex] = useState(0);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
-  const [deals, setDeals] = useState([]);
-
-  useEffect(() => {
-    api.getRealDeals().then(setDeals).catch(() => setDeals([]));
-  }, []);
+  const { deals } = useDeals();
 
   const allRecipes = recipes.filter((r) => !r.isPlaceholder);
   const query = search.trim();

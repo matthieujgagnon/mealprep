@@ -244,7 +244,7 @@ test("the list waits for stores and deals, so items never show in Any store firs
 
   // Deals answer slowly; before, the list drew without them and put every
   // item in "Any store" until they arrived.
-  await page.route("**/api/deals", async (route) => {
+  await page.route("**/api/deals?lite=1", async (route) => {
     await new Promise((r) => setTimeout(r, 1500));
     await route.continue();
   });

@@ -71,7 +71,12 @@ export const api = {
   // Deals to treat as real prices. Without an uploaded flyer the server sends
   // sample deals (isMockData) so the Flyers page has something to show -
   // those must never show up as "on sale" anywhere else.
-  getRealDeals: () => request("/deals").then((d) => (d.isMockData ? [] : d.deals)),
+  // Without each deal's monthly history (see GET /api/deals?lite=1); a
+  // detail view fetches that one deal in full with getDeal.
+  getRealDeals: () => request("/deals?lite=1").then((d) => (d.isMockData ? [] : d.deals)),
+  getDeal: (id) => request(`/deals/${encodeURIComponent(id)}`),
+  getImportReport: () => request("/flyers/report"),
+  fixPerLbPrices: () => request("/flyers/report/fix-per-lb", { method: "POST" }),
   groceryAisles: (names) => request("/deals/aisles", { method: "POST", body: JSON.stringify({ names }) }),
   dealPhotoUrl: (id) => `${BASE}/deals/${encodeURIComponent(id)}/photo`,
   checkDealPhoto: (id) => request(`/deals/${encodeURIComponent(id)}/photo-check`),

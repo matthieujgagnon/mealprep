@@ -10,6 +10,21 @@ import { checkDealPhoto, loadDealPhoto } from "../lib/dealPhoto.js";
 
 export const dealsRouter = Router();
 
+// How long each step of a request took, sent as a Server-Timing header so
+// the browser's network panel shows where the time goes.
+function stageTimer() {
+  let last = performance.now();
+  const parts = [];
+  return {
+    mark(name) {
+      const now = performance.now();
+      parts.push(`${name};dur=${(now - last).toFixed(1)}`);
+      last = now;
+    },
+    header: () => parts.join(", "),
+  };
+}
+
 // The Riso Poster Flyers redesign's price meter compares a deal's price
 // against its own 6-month range - 26 weeks, matching the handoff's "last 26
 // weeks" spec exactly rather than a calendar-month approximation.
@@ -146,6 +161,99 @@ const MOCK_DEALS = [
   { id: "d8", store: "Super C", category: "staple", item: "Rice, 2kg bag", price: "$3.99", validUntil: "2026-09-03" },
 ];
 
+// Building the week's deals with their 6-month history is the slow part
+// of the app (one query over every price of the last 26 weeks, then
+// matching each deal against them), and the Flyers, Grocery, Home and
+// Recipes tabs all ask for it. So it's built once per user and kept until
+// something changes: a cheap query over the deal rows (how many, current or
+// not, and the newest) plus the Quebec averages decides whether the kept
+// copy is still right. An import, upload, clear or anything else that adds
+// or retires rows changes that signature, so it's never stale.
+const dealsCache = new Map(); // userId -> { sig, full, lite }
+const MAX_CACHED_USERS = 50;
+
+async function dealsSignature(userId) {
+  const [groups, base] = await Promise.all([
+    prisma.flyerDeal.groupBy({ by: ["isCurrent"], where: { userId }, _count: { _all: true }, _max: { createdAt: true } }),
+    prisma.priceBaseline.aggregate({ _count: { _all: true }, _max: { updatedAt: true } }),
+  ]);
+  const deals = groups
+    .map((g) => `${g.isCurrent}:${g._count._all}:${g._max.createdAt?.getTime() ?? 0}`)
+    .sort()
+    .join("|");
+  // The date matters too: "ends in 2 days" and the 6 months shift daily.
+  return `${deals}#${base._count._all}:${base._max.updatedAt?.getTime() ?? 0}#${new Date().toISOString().slice(0, 10)}`;
+}
+
+// The other tabs only need each deal's price and how it compares, not the
+// 6 monthly bars - about a third of the full answer.
+const LITE_OMIT = new Set(["history", "userId", "createdAt", "isCurrent"]);
+const liteDeal = (deal) => Object.fromEntries(Object.entries(deal).filter(([k]) => !LITE_OMIT.has(k)));
+
+async function buildDeals(userId, timer) {
+  const found = await prisma.flyerDeal.findMany({
+    where: { userId, isCurrent: true },
+    orderBy: { createdAt: "desc" },
+  });
+  timer.mark("query");
+  const rows = found.map((row) => ({ ...row, item: tidyDealTitle(row.item), aisle: aisleFor(row) })); // stored as printed; shown tidy
+  timer.mark("tidy");
+
+  if (rows.length === 0) {
+    const mock = {
+      region: "Montreal, QC (H1W)",
+      stores: ["Metro", "Provigo", "Maxi", "Super C", "IGA"],
+      weekOf: "2026-08-27",
+      deals: MOCK_DEALS.map((d) => ({ ...d, aisle: aisleFor(d) })),
+      aisles: AISLES,
+      isMockData: true,
+    };
+    return { full: JSON.stringify(mock), lite: JSON.stringify(mock) };
+  }
+
+  const stores = [...new Set(rows.map((r) => r.store))];
+  const baselines = await loadBaselines();
+  timer.mark("baselines");
+  const withHistory = await attachPriceHistory(userId, rows, baselines);
+  timer.mark("history");
+  const withTips = attachFreezeTips(withHistory);
+  timer.mark("freeze");
+  const deals = attachBaselines(withTips, baselines);
+  timer.mark("quebec");
+  const body = { region: "Montreal, QC (H1W)", stores, weekOf: null, aisles: AISLES, isMockData: false };
+  return {
+    full: JSON.stringify({ ...body, deals }),
+    lite: JSON.stringify({ ...body, deals: deals.map(liteDeal) }),
+    byId: new Map(deals.map((d) => [d.id, d])),
+  };
+}
+
+async function getDeals(userId, timer) {
+  const sig = await dealsSignature(userId);
+  timer.mark("check");
+  const kept = dealsCache.get(userId);
+  if (kept && kept.sig === sig) {
+    timer.mark("cached");
+    return kept;
+  }
+  const built = { sig, ...(await buildDeals(userId, timer)) };
+  dealsCache.delete(userId);
+  dealsCache.set(userId, built);
+  if (dealsCache.size > MAX_CACHED_USERS) dealsCache.delete(dealsCache.keys().next().value);
+  return built;
+}
+
+// For a change the signature can't see (an edit to existing rows).
+export function forgetDeals(userId) {
+  dealsCache.delete(userId);
+}
+
+// This week's deals as GET /api/deals builds them (for the import check).
+export async function currentDeals(userId) {
+  const built = await getDeals(userId, stageTimer());
+  return built.byId ? [...built.byId.values()] : [];
+}
+
 // GET /api/deals - this week's flyer specials across nearby stores. Serves
 // real deals extracted from uploaded flyers once any exist, falling back to
 // sample data before the first upload. isCurrent: true only - a re-upload
@@ -153,36 +261,22 @@ const MOCK_DEALS = [
 // comment on the FlyerDeal model), so this must filter them out to keep
 // showing just what's actually on sale right now; the superseded rows stay
 // in the table as price history for later features.
+// ?lite=1 leaves out each deal's monthly history (see liteDeal).
 dealsRouter.get("/", async (req, res) => {
-  const rows = (
-    await prisma.flyerDeal.findMany({
-      where: { userId: req.userId, isCurrent: true },
-      orderBy: { createdAt: "desc" },
-    })
-  ).map((row) => ({ ...row, item: tidyDealTitle(row.item), aisle: aisleFor(row) })); // stored as printed; shown tidy
+  const timer = stageTimer();
+  const built = await getDeals(req.userId, timer);
+  res.set("Server-Timing", timer.header());
+  res.type("json").send(req.query.lite ? built.lite : built.full);
+});
 
-  if (rows.length === 0) {
-    return res.json({
-      region: "Montreal, QC (H1W)",
-      stores: ["Metro", "Provigo", "Maxi", "Super C", "IGA"],
-      weekOf: "2026-08-27",
-      deals: MOCK_DEALS.map((d) => ({ ...d, aisle: aisleFor(d) })),
-      aisles: AISLES,
-      isMockData: true,
-    });
-  }
-
-  const stores = [...new Set(rows.map((r) => r.store))];
-  const baselines = await loadBaselines();
-  const deals = attachBaselines(attachFreezeTips(await attachPriceHistory(req.userId, rows, baselines)), baselines);
-  res.json({
-    region: "Montreal, QC (H1W)",
-    stores,
-    weekOf: null,
-    deals,
-    aisles: AISLES,
-    isMockData: false,
-  });
+// GET /api/deals/:id - one current deal with its full history, for a
+// detail view opened from a tab that loaded the lite list.
+dealsRouter.get("/:id([^/]+)", async (req, res, next) => {
+  if (req.params.id === "aisles") return next();
+  const built = await getDeals(req.userId, stageTimer());
+  const deal = built.byId?.get(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  res.json(deal);
 });
 
 // POST /api/deals/aisles { names: [...] } - the grocery aisle each name

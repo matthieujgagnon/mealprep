@@ -360,7 +360,7 @@ test("a deal with no history at its own store is compared with other stores, per
 
   await openFlyers(page);
   const butter = card(page, "Salted butter");
-  await expect(butter.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$4\.49\s*per lb/]);
+  await expect(butter.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$4\.49\s*\$4\.49\/lb/]);
   const opened = await openCard(page, "Salted butter");
   await expect(opened.locator(".riso-ing-variant-fr")).toHaveText("Reg. $6.49 · 31% off");
   await expect(opened.locator(".riso-ing-chart-head")).toContainText("cheapest store · per lb");
@@ -408,4 +408,37 @@ test("on the grocery list, a sale item's tag shows where it's cheapest, wherever
   await page.getByRole("button", { name: "By aisle" }).click();
   await expect(page.locator(".riso-group", { hasText: "Pantry" })).toContainText("Lemon juice");
   await expect(page.locator(".riso-group", { hasText: "Fruits & vegetables" })).toContainText("Red bell pepper");
+});
+
+test("a bag of apples isn't compared as equal to loose apples per lb, and the import check finds and fixes old per-lb prices", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, source: "Flipp", category: "produce", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, store: "Metro", item: "McIntosh apples, 3 lb bag", matchName: "mcintosh apples", price: "$5.99", unitPrice: 5.99, unitBasis: "each", imageUrl: "https://example.com/a.jpg" },
+      { ...base, store: "Super C", item: "McIntosh apples", matchName: "mcintosh apples", price: "$0.99/lb", unitPrice: 0.99, unitBasis: "lb" },
+      // Last week's Super C price, saved per item before the price reader was fixed.
+      { ...base, store: "Super C", item: "McIntosh apples", matchName: "mcintosh apples", price: "$1.09", unitPrice: 1.09, unitBasis: "each", isCurrent: false, createdAt: weeksAgo(1) },
+    ],
+  });
+
+  await openFlyers(page);
+  const apples = card(page, "Mcintosh apples");
+  // The bag shows what you pay and what that is per lb; loose is cheapest.
+  await expect(apples.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$5\.99\s*\$2\.00\/lb/, /SUPER C\s*\$0\.99\s*per lb/]);
+  await expect(apples.locator(".riso-ing-tile.best")).toContainText("SUPER C");
+
+  // The import check: per-store counts, and the old per-lb price to fix.
+  await page.getByRole("button", { name: "Check import" }).click();
+  const report = page.getByLabel("Import check");
+  await expect(report.getByRole("row", { name: /Metro/ })).toContainText("100%");
+  await expect(report).toContainText("1 earlier week stored");
+  await expect(report.locator(".riso-report-fix")).toContainText("1 older price was saved per item but was per lb");
+  await report.getByRole("button", { name: "Mark them per lb" }).click();
+  await expect(report).toContainText("Fixed 1 price.");
+  await expect(report.locator(".riso-report-fix")).toHaveCount(0);
+  const fixed = await prisma.flyerDeal.findFirst({ where: { userId: user.id, isCurrent: false } });
+  expect(fixed).toMatchObject({ unitBasis: "lb", price: "$1.09/lb" });
 });
