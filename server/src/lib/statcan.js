@@ -142,24 +142,23 @@ function words(text) {
 // The baseline for a deal: same unit basis, and every word of the
 // StatCan item ("chicken breast") in the deal's name ("boneless skinless
 // chicken breasts"). The most specific match wins.
-// Outside meat and fish (where any cut or steak compares with the kind -
-// "chicken drumsticks" with a whole chicken), the product itself is the
-// last word: "apple-cinnamon bread" is bread, not apples. And these make a
-// different product of milk or butter.
-const NOT_THE_SAME = new Set(["coconut", "condensed", "evaporated", "almond", "soy", "oat", "puff", "pastry", "peanut"]);
-const MEAT = /\b(chicken|beef|pork|turkey|veal|lamb|ham|bacon|sausage|salmon|fish|shrimp|tuna|cod|trout)\b/;
+// A word that makes something else of the product: "apple-cinnamon bread"
+// is bread and "apple juice" is juice, not apples; condensed milk and puff
+// pastry aren't milk and butter. Only counts when the Quebec product
+// doesn't name it too ("apple juice" still matches "Apple juice").
+const OTHER_PRODUCT = new Set(
+  "bread bun pastry puff cake pie crumble muffin croissant juice sauce snack chip bar cooky cracker cereal jam spread soup drink cocktail candy chocolate pizza dinner combo platter salad coconut condensed evaporated almond soy oat peanut".split(" ")
+);
 export function findBaseline(deal, baselines) {
   if (deal.unitPrice == null || !deal.unitBasis) return null;
   const dealWords = words(deal.matchName || deal.item);
   const have = new Set(dealWords);
-  const product = dealWords[dealWords.length - 1];
   let best = null;
   for (const b of baselines) {
     if (b.unitBasis !== deal.unitBasis) continue;
     const need = words(b.item);
     if (need.length === 0 || !need.every((w) => have.has(w))) continue;
-    if (!MEAT.test(b.item) && need[need.length - 1] !== product) continue;
-    if (dealWords.some((w) => NOT_THE_SAME.has(w) && !need.includes(w))) continue;
+    if (dealWords.some((w) => OTHER_PRODUCT.has(w) && !need.includes(w))) continue;
     if (!best || need.length > words(best.item).length) best = b;
   }
   return best;
