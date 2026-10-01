@@ -1,6 +1,31 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 
+// The page around every auth card: a "MEAL PREP" pill and the title above
+// a cream card with a blue offset shadow (Riso Login handoff).
+function AuthShell({ children }) {
+  return (
+    <div className="auth-page riso-theme riso-auth">
+      <div className="riso-auth-col">
+        <div className="riso-auth-head">
+          <span className="riso-auth-eyebrow">MEAL PREP</span>
+          <h1 className="riso-auth-title">The Matt Mo Cookbook</h1>
+        </div>
+        <div className="auth-card riso-auth-card">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, ...input }) {
+  return (
+    <label className="riso-auth-field">
+      {label}
+      <input {...input} />
+    </label>
+  );
+}
+
 // Full-page login/signup form, shown instead of the app until there's a
 // valid session. Each account is entirely its own cookbook/planner/grocery
 // list/flyer deals - nothing is shared between accounts.
@@ -43,110 +68,88 @@ function AuthForm({ onAuthed }) {
 
   if (mode === "forgot") {
     return (
-      <div className="auth-page">
-        <div className="card auth-card">
-          <h1 className="wordmark auth-wordmark">
-            The Matt Mo <span>Cookbook</span>
-          </h1>
-          {forgotSent ? (
-            <p className="auth-hint">
-              If that email has an account, we've sent a link to reset the password — check your inbox.
-            </p>
-          ) : (
-            <form className="auth-form" onSubmit={handleSubmit}>
-              <label className="form-label">
-                Email
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </label>
-              <button type="submit" className="btn primary" disabled={loading}>
-                {loading ? "…" : "Send reset link"}
-              </button>
-              {error && <p className="auth-error">{error}</p>}
-            </form>
-          )}
-          <button type="button" className="btn subtle auth-back-link" onClick={() => switchMode("login")}>
-            ← Back to log in
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="auth-page">
-      <div className="card auth-card">
-        <h1 className="wordmark auth-wordmark">
-          The Matt Mo <span>Cookbook</span>
-        </h1>
-        <div className="auth-mode-tabs">
-          <button
-            type="button"
-            className={`auth-mode-tab${mode === "login" ? " active" : ""}`}
-            onClick={() => switchMode("login")}
-          >
-            Log in
-          </button>
-          <button
-            type="button"
-            className={`auth-mode-tab${mode === "signup" ? " active" : ""}`}
-            onClick={() => switchMode("signup")}
-          >
-            Sign up
-          </button>
-        </div>
-
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {mode === "signup" && (
-            <label className="form-label">
-              Name
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Matt"
-              />
-            </label>
-          )}
-          <label className="form-label">
-            Email
-            <input
+      <AuthShell>
+        {forgotSent ? (
+          <p className="auth-hint">
+            If that email has an account, we've sent a link to reset the password — check your inbox.
+          </p>
+        ) : (
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <Field
+              label="Email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
             />
-          </label>
-          <label className="form-label">
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={mode === "signup" ? 8 : undefined}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
-          </label>
-          {mode === "signup" && <p className="auth-hint">At least 8 characters.</p>}
+            {error && <p className="auth-error">{error}</p>}
+            <button type="submit" className="riso-auth-submit" disabled={loading}>
+              {loading ? "…" : "Send reset link"}
+            </button>
+          </form>
+        )}
+        <button type="button" className="riso-auth-link" onClick={() => switchMode("login")}>
+          ← Back to log in
+        </button>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell>
+      <div className="auth-mode-tabs" role="group" aria-label="Log in or sign up">
+        {[
+          ["login", "Log in"],
+          ["signup", "Sign up"],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`auth-mode-tab${mode === value ? " active" : ""}`}
+            aria-pressed={mode === value}
+            onClick={() => switchMode(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <form className="auth-form" onSubmit={handleSubmit}>
+        {mode === "signup" && (
+          <Field label="Name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Matt" />
+        )}
+        <Field
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+        <Field
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={mode === "signup" ? 8 : undefined}
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
+        />
+        {mode === "signup" && <p className="auth-hint">At least 8 characters.</p>}
+        {error && <p className="auth-error">{error}</p>}
+        <div className="riso-auth-actions">
+          <button type="submit" className="riso-auth-submit" disabled={loading}>
+            {loading ? "…" : mode === "login" ? "Log in" : "Create account"}
+          </button>
           {mode === "login" && (
-            <button type="button" className="btn subtle auth-forgot-link" onClick={() => switchMode("forgot")}>
+            <button type="button" className="riso-auth-link" onClick={() => switchMode("forgot")}>
               Forgot password?
             </button>
           )}
-          <button type="submit" className="btn primary" disabled={loading}>
-            {loading ? "…" : mode === "login" ? "Log in" : "Create account"}
-          </button>
-          {error && <p className="auth-error">{error}</p>}
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+    </AuthShell>
   );
 }
 
@@ -180,51 +183,42 @@ function ResetPasswordForm({ token }) {
   }
 
   return (
-    <div className="auth-page">
-      <div className="card auth-card">
-        <h1 className="wordmark auth-wordmark">
-          The Matt Mo <span>Cookbook</span>
-        </h1>
-        {done ? (
-          <>
-            <p className="auth-hint">Password updated — you can log in now.</p>
-            <a className="btn primary" href="/">
-              Go to log in
-            </a>
-          </>
-        ) : (
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <label className="form-label">
-              New password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="form-label">
-              Confirm new password
-              <input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
-            <p className="auth-hint">At least 8 characters.</p>
-            <button type="submit" className="btn primary" disabled={loading}>
-              {loading ? "…" : "Set new password"}
-            </button>
-            {error && <p className="auth-error">{error}</p>}
-          </form>
-        )}
-      </div>
-    </div>
+    <AuthShell>
+      {done ? (
+        <>
+          <p className="auth-hint">Password updated — you can log in now.</p>
+          <a className="riso-auth-submit" href="/">
+            Go to log in
+          </a>
+        </>
+      ) : (
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <Field
+            label="New password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+          <Field
+            label="Confirm new password"
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+          <p className="auth-hint">At least 8 characters.</p>
+          {error && <p className="auth-error">{error}</p>}
+          <button type="submit" className="riso-auth-submit" disabled={loading}>
+            {loading ? "…" : "Set new password"}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }
 

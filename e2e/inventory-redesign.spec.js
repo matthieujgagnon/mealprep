@@ -81,12 +81,14 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  // A section is addable even with zero items in the whole inventory - the
-  // shelves grid isn't gated behind having something to show yet.
-  await page.getByRole("button", { name: "+ Add section" }).click();
-  await page.fill(".inv-add-section-tile.form input", "Garage Freezer");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  // A shelf is addable even with zero items in the whole inventory; it
+  // opens ready to rename.
+  await page.getByRole("button", { name: "+ Add shelf" }).click();
+  await expect(page.getByLabel("Section name")).toHaveValue("New shelf");
+  await page.getByLabel("Section name").fill("Garage Freezer");
+  await page.keyboard.press("Enter");
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toBeVisible();
+  await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" }).locator(".inv-shelf-empty")).toHaveText("Drop items here");
 
   // The new section shows up as a location option on the add form itself.
   // Custom location ids are server-generated, not a fixed slug - select by
@@ -101,7 +103,7 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" }).getByText("Elk")).toBeVisible();
 
   await page.getByRole("button", { name: 'Edit the "Garage Freezer" section' }).click();
-  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("button", { name: "Delete shelf" }).click();
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toHaveCount(0);
   await expect(page.locator(".inv-shelf", { hasText: "Pantry" }).getByText("Elk")).toBeVisible();
 });
@@ -118,26 +120,42 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   // Rename a built-in section.
   await page.getByRole("button", { name: 'Edit the "Fridge" section' }).click();
   await page.getByLabel("Section name").fill("Kitchen fridge");
-  await page.getByRole("button", { name: "Done" }).click();
-  const fridge = page.locator(".inv-shelf", { hasText: "Kitchen fridge" });
+  await page.getByRole("button", { name: 'Done editing the "Fridge" section' }).click();
+  // (A shelf being edited shows its name in an input, so find it by its label.)
+  const fridge = page.getByRole("region", { name: "Kitchen fridge section" });
   await expect(fridge).toBeVisible();
 
-  // Drag the corner handle left: the section narrows by whole columns.
-  const widthBefore = (await fridge.boundingBox()).width;
+  // Whole columns of the 12-column grid.
+  const grid = await page.locator(".inv-shelves").boundingBox();
+  const col = (grid.width - 20 * 11) / 12;
+  const columns = async () => Math.round(((await fridge.boundingBox()).width + 20) / (col + 20));
+  const isWhole = async () => {
+    const w = (await fridge.boundingBox()).width;
+    return Math.abs(w - ((await columns()) * (col + 20) - 20)) < 3;
+  };
+  await expect.poll(columns).toBe(6);
+
+  // Drag the corner handle left and down: narrower by whole columns, and a
+  // fixed height (items scroll inside).
   const handle = page.getByRole("button", { name: 'Resize the "Kitchen fridge" section' });
   const hb = await handle.boundingBox();
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
   await page.mouse.down();
   await page.mouse.move(hb.x - 200, hb.y + 120, { steps: 10 });
   await page.mouse.up();
-  await expect.poll(async () => (await fridge.boundingBox()).width).toBeLessThan(widthBefore - 100);
+  await expect.poll(columns).toBeLessThan(6);
+  expect(await isWhole()).toBe(true);
   await expect(fridge).toHaveClass(/fixed-height/);
-  // Sizes snap to presets: a third of the row, and a height step.
-  const height = await fridge.evaluate((el) => el.style.height);
-  expect(["240px", "360px", "480px", "600px", "720px", "840px"]).toContain(height);
-  const grid = await page.locator(".inv-shelves").boundingBox();
-  const w = (await fridge.boundingBox()).width;
-  expect(Math.abs(w - (grid.width - 18 * 2) / 3)).toBeLessThan(4);
+  expect(parseInt(await fridge.evaluate((el) => el.style.height), 10)).toBeGreaterThanOrEqual(200);
+
+  // Edit mode's presets: a third of the row, back to auto height.
+  await page.getByRole("button", { name: 'Edit the "Kitchen fridge" section' }).click();
+  await fridge.getByRole("button", { name: "Third" }).click();
+  await fridge.getByRole("button", { name: "Auto height" }).click();
+  await expect(fridge.locator(".inv-shelf-size")).toHaveText("4/12 · AUTO");
+  await page.getByRole("button", { name: 'Done editing the "Kitchen fridge" section' }).click();
+  await expect.poll(columns).toBe(4);
+  await expect(fridge).not.toHaveClass(/fixed-height/);
 
   // Drag Pantry by its grip onto the left half of the fridge: it goes first.
   const grip = page.getByRole("button", { name: 'Move the "Pantry" section' });
@@ -154,11 +172,8 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.keyboard.press("ArrowLeft");
   await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section"]);
 
-  // A custom section renames too.
-  await page.getByRole("button", { name: "+ Add section" }).click();
-  await page.fill(".inv-add-section-tile.form input", "Garage");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: 'Edit the "Garage" section' }).click();
+  // A new shelf renames too.
+  await page.getByRole("button", { name: "+ Add shelf" }).click();
   await page.getByLabel("Section name").fill("Garage freezer");
   await page.keyboard.press("Enter");
   await expect(page.locator(".inv-shelf", { hasText: "Garage freezer" })).toBeVisible();

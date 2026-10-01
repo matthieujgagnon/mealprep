@@ -69,8 +69,8 @@ test("each store's flyer can be opened from the Flyers page and an item's detail
     await expect(a).toHaveAttribute("target", "_blank");
     expect(await a.getAttribute("href")).toMatch(/^https:\/\//);
   }
-  await page.locator(".riso-whole-flyer").getByRole("button", { name: "All", exact: true }).click();
-  await page.locator(".riso-table-row.clickable").first().click();
+  await page.locator(".riso-ing-main").first().click();
+  await page.locator(".riso-ing-variant-names").first().click();
   await expect(page.getByRole("dialog").getByRole("link", { name: /^Open the .+ flyer ↗$/ })).toBeVisible();
 });
 

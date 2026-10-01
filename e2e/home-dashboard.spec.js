@@ -76,6 +76,7 @@ test("the grocery summary and inventory cards reflect real data", async ({ page 
   await page.locator(".inv-use-by-picker").fill(tomorrow);
   await page.locator(".inv-use-by-picker").blur();
   await page.waitForTimeout(400);
+  await page.keyboard.press("Escape"); // close the item panel
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.locator(".riso-freshness-row-name")).toHaveText("cilantro");

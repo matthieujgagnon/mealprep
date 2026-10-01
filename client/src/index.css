@@ -843,86 +843,195 @@ select {
   background: var(--riso-track);
 }
 
-/* ---------- Auth (login/signup) page ---------- */
+/* ---------- Auth (login/signup) page - Riso Login handoff ---------- */
 
 .auth-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 380px;
   padding: 32px;
+  box-sizing: border-box;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
 }
 
-.auth-wordmark {
-  text-align: center;
-  margin: 0 0 20px;
+.riso-auth-col {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.riso-auth-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-auth-eyebrow {
+  align-self: flex-start;
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.riso-auth-title {
+  margin: 0;
+  font: 800 52px/0.98 var(--riso-font-display);
+  letter-spacing: -0.03em;
+}
+
+.riso-auth-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 6px 6px 0 var(--riso-accent);
 }
 
 .auth-mode-tabs {
   display: flex;
-  gap: 3px;
-  background: var(--paper-soft);
-  padding: 3px;
-  border-radius: 9px;
-  margin-bottom: 20px;
+  gap: 6px;
+  padding: 4px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-canvas);
 }
 
 .auth-mode-tab {
   flex: 1;
-  background: none;
-  border: none;
-  color: var(--ink-soft);
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  height: 38px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 700 15px var(--riso-font-display);
   cursor: pointer;
 }
 
 .auth-mode-tab.active {
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  background: var(--riso-yellow);
+  border-color: var(--riso-ink);
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+}
+
+.riso-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 700 14px var(--riso-font-display);
+}
+
+.riso-auth-field input {
+  height: 48px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: #fff;
+  padding: 0 14px;
+  font: 500 16px var(--riso-font-display);
+  color: var(--riso-ink);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.riso-auth-field input::placeholder {
+  color: #8a8576;
+}
+
+.riso-auth-field input:focus,
+.riso-auth-field input:focus-visible {
+  box-shadow: 3px 3px 0 var(--riso-accent);
 }
 
 .auth-hint {
-  margin: -8px 0 0;
-  font-size: 12px;
-  color: var(--ink-soft);
+  margin: -10px 0 0;
+  font-size: 13px;
+  color: var(--riso-muted);
 }
 
-.auth-error {
+.riso-auth-card > .auth-hint {
   margin: 0;
-  font-size: 13px;
-  color: var(--tomato);
+  font-size: 15px;
+  color: var(--riso-soft);
 }
 
-.auth-forgot-link {
-  align-self: flex-start;
-  margin: -6px 0 0;
-  padding: 0;
-  font-size: 12px;
+/* Shown right under the last field when auth fails. */
+.auth-error {
+  margin: -10px 0 0;
+  font: 700 13px var(--riso-font-display);
+  color: var(--riso-danger);
 }
 
-.auth-back-link {
-  display: block;
+.riso-auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-auth-submit {
+  height: 52px;
   width: 100%;
-  margin-top: 16px;
-  padding: 0;
-  font-size: 13px;
-  text-align: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 17px var(--riso-font-display);
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--riso-ink);
+  text-decoration: none;
+}
+
+.riso-auth-submit:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--riso-ink);
+}
+
+.riso-auth-submit:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.riso-auth-link {
+  align-self: center;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font: 600 14px var(--riso-font-display);
+  color: var(--riso-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.riso-auth-link:hover {
+  color: var(--riso-accent);
+}
+
+@media (max-width: 480px) {
+  .auth-page {
+    padding: 20px 16px;
+  }
+
+  .riso-auth-title {
+    font-size: 42px;
+  }
 }
 
 /* ---------- Cards (recipe index-card look) ---------- */
@@ -1537,55 +1646,50 @@ select {
   opacity: 1;
 }
 
+/* ---------- Inventory shelves (Riso Inventory handoff) ---------- */
+
+.riso-inv {
+  font-family: var(--riso-font-display);
+  padding: 28px 40px 40px;
+  gap: 24px;
+}
+
 .inv-shelves {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 18px;
-  /* Sections sharing a row are the same height unless you size them. */
-  align-items: stretch;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
 }
 
-/* Section widths: each section spans --span of the 6 grid columns (set by
-   dragging its corner handle); on narrower screens the grid has 2 columns
-   and a wide section takes both. */
+/* Each shelf spans --span of the 12 columns (set by its corner grip or
+   the edit-mode presets). */
 .inv-shelves > .inv-shelf {
-  grid-column: span var(--span, 3);
+  grid-column: span var(--span, 6);
+}
+
+.inv-shelf {
   position: relative;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  padding: 16px 16px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-.inv-add-section-tile {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 1000px) {
-  .inv-shelves {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .inv-shelves > .inv-shelf {
-    grid-column: span var(--span-md, 1);
-  }
-}
-
-.inv-shelf.fixed-height {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.inv-shelf.fixed-height .inv-shelf-items {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
+.inv-shelf.drop-active {
+  box-shadow: 4px 4px 0 var(--riso-accent);
 }
 
 .inv-shelf.resizing {
-  outline: 3px dashed var(--riso-accent);
-  outline-offset: 3px;
+  box-shadow: 4px 4px 0 var(--riso-accent);
 }
 
 .inv-shelf.moving {
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .inv-shelf.drop-before {
@@ -1596,354 +1700,291 @@ select {
   box-shadow: 6px 0 0 var(--riso-accent);
 }
 
-.inv-shelf-grip {
-  flex: none;
-  width: 26px;
-  height: 30px;
-  border: none;
-  border-radius: 8px;
-  background: none;
-  color: var(--riso-muted);
-  font-size: 18px;
-  line-height: 1;
-  cursor: grab;
-  touch-action: none;
-  padding: 0;
-}
-
-.inv-shelf-grip:hover,
-.inv-shelf-grip:focus-visible {
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
-}
-
-.inv-shelf-resize {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  background:
-    linear-gradient(135deg, transparent 45%, var(--riso-dash-strong) 45%, var(--riso-dash-strong) 55%, transparent 55%),
-    linear-gradient(135deg, transparent 70%, var(--riso-dash-strong) 70%, var(--riso-dash-strong) 80%, transparent 80%);
-  cursor: nwse-resize;
-  touch-action: none;
-  border-radius: 0 0 18px 0;
-}
-
-.inv-shelf-resize:hover,
-.inv-shelf-resize:focus-visible {
-  background:
-    linear-gradient(135deg, transparent 45%, var(--riso-ink) 45%, var(--riso-ink) 55%, transparent 55%),
-    linear-gradient(135deg, transparent 70%, var(--riso-ink) 70%, var(--riso-ink) 80%, transparent 80%);
-}
-
-.inv-shelf-edit {
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 15px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.inv-shelf-edit:hover {
-  background: var(--riso-yellow);
-}
-
-.inv-shelf-edit-text {
-  display: none;
-}
-
-.inv-section-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.inv-section-editor input {
-  height: 40px;
-  padding: 0 14px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 12px;
-  background: var(--riso-canvas);
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 18px;
-  color: var(--riso-ink);
-  min-width: 0;
-}
-
-.inv-section-editor-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.inv-section-editor-group {
-  display: inline-flex;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.inv-section-editor-group button {
-  min-width: 38px;
-  height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-right: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.inv-section-editor-group button:last-child {
-  border-right: 0;
-}
-
-.inv-section-editor-group button.on {
-  background: var(--riso-ink);
-  color: var(--riso-canvas);
-}
-
-.inv-section-editor-group button:disabled {
-  color: var(--riso-muted);
-  cursor: default;
-}
-
-.inv-section-editor-remove,
-.inv-section-editor-done {
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 16px;
-  border: 1.5px solid var(--riso-ink);
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.inv-section-editor-remove {
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-}
-
-.inv-section-editor-done {
-  margin-left: auto;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.inv-section-editor-error {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--riso-ink);
-  font-weight: 600;
-}
-
-.inv-shelf {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 24px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 240px;
-}
-
-
 .inv-shelf-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 24px;
-  color: var(--riso-ink);
-}
-
-.inv-shelf-title {
-  flex: 1;
+  flex: none;
   min-width: 0;
 }
 
-.inv-shelf-count {
-  min-width: 30px;
-  height: 30px;
-  padding: 0 9px;
-  border-radius: 15px;
-  background: var(--riso-canvas);
+.inv-shelf-grip {
+  cursor: grab;
+  font-size: 16px;
+  letter-spacing: -2px;
+  color: var(--riso-muted);
+  user-select: none;
+  padding: 4px 2px;
+  background: none;
+  border: none;
+  touch-action: none;
+}
+
+.inv-shelf-grip:active {
+  cursor: grabbing;
+}
+
+.inv-shelf-title {
+  margin: 0;
+  font: 800 28px var(--riso-font-display);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  flex: none;
+}
+
+.inv-shelf-name-input {
+  flex: 1;
+  min-width: 0;
+  font: 800 26px var(--riso-font-display);
+  letter-spacing: -0.02em;
   border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-canvas);
+  padding: 2px 10px;
   box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 14px;
+  outline: none;
   color: var(--riso-ink);
 }
 
-.inv-shelf-note {
+.inv-shelf-count {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 14px;
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 13px var(--riso-font-display);
+  box-sizing: border-box;
   flex: none;
-  font-family: var(--riso-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--riso-muted);
 }
 
-.inv-shelf-remove {
-  background: none;
-  border: none;
+.inv-shelf-spacer {
+  flex: 1;
+}
+
+.inv-shelf-size {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
   color: var(--riso-muted);
-  font-size: 18px;
-  line-height: 1;
+  white-space: nowrap;
+}
+
+.inv-shelf-edit {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-sizing: border-box;
   cursor: pointer;
+  flex: none;
   padding: 0;
 }
 
-.inv-shelf-remove:hover {
-  color: var(--riso-accent);
+.inv-shelf-edit.on {
+  background: var(--riso-yellow);
+  font-weight: 800;
 }
 
+.inv-shelf-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: none;
+  align-items: center;
+}
+
+.inv-shelf-controls button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font: 600 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.inv-shelf-controls button.on {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+.inv-shelf-controls button.danger {
+  background: var(--riso-hot);
+}
+
+.inv-shelf-controls-note {
+  font-size: 12px;
+  color: var(--riso-muted);
+}
+
+.inv-section-editor-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--riso-danger);
+}
+
+/* Every card is the same size whatever the shelf width. */
 .inv-shelf-items {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-auto-rows: 100px;
+  gap: 14px;
+  align-content: start;
+  padding: 2px 6px 6px 2px;
+  margin: -2px -6px -6px -2px;
 }
 
-.inv-shelf-items.grid {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+.inv-shelf.fixed-height .inv-shelf-items {
+  overflow: auto;
 }
 
 .inv-shelf-empty {
-  border: 1.5px dashed var(--riso-dash);
-  border-radius: 12px;
-  min-height: 110px;
+  grid-column: 1 / -1;
+  border: 2px dashed var(--riso-dash-strong);
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  font-size: 12.5px;
+  font: 600 14px var(--riso-font-display);
   color: var(--riso-muted);
 }
 
-.inv-shelf.drop-active {
-  box-shadow: 0 0 0 2px var(--riso-accent) inset;
+.inv-shelf-resize {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 45%, #a39b86 45%, #a39b86 55%, transparent 55%, transparent 68%, #a39b86 68%, #a39b86 78%, transparent 78%);
+}
+
+.inv-shelf-resize:focus-visible {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 2px;
 }
 
 .inv-add-section-tile {
-  border: 1.5px dashed var(--riso-dash-strong);
-  border-radius: 24px;
-  min-height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 13px;
-  color: var(--riso-muted);
-  background: none;
+  grid-column: span 4;
+  min-height: 120px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 26px;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 700 16px var(--riso-font-display);
   cursor: pointer;
-  font-family: var(--riso-font-body);
 }
 
 .inv-add-section-tile:hover {
-  color: var(--riso-ink);
-  border-color: var(--riso-ink);
+  background: var(--riso-surface);
 }
 
-.inv-add-section-tile.form {
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  cursor: default;
-}
-
-.inv-add-section-tile.form input {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1.5px solid var(--riso-dash-strong);
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
-  font-size: 13px;
-  font-family: var(--riso-font-body);
-}
-
-.inv-add-section-actions {
-  display: flex;
-  gap: 8px;
-}
-
+/* Item card: a status strip (days left on a 4-week scale) over the name,
+   the amount and the USDA storage tip. */
 .inv-card {
-  background: var(--riso-canvas);
+  background: #fff;
   border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border-radius: 16px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  cursor: grab;
-  transition: box-shadow 0.15s ease;
-  /* touch-action: none — see the long comment on .meal-card above for why
-     (verified via real touch-event dispatch, not just page.mouse
-     simulation): pan-y lets native scroll steal any vertical hold-and-drag
-     gesture out from under dnd-kit, and shelf-to-shelf dragging on a
-     narrow mobile layout is almost always vertical. Scrolling a shelf via
-     touch still works through the gaps around a card, just not by
-     touching the card itself. */
+  cursor: pointer;
+  box-sizing: border-box;
+  min-width: 0;
+  /* touch-action: none - see the comment on .meal-card: pan-y would let
+     native scroll take over (and cancel) a vertical drag between shelves.
+     The page still scrolls by touching the gaps around a card. */
   touch-action: none;
 }
 
 .inv-card.active {
-  box-shadow: var(--riso-shadow-selected);
-}
-
-.inv-card.urgent {
-  box-shadow: var(--riso-shadow);
+  box-shadow: 4px 4px 0 var(--riso-accent);
 }
 
 .inv-card.dragging {
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
-.inv-card-top {
+.inv-card-strip {
+  height: 28px;
+  flex: none;
+  border-bottom: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 6px;
+}
+
+.inv-card-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-right: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.inv-card-fill.pink {
+  background: var(--riso-hot);
+}
+
+.inv-card-fill.yellow {
+  background: var(--riso-yellow);
+}
+
+.inv-card-fill.blue {
+  background: var(--riso-accent);
+}
+
+.inv-card-days {
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 9px;
+  box-sizing: border-box;
+  font: 800 12px var(--riso-font-display);
+  white-space: nowrap;
 }
 
 .inv-card-check {
-  width: 22px;
-  height: 22px;
-  margin-top: 1px;
-  flex-shrink: 0;
-  border-radius: 7px;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  box-sizing: border-box;
   border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
+  background: #fff;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
   cursor: pointer;
 }
 
@@ -1951,90 +1992,74 @@ select {
   background: var(--riso-accent);
 }
 
-.inv-card-main {
+.inv-card-body {
   flex: 1;
+  padding: 0 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 16px;
+  align-items: center;
+  min-height: 0;
+}
+
+.inv-card-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .inv-card-name {
-  font-weight: 700;
-  font-size: 14.5px;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-  color: var(--riso-ink);
-}
-
-.inv-card-expiry {
-  flex: none;
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 10.5px;
+  font: 800 18px/1.15 var(--riso-font-display);
   white-space: nowrap;
-  color: var(--riso-muted);
-  padding-top: 2px;
-}
-
-.inv-card-urgent-sticker {
-  flex: none;
-  transform: rotate(-4deg);
-  background: var(--riso-hot);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 11.5px;
-  color: var(--riso-ink);
-  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inv-card-qty {
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 500 14px var(--riso-font-display);
   color: var(--riso-muted);
-  white-space: nowrap;
-}
-
-.inv-freshness-track {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--riso-surface);
-  border: 1.5px solid var(--riso-ink);
-  overflow: hidden;
-}
-
-.inv-freshness-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: var(--riso-accent);
-}
-
-.inv-freshness-fill.urgent {
-  background: var(--riso-hot);
 }
 
 .inv-card-tip {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--riso-muted);
+  font: 500 13px/1.3 var(--riso-font-display);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
+.inv-card-source {
+  display: block;
+  font: 500 10px var(--riso-font-mono);
+  color: var(--riso-muted);
+  margin-top: 2px;
+}
+
+@media (max-width: 1000px) {
+  .riso-inv {
+    padding: 24px 24px 40px;
+  }
+
+  .inv-shelves > .inv-shelf {
+    grid-column: span max(6, var(--span, 6));
+  }
+
+  .inv-add-section-tile {
+    grid-column: span 6;
+  }
+}
+
+/* Fixed, so the panel opens where you are on a long page. */
 .riso-inv-edit-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(22, 24, 31, 0.4);
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 250px 20px 40px;
+  align-items: center;
+  padding: 40px 20px;
   z-index: 60;
+  overflow-y: auto;
 }
 
 .riso-inv-edit-modal {
@@ -2205,14 +2230,44 @@ select {
   margin: 0;
 }
 
+.inv-use-by {
+  position: relative;
+}
+
+/* Opened by the "Pick a date" link; kept in the page (not display:none)
+   so the browser's date picker can open from it. */
 .inv-use-by-picker {
-  margin-left: 6px;
-  font-size: 12px;
-  background: none;
-  border: 1.5px solid var(--riso-dash-strong);
-  border-radius: 6px;
-  color: var(--riso-soft);
-  padding: 2px 6px;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+}
+
+.inv-panel-tip {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.inv-panel-tip > span:first-child {
+  flex: 1;
+}
+
+.inv-panel-tip-source {
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+  text-align: right;
 }
 
 .inv-panel-footer {
@@ -12569,4 +12624,710 @@ body.no-select {
 .riso-deal-detail-avg-source {
   font-size: 11.5px;
   color: var(--riso-muted);
+}
+
+/* ---------- Flyers v4 (Riso Flyers v4 handoff): briefing + ingredient cards ---------- */
+
+.riso-flyers {
+  font-family: var(--riso-font-display);
+  padding: 24px 24px 80px;
+  gap: 28px;
+}
+
+.riso-flyers .riso-eyebrow {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+
+.riso-flyers-title {
+  font-size: 42px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.riso-briefing {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  align-items: stretch;
+  margin-top: 8px;
+}
+
+.riso-brief {
+  position: relative;
+  border: 3px solid var(--riso-ink);
+  border-radius: 32px;
+  padding: 26px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 8px 8px 0 var(--riso-ink);
+  min-height: 320px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.riso-brief.accent {
+  background: var(--riso-accent);
+  color: #fff;
+}
+
+.riso-brief.plain {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-brief.hot {
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+}
+
+.riso-brief-sticker {
+  position: absolute;
+  right: 16px;
+  top: -22px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 6px 18px;
+  font: 800 18px var(--riso-font-display);
+  transform: rotate(3deg);
+  white-space: nowrap;
+}
+
+.riso-brief-kicker {
+  margin: 0;
+  font: 500 13px var(--riso-font-mono);
+  letter-spacing: 0.16em;
+}
+
+.riso-brief-title {
+  margin: 0;
+  font: 800 30px/1.1 var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+.riso-brief-empty {
+  margin: 0;
+  font: 400 16px/1.5 var(--riso-font-display);
+}
+
+.riso-brief-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  padding: 8px 14px 8px 8px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.riso-brief-row:hover {
+  box-shadow: 3px 3px 0 var(--riso-ink);
+}
+
+.riso-brief-row .riso-deal-photo {
+  border-radius: 14px;
+}
+
+.riso-brief-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-brief-row-name {
+  font: 700 17px/1.2 var(--riso-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-brief-row-sub {
+  font: 500 12px var(--riso-font-mono);
+  color: var(--riso-muted);
+}
+
+.riso-brief-row-price {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+
+.riso-brief-row-amt {
+  font: 800 21px/1 var(--riso-font-display);
+  color: var(--riso-green-text);
+  white-space: nowrap;
+}
+
+.riso-brief-row-store {
+  font: 500 11px var(--riso-font-mono);
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+.riso-whole-flyer {
+  gap: 16px;
+}
+
+.riso-whole-flyer-title {
+  margin: 0;
+  font: 800 34px/1 var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+.riso-flyer-controls {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+}
+
+.riso-flyer-controls-row {
+  display: flex;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.riso-flyer-controls .riso-flyer-search {
+  flex: 1;
+  min-width: 220px;
+  width: auto;
+  height: 44px;
+  margin: 0;
+  padding: 0 18px;
+  border-radius: 22px;
+  background: var(--riso-canvas);
+  font: 500 15px var(--riso-font-display);
+  outline: none;
+}
+
+.riso-flyer-controls .riso-flyer-search:focus-visible {
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-store-switch {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-canvas);
+  flex-wrap: wrap;
+}
+
+.riso-store-switch button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.riso-store-switch button.active {
+  background: var(--riso-yellow);
+  border-color: var(--riso-ink);
+}
+
+.riso-flyer-controls-label {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.riso-flyer-controls-label.rank {
+  margin-left: 14px;
+}
+
+.riso-slice-chip {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 600 13px var(--riso-font-display);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.riso-slice-chip.active {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-flyer-summary {
+  margin: 0;
+  font: 500 12px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
+}
+
+.riso-flyers .riso-flyer-links {
+  margin: -6px 0 0;
+}
+
+.riso-ing-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-ing-group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.riso-ing-group-head h4 {
+  margin: 0;
+  font: 800 26px var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+.riso-ing-group-count {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 14px;
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 13px var(--riso-font-display);
+  box-sizing: border-box;
+}
+
+.riso-ing-group-rule {
+  flex: 1;
+  height: 2px;
+  background: var(--riso-ink);
+  opacity: 0.15;
+}
+
+.riso-ing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 14px;
+}
+
+.riso-ing-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.riso-ing-card.low {
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.riso-ing-card.open {
+  grid-column: 1 / -1;
+  flex-direction: row;
+}
+
+.riso-ing-main {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.riso-ing-main:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: -3px;
+}
+
+.riso-ing-photo {
+  height: 110px;
+  flex: none;
+  position: relative;
+  border-bottom: 2px solid var(--riso-ink);
+  background: repeating-linear-gradient(135deg, #f4f1ea 0 8px, #e9e4d6 8px 16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.riso-ing-card.open .riso-ing-photo {
+  height: 170px;
+}
+
+/* Flyer shots are cut-outs on white: a white backdrop, whole product. */
+.riso-ing-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.riso-ing-cover-emoji {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.riso-ing-ends,
+.riso-ing-low {
+  position: absolute;
+  top: 10px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 9px;
+  font: 800 11px var(--riso-font-display);
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.riso-ing-ends {
+  left: 10px;
+  background: var(--riso-hot);
+}
+
+.riso-ing-low {
+  right: 10px;
+  background: var(--riso-green);
+}
+
+.riso-ing-head {
+  padding: 12px 14px 4px;
+  min-width: 0;
+}
+
+.riso-ing-name {
+  margin: 0;
+  font: 800 17px/1.15 var(--riso-font-display);
+}
+
+.riso-ing-sub {
+  margin: 2px 0 0;
+  font: 500 12px var(--riso-font-display);
+  color: var(--riso-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-ing-tiles {
+  display: grid;
+  gap: 10px;
+  padding: 8px 12px 14px;
+  margin-top: auto;
+}
+
+.riso-ing-tile {
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 78px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.riso-ing-tile.best {
+  background: var(--riso-green-tint);
+}
+
+.riso-ing-tile-store {
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.riso-ing-tile-store span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-ing-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--riso-green);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+  flex: none;
+}
+
+.riso-ing-tile-price {
+  font: 800 22px/1 var(--riso-font-display);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-ing-tile.best .riso-ing-tile-price {
+  color: var(--riso-green-text);
+}
+
+.riso-ing-tile-unit {
+  font: 500 10.5px var(--riso-font-mono);
+  margin-top: 3px;
+}
+
+/* Three stores in a 270px card: tighter tiles so "$0.84" and "SUPER C" fit. */
+.riso-ing-tiles.n3 {
+  gap: 6px;
+  padding: 8px 10px 14px;
+}
+
+.riso-ing-tiles.n3 .riso-ing-tile {
+  padding: 9px 8px;
+}
+
+.riso-ing-tiles.n3 .riso-ing-tile-store {
+  letter-spacing: 0.02em;
+}
+
+.riso-ing-tiles.n3 .riso-ing-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.riso-ing-tiles.n3 .riso-ing-tile-price {
+  font-size: 18px;
+}
+
+.riso-ing-more {
+  margin: -8px 14px 12px;
+  font: 500 11px var(--riso-font-mono);
+  color: var(--riso-muted);
+}
+
+.riso-ing-panel {
+  flex: 1.2;
+  min-width: 0;
+  border-left: 2px solid var(--riso-ink);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--riso-canvas);
+}
+
+.riso-ing-panel-label {
+  margin: 0;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--riso-muted);
+}
+
+.riso-ing-variant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 2px solid var(--riso-ink);
+  padding-top: 8px;
+}
+
+.riso-ing-variant .riso-deal-photo {
+  border-radius: 10px;
+}
+
+.riso-ing-variant-store {
+  font: 500 9.5px var(--riso-font-mono);
+  width: 56px;
+  flex: none;
+}
+
+.riso-ing-variant-names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: var(--riso-ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.riso-ing-variant-names:hover .riso-ing-variant-name {
+  text-decoration: underline;
+}
+
+.riso-ing-variant-name {
+  font: 600 14px var(--riso-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-ing-variant-fr {
+  font: 500 11px var(--riso-font-display);
+  color: var(--riso-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-ing-variant-price {
+  font: 800 16px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-ing-list {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-accent);
+  color: #fff;
+  font: 800 11px var(--riso-font-display);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+}
+
+.riso-ing-list.on {
+  background: #e4e4ff;
+  color: var(--riso-ink);
+}
+
+.riso-ing-range {
+  margin-top: auto;
+  border-top: 2px solid var(--riso-ink);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-ing-range-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font: 800 15px var(--riso-font-display);
+}
+
+.riso-ing-range-head span:last-child {
+  font-size: 13px;
+  color: var(--riso-muted);
+}
+
+.riso-ing-range-head span.good {
+  color: var(--riso-green-text);
+}
+
+.riso-ing-range-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--riso-track);
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+  margin: 6px 8px 2px;
+}
+
+.riso-ing-range-dot {
+  position: absolute;
+  top: -5px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: 8px;
+  border: 2px solid var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.riso-ing-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font: 500 10.5px var(--riso-font-mono);
+}
+
+.riso-ing-range-source,
+.riso-ing-range-none {
+  margin: 0;
+  font: 500 13px/1.4 var(--riso-font-display);
+  color: var(--riso-muted);
+}
+
+.riso-ing-range-source {
+  font: 500 10.5px var(--riso-font-mono);
+}
+
+.riso-ing-empty {
+  margin: 0;
+  border: 2px dashed var(--riso-dash-strong);
+  border-radius: 18px;
+  padding: 40px;
+  text-align: center;
+  font: 600 16px var(--riso-font-display);
+  color: var(--riso-muted);
+}
+
+@media (max-width: 720px) {
+  .riso-flyers {
+    padding: 16px 16px 64px;
+  }
+
+  .riso-flyers-title {
+    font-size: 34px;
+  }
+
+  .riso-briefing {
+    grid-template-columns: 1fr;
+  }
+
+  .riso-brief {
+    min-height: 0;
+  }
+
+  .riso-flyer-controls {
+    position: static;
+  }
+
+  .riso-flyer-controls-label.rank {
+    margin-left: 0;
+  }
+
+  .riso-ing-card.open {
+    flex-direction: column;
+  }
+
+  .riso-ing-panel {
+    border-left: none;
+    border-top: 2px solid var(--riso-ink);
+  }
 }
