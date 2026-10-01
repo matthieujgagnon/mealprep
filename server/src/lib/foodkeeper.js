@@ -102,12 +102,11 @@ function isExactPluralMatch(queryWords, nameWords) {
 //   1 - the query is only a listed member ("lemon" -> Citrus fruit (lemon, ...))
 //   0 - the base is a different, derived product ("lemon" -> Lemon juice)
 function baseTier(entry, stemmedQuery) {
-  const base = tokenize(entry.keywords[0] || entry.name).map(stem);
+  const base = PREPARED.get(entry).base;
   const inQuery = base.filter((w) => stemmedQuery.includes(w));
   if (inQuery.length === base.length) return base.length === stemmedQuery.length ? 3 : 2;
   if (inQuery.length > 0) return 0;
-  const listed = /\(([^)]*)\)/.exec(entry.name);
-  const members = listed ? tokenize(listed[1]).map(stem) : [];
+  const { members } = PREPARED.get(entry);
   return stemmedQuery.every((w) => members.includes(w)) ? 1 : 0;
 }
 
@@ -131,7 +130,39 @@ const ALIASES = {
 };
 const ENTRY_BY_ID = new Map(ENTRIES.map((e) => [e.id, e]));
 
+// Each entry's keyword sets and word lists, worked out once - matching a
+// flyer's 1,600 items one by one otherwise rebuilt them 1,600 times.
+const PREPARED = new Map(
+  ENTRIES.map((entry) => {
+    const listed = /\(([^)]*)\)/.exec(entry.name);
+    return [
+      entry,
+      {
+        keywordSet: new Set(entry.keywords.flatMap((k) => [k, stem(k)])),
+        phrases: entry.keywords.map((k) => tokenize(k).map(stem)).filter((words) => words.length > 1),
+        baseStemmed: tokenize(entry.keywords[0] || "").map(stem).join(" "),
+        base: tokenize(entry.keywords[0] || entry.name).map(stem),
+        members: listed ? tokenize(listed[1]).map(stem) : [],
+        nameWords: tokenize(entry.name),
+      },
+    ];
+  })
+);
+
+// Same name, same answer: remembered for the names seen most recently.
+const MATCH_CACHE = new Map();
+const MATCH_CACHE_SIZE = 5000;
+
 export function findBestMatch(name) {
+  const key = String(name ?? "");
+  if (MATCH_CACHE.has(key)) return MATCH_CACHE.get(key);
+  const match = findBestMatchUncached(key);
+  MATCH_CACHE.set(key, match);
+  if (MATCH_CACHE.size > MATCH_CACHE_SIZE) MATCH_CACHE.delete(MATCH_CACHE.keys().next().value);
+  return match;
+}
+
+function findBestMatchUncached(name) {
   const queryWords = tokenize(name);
   if (queryWords.length === 0) return null;
   const stemmedQuery = queryWords.map(stem);
@@ -155,22 +186,23 @@ function scoreEntries(name, queryWords, stemmedQuery) {
   const normalizedQuery = name.trim().toLowerCase();
   let best = null;
   let bestKey = null;
+  const queryJoined = stemmedQuery.join(" ");
   for (const entry of ENTRIES) {
-    const keywordSet = new Set(entry.keywords.flatMap((k) => [k, stem(k)]));
+    const prepared = PREPARED.get(entry);
+    const { keywordSet } = prepared;
     // A query word counts when it's a keyword itself, or part of a
     // multi-word keyword the query contains whole ("cream cheese" - an
     // entry whose only keyword is that phrase would otherwise never match).
     const phraseWords = new Set();
-    for (const k of entry.keywords) {
-      const words = tokenize(k).map(stem);
-      if (words.length > 1 && words.every((w) => stemmedQuery.includes(w))) words.forEach((w) => phraseWords.add(w));
+    for (const words of prepared.phrases) {
+      if (words.every((w) => stemmedQuery.includes(w))) words.forEach((w) => phraseWords.add(w));
     }
     const matchedCount = queryWords.filter(
       (w, i) => keywordSet.has(w) || keywordSet.has(stemmedQuery[i]) || phraseWords.has(stemmedQuery[i])
     ).length;
     if (matchedCount === 0) continue;
     const exactBonus =
-      entry.keywords[0] === normalizedQuery || tokenize(entry.keywords[0] || "").map(stem).join(" ") === stemmedQuery.join(" ")
+      entry.keywords[0] === normalizedQuery || prepared.baseStemmed === queryJoined
         ? 100
         : 0;
     const score = matchedCount + exactBonus;
@@ -180,7 +212,7 @@ function scoreEntries(name, queryWords, stemmedQuery) {
     // query accounts for, word for word - prefers the plainer product (a
     // "chicken breast" query shouldn't surface a stuffed/prepared variant
     // just because it shares as many keywords).
-    const nameWords = tokenize(entry.name);
+    const { nameWords } = prepared;
     const nameOverlap = nameWords.filter((w) => queryWords.includes(w)).length;
     const specificity = isExactPluralMatch(queryWords, nameWords) ? 1 : nameOverlap / Math.max(1, nameWords.length);
 

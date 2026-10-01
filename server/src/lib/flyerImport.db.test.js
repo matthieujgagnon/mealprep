@@ -54,9 +54,19 @@ describe.skipIf(!dbUp)("runImportForUser", () => {
     ]);
   });
 
-  it("keeps last week's Flipp prices as history and never backfills a week twice", async () => {
+  it("replaces a same-week re-import, keeps last week's Flipp prices as history, and never backfills a week twice", async () => {
     await runImportForUser(user.id, { fetchImpl: fetchWith() });
-    const rows = await prisma.flyerDeal.findMany({ where: { userId: user.id } });
+    let rows = await prisma.flyerDeal.findMany({ where: { userId: user.id } });
+    expect(rows.filter((d) => d.isCurrent)).toHaveLength(1);
+    expect(rows.filter((d) => d.source === "Flipp" && !d.isCurrent)).toHaveLength(0);
+
+    // Make this week's import last week's, then import again.
+    await prisma.flyerDeal.updateMany({
+      where: { userId: user.id, source: "Flipp" },
+      data: { createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
+    });
+    await runImportForUser(user.id, { fetchImpl: fetchWith() });
+    rows = await prisma.flyerDeal.findMany({ where: { userId: user.id } });
     expect(rows.filter((d) => d.isCurrent)).toHaveLength(1);
     expect(rows.filter((d) => d.source === "Flipp" && !d.isCurrent)).toHaveLength(1);
     expect(rows.filter((d) => d.source === "Le Rabais")).toHaveLength(2);

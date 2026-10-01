@@ -6,7 +6,7 @@ import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 export const recipesRouter = Router();
 
 // Where a recipe sits on the Planner - see Recipe.mealSlot.
-export const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack", "prep"];
+export const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "side", "snack", "prep"];
 
 // undefined = leave as-is (PUT), null/"" = clear, anything else must be a
 // known slot.

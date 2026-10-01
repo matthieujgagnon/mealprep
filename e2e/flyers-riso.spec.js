@@ -36,6 +36,12 @@ async function addRecipe(page, title, ingredientName) {
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 }
 
+// The table opens on collapsed categories; most checks here want every row.
+async function openFlyersFlat(page) {
+  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await page.locator(".riso-whole-flyer").getByRole("button", { name: "All", exact: true }).click();
+}
+
 const weeksAgo = (n) => new Date(Date.now() - n * 7 * 24 * 60 * 60 * 1000);
 
 // Three weeks of "chicken breast" @ Metro (decreasing - today is a 6-month
@@ -90,7 +96,7 @@ test("real deals show a price meter, a freeze tip, and a best-deals block", asyn
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await openFlyersFlat(page);
   await page.waitForTimeout(400);
 
   await expect(page.locator(".riso-block.accent")).toContainText("The lowest prices in 6 months");
@@ -111,7 +117,7 @@ test("watching from the detail view persists and the Watchlist filter narrows th
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await openFlyersFlat(page);
   await page.waitForTimeout(400);
 
   const chickenRow = page.locator(".riso-table-row", { hasText: "Chicken breast" });
@@ -123,7 +129,7 @@ test("watching from the detail view persists and the Watchlist filter narrows th
   await expect(chickenRow.locator(".riso-watch-badge")).toHaveText("★ WATCHING");
 
   await page.reload();
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await openFlyersFlat(page);
   await page.waitForTimeout(400);
   await expect(page.locator(".riso-table-row", { hasText: "Chicken breast" }).locator(".riso-watch-badge")).toBeVisible();
 
@@ -139,7 +145,7 @@ test("+ List adds a deal's ingredient to this week's grocery list", async ({ pag
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await openFlyersFlat(page);
   await page.waitForTimeout(400);
 
   const row = page.locator(".riso-table-row", { hasText: "Chicken breast" });
@@ -158,11 +164,11 @@ test("clicking a deal opens its detail with the 6-month history", async ({ page 
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await openFlyersFlat(page);
   await page.locator(".riso-block.accent .riso-deal-row", { hasText: "Chicken breast" }).click();
 
   const detail = page.getByRole("dialog", { name: "Chicken breast" });
-  await expect(detail).toContainText("METRO · MEAT & PROTEIN");
+  await expect(detail).toContainText("METRO · MEAT & POULTRY");
   await expect(detail.locator(".riso-deal-detail-price strong")).toHaveText("$4.49/lb");
   await expect(detail.locator(".riso-deal-detail-history-head span")).toHaveText("6-MO LOW");
   await expect(detail.locator(".riso-deal-bar-col")).toHaveCount(6);
@@ -187,7 +193,7 @@ test("a matching recipe appears in What to cook with a save sticker", async ({ p
   await seedChickenHistory(user.id);
   await addRecipe(page, "Riso Cook Test Dish", "chicken breast");
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await openFlyersFlat(page);
   await page.waitForTimeout(400);
 
   const card = page.locator(".riso-cook-card", { hasText: "Riso Cook Test Dish" });
@@ -213,7 +219,7 @@ test("a deal with no history yet is compared with Quebec's average price", async
       },
     });
 
-    await page.getByRole("button", { name: "Flyers", exact: true }).click();
+    await openFlyersFlat(page);
     const row = page.locator(".riso-table-row", { hasText: "Quokkafruit" });
     await expect(row.locator(".riso-meter-new.vs-avg.good")).toHaveText("30% UNDER QC AVG");
     await expect(page.locator(".riso-block.accent")).toContainText("Quokkafruit");
@@ -243,7 +249,7 @@ test("deal names read the same way, with the product photo or a food emoji", asy
     ],
   });
 
-  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await openFlyersFlat(page);
   const salmon = page.locator(".riso-table-row", { hasText: "PC black label salmon fillets, 400 g" });
   await expect(salmon.locator("img.riso-deal-photo")).toHaveAttribute("src", photo);
   const oranges = page.locator(".riso-table-row", { hasText: "Seedless navel oranges, 3 lb" });
@@ -254,4 +260,35 @@ test("deal names read the same way, with the product photo or a food emoji", asy
   const why = page.getByRole("dialog").locator(".riso-deal-detail-photo-why");
   await expect(why).toContainText("Photo didn't load: 127.0.0.1");
   await expect(why.getByRole("link", { name: "Open the photo ↗" })).toHaveAttribute("href", "http://127.0.0.1:9/missing.jpg");
+});
+
+test("categories fold away, open on click, and search finds items across them", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, store: "Metro", source: "Flipp", category: "other", price: "$3.99", unitPrice: 3.99, unitBasis: "each", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, item: "Épinards bébé", matchName: "spinach" },
+      { ...base, item: "Lean ground beef", matchName: "ground beef" },
+      { ...base, item: "Paper towels, 6 rolls", matchName: "paper towels" },
+    ],
+  });
+
+  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  const flyer = page.locator(".riso-whole-flyer");
+  const produce = flyer.getByRole("button", { name: /Fruits & vegetables/ });
+  await expect(produce).toHaveAttribute("aria-expanded", "false");
+  await expect(flyer.getByRole("button", { name: /Meat & poultry/ })).toBeVisible();
+  await expect(flyer.getByRole("button", { name: /Household & personal care/ })).toBeVisible();
+  await expect(flyer.locator(".riso-table-row.clickable")).toHaveCount(0);
+
+  await produce.click();
+  await expect(flyer.locator(".riso-table-row.clickable")).toHaveText([/Épinards bébé/]);
+
+  // Accents don't matter, and matches show even in folded categories.
+  await page.getByLabel("Search flyer items").fill("epinards");
+  await expect(flyer.locator(".riso-table-row.clickable")).toHaveCount(1);
+  await page.getByLabel("Search flyer items").fill("beef");
+  await expect(flyer.locator(".riso-table-row.clickable")).toHaveText([/Lean ground beef/]);
 });

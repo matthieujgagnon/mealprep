@@ -107,31 +107,19 @@ test("Share copies what's left to buy as a text list", async ({ page, context })
   expect(text).not.toContain("Lemon"); // already in the cart
 });
 
-test("Left off this week lists leftovers and staples, and puts them back", async ({ page }) => {
+test("a leftover meal adds nothing to the list, and there's no Left off card", async ({ page }) => {
   await setup(page);
   const soup = await (
     await page.request.post("/api/recipes", { data: { title: "Leftover soup", ingredients: [{ name: "leek", quantity: 2 }] } })
   ).json();
-  const fries = await (
-    await page.request.post("/api/recipes", { data: { title: "Fries", ingredients: [{ name: "potatoes" }, { name: "salt" }] } })
-  ).json();
-  const week = mondayOf(new Date());
   await page.request.post("/api/planner", {
-    data: { recipeId: soup.id, weekStart: week, dayOfWeek: 1, mealType: "lunch", isLeftover: true },
+    data: { recipeId: soup.id, weekStart: mondayOf(new Date()), dayOfWeek: 1, mealType: "lunch", isLeftover: true },
   });
-  await page.request.post("/api/planner", { data: { recipeId: fries.id, weekStart: week, dayOfWeek: 2, mealType: "lunch" } });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(row(page, "Lemon")).toBeVisible();
   await expect(row(page, "Leek")).toHaveCount(0);
-
-  const card = page.locator(".riso-grocery-excluded");
-  await expect(card).toContainText("Left off this week");
-  await expect(card).toContainText("Leftover soup");
-  await card.getByRole("button", { name: "Add Salt to the list" }).click();
-  await expect(row(page, "Salt")).toBeVisible();
-
-  await card.locator(".riso-grocery-review-row", { hasText: "Leftover soup" }).getByRole("button", { name: "Shop for it" }).click();
-  await expect(row(page, "Leek")).toBeVisible();
+  await expect(page.getByText("Left off this week")).toHaveCount(0);
 });
 
 test("Clear empties the Removed this week strip and the rows stay off the list", async ({ page }) => {
