@@ -248,4 +248,10 @@ test("deal names read the same way, with the product photo or a food emoji", asy
   await expect(salmon.locator("img.riso-deal-photo")).toHaveAttribute("src", photo);
   const oranges = page.locator(".riso-table-row", { hasText: "Seedless navel oranges, 3 lb" });
   await expect(oranges.locator(".riso-deal-photo.placeholder")).toHaveText("🍊");
+
+  // The detail view says why the photo didn't show.
+  await oranges.click();
+  const why = page.getByRole("dialog").locator(".riso-deal-detail-photo-why");
+  await expect(why).toContainText("Photo didn't load: 127.0.0.1");
+  await expect(why.getByRole("link", { name: "Open the photo ↗" })).toHaveAttribute("href", "http://127.0.0.1:9/missing.jpg");
 });
