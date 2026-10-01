@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIngredients, ingredientKeyOf, sliceIngredients, splitBilingual, RANKS } from "./flyerIngredients.js";
+import { buildIngredients, dealSavings, ingredientKeyOf, sliceIngredients, splitBilingual, RANKS } from "./flyerIngredients.js";
 
 const deal = (id, store, item, unitPrice, unitBasis = "each", extra = {}) => ({
   id,
@@ -64,9 +64,11 @@ describe("buildIngredients", () => {
     expect(byKey.butter.variants).toHaveLength(1);
   });
 
-  it("scores by range position and store gap", () => {
+  it("scores by the saving, then range position and store gap", () => {
     expect(byKey.bacon.t).toBe(0);
-    expect(byKey.bacon.score).toBeCloseTo(0.6 + 0.4 * (1 / 5.99), 5);
+    // At its 6-month low: the saving under its 6-month high, plus range and gap.
+    expect(byKey.bacon.saving).toMatchObject({ why: "under its 6-month high" });
+    expect(byKey.bacon.score).toBeGreaterThan(byKey.bacon.saving.pct);
     expect(byKey.butter.score).toBe(0);
     expect([...list].sort(RANKS.best.sort)[0].key).toBe("bacon");
   });
@@ -128,3 +130,33 @@ describe("what a product is", () => {
   });
 });
 
+
+describe("what's really on sale", () => {
+  const base = { store: "Metro", unitBasis: "lb" };
+
+  it("reads the saving from the flyer's regular price, Quebec's average or the 6-month high", () => {
+    expect(dealSavings({ ...base, unitPrice: 0.99, regularPrice: 1.69 })).toEqual({ pct: expect.closeTo(0.414, 2), why: "off the regular price" });
+    expect(dealSavings({ ...base, unitPrice: 0.99, baseline: { pct: -64 } })).toEqual({ pct: 0.64, why: "under Quebec's average" });
+    expect(dealSavings({ ...base, unitPrice: 4.49, sixMonthLow: 4.49, sixMonthHigh: 6.99, rangeSource: "store" })).toMatchObject({ why: "under its 6-month high" });
+    // The biggest of them wins.
+    expect(dealSavings({ ...base, unitPrice: 0.99, regularPrice: 1.69, baseline: { pct: -64 } }).why).toBe("under Quebec's average");
+    // An amount off with no price is still a sale.
+    expect(dealSavings({ ...base, unitPrice: null, unitBasis: null, price: "$3.00 off" })).toEqual({ pct: null, why: "$3.00 off" });
+  });
+
+  it("doesn't call a regular price, or a price near Quebec's average, a sale", () => {
+    expect(dealSavings({ ...base, unitPrice: 14.99 })).toBe(null);
+    expect(dealSavings({ ...base, unitPrice: 2.5, baseline: { pct: -5 } })).toBe(null);
+    expect(dealSavings({ ...base, unitPrice: 5, regularPrice: 5.1 })).toBe(null);
+  });
+
+  it("ranks the biggest saving first and flags each ingredient on sale or not", () => {
+    const groups = buildIngredients([
+      { id: 1, ...base, item: "Apples", matchName: "apples", unitPrice: 0.99, regularPrice: 1.69 },
+      { id: 2, ...base, item: "Pork chops", matchName: "pork chops", unitPrice: 1.99, regularPrice: 4.99 },
+      { id: 3, ...base, item: "Wine", matchName: "wine", unitPrice: 14.99, unitBasis: "each" },
+    ]);
+    const ranked = [...groups].sort(RANKS.best.sort).map((g) => [g.name, g.onSale]);
+    expect(ranked).toEqual([["Pork chops", true], ["Apples", true], ["Wine", false]]);
+  });
+});

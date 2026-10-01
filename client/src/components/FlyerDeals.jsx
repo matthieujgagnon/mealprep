@@ -850,6 +850,12 @@ const SLICES = [
 const SLICE_KEY = "flyers-slice";
 const COLLAPSED_KEY = "flyers-collapsed";
 const RANK_KEY = "flyers-rank";
+const SALES_KEY = "flyers-sales-only";
+
+// "41% off the regular price", "$3.00 off".
+function savingText(saving) {
+  return saving.pct != null ? `${Math.round(saving.pct * 100)}% ${saving.why}` : saving.why;
+}
 const LOW_T = 0.05;
 
 // "$0.79/lb" on the same footing the tiles compare on, or the flyer's own
@@ -1126,6 +1132,11 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
             <span className="riso-ing-ends">{g.endsIn <= 0 ? "ENDS TODAY" : g.endsIn === 1 ? "ENDS TOMORROW" : `ENDS IN ${g.endsIn}D`}</span>
           )}
           {low && <span className="riso-ing-low">6-MO LOW</span>}
+          {g.saving && (
+            <span className="riso-ing-save" title={`${g.saving.deal.store}: ${savingText(g.saving)}`}>
+              {g.saving.pct != null ? `${Math.round(g.saving.pct * 100)}% OFF` : g.saving.why.toUpperCase()}
+            </span>
+          )}
         </div>
         <div className="riso-ing-head">
           <h4 className="riso-ing-name">{g.name}</h4>
@@ -1206,6 +1217,7 @@ export function FlyerDeals({
   const [storeFilter, setStoreFilter] = useState(null);
   const [slice, setSlice] = useState(() => readStored(SLICE_KEY, "category"));
   const [rank, setRank] = useState(() => readStored(RANK_KEY, "best"));
+  const [salesOnly, setSalesOnly] = useState(() => readStored(SALES_KEY, "no") === "yes");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(() => new Set());
   const [showAllGroups, setShowAllGroups] = useState(() => new Set());
@@ -1372,6 +1384,12 @@ export function FlyerDeals({
     setRank(id);
     writeStored(RANK_KEY, id);
   }
+  function toggleSalesOnly() {
+    setSalesOnly((on) => {
+      writeStored(SALES_KEY, on ? "no" : "yes");
+      return !on;
+    });
+  }
   function toggleCard(key) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -1409,17 +1427,25 @@ export function FlyerDeals({
   };
 
   const words = foldText(query).split(/\s+/).filter(Boolean);
-  const shownIngredients = words.length ? ingredients.filter((g) => words.every((w) => g.search.includes(w))) : ingredients;
+  const shownIngredients = ingredients.filter(
+    (g) => (!salesOnly || g.onSale) && (!words.length || words.every((w) => g.search.includes(w)))
+  );
   const ranked = [...shownIngredients].sort(RANKS[rank]?.sort || RANKS.best.sort);
   const sliced = sliceIngredients(ranked, slice, aisles);
 
   // The briefing reads the same filtered set, one row per ingredient.
   const bestSort = RANKS.best.sort;
-  const lows = shownIngredients
+  // This week's best deals: 6-month lows first, then the biggest savings
+  // (off the flyer's regular price, under Quebec's average).
+  const lowRows = shownIngredients
     .filter((g) => g.t != null && g.t <= LOW_T)
     .sort(bestSort)
-    .slice(0, 4)
     .map((g) => ({ g, deal: g.best, sub: "6-month low" }));
+  const saleRows = shownIngredients
+    .filter((g) => g.saving?.pct != null && !lowRows.some((r) => r.g === g))
+    .sort((a, b) => b.saving.pct - a.saving.pct)
+    .map((g) => ({ g, deal: g.saving.deal, sub: savingText(g.saving) }));
+  const lows = [...lowRows, ...saleRows].slice(0, 4);
   const gaps = shownIngredients
     .filter((g) => g.gap > 0)
     .sort(RANKS.gap.sort)
@@ -1512,10 +1538,10 @@ export function FlyerDeals({
       <div className="riso-briefing">
         <BriefPanel
           tone="accent"
-          kicker="LOWEST IN 6 MONTHS"
-          title="Lows to grab"
+          kicker="BEST DEALS THIS WEEK"
+          title="Deals to grab"
           rows={lows}
-          emptyText="No 6-month lows this week yet. History builds from each Thursday import."
+          emptyText="No sales found in this week's flyers yet."
           onOpen={openCard}
         />
         <BriefPanel
@@ -1579,6 +1605,15 @@ export function FlyerDeals({
             )}
           </div>
           <div className="riso-flyer-controls-row">
+            <button
+              type="button"
+              className={`riso-slice-chip sale${salesOnly ? " active" : ""}`}
+              aria-pressed={salesOnly}
+              onClick={toggleSalesOnly}
+              title="Only ingredients with a real saving this week"
+            >
+              Sales only
+            </button>
             <span className="riso-flyer-controls-label">SLICE BY</span>
             {SLICES.map((c) => (
               <button

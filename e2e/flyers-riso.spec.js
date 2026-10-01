@@ -105,7 +105,7 @@ test("real deals show as ingredient cards with a 6-month low, a freeze tip and t
 
   await openFlyers(page);
   const lows = page.locator(".riso-brief.accent");
-  await expect(lows).toContainText("Lows to grab");
+  await expect(lows).toContainText("Deals to grab");
   await expect(lows.locator(".riso-brief-row")).toHaveText([/Chicken breast.*6-month low.*\$4\.49\/lb.*Metro/i]);
 
   const chicken = card(page, "Chicken breast");
@@ -516,4 +516,33 @@ test("categories fold away, stay folded, and a search opens them", async ({ page
   await expect(page.locator(".riso-ing-card")).toHaveCount(0);
   await page.getByRole("button", { name: "Open all" }).click();
   await expect(page.locator(".riso-ing-card")).toHaveCount(2);
+});
+
+test("Sales only keeps what's really on sale, with its saving on the card and in the briefing", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, source: "Flipp", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, store: "Maxi", category: "produce", item: "Wombat apples", matchName: "wombat apples", price: "$0.99/lb", unitPrice: 0.99, unitBasis: "lb", regularPrice: 1.69 },
+      { ...base, store: "IGA", category: "other", item: "Numbat wine, 750 mL", matchName: "numbat wine", price: "$14.99", unitPrice: 14.99, unitBasis: "each" },
+    ],
+  });
+
+  await openFlyers(page);
+  await expect(page.locator(".riso-ing-name")).toHaveCount(2);
+  await expect(card(page, "Wombat apples").locator(".riso-ing-save")).toHaveText("41% OFF");
+  await expect(card(page, "Numbat wine").locator(".riso-ing-save")).toHaveCount(0);
+  await expect(page.locator(".riso-brief.accent .riso-brief-row")).toHaveText([/Wombat apples.*41% off the regular price.*Maxi/i]);
+
+  // Only the sale; remembered on this device.
+  await page.getByRole("button", { name: "Sales only" }).click();
+  await expect(page.locator(".riso-ing-name")).toHaveText(["Wombat apples"]);
+  await page.reload();
+  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Sales only" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".riso-ing-name")).toHaveText(["Wombat apples"]);
+  await page.getByRole("button", { name: "Sales only" }).click();
+  await expect(page.locator(".riso-ing-name")).toHaveCount(2);
 });

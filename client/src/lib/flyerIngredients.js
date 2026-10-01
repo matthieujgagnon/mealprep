@@ -108,6 +108,30 @@ export function tilePrice(deal) {
   return { price, basis };
 }
 
+// How much a deal saves, from the best evidence it has: the flyer's own
+// regular price ("Reg. $6.99", "save $1"), a price at least 10% under
+// Quebec's average (Statistics Canada), or this week's price against the
+// highest of its last 6 months. { pct: 0-1, why } or null; an amount-off
+// tile with no price ("$3.00 off") still counts as on sale, with no pct.
+export function dealSavings(deal) {
+  if (!deal) return null;
+  if (deal.unitPrice == null && / off$/.test(deal.price || "")) return { pct: null, why: deal.price };
+  const options = [];
+  if (deal.regularPrice > deal.unitPrice && deal.unitPrice != null) {
+    options.push({ pct: (deal.regularPrice - deal.unitPrice) / deal.regularPrice, why: "off the regular price" });
+  }
+  if (deal.baseline?.pct != null && deal.baseline.pct <= -10) {
+    options.push({ pct: -deal.baseline.pct / 100, why: "under Quebec's average" });
+  }
+  const t = rangePosition(deal);
+  const cur = deal.comparePrice ?? deal.unitPrice;
+  if (t != null && t <= 0.25 && deal.sixMonthHigh > cur) {
+    options.push({ pct: (deal.sixMonthHigh - cur) / deal.sixMonthHigh, why: "under its 6-month high" });
+  }
+  const best = options.sort((a, b) => b.pct - a.pct)[0];
+  return best && best.pct >= 0.05 ? { pct: Math.min(best.pct, 0.95), why: best.why } : null;
+}
+
 export function unitLabel(basis) {
   if (basis === "lb") return "per lb";
   if (basis === "L") return "per L";
@@ -143,7 +167,9 @@ export function daysLeft(validUntil, today = new Date()) {
 //   variants  - every product, cheapest first (for the open card),
 //   tiles     - each store's cheapest product, in `storeOrder`,
 //   lo, hi, gap, best (the cheapest product), t (its range position),
-//   score     - the "Best deal" rank.
+//   saving    - the best real saving this week { deal, pct, why }, or null;
+//   onSale    - whether any product is really on sale (see dealSavings);
+//   score     - the "Best deal" rank: the biggest saving first.
 export function buildIngredients(deals, { store = null, storeOrder = [], today = new Date() } = {}) {
   const rows = (deals || []).filter((d) => !store || d.store === store);
   const keyed = rows.map((d) => ({ deal: d, key: ingredientKeyOf(d) }));
@@ -203,6 +229,12 @@ export function buildIngredients(deals, { store = null, storeOrder = [], today =
     const aisleCount = new Map();
     for (const d of all) aisleCount.set(d.aisle || "other", (aisleCount.get(d.aisle || "other") || 0) + 1);
 
+    // The best real saving among this ingredient's products this week.
+    const saving = all
+      .map((d) => ({ deal: d, ...dealSavings(d) }))
+      .filter((x) => x.why)
+      .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0] || null;
+
     result.push({
       key,
       name,
@@ -219,7 +251,11 @@ export function buildIngredients(deals, { store = null, storeOrder = [], today =
       gap,
       best,
       t,
-      score: t == null ? gap : (1 - t) * 0.6 + gap * 0.4,
+      saving,
+      onSale: !!saving,
+      // "Best deal": the biggest real saving first, then a low spot in its
+      // 6-month range and the gap between stores.
+      score: (saving?.pct ?? (saving ? 0.1 : 0)) + (t == null ? gap * 0.2 : (1 - t) * 0.15 + gap * 0.1),
       search: foldText(`${name} ${sub || ""} ${all.map((d) => `${d.item} ${d.matchName || ""}`).join(" ")}`),
     });
   }
