@@ -124,6 +124,23 @@ describe("matching deals to the Quebec average", () => {
     expect(findBaseline({ matchName: "almond milk", unitPrice: null, unitBasis: null }, baselines)).toBe(null);
   });
 
+  it("matches the product, not a word in another product's name", () => {
+    const more = [
+      ...baselines,
+      { product: "Apples, per kilogram", item: "apples", unitBasis: "lb", price: 2.73, month: "2026-08" },
+      { product: "Butter, 454 grams", item: "butter", unitBasis: "lb", price: 5.7, month: "2026-08" },
+    ];
+    const at = (matchName, unitBasis = "lb") => findBaseline({ matchName, unitPrice: 1, unitBasis }, more)?.item ?? null;
+    expect(at("apples")).toBe("apples");
+    expect(at("spartan apples")).toBe("apples");
+    expect(at("première moisson apple-cinnamon bread")).toBe(null);
+    expect(at("selection butter")).toBe("butter");
+    expect(at("butter puff pastry")).toBe(null);
+    expect(at("cedar coconut milk", "L")).toBe(null);
+    expect(at("eagle brand condensed milk", "L")).toBe(null);
+    expect(at("lactose free milk", "L")).toBe("milk");
+  });
+
   it("rates a price against the average", () => {
     expect(compareToBaseline(4.49, 5.85)).toEqual({ pct: -23, verdict: "good" });
     expect(compareToBaseline(4.0, 5.85)).toEqual({ pct: -32, verdict: "stock-up" });

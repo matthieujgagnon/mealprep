@@ -3,9 +3,7 @@
 //
 //   1. "store"  - the same product at the same store, over the last 6
 //                 months of imported flyers (the original meter);
-//   2. "stores" - the same product at any store over those 6 months -
-//                 including Le Rabais' past weeks, which the import
-//                 backfills (about 10 weeks);
+//   2. "stores" - the same product at any store over those 6 months;
 //   3. "quebec" - Statistics Canada's monthly Quebec average for that kind
 //                 of product, over its last 6 months.
 //
@@ -17,13 +15,14 @@ const G_PER_LB = 453.59237;
 const G_PER_OZ = 28.349523;
 const NUM = String.raw`\d+(?:[.,]\d+)?`;
 const SIZE_RE = new RegExp(
-  String.raw`(?:(\d+)\s*[x×]\s*)?(${NUM})(?:\s*(?:-|–|/|à|to)\s*(${NUM}))?\s*(kg|mg|g|gr|lbs?|oz|ml|l|litres?|liters?)(?![\p{L}\d])`,
+  String.raw`(?:(?<![\d.,])(\d{1,2})\s*[x×/]\s*)?(${NUM})(?:\s*(?:-|–|/|à|to)\s*(${NUM}))?\s*(kg|mg|g|gr|lbs?|oz|ml|l|litres?|liters?)(?![\p{L}\d])`,
   "iu"
 );
 const num = (s) => Number(String(s).replace(",", "."));
 
 // The package's total weight (grams) or volume (mL) from its name, or null.
-// "12 × 355 mL" is 4,260 mL; a "650-750 g" range counts as 700 g.
+// "12 × 355 mL" (or "12/355 mL") is 4,260 mL; a "650-750 g" range counts
+// as 700 g.
 export function packageSize(text) {
   const m = SIZE_RE.exec(String(text || ""));
   if (!m) return null;

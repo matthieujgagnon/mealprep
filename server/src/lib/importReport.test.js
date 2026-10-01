@@ -16,7 +16,7 @@ const history = [
   { id: "h2", store: "Super C", source: "Flipp", item: "McIntosh apples", matchName: "mcintosh apples", price: "$5.49", unitPrice: 5.49, unitBasis: "each", createdAt: weeksAgo(2) },
   // Other store: left alone.
   { id: "h3", store: "Metro", source: "Flipp", item: "McIntosh apples", matchName: "mcintosh apples", price: "$0.99", unitPrice: 0.99, unitBasis: "each", createdAt: weeksAgo(1) },
-  { id: "h4", store: "Metro", source: "Le Rabais", item: "Pommes", matchName: "apples", price: "$1.29/lb", unitPrice: 1.29, unitBasis: "lb", createdAt: weeksAgo(3) },
+  { id: "h4", store: "Metro", source: "Flipp", item: "Pommes", matchName: "apples", price: "$1.29/lb", unitPrice: 1.29, unitBasis: "lb", createdAt: weeksAgo(3) },
 ];
 
 describe("buildImportReport", () => {

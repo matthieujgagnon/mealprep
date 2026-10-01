@@ -251,7 +251,7 @@ model FlyerDeal {
   userId     String? // nullable only pre-backfill - see Recipe.userId
   user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   store      String // the actual store this item's price is from (e.g. "Metro") - extracted per-item for a multi-store roundup image, or just the upload's source for a normal single-store flyer
-  source     String? // identifies the flyer/upload this deal came from - the name typed on upload (e.g. "Metro" for a normal flyer, or "Le Rabais" for a recurring multi-store roundup); re-uploading with the same source supersedes its previous deals (see isCurrent below), independent of the per-item store above. Null for rows from before this field existed - falls back to store for those.
+  source     String? // identifies the flyer/upload this deal came from - the name typed on upload (e.g. "Metro"), or "Flipp" for the weekly import; re-uploading with the same source supersedes its previous deals (see isCurrent below), independent of the per-item store above. Null for rows from before this field existed - falls back to store for those.
   category   String // "protein" | "produce" | "dairy" | "bakery" | "staple" | "other"
   item       String // displayed exactly as printed on the flyer, in whatever language that is
   matchName  String? // item translated to plain English grocery terms (e.g. "brocoli" -> "broccoli"), for matching against recipe ingredient names; null for rows from before this field existed, or when extraction didn't provide one — falls back to item
@@ -260,7 +260,7 @@ model FlyerDeal {
   unitBasis  String? // "lb" | "each" | "L" — the unit unitPrice is expressed in, so deals are only ever compared within the same basis; null alongside a null unitPrice
   validUntil String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
   regularPrice Float? // the usual price the flyer itself states ("Save $2.00", "Reg. $6.99"), in the same unit as unitPrice - null when it doesn't say
-  imageUrl   String? // this item's own photo on the flyer, when the source provides one per item (currently only Le Rabais, which hosts one) — null for manually-uploaded flyers, which show the whole uploaded page instead (see FlyerUpload)
+  imageUrl   String? // this item's own photo on the flyer, when the source provides one per item (the Flipp import) — null for manually-uploaded flyers, which show the whole uploaded page instead (see FlyerUpload)
   isCurrent  Boolean  @default(true) // true = still on the active flyer for its source; a re-upload/re-import under the same source flips its previous rows to false instead of deleting them, so price history accumulates over time rather than being wiped every week. GET /api/deals (and anything showing "what's on sale now") filters to isCurrent: true; a superseded row is kept only so later price-history features (6-month low/high, "is this a real deal") have real data to compare against.
   createdAt  DateTime @default(now())
 
@@ -445,7 +445,7 @@ model FlyerSettings {
   lastImportAt      DateTime? // when the last run finished, successful or not
   lastImportOk      Boolean?
   lastImportCount   Int? // deals written by the last run
-  lastImportSource  String? // "Flipp" or "Le Rabais" (the fallback)
+  lastImportSource  String? // "Flipp"
   lastImportMessage String? // a short note for the Flyers screen, e.g. which store's flyer couldn't be read
   lastSuccessAt     DateTime?
   createdAt         DateTime  @default(now())

@@ -89,4 +89,22 @@ export function findPerLbSavedEach(current, history) {
   return rows;
 }
 
+// Earlier Flipp rows that saved an amount off as the price (Super C's
+// "rabais de 3$" wine as "$3.00 each"): this week the same product at the
+// same store reads "$3.00 off", and the old row's price is that amount.
+export function findAmountOffSavedAsPrice(current, history) {
+  const offNow = new Map();
+  for (const d of current) {
+    const m = d.source === "Flipp" && d.unitPrice == null && /^\$(\d+(?:\.\d+)?) off$/.exec(d.price || "");
+    if (m) offNow.set(`${d.store}|${keyOf(d)}`, Number(m[1]));
+  }
+  const rows = [];
+  for (const row of history) {
+    if (row.source !== "Flipp" || row.unitBasis !== "each" || row.unitPrice == null) continue;
+    const amount = offNow.get(`${row.store}|${keyOf(row)}`);
+    if (amount != null && Math.abs(row.unitPrice - amount) < 0.005) rows.push({ id: row.id, store: row.store, item: row.item, price: row.price, amount });
+  }
+  return rows;
+}
+
 export const HISTORY_WINDOW_MS = 26 * WEEK_MS;

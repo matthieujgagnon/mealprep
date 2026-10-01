@@ -4,17 +4,9 @@
 // (Riso Flyers v4 handoff): the English half of a bilingual name, without
 // brand, size or filler words, decides which ingredient a product is.
 import { canonicalize, capitalize } from "./groceryList.js";
+import { splitBilingual } from "./bilingual.js";
 
-// "Kiwis | kiwis" -> { en: "Kiwis", fr: "kiwis" }. Flipp sends some names
-// in both languages; a name without " | " is English only.
-export function splitBilingual(text) {
-  const parts = String(text || "")
-    .split(/\s+\|\s+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length < 2) return { en: parts[0] || "", fr: null };
-  return { en: parts[0], fr: parts.slice(1).join(" | ") };
-}
+export { splitBilingual };
 
 // Store and national brands, as they start a product name.
 const BRANDS = [
