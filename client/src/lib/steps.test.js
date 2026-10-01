@@ -24,15 +24,17 @@ describe("stepIsHeading / stepTitle", () => {
 
 describe("stepTimer", () => {
   it("detects a minute duration", () => {
-    expect(stepTimer("Roast for 20 minutes, flipping halfway.")).toEqual({ seconds: 1200, label: "20 MIN" });
+    expect(stepTimer("Roast for 20 minutes, flipping halfway.")).toEqual({ seconds: 1200, label: "20-minute" });
   });
 
   it("detects an hour duration", () => {
-    expect(stepTimer("Let it rest for 1 hour.")).toEqual({ seconds: 3600, label: "1 HR" });
+    expect(stepTimer("Let it rest for 1 hour.")).toEqual({ seconds: 3600, label: "1-hour" });
   });
 
   it("returns null when no duration is mentioned", () => {
     expect(stepTimer("Season with salt and pepper.")).toBeNull();
+    expect(stepTimer("Simmer for 90 minutes.").label).toBe("1 h 30 min");
+    expect(stepTimer("Rest 3 min.").label).toBe("3-minute");
   });
 });
 

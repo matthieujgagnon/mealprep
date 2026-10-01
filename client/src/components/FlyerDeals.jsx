@@ -122,13 +122,6 @@ function meterFor(deal) {
   return { low, high, pos: `${Math.round(clamped * 100)}%`, dot: good ? "var(--riso-green)" : "var(--riso-surface)", verdict, good, source };
 }
 
-const BASELINE_VERDICT = {
-  "stock-up": "Stock-up price",
-  good: "Good price",
-  normal: "About usual",
-  high: "Pricier than usual",
-};
-
 function monthLabel(month) {
   const [y, m] = String(month || "").split("-").map(Number);
   if (!y || !m) return "";
@@ -369,7 +362,7 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
     !deal.imageUrl && deal.source && !["Le Rabais", "Flipp"].includes(deal.source) ? api.flyerUploadImageUrl(deal.source) : null;
   // This month's bar is green for a good price: by its own history, or
   // - with none yet - against Quebec's average.
-  const goodNow = meter ? meter.good : ["good", "stock-up"].includes(deal.baseline?.verdict);
+  const goodNow = isGoodPrice(deal);
 
   return (
     <div className="riso-theme riso-deal-backdrop" onClick={onClose}>
@@ -424,7 +417,7 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
           </div>
           {regularLabel(deal) && <p className="riso-deal-detail-reg">{regularLabel(deal)}, says the flyer</p>}
           {deal.baseline && (
-            <div className={`riso-deal-detail-avg ${deal.baseline.verdict}`}>
+            <div className={`riso-deal-detail-avg ${goodNow ? "stock-up" : deal.baseline.verdict === "high" ? "high" : "normal"}`}>
               <div>
                 <span className="riso-deal-detail-avg-label">QUEBEC AVERAGE · {monthLabel(deal.baseline.month).toUpperCase()}</span>
                 <strong>
@@ -432,7 +425,7 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
                 </strong>
               </div>
               <p>
-                <b>{BASELINE_VERDICT[deal.baseline.verdict]}</b>
+                <b>{quebecHeadline(deal.baseline, goodNow)}</b>
                 {" · "}
                 {deal.baseline.pct === 0
                   ? "the same as what it usually costs in Quebec"
@@ -773,35 +766,114 @@ function baselineVerdict({ pct }) {
   return "SAME AS QC AVG";
 }
 
-// The 6-month range of the ingredient's cheapest product, on an open card.
-function RangeBlock({ deal }) {
+// One test for "good price" everywhere a deal is judged: in the lowest 40%
+// of its own 6-month range when it has one, else well under Quebec's
+// average. The Quebec banner and the chart's verdict both use it, so they
+// can't contradict each other.
+function isGoodPrice(deal) {
   const meter = meterFor(deal);
+  if (meter) return meter.good;
+  return ["good", "stock-up"].includes(deal.baseline?.verdict);
+}
+
+// The Quebec banner's headline, judged by isGoodPrice.
+function quebecHeadline(baseline, good) {
+  if (good) return "Stock-up price";
+  return baseline.verdict === "high" ? "Pricier than usual" : "Near the usual price";
+}
+
+// Lowest / average / highest over the 6 months.
+function historyStats(deal) {
+  const history = deal.history || [];
+  const prices = history.map((m) => m.price).filter((p) => p != null);
+  return {
+    history,
+    low: deal.sixMonthLow ?? (prices.length ? Math.min(...prices) : null),
+    high: deal.sixMonthHigh ?? (prices.length ? Math.max(...prices) : null),
+    avg: prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : null,
+  };
+}
+
+const BAR_MAX = 96;
+const BAR_MIN = 26;
+
+// The open card's price history (Flyers v4 update): Quebec's average,
+// the last 6 months as bars (0 to the 6-month high) and the lowest,
+// average and highest prices.
+function PriceHistory({ deal }) {
+  const meter = meterFor(deal);
+  const good = isGoodPrice(deal);
+  const basis = compareBasisOf(deal);
+  const { history, low, high, avg } = historyStats(deal);
+  const hasHistory = !deal.isNew && history.some((m) => m.price != null);
+  const quebecRange = deal.rangeSource === "quebec";
+  const b = deal.baseline;
+
   return (
-    <div className="riso-ing-range">
-      <div className="riso-ing-range-head">
-        <span>6-month price range</span>
-        <span className={meter?.good || (!meter && deal.baseline?.pct <= -10) ? "good" : ""}>
-          {meter ? meter.verdict : deal.baseline ? baselineVerdict(deal.baseline) : "NO HISTORY YET"}
-        </span>
-      </div>
-      {meter ? (
-        <>
-          <div className="riso-ing-range-track">
-            <span className="riso-ing-range-dot" style={{ left: meter.pos, background: meter.dot }} />
+    <div className="riso-ing-history">
+      {b && (
+        <div className={`riso-ing-qc${good ? " good" : ""}`}>
+          <div className="riso-ing-qc-top">
+            <span className="riso-ing-qc-label">QUEBEC AVERAGE · {monthLabel(b.month).toUpperCase()}</span>
+            <strong>
+              {money(b.price)}/{b.basis || basis}
+            </strong>
           </div>
-          <div className="riso-ing-range-labels">
-            <span>LOW {money(meter.low)}</span>
-            <span>HIGH {money(meter.high)}</span>
-          </div>
-          <p className="riso-ing-range-source">
-            {meter.source.short} · per {compareBasisOf(deal)}
+          <p className="riso-ing-qc-line">
+            <b>{quebecHeadline(b, good)}</b>
+            {" · "}
+            {b.pct === 0
+              ? "the same as what it usually costs in Quebec"
+              : `${Math.abs(b.pct)}% ${b.pct < 0 ? "less" : "more"} than it usually costs in Quebec`}
           </p>
+          <p className="riso-ing-qc-source">(Statistics Canada: {b.product})</p>
+        </div>
+      )}
+      {hasHistory ? (
+        <>
+          <div className="riso-ing-chart-head">
+            <span>
+              <strong>{quebecRange ? "Quebec average, last 6 months" : "Last 6 months"}</strong>
+              <small>
+                {" "}
+                · {quebecRange ? "Statistics Canada" : "cheapest store"} · {basis === "each" ? "each" : `per ${basis}`}
+              </small>
+            </span>
+            <span className={`riso-ing-verdict${good ? " good" : ""}`}>
+              {meter ? meter.verdict : b ? baselineVerdict(b) : "NO HISTORY YET"}
+            </span>
+          </div>
+          <div className="riso-ing-bars">
+            {history.map((m, i) => {
+              const now = !quebecRange && i === history.length - 1;
+              const h = m.price != null && high > 0 ? Math.max(BAR_MIN, Math.round((m.price / high) * BAR_MAX)) : null;
+              return (
+                <div key={m.month} className="riso-ing-bar-col">
+                  <span className="riso-ing-bar-price">{m.price != null ? money(m.price) : "–"}</span>
+                  <span
+                    className={`riso-ing-bar${h == null ? " empty" : ""}${now && good ? " good" : ""}`}
+                    style={{ height: h ?? 24 }}
+                  />
+                  <span className="riso-ing-bar-month">{MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="riso-ing-stats">
+            <div>
+              <span>LOWEST</span>
+              <strong className="good">{low != null ? money(low) : "—"}</strong>
+            </div>
+            <div>
+              <span>AVERAGE</span>
+              <strong>{avg != null ? money(avg) : "—"}</strong>
+            </div>
+            <div>
+              <span>HIGHEST</span>
+              <strong>{high != null ? money(high) : "—"}</strong>
+            </div>
+          </div>
         </>
-      ) : deal.baseline ? (
-        <p className="riso-ing-range-none">
-          No history for this item yet, so it's compared with Quebec's average: {money(deal.baseline.price)}/
-          {deal.baseline.basis || compareBasisOf(deal)} (Statistics Canada).
-        </p>
       ) : (
         <p className="riso-ing-range-none">No history for this item yet. It builds each week from the imports.</p>
       )}
@@ -900,7 +972,7 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
               </div>
             );
           })}
-          <RangeBlock deal={g.best} />
+          <PriceHistory deal={g.best} />
         </div>
       )}
     </article>
