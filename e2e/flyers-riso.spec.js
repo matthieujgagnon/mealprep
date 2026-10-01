@@ -292,3 +292,26 @@ test("categories fold away, open on click, and search finds items across them", 
   await page.getByLabel("Search flyer items").fill("beef");
   await expect(flyer.locator(".riso-table-row.clickable")).toHaveText([/Lean ground beef/]);
 });
+
+test("a deal with no history at its own store is compared with other stores, per lb, and shows the flyer's regular price", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, source: "Flipp", category: "dairy", unitBasis: "each" };
+  await prisma.flyerDeal.createMany({
+    data: [
+      // Earlier weeks, at other stores (Le Rabais' past weeks look like this).
+      { ...base, store: "Maxi", source: "Le Rabais", item: "Beurre salé, 454 g", matchName: "Salted Butter (454 g)", price: "$6.99", unitPrice: 6.99, isCurrent: false, createdAt: weeksAgo(5) },
+      { ...base, store: "IGA", source: "Le Rabais", item: "Beurre salé, 454 g", matchName: "Salted Butter (454 g)", price: "$5.99", unitPrice: 5.99, isCurrent: false, createdAt: weeksAgo(2) },
+      // This week at Metro: a new item there, with the flyer's own "save".
+      { ...base, store: "Metro", item: "LACTANTIA SALTED BUTTER 454 G", matchName: "salted butter", price: "$4.49", unitPrice: 4.49, regularPrice: 6.49, isCurrent: true },
+    ],
+  });
+
+  await openFlyersFlat(page);
+  const row = page.locator(".riso-table-row", { hasText: "Lactantia salted butter, 454 g" });
+  await expect(row).toContainText("Reg. $6.49 · 31% off");
+  await expect(row.locator(".riso-meter-source")).toHaveText("6 mo · all stores · per lb");
+  await expect(row.locator(".riso-meter-labels")).toContainText("LOWEST AROUND");
+  await expect(row.locator(".riso-table-unit")).toHaveText("$4.49/lb");
+});

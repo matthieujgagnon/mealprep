@@ -137,7 +137,12 @@ describe("matching deals to the Quebec average", () => {
       { id: 2, matchName: "flowers", unitPrice: 9.99, unitBasis: "each" },
     ];
     const [a, b] = attachBaselines(deals, baselines);
-    expect(a.baseline).toEqual({ product: "Chicken breasts, per kilogram", price: 5.85, month: "2026-07", pct: -23, verdict: "good" });
+    expect(a.baseline).toEqual({ product: "Chicken breasts, per kilogram", price: 5.85, month: "2026-07", basis: "lb", pct: -23, verdict: "good" });
     expect(b.baseline).toBeUndefined();
+  });
+
+  it("compares a pack price per lb with a per-kilogram average", () => {
+    const [deal] = attachBaselines([{ id: 3, item: "Chicken breasts, 908 g", matchName: "chicken breasts", unitPrice: 8.99, unitBasis: "each" }], baselines);
+    expect(deal.baseline).toMatchObject({ basis: "lb", pct: -23 });
   });
 });

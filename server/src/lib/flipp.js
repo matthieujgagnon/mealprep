@@ -209,6 +209,31 @@ export function flippImage(item) {
   return null;
 }
 
+// The usual price the flyer states for an item, in the same unit as the
+// deal's unitPrice - from its "SAVE $2.00" / "SAVE 25%" / "REG. $6.99"
+// text (Flipp puts it in sale_story, sometimes in the price texts or the
+// description). null when it doesn't say, says "up to", or the numbers
+// don't make sense (a "regular" price under the sale price).
+export function regularPriceFor(item, priced) {
+  const text = [item.sale_story, item.price_text, item.pre_price_text, item.post_price_text, item.description, item.disclaimer_text]
+    .filter((t) => typeof t === "string" && t.trim())
+    .join(" ")
+    .replace(/\s+/g, " ");
+  if (!text || !priced || /\bup to\b|\bjusqu/i.test(text)) return null;
+  const amount = (s) => Number(s.replace(",", "."));
+  let regular = null;
+  let m;
+  if ((m = text.match(/(?<![\p{L}])(?:reg(?:ular)?\.?(?: price)?|r[eé]g(?:ulier)?\.?|prix r[eé]gulier)\s*:?\s*\$?\s*(\d+(?:[.,]\d{1,2})?)\s*\$?/iu))) {
+    regular = amount(m[1]);
+  } else if ((m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*\$\s*(\d+(?:[.,]\d{1,2})?)/iu)) || (m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*(\d+(?:[.,]\d{1,2})?)\s*\$/iu))) {
+    regular = priced.unitPrice + amount(m[1]);
+  } else if ((m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*(\d{1,2})\s*%/iu))) {
+    regular = priced.unitPrice / (1 - Number(m[1]) / 100);
+  }
+  if (!(regular > priced.unitPrice) || regular > priced.unitPrice * 5) return null;
+  return Math.round(regular * 100) / 100;
+}
+
 // One Flipp flyer item -> the app's FlyerDeal shape, or null for the
 // banners, section headers and unpriced "save 30%" tiles a flyer also
 // carries.
@@ -227,6 +252,7 @@ export function normalizeFlippItem(item, flyer) {
     unitBasis: priced.unitBasis,
     category: categorize(`${name} ${item.category || ""}`),
     validUntil: isoDate(item.valid_to ?? flyer.validTo),
+    regularPrice: regularPriceFor(item, priced),
     imageUrl: flippImage(item),
   };
 }

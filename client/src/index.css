@@ -4481,6 +4481,31 @@ img.riso-deal-photo {
   border-top: none;
 }
 
+.riso-table-reg,
+.riso-deal-detail-reg {
+  font: 700 12px var(--riso-font-display);
+  color: var(--riso-green-text);
+}
+
+.riso-deal-detail-reg {
+  margin: -4px 0 0;
+  font-size: 13.5px;
+}
+
+.riso-meter-source {
+  margin-top: 2px;
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+  text-align: center;
+}
+
+.riso-deal-detail-history-source {
+  font: 500 12px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
 .riso-table-group-count {
   margin-left: auto;
   font-family: var(--riso-font-mono);
