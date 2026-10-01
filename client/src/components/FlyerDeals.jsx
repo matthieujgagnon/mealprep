@@ -6,6 +6,7 @@ import { canonicalize } from "../lib/groceryList.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { HintStrip, Segmented, Switch } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { flyerUrl, merchantMatches } from "../lib/flyerLinks.js";
 
 // Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
 // per the schema, mealType id matches PlannerEntry.mealType).
@@ -36,6 +37,7 @@ const DEFAULT_AISLES = [
   { id: "household", label: "Household & personal care" },
   { id: "other", label: "Other" },
 ];
+const AISLE_LABEL = Object.fromEntries(DEFAULT_AISLES.map((a) => [a.id, a.label]));
 const PAGE_SIZE = 50;
 const OPEN_AISLES_KEY = "flyers-open-aisles";
 const VIEW_KEY = "flyers-view";
@@ -340,7 +342,11 @@ function endsLabel(days) {
 // A deal's own detail: its picture, the price, the last 6 months as bars
 // (lowest price seen each month) with the lowest/average/highest, any
 // storage tip, and add-to-list / watch.
-function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
+// A flyer item up close: photo, price, how it compares, its 6-month chart.
+// Used by the Flyers page and the grocery list's deal tags; `others` lists
+// the same product at other stores, and the list/watch buttons show only
+// when given a handler.
+export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others = [], postalCode }) {
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") onClose();
@@ -429,7 +435,7 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
           </button>
           <div className="riso-deal-detail-head">
             <span className="riso-deal-detail-eyebrow">
-              {deal.store.toUpperCase()} · {(deal.aisleLabel || "Other").toUpperCase()}
+              {deal.store.toUpperCase()} · {(deal.aisleLabel || AISLE_LABEL[deal.aisle] || "Other").toUpperCase()}
             </span>
             <h3 className="riso-deal-detail-name">{deal.item}</h3>
             {deal.endsInDays != null && <span className="riso-deal-detail-ends">{endsLabel(deal.endsInDays)}</span>}
@@ -506,14 +512,33 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
             </div>
           )}
           {deal.freezeTip && <p className="riso-deal-detail-tip">❄ {deal.freezeTip}</p>}
-          <div className="riso-deal-detail-actions">
-            <button type="button" className={`riso-deal-detail-list${deal.isListed ? " on" : ""}`} onClick={onList}>
-              {deal.isListed ? "✓ On your grocery list" : "+ Add to grocery list"}
-            </button>
-            <button type="button" className={`riso-deal-detail-watch${deal.isWatching ? " on" : ""}`} onClick={onToggleWatch}>
-              {deal.isWatching ? "★ Watching" : "☆ Watch this"}
-            </button>
-          </div>
+          {others.length > 0 && (
+            <div className="riso-deal-detail-others">
+              <span className="riso-deal-detail-others-label">ALSO ON SALE</span>
+              {others.slice(0, 4).map((o) => (
+                <span key={o.id} className="riso-deal-detail-other">
+                  {o.store} · {o.price}
+                </span>
+              ))}
+            </div>
+          )}
+          <a className="riso-deal-detail-flyer" href={flyerUrl(deal.store, postalCode)} target="_blank" rel="noreferrer">
+            Open the {deal.store} flyer ↗
+          </a>
+          {(onList || onToggleWatch) && (
+            <div className="riso-deal-detail-actions">
+              {onList && (
+                <button type="button" className={`riso-deal-detail-list${deal.isListed ? " on" : ""}`} onClick={onList}>
+                  {deal.isListed ? "✓ On your grocery list" : "+ Add to grocery list"}
+                </button>
+              )}
+              {onToggleWatch && (
+                <button type="button" className={`riso-deal-detail-watch${deal.isWatching ? " on" : ""}`} onClick={onToggleWatch}>
+                  {deal.isWatching ? "★ Watching" : "☆ Watch this"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -629,15 +654,16 @@ function formatWhen(iso) {
 }
 
 // Where the weekly import reads from: postal code, which stores, on/off.
-// The store chips come from the flyers Flipp actually has near that postal
-// code, plus whatever was picked before.
+// The store chips are only the stores Flipp has a grocery flyer from near
+// that postal code - a store Flipp doesn't list can't be imported, so a
+// saved one that isn't there any more is dropped (and said so).
 function ImportSettings({ settings, onSaved, onClose }) {
   const [postalCode, setPostalCode] = useState(formatPostal(settings.postalCode));
   const [stores, setStores] = useState(settings.stores);
   const [autoImport, setAutoImport] = useState(settings.autoImport);
   const [nearby, setNearby] = useState(null);
   const [nearbyError, setNearbyError] = useState(null);
-  const [custom, setCustom] = useState("");
+  const [dropped, setDropped] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -646,7 +672,21 @@ function ImportSettings({ settings, onSaved, onClose }) {
     setNearbyError(null);
     api
       .listFlyerStores(pc.replace(/\s/g, ""))
-      .then((r) => setNearby(r.stores))
+      .then((r) => {
+        setNearby(r.stores);
+        // Keep the picks Flipp lists here, under Flipp's own name.
+        setStores((prev) => {
+          const kept = [];
+          const gone = [];
+          for (const s of prev) {
+            const match = r.stores.find((m) => merchantMatches(m, s));
+            if (match) kept.push(match);
+            else gone.push(s);
+          }
+          setDropped(gone);
+          return [...new Set(kept)];
+        });
+      })
       .catch((err) => setNearbyError(err.message));
   }
 
@@ -658,7 +698,7 @@ function ImportSettings({ settings, onSaved, onClose }) {
   const isOn = (name) => stores.some((s) => s.toLowerCase() === name.toLowerCase());
   const toggle = (name) =>
     setStores((prev) => (isOn(name) ? prev.filter((s) => s.toLowerCase() !== name.toLowerCase()) : [...prev, name]));
-  const choices = [...new Set([...stores, ...(nearby || [])])];
+  const choices = nearby || stores;
 
   async function save() {
     setSaving(true);
@@ -706,26 +746,22 @@ function ImportSettings({ settings, onSaved, onClose }) {
               {name}
             </button>
           ))}
-          <form
-            className="riso-import-custom"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (custom.trim() && !isOn(custom.trim())) setStores((prev) => [...prev, custom.trim()]);
-              setCustom("");
-            }}
-          >
-            <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="+ Another store" aria-label="Another store" />
-          </form>
         </div>
         <p className="riso-import-note">
           {nearbyError
-            ? `${nearbyError}. You can still type store names; the import will try them.`
+            ? `${nearbyError}. Your stores are kept as they are until Flipp answers.`
             : nearby
               ? nearby.length
                 ? `Flipp has grocery flyers near ${formatPostal(postalCode.replace(/\s/g, ""))} from ${nearby.length} store${nearby.length === 1 ? "" : "s"}.`
                 : "Flipp has no grocery flyers near this postal code."
               : "Looking up the stores near you on Flipp…"}
         </p>
+        {dropped.length > 0 && (
+          <p className="riso-import-note riso-import-dropped">
+            Removed {dropped.join(", ")}: Flipp has no flyer from {dropped.length === 1 ? "it" : "them"} near this postal
+            code, so {dropped.length === 1 ? "it" : "they"} can't be imported. Save to keep this change.
+          </p>
+        )}
       </div>
       {error && <p className="riso-error">{error}</p>}
       <div className="riso-import-actions">
@@ -1207,6 +1243,16 @@ export function FlyerDeals({
                 ))}
               </div>
             )}
+            {stores.length > 0 && (
+              <p className="riso-flyer-links">
+                <span>OPEN THE FLYER</span>
+                {(storeFilter ? [storeFilter] : stores).map((s) => (
+                  <a key={s} href={flyerUrl(s, importSettings?.postalCode)} target="_blank" rel="noreferrer">
+                    {s} ↗
+                  </a>
+                ))}
+              </p>
+            )}
 
             {visibleDeals.length === 0 ? (
               <p className="riso-empty">{searching ? `Nothing on the flyers matches "${query.trim()}".` : "No deals match this filter."}</p>
@@ -1269,6 +1315,7 @@ export function FlyerDeals({
           onClose={() => setDetailId(null)}
           onList={() => toggleListed(detailDeal)}
           onToggleWatch={() => toggleWatch(detailDeal)}
+          postalCode={importSettings?.postalCode}
         />
       )}
     </div>

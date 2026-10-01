@@ -159,12 +159,12 @@ test("stores: add one and drag an item into it; it stays there", async ({ page }
   const costco = page.getByRole("region", { name: "Costco store" });
   await expect(costco).toContainText("Drag items here");
 
-  const grip = page.getByLabel("Move Garlic to another store");
-  const from = await grip.boundingBox();
+  // The whole row drags (not only its grip).
+  const from = await row(page, "Garlic").locator(".riso-row-name").boundingBox();
   const to = await costco.boundingBox();
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.move(from.x + 10, from.y + from.height / 2);
   await page.mouse.down();
-  await page.mouse.move(from.x + 20, from.y + 10, { steps: 4 });
+  await page.mouse.move(from.x + 25, from.y + 10, { steps: 4 });
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
   await expect(costco.getByRole("button", { name: "Check off Garlic", exact: true })).toBeVisible();
@@ -179,6 +179,8 @@ test("stores: add one and drag an item into it; it stays there", async ({ page }
 test("Done shopping keeps items bought, adds them to Inventory once, and says the groceries are done", async ({ page }) => {
   await setup(page);
   for (const name of ["Garlic", "Lemon", "Spaghetti"]) await row(page, name).click();
+  // Everything in the cart: the card goes dark before Done shopping.
+  await expect(page.locator(".riso-grocery-cart")).toHaveClass(/done/);
   await page.getByRole("button", { name: "Done shopping · add 3 to inventory" }).click();
   await expect(page.getByText("Groceries done ✓")).toBeVisible();
   // Still checked after a reload, and not added a second time.
@@ -191,4 +193,35 @@ test("Done shopping keeps items bought, adds them to Inventory once, and says th
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.locator(".riso-home-grocery")).toContainText("Groceries done ✓");
+});
+
+test("stores reorder by dragging their heading and keep that order", async ({ page }) => {
+  await setup(page);
+  for (const name of ["Costco", "Adonis"]) {
+    await page.getByRole("button", { name: "+ Add store" }).click();
+    await page.getByLabel("Store name").fill(name);
+    await page.getByRole("button", { name: "Add", exact: true }).last().click();
+    await expect(page.getByRole("region", { name: `${name} store` })).toBeVisible();
+  }
+  const names = () => page.locator(".riso-group .riso-group-name").allInnerTexts();
+  const before = await names();
+  expect(before.indexOf("Adonis")).toBeGreaterThan(before.indexOf("Costco"));
+
+  const grip = await page.getByLabel("Reorder the Adonis store").boundingBox();
+  const costco = await page.getByRole("region", { name: "Costco store" }).boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + 10, grip.y - 10, { steps: 4 });
+  await page.mouse.move(costco.x + 60, costco.y + 5, { steps: 12 });
+  await page.mouse.up();
+  await expect.poll(async () => {
+    const after = await names();
+    return after.indexOf("Adonis") < after.indexOf("Costco");
+  }).toBe(true);
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect.poll(async () => {
+    const after = await names();
+    return after.indexOf("Adonis") < after.indexOf("Costco");
+  }).toBe(true);
 });

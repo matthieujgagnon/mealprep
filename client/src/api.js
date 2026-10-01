@@ -72,6 +72,7 @@ export const api = {
   // sample deals (isMockData) so the Flyers page has something to show -
   // those must never show up as "on sale" anywhere else.
   getRealDeals: () => request("/deals").then((d) => (d.isMockData ? [] : d.deals)),
+  groceryAisles: (names) => request("/deals/aisles", { method: "POST", body: JSON.stringify({ names }) }),
   dealPhotoUrl: (id) => `${BASE}/deals/${encodeURIComponent(id)}/photo`,
   checkDealPhoto: (id) => request(`/deals/${encodeURIComponent(id)}/photo-check`),
   uploadFlyer: async (store, file) => {

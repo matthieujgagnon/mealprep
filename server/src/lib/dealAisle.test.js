@@ -24,6 +24,17 @@ describe("aisleFor", () => {
     ["Sliced ham, deli", "deli"],
     ["Paper towels, 6 rolls", "household"],
     ["Dish soap", "household"],
+    // Grocery-list ingredients that used to land in the wrong aisle.
+    ["lemon juice", "pantry"],
+    ["apple cider vinegar", "pantry"],
+    ["red bell pepper", "produce"],
+    ["black pepper", "pantry"],
+    ["coconut milk", "pantry"],
+    ["spaghetti", "pantry"],
+    ["green onions", "produce"],
+    ["fresh ginger", "produce"],
+    ["bacon", "meat"],
+    ["canned tomatoes", "pantry"],
   ])("%s -> %s", (item, aisle) => {
     expect(aisleFor({ item })).toBe(aisle);
   });

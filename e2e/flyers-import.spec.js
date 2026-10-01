@@ -32,15 +32,46 @@ test("auto-import starts on with the default stores, and its settings save", asy
 
   await strip.getByPlaceholder("H2T 2S3").fill("h3b 1a7");
   await strip.getByRole("button", { name: "✓ Maxi" }).click();
-  await strip.getByLabel("Another store").fill("Adonis");
-  await strip.getByLabel("Another store").press("Enter");
   await strip.getByRole("switch", { name: "Import every week" }).click();
   await strip.getByRole("button", { name: "Save" }).click();
 
   await expect(strip.locator(".riso-auto-import-badge")).toHaveText("auto-import off");
-  await expect(strip).toContainText("Metro, IGA, Super C, Provigo, Adonis near H3B 1A7");
+  await expect(strip).toContainText("Metro, IGA, Super C, Provigo near H3B 1A7");
   const saved = await (await page.request.get("/api/flyers/settings")).json();
-  expect(saved).toMatchObject({ postalCode: "H3B1A7", autoImport: false, stores: ["Metro", "IGA", "Super C", "Provigo", "Adonis"] });
+  expect(saved).toMatchObject({ postalCode: "H3B1A7", autoImport: false, stores: ["Metro", "IGA", "Super C", "Provigo"] });
+});
+
+test("the store picker offers only the stores Flipp lists near the postal code", async ({ page }) => {
+  await page.route("**/api/flyers/stores?**", (route) =>
+    route.fulfill({ json: { stores: ["Adonis", "IGA extra", "Metro", "Super C"] } })
+  );
+  await signUpToFlyers(page);
+  const strip = page.locator(".riso-auto-import");
+  await strip.getByRole("button", { name: "Settings" }).click();
+  const chips = strip.locator(".riso-import-stores .riso-chip");
+  await expect(chips).toHaveText(["Adonis", "✓ IGA extra", "✓ Metro", "✓ Super C"]);
+  await expect(strip.getByLabel("Another store")).toHaveCount(0);
+  // Maxi and Provigo have no flyer on Flipp here, so they're dropped.
+  await expect(strip.locator(".riso-import-dropped")).toContainText("Removed Maxi, Provigo");
+  await strip.getByRole("button", { name: "Adonis" }).click();
+  await strip.getByRole("button", { name: "Save" }).click();
+  const saved = await (await page.request.get("/api/flyers/settings")).json();
+  expect(saved.stores).toEqual(["Metro", "IGA extra", "Super C", "Adonis"]);
+});
+
+test("each store's flyer can be opened from the Flyers page and an item's details", async ({ page }) => {
+  await signUpToFlyers(page);
+  const links = page.locator(".riso-flyer-links a");
+  await expect(links.first()).toBeVisible();
+  const metro = page.locator(".riso-flyer-links").getByRole("link", { name: "Metro ↗" });
+  if (await metro.count()) await expect(metro).toHaveAttribute("href", "https://www.metro.ca/en/flyer");
+  for (const a of await links.all()) {
+    await expect(a).toHaveAttribute("target", "_blank");
+    expect(await a.getAttribute("href")).toMatch(/^https:\/\//);
+  }
+  await page.locator(".riso-whole-flyer").getByRole("button", { name: "All", exact: true }).click();
+  await page.locator(".riso-table-row.clickable").first().click();
+  await expect(page.getByRole("dialog").getByRole("link", { name: /^Open the .+ flyer ↗$/ })).toBeVisible();
 });
 
 test("Import now reports when neither Flipp nor Le Rabais can be reached", async ({ page }) => {

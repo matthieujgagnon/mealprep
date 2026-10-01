@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
-import { findMatchingDeal } from "../lib/groceryList.js";
+import { core, findBestDeal, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
@@ -115,7 +114,7 @@ export function Recipes({
       case "Uses expiring":
         return findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes, 3).size > 0;
       case "On sale":
-        return recipe.ingredients?.some((i) => findMatchingDeal(i.name, deals)) || false;
+        return recipe.ingredients?.some((i) => findBestDeal(i.name, deals)) || false;
       default:
         return filterId in SLOT_FILTERS ? recipeSlot(recipe) === SLOT_FILTERS[filterId] : true;
     }

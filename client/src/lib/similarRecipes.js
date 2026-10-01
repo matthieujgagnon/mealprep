@@ -273,8 +273,8 @@ const SIZE_TOKEN = /^\d+(\.\d+)?(g|kg|ml|l|lb|lbs|oz|ct|pk)?$/;
 // The deal-side counterpart to core(): strips retail noise, then hands off to
 // the same core() every other matcher here uses, so a deal and a recipe end
 // up compared on identical terms.
-function dealCore(itemName) {
-  const stripped = itemName
+function dealProduct(itemName) {
+  return itemName
     .toLowerCase()
     // Everything before the first comma or bracket is the product; the rest
     // is packaging ("Ground beef, extra lean", "Strawberries (1 lb)").
@@ -283,7 +283,49 @@ function dealCore(itemName) {
     .map((w) => w.replace(/[^a-z0-9%.-]/g, ""))
     .filter((w) => w && !RETAIL_WORDS.has(w) && !SIZE_TOKEN.test(w))
     .join(" ");
-  return core(stripped || itemName);
+}
+
+function dealCore(itemName) {
+  return core(dealProduct(itemName) || itemName);
+}
+
+// The plain product name ingredients and deals are matched on - not
+// core()'s ingredient families, which put bacon with pork chops.
+function ingredientKey(text) {
+  return canonicalize(text).core || "";
+}
+
+const dealKeyCache = new WeakMap();
+function dealKey(deal) {
+  if (dealKeyCache.has(deal)) return dealKeyCache.get(deal);
+  const text = deal.matchName || deal.item || "";
+  const key = canonicalize(dealProduct(text) || text).core || "";
+  dealKeyCache.set(deal, key);
+  return key;
+}
+
+// Every flyer deal for a grocery ingredient, best price first. A deal
+// matches when its product is the ingredient, or ends with it ("Maple Leaf
+// bacon" for bacon, "cherry tomatoes" for tomatoes) - but not when the
+// ingredient is only part of another product ("lemon juice" isn't lemons,
+// "red pepper flakes" aren't red bell peppers). Prices compare per lb / per
+// L where the server worked that out (comparePrice), within one basis.
+export function findDealsFor(ingredientName, deals) {
+  const want = ingredientKey(ingredientName);
+  if (!want) return [];
+  const matches = deals.filter((d) => {
+    const key = dealKey(d);
+    return key === want || key.endsWith(` ${want}`);
+  });
+  const price = (d) => d.comparePrice ?? d.unitPrice ?? Infinity;
+  const basis = (d) => d.compareBasis || d.unitBasis || "each";
+  // Weight/volume prices compare fairly; a per-item price only among its own.
+  const rank = (d) => (basis(d) === "each" ? 1 : 0);
+  return [...matches].sort((a, b) => rank(a) - rank(b) || (basis(a) === basis(b) ? price(a) - price(b) : 0));
+}
+
+export function findBestDeal(ingredientName, deals) {
+  return findDealsFor(ingredientName, deals)[0] || null;
 }
 
 // Matches this week's flyer deals against the cookbook: "chicken is $2.99/lb

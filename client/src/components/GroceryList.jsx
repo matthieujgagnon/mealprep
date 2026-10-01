@@ -1,11 +1,26 @@
 import { useEffect, useState } from "react";
-import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
+  useDraggable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
-import { buildGroceryList, findMatchingDeal, formatAmount } from "../lib/groceryList.js";
+import { buildGroceryList, formatAmount } from "../lib/groceryList.js";
+import { findDealsFor } from "../lib/similarRecipes.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
+import { DealDetailModal } from "./FlyerDeals.jsx";
 
 // Per-item "which store do I usually get this at" preference — new in the
 // Riso redesign (there's no server schema for it yet). Lasting-but-not-
@@ -142,10 +157,31 @@ function QuantityCell({ item, onSave }) {
   );
 }
 
-function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCycleStore, sub, onDelete, onSetQuantity, dragHandle, dragging }) {
+// The deal tag: where this item is cheapest this week and at what price,
+// whichever store's list it's on. Tapping it opens the flyer item.
+function DealTag({ deal, onOpen }) {
+  if (!deal) return null;
+  return (
+    <button
+      type="button"
+      className="riso-row-deal"
+      title={`On sale at ${deal.store} - see the flyer item`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+    >
+      <span className="riso-row-deal-store">{deal.store}</span>
+      <span className="riso-row-deal-price">{deal.price}</span>
+    </button>
+  );
+}
+
+function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
   return (
     <div
-      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}`}
+      ref={rowRef}
+      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}`}
       role="button"
       tabIndex={0}
       aria-label={`Check off ${item.name}`}
@@ -158,8 +194,13 @@ function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCyc
           onToggle();
         }
       }}
+      {...dragProps}
     >
-      {dragHandle}
+      {dragProps && (
+        <span className="riso-row-grip" aria-hidden="true" title="Drag to another store">
+          ⠿
+        </span>
+      )}
       <span className={`riso-row-check${checked ? " on" : ""}`}>{checked ? "✓" : ""}</span>
       <span className="riso-row-main">
         <span className="riso-row-namerow">
@@ -170,26 +211,10 @@ function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCyc
         </span>
         {sub && <span className="riso-row-sub">{sub}</span>}
       </span>
-      {sale && <span className="riso-row-sale">{sale}</span>}
-      {canCycleStore ? (
-        <button
-          type="button"
-          className="riso-row-store"
-          title="This item's store - tap to switch it to another store you shop at"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCycleStore();
-          }}
-        >
-          {store} ⇄
-        </button>
+      {deal ? (
+        <DealTag deal={deal} onOpen={onOpenDeal} />
       ) : (
-        <span
-          className="riso-row-store static"
-          title="This item's store. Upload a flyer from another store (Flyers tab) to be able to switch it."
-        >
-          {store}
-        </span>
+        showStore && <span className="riso-row-store static">{store}</span>
       )}
       <QuantityCell item={item} onSave={onSetQuantity} />
       <button
@@ -208,44 +233,52 @@ function GroceryRow({ item, checked, onToggle, sale, store, onCycleStore, canCyc
   );
 }
 
-// In "By store", a row can be dragged by its grip into another store.
+// In "By store", the whole row drags into another store (a press-and-hold
+// on a phone; a click still checks it off).
 function DraggableGroceryRow(props) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `grocery-${props.item.key}`,
-    data: { item: props.item },
+    data: { type: "item", item: props.item },
   });
-  const handle = (
-    <span
-      ref={setNodeRef}
-      className="riso-row-grip"
-      aria-label={`Move ${props.item.name} to another store`}
-      title="Drag to another store"
-      onClick={(e) => e.stopPropagation()}
-      {...listeners}
-      {...attributes}
-    >
-      ⠿
-    </span>
-  );
-  return <GroceryRow {...props} dragHandle={handle} dragging={isDragging} />;
+  return <GroceryRow {...props} rowRef={setNodeRef} dragProps={listeners} dragging={isDragging} />;
 }
 
+// One store's list. Its heading drags to reorder the stores; items drop
+// anywhere on it.
 function StoreGroup({ storeName, children, className }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `grocery-store-${storeName}`, data: { store: storeName } });
+  const { setNodeRef, setActivatorNodeRef, listeners, attributes, transform, transition, isDragging, isOver, active } = useSortable({
+    id: `store:${storeName}`,
+    data: { type: "store", store: storeName },
+  });
+  const itemOver = isOver && active?.data.current?.type === "item";
   return (
-    <section ref={setNodeRef} className={`${className}${isOver ? " drop-active" : ""}`} aria-label={`${storeName} store`}>
-      {children}
+    <section
+      ref={setNodeRef}
+      className={`${className}${itemOver ? " drop-active" : ""}${isDragging ? " store-dragging" : ""}`}
+      aria-label={`${storeName} store`}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+    >
+      {children({ handleRef: setActivatorNodeRef, handleProps: { ...listeners, ...attributes } })}
     </section>
   );
 }
 
 // A store's heading. Stores you made can be renamed (click the name) or
 // removed (their items go back to where they'd land on their own).
-function StoreGroupHead({ group, section, onRename, onRemove }) {
+function StoreGroupHead({ group, section, onRename, onRemove, handleRef, handleProps }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(group.name);
   return (
     <div className="riso-group-head" style={{ background: "var(--riso-track)" }}>
+      <span
+        ref={handleRef}
+        className="riso-group-grip"
+        title="Drag to reorder your stores"
+        {...handleProps}
+        aria-label={`Reorder the ${group.name} store`}
+      >
+        ⠿
+      </span>
       {editing ? (
         <input
           autoFocus
@@ -345,15 +378,19 @@ export function GroceryList({
   const [sections, setSections] = useState([]);
   const [loadedWeek, setLoadedWeek] = useState(null);
   const [draggingItem, setDraggingItem] = useState(null);
+  // The flyer item open in the detail view (tapping a row's deal tag).
+  const [openDeal, setOpenDeal] = useState(null);
+  const [watchlist, setWatchlist] = useState(() => new Set());
   const [shareNote, setShareNote] = useState(null);
   const [addValue, setAddValue] = useState("");
   const [view, setView] = useState("store");
   const [storeMode, setStoreMode] = useState(false);
   const [storePrefs, setStorePrefs] = useState(loadStorePrefs);
-  // core -> USDA FoodKeeper category string ("Produce", "Dairy Products &
-  // Eggs", ...), fetched lazily (see the effect below) and cached here so
-  // flipping between views never re-fetches a core it already has.
+  // core -> grocery aisle label ("Fruits & vegetables", "Pantry", ...),
+  // fetched lazily (see the effect below) and cached here so flipping
+  // between views never re-fetches a core it already has.
   const [categoryCache, setCategoryCache] = useState({});
+  const [aisleOrder, setAisleOrder] = useState([]);
   // Tracks which items have already been sent to the pantry this "Done
   // shopping" pass, purely to stop a double-click from adding the same item
   // twice before `checked` resets — not persisted, a stray re-add on reload
@@ -362,7 +399,33 @@ export function GroceryList({
 
   useEffect(() => {
     api.getRealDeals().then(setDeals).catch(() => {});
+    api
+      .listWatchlist()
+      .then((rows) => setWatchlist(new Set(rows.map((r) => r.matchName))))
+      .catch(() => {});
   }, []);
+
+  async function toggleWatch(deal) {
+    const key = (deal.matchName || deal.item).trim().toLowerCase();
+    const watching = watchlist.has(key);
+    setWatchlist((prev) => {
+      const next = new Set(prev);
+      if (watching) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    try {
+      if (watching) await api.removeFromWatchlist(key);
+      else await api.addToWatchlist(key);
+    } catch {
+      setWatchlist((prev) => {
+        const next = new Set(prev);
+        if (watching) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+    }
+  }
 
   // Everything week-specific (checkmarks, hand-added items, removed rows /
   // own amounts, what's gone to Inventory) loads together, and the list
@@ -413,34 +476,27 @@ export function GroceryList({
   const hiddenKeys = new Set(overrides.filter((o) => o.hidden).map((o) => o.key));
   const removedItems = items.filter((i) => !i.isStaple && i.removed && !hiddenKeys.has(i.key));
 
-  // Categories feed the aisle grouping itself AND the sub-line text shown in
-  // the store and recipe views ("PRODUCE · SHRIMP TACOS" / "PRODUCE"), so
-  // this can't wait for the user to actually switch to "By aisle" — the
-  // default "By store" view needs it too. It's still lazy in every other
-  // sense: it only ever asks for cores it doesn't already have cached, never
-  // refetches when switching views back and forth, and reuses the existing
-  // single-item suggest endpoint via Promise.all rather than a new batch
-  // endpoint.
+  // Each item's grocery aisle ("Fruits & vegetables", "Pantry", ...) - the
+  // same aisles the Flyers page groups by - for the aisle view and the line
+  // under each item. Asked for only the items it doesn't know yet.
   useEffect(() => {
     const byCore = new Map(shoppingItems.map((i) => [i.core, i.name]));
     const missing = [...byCore.keys()].filter((core) => !(core in categoryCache));
     if (missing.length === 0) return;
     let cancelled = false;
-    Promise.all(
-      missing.map((core) =>
-        api
-          .suggestPantryExpiration(byCore.get(core), "pantry")
-          .then((r) => [core, r.category || "Other"])
-          .catch(() => [core, "Other"])
-      )
-    ).then((pairs) => {
-      if (cancelled) return;
-      setCategoryCache((prev) => {
-        const next = { ...prev };
-        for (const [core, cat] of pairs) next[core] = cat;
-        return next;
-      });
-    });
+    api
+      .groceryAisles(missing.map((core) => byCore.get(core)))
+      .then(({ aisles, byName }) => {
+        if (cancelled) return;
+        const labels = Object.fromEntries(aisles.map((a, i) => [a.id, { label: a.label, order: i }]));
+        setAisleOrder(aisles.map((a) => a.label));
+        setCategoryCache((prev) => {
+          const next = { ...prev };
+          for (const core of missing) next[core] = labels[byName[byCore.get(core)]]?.label || "Other";
+          return next;
+        });
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -487,15 +543,29 @@ export function GroceryList({
     }
   }
 
-  function cycleStore(item, currentStore) {
-    const idx = storeOrder.indexOf(currentStore);
-    moveToStore(item, storeOrder[(idx + 1) % storeOrder.length]);
+  // Saves the stores in this order. Flyer stores in it become stores of
+  // your own (so they keep their place); the virtual "Any store" bucket
+  // isn't one.
+  async function saveStoreOrder(order) {
+    let current = [...sections];
+    for (const name of order) {
+      if (name === ANY_STORE || current.some((sec) => sec.name === name)) continue;
+      current.push(await api.createGrocerySection(name));
+    }
+    const ordered = order.map((name) => current.find((sec) => sec.name === name)).filter(Boolean);
+    const all = [...ordered, ...current.filter((sec) => !ordered.includes(sec))].map((sec, position) => ({ ...sec, position }));
+    setSections((prev) =>
+      all.map((sec) => ({ ...sec, assignments: prev.find((p) => p.id === sec.id)?.assignments || sec.assignments || [] }))
+    );
+    await api.reorderGrocerySections(all.map((sec) => sec.id));
+    return all;
   }
 
   // Filing an item under a store saves it for every week (by ingredient).
-  // A flyer store you haven't made your own yet becomes one on first use.
+  // A flyer store you haven't made your own yet becomes one on first use -
+  // in the place it's shown, so the stores don't jump around.
   async function moveToStore(item, storeName) {
-    if (storeForItem(item, findMatchingDeal(item.name, deals)) === storeName) return;
+    if (storeForItem(item, findDealsFor(item.name, deals)[0] || null) === storeName) return;
     if (storeName === ANY_STORE) {
       setSections((prev) => prev.map((s) => ({ ...s, assignments: (s.assignments || []).filter((a) => a.core !== item.core) })));
       await api.unassignFromGrocerySection(item.core);
@@ -503,8 +573,9 @@ export function GroceryList({
     }
     let section = sectionByName.get(storeName);
     if (!section) {
-      section = await api.createGrocerySection(storeName);
-      setSections((prev) => [...prev, section]);
+      const all = await saveStoreOrder(storeOrder);
+      section = all.find((sec) => sec.name === storeName);
+      if (!section) return;
     }
     const core = item.core;
     setSections((prev) =>
@@ -540,8 +611,34 @@ export function GroceryList({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
   );
+
+  // Stores reorder by their middles; an item lands in whichever store the
+  // pointer is over.
+  function collisionDetection(args) {
+    if (args.active.data.current?.type === "store") return closestCenter(args);
+    const within = pointerWithin(args);
+    return within.length > 0 ? within : rectIntersection(args);
+  }
+
+  function handleDragEnd(e) {
+    setDraggingItem(null);
+    const active = e.active.data.current;
+    const over = e.over?.data.current;
+    if (!active || !over?.store) return;
+    if (active.type === "store") {
+      const names = groups.map((g) => g.name);
+      const from = names.indexOf(active.store);
+      const to = names.indexOf(over.store);
+      if (from < 0 || to < 0 || from === to) return;
+      const moved = arrayMove(names, from, to);
+      // Stores not shown this week keep their place after the ones shown.
+      saveStoreOrder([...moved, ...storeOrder.filter((n) => !moved.includes(n))]);
+    } else if (active.item) {
+      moveToStore(active.item, over.store);
+    }
+  }
 
   // Optimistic: flip the checkbox immediately, then persist — reverting if
   // the request fails, so a dropped connection doesn't leave the UI showing
@@ -684,7 +781,7 @@ export function GroceryList({
   // per row.
   function buildGroups() {
     const rows = shoppingItems.map((item) => {
-      const deal = findMatchingDeal(item.name, deals);
+      const deal = findDealsFor(item.name, deals)[0] || null;
       return { item, deal, store: storeForItem(item, deal), category: categoryCache[item.core] || null };
     });
 
@@ -710,7 +807,9 @@ export function GroceryList({
         }
         buckets.get(key).push(row);
       }
-      order.sort((a, b) => a.localeCompare(b));
+      // Walking order through the store, like the Flyers page.
+      const rank = (key) => (aisleOrder.includes(key) ? aisleOrder.indexOf(key) : aisleOrder.length);
+      order.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
     } else {
       for (const row of rows) {
         const names = row.item.usedIn.length > 0 ? row.item.usedIn : [MANUAL_GROUP_LABEL];
@@ -757,7 +856,7 @@ export function GroceryList({
 
   const groups = buildGroups();
   const storeRows = shoppingItems.map((item) => {
-    const deal = findMatchingDeal(item.name, deals);
+    const deal = findDealsFor(item.name, deals)[0] || null;
     return { item, deal, store: storeForItem(item, deal) };
   });
   const storesWithItems = storeOrder.filter((st) => storeRows.some((r) => r.store === st));
@@ -765,11 +864,13 @@ export function GroceryList({
   const doneCount = shoppingItems.filter((i) => checked[i.key]).length;
   const toSendCount = shoppingItems.filter((i) => checked[i.key] && !inInventory.has(i.key)).length;
   const allBought = shoppingItems.length > 0 && shoppingItems.every((i) => checked[i.key] && inInventory.has(i.key));
+  // Everything's in the cart: the card goes dark even before "Done shopping".
+  const allInCart = shoppingItems.length > 0 && shoppingItems.every((i) => checked[i.key]);
   const totalCount = shoppingItems.length;
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   const onSaleRows = shoppingItems
-    .map((item) => ({ item, deal: findMatchingDeal(item.name, deals) }))
+    .map((item) => ({ item, deal: findDealsFor(item.name, deals)[0] || null }))
     .filter((r) => r.deal && !checked[r.item.key]);
   const onSaleStores = [...new Set(onSaleRows.map((r) => r.deal.store).filter(Boolean))];
 
@@ -780,7 +881,7 @@ export function GroceryList({
 
   const hintText =
     view === "store"
-      ? "Sale items go to the store with the deal. Drag an item by its ⠿ grip into another store (or tap its store tag), and it stays there every week. Add your own stores below the list."
+      ? "Sale items start in the store with the deal; the green tag shows where it's cheapest and opens the flyer item. Drag an item into another store and it stays there every week; drag a store by its ⠿ to reorder your stores. Add your own stores below the list."
       : "This list is built from your Planner. Tap an item to check it off. Checked items drop to the bottom.";
 
   return (
@@ -845,44 +946,47 @@ export function GroceryList({
           ) : view === "store" ? (
             <DndContext
               sensors={sensors}
-              onDragStart={(e) => setDraggingItem(e.active.data.current?.item || null)}
+              collisionDetection={collisionDetection}
+              onDragStart={(e) => setDraggingItem(e.active.data.current?.type === "item" ? e.active.data.current.item : null)}
               onDragCancel={() => setDraggingItem(null)}
-              onDragEnd={(e) => {
-                setDraggingItem(null);
-                const store = e.over?.data.current?.store;
-                const item = e.active.data.current?.item;
-                if (store && item) moveToStore(item, store);
-              }}
+              onDragEnd={handleDragEnd}
             >
-              {groups.map((group) => {
-                const section = sectionByName.get(group.name);
-                return (
-                  <StoreGroup key={group.key} storeName={group.name} className="riso-group">
-                    <StoreGroupHead
-                      group={group}
-                      section={section}
-                      onRename={(name) => renameStore(section, name)}
-                      onRemove={() => removeStore(section)}
-                    />
-                    {group.sorted.length === 0 && <p className="riso-group-empty">Drag items here</p>}
-                    {group.sorted.map((row) => (
-                      <DraggableGroceryRow
-                        key={`${group.key}-${row.item.key}`}
-                        item={row.item}
-                        checked={!!checked[row.item.key]}
-                        onToggle={() => toggle(row.item.key)}
-                        sale={row.deal?.price || ""}
-                        store={row.store}
-                        onCycleStore={() => cycleStore(row.item, row.store)}
-                        canCycleStore={storeOrder.length > 1}
-                        sub={subLineFor(row)}
-                        onDelete={() => removeItem(row.item)}
-                        onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
-                      />
-                    ))}
-                  </StoreGroup>
-                );
-              })}
+              <SortableContext items={groups.map((g) => `store:${g.name}`)} strategy={verticalListSortingStrategy}>
+                {groups.map((group) => {
+                  const section = sectionByName.get(group.name);
+                  return (
+                    <StoreGroup key={group.key} storeName={group.name} className="riso-group">
+                      {({ handleRef, handleProps }) => (
+                        <>
+                          <StoreGroupHead
+                            group={group}
+                            section={section}
+                            onRename={(name) => renameStore(section, name)}
+                            onRemove={() => removeStore(section)}
+                            handleRef={handleRef}
+                            handleProps={handleProps}
+                          />
+                          {group.sorted.length === 0 && <p className="riso-group-empty">Drag items here</p>}
+                          {group.sorted.map((row) => (
+                            <DraggableGroceryRow
+                              key={`${group.key}-${row.item.key}`}
+                              item={row.item}
+                              checked={!!checked[row.item.key]}
+                              onToggle={() => toggle(row.item.key)}
+                              deal={row.deal}
+                              onOpenDeal={() => setOpenDeal({ deal: row.deal, name: row.item.name })}
+                              store={row.store}
+                              sub={subLineFor(row)}
+                              onDelete={() => removeItem(row.item)}
+                              onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </StoreGroup>
+                  );
+                })}
+              </SortableContext>
               <AddStoreForm onAdd={addStore} />
               <DragOverlay dropAnimation={null}>
                 {draggingItem && <div className="riso-grocery-drag-chip">{draggingItem.name}</div>}
@@ -901,10 +1005,10 @@ export function GroceryList({
                     item={row.item}
                     checked={!!checked[row.item.key]}
                     onToggle={() => toggle(row.item.key)}
-                    sale={row.deal?.price || ""}
+                    deal={row.deal}
+                    onOpenDeal={() => setOpenDeal({ deal: row.deal, name: row.item.name })}
                     store={row.store}
-                    onCycleStore={() => cycleStore(row.item, row.store)}
-                    canCycleStore={storeOrder.length > 1}
+                    showStore
                     sub={subLineFor(row)}
                     onDelete={() => removeItem(row.item)}
                     onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
@@ -942,7 +1046,7 @@ export function GroceryList({
         )}
 
         <aside className="riso-grocery-aside">
-          <section className={`riso-grocery-cart${allBought ? " done" : ""}`}>
+          <section className={`riso-grocery-cart${allInCart ? " done" : ""}`}>
             <div className="riso-eyebrow on-pink">In the cart</div>
             <div className="riso-grocery-cart-count">
               <span className="riso-grocery-cart-num">{doneCount}</span>
@@ -996,6 +1100,14 @@ export function GroceryList({
           onToggle={toggle}
           onDone={handleDoneShopping}
           onClose={() => setStoreMode(false)}
+        />
+      )}
+      {openDeal && (
+        <DealDetailModal
+          deal={{ ...openDeal.deal, isWatching: watchlist.has((openDeal.deal.matchName || openDeal.deal.item).trim().toLowerCase()) }}
+          others={findDealsFor(openDeal.name, deals).filter((d) => d.id !== openDeal.deal.id)}
+          onClose={() => setOpenDeal(null)}
+          onToggleWatch={() => toggleWatch(openDeal.deal)}
         />
       )}
     </div>

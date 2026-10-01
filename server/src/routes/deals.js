@@ -185,6 +185,14 @@ dealsRouter.get("/", async (req, res) => {
   });
 });
 
+// POST /api/deals/aisles { names: [...] } - the grocery aisle each name
+// belongs in (the same aisles the Flyers page groups by), for the grocery
+// list's aisle view and the line under each item.
+dealsRouter.post("/aisles", (req, res) => {
+  const names = Array.isArray(req.body?.names) ? req.body.names.filter((n) => typeof n === "string").slice(0, 500) : [];
+  res.json({ aisles: AISLES, byName: Object.fromEntries(names.map((n) => [n, aisleFor({ item: n })])) });
+});
+
 // GET /api/deals/:id/photo - the deal's product photo, fetched by the
 // server (see lib/dealPhoto.js). 404 when there's none or it can't be
 // fetched; the page then shows a food emoji instead.
