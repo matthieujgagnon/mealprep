@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Every grocery row can be removed (recipe rows for this week only, with a
 // way back) and can carry your own amount next to the recipe's.
@@ -224,4 +227,40 @@ test("stores reorder by dragging their heading and keep that order", async ({ pa
     const after = await names();
     return after.indexOf("Adonis") < after.indexOf("Costco");
   }).toBe(true);
+});
+
+test("the list waits for stores and deals, so items never show in Any store first", async ({ page }) => {
+  await setup(page);
+  // A store of your own, and a flyer at Metro: unfiled items belong in Metro.
+  await page.request.post("/api/grocery-sections", { data: { name: "Costco" } });
+  const me = await (await page.request.get("/api/auth/me")).json();
+  await prisma.flyerDeal.create({
+    data: {
+      userId: me.id, store: "Metro", source: "Flipp", category: "dairy", item: "Butter",
+      matchName: "butter", price: "$4.99", unitPrice: 4.99, unitBasis: "each", isCurrent: true,
+    },
+  });
+  const storeNames = () => page.locator(".riso-group-name").allInnerTexts();
+
+  // Deals answer slowly; before, the list drew without them and put every
+  // item in "Any store" until they arrived.
+  await page.route("**/api/deals", async (route) => {
+    await new Promise((r) => setTimeout(r, 1500));
+    await route.continue();
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await page.waitForTimeout(600);
+  expect(await storeNames()).not.toContain("Any store");
+  await expect(page.locator(".riso-grocery-loading")).toBeVisible();
+
+  const metro = page.getByRole("region", { name: "Metro store" });
+  await expect(metro.getByRole("button", { name: "Check off Garlic", exact: true })).toBeVisible();
+  expect(await storeNames()).not.toContain("Any store");
+
+  // Coming back to the tab shows it straight away, already in place.
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(metro.getByRole("button", { name: "Check off Garlic", exact: true })).toBeVisible({ timeout: 500 });
+  expect(await storeNames()).not.toContain("Any store");
 });
