@@ -18,6 +18,11 @@ export function isPrepRecipe(recipe) {
   return recipeSlot(recipe) === "prep";
 }
 
+// Sides go with a meal; they never fill a meal slot on their own.
+export function isSideRecipe(recipe) {
+  return recipeSlot(recipe) === "side";
+}
+
 export function formatTrayTime(minutes) {
   if (!minutes) return null;
   return minutes >= 60 ? `${Math.floor(minutes / 60)} H` : `${minutes} MIN`;

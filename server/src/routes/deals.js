@@ -4,6 +4,7 @@ import { freezeTip } from "../lib/foodkeeper.js";
 import { loadBaselines } from "../lib/baselines.js";
 import { compareToBaseline, findBaseline } from "../lib/statcan.js";
 import { tidyDealTitle } from "../lib/dealTitle.js";
+import { AISLES, aisleFor } from "../lib/dealAisle.js";
 import { checkDealPhoto, loadDealPhoto } from "../lib/dealPhoto.js";
 
 export const dealsRouter = Router();
@@ -36,15 +37,17 @@ export function lastSixMonths(now = new Date()) {
 // Attaches sixMonthLow/sixMonthHigh/isNew to each deal that has a usable
 // unitPrice, computed from every deal (isCurrent true or false) sharing its
 // historyKey within the last 26 weeks - including the deal's own current
-// price, so a first-ever upload's only data point is its own price (low ==
-// high == current), not an empty range. isNew is true only when there's
-// truly nothing but the current price to compare against, per the
-// handoff's "no history yet -> hide the meter, show NEW" behavior.
+// price. isNew is true until there are prices from at least two different
+// weeks, per the handoff's "no history yet -> hide the meter, show NEW"
+// behavior.
 //
 // Also attaches `history`: one entry per calendar month for the last six
 // (oldest first), each the lowest price seen that month, or null for a
 // month with no price on record - the Flyers detail view's bar chart.
 // The current month always includes the deal's own price.
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const weekOf = (date) => Math.floor(new Date(date).getTime() / WEEK_MS);
+
 export function withPriceHistory(deals, history, now = new Date()) {
   const cutoff = now.getTime() - SIX_MONTHS_MS;
   const months = lastSixMonths(now);
@@ -54,13 +57,14 @@ export function withPriceHistory(deals, history, now = new Date()) {
     if (row.unitPrice == null || !row.unitBasis) continue;
     if (row.createdAt && new Date(row.createdAt).getTime() < cutoff) continue;
     const key = historyKey(row);
+    const week = weekOf(row.createdAt || now);
     const range = ranges.get(key);
     if (!range) {
-      ranges.set(key, { low: row.unitPrice, high: row.unitPrice, count: 1 });
+      ranges.set(key, { low: row.unitPrice, high: row.unitPrice, weeks: new Set([week]) });
     } else {
       range.low = Math.min(range.low, row.unitPrice);
       range.high = Math.max(range.high, row.unitPrice);
-      range.count += 1;
+      range.weeks.add(week);
     }
     const month = new Date(row.createdAt || now).toISOString().slice(0, 7);
     if (!months.includes(month)) continue;
@@ -80,7 +84,9 @@ export function withPriceHistory(deals, history, now = new Date()) {
       return { month, price };
     });
     const range = ranges.get(key);
-    if (!range || range.count < 2) return { ...deal, isNew: true, history: series };
+    // Prices from one week only (this week's flyer, however many times it
+    // was imported) aren't a range yet.
+    if (!range || range.weeks.size < 2) return { ...deal, isNew: true, history: series };
     return { ...deal, sixMonthLow: range.low, sixMonthHigh: range.high, isNew: false, history: series };
   });
 }
@@ -150,14 +156,15 @@ dealsRouter.get("/", async (req, res) => {
       where: { userId: req.userId, isCurrent: true },
       orderBy: { createdAt: "desc" },
     })
-  ).map((row) => ({ ...row, item: tidyDealTitle(row.item) })); // stored as printed; shown tidy
+  ).map((row) => ({ ...row, item: tidyDealTitle(row.item), aisle: aisleFor(row) })); // stored as printed; shown tidy
 
   if (rows.length === 0) {
     return res.json({
       region: "Montreal, QC (H1W)",
       stores: ["Metro", "Provigo", "Maxi", "Super C", "IGA"],
       weekOf: "2026-08-27",
-      deals: MOCK_DEALS,
+      deals: MOCK_DEALS.map((d) => ({ ...d, aisle: aisleFor(d) })),
+      aisles: AISLES,
       isMockData: true,
     });
   }
@@ -169,6 +176,7 @@ dealsRouter.get("/", async (req, res) => {
     stores,
     weekOf: null,
     deals,
+    aisles: AISLES,
     isMockData: false,
   });
 });

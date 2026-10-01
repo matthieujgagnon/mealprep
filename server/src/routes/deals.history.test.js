@@ -47,6 +47,14 @@ describe("withPriceHistory", () => {
     expect(deal.history.map((m) => m.price)).toEqual([null, null, null, null, null, 3.99]);
   });
 
+  it("stays new when this week's flyer was imported several times", () => {
+    const current = row(12.99, "2026-09-30T10:00:00Z");
+    const history = [row(12.99, "2026-09-30T09:00:00Z"), row(12.99, "2026-09-30T09:30:00Z"), current];
+    const [deal] = withPriceHistory([current], history, NOW);
+    expect(deal.isNew).toBe(true);
+    expect(deal.sixMonthLow).toBeUndefined();
+  });
+
   it("leaves deals without a unit price alone", () => {
     const deal = { item: "Flowers", unitPrice: null, unitBasis: null };
     expect(withPriceHistory([deal], [], NOW)).toEqual([deal]);

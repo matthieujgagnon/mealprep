@@ -1,10 +1,12 @@
 // Where a recipe sits on the Planner (Recipe.mealSlot on the server). One
-// per recipe. "Snack / Any" fits any meal; "Pantry / Prep" (pickles, roasted
-// veg, sauces) never takes a meal on the calendar.
+// per recipe. "Side" (garlic asparagus, rice) and "Snack / Any" fit any
+// meal; "Pantry / Prep" (pickles, roasted veg, sauces) never takes a meal
+// on the calendar.
 export const RECIPE_SLOTS = [
   { id: "breakfast", label: "Breakfast" },
   { id: "lunch", label: "Lunch" },
   { id: "dinner", label: "Dinner" },
+  { id: "side", label: "Side" },
   { id: "snack", label: "Snack / Any" },
   { id: "prep", label: "Pantry / Prep" },
 ];
@@ -18,6 +20,9 @@ const TAG_SLOTS = [
   ["lunch", "lunch"],
   ["breakfast", "breakfast"],
   ["snack", "snack"],
+  ["side", "side"],
+  ["sides", "side"],
+  ["side dish", "side"],
 ];
 
 export function recipeSlot(recipe) {
@@ -29,6 +34,7 @@ export function recipeSlot(recipe) {
 export function slotHint(slotId) {
   if (slotId === "prep") return "Doesn't take a meal slot on the calendar. It shows up on your prep and grocery lists.";
   if (slotId === "snack") return "Can go in any slot on the calendar.";
+  if (slotId === "side") return "A side dish: goes with a meal in any slot, and Fill empty slots leaves it out.";
   if (slotId) return `Goes in the ${RECIPE_SLOT_LABEL[slotId].toLowerCase()} row of the Planner.`;
   return "Pick where this belongs in the Planner.";
 }

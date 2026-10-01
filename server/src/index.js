@@ -1,6 +1,7 @@
 import "./lib/asyncErrors.js";
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -32,6 +33,8 @@ const app = express();
 // so without this Express would see every request as insecure and never
 // consider `secure: true` cookies (see lib/auth.js) safe to send.
 app.set("trust proxy", 1);
+// Gzip JSON and the app bundle - the Flyers list alone is ~1 MB uncompressed.
+app.use(compression());
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());

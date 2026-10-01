@@ -72,7 +72,7 @@ export async function updateSettings(userId, { postalCode, stores, autoImport })
   return prisma.flyerSettings.update({ where: { userId }, data });
 }
 
-// Writes one source's deals as this week's, keeping last week's as price
+// Writes one source's deals as this week's, keeping earlier weeks' as price
 // history (isCurrent false) - see FlyerDeal.isCurrent. A Flipp import also
 // retires the current Le Rabais rows for the same stores, so a store never
 // shows twice.
@@ -82,7 +82,11 @@ async function saveCurrentDeals(userId, source, deals) {
     source === FLIPP_SOURCE
       ? { userId, isCurrent: true, OR: [{ source: FLIPP_SOURCE }, { source: LE_RABAIS_SOURCE, store: { in: stores } }] }
       : { userId, isCurrent: true, source };
+  // Deals imported earlier this same flyer week are replaced, not kept as
+  // history - re-importing the same flyer would otherwise look like weeks
+  // of prices.
   await prisma.$transaction([
+    prisma.flyerDeal.deleteMany({ where: { ...retire, createdAt: { gte: latestFlyerStart() } } }),
     prisma.flyerDeal.updateMany({ where: retire, data: { isCurrent: false } }),
     ...(deals.length ? [prisma.flyerDeal.createMany({ data: deals.map((d) => ({ ...d, userId, source })) })] : []),
   ]);

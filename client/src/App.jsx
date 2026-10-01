@@ -24,7 +24,7 @@ import { PlannerTray } from "./components/PlannerTray.jsx";
 import { PlannerMobile } from "./components/PlannerMobile.jsx";
 import { useIsPhone } from "./hooks/useIsPhone.js";
 import { emptyUpcomingSlots, findNextEmptySlot, isCustomNote, todayIndex } from "./lib/plannerSlots.js";
-import { isBreakfastRecipe, isPrepRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
+import { isBreakfastRecipe, isPrepRecipe, isSideRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
@@ -620,14 +620,6 @@ export default function App({ user, onLogout }) {
     setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
   }
 
-  // Grocery's "Review what's left off": put a leftover / already-have meal's
-  // ingredients back on the list.
-  async function handleShopForEntry(entryId) {
-    const next = { isLeftover: false, alreadyHave: false };
-    await api.updatePlannerEntry(entryId, next);
-    setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
-  }
-
   // Cook mode's "Save leftovers" (fridge): each portion becomes a leftover
   // lunch over the next few days - inside the 3-4 day fridge window - in
   // whatever lunch slots are still empty this week.
@@ -675,8 +667,8 @@ export default function App({ user, onLogout }) {
       haveCores: pantryHaveCores,
     });
     const breakfast = ranked.filter((x) => isBreakfastRecipe(x.recipe));
-    const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe) && !isPrepRecipe(x.recipe));
-    const mains = other.length > 0 ? other : ranked.filter((x) => !isPrepRecipe(x.recipe));
+    const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe) && !isPrepRecipe(x.recipe) && !isSideRecipe(x.recipe));
+    const mains = other.length > 0 ? other : ranked.filter((x) => !isPrepRecipe(x.recipe) && !isSideRecipe(x.recipe));
     let b = 0;
     let o = 0;
     const plan = [];
@@ -1013,7 +1005,6 @@ export default function App({ user, onLogout }) {
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
             onAddPantryItem={handleAddPantryItem}
-            onShopForEntry={handleShopForEntry}
           />
         )}
 

@@ -106,3 +106,19 @@ test("any photo can be made the cover, and photos keep their order", async ({ pa
   expect(saved.photoUrl).toBe("https://example.com/second.jpg");
   expect(saved.photos).toEqual(["https://example.com/first.jpg", "https://example.com/second.jpg"]);
 });
+
+test("the Side filter shows side dishes", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.fill('input[type="email"]', `recipes-side+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+  await page.request.post("/api/recipes", { data: { title: "Garlic asparagus", mealSlot: "side", ingredients: [{ name: "asparagus" }] } });
+  await page.request.post("/api/recipes", { data: { title: "Roast chicken", mealSlot: "dinner", ingredients: [{ name: "chicken" }] } });
+
+  await page.reload();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.getByRole("button", { name: /^Side\s*\d+$/ }).click();
+  await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Garlic asparagus"]);
+});

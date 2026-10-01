@@ -4376,10 +4376,18 @@ img.riso-deal-photo {
 }
 
 .riso-cook-body {
+  flex: 1;
   padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* Inside the photo, so the card's rounded corner never clips it. */
+.riso-cook-save {
+  top: 10px;
+  right: 10px;
+  transform: rotate(4deg);
 }
 
 .riso-cook-title {
@@ -4399,7 +4407,8 @@ img.riso-deal-photo {
 .riso-cook-actions {
   display: flex;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: auto;
+  padding-top: 6px;
   flex-wrap: wrap;
 }
 
@@ -4473,9 +4482,64 @@ img.riso-deal-photo {
 }
 
 .riso-table-group-count {
+  margin-left: auto;
   font-family: var(--riso-font-mono);
   font-size: 11px;
   color: var(--riso-muted);
+}
+
+/* Aisle headers fold their rows away. */
+button.riso-table-group-head {
+  width: 100%;
+  justify-content: flex-start;
+  border: none;
+  border-top: 1.5px dashed var(--riso-dash);
+  color: var(--riso-ink);
+  font-size: 15px;
+  padding: 12px 18px;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.riso-table-group-head:hover {
+  background: color-mix(in srgb, var(--riso-track) 70%, var(--riso-accent) 12%);
+}
+
+button.riso-table-group-head:disabled {
+  cursor: default;
+}
+
+.riso-table-group-caret {
+  width: 14px;
+  font-size: 13px;
+}
+
+.riso-table-more {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-top: 1.5px dashed var(--riso-dash);
+  background: none;
+  color: var(--riso-accent);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-table-more:hover {
+  text-decoration: underline;
+}
+
+.riso-flyer-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 2px;
+  padding: 11px 16px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 500 15px var(--riso-font-body);
 }
 
 .riso-table-item {
@@ -7625,12 +7689,14 @@ img.riso-deal-photo {
   box-sizing: border-box;
 }
 
+/* No left padding: Monday's snap position is then exactly scrollLeft 0,
+   so snapping never tucks Monday's left edge under the sticky labels. */
 .riso-planner-scroll {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scroll-padding-left: 98px;
-  padding: 4px 4px 8px;
-  margin: 0 -4px;
+  padding: 4px 4px 8px 0;
+  margin: 0 -4px 0 0;
 }
 
 /* While dragging, the drag's own edge auto-scroll nudges the board a few
@@ -8781,114 +8847,18 @@ button.riso-row-qty:focus-visible {
   text-align: center;
 }
 
-.riso-grocery-excluded {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 24px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
 
-.riso-grocery-excluded-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 14px;
-}
 
-.riso-grocery-excluded-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
 
-.riso-grocery-excluded-row span:last-child {
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 12px;
-}
 
-.riso-grocery-excluded-link {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 13.5px;
-  color: var(--riso-accent);
-  cursor: pointer;
-}
 
-.riso-grocery-review {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-top: 12px;
-  border-top: 1.5px dashed var(--riso-dash);
-}
 
-.riso-grocery-review-empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--riso-soft);
-}
 
-.riso-grocery-review-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
-.riso-grocery-review-title {
-  margin: 0;
-  font-family: var(--riso-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--riso-muted);
-}
 
-.riso-grocery-review-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13.5px;
-  font-weight: 600;
-}
 
-.riso-grocery-review-row small {
-  margin-left: 6px;
-  font-family: var(--riso-font-mono);
-  font-weight: 400;
-  font-size: 10.5px;
-  color: var(--riso-muted);
-}
 
-.riso-grocery-review-row button {
-  flex: none;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 14px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 12px;
-  cursor: pointer;
-}
 
-.riso-grocery-review-row button:disabled {
-  border-style: dashed;
-  color: var(--riso-muted);
-  cursor: default;
-}
 
 .riso-grocery-sale {
   position: relative;
@@ -10424,43 +10394,10 @@ body.no-select {
   cursor: pointer;
 }
 
-.riso-grocery-excluded-intro {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--riso-soft);
-}
 
-.riso-grocery-review-title span {
-  text-transform: none;
-  letter-spacing: 0;
-  font-family: var(--riso-font-body);
-}
 
-.riso-grocery-staple-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
 
-.riso-grocery-staple-chip {
-  height: 28px;
-  padding: 0 11px;
-  border-radius: 14px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 12.5px;
-  cursor: pointer;
-}
 
-.riso-grocery-staple-chip.on {
-  border-style: dashed;
-  color: var(--riso-muted);
-  cursor: default;
-}
 
 @media (max-width: 767px) {
   .riso-row-grip {
