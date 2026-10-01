@@ -363,7 +363,7 @@ test("a deal with no history at its own store is compared with other stores, per
   await expect(butter.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$4\.49\s*\$4\.49\/lb/]);
   const opened = await openCard(page, "Salted butter");
   await expect(opened.locator(".riso-ing-variant-fr")).toHaveText("Reg. $6.49 · 31% off");
-  await expect(opened.locator(".riso-ing-chart-head")).toContainText("cheapest store · per lb");
+  await expect(opened.locator(".riso-ing-chart-head")).toContainText("cheapest store, 3 weeks of flyers · per lb");
   await expect(opened.locator(".riso-ing-verdict")).toHaveText("LOWEST AROUND");
 });
 
@@ -441,4 +441,79 @@ test("a bag of apples isn't compared as equal to loose apples per lb, and the im
   await expect(report.locator(".riso-report-fix")).toHaveCount(0);
   const fixed = await prisma.flyerDeal.findFirst({ where: { userId: user.id, isCurrent: false } });
   expect(fixed).toMatchObject({ unitBasis: "lb", price: "$1.09/lb" });
+});
+
+test("every chart shows Quebec's monthly average for 6 months, and how many weeks of flyers it rests on", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const name = `Wombatberry ${Date.now()}`;
+  const product = `${name}, per kilogram`;
+  // Statistics Canada's last 6 months, ending last month.
+  const months = [];
+  for (let i = 6; i >= 1; i--) {
+    const d = new Date();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() - i);
+    months.push(d.toISOString().slice(0, 7));
+  }
+  await prisma.priceBaseline.create({
+    data: {
+      product, item: name.toLowerCase(), unitBasis: "lb", price: 4.0, month: months.at(-1),
+      history: JSON.stringify(months.map((month, i) => ({ month, price: 4 + i * 0.1 }))),
+    },
+  });
+  try {
+    const base = { userId: user.id, store: "Metro", source: "Flipp", category: "produce", item: name, matchName: name.toLowerCase(), unitBasis: "lb" };
+    await prisma.flyerDeal.createMany({
+      data: [
+        { ...base, price: "$3.99/lb", unitPrice: 3.99, isCurrent: false, createdAt: weeksAgo(3) },
+        { ...base, price: "$2.99/lb", unitPrice: 2.99, isCurrent: true },
+      ],
+    });
+    await openFlyers(page);
+    const shown = await page.locator(".riso-ing-name", { hasText: "Wombatberry" }).innerText();
+    const opened = await openCard(page, shown);
+    await expect(opened.locator(".riso-ing-chart-head")).toContainText("cheapest store, 2 weeks of flyers · per lb");
+    await expect(opened.locator(".riso-ing-bar-col")).toHaveCount(6);
+    // The 5 Statistics Canada months inside the chart's 6 months.
+    await expect(opened.locator(".riso-ing-qc-mark")).toHaveCount(5);
+    await expect(opened.locator(".riso-ing-legend")).toContainText("Quebec average (Statistics Canada)");
+  } finally {
+    await prisma.priceBaseline.delete({ where: { product } });
+  }
+});
+
+test("categories fold away, stay folded, and a search opens them", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, store: "Metro", source: "Flipp", category: "other", price: "$3.99", unitPrice: 3.99, unitBasis: "each", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, item: "Baby spinach", matchName: "spinach" },
+      { ...base, item: "Lean ground beef", matchName: "ground beef" },
+    ],
+  });
+  await openFlyers(page);
+  const produce = page.getByRole("button", { name: /Fruits & vegetables/ });
+  await expect(produce).toHaveAttribute("aria-expanded", "true");
+  await produce.click();
+  await expect(produce).toHaveAttribute("aria-expanded", "false");
+  await expect(card(page, "Spinach")).toHaveCount(0);
+  await expect(card(page, "Ground beef")).toBeVisible();
+
+  // Remembered after a reload.
+  await page.reload();
+  await openFlyers(page);
+  await expect(card(page, "Spinach")).toHaveCount(0);
+
+  // A search opens it; Open all brings everything back.
+  await page.getByLabel("Search flyer items").fill("spinach");
+  await expect(card(page, "Spinach")).toBeVisible();
+  await page.getByLabel("Search flyer items").fill("");
+  await page.getByRole("button", { name: "Fold all" }).click();
+  await expect(page.locator(".riso-ing-card")).toHaveCount(0);
+  await page.getByRole("button", { name: "Open all" }).click();
+  await expect(page.locator(".riso-ing-card")).toHaveCount(2);
 });

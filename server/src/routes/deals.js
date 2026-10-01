@@ -74,6 +74,9 @@ export function withPriceHistory(deals, history, now = new Date(), baselines = [
         ...base,
         isNew: false,
         rangeSource: found.source,
+        // How many different weeks of flyer prices the range rests on (this
+        // week's included), so a range from 3 weeks says so.
+        historyWeeks: new Set([...found.entries.map((e) => e.week), Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000))]).size,
         sixMonthLow: Math.min(...prices),
         sixMonthHigh: Math.max(...prices),
         history: series,
@@ -130,6 +133,9 @@ export function attachBaselines(deals, baselines) {
         price: match.price,
         month: match.month,
         basis: compare.basis,
+        // Statistics Canada's last six published months, so every chart has
+        // something to compare with from day one.
+        history: (match.history || []).slice(-6),
         ...compareToBaseline(compare.price, match.price),
       },
     };
@@ -188,7 +194,11 @@ async function dealsSignature(userId) {
 // The other tabs only need each deal's price and how it compares, not the
 // 6 monthly bars - about a third of the full answer.
 const LITE_OMIT = new Set(["history", "userId", "createdAt", "isCurrent"]);
-const liteDeal = (deal) => Object.fromEntries(Object.entries(deal).filter(([k]) => !LITE_OMIT.has(k)));
+const liteDeal = (deal) => {
+  const lite = Object.fromEntries(Object.entries(deal).filter(([k]) => !LITE_OMIT.has(k)));
+  if (lite.baseline?.history) lite.baseline = { ...lite.baseline, history: undefined };
+  return lite;
+};
 
 async function buildDeals(userId, timer) {
   const found = await prisma.flyerDeal.findMany({
