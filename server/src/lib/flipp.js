@@ -244,6 +244,8 @@ export function toMatchName(name) {
   const varieties = parts.length > 1 && !/\s/.test(parts[0]) && /\s/.test(lastPart.split(/ (?:or|ou) /i).pop().trim());
   const head = varieties && / (?:or|ou) /i.test(lastPart) ? lastPart : parts[0] || "";
   const clean = head
+    // "chicken tournedos with bacon" is chicken tournedos.
+    .split(/\s(?:with|avec)\s/i)[0]
     .replace(/[®™*]/g, "")
     .replace(/\s+/g, " ")
     .replace(/[\s\-–,;:]+$/, "")
