@@ -130,7 +130,7 @@ export function parseFlippPrice(item) {
 
   let unitPrice = round2(each);
   let unitBasis = "each";
-  const unit = priceUnit(post) || priceUnit(pre) || "";
+  const unit = priceUnit(post) || priceUnit(pre) || (multi ? "" : unitFromItemText(item, each)) || "";
   if (unit === "lb") {
     unitBasis = "lb";
   } else if (unit === "kg") {
@@ -150,6 +150,32 @@ export function parseFlippPrice(item) {
     ? `${count}/${money(price)}`
     : `${money(price)}${unit ? `/${unit}` : ""}`;
   return { price: printed, unitPrice, unitBasis };
+}
+
+// Flipp sometimes leaves the unit out of the price fields even though the
+// flyer prices by weight: Maxi's "Pommes Cortland" come through as a bare
+// 0.99 with "2,18/kg" and "prix rég.: 1,69$/lb" only in the description.
+// The price is per lb when the item text gives the same price per kg
+// (price ÷ 0.4536, give or take the flyer's rounding) or per lb, or when
+// the regular price is per lb and nothing says the item is a sized pack.
+function unitFromItemText(item, each) {
+  const text = [item.description, item.sale_story, item.price_text, item.disclaimer_text]
+    .filter((t) => typeof t === "string")
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (!text.trim()) return null;
+  const figures = (unitRe) =>
+    [...text.matchAll(new RegExp(String.raw`\$?\s*(\d+(?:[.,]\d{1,2})?)\s*\$?\s*(?:\/|per |par |la |le )\s*(?:${unitRe})(?![a-z])`, "g"))].map((m) =>
+      Number(m[1].replace(",", "."))
+    );
+  if (figures("kg").some((kg) => Math.abs(kg - each / LB_PER_KG) <= 0.02)) return "lb";
+  if (figures("lbs?|livres?").some((lb) => Math.abs(lb - each) < 0.005)) return "lb";
+  const regular = text.match(/(?<![a-z])(?:reg(?:ular|ulier)?\.?|prix reg(?:ulier)?\.?)\s*(?:price\s*)?:?\s*\$?\s*(\d+(?:[.,]\d{1,2})?)\s*\$?\s*\/\s*(?:lbs?|livres?)(?![a-z])/);
+  const packed = PACK_RE.test(`${item.name || ""} ${item.description || ""}`);
+  if (regular && !packed && Number(regular[1].replace(",", ".")) > each) return "lb";
+  return null;
 }
 
 // The unit a price text is per, from the first unit it names: "/lb",
@@ -265,7 +291,9 @@ function withPackSize(name, item) {
   const desc = [item.description, item.sale_story].filter((t) => typeof t === "string").join(" ");
   const size = desc.match(PACK_RE);
   if (!size) return name;
-  const bag = /\b(bag|sac)\b/i.test(desc.slice(size.index, size.index + size[0].length + 6)) ? " bag" : "";
+  // "3 lb bag" or "sac de 3 lb"
+  const around = desc.slice(Math.max(0, size.index - 8), size.index + size[0].length + 6);
+  const bag = /\b(bag|sac)\b/i.test(around) ? " bag" : "";
   return `${name}, ${size[0].trim()}${bag}`;
 }
 

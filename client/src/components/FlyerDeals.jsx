@@ -715,16 +715,16 @@ function ImportReport({ onFixed }) {
           </div>
           {report.stores.map((s) => (
             <div key={`${s.store}|${s.source}`} className="riso-report-row" role="row">
-              <span role="cell">{s.store}</span>
-              <span role="cell">{s.source || "Upload"}</span>
-              <span role="cell">{s.items}</span>
-              <span role="cell" className={s.priced < s.items ? "warn" : ""}>
+              <span role="cell" className="store">{s.store}</span>
+              <span role="cell" data-label="From">{s.source || "Upload"}</span>
+              <span role="cell" data-label="Items">{s.items}</span>
+              <span role="cell" data-label="Price read" className={s.priced < s.items ? "warn" : ""}>
                 {s.priced} · {pct(s.priced, s.items)}
               </span>
-              <span role="cell">{s.perUnit}</span>
-              <span role="cell">{pct(s.photos, s.items)}</span>
-              <span role="cell">{shortDate(s.endsOn)}</span>
-              <span role="cell">{shortDate(s.importedAt)}</span>
+              <span role="cell" data-label="Per lb / L">{s.perUnit}</span>
+              <span role="cell" data-label="Photos">{pct(s.photos, s.items)}</span>
+              <span role="cell" data-label="Ends">{shortDate(s.endsOn)}</span>
+              <span role="cell" data-label="Imported">{shortDate(s.importedAt)}</span>
             </div>
           ))}
         </div>

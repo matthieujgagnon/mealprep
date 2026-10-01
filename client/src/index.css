@@ -13252,6 +13252,7 @@ body.no-select {
 .riso-ing-variant-names {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: none;
@@ -13571,6 +13572,62 @@ body.no-select {
     border-left: none;
     border-top: 2px solid var(--riso-ink);
   }
+
+  /* Every store's product, on a phone: two lines so the name gets the
+     width - store and price on top, the name and + List under them. */
+  .riso-ing-variant {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "photo store price"
+      "photo names list";
+    column-gap: 10px;
+    row-gap: 4px;
+    align-items: center;
+  }
+
+  .riso-ing-variant .riso-deal-photo {
+    grid-area: photo;
+    align-self: start;
+  }
+
+  .riso-ing-variant-store {
+    grid-area: store;
+    width: auto;
+    min-width: 0;
+  }
+
+  .riso-ing-variant-names {
+    grid-area: names;
+    overflow: hidden;
+  }
+
+  .riso-ing-variant-name,
+  .riso-ing-variant-fr {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+  }
+
+  .riso-ing-variant-fr {
+    -webkit-line-clamp: 1;
+  }
+
+  .riso-ing-variant-price {
+    grid-area: price;
+  }
+
+  .riso-ing-list {
+    grid-area: list;
+    align-self: start;
+    justify-self: end;
+  }
+
+  .riso-ing-variant-price {
+    justify-self: end;
+  }
 }
 
 /* Import check (Flyers): what the latest import brought in. */
@@ -13639,6 +13696,37 @@ body.no-select {
   padding: 2px 10px;
   font: 500 11px var(--riso-font-mono);
   background: var(--riso-surface);
+}
+
+/* On a phone the import table stacks: one block per store, each figure
+   with its label, instead of eight columns that scroll sideways. */
+@media (max-width: 720px) {
+  .riso-report-row {
+    min-width: 0;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 12px;
+  }
+
+  .riso-report-row.head {
+    display: none;
+  }
+
+  .riso-report-row:nth-child(2) {
+    border-top: none;
+  }
+
+  .riso-report-row .store {
+    grid-column: 1 / -1;
+    font-weight: 800;
+  }
+
+  .riso-report-row [data-label]::before {
+    content: attr(data-label) " ";
+    font: 500 10px var(--riso-font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--riso-muted);
+  }
 }
 
 .riso-report-details summary {
