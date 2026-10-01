@@ -849,6 +849,7 @@ const SLICES = [
   { id: "freeze", label: "Can freeze" },
 ];
 const SLICE_KEY = "flyers-slice";
+const COLLAPSED_KEY = "flyers-collapsed";
 const RANK_KEY = "flyers-rank";
 const LOW_T = 0.05;
 
@@ -970,9 +971,23 @@ function PriceHistory({ deal }) {
   const good = isGoodPrice(deal);
   const basis = compareBasisOf(deal);
   const { history, low, high, avg } = historyStats(deal);
-  const hasHistory = !deal.isNew && history.some((m) => m.price != null);
   const quebecRange = deal.rangeSource === "quebec";
+  const ownHistory = !deal.isNew && !quebecRange && history.some((m) => m.price != null);
   const b = deal.baseline;
+  // Statistics Canada's monthly Quebec average, drawn as a line on each
+  // month, so every chart has 6 months to compare with from day one -
+  // even before the weekly imports have built a history of their own.
+  const qcByMonth = new Map(!quebecRange && b?.history ? b.history.map((m) => [m.month, m.price]) : []);
+  const qcPrices = [...qcByMonth.values()].filter((p) => p != null);
+  const showChart = ownHistory || quebecRange || qcPrices.length > 0;
+  const scaleMax = Math.max(high ?? 0, ...qcPrices, ...history.map((m) => m.price ?? 0)) || 1;
+  const height = (price) => Math.max(BAR_MIN, Math.round((price / scaleMax) * BAR_MAX));
+  const qcStats = qcPrices.length
+    ? { low: Math.min(...qcPrices), high: Math.max(...qcPrices), avg: qcPrices.reduce((a, c) => a + c, 0) / qcPrices.length }
+    : null;
+  const stats = ownHistory || quebecRange ? { low, avg, high, label: "" } : qcStats ? { ...qcStats, label: "QC " } : null;
+  const weeks = deal.historyWeeks;
+  const unit = basis === "each" ? "each" : `per ${basis}`;
 
   return (
     <div className="riso-ing-history">
@@ -994,14 +1009,20 @@ function PriceHistory({ deal }) {
           <p className="riso-ing-qc-source">(Statistics Canada: {b.product})</p>
         </div>
       )}
-      {hasHistory ? (
+      {showChart ? (
         <>
           <div className="riso-ing-chart-head">
             <span>
               <strong>{quebecRange ? "Quebec average, last 6 months" : "Last 6 months"}</strong>
               <small>
                 {" "}
-                · {quebecRange ? "Statistics Canada" : "cheapest store"} · {basis === "each" ? "each" : `per ${basis}`}
+                ·{" "}
+                {quebecRange
+                  ? "Statistics Canada"
+                  : ownHistory
+                    ? `cheapest store${weeks ? `, ${weeks} week${weeks === 1 ? "" : "s"} of flyers` : ""}`
+                    : "this week's flyer"}{" "}
+                · {unit}
               </small>
             </span>
             <span className={`riso-ing-verdict${good ? " good" : ""}`}>
@@ -1011,33 +1032,54 @@ function PriceHistory({ deal }) {
           <div className="riso-ing-bars">
             {history.map((m, i) => {
               const now = !quebecRange && i === history.length - 1;
-              const h = m.price != null && high > 0 ? Math.max(BAR_MIN, Math.round((m.price / high) * BAR_MAX)) : null;
+              const qc = qcByMonth.get(m.month);
               return (
                 <div key={m.month} className="riso-ing-bar-col">
                   <span className="riso-ing-bar-price">{m.price != null ? money(m.price) : "–"}</span>
-                  <span
-                    className={`riso-ing-bar${h == null ? " empty" : ""}${now && good ? " good" : ""}`}
-                    style={{ height: h ?? 24 }}
-                  />
+                  <span className="riso-ing-bar-slot">
+                    <span
+                      className={`riso-ing-bar${m.price == null ? " empty" : ""}${now && good ? " good" : ""}`}
+                      style={{ height: m.price != null ? height(m.price) : 24 }}
+                    />
+                    {qc != null && (
+                      <span
+                        className="riso-ing-qc-mark"
+                        style={{ bottom: height(qc) }}
+                        title={`Quebec average: ${money(qc)}/${basis}`}
+                        aria-label={`Quebec average ${money(qc)}`}
+                      />
+                    )}
+                  </span>
                   <span className="riso-ing-bar-month">{MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]}</span>
                 </div>
               );
             })}
           </div>
-          <div className="riso-ing-stats">
-            <div>
-              <span>LOWEST</span>
-              <strong className="good">{low != null ? money(low) : "—"}</strong>
+          {qcByMonth.size > 0 && (
+            <p className="riso-ing-legend">
+              <span className="riso-ing-legend-bar" /> lowest flyer price that month
+              <span className="riso-ing-legend-mark" /> Quebec average (Statistics Canada)
+            </p>
+          )}
+          {stats && (
+            <div className="riso-ing-stats">
+              <div>
+                <span>{stats.label}LOWEST</span>
+                <strong className="good">{stats.low != null ? money(stats.low) : "—"}</strong>
+              </div>
+              <div>
+                <span>{stats.label}AVERAGE</span>
+                <strong>{stats.avg != null ? money(stats.avg) : "—"}</strong>
+              </div>
+              <div>
+                <span>{stats.label}HIGHEST</span>
+                <strong>{stats.high != null ? money(stats.high) : "—"}</strong>
+              </div>
             </div>
-            <div>
-              <span>AVERAGE</span>
-              <strong>{avg != null ? money(avg) : "—"}</strong>
-            </div>
-            <div>
-              <span>HIGHEST</span>
-              <strong>{high != null ? money(high) : "—"}</strong>
-            </div>
-          </div>
+          )}
+          {!ownHistory && !quebecRange && (
+            <p className="riso-ing-range-none">No flyer history for this item yet. It builds each week from the imports.</p>
+          )}
         </>
       ) : (
         <p className="riso-ing-range-none">No history for this item yet. It builds each week from the imports.</p>
@@ -1166,6 +1208,9 @@ export function FlyerDeals({
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(() => new Set());
   const [showAllGroups, setShowAllGroups] = useState(() => new Set());
+  // Categories you've folded away, remembered on this device. A search
+  // opens every category with a match.
+  const [collapsed, setCollapsed] = useState(() => new Set(readStored(COLLAPSED_KEY, [])));
   const [sections, setSections] = useState([]);
   const [clearing, setClearing] = useState(false);
   const [importingLeRabais, setImportingLeRabais] = useState(false);
@@ -1310,6 +1355,27 @@ export function FlyerDeals({
     } finally {
       setImportingLeRabais(false);
     }
+  }
+
+  function isCollapsed(name) {
+    return collapsed.has(name) && words.length === 0;
+  }
+  function toggleGroup(name) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      writeStored(COLLAPSED_KEY, [...next]);
+      return next;
+    });
+  }
+  function setAllCollapsed(names, fold) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      for (const n of names) (fold ? next.add(n) : next.delete(n));
+      writeStored(COLLAPSED_KEY, [...next]);
+      return next;
+    });
   }
 
   function pickSlice(id) {
@@ -1557,10 +1623,22 @@ export function FlyerDeals({
             ))}
           </div>
         </div>
-        <p className="riso-flyer-summary">
-          {shownIngredients.length} ingredient{shownIngredients.length === 1 ? "" : "s"} · tap a card for every store,
-          bilingual names and the price range
-        </p>
+        <div className="riso-flyer-summary-row">
+          <p className="riso-flyer-summary">
+            {shownIngredients.length} ingredient{shownIngredients.length === 1 ? "" : "s"} · tap a card for every store,
+            bilingual names and the price range
+          </p>
+          {sliced.length > 1 && !words.length && (
+            <span className="riso-flyer-fold">
+              <button type="button" onClick={() => setAllCollapsed(sliced.map((g) => g.name), true)}>
+                Fold all
+              </button>
+              <button type="button" onClick={() => setAllCollapsed(sliced.map((g) => g.name), false)}>
+                Open all
+              </button>
+            </span>
+          )}
+        </div>
         {stores.length > 0 && (
           <p className="riso-flyer-links">
             <span>OPEN THE FLYER</span>
@@ -1577,11 +1655,21 @@ export function FlyerDeals({
         ) : (
           sliced.map((group) => (
             <section key={group.name} className="riso-ing-group" aria-label={group.name}>
-              <div className="riso-ing-group-head">
+              <button
+                type="button"
+                className={`riso-ing-group-head${isCollapsed(group.name) ? " collapsed" : ""}`}
+                aria-expanded={!isCollapsed(group.name)}
+                onClick={() => toggleGroup(group.name)}
+                disabled={words.length > 0}
+              >
+                <span className="riso-ing-group-caret" aria-hidden="true">
+                  {isCollapsed(group.name) ? "▸" : "▾"}
+                </span>
                 <h4>{group.name}</h4>
                 <span className="riso-ing-group-count">{group.items.length}</span>
                 <span className="riso-ing-group-rule" />
-              </div>
+              </button>
+              {!isCollapsed(group.name) && (
               <div className="riso-ing-grid">
                 {(showAllGroups.has(group.name) || words.length
                   ? group.items
@@ -1598,7 +1686,8 @@ export function FlyerDeals({
                   />
                 ))}
               </div>
-              {!showAllGroups.has(group.name) && !words.length && group.items.length > GROUP_PAGE && (
+              )}
+              {!isCollapsed(group.name) && !showAllGroups.has(group.name) && !words.length && group.items.length > GROUP_PAGE && (
                 <button
                   type="button"
                   className="riso-ing-more-btn"

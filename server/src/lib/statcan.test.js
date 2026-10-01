@@ -137,7 +137,7 @@ describe("matching deals to the Quebec average", () => {
       { id: 2, matchName: "flowers", unitPrice: 9.99, unitBasis: "each" },
     ];
     const [a, b] = attachBaselines(deals, baselines);
-    expect(a.baseline).toEqual({ product: "Chicken breasts, per kilogram", price: 5.85, month: "2026-07", basis: "lb", pct: -23, verdict: "good" });
+    expect(a.baseline).toEqual({ product: "Chicken breasts, per kilogram", price: 5.85, month: "2026-07", basis: "lb", history: [], pct: -23, verdict: "good" });
     expect(b.baseline).toBeUndefined();
   });
 
