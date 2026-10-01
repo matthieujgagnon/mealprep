@@ -101,6 +101,29 @@ describe("parseFlippPrice", () => {
     // Already sized: left alone.
     expect(normalizeFlippItem({ name: "Butter 454 g", price: "4.99", description: "1 lb" }, { merchant: "Metro" }).item).toBe("Butter 454 g");
   });
+
+  it("reads a per-lb price from the description when the price fields have no unit", () => {
+    // Maxi's Cortland apples: a bare 0.99, the weight only in the description.
+    const maxi = { name: "Pommes Cortland", price: "0.99", description: "Produit du Québec, cat. Extra. 2,18/kg. Prix rég.: 1,69$/lb-3,73$/kg" };
+    expect(parseFlippPrice(maxi)).toEqual({ price: "$0.99/lb", unitPrice: 0.99, unitBasis: "lb" });
+    expect(normalizeFlippItem(maxi, { merchant: "Maxi" })).toMatchObject({ unitPrice: 0.99, unitBasis: "lb", regularPrice: 1.69 });
+    // The per-kg figure alone, or the same price per lb, is enough.
+    expect(parseFlippPrice({ price: "0.99", sale_story: "$2.18/kg" })).toMatchObject({ unitBasis: "lb" });
+    expect(parseFlippPrice({ price: "1.99", description: "1,99 $/lb" })).toMatchObject({ unitBasis: "lb" });
+    // A regular price per lb with no pack size: still per lb.
+    expect(parseFlippPrice({ price: "0.99", description: "Reg. 1.69/lb" })).toMatchObject({ unitBasis: "lb" });
+    // A bag whose text quotes a per-lb regular price stays each.
+    expect(parseFlippPrice({ name: "Apples", price: "5.99", description: "3 lb bag. Reg. 2.49/lb" })).toMatchObject({ unitBasis: "each" });
+    // A per-kg figure that isn't this price says nothing about it.
+    expect(parseFlippPrice({ price: "5.99", description: "Ground beef 8.80/kg" })).toMatchObject({ unitBasis: "each" });
+    // Multi-buys are each.
+    expect(parseFlippPrice({ price: "5", pre_price_text: "2/", description: "2,18/kg" })).toMatchObject({ unitBasis: "each" });
+  });
+
+  it("names a French bag size", () => {
+    const sac = normalizeFlippItem({ name: "Pommes Honeycrisp", price: "5.99", description: "Sac de 3 lb" }, { merchant: "Super C" });
+    expect(sac).toMatchObject({ item: "Pommes Honeycrisp, 3 lb bag", unitBasis: "each" });
+  });
 });
 
 describe("names and categories", () => {
