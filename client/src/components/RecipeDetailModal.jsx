@@ -41,9 +41,9 @@ function formatMinutes(totalMinutes) {
   if (m >= 60) {
     const h = Math.floor(m / 60);
     const rem = m % 60;
-    return `${h} H${rem ? ` ${rem} MIN` : ""}`;
+    return `${h} h${rem ? ` ${rem} min` : ""}`;
   }
-  return `${m} MIN`;
+  return `${m} min`;
 }
 
 function locationLabel(locationId) {
@@ -165,7 +165,7 @@ function StepTimerChip({ timer }) {
         }
       }}
     >
-      {finished ? "✓ DONE" : running ? `⏸ ${mm}:${ss}` : `▶ start ${timer.label} timer`}
+      {finished ? "✓ Done" : running ? `⏸ ${mm}:${ss}` : `▶ Start ${timer.label} timer`}
     </button>
   );
 }
@@ -506,9 +506,9 @@ export function RecipeDetailModal({
                 <div className="riso-rc-meta-line">
                   {[
                     totalTime > 0 && formatMinutes(totalTime),
-                    `SERVES ${recipe.baseServings || defaultServings}`,
-                    recipe.fridgeLifeDays && `LEFTOVERS KEEP ${recipe.fridgeLifeDays} DAY${recipe.fridgeLifeDays === 1 ? "" : "S"}`,
-                    recipe.sourceUrl && `FROM ${new URL(recipe.sourceUrl).hostname.replace(/^www\./, "").toUpperCase()}`,
+                    `Serves ${recipe.baseServings || defaultServings}`,
+                    recipe.fridgeLifeDays && `Leftovers keep ${recipe.fridgeLifeDays} day${recipe.fridgeLifeDays === 1 ? "" : "s"}`,
+                    recipe.sourceUrl && `From ${new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")}`,
                   ]
                     .filter(Boolean)
                     .map((part, i) => (

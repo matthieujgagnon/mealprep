@@ -5498,10 +5498,8 @@ button.riso-table-group-head:disabled {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  font-family: var(--riso-font-mono);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
+  font: 600 15px var(--riso-font-display);
+  color: var(--riso-soft);
 }
 
 .riso-rc-meta-sep {
@@ -5642,21 +5640,42 @@ button.riso-table-group-head:disabled {
   display: none;
 }
 
+/* Ingredients and Steps are two matching cream cards side by side
+   (Recipe Card update); they stack below about 900px. */
 .riso-rc-body {
-  display: grid;
-  grid-template-columns: 390px minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 28px;
-  align-items: start;
+  align-items: flex-start;
+}
+
+.riso-rc-ingredients-panel,
+.riso-rc-steps-wrap {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 .riso-rc-ingredients-panel {
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  border-radius: 24px;
-  padding: 20px;
+  flex: 1 1 360px;
+  min-width: min(360px, 100%);
+  max-width: 430px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.riso-rc-steps-wrap {
+  flex: 999 1 420px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .riso-rc-ingredients-panel {
+    max-width: none;
+  }
 }
 
 .riso-rc-panel-header {
@@ -5670,7 +5689,8 @@ button.riso-table-group-head:disabled {
   margin: 0;
   font-family: var(--riso-font-display);
   font-weight: 800;
-  font-size: 24px;
+  font-size: 28px;
+  letter-spacing: -0.02em;
 }
 
 .riso-rc-servings-stepper {
@@ -5997,6 +6017,15 @@ button.riso-table-group-head:disabled {
   flex-direction: column;
 }
 
+/* Inside the cream Ingredients card, the track, the "why?" note and the
+   per-ingredient explainer use the soft paper colour. */
+.riso-rc-have-track,
+.riso-rc-why-note,
+.riso-rc-ingredient-explainer,
+.riso-rc-planned-note {
+  background: var(--riso-canvas);
+}
+
 .riso-rc-steps-header {
   display: flex;
   justify-content: space-between;
@@ -6010,7 +6039,8 @@ button.riso-table-group-head:disabled {
   margin: 0;
   font-family: var(--riso-font-display);
   font-weight: 800;
-  font-size: 24px;
+  font-size: 28px;
+  letter-spacing: -0.02em;
 }
 
 .riso-rc-steps-header span {
@@ -6096,8 +6126,8 @@ button.riso-table-group-head:disabled {
   border-radius: 999px;
   padding: 5px 13px;
   font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 14px;
   margin-top: 3px;
   cursor: pointer;
   color: var(--riso-ink);
@@ -13223,68 +13253,164 @@ body.no-select {
   color: var(--riso-ink);
 }
 
-.riso-ing-range {
-  margin-top: auto;
-  border-top: 2px solid var(--riso-ink);
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.riso-ing-range-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  font: 800 15px var(--riso-font-display);
-}
-
-.riso-ing-range-head span:last-child {
-  font-size: 13px;
-  color: var(--riso-muted);
-}
-
-.riso-ing-range-head span.good {
-  color: var(--riso-green-text);
-}
-
-.riso-ing-range-track {
-  position: relative;
-  height: 10px;
-  border-radius: 5px;
-  background: var(--riso-track);
-  border: 2px solid var(--riso-ink);
-  box-sizing: border-box;
-  margin: 6px 8px 2px;
-}
-
-.riso-ing-range-dot {
-  position: absolute;
-  top: -5px;
-  width: 16px;
-  height: 16px;
-  margin-left: -8px;
-  border-radius: 8px;
-  border: 2px solid var(--riso-ink);
-  box-sizing: border-box;
-}
-
-.riso-ing-range-labels {
-  display: flex;
-  justify-content: space-between;
-  font: 500 10.5px var(--riso-font-mono);
-}
-
-.riso-ing-range-source,
 .riso-ing-range-none {
   margin: 0;
   font: 500 13px/1.4 var(--riso-font-display);
   color: var(--riso-muted);
 }
 
-.riso-ing-range-source {
+/* Price history in an open card (Flyers v4 update). */
+.riso-ing-history {
+  margin-top: auto;
+  border-top: 2px solid var(--riso-ink);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-ing-qc {
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-canvas);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.riso-ing-qc.good {
+  background: var(--riso-green-tint);
+}
+
+.riso-ing-qc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.riso-ing-qc-label {
   font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.riso-ing-qc-top strong {
+  font: 800 20px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-ing-qc-line {
+  margin: 0;
+  font: 500 14px/1.4 var(--riso-font-display);
+}
+
+.riso-ing-qc-line b {
+  color: var(--riso-muted);
+}
+
+.riso-ing-qc.good .riso-ing-qc-line b {
+  color: var(--riso-green-text);
+}
+
+.riso-ing-qc-source {
+  margin: 0;
+  font-size: 12px;
+  color: var(--riso-muted);
+}
+
+.riso-ing-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.riso-ing-chart-head strong {
+  font: 800 16px var(--riso-font-display);
+}
+
+.riso-ing-chart-head small {
+  font: 500 12px var(--riso-font-display);
+  color: var(--riso-muted);
+}
+
+.riso-ing-verdict {
+  font: 800 13px var(--riso-font-display);
+  color: var(--riso-muted);
+  white-space: nowrap;
+}
+
+.riso-ing-verdict.good {
+  color: var(--riso-green-text);
+}
+
+.riso-ing-bars {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.riso-ing-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.riso-ing-bar-price,
+.riso-ing-bar-month {
+  font: 500 10px var(--riso-font-mono);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.riso-ing-bar {
+  display: block;
+  border: 2px solid var(--riso-ink);
+  border-radius: 10px;
+  background: var(--riso-track);
+  box-sizing: border-box;
+}
+
+.riso-ing-bar.good {
+  background: var(--riso-green);
+}
+
+.riso-ing-bar.empty {
+  border: 2px dashed var(--riso-dash-strong);
+  background: transparent;
+}
+
+.riso-ing-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.riso-ing-stats > div {
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.riso-ing-stats span {
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+}
+
+.riso-ing-stats strong {
+  font: 800 17px var(--riso-font-display);
+}
+
+.riso-ing-stats strong.good {
+  color: var(--riso-green-text);
 }
 
 .riso-ing-empty {

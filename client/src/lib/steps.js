@@ -53,7 +53,18 @@ export function stepTimer(step) {
   if (!m) return null;
   const n = Number(m[1]);
   const isHours = m[2][0].toLowerCase() === "h";
-  return { seconds: isHours ? n * 3600 : n * 60, label: isHours ? `${n} HR` : `${n} MIN` };
+  const seconds = isHours ? n * 3600 : n * 60;
+  return { seconds, label: durationLabel(seconds) };
+}
+
+// "3-minute", "20-minute", "1-hour", "1 h 30 min": the timer chip reads
+// "Start 20-minute timer" (never MIN or HR in capitals).
+export function durationLabel(seconds) {
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}-minute`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h} h ${m} min` : `${h}-hour`;
 }
 
 const FRACTION_GLYPHS = { "½": 0.5, "⅓": 1 / 3, "⅔": 2 / 3, "¼": 0.25, "¾": 0.75, "⅛": 0.125 };

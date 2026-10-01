@@ -114,11 +114,17 @@ test("real deals show as ingredient cards with a 6-month low, a freeze tip and t
   await expect(chicken.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$4\.49\s*per lb/]);
 
   const opened = await openCard(page, "Chicken breast");
-  await expect(opened.locator(".riso-ing-range-head")).toContainText("6-MO LOW");
-  await expect(opened.locator(".riso-ing-range-labels")).toHaveText(/LOW \$4\.49\s*HIGH \$6\.99/);
+  // Price history: 6 monthly bars (this month green - a good price) and
+  // the lowest, average and highest prices.
+  await expect(opened.locator(".riso-ing-verdict")).toHaveText("6-MO LOW");
+  await expect(opened.locator(".riso-ing-bar-col")).toHaveCount(6);
+  await expect(opened.locator(".riso-ing-bar.good")).toHaveCount(1);
+  await expect(opened.locator(".riso-ing-stats")).toContainText("LOWEST$4.49");
+  await expect(opened.locator(".riso-ing-stats")).toContainText("HIGHEST$6.99");
 
   const peppers = await openCard(page, "Bell peppers");
-  await expect(peppers.locator(".riso-ing-range-head")).toContainText("NO HISTORY YET");
+  await expect(peppers.locator(".riso-ing-range-none")).toHaveText("No history for this item yet. It builds each week from the imports.");
+  await expect(peppers.locator(".riso-ing-bars")).toHaveCount(0);
 });
 
 test("the same ingredient at several stores is one card, cheapest tile in green", async ({ page }) => {
@@ -267,8 +273,13 @@ test("a deal with no history yet is compared with Quebec's average price", async
     await openFlyers(page);
     const name = await page.locator(".riso-ing-name", { hasText: "Quokkafruit" }).innerText();
     const fruit = await openCard(page, name);
-    await expect(fruit.locator(".riso-ing-range-head")).toContainText("30% UNDER QC AVG");
-    await expect(fruit.locator(".riso-ing-range-none")).toContainText("Quebec's average: $5.00/lb");
+    // The Quebec average banner, green for a good price.
+    const qc = fruit.locator(".riso-ing-qc");
+    await expect(qc).toHaveClass(/good/);
+    await expect(qc).toContainText("QUEBEC AVERAGE · AUG 2026");
+    await expect(qc).toContainText("$5.00/lb");
+    await expect(qc).toContainText("Stock-up price · 30% less than it usually costs in Quebec");
+    await expect(fruit.locator(".riso-ing-range-none")).toContainText("No history for this item yet");
 
     await fruit.getByRole("button", { name: /Quokkafruit .* details/ }).click();
     const avg = page.getByRole("dialog").locator(".riso-deal-detail-avg");
@@ -352,8 +363,8 @@ test("a deal with no history at its own store is compared with other stores, per
   await expect(butter.locator(".riso-ing-tile")).toHaveText([/METRO\s*\$4\.49\s*per lb/]);
   const opened = await openCard(page, "Salted butter");
   await expect(opened.locator(".riso-ing-variant-fr")).toHaveText("Reg. $6.49 · 31% off");
-  await expect(opened.locator(".riso-ing-range-source")).toHaveText("6 mo · all stores · per lb");
-  await expect(opened.locator(".riso-ing-range-head")).toContainText("LOWEST AROUND");
+  await expect(opened.locator(".riso-ing-chart-head")).toContainText("cheapest store · per lb");
+  await expect(opened.locator(".riso-ing-verdict")).toHaveText("LOWEST AROUND");
 });
 
 test("on the grocery list, a sale item's tag shows where it's cheapest, wherever it's filed, and opens the flyer item", async ({ page }) => {

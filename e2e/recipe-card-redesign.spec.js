@@ -65,7 +65,9 @@ test("step timer chip starts a countdown", async ({ page }) => {
 
   const timerChip = page.locator(".riso-rc-timer-chip");
   await expect(timerChip).toHaveCount(1);
-  await expect(timerChip).toContainText("5 MIN");
+  await expect(timerChip).toHaveText("▶ Start 5-minute timer");
+  // The details line is sentence case too.
+  await expect(page.locator(".riso-rc-meta-line")).toContainText(/Serves \d/);
   await timerChip.click();
   await page.waitForTimeout(1100);
   await expect(timerChip).toContainText("04:5");
