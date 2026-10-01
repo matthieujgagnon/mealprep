@@ -1142,7 +1142,7 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
                   {best && <span className="riso-ing-dot" title="Cheapest" aria-label="cheapest" />}
                 </div>
                 <div className="riso-ing-tile-price">{shelf.main}</div>
-                <div className="riso-ing-tile-unit">{shelf.unit}</div>
+                <div className={`riso-ing-tile-unit${shelf.unit.includes("/") ? " per" : ""}`}>{shelf.unit}</div>
               </div>
             );
           })}
@@ -1167,8 +1167,10 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
                 </button>
                 <span className="riso-ing-variant-price">
                   {shelfPrice(d).main}
-                  {d.unitBasis === "each" && tilePrice(d) && tilePrice(d).basis !== "each" && (
-                    <small> {shelfPrice(d).unit}</small>
+                  {d.unitBasis === "each" && tilePrice(d) && tilePrice(d).basis !== "each" ? (
+                    <small className="per">{shelfPrice(d).unit}</small>
+                  ) : (
+                    shelfPrice(d).unit && <small>{shelfPrice(d).unit}</small>
                   )}
                 </span>
                 <button

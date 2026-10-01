@@ -109,3 +109,22 @@ describe("buildIngredients", () => {
     expect(apples.gap).toBeCloseTo((2.0 - 0.99) / 2.0, 5);
   });
 });
+
+describe("what a product is", () => {
+  const deal = (id, item) => ({ id, store: "Metro", item, matchName: item, unitPrice: 4, unitBasis: "each" });
+
+  it("names a product by what comes before 'with'", () => {
+    const groups = buildIngredients([deal(1, "selection frozen chicken tournedos with bacon"), deal(2, "maple leaf bacon"), deal(3, "bacon")]);
+    expect(groups.map((g) => [g.name, g.variants.length])).toEqual(
+      expect.arrayContaining([["Frozen chicken tournedos", 1], ["Bacon", 2]])
+    );
+  });
+
+  it("keeps a food-made product apart from the food it ends with", () => {
+    const groups = buildIngredients([deal(1, "irresistible mini pizza bagels"), deal(2, "selection sliced bagels"), deal(3, "bagels")]);
+    const names = groups.map((g) => g.name);
+    expect(names).toContain("Pizza bagels");
+    expect(groups.find((g) => g.name === "Pizza bagels").variants).toHaveLength(1);
+  });
+});
+

@@ -39,6 +39,8 @@ export function productText(deal) {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .split(/[,([]/)[0]
+    // "chicken tournedos with bacon" is chicken tournedos.
+    .split(/\s(?:with|avec)\s/)[0]
     .replace(/[®™*]/g, "")
     .replace(BRAND_RE, " ")
     .split(/\s+/)
@@ -74,12 +76,21 @@ function isCompound(key) {
   return false;
 }
 
+// Foods that make another product of whatever follows them: pizza
+// bagels aren't bagels, chicken burgers aren't burgers.
+const FOOD_WORDS = new Set([
+  "pizza", "chicken", "beef", "pork", "turkey", "veal", "ham", "fish", "salmon", "tuna", "shrimp", "egg",
+  "potato", "cheese", "chocolate", "cookie", "cake", "pie", "ice", "apple", "banana", "carrot", "pumpkin",
+]);
+
 // "maple bacon" joins "bacon" when plain bacon is on the flyers too; a
-// compound ("peanut butter") never joins its last word.
+// compound ("peanut butter") or a food before it ("pizza bagel") never
+// joins its last word.
 function mergeTarget(key, keys) {
   if (isCompound(key)) return key;
   const words = key.split(" ");
   for (let i = 1; i < words.length; i++) {
+    if (FOOD_WORDS.has(words[i - 1])) return key;
     const tail = words.slice(i).join(" ");
     if (keys.has(tail)) return tail;
   }

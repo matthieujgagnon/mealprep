@@ -13180,7 +13180,8 @@ body.no-select {
 }
 
 .riso-ing-tile-unit {
-  font: 500 10.5px var(--riso-font-mono);
+  font: 600 11.5px var(--riso-font-mono);
+  color: var(--riso-ink);
   margin-top: 3px;
 }
 
@@ -13293,6 +13294,25 @@ body.no-select {
   display: block;
   font: 500 10.5px var(--riso-font-mono);
   color: var(--riso-muted);
+}
+
+/* A pack price worked out per lb or per L ("$5.99" bag -> "$1.50/lb"):
+   the number to compare stores by, so it stands out. */
+.riso-ing-tile-unit.per,
+.riso-ing-variant-price small.per {
+  display: block;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: var(--riso-yellow);
+  color: #16181f;
+  font: 700 12.5px var(--riso-font-mono);
+  white-space: nowrap;
+}
+
+.riso-ing-variant-price small.per {
+  margin-left: auto;
 }
 
 .riso-ing-list {
@@ -13627,6 +13647,13 @@ body.no-select {
 
   .riso-ing-variant-price {
     justify-self: end;
+  }
+
+  /* No wider than + List, so the name keeps its width. */
+  .riso-ing-variant-price small.per {
+    padding: 1px 3px;
+    font-size: 10px;
+    letter-spacing: -0.02em;
   }
 }
 

@@ -145,6 +145,7 @@ describe("names and categories", () => {
     expect(toMatchName("HAUTS DE CUISSES DE POULET FRAIS DÉSOSSÉS")).toBe("fresh boneless chicken thighs");
     expect(toMatchName("CRÈME GLACÉE PREMIUM OU YOGOURT GLACÉ CHAPMAN'S, 2 L")).toBe("ice cream");
     expect(toMatchName("KRAFT PEANUT BUTTER, 2 kg")).toBe("kraft peanut butter");
+    expect(toMatchName("TOURNEDOS DE POULET AVEC BACON SELECTION | SELECTION FROZEN CHICKEN TOURNEDOS WITH BACON")).toBe("selection frozen chicken tournedos");
   });
 
   it("sorts items into the app's categories, French or English", () => {
