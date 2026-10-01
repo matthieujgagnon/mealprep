@@ -281,7 +281,7 @@ function UploadFlyerForm({ onUploaded }) {
   return (
     <form className="riso-upload-form" onSubmit={handleUpload}>
       <label className="form-label">
-        Store (or a name for this upload, e.g. "Le Rabais")
+        Store (or a name for this upload)
         <input type="text" value={store} onChange={(e) => setStore(e.target.value)} placeholder="e.g. Metro" required />
       </label>
       <label className="form-label">
@@ -359,7 +359,7 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
   const quebecRange = deal.rangeSource === "quebec";
   // Skip the unit price when the printed price already says the same thing.
   const unit = unitText && unitText.replace(/\s/g, "") !== deal.price.replace(/\s/g, "") ? unitText : null;
-  // A manually uploaded flyer keeps its page; Le Rabais items have their own photo.
+  // A manually uploaded flyer keeps its page; imported items have their own photo.
   const flyerPage =
     !deal.imageUrl && deal.source && !["Le Rabais", "Flipp"].includes(deal.source) ? api.flyerUploadImageUrl(deal.source) : null;
   // This month's bar is green for a good price: by its own history, or
@@ -809,8 +809,7 @@ function AutoImportStrip({ settings, importing, onImport, onSettingsSaved, onDea
         <div className="riso-auto-import-text">
           <p>
             {settings.autoImport ? "Every Thursday" : "When you press Import now"}, this week's flyers from{" "}
-            <strong>{where}</strong> near {formatPostal(settings.postalCode)} are pulled in from Flipp (Le Rabais if Flipp
-            is down), and each week's prices are kept for the 6-month history.
+            <strong>{where}</strong> near {formatPostal(settings.postalCode)} are pulled in from Flipp, and each week's prices are kept for the 6-month history.
           </p>
           <p className="riso-auto-import-last">
             {last}
@@ -1213,8 +1212,6 @@ export function FlyerDeals({
   const [collapsed, setCollapsed] = useState(() => new Set(readStored(COLLAPSED_KEY, [])));
   const [sections, setSections] = useState([]);
   const [clearing, setClearing] = useState(false);
-  const [importingLeRabais, setImportingLeRabais] = useState(false);
-  const [leRabaisError, setLeRabaisError] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [importSettings, setImportSettings] = useState(null);
   const [runningImport, setRunningImport] = useState(false);
@@ -1341,19 +1338,6 @@ export function FlyerDeals({
       setImportSettings((prev) => (prev ? { ...prev, lastImportOk: false, lastImportAt: new Date().toISOString(), lastImportMessage: err.message } : prev));
     } finally {
       setRunningImport(false);
-    }
-  }
-
-  async function importLeRabais() {
-    setImportingLeRabais(true);
-    setLeRabaisError(null);
-    try {
-      await api.importLeRabaisDeals();
-      reloadChanged();
-    } catch (err) {
-      setLeRabaisError(err.message);
-    } finally {
-      setImportingLeRabais(false);
     }
   }
 
@@ -1496,12 +1480,8 @@ export function FlyerDeals({
             </button>
           )}
           <UploadFlyerForm onUploaded={reloadChanged} />
-          <button type="button" className="riso-btn" onClick={importLeRabais} disabled={importingLeRabais}>
-            {importingLeRabais ? "Importing…" : "Refresh from Le Rabais"}
-          </button>
         </div>
       </div>
-      {leRabaisError && <p className="riso-error">{leRabaisError}</p>}
 
       {importSettings && (
         <AutoImportStrip

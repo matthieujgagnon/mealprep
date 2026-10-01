@@ -81,7 +81,7 @@ removes this delay if it ever becomes annoying.
 ### Weekly flyer import
 The Flyers tab imports this week's flyers on its own every Thursday: every priced item from
 the stores picked under **Flyers → Settings** (Metro, IGA, Maxi, Super C and Provigo by default),
-read from Flipp, with Le Rabais as the fallback. Each week's prices are kept, which is what the
+read from Flipp (each item's own page, for its unit, size and regular price). Each week's prices are kept, which is what the
 6-month price history on each deal is built from. **Import now** runs it any time.
 
 The app checks hourly while it's awake. Because a free Render service sleeps, a GitHub Action
@@ -93,8 +93,8 @@ The app checks hourly while it's awake. Because a free Render service sleeps, a 
 4. Optional: run it once by hand from the **Actions** tab (**Weekly flyer import → Run workflow**).
 
 Flipp has no official API; the import reads the same data Flipp's own website loads, so it can
-break if Flipp changes it. When that happens the Flyers tab says so under the Import now button
-and Le Rabais fills in.
+break if Flipp changes it. When that happens the Flyers tab says so under the Import now button,
+and last week's deals stay until an import works.
 
 ### Quebec average prices
 Until an item has its own price history, deals are compared with Quebec's average price for the
@@ -112,8 +112,8 @@ git push
 Render automatically redeploys on every push to `main`.
 
 ## Running tests
-- **Unit tests** (mostly pure logic — date math, quantity/price parsing, the Flipp and Le Rabais
-  readers, the recipe-import SSRF guard; the flyer-import test also uses the database when one
+- **Unit tests** (mostly pure logic — date math, quantity/price parsing, the Flipp
+  reader, the recipe-import SSRF guard; the flyer-import test also uses the database when one
   is reachable, and skips itself otherwise):
   ```bash
   npm test

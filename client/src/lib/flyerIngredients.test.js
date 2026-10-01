@@ -17,6 +17,10 @@ describe("splitBilingual", () => {
   it("splits English | French names", () => {
     expect(splitBilingual("Kiwis | kiwis")).toEqual({ en: "Kiwis", fr: "kiwis" });
     expect(splitBilingual("Bananas")).toEqual({ en: "Bananas", fr: null });
+    // Quebec flyers usually put the French first.
+    expect(splitBilingual("pommes Cortland, McIntosh, Lobo | apples, 4 lb bag")).toEqual({ en: "apples, 4 lb bag", fr: "pommes Cortland, McIntosh, Lobo" });
+    expect(splitBilingual("BŒUF HACHÉ MAIGRE | LEAN GROUND BEEF")).toEqual({ en: "LEAN GROUND BEEF", fr: "BŒUF HACHÉ MAIGRE" });
+    expect(splitBilingual("Bananas | bananes importées")).toEqual({ en: "Bananas", fr: "bananes importées" });
   });
 });
 

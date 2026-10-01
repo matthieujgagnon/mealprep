@@ -90,7 +90,6 @@ export const api = {
     return data;
   },
   clearFlyerDeals: () => request("/flyers", { method: "DELETE" }),
-  importLeRabaisDeals: () => request("/flyers/import-le-rabais", { method: "POST" }),
   // Weekly auto-import: where and what to read, and how the last run went.
   getFlyerSettings: () => request("/flyers/settings"),
   updateFlyerSettings: (payload) => request("/flyers/settings", { method: "PUT", body: JSON.stringify(payload) }),

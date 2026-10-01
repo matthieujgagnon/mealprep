@@ -2,12 +2,12 @@ import { Router } from "express";
 import multer from "multer";
 import { GoogleGenAI, Type, ApiError } from "@google/genai";
 import { prisma } from "../lib/prisma.js";
-import { buildImportReport, findPerLbSavedEach, HISTORY_WINDOW_MS } from "../lib/importReport.js";
+import { buildImportReport, HISTORY_WINDOW_MS } from "../lib/importReport.js";
 import { currentDeals, forgetDeals } from "./deals.js";
 import { listFlippStores, isValidPostalCode } from "../lib/flipp.js";
 import {
   getOrCreateSettings,
-  importLeRabais,
+  repairPastFlippRows,
   runImportForUser,
   serializeSettings,
   updateSettings,
@@ -212,20 +212,6 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// POST /api/flyers/import-le-rabais - this week's deals from Le Rabais
-// (lerabais.com, a pre-compiled Montreal table built from Flipp - see
-// lib/leRabais.js), plus any past week in its file not stored yet, as
-// price history. Supersedes only its own previous rows.
-flyersRouter.post("/import-le-rabais", async (req, res) => {
-  try {
-    const result = await importLeRabais(req.userId);
-    res.status(201).json({ store: "Le Rabais", count: result.count, backfilled: result.backfilled });
-  } catch (err) {
-    console.error("Le Rabais import failed:", err);
-    res.status(502).json({ error: `Could not import from Le Rabais: ${err.message}` });
-  }
-});
-
 // GET /api/flyers/settings - where and what the weekly auto-import reads,
 // and how its last run went.
 flyersRouter.get("/settings", async (req, res) => {
@@ -243,7 +229,7 @@ flyersRouter.put("/settings", async (req, res) => {
   }
 });
 
-// POST /api/flyers/import - run the import now (Flipp, else Le Rabais).
+// POST /api/flyers/import - run the Flipp import now.
 // Always answers 200 with the updated settings; lastImportOk says whether
 // it worked.
 flyersRouter.post("/import", async (req, res) => {
@@ -279,24 +265,13 @@ flyersRouter.get("/report", async (req, res) => {
   res.json({ ...report, fixable: { count: report.fixable.length, examples: report.fixable.slice(0, 8) } });
 });
 
-// POST /api/flyers/report/fix-per-lb - marks the earlier prices the report
-// found saved per item, though they were per lb, as per lb.
+// POST /api/flyers/report/fix-per-lb - corrects the earlier prices the
+// report found saved per item though they were per lb (and amounts off
+// saved as prices); each Flipp import also does this on its own.
 flyersRouter.post("/report/fix-per-lb", async (req, res) => {
-  const [current, history] = await Promise.all([
-    currentDeals(req.userId),
-    prisma.flyerDeal.findMany({
-      where: { userId: req.userId, isCurrent: false, source: "Flipp", unitBasis: "each" },
-      select: { id: true, store: true, source: true, item: true, matchName: true, price: true, unitPrice: true, unitBasis: true, createdAt: true },
-    }),
-  ]);
-  const rows = findPerLbSavedEach(current, history);
-  await prisma.$transaction(
-    rows.map((r) =>
-      prisma.flyerDeal.update({ where: { id: r.id }, data: { unitBasis: "lb", price: /\/lb$/.test(r.price) ? r.price : `${r.price}/lb` } })
-    )
-  );
+  const fixed = await repairPastFlippRows(req.userId, await currentDeals(req.userId));
   forgetDeals(req.userId);
-  res.json({ fixed: rows.length });
+  res.json({ fixed });
 });
 
 // DELETE /api/flyers - clear every uploaded flyer's deals at once (e.g. to

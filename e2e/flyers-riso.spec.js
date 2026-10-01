@@ -3,8 +3,8 @@ import { PrismaClient } from "@prisma/client";
 
 // Regression coverage for the Flyers screen's Riso Poster "11a Weekly
 // briefing" redesign (design_handoff_riso/README.md). Real (non-mock) deals
-// only ever come from the upload/Le Rabais routes, both of which depend on
-// services unreachable from this sandbox (Gemini, lerabais.com) - so, like
+// only ever come from the upload and Flipp imports, both of which depend on
+// services unreachable from this sandbox (Gemini, Flipp) - so, like
 // password-reset.spec.js's reset-token seeding, deals with real price
 // history are seeded directly via Prisma, standing in for "a few weeks of
 // real uploads" rather than exercising the upload route itself.
@@ -350,9 +350,9 @@ test("a deal with no history at its own store is compared with other stores, per
   const base = { userId: user.id, source: "Flipp", category: "dairy", unitBasis: "each" };
   await prisma.flyerDeal.createMany({
     data: [
-      // Earlier weeks, at other stores (Le Rabais' past weeks look like this).
-      { ...base, store: "Maxi", source: "Le Rabais", item: "Beurre salé, 454 g", matchName: "Salted Butter (454 g)", price: "$6.99", unitPrice: 6.99, isCurrent: false, createdAt: weeksAgo(5) },
-      { ...base, store: "IGA", source: "Le Rabais", item: "Beurre salé, 454 g", matchName: "Salted Butter (454 g)", price: "$5.99", unitPrice: 5.99, isCurrent: false, createdAt: weeksAgo(2) },
+      // Earlier weeks' flyers, at other stores.
+      { ...base, store: "Maxi", item: "Beurre salé, 454 g", matchName: "Salted Butter (454 g)", price: "$6.99", unitPrice: 6.99, isCurrent: false, createdAt: weeksAgo(5) },
+      { ...base, store: "IGA", item: "Beurre salé, 454 g", matchName: "Salted Butter (454 g)", price: "$5.99", unitPrice: 5.99, isCurrent: false, createdAt: weeksAgo(2) },
       // This week at Metro: a new item there, with the flyer's own "save".
       { ...base, store: "Metro", item: "LACTANTIA SALTED BUTTER 454 G", matchName: "salted butter", price: "$4.49", unitPrice: 4.49, regularPrice: 6.49, isCurrent: true },
     ],

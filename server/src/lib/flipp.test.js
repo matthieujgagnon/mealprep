@@ -134,6 +134,19 @@ describe("names and categories", () => {
     expect(toMatchName("Lean Ground Beef (Family Pack) 1.5 kg")).toBe("lean ground beef");
   });
 
+  it("matches by the English name: the English half, the product after a variety list, French-only names translated", () => {
+    expect(toMatchName("pommes Cortland, McIntosh, Lobo | apples, 4 lb bag")).toBe("apples");
+    expect(toMatchName("POMMES MCINTOSH, SPARTAN, LOBO OU CORTLAND | MCINTOSH, SPARTAN, LOBO OR CORTLAND APPLES")).toBe("cortland apples");
+    expect(toMatchName("CORTLAND, MCINTOSH OR SPARTAN APPLES")).toBe("spartan apples");
+    expect(toMatchName("ANANAS, PRODUIT DU COSTA RICA OU CANTALOUP | PINEAPPLE, PRODUCT OF COSTA RICA OR CANTALOUPE")).toBe("pineapple");
+    expect(toMatchName("POMMES CORTLAND OU MCINTOSH")).toBe("apples");
+    expect(toMatchName("BŒUF HACHÉ MAIGRE")).toBe("lean ground beef");
+    expect(toMatchName("POITRINES DE POULET EXCELDOR, 2 UN.")).toBe("chicken breasts");
+    expect(toMatchName("HAUTS DE CUISSES DE POULET FRAIS DÉSOSSÉS")).toBe("fresh boneless chicken thighs");
+    expect(toMatchName("CRÈME GLACÉE PREMIUM OU YOGOURT GLACÉ CHAPMAN'S, 2 L")).toBe("ice cream");
+    expect(toMatchName("KRAFT PEANUT BUTTER, 2 kg")).toBe("kraft peanut butter");
+  });
+
   it("sorts items into the app's categories, French or English", () => {
     expect(categorize("Boneless Chicken Breasts")).toBe("protein");
     expect(categorize("Poitrine de poulet")).toBe("protein");
@@ -221,5 +234,89 @@ describe("regularPriceFor", () => {
     expect(regularPriceFor({ sale_story: "SAVE UP TO $3" }, priced)).toBeNull();
     expect(regularPriceFor({ description: "Reg. $3.99" }, priced)).toBeNull();
     expect(regularPriceFor({}, priced)).toBeNull();
+  });
+});
+
+// Shaped like Flipp's real answers (October 2026): the flyer list has only
+// the name, the bare price, a print id and a discount %; the units, the
+// description, the regular price and "rabais de" are on each item's page.
+describe("fetchFlippDeals with each item's own page", () => {
+  const FLYER_LIST = { flyers: [{ id: 7, merchant: "Super C", categories: ["Groceries"] }, { id: 8, merchant: "Maxi", categories: ["Groceries"] }] };
+  const LIST = {
+    7: { items: [
+      { id: 71, name: "pommes Cortland, McIntosh, Lobo | apples", price: "5.99", discount: 14 },
+      { id: 72, name: "vin rouge ou blanc Les Trois Pignons, Ciao Amore | red or white wine", price: "3.0" },
+      { id: 73, name: "cuisses de poulet frais | fresh chicken legs", price: "3.99", discount: 60 },
+      { id: 74, name: "yogourt grec | Greek yogurt", price: "7.0" },
+      { id: 75, name: "jambon tranché | sliced ham", price: "1.49" },
+      { id: 76, name: "VIN ROUGE OU BLANC | RED OR WHITE WINE", price: "", discount: null },
+    ] },
+    8: { items: [{ id: 81, name: "POMMES CORTLAND OU MCINTOSH", price: "0.99", print_id: "20914172001_KG", discount: 41 }] },
+  };
+  const PAGES = {
+    71: { item: { description: "produit du Québec, Canada de fantaisie, sac 4 lb", current_price: "5.99", original_price: "6.99", dollars_off: 1, percent_off: 14, cutout_image_url: "https://f.wishabi.net/a.jpg" } },
+    72: { item: { description: "750 ml, choix varié", pre_price_text: "rebais de", current_price: "3.0" } },
+    73: { item: { price_text: "/lb - 8,80$/kg", current_price: "3.99", original_price: "9.99", dollars_off: 6, percent_off: 60 } },
+    74: { item: { pre_price_text: "2/", price_text: "ou 4,99$ l'unité", description: "500 g" } },
+    75: { item: { price_text: "le 100 g" } },
+    81: { item: { description: "Produit du Québec, catégorie Canada de fantaisie 2,18/kg" } },
+  };
+  const pagesSeen = [];
+  const fetchReal = (url) => {
+    const u = new URL(url);
+    const id = u.pathname.split("/").pop();
+    let body;
+    if (u.pathname.endsWith("/flipp/flyers")) body = FLYER_LIST;
+    else if (u.pathname.includes("/items/")) {
+      pagesSeen.push(id);
+      body = PAGES[id] ?? { item: {} };
+    } else body = LIST[id] ?? { items: [] };
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+  };
+
+  it("prices every item from its page: units, bag sizes, regular prices and amounts off", async () => {
+    const { deals } = await fetchFlippDeals({ postalCode: "H2T2S3", stores: ["Super C", "Maxi"], fetchImpl: fetchReal });
+    const find = (re) => deals.find((d) => re.test(d.item));
+
+    // A 4 lb bag: named with its size (so it's compared per lb), regular price kept.
+    expect(find(/Lobo/).item).toBe("pommes Cortland, McIntosh, Lobo | apples, 4 lb bag");
+    expect(find(/Lobo/)).toMatchObject({ unitPrice: 5.99, unitBasis: "each", regularPrice: 6.99, imageUrl: "https://f.wishabi.net/a.jpg" });
+    // "rabais de 3$" is $3 off, not a $3 wine.
+    expect(find(/Trois Pignons/)).toMatchObject({ price: "$3.00 off", unitPrice: null, unitBasis: null, regularPrice: null });
+    // Unit from price_text, regular from original_price.
+    expect(find(/cuisses/)).toMatchObject({ price: "$3.99/lb", unitPrice: 3.99, unitBasis: "lb", regularPrice: 9.99 });
+    // "2/" from the page; "l'unité" is not litres.
+    expect(find(/yogourt/)).toMatchObject({ price: "2/$7.00", unitPrice: 3.5, unitBasis: "each" });
+    // "le 100 g" -> per lb.
+    expect(find(/jambon/)).toMatchObject({ price: "$1.49/100 g", unitPrice: 6.76, unitBasis: "lb" });
+    // Maxi's _KG print id: priced per lb.
+    expect(deals.find((d) => d.store === "Maxi")).toMatchObject({ price: "$0.99/lb", unitPrice: 0.99, unitBasis: "lb" });
+    // Unpriced tiles aren't looked up.
+    expect(pagesSeen).not.toContain("76");
+  });
+
+  it("falls back to the list's own fields when item pages can't be read", async () => {
+    const down = (url) =>
+      url.includes("/items/") ? Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) }) : fetchReal(url);
+    const { deals } = await fetchFlippDeals({ postalCode: "H2T2S3", stores: ["Maxi"], fetchImpl: down });
+    expect(deals).toEqual([expect.objectContaining({ item: "POMMES CORTLAND OU MCINTOSH", unitPrice: 0.99, unitBasis: "lb" })]);
+  });
+});
+
+describe("amounts off", () => {
+  it("works out the price from the regular price when the item gives one", () => {
+    expect(parseFlippPrice({ price: "3", pre_price_text: "Rabais de", original_price: "17.59" })).toEqual({ price: "$14.59", unitPrice: 14.59, unitBasis: "each" });
+    expect(parseFlippPrice({ price: "3", pre_price_text: "SAVE", description: "750 ml. Reg. 17,59" })).toMatchObject({ unitPrice: 14.59 });
+    expect(parseFlippPrice({ price: "3", pre_price_text: "économisez" })).toEqual({ price: "$3.00 off", unitPrice: null, unitBasis: null });
+  });
+
+  it("reads regular prices from Flipp's own fields, not 'up to' savings", () => {
+    const priced = (item) => normalizeFlippItem({ name: "Cheese", ...item }, { merchant: "Super C" });
+    expect(priced({ price: "5.97", original_price: "8.99" }).regularPrice).toBe(8.99);
+    expect(priced({ price: "4.99", dollars_off: 1 }).regularPrice).toBe(5.99);
+    expect(priced({ price: "0.99", percent_off: 50 }).regularPrice).toBe(1.98);
+    expect(priced({ price: "4.97", dollars_off: 4.02, sale_story: "jusqu'à 4.02$ d'économie" }).regularPrice).toBe(null);
+    // Per kg on the flyer: the regular price converts the same way.
+    expect(priced({ price: "9.90", post_price_text: "/kg", original_price: "13.20" })).toMatchObject({ unitPrice: 4.49, regularPrice: 5.99 });
   });
 });

@@ -19,7 +19,6 @@ export default defineConfig({
     env: {
       FLYER_AUTO_IMPORT: "off",
       FLIPP_BASE_URL: "http://127.0.0.1:9/flipp",
-      LE_RABAIS_URL: "http://127.0.0.1:9/Tableau.md",
       STATCAN_WDS_URL: "http://127.0.0.1:9/wds",
     },
     url: "http://localhost:4000/api/health",

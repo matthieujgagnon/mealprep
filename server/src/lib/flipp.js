@@ -6,6 +6,8 @@
 // renamed field drops that one item rather than failing the whole import.
 
 // FLIPP_BASE_URL overrides it (the e2e tests point it somewhere unreachable).
+import { frenchToEnglish, looksFrench, splitBilingual } from "./bilingual.js";
+
 const flippBase = () => process.env.FLIPP_BASE_URL || "https://backflipp.wishabi.com/flipp";
 const LB_PER_KG = 0.45359237;
 
@@ -114,15 +116,31 @@ function toNumber(value) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// Flipp splits a printed price into pre_price_text ("2/", "2 for"), price
-// ("5.00") and post_price_text ("/lb", "lb", "/kg", "/100 g", "ea"). This
-// rebuilds the printed text and reduces it to one comparable number in the
-// app's own bases: per lb for weight, per L for volume, else each.
+// Flipp splits a printed price into pre_price_text ("2/", "3 POUR"),
+// price ("5.00") and price_text / post_price_text ("/lb", "lb", "/LB",
+// "le 100 g", "/lb $4.39/kg", "ch.", "+ tx"). The flyer list itself only
+// carries the bare price; the texts come from the item's own page (see
+// fetchFlippDeals). This rebuilds the printed price and reduces it to one
+// comparable number in the app's own bases: per lb for weight, per L for
+// volume, else each. A "rabais de 3$" / "save $3" tile is an amount off,
+// not a price: the price is the regular price minus it when the item says
+// what that is, else it's kept as "$3.00 off" with no comparable price.
 export function parseFlippPrice(item) {
-  const price = toNumber(item.price ?? item.current_price);
+  const parts = flippPriceParts(item);
+  return parts && { price: parts.price, unitPrice: parts.unitPrice, unitBasis: parts.unitBasis };
+}
+
+// parseFlippPrice plus what regularPriceFor needs: the factor the printed
+// price was converted by (per kg -> per lb), and a regular price an
+// amount-off tile already worked out.
+function flippPriceParts(item) {
+  const price = toNumber(item.price || item.current_price);
   if (price == null) return null;
   const pre = String(item.pre_price_text || "").trim();
   const post = String(item.post_price_text || "").trim();
+  const priceText = String(item.price_text || "").trim();
+
+  if (isAmountOff(pre) || /^off\b/i.test(post)) return amountOffPrice(item, price, pre, post);
 
   const multi = pre.match(/^(\d+)\s*(?:\/|for|pour)\s*$/i);
   const count = multi ? Number(multi[1]) : 1;
@@ -130,26 +148,37 @@ export function parseFlippPrice(item) {
 
   let unitPrice = round2(each);
   let unitBasis = "each";
-  const unit = priceUnit(post) || priceUnit(pre) || (multi ? "" : unitFromItemText(item, each)) || "";
-  if (unit === "lb") {
-    unitBasis = "lb";
-  } else if (unit === "kg") {
-    unitPrice = round2(each * LB_PER_KG);
-    unitBasis = "lb";
-  } else if (unit === "100 g") {
-    unitPrice = round2(each * 10 * LB_PER_KG);
-    unitBasis = "lb";
-  } else if (unit === "L") {
-    unitBasis = "L";
-  } else if (unit === "100 mL") {
-    unitPrice = round2(each * 10);
-    unitBasis = "L";
-  }
+  // Loblaw stores (Maxi, Provigo) mark weight-priced items with a _KG
+  // print id; their flyers print that price per lb (Maxi's apples:
+  // "99¢/LB", id 20914172001_KG).
+  const byWeight = /_KG$/i.test(String(item.print_id || "")) ? "lb" : "";
+  const unit =
+    priceUnit(post) || priceUnit(priceText) || priceUnit(pre) || (multi ? "" : byWeight || unitFromItemText(item, each)) || "";
+  const factor = { kg: LB_PER_KG, "100 g": 10 * LB_PER_KG, "100 mL": 10 }[unit] || 1;
+  unitPrice = round2(each * factor);
+  if (unit === "lb" || unit === "kg" || unit === "100 g") unitBasis = "lb";
+  else if (unit === "L" || unit === "100 mL") unitBasis = "L";
 
   const printed = multi
     ? `${count}/${money(price)}`
     : `${money(price)}${unit ? `/${unit}` : ""}`;
-  return { price: printed, unitPrice, unitBasis };
+  return { price: printed, unitPrice, unitBasis, factor };
+}
+
+// "rabais de" (and Super C's own "rebais de"), "save", "économisez",
+// "épargnez" before the number: an amount off.
+function isAmountOff(text) {
+  return /^(?:save|rabais|rebais|[eé]conomisez|[eé]pargnez)\b/i.test(text.normalize("NFC"));
+}
+
+function amountOffPrice(item, amount, pre, post) {
+  const percent = /%/.test(post) || /%/.test(String(item.price_text || ""));
+  const regular = toNumber(item.original_price) ?? regularFromText(item);
+  if (regular != null) {
+    const sale = round2(percent ? regular * (1 - amount / 100) : regular - amount);
+    if (sale > 0 && sale < regular) return { price: money(sale), unitPrice: sale, unitBasis: "each", factor: 1, regularPrice: regular };
+  }
+  return { price: percent ? `${amount}% off` : `${money(amount)} off`, unitPrice: null, unitBasis: null, factor: 1 };
 }
 
 // Flipp sometimes leaves the unit out of the price fields even though the
@@ -187,7 +216,7 @@ function priceUnit(text) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const m = t.match(/(?:^|[\s/])(?:(?:per|par|la|le|the)\s+)?(100\s*g|100\s*ml|kg|lbs?|livres?|l|litres?|liters?)(?![a-z0-9])/);
+  const m = t.match(/(?:^|[\s/])(?:(?:per|par|la|le|the)\s+)?(100\s*g|100\s*ml|kg|lbs?|livres?|l|litres?|liters?)(?![a-z0-9'’])/);
   if (!m) return null;
   const u = m[1].replace(/\s+/g, "");
   if (u === "100g") return "100 g";
@@ -197,27 +226,39 @@ function priceUnit(text) {
   return "L";
 }
 
-const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:x\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|l|ml|lb|lbs|oz|pk|pack|un|ct)\b\.?/gi;
+const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:[x×/]\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|l|ml|lb|lbs|oz|pk|pack|un|ct)\b\.?/gi;
 
 // A plain ingredient name to match against recipes: lowercase, no package
 // size, no "or"-alternatives, no brand-ish trailing detail after a comma.
+// A bilingual name ("pommes Cortland | apples") is matched by its English
+// half. A list of varieties before the product ("McIntosh, Spartan, Lobo or
+// Cortland apples") is matched by the product at its end.
 export function toMatchName(name) {
-  const clean = String(name || "")
-    .replace(/\([^)]*\)/g, " ")
+  const parts = splitBilingual(name)
+    .en.replace(/\([^)]*\)/g, " ")
     .replace(SIZE_RE, " ")
-    .split(",")[0]
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const lastPart = parts[parts.length - 1] || "";
+  const varieties = parts.length > 1 && !/\s/.test(parts[0]) && /\s/.test(lastPart.split(/ (?:or|ou) /i).pop().trim());
+  const head = varieties && / (?:or|ou) /i.test(lastPart) ? lastPart : parts[0] || "";
+  const clean = head
     .replace(/[®™*]/g, "")
     .replace(/\s+/g, " ")
+    .replace(/[\s\-–,;:]+$/, "")
     .trim()
     .toLowerCase();
   // "Red or Green Peppers": a one-word first choice is only an adjective,
   // so the noun comes from the last choice; "Pork Chops or Roast" keeps
   // the first.
   const choices = clean.split(/ or | ou /);
-  if (choices.length === 1) return clean;
   const first = choices[0].trim();
   const last = choices[choices.length - 1].trim();
-  return first.split(" ").length === 1 ? last : first;
+  const picked = choices.length === 1 ? clean : first.split(" ").length === 1 ? last : first;
+  // A French-only name ("BŒUF HACHÉ MAIGRE") is matched in English.
+  if (!/\|/.test(String(name)) && looksFrench(picked)) return frenchToEnglish(picked) || picked;
+  return picked;
 }
 
 const CATEGORY_WORDS = [
@@ -260,21 +301,47 @@ export function flippImage(item) {
 // description). null when it doesn't say, says "up to", or the numbers
 // don't make sense (a "regular" price under the sale price).
 export function regularPriceFor(item, priced) {
+  if (!priced || priced.unitPrice == null) return null;
+  if (priced.regularPrice != null) return priced.regularPrice;
+  const sane = (r) => (r > priced.unitPrice && r <= priced.unitPrice * 5 ? Math.round(r * 100) / 100 : null);
+  // The item page states it outright: original_price, or the dollars or
+  // percent off (not when it's only "up to" that much).
+  const factor = priced.factor || 1;
+  const upTo = /\bup to\b|\bjusqu/i.test(`${item.sale_story || ""} ${item.price_text || ""}`);
+  const original = toNumber(item.original_price);
+  if (original != null && sane(original * factor)) return sane(original * factor);
+  const dollarsOff = Number(item.dollars_off);
+  if (!upTo && dollarsOff > 0 && sane(priced.unitPrice + dollarsOff * factor)) return sane(priced.unitPrice + dollarsOff * factor);
+  const percentOff = Number(item.percent_off);
+  if (!upTo && percentOff > 0 && percentOff < 90) {
+    const r = sane(priced.unitPrice / (1 - percentOff / 100));
+    if (r) return r;
+  }
+  return regularFromText(item, priced);
+}
+
+// The usual price from the item's own words ("REG. $6.99", "SAVE $2.00",
+// "économisez 25%"), in the deal's unit when given a priced deal; null
+// when it doesn't say or the numbers don't add up.
+function regularFromText(item, priced = null) {
   const text = [item.sale_story, item.price_text, item.pre_price_text, item.post_price_text, item.description, item.disclaimer_text]
     .filter((t) => typeof t === "string" && t.trim())
     .join(" ")
     .replace(/\s+/g, " ");
-  if (!text || !priced || /\bup to\b|\bjusqu/i.test(text)) return null;
+  if (!text || /\bup to\b|\bjusqu/i.test(text)) return null;
   const amount = (s) => Number(s.replace(",", "."));
   let regular = null;
   let m;
   if ((m = text.match(/(?<![\p{L}])(?:reg(?:ular)?\.?(?: price)?|r[eé]g(?:ulier)?\.?|prix r[eé]gulier)\s*:?\s*\$?\s*(\d+(?:[.,]\d{1,2})?)\s*\$?/iu))) {
     regular = amount(m[1]);
   } else if ((m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*\$\s*(\d+(?:[.,]\d{1,2})?)/iu)) || (m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*(\d+(?:[.,]\d{1,2})?)\s*\$/iu))) {
+    if (!priced) return null;
     regular = priced.unitPrice + amount(m[1]);
   } else if ((m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*(\d{1,2})\s*%/iu))) {
+    if (!priced) return null;
     regular = priced.unitPrice / (1 - Number(m[1]) / 100);
   }
+  if (!priced) return regular > 0 ? Math.round(regular * 100) / 100 : null;
   if (!(regular > priced.unitPrice) || regular > priced.unitPrice * 5) return null;
   return Math.round(regular * 100) / 100;
 }
@@ -298,9 +365,9 @@ function withPackSize(name, item) {
 }
 
 export function normalizeFlippItem(item, flyer) {
-  const name = withPackSize(String(item.name || item.display_name || "").trim(), item);
+  const name = withPackSize(String(item.name || item.display_name || "").trim().replace(/[\s,;]+$/, ""), item);
   if (!name || name.length > 200) return null;
-  const priced = parseFlippPrice(item);
+  const priced = flippPriceParts(item);
   if (!priced) return null;
   const matchName = toMatchName(name) || name.toLowerCase();
   return {
@@ -328,21 +395,20 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
   // prices line up with the same store's history from other sources.
   const storeFor = (merchant) => stores.find((s) => merchantMatches(merchant, s)) || merchant;
 
-  const deals = [];
+  const perFlyer = wanted.map(() => []); // kept in flyer order
   const failed = [];
-  const needsPhoto = new Map(); // deal -> Flipp item id
-  const queue = [...wanted];
+  const queue = wanted.map((flyer, i) => ({ flyer, i }));
+  const lookups = { tried: 0, found: 0 };
   async function worker() {
     while (queue.length) {
-      const flyer = queue.shift();
+      const { flyer, i } = queue.shift();
       try {
         const items = await fetchFlyerItems(flyer.id, { fetchImpl });
+        const detailed = await withItemDetails(items, fetchImpl, lookups);
         const named = { ...flyer, merchant: storeFor(flyer.merchant) };
-        for (const item of items) {
+        for (const item of detailed) {
           const deal = normalizeFlippItem(item, named);
-          if (!deal) continue;
-          deals.push(deal);
-          if (!deal.imageUrl && item.id != null) needsPhoto.set(deal, item.id);
+          if (deal) perFlyer[i].push(deal);
         }
       } catch (err) {
         failed.push(`${flyer.merchant}: ${err.message}`);
@@ -350,8 +416,7 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, wanted.length) }, worker));
-
-  await fillMissingPhotos(needsPhoto, fetchImpl);
+  const deals = perFlyer.flat();
 
   const seen = new Set();
   const unique = deals.filter((d) => {
@@ -367,32 +432,60 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
   };
 }
 
-// A flyer's item list doesn't always carry the product photo; the item's
-// own page does. Looked up for at most MAX_PHOTO_LOOKUPS items, and given
-// up on if the first few lookups all fail (the endpoint moved).
-const MAX_PHOTO_LOOKUPS = 200;
-async function fillMissingPhotos(needsPhoto, fetchImpl) {
-  const queue = [...needsPhoto].slice(0, MAX_PHOTO_LOOKUPS);
-  let tried = 0;
-  let found = 0;
+// A flyer's item list carries little more than the name and the bare
+// price: the unit ("/lb", "le 100 g"), "2/" multi-buys, "rabais de"
+// amounts off, the description with the pack size ("sac 4 lb"), the
+// regular price and often the photo are only on each item's own page.
+// So every item with a price (or an amount off) is looked up there - about
+// 30 ms each, 8 at a time - and its fields fill in what the list left
+// out. Given up on if the first lookups all fail (the endpoint moved); the
+// list's own fields are used as they are then.
+const MAX_DETAIL_LOOKUPS = 3000;
+const DETAIL_FIELDS = [
+  "description",
+  "pre_price_text",
+  "price_text",
+  "post_price_text",
+  "sale_story",
+  "disclaimer_text",
+  "current_price",
+  "original_price",
+  "dollars_off",
+  "percent_off",
+  ...IMAGE_FIELDS,
+];
+async function withItemDetails(items, fetchImpl, lookups) {
+  const wanted = items.filter((i) => i.id != null && (toNumber(i.price) != null || i.discount != null));
+  const details = new Map();
+  const queue = [...wanted];
   async function worker() {
     while (queue.length) {
-      if (tried >= 6 && found === 0) return;
-      const [deal, itemId] = queue.shift();
-      tried++;
+      if (lookups.tried >= MAX_DETAIL_LOOKUPS || (lookups.tried >= 10 && lookups.found === 0)) return;
+      const item = queue.shift();
+      lookups.tried++;
       try {
-        const data = await getJson(`${flippBase()}/items/${encodeURIComponent(itemId)}?locale=${LOCALE}`, fetchImpl);
-        const url = flippImage(data?.item ?? data ?? {});
-        if (url) {
-          deal.imageUrl = url;
-          found++;
+        const data = await getJson(`${flippBase()}/items/${encodeURIComponent(item.id)}?locale=${LOCALE}`, fetchImpl);
+        const detail = data?.item ?? data;
+        if (detail && typeof detail === "object") {
+          details.set(item, detail);
+          lookups.found++;
         }
       } catch {
-        // No photo for this one.
+        // The list's own fields will do for this one.
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(4, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(8, queue.length) }, worker));
+  return items.map((item) => {
+    const detail = details.get(item);
+    if (!detail) return item;
+    const merged = { ...item };
+    for (const field of DETAIL_FIELDS) {
+      const value = detail[field];
+      if (value != null && value !== "" && (merged[field] == null || merged[field] === "")) merged[field] = value;
+    }
+    return merged;
+  });
 }
 
 // Which grocery stores have a flyer near this postal code right now - for

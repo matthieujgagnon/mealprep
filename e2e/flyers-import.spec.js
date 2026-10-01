@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // The Flyers auto-import strip and its settings. The test server's Flipp
-// and Le Rabais addresses refuse connections (see playwright.config.js),
+// address refuses connections (see playwright.config.js),
 // so Import now always takes the failure path here; the success path is
 // covered against fixtures in server/src/lib/flyerImport.db.test.js.
 
@@ -74,13 +74,13 @@ test("each store's flyer can be opened from the Flyers page and an item's detail
   await expect(page.getByRole("dialog").getByRole("link", { name: /^Open the .+ flyer ↗$/ })).toBeVisible();
 });
 
-test("Import now reports when neither Flipp nor Le Rabais can be reached", async ({ page }) => {
+test("Import now reports when Flipp can't be reached", async ({ page }) => {
   await signUpToFlyers(page);
   const strip = page.locator(".riso-auto-import");
   await strip.getByRole("button", { name: "Import now" }).click();
   await expect(strip).toHaveClass(/failed/);
   await expect(strip.locator(".riso-auto-import-last")).toContainText("didn't work");
-  await expect(strip.locator(".riso-auto-import-last")).toContainText("Le Rabais");
+  await expect(strip.locator(".riso-auto-import-last")).toContainText("Flipp");
   // The sample deals stay until a real import works.
   await expect(page.locator(".riso-flyers-sample-note")).toBeVisible();
 });
