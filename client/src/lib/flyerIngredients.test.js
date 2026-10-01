@@ -89,4 +89,19 @@ describe("buildIngredients", () => {
     expect(sliceIngredients(list, "ends", aisles)[0]).toMatchObject({ name: "Ends within 2 days" });
     expect(sliceIngredients(list, "freeze", aisles).map((g) => g.name)).toEqual(["Eat fresh"]);
   });
+
+  it("compares a bag with loose apples per lb, not $5.99 against 99 cents", () => {
+    const apples = buildIngredients(
+      [
+        deal(20, "Metro", "McIntosh apples, 3 lb bag", 5.99, "each", { comparePrice: 2.0, compareBasis: "lb" }),
+        deal(21, "Super C", "McIntosh apples", 0.99, "lb"),
+      ],
+      { storeOrder: ["Metro", "Super C"], today }
+    )[0];
+    expect(apples.mainBasis).toBe("lb");
+    expect(apples.best.store).toBe("Super C");
+    expect(apples.lo).toBe(0.99);
+    expect(apples.hi).toBe(2.0);
+    expect(apples.gap).toBeCloseTo((2.0 - 0.99) / 2.0, 5);
+  });
 });

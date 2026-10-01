@@ -15,6 +15,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { groceryShared } from "../lib/groceryCache.js";
+import { useDeals } from "../lib/dealsStore.js";
 import { buildGroceryList, formatAmount } from "../lib/groceryList.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
 import { parseQuantityInput } from "../lib/units.js";
@@ -367,8 +368,7 @@ export function GroceryList({
   // Deals and stores decide which store each item sits in, so the list
   // waits for both (see `ready` below) - drawing it before they arrived
   // put items in "Any store" for a moment, then moved them.
-  const [deals, setDeals] = useState(() => groceryShared.deals || []);
-  const [dealsLoaded, setDealsLoaded] = useState(() => groceryShared.deals != null);
+  const { deals, loaded: dealsLoaded } = useDeals();
   // Which ingredient cores are checked off this week — lives on the server
   // (see api.listGroceryChecked/checkGroceryItem) so checking something off
   // on one device shows up on another instead of being stuck in that one
@@ -406,15 +406,6 @@ export function GroceryList({
   useEffect(() => {
     let cancelled = false;
     api
-      .getRealDeals()
-      .then((rows) => {
-        if (cancelled) return;
-        setDeals(rows);
-        groceryShared.deals = rows;
-      })
-      .catch(() => {})
-      .finally(() => !cancelled && setDealsLoaded(true));
-    api
       .listGrocerySections()
       .then((rows) => !cancelled && setSections(rows))
       .catch(() => {})
@@ -433,6 +424,16 @@ export function GroceryList({
   useEffect(() => {
     if (sectionsLoaded) groceryShared.sections = sections;
   }, [sectionsLoaded, sections]);
+
+  // The list has each deal without its 6-month history; the detail view
+  // opens straight away and fills in the chart when it arrives.
+  function openDealDetail(deal, name) {
+    setOpenDeal({ deal, name });
+    api
+      .getDeal(deal.id)
+      .then((full) => setOpenDeal((cur) => (cur?.deal.id === deal.id ? { ...cur, deal: { ...cur.deal, ...full } } : cur)))
+      .catch(() => {});
+  }
 
   async function toggleWatch(deal) {
     const key = (deal.matchName || deal.item).trim().toLowerCase();
@@ -1019,7 +1020,7 @@ export function GroceryList({
                               checked={!!checked[row.item.key]}
                               onToggle={() => toggle(row.item.key)}
                               deal={row.deal}
-                              onOpenDeal={() => setOpenDeal({ deal: row.deal, name: row.item.name })}
+                              onOpenDeal={() => openDealDetail(row.deal, row.item.name)}
                               store={row.store}
                               sub={subLineFor(row)}
                               onDelete={() => removeItem(row.item)}
@@ -1051,7 +1052,7 @@ export function GroceryList({
                     checked={!!checked[row.item.key]}
                     onToggle={() => toggle(row.item.key)}
                     deal={row.deal}
-                    onOpenDeal={() => setOpenDeal({ deal: row.deal, name: row.item.name })}
+                    onOpenDeal={() => openDealDetail(row.deal, row.item.name)}
                     store={row.store}
                     showStore
                     sub={subLineFor(row)}

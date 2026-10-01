@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { core, findRecipesByIngredients } from "../lib/similarRecipes.js";
+import { core, findBestDeal, findRecipesByIngredients } from "../lib/similarRecipes.js";
+import { useDeals } from "../lib/dealsStore.js";
+import { SaleTag } from "./SaleTag.jsx";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { Switch, HintStrip } from "./RisoControls.jsx";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, findNextEmptySlot, todayIndex } from "../lib/plannerSlots.js";
@@ -119,6 +121,7 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
 // n" with a + Add pill per item, and one right-aligned row of same-size
 // actions pinned to the bottom so cards in a row line up.
 function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, planFor, pickerProps, groceryProps }) {
+  const { deals } = useDeals();
   const [planning, setPlanning] = useState(false);
   const plan = planFor(recipe);
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
@@ -177,6 +180,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
                 return (
                   <li key={name} className="riso-makeable-need-row">
                     <span className="riso-makeable-need-name">{name}</span>
+                    <SaleTag deal={findBestDeal(name, deals)} />
                     <button
                       type="button"
                       className={`riso-makeable-need-add${on ? " on" : ""}`}

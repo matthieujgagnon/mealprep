@@ -79,6 +79,28 @@ describe("parseFlippPrice", () => {
     expect(parseFlippPrice({ price: "", sale_story: "Save 30%" })).toBe(null);
     expect(parseFlippPrice({ price: "0" })).toBe(null);
   });
+
+  it("finds the unit however the flyer words it", () => {
+    // A per-lb price with its per-kg figure after it is per lb, not each.
+    expect(parseFlippPrice({ price: "0.99", post_price_text: "/lb 2.18/kg" })).toEqual({ price: "$0.99/lb", unitPrice: 0.99, unitBasis: "lb" });
+    expect(parseFlippPrice({ price: "0.99", post_price_text: "lb." })).toMatchObject({ unitBasis: "lb" });
+    expect(parseFlippPrice({ price: "0.99", post_price_text: "per lb" })).toMatchObject({ unitBasis: "lb" });
+    expect(parseFlippPrice({ price: "0.99", post_price_text: "la lb" })).toMatchObject({ unitBasis: "lb" });
+    expect(parseFlippPrice({ price: "2.18", post_price_text: "/ kg" })).toMatchObject({ unitPrice: 0.99, unitBasis: "lb" });
+    expect(parseFlippPrice({ price: "5.99", post_price_text: "ea." })).toEqual({ price: "$5.99", unitPrice: 5.99, unitBasis: "each" });
+    expect(parseFlippPrice({ price: "5.99", post_price_text: "ch." })).toMatchObject({ unitBasis: "each" });
+    expect(parseFlippPrice({ price: "4.99", post_price_text: "avec carte" })).toMatchObject({ unitBasis: "each" });
+  });
+
+  it("puts a pack size from the description on the name", () => {
+    const bag = normalizeFlippItem({ name: "McIntosh Apples", price: "5.99", description: "3 lb bag, product of Quebec" }, { merchant: "Metro" });
+    expect(bag.item).toBe("McIntosh Apples, 3 lb bag");
+    expect(bag.unitBasis).toBe("each");
+    const loose = normalizeFlippItem({ name: "McIntosh Apples", price: "0.99", post_price_text: "/lb 2.18/kg" }, { merchant: "Super C" });
+    expect(loose).toMatchObject({ item: "McIntosh Apples", unitPrice: 0.99, unitBasis: "lb" });
+    // Already sized: left alone.
+    expect(normalizeFlippItem({ name: "Butter 454 g", price: "4.99", description: "1 lb" }, { merchant: "Metro" }).item).toBe("Butter 454 g");
+  });
 });
 
 describe("names and categories", () => {

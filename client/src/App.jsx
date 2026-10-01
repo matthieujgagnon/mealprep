@@ -1,3 +1,5 @@
+import { clearDeals } from "./lib/dealsStore.js";
+import { groceryShared } from "./lib/groceryCache.js";
 import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
@@ -313,6 +315,8 @@ export default function App({ user, onLogout }) {
 
   async function handleLogout() {
     await api.logout();
+    clearDeals();
+    groceryShared.sections = null;
     onLogout();
   }
 

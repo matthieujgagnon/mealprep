@@ -4,6 +4,7 @@ import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { dealEmoji } from "../lib/dealEmoji.js";
 import { groceryCore } from "../lib/groceryDedupe.js";
 import { invalidateGroceryShared } from "../lib/groceryCache.js";
+import { refreshDeals } from "../lib/dealsStore.js";
 import {
   buildIngredients,
   foldText,
@@ -649,10 +650,149 @@ function ImportSettings({ settings, onSaved, onClose }) {
   );
 }
 
+function shortDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
+  return d.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+}
+
+const pct = (n, total) => (total ? `${Math.round((n / total) * 100)}%` : "—");
+
+// "Did the import work?": what each store's flyer gave this week, the
+// prices that couldn't be read, what the prices are compared with, the
+// weeks of prices kept for the 6-month history - and a fix for older
+// prices saved per item that were per lb (GET /api/flyers/report).
+function ImportReport({ onFixed }) {
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(null);
+  const [fixing, setFixing] = useState(false);
+  const [fixedCount, setFixedCount] = useState(null);
+
+  function load() {
+    setError(null);
+    api
+      .getImportReport()
+      .then(setReport)
+      .catch((err) => setError(err.message));
+  }
+  useEffect(load, []);
+
+  async function fix() {
+    setFixing(true);
+    try {
+      const { fixed } = await api.fixPerLbPrices();
+      setFixedCount(fixed);
+      onFixed();
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFixing(false);
+    }
+  }
+
+  if (error) return <p className="riso-error">Couldn't check the import: {error}</p>;
+  if (!report) return <p className="riso-import-note">Checking this week's import…</p>;
+
+  const c = report.compared;
+  const comparable = c.store + c.stores + c.quebec + c.none;
+  return (
+    <div className="riso-report" aria-label="Import check">
+      <h4 className="riso-report-title">This week's import</h4>
+      {report.stores.length === 0 ? (
+        <p className="riso-import-note">No flyer deals yet - Import now pulls this week's.</p>
+      ) : (
+        <div className="riso-report-table" role="table">
+          <div className="riso-report-row head" role="row">
+            <span role="columnheader">Store</span>
+            <span role="columnheader">From</span>
+            <span role="columnheader">Items</span>
+            <span role="columnheader">Price read</span>
+            <span role="columnheader">Per lb / L</span>
+            <span role="columnheader">Photos</span>
+            <span role="columnheader">Ends</span>
+            <span role="columnheader">Imported</span>
+          </div>
+          {report.stores.map((s) => (
+            <div key={`${s.store}|${s.source}`} className="riso-report-row" role="row">
+              <span role="cell">{s.store}</span>
+              <span role="cell">{s.source || "Upload"}</span>
+              <span role="cell">{s.items}</span>
+              <span role="cell" className={s.priced < s.items ? "warn" : ""}>
+                {s.priced} · {pct(s.priced, s.items)}
+              </span>
+              <span role="cell">{s.perUnit}</span>
+              <span role="cell">{pct(s.photos, s.items)}</span>
+              <span role="cell">{shortDate(s.endsOn)}</span>
+              <span role="cell">{shortDate(s.importedAt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="riso-report-line">
+        <b>Compared with:</b> its own 6 months at that store {c.store} · the same product at other stores {c.stores} ·
+        Quebec's average {c.quebec} · nothing yet {c.none}
+        {comparable > 0 && ` (${pct(comparable - c.none, comparable)} of prices have something to compare with)`}
+      </p>
+
+      <p className="riso-report-line">
+        <b>Price history:</b>{" "}
+        {report.historyWeeks.length === 0
+          ? "no earlier weeks stored yet - each import adds one."
+          : `${report.historyWeeks.length} earlier week${report.historyWeeks.length === 1 ? "" : "s"} stored, back to ${shortDate(
+              report.historyWeeks.at(-1).week
+            )}.`}
+      </p>
+      {report.historyWeeks.length > 0 && (
+        <div className="riso-report-weeks">
+          {report.historyWeeks.map((w) => (
+            <span key={w.week} title={w.sources.join(", ")}>
+              {shortDate(w.week)} · {w.rows}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {report.unreadableCount > 0 && (
+        <details className="riso-report-details">
+          <summary>
+            {report.unreadableCount} price{report.unreadableCount === 1 ? "" : "s"} couldn't be read (shown, but not compared)
+          </summary>
+          <ul>
+            {report.unreadable.map((u, i) => (
+              <li key={i}>
+                {u.store}: {u.item} - "{u.price}"
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {report.fixable.count > 0 && (
+        <div className="riso-report-fix">
+          <p>
+            <b>
+              {report.fixable.count} older price{report.fixable.count === 1 ? " was" : "s were"} saved per item but {report.fixable.count === 1 ? "was" : "were"} per lb
+            </b>{" "}
+            (e.g. {report.fixable.examples.slice(0, 3).map((e) => `${e.store} ${e.item} ${e.price}`).join(", ")}). They throw off the 6-month
+            range.
+          </p>
+          <button type="button" className="riso-btn primary small" onClick={fix} disabled={fixing}>
+            {fixing ? "Fixing…" : "Mark them per lb"}
+          </button>
+        </div>
+      )}
+      {fixedCount != null && <p className="riso-import-note">Fixed {fixedCount} price{fixedCount === 1 ? "" : "s"}.</p>}
+    </div>
+  );
+}
+
 // The strip under the title: what the weekly import does, how the last
 // run went, Import now and its settings.
-function AutoImportStrip({ settings, importing, onImport, onSettingsSaved }) {
+function AutoImportStrip({ settings, importing, onImport, onSettingsSaved, onDealsChanged }) {
   const [open, setOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
   const where = settings.stores.length ? settings.stores.join(", ") : "every grocery flyer";
   const last = settings.lastImportAt
     ? settings.lastImportOk
@@ -678,6 +818,9 @@ function AutoImportStrip({ settings, importing, onImport, onSettingsSaved }) {
           </p>
         </div>
         <div className="riso-auto-import-buttons">
+          <button type="button" className="riso-btn" onClick={() => setChecking((o) => !o)} aria-expanded={checking}>
+            Check import
+          </button>
           <button type="button" className="riso-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
             Settings
           </button>
@@ -686,10 +829,19 @@ function AutoImportStrip({ settings, importing, onImport, onSettingsSaved }) {
           </button>
         </div>
       </div>
+      {checking && <ImportReport key={settings.lastImportAt || "none"} onFixed={onDealsChanged} />}
       {open && <ImportSettings settings={settings} onSaved={onSettingsSaved} onClose={() => setOpen(false)} />}
     </section>
   );
 }
+
+// The last week of deals this page loaded: coming back to Flyers shows it
+// straight away while a fresh copy loads.
+let lastDeals = null;
+
+// A group shows this many cards until "Show all" (a week is a few hundred
+// ingredients; drawing them all at once made the page slow to appear).
+const GROUP_PAGE = 12;
 
 const SLICES = [
   { id: "category", label: "Category" },
@@ -706,6 +858,18 @@ function priceText(deal) {
   const p = tilePrice(deal);
   if (!p) return deal.price;
   return `${money(p.price)}${p.basis === "each" ? "" : `/${p.basis}`}`;
+}
+
+// What you pay at the shelf and, for a pack worked out per lb / per L from
+// its size, that figure as well: a $5.99 3 lb bag is "$5.99" and "$2.00/lb",
+// so it's never mistaken for 99¢/lb loose apples or read as a $2 price.
+function shelfPrice(deal) {
+  const p = tilePrice(deal);
+  if (!p) return { main: deal.price, unit: "" };
+  if (deal.unitBasis === "each" && p.basis !== "each" && deal.unitPrice != null) {
+    return { main: money(deal.unitPrice), unit: `${money(p.price)}/${p.basis}` };
+  }
+  return { main: money(p.price), unit: unitLabel(p.basis) };
 }
 
 function endsText(days) {
@@ -928,7 +1092,7 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
         </div>
         <div className={`riso-ing-tiles n${tiles.length}`} style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
           {tiles.map((d) => {
-            const p = tilePrice(d);
+            const shelf = shelfPrice(d);
             const best = isBest(d);
             return (
               <div key={d.store} className={`riso-ing-tile${best ? " best" : ""}`}>
@@ -936,8 +1100,8 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
                   <span>{d.store.toUpperCase()}</span>
                   {best && <span className="riso-ing-dot" title="Cheapest" aria-label="cheapest" />}
                 </div>
-                <div className="riso-ing-tile-price">{p ? money(p.price) : d.price}</div>
-                <div className="riso-ing-tile-unit">{p ? unitLabel(p.basis) : ""}</div>
+                <div className="riso-ing-tile-price">{shelf.main}</div>
+                <div className="riso-ing-tile-unit">{shelf.unit}</div>
               </div>
             );
           })}
@@ -960,7 +1124,12 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
                   <span className="riso-ing-variant-name">{en}</span>
                   {(fr || regularLabel(d)) && <span className="riso-ing-variant-fr">{fr || regularLabel(d)}</span>}
                 </button>
-                <span className="riso-ing-variant-price">{priceText(d)}</span>
+                <span className="riso-ing-variant-price">
+                  {shelfPrice(d).main}
+                  {d.unitBasis === "each" && tilePrice(d) && tilePrice(d).basis !== "each" && (
+                    <small> {shelfPrice(d).unit}</small>
+                  )}
+                </span>
                 <button
                   type="button"
                   className={`riso-ing-list${listed ? " on" : ""}`}
@@ -989,13 +1158,14 @@ export function FlyerDeals({
   onAddToGroceryList,
   onRemoveFromGroceryList,
 }) {
-  const [deals, setDeals] = useState(null);
+  const [deals, setDeals] = useState(() => lastDeals);
   const [watchlist, setWatchlist] = useState(new Set());
   const [storeFilter, setStoreFilter] = useState(null);
   const [slice, setSlice] = useState(() => readStored(SLICE_KEY, "category"));
   const [rank, setRank] = useState(() => readStored(RANK_KEY, "best"));
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(() => new Set());
+  const [showAllGroups, setShowAllGroups] = useState(() => new Set());
   const [sections, setSections] = useState([]);
   const [clearing, setClearing] = useState(false);
   const [importingLeRabais, setImportingLeRabais] = useState(false);
@@ -1006,10 +1176,22 @@ export function FlyerDeals({
 
   // The grocery list caches deals and stores between visits; anything
   // here can change them (an import, + List), so it reloads them next time.
-  function loadDeals() {
-    invalidateGroceryShared();
-    api.getDeals().then(setDeals).catch(() => setDeals(null));
+  // Called on arrival and after anything that changes deals (an import, an
+  // upload, a fix); the other tabs' shared copy refreshes with it.
+  function loadDeals({ changed = false } = {}) {
+    if (changed) {
+      invalidateGroceryShared();
+      refreshDeals();
+    }
+    api
+      .getDeals()
+      .then((d) => {
+        lastDeals = d;
+        setDeals(d);
+      })
+      .catch(() => setDeals((cur) => cur));
   }
+  const reloadChanged = () => loadDeals({ changed: true });
 
   useEffect(() => {
     loadDeals();
@@ -1099,7 +1281,7 @@ export function FlyerDeals({
     try {
       await api.clearFlyerDeals();
       setStoreFilter(null);
-      loadDeals();
+      reloadChanged();
     } finally {
       setClearing(false);
     }
@@ -1109,7 +1291,7 @@ export function FlyerDeals({
     setRunningImport(true);
     try {
       setImportSettings(await api.runFlyerImport());
-      loadDeals();
+      reloadChanged();
     } catch (err) {
       setImportSettings((prev) => (prev ? { ...prev, lastImportOk: false, lastImportAt: new Date().toISOString(), lastImportMessage: err.message } : prev));
     } finally {
@@ -1122,7 +1304,7 @@ export function FlyerDeals({
     setLeRabaisError(null);
     try {
       await api.importLeRabaisDeals();
-      loadDeals();
+      reloadChanged();
     } catch (err) {
       setLeRabaisError(err.message);
     } finally {
@@ -1247,7 +1429,7 @@ export function FlyerDeals({
               {clearing ? "Clearing…" : "Clear all deals"}
             </button>
           )}
-          <UploadFlyerForm onUploaded={loadDeals} />
+          <UploadFlyerForm onUploaded={reloadChanged} />
           <button type="button" className="riso-btn" onClick={importLeRabais} disabled={importingLeRabais}>
             {importingLeRabais ? "Importing…" : "Refresh from Le Rabais"}
           </button>
@@ -1256,7 +1438,13 @@ export function FlyerDeals({
       {leRabaisError && <p className="riso-error">{leRabaisError}</p>}
 
       {importSettings && (
-        <AutoImportStrip settings={importSettings} importing={runningImport} onImport={runImport} onSettingsSaved={setImportSettings} />
+        <AutoImportStrip
+          settings={importSettings}
+          importing={runningImport}
+          onImport={runImport}
+          onSettingsSaved={setImportSettings}
+          onDealsChanged={reloadChanged}
+        />
       )}
 
       {deals.isMockData && (
@@ -1395,7 +1583,10 @@ export function FlyerDeals({
                 <span className="riso-ing-group-rule" />
               </div>
               <div className="riso-ing-grid">
-                {group.items.map((g) => (
+                {(showAllGroups.has(group.name) || words.length
+                  ? group.items
+                  : group.items.filter((g, i) => i < GROUP_PAGE || expanded.has(g.key))
+                ).map((g) => (
                   <IngredientCard
                     key={g.key}
                     g={g}
@@ -1407,6 +1598,15 @@ export function FlyerDeals({
                   />
                 ))}
               </div>
+              {!showAllGroups.has(group.name) && !words.length && group.items.length > GROUP_PAGE && (
+                <button
+                  type="button"
+                  className="riso-ing-more-btn"
+                  onClick={() => setShowAllGroups((prev) => new Set(prev).add(group.name))}
+                >
+                  Show all {group.items.length} in {group.name}
+                </button>
+              )}
             </section>
           ))
         )}

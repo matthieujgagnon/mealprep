@@ -9,7 +9,9 @@ import {
   stepTimer,
   scaleStepText,
 } from "../lib/steps.js";
-import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core } from "../lib/similarRecipes.js";
+import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, findBestDeal } from "../lib/similarRecipes.js";
+import { useDeals } from "../lib/dealsStore.js";
+import { SaleTag } from "./SaleTag.jsx";
 import { formatQuantity, unitLabel } from "../lib/units.js";
 import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
@@ -196,6 +198,7 @@ function StepRow({ step, number, scale }) {
 function IngredientRow({
   ing,
   status,
+  deal,
   scaledQty,
   isOpen,
   onToggle,
@@ -229,6 +232,7 @@ function IngredientRow({
           {isPerishable(ing.name) && <span className="perishable-dot" title="Perishable ingredient" />}
         </span>
         {status === "soon" && <span className="riso-rc-use-soon-sticker">use soon!</span>}
+        {status === "need" && <SaleTag deal={deal} />}
         <span className="riso-rc-ingredient-qty">
           {scaledQty != null
             ? `${formatQuantity(scaledQty)}${ing.unit ? " " + unitLabel(ing.unit, scaledQty) : ""}`
@@ -299,6 +303,7 @@ export function RecipeDetailModal({
   const [addingMissing, setAddingMissing] = useState(false);
   const [addedMissing, setAddedMissing] = useState(false);
   const [openIngredientKey, setOpenIngredientKey] = useState(null);
+  const { deals } = useDeals();
 
   useEffect(() => {
     function handleKeyDown(e) {
@@ -645,6 +650,7 @@ export function RecipeDetailModal({
                           key={key}
                           ing={ing}
                           status={ingredientStatus(ing)}
+                          deal={findBestDeal(ing.name, deals)}
                           scaledQty={scaledQty}
                           isOpen={openIngredientKey === key}
                           onToggle={() => setOpenIngredientKey((prev) => (prev === key ? null : key))}

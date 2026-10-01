@@ -6,6 +6,7 @@ import { findBestDeal, findRecipesByIngredients } from "../lib/similarRecipes.js
 import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { useDeals } from "../lib/dealsStore.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 const ALL_MEALS_KEY = "mealprep-home-all-meals";
@@ -148,7 +149,7 @@ export function Home({
   const [checked, setChecked] = useState({});
   const [extraItems, setExtraItems] = useState([]);
   const [groceryOverrides, setGroceryOverrides] = useState([]);
-  const [deals, setDeals] = useState([]);
+  const { deals } = useDeals();
 
   // The week strip can look ahead to next week without disturbing the
   // "tonight" card or the grocery card above, which are always about the
@@ -184,7 +185,6 @@ export function Home({
       .catch(() => setChecked({}));
     api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
     api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
-    api.getRealDeals().then(setDeals).catch(() => setDeals([]));
     // weekStart is always "today's" Monday here — this only needs to run once per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

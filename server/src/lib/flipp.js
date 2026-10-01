@@ -130,26 +130,45 @@ export function parseFlippPrice(item) {
 
   let unitPrice = round2(each);
   let unitBasis = "each";
-  const unit = post.toLowerCase().replace(/^\//, "").replace(/\s+/g, " ").trim();
-  if (/^(lb|lbs|livre|lb\.)$/.test(unit)) {
+  const unit = priceUnit(post) || priceUnit(pre) || "";
+  if (unit === "lb") {
     unitBasis = "lb";
-  } else if (/^kg$/.test(unit)) {
+  } else if (unit === "kg") {
     unitPrice = round2(each * LB_PER_KG);
     unitBasis = "lb";
-  } else if (/^100 ?g$/.test(unit)) {
+  } else if (unit === "100 g") {
     unitPrice = round2(each * 10 * LB_PER_KG);
     unitBasis = "lb";
-  } else if (/^(l|litre|liter)$/.test(unit)) {
+  } else if (unit === "L") {
     unitBasis = "L";
-  } else if (/^100 ?ml$/.test(unit)) {
+  } else if (unit === "100 mL") {
     unitPrice = round2(each * 10);
     unitBasis = "L";
   }
 
   const printed = multi
     ? `${count}/${money(price)}`
-    : `${money(price)}${unitBasis === "each" || !post ? "" : `/${unit.replace(/^100 ?g$/, "100 g")}`}`;
+    : `${money(price)}${unit ? `/${unit}` : ""}`;
   return { price: printed, unitPrice, unitBasis };
+}
+
+// The unit a price text is per, from the first unit it names: "/lb",
+// "lb.", "per lb", "la lb", "/lb 2.18/kg" (the per-kg figure that follows
+// is the same price) -> "lb"; "/kg", "/100 g", "L", "/100 mL" likewise.
+// null for "ea", "each", "ch." or no unit - a price per item.
+function priceUnit(text) {
+  const t = String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const m = t.match(/(?:^|[\s/])(?:(?:per|par|la|le|the)\s+)?(100\s*g|100\s*ml|kg|lbs?|livres?|l|litres?|liters?)(?![a-z0-9])/);
+  if (!m) return null;
+  const u = m[1].replace(/\s+/g, "");
+  if (u === "100g") return "100 g";
+  if (u === "100ml") return "100 mL";
+  if (u === "kg") return "kg";
+  if (/^(lbs?|livres?)$/.test(u)) return "lb";
+  return "L";
 }
 
 const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:x\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|l|ml|lb|lbs|oz|pk|pack|un|ct)\b\.?/gi;
@@ -237,8 +256,21 @@ export function regularPriceFor(item, priced) {
 // One Flipp flyer item -> the app's FlyerDeal shape, or null for the
 // banners, section headers and unpriced "save 30%" tiles a flyer also
 // carries.
+// Flipp often prints the pack size only in the description ("McIntosh
+// Apples" / "3 lb bag"); it goes on the name, so a $5.99 bag is compared
+// per lb ($2.00/lb) rather than as $5.99 against 99¢/lb apples.
+const PACK_RE = new RegExp(SIZE_RE.source, "i"); // SIZE_RE is global (stateful .test)
+function withPackSize(name, item) {
+  if (PACK_RE.test(name)) return name;
+  const desc = [item.description, item.sale_story].filter((t) => typeof t === "string").join(" ");
+  const size = desc.match(PACK_RE);
+  if (!size) return name;
+  const bag = /\b(bag|sac)\b/i.test(desc.slice(size.index, size.index + size[0].length + 6)) ? " bag" : "";
+  return `${name}, ${size[0].trim()}${bag}`;
+}
+
 export function normalizeFlippItem(item, flyer) {
-  const name = String(item.name || item.display_name || "").trim();
+  const name = withPackSize(String(item.name || item.display_name || "").trim(), item);
   if (!name || name.length > 200) return null;
   const priced = parseFlippPrice(item);
   if (!priced) return null;
