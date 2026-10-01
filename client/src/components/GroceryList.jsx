@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -14,6 +14,7 @@ import {
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
+import { groceryShared } from "../lib/groceryCache.js";
 import { buildGroceryList, formatAmount } from "../lib/groceryList.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
 import { parseQuantityInput } from "../lib/units.js";
@@ -31,7 +32,7 @@ import { DealDetailModal } from "./FlyerDeals.jsx";
 // lib/hints.js) instead of its own key.
 const STORE_PREF_KEY = "mealprep-grocery-store-pref";
 const DEFAULT_STORE = "Metro";
-const ANY_STORE = "Any store"; // unfiled items, once you've made stores of your own // matches the placeholder store name used elsewhere (FlyerDeals' upload form) when nothing else is known yet
+const ANY_STORE = "Any store"; // unfiled items with no sale, once you've made stores of your own
 
 // The last loaded state of each week's list, so coming back to the tab shows
 // it straight away instead of every item unchecked until the server answers.
@@ -363,7 +364,11 @@ export function GroceryList({
   stapleCategories,
   onAddPantryItem,
 }) {
-  const [deals, setDeals] = useState([]);
+  // Deals and stores decide which store each item sits in, so the list
+  // waits for both (see `ready` below) - drawing it before they arrived
+  // put items in "Any store" for a moment, then moved them.
+  const [deals, setDeals] = useState(() => groceryShared.deals || []);
+  const [dealsLoaded, setDealsLoaded] = useState(() => groceryShared.deals != null);
   // Which ingredient cores are checked off this week — lives on the server
   // (see api.listGroceryChecked/checkGroceryItem) so checking something off
   // on one device shows up on another instead of being stuck in that one
@@ -375,7 +380,8 @@ export function GroceryList({
   // checked (you bought them) but are never added twice.
   const [inInventory, setInInventory] = useState(() => new Set());
   // Your own stores/sections (GrocerySection) and which ingredient goes where.
-  const [sections, setSections] = useState([]);
+  const [sections, setSections] = useState(() => groceryShared.sections || []);
+  const [sectionsLoaded, setSectionsLoaded] = useState(() => groceryShared.sections != null);
   const [loadedWeek, setLoadedWeek] = useState(null);
   const [draggingItem, setDraggingItem] = useState(null);
   // The flyer item open in the detail view (tapping a row's deal tag).
@@ -398,12 +404,35 @@ export function GroceryList({
   const [pantryAddedKeys, setPantryAddedKeys] = useState(() => new Set());
 
   useEffect(() => {
-    api.getRealDeals().then(setDeals).catch(() => {});
+    let cancelled = false;
+    api
+      .getRealDeals()
+      .then((rows) => {
+        if (cancelled) return;
+        setDeals(rows);
+        groceryShared.deals = rows;
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setDealsLoaded(true));
+    api
+      .listGrocerySections()
+      .then((rows) => !cancelled && setSections(rows))
+      .catch(() => {})
+      .finally(() => !cancelled && setSectionsLoaded(true));
     api
       .listWatchlist()
-      .then((rows) => setWatchlist(new Set(rows.map((r) => r.matchName))))
+      .then((rows) => !cancelled && setWatchlist(new Set(rows.map((r) => r.matchName))))
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  // Stores change here (add, rename, drag, file an item); keep the shared
+  // copy in step so the next visit starts from them.
+  useEffect(() => {
+    if (sectionsLoaded) groceryShared.sections = sections;
+  }, [sectionsLoaded, sections]);
 
   async function toggleWatch(deal) {
     const key = (deal.matchName || deal.item).trim().toLowerCase();
@@ -463,13 +492,10 @@ export function GroceryList({
   }, [weekStart]);
 
   const loaded = loadedWeek === weekStart;
+  const ready = loaded && dealsLoaded && sectionsLoaded;
   useEffect(() => {
     if (loaded) weekCache.set(weekStart, { checked, extraItems, overrides, inInventory });
   }, [loaded, weekStart, checked, extraItems, overrides, inInventory]);
-
-  useEffect(() => {
-    api.listGrocerySections().then(setSections).catch(() => setSections([]));
-  }, []);
 
   const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
   const shoppingItems = items.filter((i) => !i.isStaple && !i.removed);
@@ -496,12 +522,31 @@ export function GroceryList({
           return next;
         });
       })
-      .catch(() => {});
+      .catch(() => {
+        // Couldn't ask: file them under "Other" rather than wait forever.
+        if (cancelled) return;
+        setCategoryCache((prev) => ({ ...prev, ...Object.fromEntries(missing.map((core) => [core, prev[core] || "Other"])) }));
+      });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shoppingItems.map((i) => i.core).sort().join("|")]);
+  // The aisle view waits for every item's aisle, so nothing sits under
+  // "Other" for a moment and then moves.
+  const aislesReady = shoppingItems.every((i) => i.core in categoryCache);
+
+  // Each item's best flyer deal, looked up once per change of list or
+  // deals rather than three times per item on every render.
+  const itemNamesKey = shoppingItems.map((i) => i.name).join("|");
+  const bestDealByName = useMemo(() => {
+    const map = new Map();
+    for (const name of itemNamesKey ? itemNamesKey.split("|") : []) {
+      if (!map.has(name)) map.set(name, findDealsFor(name, deals)[0] || null);
+    }
+    return map;
+  }, [itemNamesKey, deals]);
+  const bestDeal = (item) => bestDealByName.get(item.name) ?? null;
 
   // The stores the user actually shops at, in the order they first appear in
   // this week's flyer deals — there's no saved "my stores" list in the
@@ -565,7 +610,7 @@ export function GroceryList({
   // A flyer store you haven't made your own yet becomes one on first use -
   // in the place it's shown, so the stores don't jump around.
   async function moveToStore(item, storeName) {
-    if (storeForItem(item, findDealsFor(item.name, deals)[0] || null) === storeName) return;
+    if (storeForItem(item, bestDeal(item)) === storeName) return;
     if (storeName === ANY_STORE) {
       setSections((prev) => prev.map((s) => ({ ...s, assignments: (s.assignments || []).filter((a) => a.core !== item.core) })));
       await api.unassignFromGrocerySection(item.core);
@@ -781,7 +826,7 @@ export function GroceryList({
   // per row.
   function buildGroups() {
     const rows = shoppingItems.map((item) => {
-      const deal = findDealsFor(item.name, deals)[0] || null;
+      const deal = bestDeal(item);
       return { item, deal, store: storeForItem(item, deal), category: categoryCache[item.core] || null };
     });
 
@@ -856,7 +901,7 @@ export function GroceryList({
 
   const groups = buildGroups();
   const storeRows = shoppingItems.map((item) => {
-    const deal = findDealsFor(item.name, deals)[0] || null;
+    const deal = bestDeal(item);
     return { item, deal, store: storeForItem(item, deal) };
   });
   const storesWithItems = storeOrder.filter((st) => storeRows.some((r) => r.store === st));
@@ -870,7 +915,7 @@ export function GroceryList({
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   const onSaleRows = shoppingItems
-    .map((item) => ({ item, deal: findDealsFor(item.name, deals)[0] || null }))
+    .map((item) => ({ item, deal: bestDeal(item) }))
     .filter((r) => r.deal && !checked[r.item.key]);
   const onSaleStores = [...new Set(onSaleRows.map((r) => r.deal.store).filter(Boolean))];
 
@@ -930,7 +975,7 @@ export function GroceryList({
             </button>
           </form>
 
-          {!loaded ? (
+          {!ready || (view === "aisle" && !aislesReady) ? (
             <div className="riso-grocery-loading" aria-busy="true" aria-label="Loading your list">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="riso-grocery-loading-row" />

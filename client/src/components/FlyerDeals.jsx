@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { dealEmoji } from "../lib/dealEmoji.js";
 import { groceryCore } from "../lib/groceryDedupe.js";
+import { invalidateGroceryShared } from "../lib/groceryCache.js";
 import {
   buildIngredients,
   foldText,
@@ -1003,7 +1004,10 @@ export function FlyerDeals({
   const [importSettings, setImportSettings] = useState(null);
   const [runningImport, setRunningImport] = useState(false);
 
+  // The grocery list caches deals and stores between visits; anything
+  // here can change them (an import, + List), so it reloads them next time.
   function loadDeals() {
+    invalidateGroceryShared();
     api.getDeals().then(setDeals).catch(() => setDeals(null));
   }
 
@@ -1067,6 +1071,7 @@ export function FlyerDeals({
   // + List puts the ingredient on this week's list under that store; again
   // takes it off.
   async function listAt(g, deal) {
+    invalidateGroceryShared();
     const core = groceryCore(g.name);
     if (isListedAt(g, deal.store)) {
       onRemoveFromGroceryList(g.name);
