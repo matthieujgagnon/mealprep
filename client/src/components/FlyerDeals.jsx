@@ -95,6 +95,14 @@ function dealPhotoSrc(deal) {
   return /^https?:/i.test(deal.imageUrl) ? api.dealPhotoUrl(deal.id) : deal.imageUrl;
 }
 
+function photoHostLabel(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "the photo";
+  }
+}
+
 // The item's own photo from the flyer; a food emoji when there isn't one or
 // it won't load.
 function DealPhoto({ deal, size }) {
@@ -273,6 +281,20 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
   const [photoFailed, setPhotoFailed] = useState(false);
+  const [photoCheck, setPhotoCheck] = useState(null);
+
+  // When the photo doesn't show, ask the server what the photo site said.
+  useEffect(() => {
+    if (!photoFailed || !deal.imageUrl || !/^https?:/i.test(deal.imageUrl)) return;
+    let live = true;
+    api
+      .checkDealPhoto(deal.id)
+      .then((r) => live && setPhotoCheck(r))
+      .catch((err) => live && setPhotoCheck({ ok: false, tries: [{ reason: err.message }] }));
+    return () => {
+      live = false;
+    };
+  }, [photoFailed, deal.id, deal.imageUrl]);
 
   const meter = meterFor(deal);
   const history = deal.history || [];
@@ -314,6 +336,18 @@ function DealDetailModal({ deal, onClose, onList, onToggleWatch }) {
             </span>
           )}
           {isLow && <span className="riso-deal-detail-low">6-month low!</span>}
+          {photoCheck && (
+            <p className="riso-deal-detail-photo-why">
+              {photoCheck.ok
+                ? "The app's server got this photo, but the page couldn't show it."
+                : `Photo didn't load: ${photoHostLabel(photoCheck.url)} ${photoCheck.tries.at(-1)?.reason || "couldn't be read"}.`}{" "}
+              {photoCheck.url && (
+                <a href={photoCheck.url} target="_blank" rel="noreferrer">
+                  Open the photo ↗
+                </a>
+              )}
+            </p>
+          )}
           {flyerPage && (
             <a className="riso-deal-detail-page" href={flyerPage} target="_blank" rel="noreferrer">
               See the flyer page ↗

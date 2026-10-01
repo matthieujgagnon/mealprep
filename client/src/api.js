@@ -73,6 +73,7 @@ export const api = {
   // those must never show up as "on sale" anywhere else.
   getRealDeals: () => request("/deals").then((d) => (d.isMockData ? [] : d.deals)),
   dealPhotoUrl: (id) => `${BASE}/deals/${encodeURIComponent(id)}/photo`,
+  checkDealPhoto: (id) => request(`/deals/${encodeURIComponent(id)}/photo-check`),
   uploadFlyer: async (store, file) => {
     const form = new FormData();
     form.append("store", store);

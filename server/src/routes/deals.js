@@ -4,7 +4,7 @@ import { freezeTip } from "../lib/foodkeeper.js";
 import { loadBaselines } from "../lib/baselines.js";
 import { compareToBaseline, findBaseline } from "../lib/statcan.js";
 import { tidyDealTitle } from "../lib/dealTitle.js";
-import { loadDealPhoto } from "../lib/dealPhoto.js";
+import { checkDealPhoto, loadDealPhoto } from "../lib/dealPhoto.js";
 
 export const dealsRouter = Router();
 
@@ -186,4 +186,16 @@ dealsRouter.get("/:id/photo", async (req, res) => {
   res.set("Content-Type", photo.type);
   res.set("Cache-Control", "private, max-age=604800");
   res.send(photo.body);
+});
+
+// GET /api/deals/:id/photo-check - why a deal's photo isn't showing: each
+// address tried and what it answered. Shown in the deal's detail view.
+dealsRouter.get("/:id/photo-check", async (req, res) => {
+  const deal = await prisma.flyerDeal.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    select: { imageUrl: true },
+  });
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!deal.imageUrl) return res.json({ url: null, ok: false, tries: [] });
+  res.json(await checkDealPhoto(deal.imageUrl));
 });

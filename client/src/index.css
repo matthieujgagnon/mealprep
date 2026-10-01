@@ -7633,6 +7633,13 @@ img.riso-deal-photo {
   margin: 0 -4px;
 }
 
+/* While dragging, the drag's own edge auto-scroll nudges the board a few
+   pixels; mandatory snapping would turn that into a jump to the weekend
+   and drop the recipe on the wrong day. */
+.app.dnd-active .riso-planner-scroll {
+  scroll-snap-type: none;
+}
+
 .riso-planner-grid {
   display: grid;
   grid-template-columns: 84px repeat(7, calc((100% - 84px - 70px) / 5));
@@ -11919,6 +11926,27 @@ body.no-select {
   padding: 24px;
   object-fit: contain;
   background: #fff;
+}
+
+.riso-deal-detail-photo-why {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 10px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.riso-deal-detail-photo-why a {
+  color: var(--riso-accent);
+  font-weight: 700;
 }
 
 .riso-deal-detail-letter {
