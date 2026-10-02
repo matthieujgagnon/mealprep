@@ -14481,3 +14481,181 @@ body.no-select {
   color: var(--riso-green-text);
   font-weight: 800;
 }
+
+/* Grocery: week picker, "→ next week", carried-over tag, On sale list. */
+.riso-grocery-week-nav {
+  margin: 0;
+}
+
+.riso-row-push {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 14px/1 var(--riso-font-display);
+  cursor: pointer;
+  padding: 0;
+}
+
+.riso-row-push:hover {
+  background: var(--riso-yellow);
+}
+
+.riso-row-carried {
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--riso-canvas);
+  border: 1.5px dashed var(--riso-ink);
+  font: 600 10.5px/18px var(--riso-font-mono);
+  white-space: nowrap;
+}
+
+.riso-grocery-removed.pushed {
+  border-style: dashed;
+}
+
+.riso-grocery-sale-list {
+  list-style: none;
+  margin: 10px 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-grocery-sale-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name price"
+    "meta ends";
+  gap: 1px 8px;
+  padding: 8px 10px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.riso-grocery-sale-row:hover {
+  box-shadow: 3px 3px 0 var(--riso-ink);
+}
+
+.riso-grocery-sale-name {
+  grid-area: name;
+  font: 700 14px/1.25 var(--riso-font-display);
+  overflow-wrap: anywhere;
+}
+
+.riso-grocery-sale-price {
+  grid-area: price;
+  justify-self: end;
+  font: 800 14px var(--riso-font-display);
+  color: var(--riso-green-ink, #0b7a3b);
+  white-space: nowrap;
+}
+
+.riso-grocery-sale-meta {
+  grid-area: meta;
+  font: 500 10.5px var(--riso-font-mono);
+  color: var(--riso-soft);
+}
+
+.riso-grocery-sale-ends {
+  grid-area: ends;
+  justify-self: end;
+  font: 600 10.5px var(--riso-font-mono);
+  color: var(--riso-soft);
+  white-space: nowrap;
+}
+
+.riso-grocery-sale-ends.soon {
+  color: #8a0f55;
+  font-weight: 800;
+}
+
+.riso-grocery-sale-missed {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1.5px dashed var(--riso-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.riso-grocery-sale-missed p {
+  margin: 0;
+}
+
+.riso-push-ask-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(22, 24, 31, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.riso-push-ask {
+  width: 380px;
+  max-width: 100%;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--riso-ink);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-push-ask-text {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.riso-push-ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.riso-push-ask-actions button {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-push-ask-keep {
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+}
+
+.riso-push-ask-go {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+/* Pushed, not removed: no strikethrough. */
+.riso-grocery-removed.pushed .riso-grocery-removed-chip,
+.riso-grocery-sale-missed .riso-grocery-removed-chip {
+  text-decoration: none;
+  background: var(--riso-surface);
+}

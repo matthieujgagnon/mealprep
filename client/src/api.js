@@ -110,6 +110,9 @@ export const api = {
     request(`/grocery-extra-items?week=${encodeURIComponent(weekStart)}`),
   addGroceryExtra: (weekStart, item) =>
     request("/grocery-extra-items", { method: "POST", body: JSON.stringify({ weekStart, ...item }) }),
+  pushGroceryItem: (body) => request("/grocery-extra-items/push", { method: "POST", body: JSON.stringify(body) }),
+  pullBackGroceryItem: (fromWeek, key) =>
+    request("/grocery-extra-items/pull-back", { method: "POST", body: JSON.stringify({ fromWeek, key }) }),
   deleteGroceryExtra: (id) => request(`/grocery-extra-items/${id}`, { method: "DELETE" }),
 
   listGroceryOverrides: (weekStart) =>

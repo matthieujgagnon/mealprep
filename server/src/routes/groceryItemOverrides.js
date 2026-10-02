@@ -29,7 +29,10 @@ groceryItemOverridesRouter.put("/", async (req, res) => {
   }
   if ("removed" in req.body) data.removed = !!req.body.removed;
   if ("hidden" in req.body) data.hidden = !!req.body.hidden;
-  if (data.removed === false) data.hidden = false; // put back = visible again
+  if (data.removed === false) {
+    data.hidden = false; // put back = visible again
+    data.movedTo = null;
+  }
 
   const where = { userId_weekStart_key: { userId: req.userId, weekStart, key } };
   const saved = await prisma.groceryItemOverride.upsert({

@@ -19,7 +19,8 @@ import { useDeals } from "../lib/dealsStore.js";
 import { buildGroceryList, formatAmount } from "../lib/groceryList.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
 import { parseQuantityInput } from "../lib/units.js";
-import { formatWeekRangeLabel, isCurrentWeek } from "../lib/dates.js";
+import { currentWeekStart, formatWeekRangeLabel, isCurrentWeek, parseDateKey, shiftWeek } from "../lib/dates.js";
+import { dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
 import { DealDetailModal } from "./FlyerDeals.jsx";
@@ -38,6 +39,24 @@ const ANY_STORE = "Any store"; // unfiled items with no sale, once you've made s
 // The last loaded state of each week's list, so coming back to the tab shows
 // it straight away instead of every item unchecked until the server answers.
 const weekCache = new Map();
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+function daysUntilKey(key) {
+  const today = new Date();
+  const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const d = parseDateKey(key);
+  return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - start) / DAY_MS);
+}
+function longDay(key) {
+  return parseDateKey(key).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+// "ends today", "ends tomorrow", "ends Wed"
+function endsLabel(key, left) {
+  if (left != null && left < 0) return "ended";
+  if (left === 0) return "ends today";
+  if (left === 1) return "ends tomorrow";
+  return `ends ${parseDateKey(key).toLocaleDateString("en-US", { weekday: "short" })}`;
+}
 
 function loadStorePrefs() {
   try {
@@ -60,13 +79,6 @@ function parseAddInput(raw) {
     return { name: match[2].trim(), quantity: parseQuantityInput(match[1]) };
   }
   return { name: trimmed, quantity: null };
-}
-
-function formatStoreList(stores) {
-  if (stores.length === 0) return "";
-  if (stores.length === 1) return stores[0];
-  if (stores.length === 2) return `${stores[0]} and ${stores[1]}`;
-  return `${stores.slice(0, -1).join(", ")} and ${stores[stores.length - 1]}`;
 }
 
 // Groups shopping items by which recipe(s) they're used in. A shared
@@ -179,7 +191,7 @@ function DealTag({ deal, onOpen }) {
   );
 }
 
-function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
+function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStore, sub, onDelete, onPush, onSetQuantity, dragging, rowRef, dragProps }) {
   return (
     <div
       ref={rowRef}
@@ -210,6 +222,11 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
             {item.name}
             {item.varieties.length > 0 && ` (${item.varieties.join(", ")})`}
           </span>
+          {item.pushedFrom && (
+            <span className="riso-row-carried" title={`Pushed from the week of ${formatWeekRangeLabel(item.pushedFrom)}`}>
+              from last week
+            </span>
+          )}
         </span>
         {sub && <span className="riso-row-sub">{sub}</span>}
       </span>
@@ -219,6 +236,20 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
         showStore && <span className="riso-row-store static">{store}</span>
       )}
       <QuantityCell item={item} onSave={onSetQuantity} />
+      {onPush && !checked && (
+        <button
+          type="button"
+          className="riso-row-push"
+          aria-label={`Push ${item.name} to next week`}
+          title="Not this week: push it to next week's list"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPush();
+          }}
+        >
+          →
+        </button>
+      )}
       <button
         type="button"
         className="riso-row-delete"
@@ -360,6 +391,7 @@ export function GroceryList({
   user,
   plannerEntries,
   weekStart,
+  onChangeWeek,
   customStaples,
   excludedStaples,
   stapleCategories,
@@ -368,7 +400,16 @@ export function GroceryList({
   // Deals and stores decide which store each item sits in, so the list
   // waits for both (see `ready` below) - drawing it before they arrived
   // put items in "Any store" for a moment, then moved them.
-  const { deals, loaded: dealsLoaded } = useDeals();
+  const { deals: allDeals, loaded: dealsLoaded } = useDeals();
+  // The deals that still run during the week on screen: none for a past
+  // week, and for next week only the ones whose flyer hasn't ended by then.
+  const deals = useMemo(() => {
+    if (weekStart < currentWeekStart()) return [];
+    return allDeals.filter((d) => !d.validUntil || d.validUntil >= weekStart);
+  }, [allDeals, weekStart]);
+  const nextWeek = shiftWeek(weekStart, 1);
+  // "Push to next week" on an item whose sale ends before then asks first.
+  const [pushAsk, setPushAsk] = useState(null); // { item, deal }
   // Which ingredient cores are checked off this week — lives on the server
   // (see api.listGroceryChecked/checkGroceryItem) so checking something off
   // on one device shows up on another instead of being stuck in that one
@@ -501,7 +542,8 @@ export function GroceryList({
   const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
   const shoppingItems = items.filter((i) => !i.isStaple && !i.removed);
   const hiddenKeys = new Set(overrides.filter((o) => o.hidden).map((o) => o.key));
-  const removedItems = items.filter((i) => !i.isStaple && i.removed && !hiddenKeys.has(i.key));
+  const removedItems = items.filter((i) => !i.isStaple && i.removed && !i.movedTo && !hiddenKeys.has(i.key));
+  const pushedItems = items.filter((i) => !i.isStaple && i.removed && i.movedTo);
 
   // Each item's grocery aisle ("Fruits & vegetables", "Pantry", ...) - the
   // same aisles the Flyers page groups by - for the aisle view and the line
@@ -812,6 +854,48 @@ export function GroceryList({
     }
   }
 
+  // "→": off this week's list, onto next week's. A sale that ends before
+  // next week is worth a second look first.
+  async function pushItem(item, deal, { force = false } = {}) {
+    if (!force && deal?.validUntil && deal.validUntil < nextWeek) {
+      setPushAsk({ item, deal });
+      return;
+    }
+    setPushAsk(null);
+    const single = item.parts.length === 1 ? item.parts[0] : { quantity: null, unit: null };
+    const quantityText = item.customQuantity || (item.parts.length > 1 ? formatAmount(item.parts) : null);
+    setOverrides((prev) => [
+      ...prev.filter((o) => o.key !== item.key),
+      { ...(prev.find((o) => o.key === item.key) || { key: item.key, quantity: null }), removed: true, movedTo: nextWeek },
+    ]);
+    try {
+      const { override } = await api.pushGroceryItem({
+        fromWeek: weekStart,
+        toWeek: nextWeek,
+        key: item.key,
+        name: item.name,
+        quantity: single.quantity,
+        unit: single.unit,
+        quantityText,
+      });
+      setOverrides((now) => [...now.filter((o) => o.key !== item.key), override]);
+    } catch {
+      setOverrides((now) => now.filter((o) => !(o.key === item.key && o.movedTo === nextWeek)));
+    }
+    weekCache.delete(nextWeek);
+  }
+
+  async function pullBack(item) {
+    setOverrides((prev) =>
+      prev.map((o) => (o.key === item.key ? { ...o, removed: false, movedTo: null } : o)).filter((o) => o.removed || o.quantity)
+    );
+    await api.pullBackGroceryItem(weekStart, item.key).catch(() => {});
+    weekCache.delete(item.movedTo);
+    const [extras, overrideRows] = await Promise.all([api.listGroceryExtras(weekStart), api.listGroceryOverrides(weekStart)]).catch(() => [null, null]);
+    if (extras) setExtraItems(extras);
+    if (overrideRows) setOverrides(overrideRows);
+  }
+
   function removeItem(item) {
     if (item.isManual) deleteExtraItem(item.manualId);
     else setOverride(item.key, { removed: true });
@@ -915,10 +999,17 @@ export function GroceryList({
   const totalCount = shoppingItems.length;
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
+  // The sidebar's On sale list: what on this list is on sale, the saving,
+  // and when each sale ends (soonest first), so you know what to buy first.
   const onSaleRows = shoppingItems
     .map((item) => ({ item, deal: bestDeal(item) }))
-    .filter((r) => r.deal && !checked[r.item.key]);
-  const onSaleStores = [...new Set(onSaleRows.map((r) => r.deal.store).filter(Boolean))];
+    .filter((r) => r.deal && !checked[r.item.key])
+    .map((r) => ({ ...r, saving: dealSavings(r.deal), ends: r.deal.validUntil || null }))
+    .sort((a, b) => (a.ends || "9999").localeCompare(b.ends || "9999") || (b.saving?.pct ?? 0) - (a.saving?.pct ?? 0));
+  // Pushed to next week while on sale now, with the sale over by then.
+  const missedSales = pushedItems
+    .map((item) => ({ item, deal: findDealsFor(item.name, deals)[0] || null }))
+    .filter((r) => r.deal?.validUntil && r.deal.validUntil < (r.item.movedTo || nextWeek));
 
   const weekLabel = isCurrentWeek(weekStart)
     ? formatWeekRangeLabel(weekStart)
@@ -939,6 +1030,24 @@ export function GroceryList({
             Grocery <span className="accent">list.</span>
           </h1>
         </div>
+        {onChangeWeek && (
+          <div className="riso-planner-nav-row riso-grocery-week-nav" role="group" aria-label="Week">
+            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, -1))} aria-label="Previous week">
+              ‹
+            </button>
+            <span className="riso-planner-week-label">{formatWeekRangeLabel(weekStart).replace(/, \d{4}$/, "")}</span>
+            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, 1))} aria-label="Next week">
+              ›
+            </button>
+            {isCurrentWeek(weekStart) ? (
+              <span className="riso-planner-week-badge">this week</span>
+            ) : (
+              <button type="button" className="riso-chip small" onClick={() => onChangeWeek(currentWeekStart())}>
+                This week
+              </button>
+            )}
+          </div>
+        )}
         <Segmented options={VIEWS} value={view} onChange={setView} />
         <div className="riso-grocery-share-wrap">
           <button
@@ -1024,6 +1133,7 @@ export function GroceryList({
                               store={row.store}
                               sub={subLineFor(row)}
                               onDelete={() => removeItem(row.item)}
+                              onPush={() => pushItem(row.item, row.deal)}
                               onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
                             />
                           ))}
@@ -1057,11 +1167,30 @@ export function GroceryList({
                     showStore
                     sub={subLineFor(row)}
                     onDelete={() => removeItem(row.item)}
+                    onPush={() => pushItem(row.item, row.deal)}
                     onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
                   />
                 ))}
               </section>
             ))
+          )}
+
+          {pushedItems.length > 0 && (
+            <div className="riso-grocery-removed pushed" aria-label="Pushed to next week">
+              <span className="riso-grocery-removed-label">Pushed to next week</span>
+              {pushedItems.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="riso-grocery-removed-chip"
+                  aria-label={`Bring ${item.name} back to this week`}
+                  title="Bring it back to this week"
+                  onClick={() => pullBack(item)}
+                >
+                  {item.name} <span aria-hidden="true">↺</span>
+                </button>
+              ))}
+            </div>
           )}
 
           {removedItems.length > 0 && (
@@ -1117,27 +1246,75 @@ export function GroceryList({
             <span className="riso-sticker yellow" style={{ top: -14, right: 18, transform: "rotate(5deg)" }}>
               save!
             </span>
-            <div className="riso-eyebrow">On sale</div>
+            <div className="riso-eyebrow">On sale{onSaleRows.length > 0 ? ` · ${onSaleRows.length} on this list` : ""}</div>
             {onSaleRows.length > 0 ? (
               <>
-                <p className="riso-grocery-sale-amt">
-                  {onSaleRows.length} item{onSaleRows.length !== 1 ? "s" : ""} on sale
-                </p>
-                <p className="riso-grocery-sale-copy">
-                  {onSaleRows.length} item{onSaleRows.length !== 1 ? "s" : ""} on this list{" "}
-                  {onSaleRows.length !== 1 ? "are" : "is"} on sale at {formatStoreList(onSaleStores)}. They're
-                  already sorted under the store with the deal.
-                </p>
+                <ul className="riso-grocery-sale-list">
+                  {onSaleRows.map(({ item, deal, saving, ends }) => {
+                    const left = ends ? daysUntilKey(ends) : null;
+                    return (
+                      <li key={item.key}>
+                        <button type="button" className="riso-grocery-sale-row" onClick={() => openDealDetail(deal, item.name)}>
+                          <span className="riso-grocery-sale-name">{item.name}</span>
+                          <span className="riso-grocery-sale-price">{deal.price}</span>
+                          <span className="riso-grocery-sale-meta">
+                            {deal.store}
+                            {saving?.pct != null ? ` · ${Math.round(saving.pct * 100)}% off` : ""}
+                          </span>
+                          {ends && (
+                            <span className={`riso-grocery-sale-ends${left != null && left <= 2 ? " soon" : ""}`}>
+                              {endsLabel(ends, left)}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="riso-grocery-sale-copy">Soonest-ending first. Tap one for the flyer item.</p>
               </>
             ) : (
               <>
-                <p className="riso-grocery-sale-amt">No deals yet</p>
-                <p className="riso-grocery-sale-copy">Nothing on this list matches a current flyer deal.</p>
+                <p className="riso-grocery-sale-amt">No deals {isCurrentWeek(weekStart) || weekStart > currentWeekStart() ? "yet" : "that week"}</p>
+                <p className="riso-grocery-sale-copy">
+                  {weekStart < currentWeekStart()
+                    ? "Past weeks' flyers are over."
+                    : "Nothing on this list matches a flyer deal that runs this week."}
+                </p>
               </>
+            )}
+            {missedSales.length > 0 && (
+              <div className="riso-grocery-sale-missed">
+                <p>Pushed to next week, but the sale ends before then:</p>
+                {missedSales.map(({ item, deal }) => (
+                  <button key={item.key} type="button" className="riso-grocery-removed-chip" onClick={() => pullBack(item)}>
+                    {item.name} · {deal.store} {deal.price} — bring back <span aria-hidden="true">↺</span>
+                  </button>
+                ))}
+              </div>
             )}
           </section>
         </aside>
       </div>
+      {pushAsk && (
+        <div className="riso-push-ask-overlay" onClick={() => setPushAsk(null)}>
+          <div className="riso-push-ask" role="dialog" aria-label="The sale ends before next week" onClick={(e) => e.stopPropagation()}>
+            <p className="riso-eyebrow">Sale ends first</p>
+            <p className="riso-push-ask-text">
+              <strong>{pushAsk.item.name}</strong> is {pushAsk.deal.price} at {pushAsk.deal.store} until{" "}
+              {longDay(pushAsk.deal.validUntil)}. Next week's list starts {longDay(nextWeek)}, after the sale.
+            </p>
+            <div className="riso-push-ask-actions">
+              <button type="button" className="riso-push-ask-keep" onClick={() => setPushAsk(null)}>
+                Keep it this week
+              </button>
+              <button type="button" className="riso-push-ask-go" onClick={() => pushItem(pushAsk.item, pushAsk.deal, { force: true })}>
+                Push anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {storeMode && (
         <StoreMode
           rows={storeRows}

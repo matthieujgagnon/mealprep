@@ -329,6 +329,8 @@ export function buildGroceryList(
         : SPICE_WORDS.includes(resolvedCore),
       isManual: true,
       manualId: extra.id,
+      // Pushed here from that week's list.
+      pushedFrom: extra.pushedFrom || null,
     };
   });
 
@@ -336,7 +338,7 @@ export function buildGroceryList(
   return [...recipeItems, ...manualItems]
     .map((item) => {
       const o = overrideByKey.get(item.key);
-      return { ...item, removed: !!o?.removed, customQuantity: o?.quantity || null };
+      return { ...item, removed: !!o?.removed, movedTo: (o?.removed && o?.movedTo) || null, customQuantity: o?.quantity || null };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
