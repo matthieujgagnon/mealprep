@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findBestDeal, findDealsFor } from "./similarRecipes.js";
+import { coversIngredient, findBestDeal, findDealsFor, findSaleDeal } from "./similarRecipes.js";
 
 const deal = (store, item, matchName, unitPrice, unitBasis = "each", extra = {}) => ({ store, item, matchName, unitPrice, unitBasis, price: `$${unitPrice}`, ...extra });
 
@@ -24,5 +24,23 @@ describe("findDealsFor", () => {
     expect(findBestDeal("lemon juice", deals)).toBeNull();
     expect(findBestDeal("apple cider vinegar", deals)).toBeNull();
     expect(findBestDeal("red bell pepper", deals)).toBeNull();
+  });
+});
+
+describe("what the recipe card counts as on hand, and as on sale", () => {
+  it("needs the same cut when both names say one", () => {
+    expect(coversIngredient("Chicken Breast Fillets", "chicken thighs")).toBe(false);
+    expect(coversIngredient("Chicken Breast Fillets", "boneless skinless chicken breasts")).toBe(true);
+    expect(coversIngredient("chicken", "chicken thighs")).toBe(true);
+    expect(coversIngredient("pork chops", "pork tenderloin")).toBe(false);
+    expect(coversIngredient("lean ground beef", "ground beef")).toBe(true);
+    expect(coversIngredient("mangoes", "mango")).toBe(true);
+  });
+
+  it("only tags a deal that's really on sale", () => {
+    const regular = { id: 1, store: "Metro", item: "Mangoes", matchName: "mangoes", price: "$11.99", unitPrice: 11.99, unitBasis: "each" };
+    const sale = { id: 2, store: "Maxi", item: "Mangoes", matchName: "mangoes", price: "$1.50", unitPrice: 1.5, unitBasis: "each", regularPrice: 2.49 };
+    expect(findSaleDeal("mangoes", [regular])).toBe(null);
+    expect(findSaleDeal("mangoes", [regular, sale])).toBe(sale);
   });
 });

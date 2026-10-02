@@ -1,5 +1,6 @@
 import { canonicalize, capitalize, STAPLE_WORDS, SPICE_WORDS } from "./groceryList.js";
 import { familyKey } from "./ingredientFamilies.js";
+import { dealSavings } from "./flyerIngredients.js";
 
 // Perishable ingredients that typically go bad within a week if bought fresh.
 // Used to flag "use it up" nudges on the planner and grocery list.
@@ -66,6 +67,32 @@ export function core(ingredientName) {
   const strippedCore = words.join(" ").trim() || rawCore;
   const c = familyKey(strippedCore);
   return STAPLES_SET.has(c) ? null : c;
+}
+
+// Cuts of meat and fish: "chicken thighs" and "chicken breast fillets" are
+// both chicken to plan around, but not the same thing to have on hand.
+const CUT_WORDS = new Set([
+  "breast", "thigh", "leg", "drumstick", "wing", "fillet", "tenderloin", "loin", "chop", "rib", "roast",
+  "steak", "ground", "shoulder", "belly", "shank", "brisket", "sirloin", "flank", "cutlet", "strip",
+]);
+function cutsOf(name) {
+  return new Set(
+    canonicalize(name)
+      .core.split(" ")
+      .filter((w) => CUT_WORDS.has(w))
+  );
+}
+
+// Whether an inventory item covers a recipe ingredient: the same ingredient
+// (core) and, when both say which cut, the same cut - plain "chicken"
+// covers any, but chicken breasts don't cover chicken thighs.
+export function coversIngredient(haveName, ingredientName) {
+  const c = core(ingredientName);
+  if (c === null || core(haveName) !== c) return false;
+  const have = cutsOf(haveName);
+  const want = cutsOf(ingredientName);
+  if (have.size === 0 || want.size === 0) return true;
+  return [...want].some((w) => have.has(w));
 }
 
 // Not every shared ingredient is equally worth surfacing. A shared
@@ -326,6 +353,14 @@ export function findDealsFor(ingredientName, deals) {
 
 export function findBestDeal(ingredientName, deals) {
   return findDealsFor(ingredientName, deals)[0] || null;
+}
+
+// The cheapest flyer deal for an ingredient that's really on sale this week
+// (see dealSavings: off its regular price, under Quebec's average, or low
+// for its last 6 months) - for the "on sale" pills, which a regular price
+// that only happens to be in the flyer shouldn't earn.
+export function findSaleDeal(ingredientName, deals) {
+  return findDealsFor(ingredientName, deals).find((d) => dealSavings(d)) || null;
 }
 
 // Matches this week's flyer deals against the cookbook: "chicken is $2.99/lb

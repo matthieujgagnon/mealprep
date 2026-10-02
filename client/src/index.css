@@ -1971,6 +1971,14 @@ select {
   white-space: nowrap;
 }
 
+.inv-card-strip.expired {
+  background: var(--riso-track);
+}
+
+.inv-card-days.expired {
+  background: var(--riso-hot);
+}
+
 .inv-card-check {
   position: relative;
   width: 18px;
@@ -13825,6 +13833,12 @@ body.no-select {
   font: 700 11.5px var(--riso-font-display);
   color: var(--riso-ink);
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-sale-tag:hover,
+.riso-sale-tag:focus-visible {
+  background: var(--riso-yellow);
 }
 
 .riso-sale-tag-price {
