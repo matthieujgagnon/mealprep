@@ -353,7 +353,7 @@ function photoFor(item) {
 
 // The photo, else a cream tile with a food emoji (or its first letter) -
 // and the same tile if the photo won't load.
-function ItemPhoto({ item }) {
+export function ItemPhoto({ item }) {
   const photo = photoFor(item);
   const [failed, setFailed] = useState(null);
   if (photo && failed !== photo.src) {

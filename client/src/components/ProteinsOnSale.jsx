@@ -2,14 +2,19 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { dealSavings, dealVerdict, tilePrice } from "../lib/flyerIngredients.js";
-import { proteinName, proteinsOnSale } from "../lib/proteins.js";
+import { PROTEINS, compareProteinDeals, proteinName, proteinsOnSale } from "../lib/proteins.js";
 import { DealDetailModal } from "./FlyerDeals.jsx";
 
-function perLbText(deal) {
+// { amount: "$2.99", unit: "/lb" } - the price per lb (or each).
+function priceParts(deal) {
   const p = tilePrice(deal);
-  if (!p) return deal.price;
-  const unit = p.basis === "each" ? " ea" : `/${p.basis}`;
-  return `$${p.price.toFixed(2)}${unit}`;
+  if (!p) return { amount: deal.price, unit: "" };
+  return { amount: `$${p.price.toFixed(2)}`, unit: p.basis === "each" ? "ea" : `/${p.basis}` };
+}
+
+function perLbText(deal) {
+  const { amount, unit } = priceParts(deal);
+  return unit === "ea" ? `${amount} ea` : `${amount}${unit}`;
 }
 
 function savingText(deal) {
@@ -18,14 +23,34 @@ function savingText(deal) {
   return s.pct != null ? `${Math.round(s.pct * 100)}% ${s.why}` : s.why;
 }
 
-// Home's "Proteins on sale this week": chicken, beef, pork, fish... each
-// with its best buy of the week (a plain cut, not a pie or a sausage), its
-// price per lb, the store and whether it's worth buying. Tapping a row
-// opens that deal's card, with the kind's other sale items under "Also on
+// Home's "Proteins on sale": up to five of the week's best buys, one per
+// kind (a plain cut, not a pie or a sausage), each with its store, saving
+// and price per lb. The cheapest per lb is the "Best deal"; the others
+// say how good a buy they are. Under them, one line for the kinds not
+// worth buying this week and the ones not on any flyer. Tapping a row
+// opens that deal's card, with the kind's other items under "Also on
 // sale".
 export function ProteinsOnSale({ deals, onNavigate, footer = null }) {
   const [open, setOpen] = useState(null); // { deal, others }
   const kinds = proteinsOnSale(deals);
+  const top = kinds
+    .filter((k) => k.best)
+    .sort((a, b) => compareProteinDeals(a.best, b.best))
+    .slice(0, 5);
+  const perLb = (d) => {
+    const p = tilePrice(d);
+    return p?.basis === "lb" ? p.price : Infinity;
+  };
+  const cheapest = top.reduce((best, k) => (best == null || perLb(k.best) < perLb(best.best) ? k : best), null);
+  const shown = new Set(kinds.map((k) => k.protein.id));
+  const notWorth = kinds
+    .filter((k) => !k.best && k.all.length > 0)
+    .map((k) => {
+      const low = [...k.all].sort((a, b) => perLb(a) - perLb(b))[0];
+      return `${proteinName(low)} ${perLbText(low)} · not worth it`;
+    });
+  const missing = PROTEINS.filter((p) => !shown.has(p.id)).map((p) => p.label);
+  const asides = [...notWorth, ...(missing.length > 0 ? [`${missing.join(", ")} none`] : [])];
 
   function show(deal, others) {
     setOpen({ deal, others });
@@ -48,48 +73,57 @@ export function ProteinsOnSale({ deals, onNavigate, footer = null }) {
       ) : kinds.length === 0 ? (
         <p className="riso-empty-note">No meat or fish on this week's flyers.</p>
       ) : (
-        <ul className="riso-protein-list">
-          {kinds.map(({ protein, best, onSale, all }) => {
-            if (!best) {
-              return (
-                <li key={protein.id} className="riso-protein-row none">
-                  <span className="riso-protein-kind">
-                    <span aria-hidden="true">{protein.emoji}</span> {protein.label}
-                  </span>
-                  <span className="riso-protein-none">Nothing really on sale</span>
-                </li>
-              );
-            }
-            const verdict = dealVerdict(best);
-            const others = all.filter((d) => d.id !== best.id);
-            const more = onSale.length - 1;
-            return (
-              <li key={protein.id}>
-                <button
-                  type="button"
-                  className="riso-protein-row"
-                  onClick={() => show(best, others)}
-                  aria-label={`${protein.label}: ${proteinName(best)} at ${best.store}, ${perLbText(best)}. ${verdict?.label || ""}`}
-                >
-                  <span className="riso-protein-kind">
-                    <span aria-hidden="true">{protein.emoji}</span> {protein.label}
-                  </span>
-                  <span className="riso-protein-item">
-                    <span className="riso-protein-name">{proteinName(best)}</span>
-                    <span className="riso-protein-meta">
-                      {best.store}
-                      {savingText(best) ? ` · ${savingText(best)}` : ""}
-                      {more > 0 ? ` · +${more} more` : ""}
-                    </span>
-                  </span>
-                  <span className="riso-protein-price">{perLbText(best)}</span>
-                  {verdict && <span className={`riso-protein-verdict ${verdict.key}`}>{verdict.label}</span>}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {top.length === 0 ? (
+            <p className="riso-empty-note">Nothing really on sale this week.</p>
+          ) : (
+            <ul className="riso-home-rows riso-protein-list">
+              {top.map((k) => {
+                const { protein, best, onSale, all } = k;
+                const verdict = dealVerdict(best);
+                const others = all.filter((d) => d.id !== best.id);
+                const { amount, unit } = priceParts(best);
+                const saving = savingText(best);
+                return (
+                  <li key={protein.id}>
+                    <button
+                      type="button"
+                      className="riso-protein-row"
+                      onClick={() => show(best, others)}
+                      aria-label={`${protein.label}: ${proteinName(best)} at ${best.store}, ${perLbText(best)}. ${verdict?.label || ""}`}
+                    >
+                      <span className="riso-protein-emoji" aria-hidden="true">
+                        {protein.emoji}
+                      </span>
+                      <span className="riso-protein-item">
+                        <span className="riso-protein-name">{proteinName(best)}</span>
+                        <span className="riso-protein-meta">
+                          {best.store}
+                          {saving ? ` · ${saving}` : ""}
+                          {onSale.length > 1 ? ` · +${onSale.length - 1} more` : ""}
+                        </span>
+                      </span>
+                      <span className="riso-protein-right">
+                        <span className="riso-protein-price">
+                          {amount}
+                          {unit && <small>{unit}</small>}
+                        </span>
+                        {k === cheapest ? (
+                          <span className="riso-protein-best">Best deal</span>
+                        ) : (
+                          verdict && <span className={`riso-protein-verdict ${verdict.key}`}>{verdict.label}</span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {asides.length > 0 && <p className="riso-protein-asides">{asides.join(" · ")}</p>}
+        </>
       )}
+      <div className="riso-home-mini-spacer" />
       {footer}
       {open &&
         createPortal(

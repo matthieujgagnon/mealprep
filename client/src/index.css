@@ -7528,6 +7528,71 @@ button.riso-table-group-head:disabled {
   margin-top: 10px;
 }
 
+/* Tonight is a written meal, not a recipe: a tilted yellow tile with its
+   emoji where the photo would be. */
+.riso-home-hero-body.note {
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 24px;
+}
+
+.riso-home-hero-emoji {
+  width: clamp(150px, 26%, 220px);
+  min-height: 200px;
+  box-sizing: border-box;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-yellow);
+  box-shadow: 4px 4px 0 var(--riso-ink);
+  transform: rotate(-3deg);
+  font-size: 92px;
+  line-height: 1;
+}
+
+.riso-home-hero-body.note .riso-home-hero-info {
+  gap: 10px;
+}
+
+.riso-home-hero-body.note .riso-home-hero-title {
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.riso-home-hero-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-home-hero-pill {
+  padding: 3px 12px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  font: 500 13px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-home-hero-pill.cream {
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  border-color: var(--riso-ink);
+  font-weight: 700;
+}
+
+.riso-home-hero-body.note .riso-home-hero-blurb {
+  font-size: 14.5px;
+}
+
+.riso-home-hero-body.note .riso-home-hero-actions {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
 .riso-home-hero-empty {
   display: flex;
   flex-direction: column;
@@ -7670,6 +7735,33 @@ button.riso-table-group-head:disabled {
   box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
+/* Days gone by: greyscale photo, muted, no shadow. */
+.riso-home-week-day.past {
+  background: #e9e4d8;
+  color: #6b685f;
+  box-shadow: none;
+}
+
+.riso-home-week-day.past .riso-home-week-day-photo {
+  filter: grayscale(1) contrast(0.95);
+}
+
+.riso-home-week-day.past .riso-home-week-day-label,
+.riso-home-week-day.past .riso-home-week-day-plan {
+  color: #6b685f;
+}
+
+.riso-home-week-day.empty.past {
+  border-style: solid;
+  background: #e9e4d8;
+  cursor: default;
+}
+
+.riso-home-week-col.past {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
 .riso-home-week-day-photo {
   width: 100%;
   height: 74px;
@@ -7755,7 +7847,7 @@ button.riso-table-group-head:disabled {
   margin: 0;
   font-family: var(--riso-font-display);
   font-weight: 800;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .riso-home-mini-link {
@@ -7779,87 +7871,46 @@ button.riso-table-group-head:disabled {
   margin: 0;
 }
 
-.riso-freshness-list {
+/* Home bottom row (design_handoff_home): plain rows divided by thin
+   rules, no nested boxes; the card's last line and button sit at the
+   bottom. */
+.riso-home-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 12px;
 }
 
-.riso-freshness-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.riso-home-rows > li + li {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1.5px solid #d9d3c4;
 }
 
-.riso-freshness-row-photo {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  border: 2px solid var(--riso-ink);
-  object-fit: cover;
-  flex: none;
+.riso-home-rows.ruled {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 2px solid var(--riso-ink);
 }
 
-.riso-freshness-row-photo.placeholder {
-  background: var(--riso-track);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  color: var(--riso-muted);
-}
-
-.riso-freshness-row-info {
+.riso-home-mini-spacer {
   flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  min-height: 14px;
 }
 
-.riso-freshness-row-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+.riso-home-mini-note {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #3f3e37;
 }
 
-.riso-freshness-row-name {
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 15px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.riso-freshness-row-days {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--riso-soft);
-  white-space: nowrap;
-}
-
-.riso-freshness-row-pill {
-  display: inline-block;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 1px 9px;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.riso-freshness-row-pill.pink {
-  background: var(--riso-hot);
-}
-
-.riso-freshness-row-pill.yellow {
-  background: var(--riso-yellow);
+.riso-home-mini-footer {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--riso-ink);
 }
 
 .riso-freshness-bar-track {
@@ -7878,172 +7929,307 @@ button.riso-table-group-head:disabled {
   background: var(--riso-hot);
 }
 
+.riso-freshness-bar-fill.yellow {
+  background: var(--riso-yellow);
+}
+
 .riso-freshness-bar-fill.ink {
   background: var(--riso-ink);
 }
 
-.riso-home-mini-footer {
-  margin: auto 0 0;
-  padding-top: 12px;
-  border-top: 1.5px dashed var(--riso-dash);
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--riso-soft);
-}
-
-.home-makeable-list {
+/* Use it up */
+.riso-useup-row {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.riso-makeable-row {
-  display: flex;
-  align-items: center;
   gap: 12px;
-  background: none;
-  border: none;
-  padding: 4px;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: var(--riso-ink);
-}
-
-.riso-makeable-row-thumb {
-  width: 46px;
-  height: 46px;
-  border-radius: 10px;
-  border: 2px solid var(--riso-ink);
-  object-fit: cover;
-  flex: none;
-}
-
-.riso-makeable-row-thumb.placeholder {
-  background: var(--riso-track);
-  display: flex;
   align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  color: var(--riso-muted);
 }
 
-.riso-makeable-row-title {
+.riso-useup-row .inv-card-photo {
+  width: 56px;
+  height: 56px;
+  font-size: 26px;
+}
+
+.riso-useup-info {
   flex: 1;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.riso-makeable-row-time {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  color: var(--riso-muted);
-  white-space: nowrap;
-}
-
-/* Home: proteins on sale this week - one row per kind of meat or fish. */
-.riso-protein-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.riso-useup-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
 }
 
-.riso-protein-row {
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "kind price"
-    "item verdict";
-  align-items: baseline;
-  gap: 2px 10px;
-  padding: 10px 12px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-
-button.riso-protein-row:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 var(--riso-ink);
-}
-
-.riso-protein-row.none {
-  grid-template-areas: "kind price";
-  cursor: default;
-  border-style: dashed;
-  background: transparent;
-}
-
-.riso-protein-kind {
-  grid-area: kind;
-  font: 800 15px/1.2 var(--riso-font-display);
-}
-
-.riso-protein-none {
-  grid-area: price;
-  font: 500 12px var(--riso-font-body);
-  color: var(--riso-muted);
-}
-
-.riso-protein-item {
-  grid-area: item;
+.riso-useup-name-col {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
+.riso-useup-name {
+  font: 700 15px/1.2 var(--riso-font-display);
+  overflow-wrap: anywhere;
+}
+
+.riso-useup-qty,
+.riso-useup-days {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.riso-useup-qty {
+  color: #5e5b52;
+}
+
+.riso-useup-badge {
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 10px;
+  font: 800 12px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-useup-badge.pink {
+  background: var(--riso-hot);
+  transform: rotate(-4deg);
+}
+
+.riso-useup-badge.yellow {
+  background: var(--riso-yellow);
+  transform: rotate(3deg);
+}
+
+/* Makeable now */
+.riso-home-makeable-count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-home-makeable-num {
+  font: 800 44px/0.9 var(--riso-font-display);
+  letter-spacing: -0.03em;
+}
+
+.riso-home-makeable-sub {
+  font: 600 14px/1.25 var(--riso-font-display);
+}
+
+.riso-home-makeable-sub span {
+  font-weight: 500;
+  color: #5e5b52;
+}
+
+.riso-nearly-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.riso-nearly-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-nearly-open:hover .riso-nearly-title {
+  text-decoration: underline;
+}
+
+.riso-nearly-thumb {
+  width: 54px;
+  height: 54px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 2px solid var(--riso-ink);
+  object-fit: cover;
+  flex: none;
+  background: #e9e4d8;
+}
+
+.riso-nearly-thumb.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 20px var(--riso-font-display);
+  color: var(--riso-muted);
+}
+
+.riso-nearly-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.riso-nearly-title {
+  font: 700 15px/1.15 var(--riso-font-display);
+}
+
+.riso-nearly-missing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+  color: #3f3e37;
+}
+
+.riso-nearly-tag {
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 8px;
+  font: 800 11.5px var(--riso-font-display);
+  white-space: nowrap;
+  color: var(--riso-ink);
+}
+
+.riso-nearly-tag.ready {
+  background: var(--riso-green);
+}
+
+.riso-nearly-list {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+}
+
+.riso-nearly-list:hover {
+  box-shadow: 2px 2px 0 var(--riso-ink);
+}
+
+.riso-nearly-listed {
+  font: 700 12px var(--riso-font-display);
+  color: var(--riso-green-text);
+  white-space: nowrap;
+  flex: none;
+}
+
+/* Proteins on sale */
+.riso-protein-list > li + li {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.riso-protein-row {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--riso-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-protein-row:hover .riso-protein-name {
+  text-decoration: underline;
+}
+
+.riso-protein-emoji {
+  font-size: 22px;
+  width: 28px;
+  text-align: center;
+  flex: none;
+}
+
+.riso-protein-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .riso-protein-name {
-  font: 700 13px/1.3 var(--riso-font-display);
+  font: 700 14.5px/1.15 var(--riso-font-display);
   overflow-wrap: anywhere;
 }
 
 .riso-protein-meta {
-  font: 500 10.5px/1.35 var(--riso-font-mono);
-  color: var(--riso-soft);
-  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: #5e5b52;
+}
+
+.riso-protein-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: none;
 }
 
 .riso-protein-price {
-  grid-area: price;
-  justify-self: end;
-  font: 800 18px var(--riso-font-display);
+  font: 800 18px/1 var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-protein-price small {
+  font: 500 11px var(--riso-font-mono);
+}
+
+.riso-protein-best {
+  background: var(--riso-green);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 8px;
+  font: 800 11px var(--riso-font-display);
   white-space: nowrap;
 }
 
 .riso-protein-verdict {
-  grid-area: verdict;
-  justify-self: end;
-  align-self: start;
-  padding: 0 8px;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  font: 800 11px/18px var(--riso-font-display);
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   white-space: nowrap;
-  background: var(--riso-surface);
+  color: #16a34a;
 }
 
-.riso-protein-verdict.stock-up {
-  background: var(--riso-green);
-}
-
-.riso-protein-verdict.buy {
-  background: var(--riso-yellow);
+.riso-protein-verdict.fair,
+.riso-protein-verdict.unknown {
+  color: var(--riso-muted);
 }
 
 .riso-protein-verdict.skip {
-  background: #ffe0f1;
+  color: #8a0f55;
+}
+
+.riso-protein-asides {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1.5px dashed #bdb6a6;
+  font: 500 10.5px/1.5 var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5e5b52;
 }
 
 /* ================================================================
@@ -9779,6 +9965,21 @@ button.riso-row-qty:focus-visible {
   .riso-home-hero-photo {
     width: 100%;
     height: 180px;
+  }
+
+  .riso-home-hero-body.note {
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .riso-home-hero-emoji {
+    width: 120px;
+    min-height: 120px;
+    font-size: 64px;
+  }
+
+  .riso-home-hero-body.note .riso-home-hero-title {
+    font-size: 34px;
   }
 
   /* Seven equal-width day tiles are too narrow to read on a phone -

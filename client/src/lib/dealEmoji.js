@@ -2,6 +2,12 @@
 // load): the most specific word match, else its category's.
 const WORDS = [
   [/\b(leftovers?|restes?)\b/, "🍱"],
+  [/\b(restaurant|resto|eating out|take-?out)\b/, "🍽️"],
+  [/\b(fries|frites|poutine)\b/, "🍟"],
+  [/\b(burgers?|hamburgers?)\b/, "🍔"],
+  [/\b(tacos?|burritos?|nachos|fajitas?)\b/, "🌮"],
+  [/\b(sushis?)\b/, "🍣"],
+  [/\b(sandwich(?:es)?|subs)\b/, "🥪"],
   [/\b(chicken|poulet|turkey|dinde|wings?)\b/, "🍗"],
   [/\b(beef|b(?:oe|œ)uf|steak|veal|veau|lamb|agneau|roast|rôti)\b/, "🥩"],
   [/\b(pork|porc|ham|jambon|bacon|ribs?|côtes)\b/, "🥓"],

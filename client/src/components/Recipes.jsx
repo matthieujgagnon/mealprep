@@ -14,13 +14,20 @@ const SORT_LABELS = ["Recently added", "Fewest missing", "Quickest"];
 // Matches on title, tags, and ingredient names — same fields App.jsx's own
 // planner-grid search checks, kept as a separate copy since this one never
 // needs to run against a URL (the search box doubles as the import field).
+// Commas mean "any of": "parsley, spinach" (Home's Cook with these) finds
+// recipes using either.
 function matchesSearch(recipe, query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  if (recipe.title?.toLowerCase().includes(q)) return true;
-  if (recipe.tags?.some((t) => t.toLowerCase().includes(q))) return true;
-  if (recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))) return true;
-  return false;
+  const terms = query
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  if (terms.length === 0) return true;
+  return terms.some(
+    (q) =>
+      recipe.title?.toLowerCase().includes(q) ||
+      recipe.tags?.some((t) => t.toLowerCase().includes(q)) ||
+      recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))
+  );
 }
 
 function isUrlLike(text) {
