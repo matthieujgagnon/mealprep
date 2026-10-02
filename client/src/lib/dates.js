@@ -81,6 +81,11 @@ export function formatDayLabel(weekStart, dayOfWeek) {
   };
 }
 
+// True when that day of the week is before today (whole earlier weeks too).
+export function isPastDay(weekStart, dayOfWeek) {
+  return addDays(weekStart, dayOfWeek) < toDateKey(new Date());
+}
+
 export function weeksBetween(fromKey, toKey) {
   return Math.round((parseDateKey(toKey) - parseDateKey(fromKey)) / (7 * DAY_MS));
 }

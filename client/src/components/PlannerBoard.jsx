@@ -1,8 +1,8 @@
 import { Fragment, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { HintStrip } from "./RisoControls.jsx";
-import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, shiftWeek } from "../lib/dates.js";
-import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
+import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, isPastDay, shiftWeek } from "../lib/dates.js";
+import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -260,7 +260,7 @@ function PlannerCell({
   const entry = entries[0];
 
   return (
-    <div ref={setNodeRef} className={`riso-planner-cell${isOver ? " drop-active" : ""}`}>
+    <div ref={setNodeRef} className={`riso-planner-cell${isPast ? " past" : ""}${isOver ? " drop-active" : ""}`}>
       {!entry ? (
         <button
           type="button"
@@ -306,8 +306,6 @@ export function PlannerBoard({
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
 
   const staleIds = computeStaleLeftoverIds(entries);
-  const today = todayIndex();
-  const currentWeek = isCurrentWeek(weekStart);
   const scrollRef = useRef(null);
   const [atWeekend, setAtWeekend] = useState(false);
 
@@ -326,7 +324,7 @@ export function PlannerBoard({
           {DAY_INDICES.map((dayIndex) => {
             const { weekday, dayNum, monthShort, isToday } = formatDayLabel(weekStart, dayIndex);
             return (
-              <div key={dayIndex} className={`riso-planner-day-header${isToday ? " is-today" : ""}`}>
+              <div key={dayIndex} className={`riso-planner-day-header${isToday ? " is-today" : ""}${isPastDay(weekStart, dayIndex) ? " past" : ""}`}>
                 <span className="riso-planner-day-weekday">{isToday ? "TODAY" : weekday.toUpperCase()}</span>
                 <span className="riso-planner-day-date">
                   {monthShort} {dayNum}
@@ -345,7 +343,7 @@ export function PlannerBoard({
                   mealType={meal.id}
                   entries={grouped[slotKey(dayIndex, meal.id)] || []}
                   staleIds={staleIds}
-                  isPast={currentWeek && dayIndex < today}
+                  isPast={isPastDay(weekStart, dayIndex)}
                   onCardClick={onCardClick}
                   onRemove={onRemove}
                   onCycleState={onCycleState}

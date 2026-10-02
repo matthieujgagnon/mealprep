@@ -1,5 +1,5 @@
 // Where a recipe sits on the Planner (Recipe.mealSlot on the server). One
-// per recipe. "Side" (garlic asparagus, rice) and "Snack / Any" fit any
+// per recipe. "Side" (garlic asparagus, rice) and "Snack" fit any
 // meal; "Pantry / Prep" (pickles, roasted veg, sauces) never takes a meal
 // on the calendar.
 export const RECIPE_SLOTS = [
@@ -7,7 +7,7 @@ export const RECIPE_SLOTS = [
   { id: "lunch", label: "Lunch" },
   { id: "dinner", label: "Dinner" },
   { id: "side", label: "Side" },
-  { id: "snack", label: "Snack / Any" },
+  { id: "snack", label: "Snack" },
   { id: "prep", label: "Pantry / Prep" },
 ];
 

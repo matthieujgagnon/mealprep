@@ -490,14 +490,6 @@ export default function App({ user, onLogout }) {
     if (recipeId) await handlePlaceRecipe(recipeId, slot);
   }
 
-  // Adds a recipe to a slot without touching what's there - for quick "add
-  // to planner" actions outside the Planner tab (Flyers, Makeable's Plan),
-  // which only ever target an empty slot.
-  async function handleAddToPlanner(recipeId, dayOfWeek, mealType) {
-    const entry = await api.placeOnPlanner({ recipeId, weekStart, dayOfWeek, mealType });
-    setPlannerEntries((prev) => [...prev, entry]);
-  }
-
   function entriesInSlot(slot) {
     return plannerEntries.filter((e) => e.dayOfWeek === slot.dayOfWeek && e.mealType === slot.mealType);
   }
@@ -834,8 +826,6 @@ export default function App({ user, onLogout }) {
             user={user}
             recipes={recipes}
             customStaples={customStaples}
-            onSelectRecipe={openRecipe}
-            onAddToPlanner={handleAddToPlanner}
             isOnGroceryList={isOnGroceryList}
             onAddToGroceryList={addToGroceryList}
             onRemoveFromGroceryList={removeFromGroceryList}

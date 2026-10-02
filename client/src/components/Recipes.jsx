@@ -164,13 +164,28 @@ export function Recipes({
 
   return (
     <div className="riso-theme riso-recipes" data-theme="light">
-      <div className="riso-recipes-heading">
-        <div className="riso-eyebrow">
-          {allRecipes.length} RECIPES · {makeableCount} MAKEABLE NOW · {expiringCount} USE EXPIRING ITEMS
+      <div className="riso-recipes-heading-row">
+        <div className="riso-recipes-heading">
+          <div className="riso-eyebrow">
+            {allRecipes.length} RECIPES · {makeableCount} MAKEABLE NOW · {expiringCount} USE EXPIRING ITEMS
+          </div>
+          <h1 className="riso-recipes-title">
+            Your <span className="accent">recipes.</span>
+          </h1>
         </div>
-        <h1 className="riso-recipes-title">
-          Your <span className="accent">recipes.</span>
-        </h1>
+        <div className="riso-recipes-sort-group">
+          <span className="riso-recipes-sort-label">SORT</span>
+          <label className="riso-recipes-sort-btn">
+            <select aria-label="Sort recipes" value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
+              {SORT_LABELS.map((label, i) => (
+                <option key={label} value={i}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden="true">▾</span>
+          </label>
+        </div>
       </div>
 
       <form className="riso-recipes-searchbar" onSubmit={handleImportSubmit}>
@@ -209,8 +224,7 @@ export function Recipes({
         how many ingredients are already in your Inventory. Cards with a shadow need nothing from the store.
       </HintStrip>
 
-      <div className="riso-recipes-filters">
-        <div className="riso-recipes-filter-chips">
+      <div className="riso-recipes-filter-chips">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -222,20 +236,6 @@ export function Recipes({
             <span className="riso-filter-chip-count">{filterCounts[f]}</span>
           </button>
         ))}
-        </div>
-        <div className="riso-recipes-sort-group">
-          <span className="riso-recipes-sort-label">SORT</span>
-          <label className="riso-recipes-sort-btn">
-            <select aria-label="Sort recipes" value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
-              {SORT_LABELS.map((label, i) => (
-                <option key={label} value={i}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <span aria-hidden="true">▾</span>
-          </label>
-        </div>
       </div>
 
       <div className="riso-recipes-grid">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { BottomSheet } from "./RisoControls.jsx";
 import { PlannerTray } from "./PlannerTray.jsx";
 import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
-import { addDays, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, parseDateKey, shiftWeek } from "../lib/dates.js";
+import { addDays, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, isPastDay, parseDateKey, shiftWeek } from "../lib/dates.js";
 import { MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
 import { recipeHaveStats } from "../lib/onHand.js";
 import { formatTrayTime } from "../lib/plannerSuggestions.js";
@@ -117,7 +117,7 @@ export function PlannerMobile({
               role="tab"
               aria-selected={i === day}
               aria-label={`${name} ${dayNum}`}
-              className={`rpm-day${i === day ? " selected" : ""}${isToday ? " today" : ""}`}
+              className={`rpm-day${i === day ? " selected" : ""}${isToday ? " today" : ""}${isPastDay(weekStart, i) ? " past" : ""}`}
               onClick={() => setDay(i)}
             >
               <span className="rpm-day-dow">{isToday ? "TODAY" : weekday.toUpperCase()}</span>
@@ -140,7 +140,7 @@ export function PlannerMobile({
         const entry = (grouped[slotKey(day, meal.id)] || [])[0];
         const slot = { dayOfWeek: day, mealType: meal.id };
         return (
-          <section key={meal.id} className="rpm-slot">
+          <section key={meal.id} className={`rpm-slot${isPastDay(weekStart, day) ? " past" : ""}`}>
             <span className="rpm-slot-label">{meal.label.toUpperCase()}</span>
             {!entry ? (
               <div className="rpm-empty-row">

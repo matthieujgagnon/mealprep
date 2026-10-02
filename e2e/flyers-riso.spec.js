@@ -238,7 +238,7 @@ test("a briefing row opens its deal, and the detail view keeps the 6-month histo
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("a matching recipe appears in What to cook with a save sticker", async ({ page }) => {
+test("Flyers has no What to cook section, even with a matching recipe", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -246,9 +246,8 @@ test("a matching recipe appears in What to cook with a save sticker", async ({ p
   await addRecipe(page, "Riso Cook Test Dish", "chicken breast");
 
   await openFlyers(page);
-  const cook = page.locator(".riso-cook-card", { hasText: "Riso Cook Test Dish" });
-  await expect(cook).toBeVisible();
-  await expect(cook.locator(".riso-sticker")).toContainText("save $2.50");
+  await expect(page.locator(".riso-briefing")).toBeVisible();
+  await expect(page.getByText("Meals built on this week's deals")).toHaveCount(0);
 });
 
 test("a deal with no history yet is compared with Quebec's average price", async ({ page }) => {

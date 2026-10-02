@@ -63,6 +63,8 @@ test("pick the week, push items to next week (sales ask first), bring them back;
   // On sale: both, the one ending today first, with its saving.
   const sale = page.locator(".riso-grocery-sale");
   await expect(sale.locator(".riso-grocery-sale-row")).toHaveCount(2);
+  // Each row shows the flyer item's picture (an emoji when it has none).
+  await expect(sale.locator(".riso-grocery-sale-row .riso-deal-photo")).toHaveCount(2);
   await expect(sale.locator(".riso-grocery-sale-row").first()).toContainText("Lemon");
   await expect(sale.locator(".riso-grocery-sale-row").first()).toContainText("ends today");
   await expect(sale.locator(".riso-grocery-sale-row").nth(1)).toContainText("43% off");
