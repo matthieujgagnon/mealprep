@@ -156,6 +156,22 @@ describe("what a product is", () => {
 });
 
 
+describe("store gaps", () => {
+  it("counts a real gap between stores, not two different products on one card", () => {
+    const real = buildIngredients([
+      deal(1, "Maxi", "Chicken legs", 1.99, "lb"),
+      deal(2, "Metro", "Chicken legs", 3.99, "lb"),
+    ])[0];
+    expect(real.gap).toBeCloseTo(0.5, 2);
+    // $2.15/lb tub vs $30.27/lb tubes: not the same product.
+    const yogurt = buildIngredients([
+      deal(1, "Maxi", "Yogurt", 2.15, "lb"),
+      deal(2, "Super C", "Yogurt", 30.27, "lb"),
+    ])[0];
+    expect(yogurt.gap).toBe(0);
+  });
+});
+
 describe("what's really on sale", () => {
   const base = { store: "Metro", unitBasis: "lb" };
 

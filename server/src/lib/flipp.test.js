@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { comparablePrice } from "./priceCompare.js";
 import {
   categorize,
   fetchFlippDeals,
@@ -217,6 +218,17 @@ describe("normalizeFlippItem", () => {
       imageUrl: "https://f.wishabi.net/c1.jpg",
     });
     expect(normalizeFlippItem({ name: "", price: "1" }, flyer)).toBe(null);
+  });
+
+  // A case of 12 cans of 341 to 355 mL: priced per L for the whole case,
+  // not as one 355 mL can ($104/L).
+  it("reads a case's count and size range from the description", () => {
+    const beer = normalizeFlippItem(
+      { name: "BIÈRE ARCHIBALD, BRASSEUR DE MONTRÉAL, UNIBROUE | BEER", price: "21.99", description: "caisse, bout ou canettes 12/341-355 ml,\nchoix varié, consigne" },
+      { merchant: "Super C" }
+    );
+    expect(beer.item).toMatch(/12\/341-355 ml$/);
+    expect(comparablePrice(beer)).toEqual({ price: 5.27, basis: "L" });
   });
 
   // Metro's "375 points à l'achat d'un pâté au poulet, valeur de 3$" came

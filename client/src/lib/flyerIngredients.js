@@ -135,6 +135,8 @@ function mergeTarget(key, keys) {
   return key;
 }
 
+const MAX_GAP_RATIO = 3;
+
 const STORE_ORDER_FALLBACK = (a, b) => a.localeCompare(b);
 
 // A deal's price as the tiles compare it: per lb / per L when the size is
@@ -289,7 +291,10 @@ export function buildIngredients(deals, { store = null, storeOrder = [], today =
     const comparable = tiles.map(priceOf).filter((p) => p !== Infinity);
     const lo = comparable.length ? Math.min(...comparable) : null;
     const hi = comparable.length ? Math.max(...comparable) : null;
-    const gap = comparable.length > 1 && hi > 0 ? (hi - lo) / hi : 0;
+    // One store 3× another's price isn't a store gap, it's two different
+    // products sharing a card (a 24-can case and a single tall can, a 2 kg
+    // tub and yogurt tubes), so it doesn't count as one.
+    const gap = comparable.length > 1 && hi > 0 && hi <= lo * MAX_GAP_RATIO ? (hi - lo) / hi : 0;
     const best = variants[0];
     const t = rangePosition(best);
 

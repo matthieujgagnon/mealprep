@@ -257,7 +257,9 @@ function priceUnit(text) {
   return "L";
 }
 
-const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:[x×/]\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|l|ml|lb|lbs|oz|pk|pack|un|ct)\b\.?/gi;
+// "12/341-355 ml" (a case of 12, cans of 341 to 355 mL) is one size: read
+// without its range it was "355 ml", and a $36.99 case of beer $104/L.
+const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:[x×/]\s*\d+(?:[.,]\d+)?\s*)?(?:(?:-|–|à|to)\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|l|ml|lb|lbs|oz|pk|pack|un|ct)\b\.?/gi;
 
 // A plain ingredient name to match against recipes: lowercase, no package
 // size, no "or"-alternatives, no brand-ish trailing detail after a comma.

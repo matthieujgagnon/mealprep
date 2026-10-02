@@ -1789,6 +1789,15 @@ select {
   padding: 0;
 }
 
+.inv-shelf-add {
+  font: 800 18px/1 var(--riso-font-display);
+}
+
+.inv-shelf-add:hover,
+.inv-shelf-edit:hover {
+  background: var(--riso-yellow);
+}
+
 .inv-shelf-edit.on {
   background: var(--riso-yellow);
   font-weight: 800;

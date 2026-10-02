@@ -41,6 +41,23 @@ test("items land on the right shelf and clicking one opens the edit panel", asyn
   await expect(page.locator(".inv-storage-pill").first()).toBeVisible();
 });
 
+test("a shelf's + adds an item straight to that shelf", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+
+  await page.getByRole("button", { name: "Add an item to Freezer" }).click();
+  await expect(page.locator(".modal-content select").nth(1)).toHaveValue("freezer");
+  await page.fill('input[placeholder="e.g. Chicken breast"]', "Frozen peas");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.waitForTimeout(200);
+  await page.locator(".modal-close").click();
+  await expect(page.locator(".inv-shelf", { hasText: "Freezer" }).getByText("Frozen peas")).toBeVisible();
+
+  // The toolbar's + Add item still starts in the fridge.
+  await page.getByRole("button", { name: "+ Add item" }).click();
+  await expect(page.locator(".modal-content select").nth(1)).toHaveValue("fridge");
+});
+
 test("the item name in the edit panel can be renamed", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
