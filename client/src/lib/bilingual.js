@@ -44,3 +44,59 @@ export function splitBilingual(text) {
   // The half that reads more English; the first when they read the same.
   return englishScore(b) > englishScore(a) ? { en: b, fr: a } : { en: a, fr: b };
 }
+
+// French-only names ("BŒUF HACHÉ MAIGRE", common at Maxi) in English, so
+// they line up with the same product at other stores and with Statistics
+// Canada's averages. Only the grocery words that name or describe the
+// product are translated; anything else is left out.
+const PHRASES = [
+  ["pommes de terre", "potatoes"], ["patates douces", "sweet potatoes"], ["patates", "potatoes"],
+  ["hauts de cuisses", "thighs"], ["haut de cuisse", "thigh"], ["poitrines", "breasts"], ["poitrine", "breast"],
+  ["cuisses", "legs"], ["cuisse", "leg"], ["ailes", "wings"], ["filets", "fillets"], ["filet", "fillet"],
+  ["cotelettes", "chops"], ["longe", "loin"], ["roti", "roast"], ["bifteck", "steak"], ["cotes levees", "ribs"],
+  ["mi-maigre", "medium"], ["extra-maigre", "extra lean"], ["maigre", "lean"], ["hache", "ground"], ["hachee", "ground"], ["haches", "ground"],
+  ["boeuf", "beef"], ["porc", "pork"], ["poulet", "chicken"], ["dinde", "turkey"], ["dindon", "turkey"], ["veau", "veal"], ["agneau", "lamb"],
+  ["jambon", "ham"], ["saucisses", "sausages"], ["saucisse", "sausage"], ["bacon", "bacon"],
+  ["saumon", "salmon"], ["truite", "trout"], ["crevettes", "shrimp"], ["thon", "tuna"], ["morue", "cod"], ["tilapia", "tilapia"], ["petoncles", "scallops"],
+  ["pommes", "apples"], ["pomme", "apple"], ["bananes", "bananas"], ["raisins", "grapes"], ["fraises", "strawberries"], ["bleuets", "blueberries"],
+  ["framboises", "raspberries"], ["citrons", "lemons"], ["limes", "limes"], ["oranges", "oranges"], ["mandarines", "mandarins"], ["clementines", "clementines"],
+  ["poires", "pears"], ["peches", "peaches"], ["prunes", "plums"], ["cerises", "cherries"], ["ananas", "pineapple"], ["mangues", "mangoes"],
+  ["avocats", "avocados"], ["melon d'eau", "watermelon"], ["cantaloup", "cantaloupe"], ["kiwis", "kiwis"],
+  ["tomates cerises", "cherry tomatoes"], ["tomates", "tomatoes"], ["oignons", "onions"], ["carottes", "carrots"], ["champignons", "mushrooms"],
+  ["poivrons", "peppers"], ["laitue", "lettuce"], ["brocoli", "broccoli"], ["chou-fleur", "cauliflower"], ["chou", "cabbage"],
+  ["concombres", "cucumbers"], ["celeri", "celery"], ["epinards", "spinach"], ["courgettes", "zucchini"], ["courge", "squash"],
+  ["haricots verts", "green beans"], ["mais", "corn"], ["ail", "garlic"], ["asperges", "asparagus"], ["betteraves", "beets"],
+  ["fromage a la creme", "cream cheese"], ["fromage", "cheese"], ["lait", "milk"], ["beurre d'arachide", "peanut butter"], ["beurre", "butter"],
+  ["oeufs", "eggs"], ["yogourt", "yogurt"], ["creme glacee", "ice cream"], ["creme", "cream"], ["pain", "bread"],
+  ["riz", "rice"], ["pates", "pasta"], ["farine", "flour"], ["sucre", "sugar"], ["huile d'olive", "olive oil"], ["huile", "oil"],
+  ["cafe", "coffee"], ["the", "tea"], ["jus d'orange", "orange juice"], ["jus de pomme", "apple juice"], ["jus", "juice"],
+  ["vin", "wine"], ["biere", "beer"], ["eau", "water"], ["sirop d'erable", "maple syrup"], ["miel", "honey"],
+  ["frais", "fresh"], ["fraiche", "fresh"], ["entiers", "whole"], ["entier", "whole"], ["tranche", "sliced"], ["tranches", "sliced"],
+  ["fume", "smoked"], ["desosse", "boneless"], ["desossees", "boneless"], ["desosses", "boneless"], ["surgele", "frozen"], ["surgeles", "frozen"],
+  ["rouges", "red"], ["rouge", "red"], ["verts", "green"], ["vert", "green"], ["jaunes", "yellow"], ["jaune", "yellow"],
+  ["blancs", "white"], ["blanc", "white"], ["gros", "large"], ["grosses", "large"],
+];
+// Describing words, in the order English puts them.
+const ADJECTIVES = ["fresh", "frozen", "large", "extra", "lean", "medium", "boneless", "whole", "sliced", "smoked", "red", "green", "yellow", "white", "ground", "cherry", "sweet"];
+const PHRASE_RE = new RegExp(`(?<![a-z'-])(${PHRASES.map(([fr]) => fr.replace(/[-']/g, "[-' ]?")).join("|")})(?![a-z'-])`, "g");
+const PHRASE_MAP = new Map(PHRASES.map(([fr, en]) => [fr.replace(/[-' ]/g, ""), en]));
+
+export function looksFrench(text) {
+  return englishScore(text) < 0;
+}
+
+// "bœuf haché maigre" -> "lean ground beef", "poitrines de poulet" ->
+// "chicken breasts", "pommes cortland" -> "apples" (a variety name stays
+// out): French "X de Y" reads "Y X" in English, and describing words go
+// first.
+export function frenchToEnglish(text) {
+  const describing = new Set();
+  const nouns = [];
+  for (const m of fold(text).matchAll(PHRASE_RE)) {
+    const en = PHRASE_MAP.get(m[1].replace(/[-' ]/g, ""));
+    if (!en) continue;
+    if (en.split(" ").every((w) => ADJECTIVES.includes(w))) en.split(" ").forEach((w) => describing.add(w));
+    else if (!nouns.includes(en)) nouns.push(en);
+  }
+  return [...ADJECTIVES.filter((w) => describing.has(w)), ...nouns.reverse()].join(" ");
+}

@@ -5,6 +5,7 @@ import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
+import { genericPhotoUrl } from "../lib/ingredientPhoto.js";
 import { isImageFile, uploadPhoto } from "../lib/photoUpload.js";
 import { BottomSheet, HintStrip } from "./RisoControls.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
@@ -340,13 +341,30 @@ function expiryLine(item) {
   return { height: `${Math.max(8, Math.round((d / LINE_DAYS) * 100))}%`, color, label };
 }
 
-// The item's photo, else a cream tile with a food emoji (or its first
-// letter) - and the same tile if the photo won't load.
+// What a card shows: the item's own photo, else TheMealDB's generic picture
+// of the ingredient, else nothing (imageUrl "none" turns the generic off).
+function photoFor(item) {
+  if (item.imageUrl === "none") return null;
+  if (item.imageUrl) return { src: item.imageUrl, own: true };
+  const generic = genericPhotoUrl(item.name);
+  return generic ? { src: generic, own: false } : null;
+}
+
+// The photo, else a cream tile with a food emoji (or its first letter) -
+// and the same tile if the photo won't load.
 function ItemPhoto({ item }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [item.imageUrl]);
-  if (item.imageUrl && !failed) {
-    return <img className="inv-card-photo" src={item.imageUrl} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  const photo = photoFor(item);
+  const [failed, setFailed] = useState(null);
+  if (photo && failed !== photo.src) {
+    return (
+      <img
+        className={`inv-card-photo${photo.own ? "" : " generic"}`}
+        src={photo.src}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(photo.src)}
+      />
+    );
   }
   const emoji = foodEmoji(item.name, item.category);
   return (
@@ -806,6 +824,25 @@ function PhotoPicker({ item, onUpdate }) {
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [link, setLink] = useState(null);
+
+  const photo = photoFor(item);
+  const own = photo?.own;
+  const generic = photo && !photo.own;
+  const hidden = item.imageUrl === "none";
+
+  async function saveLink() {
+    const url = (link || "").trim();
+    if (!url) return setLink(null);
+    if (!/^https?:\/\/\S+$/i.test(url)) return setError("Paste a link that starts with http:// or https://.");
+    setError(null);
+    setLink(null);
+    try {
+      await onUpdate(item.id, { imageUrl: url });
+    } catch (err) {
+      setError(err.message || "That link couldn't be saved.");
+    }
+  }
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -828,11 +865,47 @@ function PhotoPicker({ item, onUpdate }) {
       <ItemPhoto item={item} />
       <div className="inv-panel-photo-actions">
         <button type="button" className="link-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
-          {busy ? "Uploading…" : item.imageUrl ? "Change photo" : "Add a photo"}
+          {busy ? "Uploading…" : own ? "Change photo" : "Add your photo"}
         </button>
-        {item.imageUrl && !busy && (
+        {link === null ? (
+          <button type="button" className="link-btn" onClick={() => setLink("")} disabled={busy}>
+            Paste a link
+          </button>
+        ) : (
+          <span className="inv-panel-photo-link">
+            <input
+              type="url"
+              autoFocus
+              placeholder="https://…"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveLink();
+                if (e.key === "Escape") setLink(null);
+              }}
+              aria-label="Photo link"
+            />
+            <button type="button" className="link-btn" onClick={saveLink}>
+              Use it
+            </button>
+          </span>
+        )}
+        {own && !busy && (
           <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
             Remove photo
+          </button>
+        )}
+        {generic && !busy && (
+          <span className="inv-panel-photo-credit">
+            Stock photo from TheMealDB ·{" "}
+            <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: "none" })}>
+              Hide it
+            </button>
+          </span>
+        )}
+        {hidden && genericPhotoUrl(item.name) && !busy && (
+          <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
+            Show the stock photo
           </button>
         )}
         {error && <span className="inv-panel-photo-error">{error}</span>}

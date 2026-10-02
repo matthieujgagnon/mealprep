@@ -249,6 +249,12 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   // Only an uploaded photo or a web link is kept as a photo.
   const bad = await add({ name: "Odd", imageUrl: "javascript:alert(1)" });
   expect(bad.status()).toBe(400);
+  // TheMealDB's stock photos, served locally; Cilantro's fails to load.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.route("https://www.themealdb.com/**", (route) =>
+    route.request().url().includes("Cilantro") ? route.abort() : route.fulfill({ contentType: "image/png", body: png })
+  );
+  await page.route("https://example.com/**", (route) => route.fulfill({ contentType: "image/png", body: png }));
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
@@ -267,8 +273,13 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   // No line at all with 28+ days or no date.
   await expect(card("Basmati rice").locator(".inv-card-line")).toHaveCount(0);
   await expect(card("Xylo widget").locator(".inv-card-line")).toHaveCount(0);
-  // No photo yet: a food emoji, else the first letter. No USDA text on cards.
-  await expect(card("Basmati rice").locator(".inv-card-photo.placeholder")).toHaveText("🍚");
+  // No photo of its own: TheMealDB's stock photo of the ingredient; if that
+  // won't load, a food emoji; with no match, the first letter.
+  await expect(card("Basmati rice").locator("img.inv-card-photo.generic")).toHaveAttribute(
+    "src",
+    "https://www.themealdb.com/images/ingredients/Basmati%20Rice-Small.png"
+  );
+  await expect(card("Cilantro").locator(".inv-card-photo.placeholder")).toHaveText("🌿");
   await expect(card("Xylo widget").locator(".inv-card-photo.letter")).toHaveText("X");
   await expect(page.locator(".inv-card").getByText("USDA")).toHaveCount(0);
   // Every card is the same height.
@@ -285,8 +296,21 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   });
   await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", /\/api\/recipe-images\//);
   await expect(page.locator(".inv-panel").getByRole("button", { name: "Change photo" })).toBeVisible();
-  await page.locator(".inv-panel").getByRole("button", { name: "Remove photo" }).click();
+  // Removing it brings back the stock photo, which can be hidden too.
+  const panel = page.locator(".inv-panel");
+  await panel.getByRole("button", { name: "Remove photo" }).click();
+  await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveAttribute("src", /ingredients\/Egg-Small\.png$/);
+  await expect(panel.getByText("Stock photo from TheMealDB")).toBeVisible();
+  await panel.getByRole("button", { name: "Hide it" }).click();
   await expect(card("Eggs").locator(".inv-card-photo.placeholder")).toHaveText("🥚");
+  await panel.getByRole("button", { name: "Show the stock photo" }).click();
+  await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveCount(1);
+  // Or a link to any picture.
+  await panel.getByRole("button", { name: "Paste a link" }).click();
+  await panel.getByLabel("Photo link").fill("https://example.com/eggs.png");
+  await panel.getByLabel("Photo link").press("Enter");
+  await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", "https://example.com/eggs.png");
+  await expect(card("Eggs").locator("img.inv-card-photo")).not.toHaveClass(/generic/);
 });
 
 test("the amount can be changed right on the card, without opening the item", async ({ page }) => {

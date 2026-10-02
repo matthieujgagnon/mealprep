@@ -57,12 +57,14 @@ pantryInventoryRouter.get("/suggest", async (req, res) => {
   res.json({ expiresAt, category });
 });
 
-// An item's photo: one uploaded through /api/recipe-images, or a web link.
-// undefined = not given; null = no photo; false = not a photo address.
+// An item's photo: one uploaded through /api/recipe-images, a web link, or
+// "none" (no picture, not even the generic one the client would pick).
+// undefined = not given; null = no photo of its own; false = not a photo.
 function photoUrl(value) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
   const url = String(value).trim();
+  if (url === "none") return url;
   if (url.length > 2000) return false;
   return /^\/api\/recipe-images\/[\w-]+$/.test(url) || /^https?:\/\/\S+$/i.test(url) ? url : false;
 }
