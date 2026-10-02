@@ -6,7 +6,7 @@
 // Keep in step with server/src/lib/bilingual.js.
 
 const FRENCH = new Set(
-  "de du des la le les l d ou au aux et avec sans en pour sur frais fraiche fraiches surgele surgeles surgelees produit choix varie variees sac format boite paquet pommes pomme terre poulet boeuf porc veau agneau dinde jambon fromage lait beurre oeufs pain poitrines poitrine cuisses cuisse hauts hache hachee haches maigre mi saucisses saucisse filets cotes cote roti bifteck crevettes saumon truite thon morue poisson tomates oignons carottes raisins fraises bleuets framboises citrons poires peches bananes ananas champignons poivrons laitue chou celeri courge courgettes epinards haricots mais patates douces ail jus vin biere eau cafe the yogourt creme glacee croustilles biscuits cereales pates riz huile sucre farine sauce soupe noix entiers entieres tranche tranches fume desosse desossees rouges rouge verts vert jaunes jaune blancs blanc noirs gros grosse petites petits pate pates ailes ailles escalope escalopes simili cuit cuite cuits cuites chaud pane panes panees lanieres pilons brochettes boulettes croquettes aiglefin goberge fletan bavette surlonge palette gigot jarret flanc charcuteries tourtiere condense evapore chocolat gateau croustillants assaisonne assaisonnes assaisonnees marine marines marinees bouillir viande viandes".split(" ")
+  "de du des la le les l d ou au aux et avec sans en pour sur frais fraiche fraiches surgele surgeles surgelees produit choix varie variees sac format boite paquet pommes pomme terre poulet boeuf porc veau agneau dinde jambon fromage lait beurre oeufs pain poitrines poitrine cuisses cuisse hauts hache hachee haches maigre mi saucisses saucisse filets cotes cote roti bifteck crevettes saumon truite thon morue poisson tomates oignons carottes raisins fraises bleuets framboises citrons poires peches bananes ananas champignons poivrons laitue chou celeri courge courgettes epinards haricots mais patates douces ail jus vin biere eau cafe the yogourt creme glacee croustilles biscuits cereales pates riz huile sucre farine sauce soupe noix entiers entieres tranche tranches fume desosse desossees rouges rouge verts vert jaunes jaune blancs blanc noirs gros grosse petites petits pate pates ailes ailles escalope escalopes simili cuit cuite cuits cuites chaud pane panes panees lanieres pilons brochettes boulettes croquettes aiglefin goberge fletan bavette surlonge palette gigot darne emince jarret flanc charcuteries tourtiere condense evapore chocolat gateau croustillants assaisonne assaisonnes assaisonnees marine marines marinees bouillir viande viandes".split(" ")
 );
 const ENGLISH = new Set(
   "of or and with the for in on fresh frozen product assorted selected bag box pack apples apple potatoes potato chicken beef pork veal lamb turkey ham cheese milk butter eggs bread breasts breast thighs legs ground lean extra sausages sausage fillets fillet steak roast shrimp salmon trout tuna cod fish tomatoes onions carrots grapes strawberries blueberries raspberries lemons pears peaches bananas pineapple mushrooms peppers lettuce cabbage celery squash zucchini spinach beans corn sweet garlic juice wine beer water coffee tea yogurt cream ice chips cookies cereal pasta rice oil sugar flour soup nuts whole sliced smoked boneless red green yellow white black large small pie pies wings cutlets mock cooked breaded strips drumsticks skewers meatballs nuggets haddock pollock halibut sirloin blade leg shank deli meats condensed evaporated chocolate cake crispy seasoned marinated boiling meat hot roasted".split(" ")
@@ -57,7 +57,7 @@ const PHRASES = [
   ["filets", "fillets"], ["filet", "fillet"], ["lanieres", "strips"], ["escalopes", "cutlets"], ["escalope", "cutlet"],
   ["brochettes", "skewers"], ["boulettes de viande", "meatballs"], ["boulettes", "meatballs"], ["croquettes", "nuggets"],
   ["burgers", "burgers"], ["burger", "burger"], ["tournedos", "tournedos"], ["souvlaki", "souvlaki"],
-  ["cotelettes", "chops"], ["longe", "loin"], ["roti", "roast"], ["bifteck", "steak"], ["cotes levees", "ribs"], ["cotes", "ribs"],
+  ["cotelettes", "chops"], ["longe", "loin"], ["roti", "roast"], ["bifteck", "steak"], ["darnes", "steaks"], ["darne", "steak"], ["emince", "shaved"], ["eminces", "shaved"], ["cotes levees", "ribs"], ["cotes", "ribs"],
   ["contre-filet", "strip loin"], ["surlonge", "sirloin"], ["bas de palette", "blade"], ["palette", "blade"], ["bavette", "flank steak"],
   ["gigot", "leg"], ["jarrets", "shanks"], ["jarret", "shank"], ["flanc", "belly"], ["cubes", "cubes"],
   ["mi-maigre", "medium"], ["extra-maigre", "extra lean"], ["maigre", "lean"], ["hache", "ground"], ["hachee", "ground"], ["haches", "ground"],
@@ -66,7 +66,8 @@ const PHRASES = [
   ["charcuteries", "deli meats"], ["charcuterie", "deli meats"], ["pepperoni", "pepperoni"], ["salami", "salami"], ["prosciutto", "prosciutto"],
   ["saumon", "salmon"], ["truite", "trout"], ["crevettes", "shrimp"], ["thon", "tuna"], ["morue", "cod"], ["tilapia", "tilapia"], ["petoncles", "scallops"],
   ["sole", "sole"], ["aiglefin", "haddock"], ["goberge", "pollock"], ["fletan", "halibut"], ["moules", "mussels"], ["homard", "lobster"], ["poisson", "fish"],
-  ["pate chinois", "shepherd's pie"], ["tourtiere", "meat pie"], ["pate feuilletee", "puff pastry"], ["pate a pizza", "pizza dough"], ["pates", "pasta"], ["pate", "pie"], ["tartes", "pies"], ["tarte", "pie"], ["quiche", "quiche"], ["pizza", "pizza"],
+  ["pxpie chinois", "shepherd's pie"], ["pxpies", "pies"], ["pxpie", "pie"], ["pate chinois", "shepherd's pie"], ["tourtiere", "meat pie"], ["pate feuilletee", "puff pastry"], ["pate a pizza", "pizza dough"],
+  ["pate a tarte", "pie crust"], ["pate brisee", "pie crust"], ["pate phyllo", "phyllo pastry"], ["pate pour", "dough"], ["pates", "pasta"], ["pate", "pie"], ["tartes", "pies"], ["tarte", "pie"], ["quiche", "quiche"], ["pizza", "pizza"],
   ["pommes", "apples"], ["pomme", "apple"], ["bananes", "bananas"], ["tomates raisins", "grape tomatoes"], ["raisins", "grapes"], ["fraises", "strawberries"], ["bleuets", "blueberries"],
   ["framboises", "raspberries"], ["citrons", "lemons"], ["limes", "limes"], ["oranges", "oranges"], ["mandarines", "mandarins"], ["clementines", "clementines"],
   ["poires", "pears"], ["peches", "peaches"], ["prunes", "plums"], ["cerises", "cherries"], ["ananas", "pineapple"], ["mangues", "mangoes"],
@@ -94,7 +95,7 @@ const PHRASES = [
 // Describing words, in the order English puts them.
 const ADJECTIVES = [
   "fresh", "frozen", "mock", "hot", "cooked", "boiling", "breaded", "seasoned", "marinated", "smoked", "crispy", "large", "extra", "lean",
-  "medium", "boneless", "whole", "sliced", "red", "green", "yellow", "white", "ground", "cherry", "sweet", "sweetened", "condensed", "evaporated",
+  "medium", "boneless", "whole", "sliced", "shaved", "red", "green", "yellow", "white", "ground", "cherry", "sweet", "sweetened", "condensed", "evaporated",
 ];
 const PHRASE_RE = new RegExp(`(?<![a-z'-])(${PHRASES.map(([fr]) => fr.replace(/[-' ]/g, "[-' ]*")).join("|")})(?![a-z'-])`, "g");
 const PHRASE_MAP = new Map();
@@ -116,8 +117,11 @@ export function looksFrench(text) {
 export function frenchToEnglish(text) {
   const describing = new Set();
   const nouns = [];
+  // "pâte" is dough and "pâté" a pie, which folding the accents would
+  // lose: "PÂTE À TARTE" is pie crust, "PÂTÉ AU POULET" chicken pie.
+  const marked = String(text || "").replace(/p[aâ]t[ée](s?)(?![\p{L}])/giu, (m, plural) => (/[éÉ]/.test(m) ? `pxpie${plural}` : m));
   // "d'agneau", "l'érable": the elided article is its own word.
-  const folded = fold(text).replace(/(^|[^a-z])([dlj])['’](?=[a-z])/g, "$1$2' ");
+  const folded = fold(marked).replace(/(^|[^a-z])([dlj])['’](?=[a-z])/g, "$1$2' ");
   let first = true;
   for (const m of folded.matchAll(PHRASE_RE)) {
     const key = m[1].replace(/[-' ]/g, "");

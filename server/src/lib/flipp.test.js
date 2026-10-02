@@ -164,6 +164,11 @@ describe("names and categories", () => {
     expect(toMatchName("BOULETTES DE VIANDE")).toBe("meatballs");
     expect(toMatchName("GIGOT D'AGNEAU")).toBe("lamb leg");
     expect(toMatchName("RÔTI DE BAS DE PALETTE DÉSOSSÉ")).toBe("boneless blade roast");
+    // Pâte is dough, pâté a pie, pâtes pasta.
+    expect(toMatchName("PÂTE À TARTE FRANÇOIS HUBERT, 1 kg")).toBe("pie crust");
+    expect(toMatchName("PÂTÉS ST-HUBERT, 675-800 G")).toBe("pies");
+    expect(toMatchName("PÂTES ALIMENTAIRES BARILLA")).toBe("pasta");
+    expect(toMatchName("ÉMINCÉ DE POITRINE DE DINDE MAPLE LEAF")).toBe("shaved turkey breast");
   });
 
   it("reads the French half when the English half doesn't name the product", () => {
@@ -295,6 +300,20 @@ describe("regularPriceFor", () => {
     expect(regularPriceFor({ sale_story: "SAVE UP TO $3" }, priced)).toBeNull();
     expect(regularPriceFor({ description: "Reg. $3.99" }, priced)).toBeNull();
     expect(regularPriceFor({}, priced)).toBeNull();
+  });
+
+  // From IGA's and Metro's real items: the sale is per lb, the regular
+  // price per kg.
+  it("converts a per-kg regular price to the per-lb sale's unit", () => {
+    const at = (item) => regularPriceFor(item, parseFlippPrice(item));
+    expect(at({ name: "FRENCH ROAST", price: "11.99", price_text: "/lb $26.43/kg", description: "Without pork fat\n\nRég. 30,19$/kg" })).toBe(13.69);
+    expect(at({ name: "FRESH PORK LOIN HALF", price: "3.99", price_text: "/lb $8.80/kg", description: "Rég. 12,19$/kg" })).toBe(5.53);
+    expect(at({ name: "PORC NAGANO FRESH PORK LOIN CHOPS", price: "12.99", price_text: "/lb $28.64/kg", description: "Coupe hôtel\nReg. $29.99/kg" })).toBe(13.6);
+    // A per-kg range whose low end isn't above the sale: no regular price.
+    expect(at({ name: "FILETS DE PORC FRAIS", price: "3.77", price_text: "/lb - 8,31$/kg", description: "prix membre 8,31/kg\nreg. 7,97 à 16,59/kg" })).toBe(null);
+    // Per lb stays per lb.
+    expect(at({ name: "CÔTELETTES DE PORC FRAIS", price: "4.99", price_text: "/lb", description: "11,00/kg\nreg. 6,99/lb - 15,41/kg" })).toBe(6.99);
+    expect(at({ name: "biftecks ou rôti de contre-filet", price: "9.99", price_text: "/lb", description: "reg. de 20,77/lb - 45,80/kg à\n23,51/lb - 51,82/kg" })).toBe(20.77);
   });
 });
 

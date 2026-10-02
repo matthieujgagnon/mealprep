@@ -383,6 +383,23 @@ export function regularPriceFor(item, priced) {
   return regularFromText(item, priced);
 }
 
+// IGA and Metro print a per-lb sale price but the regular price per kg:
+// "$11.99/lb ... Rég. 30,19$/kg" is $13.69/lb regular, not $30.19 (which
+// read as 60% off). The unit right after the regular price ("/kg", or a
+// range's "7,97 à 16,59/kg") converts it to the deal's per-lb basis.
+function regularUnitFactor(after, priced) {
+  if (priced?.unitBasis !== "lb") return 1;
+  const m = String(after)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .match(/^\s*(?:(?:a|to|-)\s*\$?\s*\d+(?:[.,]\d{1,2})?\s*\$?\s*)?(?:\/|per |par |le |la )\s*(kg|lbs?|100\s*g)\b/i);
+  if (!m) return 1;
+  const unit = m[1].toLowerCase().replace(/\s+/g, "");
+  if (unit === "kg") return LB_PER_KG;
+  if (unit === "100g") return 10 * LB_PER_KG;
+  return 1;
+}
+
 // The usual price from the item's own words ("REG. $6.99", "SAVE $2.00",
 // "économisez 25%"), in the deal's unit when given a priced deal; null
 // when it doesn't say or the numbers don't add up.
@@ -395,8 +412,8 @@ function regularFromText(item, priced = null) {
   const amount = (s) => Number(s.replace(",", "."));
   let regular = null;
   let m;
-  if ((m = text.match(/(?<![\p{L}])(?:reg(?:ular)?\.?(?: price)?|r[eé]g(?:ulier)?\.?|prix r[eé]gulier)\s*:?\s*\$?\s*(\d+(?:[.,]\d{1,2})?)\s*\$?/iu))) {
-    regular = amount(m[1]);
+  if ((m = text.match(/(?<![\p{L}])(?:reg(?:ular)?\.?(?: price)?|r[eé]g(?:ulier)?\.?|prix r[eé]gulier)\s*:?\s*(?:de\s*)?\$?\s*(\d+(?:[.,]\d{1,2})?)\s*\$?/iu))) {
+    regular = amount(m[1]) * regularUnitFactor(text.slice(m.index + m[0].length, m.index + m[0].length + 24), priced);
   } else if ((m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*\$\s*(\d+(?:[.,]\d{1,2})?)/iu)) || (m = text.match(/(?<![\p{L}])(?:save|[eé]conomisez)\s*(\d+(?:[.,]\d{1,2})?)\s*\$/iu))) {
     if (!priced) return null;
     regular = priced.unitPrice + amount(m[1]);

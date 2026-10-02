@@ -228,6 +228,7 @@ describe("matching deals to the Quebec average", () => {
     expect(quebecFor("SUGAR SNAP PEAS, 425 g", "sugar snap peas")).toBe(null);
     expect(quebecFor("thon albacore frais | fresh albacore tuna steak", "fresh albacore tuna steak")).toBe(null);
     expect(quebecFor("CLOVER LEAF FLAKED LIGHT TUNA, 170 g", "clover leaf flaked light tuna")).toBe("Canned tuna, 170 grams");
+    expect(quebecFor("DARNE DE THON JAUNE SAUVAGE 92 G OU SAUMON STEELHEAD FUMÉ 50 G", "yellow tuna steak")).toBe(null);
     expect(quebecFor("Poiriers Bartlett ou Bosc | Bartlett or Bosc pears, 2 L", "bosc pears", "L")).toBe(null);
     expect(quebecFor("SAUMON ARC-EN-CIEL FUMÉ LA BOUCANERIE | LA BOUCANERIE SMOKED STEELHEAD SALMON, 300 g", "la boucanerie smoked steelhead salmon")).toBe(null);
     expect(quebecFor("BACON SANS NOM® | BACON, 375 G", "bacon")).toBe("Bacon, 500 grams");

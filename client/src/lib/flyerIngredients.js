@@ -25,7 +25,7 @@ const BRANDS = [
   "ocean pier", "mastro", "papille", "pogo", "pc menu bleu", "menu bleu", "pc blue menu", "gaspesien", "irresistible artisan",
   "metrogo!", "metrogo", "unisoya", "ferme des voltigeurs", "mere michel", "hygrade", "furca", "plaisirs gastronomiques",
   "sterling silver", "l. fortin", "secret gourmand", "la boucanerie", "fumoirs gosselin", "cook's", "arahova", "mamzells",
-  "delices du marche", "farmer's market", "naturally imperfect", "odd looking", "compliments", "selection",
+  "delices du marche", "farmer's market", "market cuts", "coupes du marche", "grizzly", "catch of the day", "prise du jour", "naturally imperfect", "odd looking", "compliments", "selection",
 ];
 // Longest first, so "maple leaf prime" goes before "maple leaf" can.
 const BRAND_RE = new RegExp(

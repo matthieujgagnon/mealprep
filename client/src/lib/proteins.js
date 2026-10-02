@@ -26,7 +26,7 @@ const NOT_RAW = new RegExp(
       "sliced meats?", "viandes? tranchees?", "salami", "pepperoni", "prosciutto", "lasagna", "lasagne", "pizza", "dinners?", "combos?",
       "platters?", "plateaux?", "soups?", "soupes?", "sauces?", "broth", "bouillon", "gravy", "salads?", "salades?", "sandwich(?:es)?",
       "wraps?", "spread", "canned", "conserve", "flaked", "pouch", "sushi", "wellington", "stuffed", "farcie?s?", "kebabs?", "souvlaki",
-      "dumplings?", "noodles?", "pet", "cat", "dog", "chien", "chat", "treats?", "gateries", "jerky", "pogo", "rillettes", "creton",
+      "dumplings?", "noodles?", "pet", "cat", "dog", "chien", "chat", "treats?", "gateries", "jerky", "pogo", "rillettes", "creton", "shaved", "emincee?s?", "cold cuts",
     ].join("|") +
     ")\\b"
 );

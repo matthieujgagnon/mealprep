@@ -4,7 +4,7 @@
 // cost" baseline for flyer deals, before - or alongside - the app's own
 // price history. Read through StatCan's Web Data Service (WDS).
 
-import { frenchToEnglish, isFoodWord, splitBilingual } from "./bilingual.js";
+import { frenchToEnglish, isFoodWord, looksFrench, splitBilingual } from "./bilingual.js";
 import { PARTS, PREPARED, SMOKED_ANYWAY, packageSize } from "./priceCompare.js";
 
 const WDS = "https://www150.statcan.gc.ca/t1/wds/rest";
@@ -163,13 +163,14 @@ const OTHER_PRODUCT = new Set(
 );
 // What a "cuts" product's cuts are called on a flyer: parts, steaks, fillets.
 const CUT_NAMES = new Set([...PARTS, "steak", "fillet", "medallion", "cutlet"]);
-const FRESH_ONLY = /\b(fresh|frais|fraiche|steak|steaks|sushi|sashimi|poke|fillets?|filets?)\b/;
+const NOT_CANNED = /\b(fresh|frais|fraiche|steak|steaks|darnes?|sushi|sashimi|poke|fillets?|filets?|frozen|fozen|surgel\w*|congel\w*)\b/;
 
 // Every word the deal is known by: its match name, its English name and
 // its French name in English.
 function allWords(deal) {
   const { en, fr } = splitBilingual(deal.item || "");
-  return new Set(words(`${deal.matchName || ""} ${en} ${fr ? frenchToEnglish(fr) : ""}`));
+  const french = fr || (looksFrench(en) ? en : "");
+  return new Set(words(`${deal.matchName || ""} ${en} ${french ? frenchToEnglish(french) : ""}`));
 }
 
 // The size a Statistics Canada product is priced at, in grams or mL;
@@ -222,7 +223,7 @@ export function findBaseline(deal, baselines) {
     if (/\bcanned\b/.test(item)) {
       const canned = /\b(canned|cans?|tins?|conserve)\b/.test(text);
       const smallPack = dealSize != null && dealSize <= 1000;
-      if (!canned && (!smallPack || FRESH_ONLY.test(text))) continue;
+      if (!canned && (!smallPack || NOT_CANNED.test(text))) continue;
     }
     const rank = [need.length, -sizeDistance(dealSize, b.product)];
     if (!best || rank[0] > bestRank[0] || (rank[0] === bestRank[0] && rank[1] > bestRank[1])) {
