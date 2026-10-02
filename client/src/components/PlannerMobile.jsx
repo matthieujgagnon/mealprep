@@ -3,7 +3,7 @@ import { BottomSheet } from "./RisoControls.jsx";
 import { PlannerTray } from "./PlannerTray.jsx";
 import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
 import { addDays, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, isPastDay, parseDateKey, shiftWeek } from "../lib/dates.js";
-import { MEAL_TYPES, isCustomNote, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
+import { MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
 import { recipeHaveStats } from "../lib/onHand.js";
 import { formatTrayTime } from "../lib/plannerSuggestions.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
@@ -171,7 +171,7 @@ export function PlannerMobile({
                   onClick={() => (isCustomNote(entry) ? onEditNote(entry.id) : onRemove(entry.id))}
                   aria-label={isCustomNote(entry) ? `${entry.recipe.title} - tap to edit` : "Blank - tap to clear"}
                 >
-                  {isCustomNote(entry) && <span className="rpm-note-text">{entry.recipe.title}</span>}
+                  {isCustomNote(entry) && <span className={`rpm-note-text${isEmojiOnly(entry.recipe.title) ? " emoji" : ""}`}>{entry.recipe.title}</span>}
                 </button>
               )
             ) : (

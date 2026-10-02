@@ -156,7 +156,14 @@ test("emoji from the keyboard's emoji picker land on a slot's note", async ({ pa
 
   await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
-  await expect(target.locator(".riso-planner-note-text")).toHaveText("Fries night 🍟");
+  await expect(target.locator(".riso-planner-note-text")).toHaveText("Fries night 🍟");  await expect(target.locator(".riso-planner-note-text.emoji")).toHaveCount(0);
+
+  // Only an emoji: shown big, like a picture.
+  await target.locator(".riso-planner-note").click();
+  await input.fill("🥗");
+  await input.press("Enter");
+  await expect(target.locator(".riso-planner-note-text.emoji")).toHaveText("🥗");
+  await expect(target.locator(".riso-planner-note-text")).toHaveCSS("font-size", "56px");
 });
 
 test("dragging a recipe from the tray onto a filled slot replaces it", async ({ page }) => {
