@@ -328,14 +328,14 @@ function storageTip(item) {
 
 // The expiry line down the card's left edge: days left on a 4-week scale,
 // filling from the bottom (at least 8% so it stays visible), pink within 3
-// days, yellow within a week, blue after that. Expired is full-height pink.
-// No line from 28 days on, or with no date.
+// days, yellow within a week, blue after that. No line from 28 days on,
+// with no date, or once expired (the Expired tag says it).
 const LINE_DAYS = 28;
 function expiryLine(item) {
   if (!item.expiresAt) return null;
   const d = daysUntil(item.expiresAt);
   if (d >= LINE_DAYS) return null;
-  if (d <= 0) return { expired: true, height: "100%", color: "pink", label: "expired" };
+  if (d <= 0) return { expired: true, label: "expired" };
   const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
   const label = d === 1 ? "use by tomorrow" : `${d} days left`;
   return { height: `${Math.max(8, Math.round((d / LINE_DAYS) * 100))}%`, color, label };
@@ -379,14 +379,15 @@ function qtyStep(unit) {
   return unit === "g" || unit === "ml" ? 50 : unit === "bottle" || unit === "loaf" ? 0.25 : 1;
 }
 
-// The card's amount: tap it to change it right there (− / typed / +).
-// Enter or tapping away saves, Escape puts it back. Its clicks and drags
-// stay off the card, so editing never opens the panel or starts a drag.
+// The card's amount and its measure: tap it to change them right there
+// (− / typed / + and the unit). Enter or tapping away saves, Escape puts
+// it back. Its clicks and drags stay off the card, so editing never opens
+// the panel or starts a drag.
 function CardQuantity({ item, onUpdate }) {
   const [draft, setDraft] = useState(null);
   const inputRef = useRef(null);
   const editing = draft !== null;
-  const step = qtyStep(item.unit);
+  const step = qtyStep(draft?.unit ?? item.unit);
   const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
 
   useEffect(() => {
@@ -394,14 +395,18 @@ function CardQuantity({ item, onUpdate }) {
   }, [editing]);
 
   const keep = (e) => e.stopPropagation();
-  function save(text = draft) {
+  function save() {
+    if (!draft) return;
     setDraft(null);
-    const next = parseQuantityInput(text);
-    if (next != null && next >= 0 && next !== item.quantity) onUpdate(item.id, { quantity: next });
+    const patch = {};
+    const next = parseQuantityInput(draft.qty);
+    if (next != null && next >= 0 && next !== item.quantity) patch.quantity = next;
+    if ((draft.unit || null) !== (item.unit || null)) patch.unit = draft.unit || null;
+    if (Object.keys(patch).length) onUpdate(item.id, patch);
   }
   function bump(dir) {
-    const current = parseQuantityInput(draft) ?? item.quantity ?? 0;
-    setDraft(String(Math.max(0, Math.round((current + dir * step) * 100) / 100)));
+    const current = parseQuantityInput(draft.qty) ?? item.quantity ?? 0;
+    setDraft({ ...draft, qty: String(Math.max(0, Math.round((current + dir * step) * 100) / 100)) });
     inputRef.current?.focus();
   }
 
@@ -412,7 +417,7 @@ function CardQuantity({ item, onUpdate }) {
         className={`inv-card-qty${item.quantity == null ? " empty" : ""}`}
         onClick={(e) => {
           keep(e);
-          setDraft(item.quantity == null ? "" : String(item.quantity));
+          setDraft({ qty: item.quantity == null ? "" : String(item.quantity), unit: item.unit || "" });
         }}
         onPointerDown={keep}
         onKeyDown={keep}
@@ -424,6 +429,11 @@ function CardQuantity({ item, onUpdate }) {
     );
   }
 
+  const onKeys = (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") save();
+    if (e.key === "Escape") setDraft(null);
+  };
   return (
     <span
       className="inv-card-qty-edit"
@@ -440,18 +450,22 @@ function CardQuantity({ item, onUpdate }) {
         ref={inputRef}
         type="text"
         inputMode="decimal"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === "Enter") save();
-          if (e.key === "Escape") setDraft(null);
-        }}
-        aria-label={`Amount of ${item.name}${unit ? ` (${unit})` : ""}`}
+        value={draft.qty}
+        onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
+        onKeyDown={onKeys}
+        aria-label={`Amount of ${item.name}`}
       />
       <button type="button" onClick={() => bump(1)} aria-label={`More ${item.name}`}>
         +
       </button>
+      <UnitSelect
+        className="inv-card-unit"
+        value={draft.unit}
+        onChange={(u) => setDraft({ ...draft, unit: u })}
+        onKeyDown={onKeys}
+        emptyLabel="—"
+        aria-label={`Measure of ${item.name}`}
+      />
     </span>
   );
 }
@@ -476,7 +490,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, 
       onClick={onSelect}
       aria-label={`${item.name}${line ? `, ${line.label}` : ""}`}
     >
-      {line && (
+      {line && !line.expired && (
         <span className="inv-card-line" aria-hidden="true">
           <span className={`inv-card-line-fill ${line.color}`} style={{ height: line.height }} />
         </span>
@@ -999,13 +1013,17 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
           <button type="button" onClick={() => adjustQty(-1)} aria-label={`Decrease quantity by ${step}`}>
             −
           </button>
-          <span>
-            {item.quantity ?? 0}
-            {item.unit ? ` ${unitLabel(item.unit, item.quantity ?? 0)}` : ""}
-          </span>
+          <span>{item.quantity ?? 0}</span>
           <button type="button" onClick={() => adjustQty(1)} aria-label={`Increase quantity by ${step}`}>
             +
           </button>
+          <UnitSelect
+            className="inv-panel-unit"
+            value={item.unit || ""}
+            onChange={(u) => onUpdate(item.id, { unit: u || null })}
+            emptyLabel="no measure"
+            aria-label="Measure"
+          />
         </div>
       </div>
 

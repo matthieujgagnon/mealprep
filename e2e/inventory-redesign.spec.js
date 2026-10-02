@@ -260,10 +260,10 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
 
   await expect(page.getByText("6 items · 1 to use soon · 1 expired")).toBeVisible();
   const card = (name) => page.locator(".inv-card").filter({ hasText: name });
-  // Expired: pink-tinted card, full pink line, the quiet tag.
+  // Expired: pink-tinted card and the quiet tag - no line.
   await expect(card("Bbq sauce")).toHaveClass(/expired/);
   await expect(card("Bbq sauce").locator(".inv-card-expired")).toHaveText("Expired");
-  await expect(card("Bbq sauce").locator(".inv-card-line-fill.pink")).toHaveAttribute("style", /height: 100%/);
+  await expect(card("Bbq sauce").locator(".inv-card-line")).toHaveCount(0);
   await expect(card("Bbq sauce").locator(".inv-card-qty")).toHaveText("0.25 cup");
   // Days left set the line's colour; no tag, no label.
   await expect(card("Cilantro").locator(".inv-card-line-fill.pink")).toHaveCount(1);
@@ -334,29 +334,46 @@ test("the amount can be changed right on the card, without opening the item", as
   // + steps by 50 g; Enter saves.
   await card("Greek yogurt").getByRole("button", { name: /Change the amount of Greek yogurt/ }).click();
   await card("Greek yogurt").getByRole("button", { name: "More Greek yogurt" }).click();
-  await expect(card("Greek yogurt").getByLabel("Amount of Greek yogurt (g)")).toHaveValue("550");
-  await card("Greek yogurt").getByLabel("Amount of Greek yogurt (g)").press("Enter");
+  await expect(card("Greek yogurt").getByLabel("Amount of Greek yogurt")).toHaveValue("550");
+  await card("Greek yogurt").getByLabel("Amount of Greek yogurt").press("Enter");
   await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 g");
   await expect(page.locator(".inv-panel")).toHaveCount(0);
   await expect.poll(() => saved("Greek yogurt")).toBe(550);
 
   // Typing a fraction and tapping away saves too.
   await card("Cilantro").locator(".inv-card-qty").click();
-  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").fill("1/2");
+  await card("Cilantro").getByLabel("Amount of Cilantro").fill("1/2");
   await page.locator(".riso-inv-title").click();
   await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
   await expect.poll(() => saved("Cilantro")).toBe(0.5);
 
   // Escape puts it back.
   await card("Cilantro").locator(".inv-card-qty").click();
-  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").fill("9");
-  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").press("Escape");
+  await card("Cilantro").getByLabel("Amount of Cilantro").fill("9");
+  await card("Cilantro").getByLabel("Amount of Cilantro").press("Escape");
   await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
 
-  // An item with no amount yet can get one.
+  // An item with no amount yet can get one, and a measure with it.
   await card("Mystery jam").getByRole("button", { name: "Change the amount of Mystery jam" }).click();
   await card("Mystery jam").getByLabel("Amount of Mystery jam").fill("2");
+  await card("Mystery jam").getByLabel("Measure of Mystery jam").selectOption("jar");
   await card("Mystery jam").getByLabel("Amount of Mystery jam").press("Enter");
-  await expect(card("Mystery jam").locator(".inv-card-qty-num")).toHaveText("2");
+  await expect(card("Mystery jam").locator(".inv-card-qty")).toHaveText("2 jars");
   await expect(page.locator(".inv-panel")).toHaveCount(0);
+  const jam = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Mystery jam");
+  expect([jam.quantity, jam.unit]).toEqual([2, "jar"]);
+
+  // Changing only the measure: 550 g of yogurt is really 550 ml.
+  await card("Greek yogurt").locator(".inv-card-qty").click();
+  await card("Greek yogurt").getByLabel("Measure of Greek yogurt").selectOption("ml");
+  await page.locator(".riso-inv-title").click();
+  await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 ml");
+  await expect.poll(() => saved("Greek yogurt")).toBe(550);
+
+  // The detail panel has the measure too, next to the amount.
+  await card("Cilantro").click();
+  await page.locator(".inv-panel").getByLabel("Measure").selectOption("cup");
+  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 cup");
+  const cilantro = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Cilantro");
+  expect(cilantro.unit).toBe("cup");
 });
