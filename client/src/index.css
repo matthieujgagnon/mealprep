@@ -6735,9 +6735,38 @@ button.riso-table-group-head:disabled {
   flex: none;
 }
 
-/* When even small text doesn't fit: smaller pills, a slimmer timer. */
+/* When even small text doesn't fit: a smaller step head, no hint, smaller
+   pills, a slimmer timer. */
 .cm-left.compact {
   gap: 12px;
+}
+
+.cm-left.compact .cm-step-num {
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+  box-shadow: 2px 2px 0 var(--riso-ink);
+}
+
+.cm-left.compact .cm-step-title {
+  font-size: calc(var(--cm-step-size, 36px) * 1.25);
+}
+
+.cm-left.compact .cm-uses-hint {
+  display: none;
+}
+
+.cm-left.compact .cm-step-text {
+  line-height: 1.3;
+}
+
+/* On wide screens the timer leads the photo column at a fixed size. */
+.cm-right > .cm-timer {
+  flex: none;
+}
+
+.cm-right > .cm-timer .cm-timer-time {
+  font-size: 64px;
 }
 
 .cm-left.compact .cm-uses-pill {
@@ -7392,6 +7421,19 @@ button.riso-table-group-head:disabled {
     height: 42px;
     padding: 0 12px 0 6px;
     gap: 8px;
+  }
+
+  .cm-left.compact .cm-uses-pill {
+    height: 34px;
+  }
+
+  .cm-left.compact .cm-uses-pills {
+    gap: 5px;
+  }
+
+  .cm-left.compact .cm-uses-dot {
+    width: 22px;
+    height: 22px;
   }
 
   .cm-timer-btn {
