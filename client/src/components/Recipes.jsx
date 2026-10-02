@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { api } from "../api.js";
-import { core, findBestDeal, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
+import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
-import { useDeals } from "../lib/dealsStore.js";
 import { RECIPE_SLOTS, formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 
 const SLOT_FILTERS = Object.fromEntries(RECIPE_SLOTS.map((s) => [s.label, s.id]));
-const FILTERS = ["All", "Makeable now", "Uses expiring", "On sale", ...RECIPE_SLOTS.map((s) => s.label)];
+const FILTERS = ["All", "Makeable now", "Uses expiring", ...RECIPE_SLOTS.map((s) => s.label)];
 const SORT_LABELS = ["Recently added", "Fewest missing", "Quickest"];
 
 
@@ -31,8 +30,10 @@ function isUrlLike(text) {
 
 // Photo on top (nothing printed over it), then the title and a column of
 // chips: total time (yellow, dashed "add time" when unset), then pink
-// "uses expiring" and green "on sale" - a recipe can carry both.
-function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
+// "uses expiring". Sales show on the ingredients inside the recipe card,
+// not here: nearly every recipe has something on sale, so a chip on every
+// card said nothing.
+function RecipeCard({ recipe, stats, usesExpiring, onClick }) {
   const totalTime = recipeTotalMinutes(recipe);
   const nothingToBuy = stats.totalCount > 0 && stats.missingCount === 0;
   const pct = stats.totalCount > 0 ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
@@ -54,7 +55,6 @@ function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
             {totalTime > 0 ? formatRecipeTime(totalTime) : "add time"}
           </span>
           {usesExpiring && <span className="riso-recipe-chip expiring">uses expiring ingredients</span>}
-          {onSale && <span className="riso-recipe-chip sale">on sale</span>}
         </div>
         <div className="riso-recipe-card-spacer" />
         {stats.totalCount > 0 && (
@@ -91,7 +91,6 @@ export function Recipes({
   const [sortIndex, setSortIndex] = useState(0);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
-  const { deals } = useDeals();
 
   const allRecipes = recipes.filter((r) => !r.isPlaceholder);
   const query = search.trim();
@@ -110,8 +109,6 @@ export function Recipes({
       }
       case "Uses expiring":
         return findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes, 3).size > 0;
-      case "On sale":
-        return recipe.ingredients?.some((i) => findBestDeal(i.name, deals)) || false;
       default:
         return filterId in SLOT_FILTERS ? recipeSlot(recipe) === SLOT_FILTERS[filterId] : true;
     }
@@ -208,11 +205,12 @@ export function Recipes({
 
       <HintStrip userId={user.id} screenKey="recipes-v2">
         Type to search your recipes, or paste a link from any recipe site to import it. The yellow chip is
-        total prep and cook time; pink and green chips flag expiring and on-sale ingredients. The bar shows
+        total prep and cook time; the pink chip flags expiring ingredients. The bar shows
         how many ingredients are already in your Inventory. Cards with a shadow need nothing from the store.
       </HintStrip>
 
       <div className="riso-recipes-filters">
+        <div className="riso-recipes-filter-chips">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -224,7 +222,7 @@ export function Recipes({
             <span className="riso-filter-chip-count">{filterCounts[f]}</span>
           </button>
         ))}
-        <div className="riso-recipes-filters-spacer" />
+        </div>
         <div className="riso-recipes-sort-group">
           <span className="riso-recipes-sort-label">SORT</span>
           <label className="riso-recipes-sort-btn">
@@ -247,7 +245,6 @@ export function Recipes({
             recipe={r}
             stats={recipeHaveStats(r, haveCores)}
             usesExpiring={matchesFilter(r, "Uses expiring")}
-            onSale={matchesFilter(r, "On sale")}
             onClick={onSelectRecipe}
           />
         ))}

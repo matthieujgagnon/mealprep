@@ -326,10 +326,11 @@ function storageTip(item) {
   return null;
 }
 
-// The expiry line down the card's left edge: days left on a 4-week scale,
-// filling from the bottom (at least 8% so it stays visible), pink within 3
-// days, yellow within a week, blue after that. No line from 28 days on,
-// with no date, or once expired (the Expired tag says it).
+// The expiry line down the card's left edge: how close the date is on a
+// 4-week scale, filling up from the bottom as it nears (nearly full the day
+// before, at least 8% so it stays visible), pink within 3 days, yellow
+// within a week, blue after that. No line from 28 days on, with no date,
+// or once expired (the Expired tag says it).
 const LINE_DAYS = 28;
 function expiryLine(item) {
   if (!item.expiresAt) return null;
@@ -338,7 +339,7 @@ function expiryLine(item) {
   if (d <= 0) return { expired: true, label: "expired" };
   const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
   const label = d === 1 ? "use by tomorrow" : `${d} days left`;
-  return { height: `${Math.max(8, Math.round((d / LINE_DAYS) * 100))}%`, color, label };
+  return { height: `${Math.max(8, Math.round((1 - d / LINE_DAYS) * 100))}%`, color, label };
 }
 
 // What a card shows: the item's own photo, else TheMealDB's generic picture

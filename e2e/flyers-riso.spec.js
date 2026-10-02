@@ -212,17 +212,16 @@ test("+ List puts the ingredient on this week's list under that store", async ({
   await expect(again.locator(".riso-ing-list")).toHaveText("+ List");
 });
 
-test("a briefing row opens its card, and the detail view keeps the 6-month history", async ({ page }) => {
+test("a briefing row opens its deal, and the detail view keeps the 6-month history", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   await seedChickenHistory(user.id);
 
   await openFlyers(page);
+  // Opens the deal straight away, even with its category folded away.
+  await page.locator(".riso-ing-group-head", { hasText: "Meat & poultry" }).click();
   await page.locator(".riso-brief.accent .riso-brief-row", { hasText: "Chicken breast" }).click();
-  const chicken = card(page, "Chicken breast");
-  await expect(chicken.locator(".riso-ing-panel")).toBeVisible();
-  await chicken.getByRole("button", { name: "Chicken breast details" }).click();
 
   const detail = page.getByRole("dialog", { name: "Chicken breast" });
   await expect(detail).toContainText("METRO · MEAT & POULTRY");

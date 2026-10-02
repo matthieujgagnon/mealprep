@@ -940,7 +940,7 @@ function BriefPanel({ tone, kicker, title, rows, emptyText, onOpen }) {
         <p className="riso-brief-empty">{emptyText}</p>
       ) : (
         rows.map(({ g, sub, deal }) => (
-          <button key={g.key} type="button" className="riso-brief-row" onClick={() => onOpen(g)}>
+          <button key={g.key} type="button" className="riso-brief-row" onClick={() => onOpen(deal)} aria-label={`${g.name}: ${priceText(deal)} at ${deal.store}, open the deal`}>
             <DealPhoto deal={g.photoDeal} size={56} />
             <span className="riso-brief-row-info">
               <span className="riso-brief-row-name">{g.name}</span>
@@ -1477,10 +1477,6 @@ export function FlyerDeals({
     });
   }
   // A briefing row opens its ingredient's card and brings it into view.
-  function openCard(g) {
-    setExpanded((prev) => new Set(prev).add(g.key));
-    requestAnimationFrame(() => document.getElementById(cardId(g.key))?.scrollIntoView({ behavior: "smooth", block: "center" }));
-  }
 
   const aisles = deals?.aisles?.length ? deals.aisles : DEFAULT_AISLES;
   const aisleLabels = useMemo(() => Object.fromEntries(aisles.map((a) => [a.id, a.label])), [aisles]);
@@ -1658,7 +1654,7 @@ export function FlyerDeals({
           title="Deals to grab"
           rows={lows}
           emptyText="No sales found in this week's flyers yet."
-          onOpen={openCard}
+          onOpen={(deal) => setDetailId(deal.id)}
         />
         <BriefPanel
           tone="plain"
@@ -1666,7 +1662,7 @@ export function FlyerDeals({
           title="Biggest store gaps"
           rows={gaps}
           emptyText="Only one store has these items."
-          onOpen={openCard}
+          onOpen={(deal) => setDetailId(deal.id)}
         />
         <BriefPanel
           tone="hot"
@@ -1674,7 +1670,7 @@ export function FlyerDeals({
           title="Ends soon"
           rows={endingSoon}
           emptyText={`Nothing ends in the next ${ENDS_SOON_DAYS} days.`}
-          onOpen={openCard}
+          onOpen={(deal) => setDetailId(deal.id)}
         />
       </div>
 
