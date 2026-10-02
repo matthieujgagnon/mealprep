@@ -35,6 +35,12 @@ describe("aisleFor", () => {
     ["fresh ginger", "produce"],
     ["bacon", "meat"],
     ["canned tomatoes", "pantry"],
+    // From a live flyer audit.
+    ["filets de poisson panés Blue Water | Blue Water breaded fish fillets", "seafood"],
+    ["HIGH LINER FISH STICKS, FILLETS, BURGERS FISH & CHIPS OR SHRIMP", "seafood"],
+    ["DRUMSTICK OU FRIANDISES GLACÉES NESTLÉ", "frozen"],
+    ["Eska spring water, 24 x 500 mL", "drinks"],
+    ["McCAFÉ GROUND COFFEE, 300 g", "pantry"],
   ])("%s -> %s", (item, aisle) => {
     expect(aisleFor({ item })).toBe(aisle);
   });

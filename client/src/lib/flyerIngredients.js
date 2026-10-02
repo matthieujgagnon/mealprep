@@ -19,14 +19,26 @@ const BRANDS = [
   "becel", "sealtest", "tostitos", "doritos", "lays", "lay's", "ruffles", "quaker", "st-hubert", "black label",
   "blue menu", "mieux-etre", "mieux-être", "belsoy", "bubly", "lindt", "boreale", "boréale", "nestle", "nestlé",
   "general mills", "post", "ben's original", "uncle ben's", "dare", "leclerc", "vachon", "ziggy's",
+  "prix club", "porc nagano", "benny & co.", "benny & co", "rachel's", "c'est pret! a cuire", "c'est pret!", "ricardo", "la cage",
+  "high liner", "seaquest", "marina del rey", "maple leaf prime", "natural selections", "exceldor", "fontaine sante",
+  "famille fontaine", "8 acres", "stefano", "lesters", "paysan", "gusta", "swanson", "blue water", "dalisa", "foppen",
+  "ocean pier", "mastro", "papille", "pogo", "pc menu bleu", "menu bleu", "pc blue menu", "gaspesien", "irresistible artisan",
+  "metrogo!", "metrogo", "unisoya", "ferme des voltigeurs", "mere michel", "hygrade", "furca", "plaisirs gastronomiques",
+  "sterling silver", "l. fortin", "secret gourmand", "la boucanerie", "fumoirs gosselin", "cook's", "arahova", "mamzells",
+  "delices du marche", "farmer's market", "naturally imperfect", "odd looking", "compliments", "selection",
 ];
-const BRAND_RE = new RegExp(`(^|\\s)(${BRANDS.map((b) => b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?=\\s|$)`, "g");
+// Longest first, so "maple leaf prime" goes before "maple leaf" can.
+const BRAND_RE = new RegExp(
+  `(^|\\s)(${[...BRANDS].sort((a, b) => b.length - a.length).map((b) => b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?=\\s|$)`,
+  "g"
+);
 
 // Words that describe the pack or the grade, not the ingredient.
 const FILLER = new Set([
   "fresh", "organic", "large", "jumbo", "small", "medium", "mini", "premium", "select", "selected", "assorted",
   "variety", "varieties", "value", "family", "club", "pack", "package", "bag", "box", "tray", "each", "bonus",
   "boneless", "skinless", "extra", "lean", "regular", "original", "classic", "new", "imported", "product", "of",
+  "mixed", "organic", "halal", "econo", "economic", "format",
 ]);
 
 const SIZE_WORD = /^(\d+([.,]\d+)?)(g|kg|ml|l|lb|lbs|oz|ct|pk|x)?$/;
@@ -50,9 +62,28 @@ export function productText(deal) {
     .trim();
 }
 
+// Words the grocery list drops ("cooked chicken" is chicken to buy for a
+// recipe) but that make another product on a flyer: hot cooked chicken
+// isn't raw chicken, chicken breast strips aren't breasts.
+const KEEP_WORDS = new Set(["cooked", "roasted", "strip", "strips"]);
+
 export function ingredientKeyOf(deal) {
   const text = productText(deal);
-  return canonicalize(text).core || text || String(deal.item || "").toLowerCase();
+  const core = canonicalize(text).core;
+  if (!core) return text || String(deal.item || "").toLowerCase();
+  if (!text.split(" ").some((w) => KEEP_WORDS.has(w))) return core;
+  // Back in the name's own order: "chicken breast strips" -> "chicken
+  // breast strip", "hot cooked chicken" -> "hot cooked chicken".
+  const coreWords = core.split(" ");
+  const ordered = [];
+  for (const w of text.split(" ")) {
+    if (KEEP_WORDS.has(w)) ordered.push(w.replace(/s$/, ""));
+    else {
+      const one = canonicalize(w).core;
+      if (one && coreWords.includes(one) && !ordered.includes(one)) ordered.push(one);
+    }
+  }
+  return ordered.join(" ") || core;
 }
 
 // Products whose last word isn't the ingredient: peanut butter isn't
@@ -83,14 +114,21 @@ const FOOD_WORDS = new Set([
   "potato", "cheese", "chocolate", "cookie", "cake", "pie", "ice", "apple", "banana", "carrot", "pumpkin",
 ]);
 
+// Words that make another product of the food after them: mock chicken,
+// hot cooked chicken and boiling chicken aren't chicken to roast.
+const NO_MERGE = new Set([
+  "mock", "cooked", "hot", "roasted", "rotisserie", "breaded", "battered", "smoked", "marinated", "seasoned", "boiling",
+  "stuffed", "precooked", "plant-based", "plant", "vegan", "meatless", "crispy", "fried", "pulled", "bbq", "glazed",
+]);
+
 // "maple bacon" joins "bacon" when plain bacon is on the flyers too; a
-// compound ("peanut butter") or a food before it ("pizza bagel") never
-// joins its last word.
+// compound ("peanut butter"), a food before it ("pizza bagel") or a
+// prepared form ("mock chicken") never joins its last word.
 function mergeTarget(key, keys) {
   if (isCompound(key)) return key;
   const words = key.split(" ");
   for (let i = 1; i < words.length; i++) {
-    if (FOOD_WORDS.has(words[i - 1])) return key;
+    if (FOOD_WORDS.has(words[i - 1]) || NO_MERGE.has(words[i - 1])) return key;
     const tail = words.slice(i).join(" ");
     if (keys.has(tail)) return tail;
   }
@@ -142,6 +180,15 @@ export function dealSavings(deal) {
 //   unknown  - nothing to compare it with yet
 export function dealVerdict(deal) {
   if (!deal) return null;
+  // Points offers and free-with-purchase items have no price to judge.
+  if (deal.unitPrice == null && deal.price && !/ off$/.test(deal.price)) {
+    const reason = /^points/i.test(deal.price)
+      ? "A points offer: the flyer gives what the points are worth, not the price."
+      : /^free/i.test(deal.price)
+        ? "Free when you buy the other item the flyer names."
+        : "The flyer only says what it's worth, not what it costs.";
+    return { key: "unknown", label: "Not a price", reason };
+  }
   const saving = dealSavings(deal);
   const t = rangePosition(deal);
   const vsQuebec = deal.baseline?.pct;

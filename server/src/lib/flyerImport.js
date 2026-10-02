@@ -103,12 +103,14 @@ export async function importFlipp(userId, settings, { fetchImpl = fetch } = {}) 
   return { count: result.deals.length, photos: countPhotos(result.deals), stores: saved, failed: result.failed, repaired };
 }
 
-// Past weeks' Flipp rows matched by the name the import gives them now
-// (the English half of "pommes Cortland | apples", French-only names in
-// English), so they line up with this week's same products.
+// Flipp rows matched by the name the import gives them now (the English
+// half of "pommes Cortland | apples", French-only names in English), so
+// past weeks line up with this week's same products - and this week's
+// rows pick up a naming fix without waiting for the next import. Returns
+// how many were renamed.
 async function renamePastFlippRows(userId) {
   const rows = await prisma.flyerDeal.findMany({
-    where: { userId, source: FLIPP_SOURCE, isCurrent: false, createdAt: { gte: new Date(Date.now() - HISTORY_WINDOW_MS) } },
+    where: { ...(userId ? { userId } : {}), source: FLIPP_SOURCE, createdAt: { gte: new Date(Date.now() - HISTORY_WINDOW_MS) } },
     select: { id: true, item: true, matchName: true },
   });
   const renames = rows
@@ -117,6 +119,13 @@ async function renamePastFlippRows(userId) {
   for (let i = 0; i < renames.length; i += 200) {
     await prisma.$transaction(renames.slice(i, i + 200).map((r) => prisma.flyerDeal.update({ where: { id: r.id }, data: { matchName: r.matchName } })));
   }
+  return renames.length;
+}
+
+// Every user's Flipp rows, renamed once at start-up so a deploy that
+// changes how names are read applies to what's already stored.
+export function renameAllFlippRows() {
+  return renamePastFlippRows(null);
 }
 
 // Past weeks' Flipp rows saved before the import read each item's own page
@@ -236,8 +245,16 @@ export function runDueImports({ now = new Date(), fetchImpl = fetch } = {}) {
 // when idle (Render's free tier) this only runs while the app is awake -
 // the weekly GitHub Action (.github/workflows/flyer-import.yml) wakes it.
 // FLYER_AUTO_IMPORT=off turns it off (the e2e tests do).
-export function startFlyerScheduler() {
+export function startFlyerScheduler({ onRenamed } = {}) {
   if (String(process.env.FLYER_AUTO_IMPORT).toLowerCase() === "off") return;
+  renameAllFlippRows()
+    .then((n) => {
+      if (n > 0) {
+        console.log(`Renamed ${n} stored flyer items to the current matching names.`);
+        onRenamed?.();
+      }
+    })
+    .catch((err) => console.error("Renaming stored flyer items failed:", err));
   const tick = () =>
     Promise.all([
       runDueImports().catch((err) => {

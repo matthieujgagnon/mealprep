@@ -4,6 +4,7 @@ import { fetchQuebecPrices, findBaseline, compareToBaseline } from "../../server
 import { comparablePrice } from "../../server/src/lib/priceCompare.js";
 import { aisleFor } from "../../server/src/lib/dealAisle.js";
 import { buildIngredients, ingredientKeyOf } from "../../client/src/lib/flyerIngredients.js";
+import { proteinsOnSale, proteinName } from "../../client/src/lib/proteins.js";
 
 const raw = new Map();
 const fetchImpl = async (url, opts) => {
@@ -25,7 +26,7 @@ const rows = deals.map((d) => {
   const cmp = comparablePrice(d);
   const b = cmp ? findBaseline({ ...d, unitPrice: cmp.price, unitBasis: cmp.basis }, baselines) : null;
   const vs = b ? compareToBaseline(cmp.price, b.price) : null;
-  return { ...d, aisle: aisleFor(d), cmp, b, vs, key: ingredientKeyOf(d) };
+  return { ...d, aisle: aisleFor(d), cmp, b, vs, key: ingredientKeyOf(d), comparePrice: cmp?.price, compareBasis: cmp?.basis, baseline: b ? { product: b.product, pct: vs.pct } : undefined };
 });
 const meat = rows.filter((r) => ["meat", "seafood", "deli"].includes(r.aisle) || r.category === "protein");
 console.log("=== PROTEIN ROWS", meat.length);
@@ -40,11 +41,11 @@ for (const g of groups.sort((a, b) => b.variants.length - a.variants.length)) {
   if (g.variants.length < 2) continue;
   console.log(`G | ${g.name} (${g.variants.length}) | ${g.variants.map((v) => v.item).join(" ;; ")}`);
 }
-console.log("=== POINTS / LOYALTY");
-for (const [id, d] of raw) {
-  const text = `${d.name} ${d.description || ""} ${d.sale_story || ""} ${d.pre_price_text || ""} ${d.price_text || ""} ${d.post_price_text || ""}`;
-  if (/points|optimum|moi |scene|valeur de|value of|bonus/i.test(text)) {
-    console.log("L |", JSON.stringify({ name: d.name, price: d.price ?? d.current_price, pre: d.pre_price_text, pt: d.price_text, post: d.post_price_text, story: d.sale_story, desc: (d.description || "").slice(0, 160), disc: (d.disclaimer_text || "").slice(0, 120), merchant: d.merchant_name }));
-  }
+console.log("=== NOT PRICES");
+for (const r of rows.filter((r) => r.unitPrice == null)) console.log(["N", r.store, r.item, r.price].join(" | "));
+console.log("=== EXTREME vs QUEBEC (|pct| >= 60)");
+for (const r of rows.filter((r) => r.vs && Math.abs(r.vs.pct) >= 60)) console.log(["X", r.store, r.item, `m=${r.matchName}`, `${r.cmp.price}/${r.cmp.basis}`, `${r.b.product} ${r.vs.pct}%`].join(" | "));
+console.log("=== DASHBOARD PROTEINS");
+for (const k of proteinsOnSale(rows.map((r, i) => ({ ...r, id: i })))) {
+  console.log(["D", k.protein.label, k.best ? `${proteinName(k.best)} @ ${k.best.store} ${k.best.cmp?.price}/${k.best.cmp?.basis} reg=${k.best.regularPrice ?? ""} qc=${k.best.baseline?.pct ?? ""}` : "none", `onSale=${k.onSale.length}/${k.all.length}`, k.onSale.slice(1, 6).map(proteinName).join(", ")].join(" | "));
 }
-console.log("=== SAMPLE RAW KEYS", JSON.stringify(Object.keys([...raw.values()][0] || {})));

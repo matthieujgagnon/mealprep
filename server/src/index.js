@@ -9,7 +9,7 @@ import { requireAuth } from "./lib/auth.js";
 import { authRouter } from "./routes/auth.js";
 import { recipesRouter } from "./routes/recipes.js";
 import { plannerRouter } from "./routes/planner.js";
-import { dealsRouter } from "./routes/deals.js";
+import { dealsRouter, forgetAllDeals } from "./routes/deals.js";
 import { flyersRouter } from "./routes/flyers.js";
 import { pantryStaplesRouter } from "./routes/pantryStaples.js";
 import { grocerySectionsRouter } from "./routes/grocerySections.js";
@@ -94,5 +94,5 @@ process.on("unhandledRejection", (err) => {
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
-  startFlyerScheduler();
+  startFlyerScheduler({ onRenamed: forgetAllDeals });
 });

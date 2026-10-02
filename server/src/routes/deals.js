@@ -258,6 +258,10 @@ export function forgetDeals(userId) {
   dealsCache.delete(userId);
 }
 
+export function forgetAllDeals() {
+  dealsCache.clear();
+}
+
 // This week's deals as GET /api/deals builds them (for the import check).
 export async function currentDeals(userId) {
   const built = await getDeals(userId, stageTimer());

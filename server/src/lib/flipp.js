@@ -6,7 +6,7 @@
 // renamed field drops that one item rather than failing the whole import.
 
 // FLIPP_BASE_URL overrides it (the e2e tests point it somewhere unreachable).
-import { frenchToEnglish, looksFrench, splitBilingual } from "./bilingual.js";
+import { endsOnFood, frenchToEnglish, looksFrench, namesFood, splitBilingual } from "./bilingual.js";
 
 const flippBase = () => process.env.FLIPP_BASE_URL || "https://backflipp.wishabi.com/flipp";
 const LB_PER_KG = 0.45359237;
@@ -140,6 +140,8 @@ function flippPriceParts(item) {
   const post = String(item.post_price_text || "").trim();
   const priceText = String(item.price_text || "").trim();
 
+  const offer = notAPrice(item, price, pre);
+  if (offer) return { price: offer, unitPrice: null, unitBasis: null, factor: 1 };
   if (isAmountOff(pre) || /^off\b/i.test(post)) return amountOffPrice(item, price, pre, post);
 
   const multi = pre.match(/^(\d+)\s*(?:\/|for|pour)\s*$/i);
@@ -163,6 +165,35 @@ function flippPriceParts(item) {
     ? `${count}/${money(price)}`
     : `${money(price)}${unit ? `/${unit}` : ""}`;
   return { price: printed, unitPrice, unitBasis, factor };
+}
+
+// Tiles whose number isn't what the item costs:
+//   - free with another purchase: "GRATUIT viandes cuisinées Maple Leaf ...
+//     à l'achat de bacon Maple Leaf, Valeur de 8,49$" - the 8.49 is what
+//     you'd save;
+//   - "annoncé à" / "valeur de" bundles that only state a value;
+//   - points offers whose number is the points' worth: Metro's "375 points
+//     à l'achat d'un pâté au poulet, Valeur de 3$" comes through as a $3.00
+//     pot pie. (Points on top of a real price - "Obtenez 2 000 pts" on an
+//     $8.00 item - are fine: the number there is the price.)
+// The label to show instead of a price, or null for a real price.
+function notAPrice(item, price, pre) {
+  const fold = (t) =>
+    String(t || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase();
+  const story = fold(item.sale_story);
+  const desc = fold(item.description);
+  const name = fold(item.name);
+  if (/^gratuit\b|^free\b/.test(name) || /^(?:gratuit|free)\b/.test(story) || /\bfree with (?:the )?purchase\b/.test(`${story} ${desc}`)) {
+    return "Free with purchase";
+  }
+  const value = `${story} ${desc}`.match(/\b(?:valeur|valuer|value|worth)\s*(?:de|of)?\s*\$?\s*(\d+(?:[.,]\d{1,2})?)\s*\$?/);
+  const worth = value ? Number(value[1].replace(",", ".")) : null;
+  if (/^annonc|^announc/.test(fold(pre)) && worth != null) return `Worth ${money(worth)}`;
+  if (/\bpoints?\b|\bpts\b/.test(story) && worth != null && Math.abs(worth - price) < 0.01) return "Points offer";
+  return null;
 }
 
 // "rabais de" (and Super C's own "rebais de"), "save", "économisez",
@@ -231,18 +262,40 @@ const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:[x×/]\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|
 // A plain ingredient name to match against recipes: lowercase, no package
 // size, no "or"-alternatives, no brand-ish trailing detail after a comma.
 // A bilingual name ("pommes Cortland | apples") is matched by its English
-// half. A list of varieties before the product ("McIntosh, Spartan, Lobo or
-// Cortland apples") is matched by the product at its end.
+// half - unless that half doesn't name the product ("ESCALOPE DE POULET |
+// AIR CHILLED, UP TO 590 G"), then by the French one. A list of varieties
+// before the product ("McIntosh, Spartan, Lobo or Cortland apples") is
+// matched by the product at its end.
 export function toMatchName(name) {
-  const parts = splitBilingual(name)
-    .en.replace(/\([^)]*\)/g, " ")
+  const { en, fr } = splitBilingual(name);
+  const fromEnglish = pickName(en);
+  if (fr && !namesFood(fromEnglish)) {
+    const fromFrench = pickName(fr);
+    const translated = frenchToEnglish(fromFrench);
+    if (namesFood(translated)) return translated;
+  }
+  // A French-only name ("BŒUF HACHÉ MAIGRE") is matched in English.
+  if (!fr && looksFrench(fromEnglish)) return frenchToEnglish(fromEnglish) || fromEnglish;
+  return fromEnglish;
+}
+
+// Proteins that name a kind of something else in "beef or chicken pie".
+const KIND_WORDS = new Set("beef chicken pork turkey veal lamb fish salmon tuna shrimp cheese vegetable veggie boeuf poulet porc dinde veau agneau".split(" "));
+
+function pickName(text) {
+  const parts = String(text || "")
+    .replace(/\([^)]*\)/g, " ")
     .replace(SIZE_RE, " ")
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean);
   const lastPart = parts[parts.length - 1] || "";
-  const varieties = parts.length > 1 && !/\s/.test(parts[0]) && /\s/.test(lastPart.split(/ (?:or|ou) /i).pop().trim());
-  const head = varieties && / (?:or|ou) /i.test(lastPart) ? lastPart : parts[0] || "";
+  const lastChoice = lastPart.split(/ (?:or|ou) /i).pop().trim();
+  // "HOTHOUSE GRAPE, CHERRY OR MIXED TOMATOES": short names, then a last
+  // choice that's a whole product name.
+  const varieties =
+    parts.length > 1 && / (?:or|ou) /i.test(lastPart) && /\s/.test(lastChoice) && parts.slice(0, -1).every((p) => p.split(/\s+/).length <= 2);
+  const head = varieties ? lastPart : parts[0] || "";
   const clean = head
     // "chicken tournedos with bacon" is chicken tournedos.
     .split(/\s(?:with|avec)\s/i)[0]
@@ -251,16 +304,22 @@ export function toMatchName(name) {
     .replace(/[\s\-–,;:]+$/, "")
     .trim()
     .toLowerCase();
-  // "Red or Green Peppers": a one-word first choice is only an adjective,
-  // so the noun comes from the last choice; "Pork Chops or Roast" keeps
-  // the first.
-  const choices = clean.split(/ or | ou /);
-  const first = choices[0].trim();
-  const last = choices[choices.length - 1].trim();
-  const picked = choices.length === 1 ? clean : first.split(" ").length === 1 ? last : first;
-  // A French-only name ("BŒUF HACHÉ MAIGRE") is matched in English.
-  if (!/\|/.test(String(name)) && looksFrench(picked)) return frenchToEnglish(picked) || picked;
-  return picked;
+  const choices = clean.split(/ or | ou /).map((c) => c.trim());
+  if (choices.length === 1) return clean;
+  const first = choices[0];
+  const last = choices[choices.length - 1];
+  const firstWords = first.split(" ");
+  const lastNoun = last.split(" ").pop();
+  // "Beef or Chicken Pie": the first choice is only the kind of pie.
+  if (KIND_WORDS.has(firstWords[firstWords.length - 1]) && !KIND_WORDS.has(lastNoun) && last.split(" ").length > 1 && endsOnFood(last)) {
+    return `${first} ${lastNoun}`;
+  }
+  // "Red or Green Peppers", "Old Fashioned or Black Forest Smoked Ham": a
+  // first choice that doesn't end on a food is only a describing word, so
+  // the product comes from the last choice; "Pork Loin Chops or Roast"
+  // keeps the first.
+  if (firstWords.length === 1 || (!endsOnFood(first) && endsOnFood(last))) return last;
+  return first;
 }
 
 const CATEGORY_WORDS = [
@@ -272,6 +331,8 @@ const CATEGORY_WORDS = [
 ];
 
 export function categorize(name) {
+  // Ground coffee isn't ground meat.
+  if (/\b(coffee|caf[ée]|espresso|k-cups?)\b/i.test(name)) return "staple";
   for (const [category, re] of CATEGORY_WORDS) if (re.test(name)) return category;
   return "other";
 }

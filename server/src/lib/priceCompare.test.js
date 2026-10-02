@@ -22,6 +22,12 @@ describe("package sizes and comparable prices", () => {
     expect(comparablePrice({ item: "Cucumbers", unitPrice: 1, unitBasis: "each" })).toEqual({ price: 1, basis: "each" });
   });
 
+  it("prices a counted bag per item, but not a carton of eggs", () => {
+    expect(comparablePrice({ item: "SAC D'AVOCATS DÉLICES DU MARCHÉ, 5 UN. | FARMER'S MARKET™ AVOCADO BAG", unitPrice: 4.5, unitBasis: "each" })).toEqual({ price: 0.9, basis: "each" });
+    expect(comparablePrice({ item: "mini concombres | mini cucumbers, 6 un. bag", unitPrice: 2.99, unitBasis: "each" })).toEqual({ price: 0.5, basis: "each" });
+    expect(comparablePrice({ item: "GROS ŒUFS BLANCS SANS NOM®, 12 UN.", unitPrice: 3.99, unitBasis: "each" })).toEqual({ price: 3.99, basis: "each" });
+  });
+
   it("names a product without brand, size or plurals", () => {
     expect(productWords("PC Black Label Salmon Fillets, 400 g")).toEqual(["fillet", "salmon"]);
     expect(productWords("Seedless Navel Oranges (3 lb)")).toEqual(["navel", "orange", "seedless"]);
@@ -52,11 +58,24 @@ describe("price comparisons from day one", () => {
         month: "2026-08",
         history: ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"].map((month, i) => ({ month, price: 13 + i * 0.3 })),
       },
-      { product: "Beef striploin, per kilogram", item: "beef striploin", unitBasis: "lb", price: 14, month: "2026-08", history: [{ month: "2026-07", price: 14 }, { month: "2026-08", price: 14.4 }] },
+      { product: "Ground beef, per kilogram", item: "ground beef", unitBasis: "lb", price: 7, month: "2026-08", history: [{ month: "2026-07", price: 7 }, { month: "2026-08", price: 7.2 }] },
     ];
     const [out] = withPriceHistory([steak], [steak], NOW, baselines);
-    expect(out).toMatchObject({ isNew: false, rangeSource: "quebec", rangeProduct: "Beef striploin, per kilogram", sixMonthLow: 14, sixMonthHigh: 14.4 });
-    expect(out.history).toHaveLength(2);
+    // "Beef striploin cuts" stands for any striploin cut, steaks included.
+    expect(out).toMatchObject({ isNew: false, rangeSource: "quebec", rangeProduct: "Beef striploin cuts, per kilogram", sixMonthLow: 13, sixMonthHigh: 14.5 });
+    expect(out.history).toHaveLength(6);
+  });
+
+  it("never borrows another product's prices", () => {
+    const rows = (matchName, price, weeks) => weeks.map((w) => ({ store: "Maxi", matchName, item: matchName, unitPrice: price, unitBasis: "lb", createdAt: weeksAgo(w) }));
+    const history = [...rows("chicken", 3.49, [2, 5]), ...rows("chicken breasts", 6.99, [3, 6]), ...rows("salmon", 9.99, [2, 4])];
+    const pie = { id: "p", store: "Metro", item: "PÂTÉ AU POULET", matchName: "chicken pie", unitPrice: 5.99, unitBasis: "lb" };
+    const breasts = { id: "b", store: "Metro", item: "x", matchName: "boneless chicken breasts", unitPrice: 4.99, unitBasis: "lb" };
+    const fillets = { id: "f", store: "Metro", item: "x", matchName: "salmon fillets", unitPrice: 8.99, unitBasis: "lb" };
+    const [p, b, f] = withPriceHistory([pie, breasts, fillets], history, NOW);
+    expect(p.isNew).toBe(true);
+    expect(b).toMatchObject({ rangeSource: "stores", sixMonthHigh: 6.99 });
+    expect(f.isNew).toBe(true);
   });
 
   it("stays new when nothing compares", () => {

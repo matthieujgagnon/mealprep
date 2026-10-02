@@ -122,6 +122,31 @@ describe("what a product is", () => {
     );
   });
 
+  // The Chicken card used to hold a pot pie, wings, burgers, mock chicken
+  // and hot cooked chicken (names as the server now matches them).
+  it("keeps every kind of chicken on its own card", () => {
+    const groups = buildIngredients([
+      deal(1, "chicken pie"),
+      deal(2, "chicken wings"),
+      deal(3, "chicken burgers"),
+      deal(4, "chicken cutlet"),
+      deal(5, "hot cooked chicken"),
+      deal(6, "frozen boiling chicken"),
+      deal(7, "gaspésien mock chicken"),
+      deal(8, "ricardo roasted portuguese chicken"),
+      deal(9, "irrésistible chicken breast strips"),
+      deal(10, "fresh boneless chicken breasts"),
+      deal(11, "prix club fresh boneless chicken breasts"),
+      deal(12, "ferme des voltigeurs organic whole chicken"),
+      deal(13, "chicken"),
+    ]);
+    const chicken = groups.find((g) => g.key === "chicken");
+    // Only a whole chicken joins plain chicken.
+    expect(chicken.variants.map((d) => d.id).sort()).toEqual([12, 13]);
+    expect(groups.find((g) => g.key === "chicken breast").variants).toHaveLength(2);
+    expect(groups).toHaveLength(11);
+  });
+
   it("keeps a food-made product apart from the food it ends with", () => {
     const groups = buildIngredients([deal(1, "irresistible mini pizza bagels"), deal(2, "selection sliced bagels"), deal(3, "bagels")]);
     const names = groups.map((g) => g.name);
@@ -183,5 +208,11 @@ describe("dealVerdict: would I buy it?", () => {
   it("says only if you need it for a normal price, and can't tell with nothing to compare", () => {
     expect(dealVerdict({ ...base, baseline: { pct: 2 } })).toMatchObject({ key: "fair", label: "Only if you need it" });
     expect(dealVerdict(base)).toMatchObject({ key: "unknown" });
+  });
+
+  it("doesn't judge a points offer or a free item as a price", () => {
+    expect(dealVerdict({ ...base, price: "Points offer", unitPrice: null, unitBasis: null })).toMatchObject({ key: "unknown", label: "Not a price" });
+    expect(dealVerdict({ ...base, price: "Free with purchase", unitPrice: null, unitBasis: null }).reason).toMatch(/^Free when/);
+    expect(dealVerdict({ ...base, price: "$3.00 off", unitPrice: null, unitBasis: null })).toMatchObject({ key: "buy" });
   });
 });
