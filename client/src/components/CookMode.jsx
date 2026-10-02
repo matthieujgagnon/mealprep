@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatQuantity, unitLabel } from "../lib/units.js";
+import { useIsPhone } from "../hooks/useIsPhone.js";
 import { core } from "../lib/similarRecipes.js";
 import {
   stepBody,
@@ -9,12 +10,8 @@ import {
   stepTimer,
   stepTitle,
   scaleStepText,
+  formatClock,
 } from "../lib/steps.js";
-
-function formatClock(seconds) {
-  const m = Math.floor(seconds / 60);
-  return `${m}:${String(seconds % 60).padStart(2, "0")}`;
-}
 
 function formatTotalTime(minutes) {
   if (!minutes) return null;
@@ -240,6 +237,41 @@ export function CookMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex, finished, timerSpec, anyTimerRunning, isLast]);
 
+  // Everything for the step - its text, what to check off, the timer -
+  // fits on the screen without scrolling: the step text starts at its full
+  // size and steps down a pixel at a time until the column fits (the timer
+  // scales with it). Only a very long step at the smallest size scrolls.
+  const isPhone = useIsPhone();
+  const leftRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = leftRef.current;
+    if (!el) return;
+    function fit() {
+      const phone = window.innerWidth < 768;
+      const overlay = el.closest(".cm-overlay");
+      const overflows = () => el.scrollHeight > el.clientHeight;
+      // Tighter and tighter: smaller text; then compact pills and timer;
+      // then (on a phone) the photo makes way.
+      const stages = phone ? [[false, false], [true, false], [true, true]] : [[false, false], [true, false]];
+      for (const [compact, noPhoto] of stages) {
+        el.classList.toggle("compact", compact);
+        overlay?.classList.toggle("cm-no-photo", noPhoto);
+        let size = phone ? 24 : 36;
+        const min = phone ? 14 : 16;
+        el.style.setProperty("--cm-step-size", `${size}px`);
+        while (size > min && overflows()) {
+          size -= 1;
+          el.style.setProperty("--cm-step-size", `${size}px`);
+        }
+        if (!overflows()) return;
+      }
+    }
+    fit();
+    document.fonts?.ready.then(fit);
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [stepIndex, finished, scale, steps.length, isPhone]);
+
   function onTouchStart(e) {
     touchStartX.current = e.touches[0].clientX;
   }
@@ -448,11 +480,33 @@ export function CookMode({
     ? "Resume"
     : "▶ Start timer";
 
+  // On a phone the timer sits under the step; on a wider screen it moves to
+  // the photo column so the step and its ingredients get the room.
+  const timerBlock = timerSpec ? (
+    <div className="cm-timer">
+      <div className="cm-timer-readout">
+        <span className="cm-timer-label">{timerLabel}</span>
+        <span className="cm-timer-time">{formatClock(remaining)}</span>
+      </div>
+      <div className="cm-timer-actions">
+        <button type="button" className="cm-timer-main" onClick={toggleTimer}>
+          {timerButton}
+        </button>
+        <button type="button" className="cm-timer-btn" onClick={addMinute}>
+          +1 min
+        </button>
+        <button type="button" className="cm-timer-btn" onClick={resetTimer}>
+          Reset
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <div className="cm-overlay riso-theme" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="cm-overlay riso-theme cm-step-view" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {header}
       <main className="cm-main">
-        <div className="cm-left">
+        <div className="cm-left" ref={leftRef}>
           <div className="cm-step-head">
             <span className="cm-step-num">{stepIndex + 1}</span>
             <div>
@@ -498,29 +552,12 @@ export function CookMode({
             </div>
           )}
 
-          {timerSpec && (
-            <div className="cm-timer">
-              <div className="cm-timer-readout">
-                <span className="cm-timer-label">{timerLabel}</span>
-                <span className="cm-timer-time">{formatClock(remaining)}</span>
-              </div>
-              <div className="cm-timer-actions">
-                <button type="button" className="cm-timer-main" onClick={toggleTimer}>
-                  {timerButton}
-                </button>
-                <button type="button" className="cm-timer-btn" onClick={addMinute}>
-                  +1 min
-                </button>
-                <button type="button" className="cm-timer-btn" onClick={resetTimer}>
-                  Reset
-                </button>
-              </div>
-            </div>
-          )}
+          {isPhone && timerBlock}
         </div>
 
         <aside className="cm-right">
-          <div className="cm-photo">{image && <img src={image} alt="" />}</div>
+          {!isPhone && timerBlock}
+          <div className={`cm-photo${image ? "" : " empty"}`}>{image && <img src={image} alt="" />}</div>
           {nextStep && (
             <button type="button" className="cm-up-next" onClick={next}>
               <span className="cm-up-next-label">

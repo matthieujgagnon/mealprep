@@ -216,3 +216,42 @@ test("Exit confirms before closing when a timer is running", async ({ page }) =>
   await page.getByRole("button", { name: "← Recipe", exact: true }).click();
   await expect(page.locator(".cm-overlay")).toHaveCount(0);
 });
+
+test("an hour-long timer reads in hours, and a long step with all its ingredients fits without scrolling", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  const names = ["beef chuck", "onions", "carrots", "celery", "garlic", "tomato paste", "red wine", "beef stock", "thyme", "bay leaves"];
+  const res = await page.request.post("/api/recipes", {
+    data: {
+      title: "Long Braise",
+      baseServings: 4,
+      ingredients: names.map((name) => ({ name, quantity: 2, unit: "cup" })),
+      instructions: [
+        `Braise: Brown the ${names[0]} in batches, then soften the ${names.slice(1, 4).join(", ")} and ${names[4]}; stir in the ${names[5]}, deglaze with the ${names[6]}, add the ${names[7]}, ${names[8]} and ${names[9]}, cover and braise for 90 minutes until the meat falls apart, turning it once halfway and topping up with stock if it looks dry.`,
+      ],
+    },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Recipes", exact: true }).click();
+    await page.getByText("Long Braise", { exact: true }).click();
+    await page.getByRole("button", { name: "Start cooking" }).click();
+
+    await expect(page.locator(".cm-timer-time")).toHaveText("1:30:00");
+    await expect(page.locator(".cm-uses-pill")).toHaveCount(names.length);
+    // Nothing scrolls: not the page, not the step column.
+    const fits = await page.evaluate(() =>
+      [".cm-overlay", ".cm-left"].every((sel) => {
+        const el = document.querySelector(sel);
+        return el.scrollHeight <= el.clientHeight + 1;
+      })
+    );
+    expect(fits).toBe(true);
+    // The last ingredient and the Next button are both on screen.
+    await expect(page.locator(".cm-uses-pill").last()).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole("button", { name: /Finish|Next step/ })).toBeInViewport({ ratio: 1 });
+    await page.getByRole("button", { name: "Exit cook mode" }).click();
+  }
+});

@@ -57,6 +57,16 @@ export function stepTimer(step) {
   return { seconds, label: durationLabel(seconds) };
 }
 
+// A countdown's readout: "4:05", or with hours once it's an hour or more
+// ("1:30:00", not "90:00").
+export function formatClock(seconds) {
+  const total = Math.max(0, Math.round(seconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
+
 // "3-minute", "20-minute", "1-hour", "1 h 30 min": the timer chip reads
 // "Start 20-minute timer" (never MIN or HR in capitals).
 export function durationLabel(seconds) {

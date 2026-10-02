@@ -8,8 +8,9 @@ import {
   stepBody,
   stepTimer,
   scaleStepText,
+  formatClock,
 } from "../lib/steps.js";
-import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, coversIngredient, findSaleDeal } from "../lib/similarRecipes.js";
+import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, coversIngredient, findSaleDeal, findDealsFor } from "../lib/similarRecipes.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { SaleTag } from "./SaleTag.jsx";
 import { formatQuantity, unitLabel } from "../lib/units.js";
@@ -89,11 +90,27 @@ function OptionsMenu({ onEdit, onDelete, onEditLeftoverDays, fridgeLifeDays, sou
   );
 }
 
+// The full-size photo viewer: ← → flip through the photos, Escape (or the
+// ×, or a click outside the photo) closes it - and only it, not the recipe.
 function PhotoLightbox({ photos, index, onIndex, onClose }) {
   const url = photos[index];
+  useEffect(() => {
+    function onKey(e) {
+      const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (e.key !== "Escape" && !step) return;
+      // Caught on the way down, before the recipe card's own Escape.
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape") onClose();
+      else if (photos.length > 1) onIndex((index + step + photos.length) % photos.length);
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [index, photos.length, onIndex, onClose]);
+
   return (
-    <div className="rc-lightbox-overlay" onClick={onClose}>
-      <button className="modal-close" onClick={onClose} aria-label="Close photo viewer">
+    <div className="rc-lightbox-overlay" role="dialog" aria-label="Photos" onClick={onClose}>
+      <button type="button" className="rc-lightbox-close" onClick={onClose} aria-label="Close photos" title="Close (Esc)">
         ×
       </button>
       {photos.length > 1 && (
@@ -150,8 +167,6 @@ function StepTimerChip({ timer }) {
     return () => clearTimeout(id);
   }, [running, remaining]);
 
-  const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
-  const ss = String(remaining % 60).padStart(2, "0");
   const finished = remaining <= 0;
 
   return (
@@ -167,7 +182,7 @@ function StepTimerChip({ timer }) {
         }
       }}
     >
-      {finished ? "✓ Done" : running ? `⏸ ${mm}:${ss}` : `▶ Start ${timer.label} timer`}
+      {finished ? "✓ Done" : running ? `⏸ ${formatClock(remaining)}` : `▶ Start ${timer.label} timer`}
     </button>
   );
 }
@@ -199,6 +214,7 @@ function IngredientRow({
   ing,
   status,
   deal,
+  saleOthers,
   scaledQty,
   isOpen,
   onToggle,
@@ -210,6 +226,18 @@ function IngredientRow({
 }) {
   const have = status !== "need";
   const matched = have ? findMatchedPantryItem(ing, pantryInventory) : null;
+  // "+ Grocery list" turns into a quiet "On grocery list ✓" once it's added.
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+  async function addToList() {
+    setAdding(true);
+    try {
+      await onAddOneToGroceryList(ing);
+      setAdded(true);
+    } finally {
+      setAdding(false);
+    }
+  }
   const where = matched ? locationLabel(matched.location) : "inventory";
 
   let why;
@@ -232,7 +260,7 @@ function IngredientRow({
           {isPerishable(ing.name) && <span className="perishable-dot" title="Perishable ingredient" />}
         </span>
         {status === "soon" && <span className="riso-rc-use-soon-sticker">use soon!</span>}
-        {status === "need" && <SaleTag deal={deal} />}
+        {status === "need" && <SaleTag deal={deal} others={saleOthers} />}
         <span className="riso-rc-ingredient-qty">
           {scaledQty != null
             ? `${formatQuantity(scaledQty)}${ing.unit ? " " + unitLabel(ing.unit, scaledQty) : ""}`
@@ -245,8 +273,13 @@ function IngredientRow({
           <div className="riso-rc-ingredient-actions">
             {status === "need" ? (
               <>
-                <button type="button" className="riso-rc-ing-action primary" onClick={() => onAddOneToGroceryList(ing)}>
-                  + Grocery list
+                <button
+                  type="button"
+                  className={`riso-rc-ing-action primary${added ? " added" : ""}`}
+                  onClick={addToList}
+                  disabled={adding || added}
+                >
+                  {added ? "On grocery list ✓" : adding ? "Adding…" : "+ Grocery list"}
                 </button>
                 <button type="button" className="riso-rc-ing-action" onClick={() => onAddPantryItem({ name: ing.name })}>
                   I have it
@@ -305,14 +338,6 @@ export function RecipeDetailModal({
   const [openIngredientKey, setOpenIngredientKey] = useState(null);
   const { deals } = useDeals();
 
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const scale = servings / (recipe.baseServings || 1);
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
@@ -330,6 +355,21 @@ export function RecipeDetailModal({
 
   // Open on the cover photo (photoUrl), wherever it sits in the gallery.
   const coverIndex = Math.max(0, gallery.indexOf(recipe.photoUrl));
+
+  // Escape closes the card; ← → flip the cover photo (the photo viewer
+  // handles its own keys while it's open). Typing in a field is left alone.
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Escape") return onClose();
+      if (lightboxOpen || gallery.length < 2) return;
+      if (e.target.closest?.("input, textarea, select, [contenteditable='true']")) return;
+      const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (step) setActivePhotoIndex((i) => (i + step + gallery.length) % gallery.length);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gallery.length, lightboxOpen]);
   const coverKey = `${recipe.id}|${coverIndex}`;
   const [seenCoverKey, setSeenCoverKey] = useState(null);
   if (seenCoverKey !== coverKey) {
@@ -481,7 +521,12 @@ export function RecipeDetailModal({
             </span>
           )}
           {gallery.length > 1 && (
-            <button type="button" className="riso-rc-photo-count" onClick={() => setLightboxOpen(true)}>
+            <button
+              type="button"
+              className="riso-rc-photo-count"
+              title="Open the photos (← → to flip)"
+              onClick={() => setLightboxOpen(true)}
+            >
               {activePhotoIndex + 1} / {gallery.length} PHOTOS
             </button>
           )}
@@ -651,6 +696,7 @@ export function RecipeDetailModal({
                           ing={ing}
                           status={ingredientStatus(ing)}
                           deal={findSaleDeal(ing.name, deals)}
+                          saleOthers={findDealsFor(ing.name, deals)}
                           scaledQty={scaledQty}
                           isOpen={openIngredientKey === key}
                           onToggle={() => setOpenIngredientKey((prev) => (prev === key ? null : key))}
@@ -697,9 +743,9 @@ export function RecipeDetailModal({
                 ) : (
                   <button
                     type="button"
-                    className="riso-rc-add-missing-btn"
+                    className={`riso-rc-add-missing-btn${addedMissing ? " added" : ""}`}
                     onClick={handleAddMissingToGroceryList}
-                    disabled={addingMissing}
+                    disabled={addingMissing || addedMissing}
                   >
                     {addedMissing
                       ? "Added to grocery list ✓"

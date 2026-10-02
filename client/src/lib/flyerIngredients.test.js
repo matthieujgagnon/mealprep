@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIngredients, dealSavings, ingredientKeyOf, sliceIngredients, splitBilingual, RANKS } from "./flyerIngredients.js";
+import { buildIngredients, dealSavings, dealVerdict, ingredientKeyOf, sliceIngredients, splitBilingual, RANKS } from "./flyerIngredients.js";
 
 const deal = (id, store, item, unitPrice, unitBasis = "each", extra = {}) => ({
   id,
@@ -158,5 +158,30 @@ describe("what's really on sale", () => {
     ]);
     const ranked = [...groups].sort(RANKS.best.sort).map((g) => [g.name, g.onSale]);
     expect(ranked).toEqual([["Pork chops", true], ["Apples", true], ["Wine", false]]);
+  });
+});
+
+describe("dealVerdict: would I buy it?", () => {
+  const base = { store: "Maxi", item: "Thing", price: "$2.00", unitPrice: 2, unitBasis: "each" };
+
+  it("says stock up at a 6-month low with a real saving, or 25%+ off", () => {
+    const low = { ...base, unitPrice: 2, sixMonthLow: 2, sixMonthHigh: 4, regularPrice: 3, freezeTip: "Freezes 6 months" };
+    expect(dealVerdict(low)).toMatchObject({ key: "stock-up", label: "Stock up" });
+    expect(dealVerdict(low).reason).toBe("Its lowest price in 6 months, and it freezes.");
+    expect(dealVerdict({ ...base, regularPrice: 3 })).toMatchObject({ key: "stock-up", reason: "33% off the regular price." });
+  });
+
+  it("says buy for a smaller real saving", () => {
+    expect(dealVerdict({ ...base, regularPrice: 2.3 })).toMatchObject({ key: "buy", reason: "13% off the regular price." });
+  });
+
+  it("says skip when it costs more than usual", () => {
+    expect(dealVerdict({ ...base, sixMonthLow: 1, sixMonthHigh: 2.2 })).toMatchObject({ key: "skip" });
+    expect(dealVerdict({ ...base, baseline: { pct: 15 } }).reason).toBe("15% over Quebec's average. Wait for a sale.");
+  });
+
+  it("says only if you need it for a normal price, and can't tell with nothing to compare", () => {
+    expect(dealVerdict({ ...base, baseline: { pct: 2 } })).toMatchObject({ key: "fair", label: "Only if you need it" });
+    expect(dealVerdict(base)).toMatchObject({ key: "unknown" });
   });
 });

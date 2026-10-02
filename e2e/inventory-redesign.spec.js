@@ -224,6 +224,9 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await page.mouse.move(cardBox.x + cardBox.width / 2 + 20, cardBox.y + cardBox.height / 2, { steps: 5 });
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 });
   await page.waitForTimeout(100);
+  // What follows the pointer is the item's card, not the old name chip.
+  await expect(page.locator(".inv-drag-preview .inv-card")).toContainText("Shrimp");
+  await expect(page.locator(".drag-preview-chip")).toHaveCount(0);
   await page.mouse.up();
 
   await expect(page.locator(".inv-shelf", { hasText: "Pantry" }).getByText("Shrimp")).toBeVisible();

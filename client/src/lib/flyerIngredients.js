@@ -132,6 +132,38 @@ export function dealSavings(deal) {
   return best && best.pct >= 0.05 ? { pct: Math.min(best.pct, 0.95), why: best.why } : null;
 }
 
+// Would I buy it? A plain answer for a flyer item, from the same signals
+// the cards show: its real saving (dealSavings), where it sits in its own
+// 6-month range, Quebec's average, and whether it freezes.
+//   stock-up - at its 6-month low with a real saving, or 25%+ off: buy extra
+//   buy      - a real saving: worth buying if you'll use it
+//   fair     - a normal price: only if you need it this week
+//   skip     - pricier than usual: wait for a sale
+//   unknown  - nothing to compare it with yet
+export function dealVerdict(deal) {
+  if (!deal) return null;
+  const saving = dealSavings(deal);
+  const t = rangePosition(deal);
+  const vsQuebec = deal.baseline?.pct;
+  const pctText = saving?.pct != null ? `${Math.round(saving.pct * 100)}% ${saving.why}` : saving?.why;
+  const freezes = deal.freezeTip ? ", and it freezes" : "";
+  if (saving && ((t != null && t <= 0.05) || (saving.pct != null && saving.pct >= 0.25))) {
+    const why = t != null && t <= 0.05 ? "Its lowest price in 6 months" : pctText[0].toUpperCase() + pctText.slice(1);
+    return { key: "stock-up", label: "Stock up", reason: `${why}${freezes}.` };
+  }
+  if (saving) return { key: "buy", label: "Buy", reason: `${pctText[0].toUpperCase() + pctText.slice(1)}.` };
+  if ((t != null && t >= 0.6) || (vsQuebec != null && vsQuebec >= 10)) {
+    return {
+      key: "skip",
+      label: "Skip",
+      reason: vsQuebec != null && vsQuebec >= 10 ? `${vsQuebec}% over Quebec's average. Wait for a sale.` : "Pricier than it's been lately. Wait for a sale.",
+    };
+  }
+  const known = t != null || vsQuebec != null || deal.regularPrice != null || deal.sixMonthHigh != null;
+  if (!known) return { key: "unknown", label: "Can't tell yet", reason: "No past prices to compare with yet." };
+  return { key: "fair", label: "Only if you need it", reason: "A normal price, not a deal." };
+}
+
 export function unitLabel(basis) {
   if (basis === "lb") return "per lb";
   if (basis === "L") return "per L";

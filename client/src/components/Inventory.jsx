@@ -470,6 +470,34 @@ function CardQuantity({ item, onUpdate }) {
   );
 }
 
+// The card that follows the pointer while an item is dragged to another
+// shelf (App.jsx's DragOverlay): the same card, without its controls.
+export function InventoryDragPreview({ item }) {
+  const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
+  return (
+    <div className="riso-theme inv-drag-preview" data-theme="light">
+      <div className={`inv-card${daysUntilOrNull(item) <= 0 ? " expired" : ""}`}>
+        <div className="inv-card-body">
+          <ItemPhoto item={item} />
+          <div className="inv-card-main">
+            <span className="inv-card-name">{item.name}</span>
+          </div>
+          {item.quantity != null && (
+            <span className="inv-card-qty">
+              <span className="inv-card-qty-num">{item.quantity}</span>
+              {unit && <span className="inv-card-qty-unit"> {unit}</span>}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function daysUntilOrNull(item) {
+  return item.expiresAt ? daysUntil(item.expiresAt) : Infinity;
+}
+
 function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true }) {
   const line = expiryLine(item);
 

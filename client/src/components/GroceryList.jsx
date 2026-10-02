@@ -1154,6 +1154,7 @@ export function GroceryList({
           others={findDealsFor(openDeal.name, deals).filter((d) => d.id !== openDeal.deal.id)}
           onClose={() => setOpenDeal(null)}
           onToggleWatch={() => toggleWatch(openDeal.deal)}
+          onOpenOther={(o) => openDealDetail(o, openDeal.name)}
         />
       )}
     </div>
