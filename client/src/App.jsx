@@ -1006,6 +1006,7 @@ export default function App({ user, onLogout }) {
             user={user}
             plannerEntries={plannerEntries}
             weekStart={weekStart}
+            onChangeWeek={setWeekStart}
             customStaples={customStaples}
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}

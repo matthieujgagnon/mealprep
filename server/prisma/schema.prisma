@@ -216,6 +216,10 @@ model GroceryExtraItem {
   name      String
   quantity  Float?
   unit      String?
+  // Pushed here from another week's list ("→ Next week"): the week it came
+  // from and its row key there, so the push can be undone.
+  pushedFrom String?
+  pushedKey  String?
   createdAt DateTime @default(now())
 
   @@index([userId, weekStart])
@@ -236,6 +240,8 @@ model GroceryItemOverride {
   removed   Boolean  @default(false)
   // A removed row cleared from the "Removed this week" strip.
   hidden    Boolean  @default(false)
+  // Pushed to another week's list instead of bought this week.
+  movedTo   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

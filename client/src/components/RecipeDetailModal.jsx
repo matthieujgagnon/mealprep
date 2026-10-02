@@ -392,6 +392,8 @@ export function RecipeDetailModal({
   const allIngredients = recipe.ingredients || [];
   const haveCount = allIngredients.filter((ing) => ingredientStatus(ing) !== "need").length;
   const missingIngredients = allIngredients.filter((ing) => ingredientStatus(ing) === "need");
+  // The "use soon!" key only means something when an ingredient wears it.
+  const anyUseSoon = allIngredients.some((ing) => ingredientStatus(ing) === "soon");
 
   // Already scheduled *for the currently-viewed week* — matches the same
   // week `weekStart` would add grocery extras to, which is exactly what
@@ -721,10 +723,12 @@ export function RecipeDetailModal({
                   <span className="riso-rc-legend-dot" />
                   Need to buy
                 </span>
-                <span>
-                  <span className="riso-rc-legend-sticker">use soon!</span>
-                  Expires in 3 days or less
-                </span>
+                {anyUseSoon && (
+                  <span>
+                    <span className="riso-rc-legend-sticker">use soon!</span>
+                    Expires in 3 days or less
+                  </span>
+                )}
               </div>
 
               {missingIngredients.length > 0 && weekStart && (
