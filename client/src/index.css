@@ -7244,6 +7244,8 @@ button.riso-table-group-head:disabled {
   font-size: 44px;
   line-height: 1.05;
   letter-spacing: -0.03em;
+  /* The name can be an email's first half - one long word on a phone. */
+  overflow-wrap: anywhere;
 }
 
 .riso-home-top-row {
