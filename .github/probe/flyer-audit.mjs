@@ -49,3 +49,9 @@ console.log("=== DASHBOARD PROTEINS");
 for (const k of proteinsOnSale(rows.map((r, i) => ({ ...r, id: i })))) {
   console.log(["D", k.protein.label, k.best ? `${proteinName(k.best)} @ ${k.best.store} ${k.best.cmp?.price}/${k.best.cmp?.basis} reg=${k.best.regularPrice ?? ""} qc=${k.best.baseline?.pct ?? ""}` : "none", `onSale=${k.onSale.length}/${k.all.length}`, k.onSale.slice(1, 6).map(proteinName).join(", ")].join(" | "));
 }
+
+console.log("=== RAW REGULAR (per-lb items with a regular price)");
+for (const r of rows.filter((r) => r.unitBasis === "lb" && r.regularPrice != null)) {
+  const d = [...raw.values()].find((x) => x.name && r.item.startsWith(String(x.name).trim().replace(/[\s,;]+$/, "").slice(0, 30)));
+  console.log("R |", r.store, "|", r.item, "|", r.price, "| reg", r.regularPrice, "|", JSON.stringify(d ? { price: d.price ?? d.current_price, pre: d.pre_price_text, pt: d.price_text, post: d.post_price_text, story: d.sale_story, orig: d.original_price, doff: d.dollars_off, poff: d.percent_off, desc: (d.description || "").slice(0, 140), disc: (d.disclaimer_text || "").slice(0, 100) } : null));
+}
