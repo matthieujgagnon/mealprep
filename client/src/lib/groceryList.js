@@ -63,6 +63,15 @@ const UNIT_ALIASES = {
   box: "box", boxes: "box",
   bag: "bag", bags: "bag",
   "fl oz": "fl_oz", fl_oz: "fl_oz",
+  each: "unit", ea: "unit",
+  block: "block", blocks: "block",
+  stick: "stick", sticks: "stick",
+  loaf: "loaf", loaves: "loaf",
+  fillet: "fillet", fillets: "fillet",
+  portion: "portion", portions: "portion",
+  leaf: "leaf", leaves: "leaf",
+  carton: "carton", cartons: "carton",
+  tub: "tub", tubs: "tub",
 };
 
 function canonicalUnit(unit) {
@@ -177,7 +186,7 @@ export function canonicalize(rawName) {
     .split(/\s+/)
     .filter(Boolean);
 
-  const UNIT_PREFIXES = new Set(["can", "cans", "jar", "jars", "bag", "bags", "package", "packages", "pkg", "box", "boxes", "head", "heads", "bunch", "bunches", "block", "blocks"]);
+  const UNIT_PREFIXES = new Set(["can", "cans", "jar", "jars", "bag", "bags", "package", "packages", "pkg", "box", "boxes", "head", "heads", "bunch", "bunches", "block", "blocks", "carton", "cartons", "tub", "tubs", "loaf", "loaves", "stick", "sticks"]);
 
   const varieties = [];
   let skipFirst = false;

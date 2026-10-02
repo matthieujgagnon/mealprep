@@ -141,21 +141,25 @@ export function convertIngredient(quantity, unit, targetSystem) {
   return { quantity, unit, approximate: false };
 }
 
-// Units offered when entering an ingredient, grouped the way a cook thinks
-// about them. "unit" is the plain count ("3 units red bell pepper").
+// Units offered when entering an ingredient or an Inventory item, grouped
+// the way a cook thinks about them. "unit" is the plain count ("3 units red
+// bell pepper"); "piece" a piece of something bigger. A block of cheese, a
+// stick of butter, a loaf of bread, a fillet of fish, a portion of leftovers
+// are things you count; a carton of milk or a tub of yogurt is the package.
 export const UNIT_GROUPS = [
   {
     label: "Count",
-    units: ["unit", "piece", "clove", "slice", "head", "bunch", "stalk", "sprig", "handful", "dozen"],
+    units: ["unit", "piece", "slice", "block", "stick", "loaf", "fillet", "portion", "dozen"],
   },
-  { label: "Package", units: ["can", "jar", "bottle", "package", "box", "bag"] },
+  { label: "Produce", units: ["clove", "head", "bunch", "stalk", "sprig", "leaf", "handful"] },
+  { label: "Package", units: ["can", "jar", "bottle", "carton", "tub", "package", "box", "bag"] },
   { label: "Volume", units: ["tsp", "tbsp", "cup", "fl_oz", "ml", "l"] },
   { label: "Weight", units: ["g", "kg", "oz", "lb"] },
   { label: "A little", units: ["pinch", "dash"] },
 ];
 
 const ABBREVIATED = new Set(["g", "kg", "mg", "ml", "l", "tsp", "tbsp", "oz", "lb", "fl_oz"]);
-const IRREGULAR_PLURAL = { dozen: "dozen" };
+const IRREGULAR_PLURAL = { dozen: "dozen", leaf: "leaves", loaf: "loaves" };
 
 // How a unit reads next to an amount: "3 units", "1 clove", "2 bunches",
 // "250 ml", "1 L", "4 fl oz". Abbreviations never take a plural.
