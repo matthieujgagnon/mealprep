@@ -1840,9 +1840,9 @@ select {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  grid-auto-rows: 100px;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  grid-auto-rows: 88px;
+  gap: 12px;
   align-content: start;
   padding: 2px 6px 6px 2px;
   margin: -2px -6px -6px -2px;
@@ -1896,15 +1896,13 @@ select {
   background: var(--riso-surface);
 }
 
-/* Item card: a status strip (days left on a 4-week scale) over the name,
-   the amount and the USDA storage tip. */
+/* Item card (Design4): one row - expiry line, photo, name, amount, tick. */
 .inv-card {
   background: #fff;
   border: 2px solid var(--riso-ink);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
   cursor: pointer;
   box-sizing: border-box;
   min-width: 0;
@@ -1912,6 +1910,10 @@ select {
      native scroll take over (and cancel) a vertical drag between shelves.
      The page still scrolls by touching the gaps around a card. */
   touch-action: none;
+}
+
+.inv-card.expired {
+  background: #fff4fa;
 }
 
 .inv-card.active {
@@ -1922,71 +1924,119 @@ select {
   opacity: 0.4;
 }
 
-.inv-card-strip {
-  height: 28px;
+/* Days left, filling from the bottom; absent with no date or 28+ days. */
+.inv-card-line {
+  width: 12px;
   flex: none;
-  border-bottom: 2px solid var(--riso-ink);
-  background: var(--riso-canvas);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 6px;
-}
-
-.inv-card-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
   border-right: 2px solid var(--riso-ink);
-  box-sizing: border-box;
+  background: var(--riso-canvas);
+  display: flex;
+  align-items: flex-end;
 }
 
-.inv-card-fill.pink {
+.inv-card-line-fill {
+  width: 100%;
+}
+
+.inv-card-line-fill.pink {
   background: var(--riso-hot);
 }
 
-.inv-card-fill.yellow {
+.inv-card-line-fill.yellow {
   background: var(--riso-yellow);
 }
 
-.inv-card-fill.blue {
+.inv-card-line-fill.blue {
   background: var(--riso-accent);
 }
 
-.inv-card-days {
-  position: absolute;
-  left: 6px;
-  top: 2px;
-  height: 20px;
+.inv-card-body {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  background: #fff;
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 0 9px;
+  gap: 14px;
+  padding: 8px 12px 8px 8px;
+}
+
+.inv-card-photo {
+  width: 68px;
+  height: 68px;
+  flex: none;
   box-sizing: border-box;
-  font: 800 12px var(--riso-font-display);
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--riso-canvas);
+}
+
+.inv-card-photo.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.inv-card-photo.letter {
+  font: 800 28px var(--riso-font-display);
+  color: var(--riso-muted);
+}
+
+.inv-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.inv-card-name {
+  font: 800 18px/1.15 var(--riso-font-display);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+/* Quiet on purpose: easy to ignore. */
+.inv-card-expired {
+  background: #ffe0f1;
+  color: #8a0f55;
+  border-radius: 999px;
+  padding: 0 8px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  font: 700 11.5px var(--riso-font-display);
   white-space: nowrap;
 }
 
-.inv-card-strip.expired {
-  background: var(--riso-track);
+.inv-card-qty {
+  flex: none;
+  white-space: nowrap;
+  text-align: right;
 }
 
-.inv-card-days.expired {
-  background: var(--riso-hot);
+.inv-card-qty-num {
+  font: 800 18px var(--riso-font-display);
+}
+
+.inv-card-qty-unit {
+  font: 600 14px var(--riso-font-display);
+  color: var(--riso-muted);
 }
 
 .inv-card-check {
-  position: relative;
+  flex: none;
   width: 18px;
   height: 18px;
   border-radius: 5px;
   box-sizing: border-box;
   border: 2px solid var(--riso-ink);
-  background: #fff;
+  background: var(--riso-surface);
   color: #fff;
   display: flex;
   align-items: center;
@@ -2000,47 +2050,23 @@ select {
   background: var(--riso-accent);
 }
 
-.inv-card-body {
-  flex: 1;
-  padding: 0 16px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: 16px;
+.inv-panel-photo {
+  display: flex;
   align-items: center;
-  min-height: 0;
+  gap: 14px;
 }
 
-.inv-card-main {
-  min-width: 0;
+.inv-panel-photo-actions {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 13.5px;
 }
 
-.inv-card-name {
-  font: 800 18px/1.15 var(--riso-font-display);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.inv-card-qty {
-  font: 500 14px var(--riso-font-display);
-  color: var(--riso-muted);
-}
-
-.inv-card-tip {
-  font: 500 13px/1.3 var(--riso-font-display);
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.inv-card-source {
-  display: block;
-  font: 500 10px var(--riso-font-mono);
-  color: var(--riso-muted);
-  margin-top: 2px;
+.inv-panel-photo-error {
+  color: var(--riso-danger);
+  font-size: 12.5px;
 }
 
 @media (max-width: 1000px) {
@@ -10208,7 +10234,8 @@ button.riso-row-qty:focus-visible {
   /* No drag on phones, so cards scroll the page like anything else. */
   .inv-card {
     touch-action: auto;
-    min-height: 60px;
+    min-height: 80px;
+    flex: none;
   }
 
   .riso-inv-header {

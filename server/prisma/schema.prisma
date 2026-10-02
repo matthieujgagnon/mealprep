@@ -321,6 +321,7 @@ model PantryInventoryItem {
   location    String    @default("fridge") // "pantry" | "fridge" | "freezer" - which USDA FoodKeeper column the expiration suggestion was drawn from
   purchasedAt DateTime  @default(now())
   expiresAt   DateTime? // suggested from the bundled USDA FoodKeeper data at add-time, or set/edited by the user - null means no suggestion was available and none was typed in
+  imageUrl    String? // the item's photo on its Inventory card: an upload (/api/recipe-images/...) or a link; null shows a food emoji instead
   createdAt   DateTime  @default(now())
 
   // Unlike RecipeCategory/PantryStaple/etc., this one is genuinely meant to

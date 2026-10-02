@@ -4,6 +4,8 @@ import { parseQuantityInput, unitLabel } from "../lib/units.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
+import { foodEmoji } from "../lib/dealEmoji.js";
+import { isImageFile, uploadPhoto } from "../lib/photoUpload.js";
 import { BottomSheet, HintStrip } from "./RisoControls.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 
@@ -323,24 +325,39 @@ function storageTip(item) {
   return null;
 }
 
-// The status strip's fill: days left on a 4-week scale, pink within 3
-// days, yellow within a week, blue after that. Nothing from 28 days on,
-// or with no date.
-const STRIP_DAYS = 28;
-function stripFor(item) {
+// The expiry line down the card's left edge: days left on a 4-week scale,
+// filling from the bottom (at least 8% so it stays visible), pink within 3
+// days, yellow within a week, blue after that. Expired is full-height pink.
+// No line from 28 days on, or with no date.
+const LINE_DAYS = 28;
+function expiryLine(item) {
   if (!item.expiresAt) return null;
   const d = daysUntil(item.expiresAt);
-  if (d >= STRIP_DAYS) return null;
+  if (d >= LINE_DAYS) return null;
+  if (d <= 0) return { expired: true, height: "100%", color: "pink", label: "expired" };
   const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
-  // Past its date: the pill itself goes pink, on a plain grey strip.
-  if (d < 0) return { expired: true, label: "expired!" };
-  const label = d === 0 ? "today!" : d === 1 ? "tomorrow!" : d <= 7 ? `${d} days` : `${d}D`;
-  return { pct: `${Math.max(8, (d / STRIP_DAYS) * 100)}%`, color, label };
+  const label = d === 1 ? "use by tomorrow" : `${d} days left`;
+  return { height: `${Math.max(8, Math.round((d / LINE_DAYS) * 100))}%`, color, label };
+}
+
+// The item's photo, else a cream tile with a food emoji (or its first
+// letter) - and the same tile if the photo won't load.
+function ItemPhoto({ item }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [item.imageUrl]);
+  if (item.imageUrl && !failed) {
+    return <img className="inv-card-photo" src={item.imageUrl} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  }
+  const emoji = foodEmoji(item.name, item.category);
+  return (
+    <span className={`inv-card-photo placeholder${emoji ? "" : " letter"}`} aria-hidden="true">
+      {emoji || (item.name.trim()[0] || "?").toUpperCase()}
+    </span>
+  );
 }
 
 function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable = true }) {
-  const strip = stripFor(item);
-  const tip = storageTip(item);
+  const line = expiryLine(item);
 
   // Draggable onto any other shelf (see App.jsx's handleDragEnd, routed via
   // the "inv-shelf-<location>" droppable ids below). PointerSensor's
@@ -350,21 +367,32 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
     data: { inventoryItemId: item.id, inventoryItem: item },
     disabled: !draggable,
   });
+  const hasQty = item.quantity != null || item.unit;
 
   return (
     <div
       ref={setNodeRef}
       {...(draggable ? { ...attributes, ...listeners } : {})}
-      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}`}
+      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}${line?.expired ? " expired" : ""}`}
       onClick={onSelect}
-      aria-label={`${item.name}${strip ? `, ${strip.label}` : ""}`}
+      aria-label={`${item.name}${line ? `, ${line.label}` : ""}`}
     >
-      <div className={`inv-card-strip${strip?.expired ? " expired" : ""}`}>
-        {strip && (
-          <>
-            {!strip.expired && <span className={`inv-card-fill ${strip.color}`} style={{ width: strip.pct }} />}
-            <span className={`inv-card-days${strip.expired ? " expired" : ""}`}>{strip.label}</span>
-          </>
+      {line && (
+        <span className="inv-card-line" aria-hidden="true">
+          <span className={`inv-card-line-fill ${line.color}`} style={{ height: line.height }} />
+        </span>
+      )}
+      <div className="inv-card-body">
+        <ItemPhoto item={item} />
+        <div className="inv-card-main">
+          <span className="inv-card-name">{item.name}</span>
+          {line?.expired && <span className="inv-card-expired">Expired</span>}
+        </div>
+        {hasQty && (
+          <span className="inv-card-qty">
+            {item.quantity != null && <span className="inv-card-qty-num">{item.quantity}</span>}
+            {item.unit && <span className="inv-card-qty-unit"> {unitLabel(item.unit, item.quantity)}</span>}
+          </span>
         )}
         <span
           role="checkbox"
@@ -387,22 +415,6 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
         >
           {selected ? "✓" : ""}
         </span>
-      </div>
-      <div className="inv-card-body">
-        <div className="inv-card-main">
-          <span className="inv-card-name">{item.name}</span>
-          {(item.quantity != null || item.unit) && (
-            <span className="inv-card-qty">
-              {item.quantity ?? ""} {unitLabel(item.unit, item.quantity)}
-            </span>
-          )}
-        </div>
-        {tip && (
-          <div className="inv-card-tip">
-            {tip}
-            <span className="inv-card-source">USDA</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -710,6 +722,48 @@ function AddSectionTile({ onAdd }) {
   );
 }
 
+// The card's photo, in the detail panel: upload one from the phone or
+// computer, or take it off to go back to the emoji tile.
+function PhotoPicker({ item, onUpdate }) {
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!isImageFile(file)) return setError("Pick a JPEG, PNG, WebP or GIF photo.");
+    setBusy(true);
+    setError(null);
+    try {
+      await onUpdate(item.id, { imageUrl: await uploadPhoto(file) });
+    } catch (err) {
+      setError(err.message || "The photo couldn't be uploaded.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="inv-panel-photo">
+      <ItemPhoto item={item} />
+      <div className="inv-panel-photo-actions">
+        <button type="button" className="link-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
+          {busy ? "Uploading…" : item.imageUrl ? "Change photo" : "Add a photo"}
+        </button>
+        {item.imageUrl && !busy && (
+          <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
+            Remove photo
+          </button>
+        )}
+        {error && <span className="inv-panel-photo-error">{error}</span>}
+      </div>
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={handleFile} aria-label="Item photo" />
+    </div>
+  );
+}
+
 function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple, onToggleStaple, labelFor = {} }) {
   const [nameDraft, setNameDraft] = useState(item.name);
 
@@ -786,6 +840,8 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
         />
         <span className="inv-panel-category">{item.category}</span>
       </div>
+
+      <PhotoPicker item={item} onUpdate={onUpdate} />
 
       <div>
         <div className="inv-panel-label">Quantity</div>
@@ -968,7 +1024,9 @@ export function Inventory({
   }
 
   const activeItem = items.find((i) => i.id === activeItemId);
-  const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3).length;
+  // "Soon" is 1 to 3 days; expired items are counted on their own.
+  const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 1 && daysUntil(i.expiresAt) <= 3).length;
+  const expiredCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 0).length;
 
   // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed) and the user's own
   // custom sections, in the user's order, with their names and sizes.
@@ -1055,6 +1113,7 @@ export function Inventory({
         <div className="riso-inv-title-block">
           <p className="riso-eyebrow">
             {items.length} item{items.length === 1 ? "" : "s"} · {soonCount} to use soon
+            {expiredCount > 0 && ` · ${expiredCount} expired`}
           </p>
           <h1 className="riso-inv-title">
             What you've <span className="accent">got.</span>

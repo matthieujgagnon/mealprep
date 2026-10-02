@@ -1,6 +1,7 @@
 // A food emoji for a flyer item that has no photo (or whose photo won't
 // load): the most specific word match, else its category's.
 const WORDS = [
+  [/\b(leftovers?|restes?)\b/, "🍱"],
   [/\b(chicken|poulet|turkey|dinde|wings?)\b/, "🍗"],
   [/\b(beef|b(?:oe|œ)uf|steak|veal|veau|lamb|agneau|roast|rôti)\b/, "🥩"],
   [/\b(pork|porc|ham|jambon|bacon|ribs?|côtes)\b/, "🥓"],
@@ -51,12 +52,30 @@ const WORDS = [
   [/\b(chocolate|chocolat|cookies?|biscuits?)\b/, "🍫"],
   [/\b(soups?|soupes?|broth|bouillon|canned|conserves?|beans|haricots)\b/, "🥫"],
   [/\b(pizza)\b/, "🍕"],
+  [/\b(cilantro|coriandre|parsley|persil|basil|basilic|mint|menthe|dill|aneth|thyme|thym|rosemary|romarin|herbs?|fines herbes)\b/, "🌿"],
+  [/\b(chickpeas|pois chiches|lentils|lentilles)\b/, "🫘"],
+  [/\b(peas|pois|edamame)\b/, "🫛"],
+  [/\b(eggplants?|aubergines?)\b/, "🍆"],
+  [/\b(ginger|gingembre)\b/, "🫚"],
+  [/\b(flour|farine|sugar|sucre)\b/, "🌾"],
+  [/\b(paprika|chili|chilli|piment|spices?|épices?|cumin|cinnamon|cannelle)\b/, "🌶️"],
 ];
 
-const BY_CATEGORY = { protein: "🍗", produce: "🥕", dairy: "🧀", bakery: "🍞", staple: "🥫" };
+// Flyer categories, then Inventory's (USDA FoodKeeper's) categories.
+const BY_CATEGORY = {
+  protein: "🍗", produce: "🥕", dairy: "🧀", bakery: "🍞", staple: "🥫",
+  Produce: "🥕", Meat: "🥩", Poultry: "🍗", Seafood: "🐟", "Dairy Products & Eggs": "🧀",
+  "Grains, Beans & Pasta": "🍚", "Baked Goods": "🍞", "Condiments, Sauces & Canned Goods": "🥫",
+  Beverages: "🧃", "Deli & Prepared Foods": "🥪", "Food Purchased Frozen": "🧊", "Shelf Stable Foods": "🥫", "Vegetarian Proteins": "🫘",
+};
+
+// The emoji for any food name, falling back to its category's (or null).
+export function foodEmoji(text, category) {
+  const lower = String(text || "").toLowerCase();
+  for (const [re, emoji] of WORDS) if (re.test(lower)) return emoji;
+  return BY_CATEGORY[category] || null;
+}
 
 export function dealEmoji(deal) {
-  const text = `${deal?.matchName || ""} ${deal?.item || ""}`.toLowerCase();
-  for (const [re, emoji] of WORDS) if (re.test(text)) return emoji;
-  return BY_CATEGORY[deal?.category] || "🛒";
+  return foodEmoji(`${deal?.matchName || ""} ${deal?.item || ""}`, deal?.category) || "🛒";
 }
