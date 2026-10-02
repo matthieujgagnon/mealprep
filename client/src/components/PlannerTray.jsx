@@ -214,6 +214,7 @@ export function PlannerTray({
           aria-label={`Note for ${slotLabel(target)}`}
           onChange={(e) => setNoteDraft(e.target.value)}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return; // mid-emoji or accent
             if (e.key === "Enter" && noteDraft.trim()) {
               e.preventDefault();
               onSaveNote(noteDraft.trim());

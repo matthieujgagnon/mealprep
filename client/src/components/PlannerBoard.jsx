@@ -186,6 +186,10 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
 
 // A slot you've written on (or clicked to leave blank). Click written text
 // to edit it; click a blank card to clear the slot again.
+// Typing on a slot: Enter or Escape (or clicking away) saves. Opening the
+// emoji picker (Ctrl+Cmd+Space / the 🌐 key on a Mac, Win+. on Windows)
+// takes focus from the whole window, which also blurs the textarea - that
+// isn't "done typing", so the card stays open for the emoji to land in.
 export function NoteTextarea({ initial, label, onSave, className }) {
   return (
     <textarea
@@ -198,8 +202,12 @@ export function NoteTextarea({ initial, label, onSave, className }) {
       maxLength={80}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
-      onBlur={(e) => onSave(e.target.value)}
+      onBlur={(e) => {
+        if (!document.hasFocus()) return;
+        onSave(e.target.value);
+      }}
       onKeyDown={(e) => {
+        if (e.nativeEvent.isComposing) return; // mid-emoji or accent: not a save
         if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
           e.preventDefault();
           e.currentTarget.blur();

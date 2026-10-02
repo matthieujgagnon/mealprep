@@ -124,6 +124,41 @@ test("an empty slot takes typed text, which can be edited and cleared", async ({
   await expect(target.locator(".riso-planner-cell-empty")).toBeVisible();
 });
 
+test("emoji from the keyboard's emoji picker land on a slot's note", async ({ page }) => {
+  await setup(page, [{ title: "Unused" }]);
+  await openPlanner(page);
+
+  const target = cell(page, visibleDay(), "dinner");
+  await target.locator(".riso-planner-cell-empty").click();
+  const input = target.getByRole("textbox", { name: "Write on this slot" });
+  await input.fill("Fries night ");
+
+  // Opening the Mac emoji picker (or Windows' Win+.) takes focus from the
+  // whole window, which blurs the textarea: the card must stay open.
+  await input.evaluate((el) => {
+    const realHasFocus = document.hasFocus.bind(document);
+    document.hasFocus = () => false;
+    el.blur();
+    document.hasFocus = realHasFocus;
+  });
+  await expect(input).toBeVisible();
+
+  // The picked emoji arrives once focus is back; Enter while it's still
+  // being composed doesn't save half of it.
+  await input.focus();
+  await page.keyboard.insertText("🍟");
+  await input.evaluate((el) =>
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true }))
+  );
+  await expect(input).toBeVisible();
+  await input.press("Enter");
+  await expect(target.locator(".riso-planner-note-text")).toHaveText("Fries night 🍟");
+
+  await page.reload();
+  await page.getByRole("button", { name: "Planner", exact: true }).click();
+  await expect(target.locator(".riso-planner-note-text")).toHaveText("Fries night 🍟");
+});
+
 test("dragging a recipe from the tray onto a filled slot replaces it", async ({ page }) => {
   const [first] = await setup(page, [{ title: "Old Meal" }, { title: "New Meal" }]);
   const day = visibleDay();
