@@ -8650,6 +8650,18 @@ button.riso-table-group-head:disabled {
   color: var(--riso-muted);
 }
 
+/* A note that's only emoji shows big, like a picture. */
+.riso-planner-note-text.emoji {
+  font-size: 56px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.rpm-note-text.emoji {
+  font-size: 40px;
+  line-height: 1.1;
+}
+
 .riso-planner-note-text {
   font: 700 14.5px/1.2 var(--riso-font-display);
   overflow-wrap: anywhere;

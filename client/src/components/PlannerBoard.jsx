@@ -2,7 +2,7 @@ import { Fragment, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { HintStrip } from "./RisoControls.jsx";
 import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, isPastDay, shiftWeek } from "../lib/dates.js";
-import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
+import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -243,7 +243,7 @@ function PlannerNoteCard({ entry, isPast, editing, onEdit, onSave, onClear }) {
       {...attributes}
       aria-label={text ? `${text} - click to edit, or drag to another slot` : "Blank - click to clear"}
     >
-      {text && <span className="riso-planner-note-text">{text}</span>}
+      {text && <span className={`riso-planner-note-text${isEmojiOnly(text) ? " emoji" : ""}`}>{text}</span>}
     </div>
   );
 }

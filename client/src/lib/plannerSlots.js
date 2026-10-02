@@ -51,3 +51,11 @@ export function emptyUpcomingSlots(entries, weekStart) {
 export function findNextEmptySlot(entries, weekStart) {
   return emptyUpcomingSlots(entries, weekStart)[0] || null;
 }
+
+// True when a written note is only emoji ("🥗", "🍕🍺"), so the card can
+// show it big like a picture; any letter or digit keeps it normal text.
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|\u200d|\ufe0f|\s)+$/u;
+export function isEmojiOnly(text) {
+  const t = String(text || "").trim();
+  return t !== "" && EMOJI_ONLY.test(t) && /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(t);
+}
