@@ -55,6 +55,25 @@ export function proteinName(deal) {
 // order: { protein, best, onSale (the kind's items that are really on
 // sale, best first), all (every item, best first) }. `best` is null when
 // none is priced.
+const rank = (d) => {
+  const v = dealVerdict(d);
+  const s = dealSavings(d);
+  const per = tilePrice(d);
+  return {
+    verdict: VERDICT_RANK[v?.key] ?? 0,
+    pct: s?.pct ?? 0,
+    perLb: per?.basis === "lb" ? per.price : Infinity,
+  };
+};
+
+// Best buy first: the surest verdict, then the biggest saving, then the
+// lowest price per lb.
+export function compareProteinDeals(a, b) {
+  const ra = rank(a);
+  const rb = rank(b);
+  return rb.verdict - ra.verdict || rb.pct - ra.pct || ra.perLb - rb.perLb;
+}
+
 export function proteinsOnSale(deals) {
   const byKind = new Map();
   for (const d of deals || []) {
@@ -64,23 +83,8 @@ export function proteinsOnSale(deals) {
     if (!byKind.has(p.id)) byKind.set(p.id, []);
     byKind.get(p.id).push(d);
   }
-  const rank = (d) => {
-    const v = dealVerdict(d);
-    const s = dealSavings(d);
-    const per = tilePrice(d);
-    return {
-      verdict: VERDICT_RANK[v?.key] ?? 0,
-      pct: s?.pct ?? 0,
-      perLb: per?.basis === "lb" ? per.price : Infinity,
-    };
-  };
-  const compare = (a, b) => {
-    const ra = rank(a);
-    const rb = rank(b);
-    return rb.verdict - ra.verdict || rb.pct - ra.pct || ra.perLb - rb.perLb;
-  };
   return PROTEINS.filter((p) => byKind.has(p.id)).map((protein) => {
-    const all = [...byKind.get(protein.id)].sort(compare);
+    const all = [...byKind.get(protein.id)].sort(compareProteinDeals);
     const onSale = all.filter((d) => dealSavings(d));
     return { protein, best: onSale[0] || null, onSale, all };
   });

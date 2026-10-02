@@ -889,6 +889,14 @@ export default function App({ user, onLogout }) {
               setRecipeFilter("All");
               setTab("collection");
             }}
+            onPickRecipeFor={(slot) => {
+              setWeekStart(currentWeekStart());
+              setPlannerTarget(slot);
+              setTrayMessage(null);
+              setTab("planner");
+            }}
+            isOnGroceryList={isOnGroceryList}
+            onAddToGroceryList={addToGroceryList}
           />
         )}
 

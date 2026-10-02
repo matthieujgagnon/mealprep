@@ -40,7 +40,7 @@ async function signUp(page, email) {
   await expect(page.getByText(email)).toBeVisible();
 }
 
-test("a makeable recipe shows as a Riso-styled row with its title legible on paper", async ({ page }) => {
+test("Makeable now counts what's ready and lists it with a ready tag", async ({ page }) => {
   await signUp(page, uniqueEmail());
 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
@@ -61,11 +61,12 @@ test("a makeable recipe shows as a Riso-styled row with its title legible on pap
   await page.locator(".modal-close").click();
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
-  const row = page.locator(".riso-makeable-row", { hasText: "Home Redesign Test Dish" });
+  const card = page.locator(".riso-home-makeable");
+  await expect(card.locator(".riso-home-makeable-num")).toHaveText("1");
+  const row = card.locator(".riso-nearly-row", { hasText: "Home Redesign Test Dish" });
   await expect(row).toBeVisible();
-
-  const titleColor = await row.locator(".riso-makeable-row-title").evaluate((el) => getComputedStyle(el).color);
-  expect(titleColor).toBe("rgb(22, 24, 31)"); // --riso-ink, legible on the paper-colored row
+  await expect(row.locator(".riso-nearly-tag")).toHaveText("ready");
+  await expect(row.getByRole("button", { name: /\+ List|Add .* to the grocery list/ })).toHaveCount(0);
 });
 
 test("the sale-deal footer link filters Recipes to a matching ingredient", async ({ page }) => {
@@ -97,6 +98,9 @@ test("the sale-deal footer link filters Recipes to a matching ingredient", async
 });
 
 test("Home shows the proteins on sale this week, each kind's best buy, and opens its card", async ({ page }) => {
+  // Rows: emoji, product, store · saving, price per lb; the cheapest is the
+  // "Best deal", the rest say how good a buy they are. One line under them
+  // names the kinds not worth buying and the ones not on any flyer.
   await signUp(page, uniqueEmail());
   const me = await (await page.request.get("/api/auth/me")).json();
   const userId = me.user?.id ?? me.id;
@@ -123,15 +127,60 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   await expect(chicken).toContainText("Chicken breasts");
   await expect(chicken).toContainText("Super C");
   await expect(chicken).toContainText("$4.87/lb");
-  await expect(chicken).toContainText("Stock up");
+  await expect(chicken.locator(".riso-protein-best")).toHaveText("Best deal");
   await expect(chicken).toContainText("+1 more");
   await expect(block).not.toContainText("pie");
-  await expect(block.locator(".riso-protein-row", { hasText: "Beef" })).toContainText("Nothing really on sale");
-  await expect(block.locator(".riso-protein-row", { hasText: "Fish" })).toContainText("$9.99/lb");
+  const fish = block.getByRole("button", { name: /^Fish:/ });
+  await expect(fish).toContainText("$9.99/lb");
+  await expect(fish.locator(".riso-protein-verdict")).toBeVisible();
+  const asides = block.locator(".riso-protein-asides");
+  await expect(asides).toContainText(/ground beef \$5\.97\/lb · not worth it/i);
+  await expect(asides).toContainText(/Pork, Seafood, Turkey, Lamb & veal none/i);
 
   await chicken.click();
   const modal = page.locator(".riso-deal-detail, [role=dialog]").first();
   await expect(modal).toContainText(/poitrines de poulet/i);
   await expect(modal.locator(".riso-deal-detail-other", { hasText: "Metro" }).first()).toBeVisible();
   await page.keyboard.press("Escape");
+});
+
+test("Use it up finds recipes for those items; Makeable now puts what's missing on the list", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  const soon = new Date(Date.now() + 2 * 86400000 + 3600000).toISOString();
+  for (const name of ["parsley", "cucumber", "chickpeas"]) {
+    await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: soon } });
+  }
+  for (const r of [
+    { title: "Tzatziki chickpea salad", ingredients: [{ name: "chickpeas" }, { name: "cucumber" }, { name: "dill" }] },
+    { title: "Parsley pesto", ingredients: [{ name: "parsley" }, { name: "pine nuts" }] },
+    { title: "Toast", ingredients: [{ name: "bread" }] },
+  ]) {
+    await page.request.post("/api/recipes", { data: r });
+  }
+  await page.reload();
+
+  const useUp = page.locator(".riso-home-useup");
+  await expect(useUp.locator(".riso-useup-row")).toHaveCount(3);
+  await expect(useUp).toContainText("1 recipe uses two or more of these.");
+  await useUp.getByRole("button", { name: "Cook with these →" }).click();
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+  await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
+  await expect(page.locator(".riso-recipe-card", { hasText: "Parsley pesto" })).toBeVisible();
+  await expect(page.locator(".riso-recipe-card", { hasText: "Toast" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  const makeable = page.locator(".riso-home-makeable");
+  await expect(makeable.locator(".riso-home-makeable-num")).toHaveText("0");
+  await expect(makeable).toContainText("2 are one or two items away");
+  const tz = makeable.locator(".riso-nearly-row", { hasText: "Tzatziki chickpea salad" });
+  await expect(tz).toContainText("missing 1");
+  await expect(tz).toContainText("Dill");
+  await tz.getByRole("button", { name: "Add Dill to the grocery list" }).click();
+  await expect(tz.locator(".riso-nearly-listed")).toHaveText("✓ Listed");
+  await makeable.getByRole("button", { name: "Add all 1 missing to list" }).click();
+  await expect(makeable).toContainText("Everything they're missing is on your list ✓");
+
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Check off Dill", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Check off Pine nuts?$/ })).toBeVisible();
 });

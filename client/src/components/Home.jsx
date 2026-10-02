@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { currentWeekStart, formatDayLabel, shiftWeek } from "../lib/dates.js";
+import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek } from "../lib/dates.js";
 import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
 import { findBestDeal, findRecipesByIngredients } from "../lib/similarRecipes.js";
-import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
+import { daysUntil } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { proteinName, proteinsOnSale } from "../lib/proteins.js";
+import { foodEmoji } from "../lib/dealEmoji.js";
+import { formatFractionQuantity } from "../lib/units.js";
 import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
+import { ItemPhoto } from "./Inventory.jsx";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 const ALL_MEALS_KEY = "mealprep-home-all-meals";
@@ -18,19 +21,12 @@ const STRIP_MEALS = [
   { id: "dinner", short: "D", label: "Dinner" },
 ];
 const RESTAURANT_TITLE = "🍽️ Restaurant";
+const LONG_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-// Small deterministic rotation set for the Riso Poster "stickers" - a
-// fixed-angle sticker looks static/printed, but a fully random one would
-// re-roll (and visually jitter) on every re-render.
-const STICKER_ROTATIONS = [-4, 4, -3];
-
-// "Use it up" freshness bar fill - the design's sample values (92%/70%/45%
-// for 1/2/4 days left) decrease roughly 15 points per day, so this reuses
-// that slope rather than a real shelf-life fraction (Home has no per-item
-// total shelf-life to compute a true fraction from - the Inventory screen's
-// own freshness bar, backed by real USDA ranges, is the authoritative one).
-function freshnessPct(daysLeft) {
-  return Math.max(15, Math.min(95, 100 - Math.max(0, daysLeft) * 15));
+// "Use it up" bar: a week's scale, nearly full on the last day (the
+// design's 96% today, 86% tomorrow, 30% at five days).
+function useUpPct(daysLeft) {
+  return Math.max(8, Math.min(96, Math.round((1 - daysLeft / 7) * 100)));
 }
 
 function matchRecipesForDeal(deal, recipes) {
@@ -50,66 +46,91 @@ function greeting() {
   return "Good evening";
 }
 
-
-// True when this expiring item's core ingredient appears in any recipe
-// planned for the current week — used for "Use it up"'s footer nudge.
-function usedThisWeek(itemName, plannerEntries) {
-  const core = canonicalize(itemName).core;
-  return plannerEntries.some(
-    (e) => !isBlankMarker(e) && e.recipe.ingredients?.some((i) => canonicalize(i.name).core === core)
-  );
+// A written meal ("Fries night", "🍽️ Restaurant"): its own leading emoji,
+// else one for the food it names, else a plate.
+const LEADING_EMOJI = /^(\p{Extended_Pictographic}️?)\s*/u;
+function noteParts(title) {
+  const m = LEADING_EMOJI.exec(title || "");
+  const text = m ? title.slice(m[0].length) : title || "";
+  return { emoji: m ? m[1] : foodEmoji(text) || "🍽️", text };
 }
 
-// One "Use it up" row: a photo, the item name + urgency marker, and an
-// 8px freshness bar. The two soonest items (sorted by useSoonItems) get a
-// rotated pill sticker; everything after that just gets a plain day count,
-// matching Riso Home.dc.html's pink/yellow/plain three-tier pattern.
-function FreshnessRow({ item, index }) {
-  const days = daysUntil(item.expiresAt);
-  const tone = index === 0 ? "pink" : index === 1 ? "yellow" : "plain";
-  const label = days <= 0 ? "today!" : days === 1 ? "tomorrow!" : `${days} days`;
+// "Saturday and Sunday are still open." - the dinners left to plan after
+// today.
+function openDaysLine(entries, todayIndex) {
+  if (todayIndex >= 6) return "";
+  const open = DAY_INDICES.filter(
+    (d) => d > todayIndex && !entries.some((e) => e.dayOfWeek === d && e.mealType === "dinner")
+  ).map((d) => LONG_DAYS[d]);
+  if (open.length === 0) return "The rest of the week is planned.";
+  const names = open.length === 1 ? open[0] : `${open.slice(0, -1).join(", ")} and ${open[open.length - 1]}`;
+  return `${names} ${open.length === 1 ? "is" : "are"} still open.`;
+}
+
+// One "Use it up" row: the item's Inventory photo, its name and amount,
+// how long it has left (pink today, yellow tomorrow, plain after) and a bar.
+function UseItUpRow({ item }) {
+  const days = Math.max(0, daysUntil(item.expiresAt));
+  const tone = days === 0 ? "pink" : days === 1 ? "yellow" : "ink";
+  const amount = [item.quantity != null ? formatFractionQuantity(item.quantity) : "", item.unit || ""].join(" ").trim();
   return (
-    <div className="riso-freshness-row">
-      <div className="riso-freshness-row-photo placeholder">{item.name[0]}</div>
-      <div className="riso-freshness-row-info">
-        <div className="riso-freshness-row-top">
-          <span className="riso-freshness-row-name">{item.name}</span>
-          {tone === "plain" ? (
-            <span className="riso-freshness-row-days">
-              {Math.max(0, days)} {days === 1 ? "DAY" : "DAYS"}
-            </span>
+    <li className="riso-useup-row">
+      <ItemPhoto item={item} />
+      <div className="riso-useup-info">
+        <div className="riso-useup-top">
+          <div className="riso-useup-name-col">
+            <span className="riso-useup-name">{item.name}</span>
+            {amount && <span className="riso-useup-qty">{amount}</span>}
+          </div>
+          {days <= 1 ? (
+            <span className={`riso-useup-badge ${tone}`}>{days === 0 ? "today!" : "tomorrow!"}</span>
           ) : (
-            <span
-              className={`riso-freshness-row-pill ${tone}`}
-              style={{ transform: `rotate(${STICKER_ROTATIONS[index]}deg)` }}
-            >
-              {label}
-            </span>
+            <span className="riso-useup-days">{days} days</span>
           )}
         </div>
         <div className="riso-freshness-bar-track">
-          <div
-            className={`riso-freshness-bar-fill ${tone === "pink" ? "pink" : "ink"}`}
-            style={{ width: `${freshnessPct(days)}%` }}
-          />
+          <div className={`riso-freshness-bar-fill ${tone}`} style={{ width: `${useUpPct(days)}%` }} />
         </div>
       </div>
-    </div>
+    </li>
   );
 }
 
-function MakeableRow({ recipe, onOpen }) {
-  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+// One of the recipes closest to makeable: what it's missing, and "+ List"
+// to put those on the grocery list.
+function NearlyRow({ match, onOpen, listed, onList }) {
+  const { recipe, missingIngredients: missing } = match;
+  const ready = missing.length === 0;
   return (
-    <button type="button" className="riso-makeable-row" onClick={() => onOpen(recipe)}>
-      {recipe.photoUrl ? (
-        <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-makeable-row-thumb" />
-      ) : (
-        <div className="riso-makeable-row-thumb placeholder">{recipe.title[0]}</div>
-      )}
-      <span className="riso-makeable-row-title">{recipe.title}</span>
-      {totalTime > 0 && <span className="riso-makeable-row-time">{totalTime} min</span>}
-    </button>
+    <li className="riso-nearly-row">
+      <button type="button" className="riso-nearly-open" onClick={() => onOpen(recipe)}>
+        {recipe.photoUrl ? (
+          <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-nearly-thumb" />
+        ) : (
+          <span className="riso-nearly-thumb placeholder">{recipe.title[0]}</span>
+        )}
+        <span className="riso-nearly-info">
+          <span className="riso-nearly-title">{recipe.title}</span>
+          <span className="riso-nearly-missing">
+            <span className={`riso-nearly-tag${ready ? " ready" : ""}`}>{ready ? "ready" : `missing ${missing.length}`}</span>
+            {ready ? "You have everything" : missing.join(", ")}
+          </span>
+        </span>
+      </button>
+      {!ready &&
+        (listed ? (
+          <span className="riso-nearly-listed">✓ Listed</span>
+        ) : (
+          <button
+            type="button"
+            className="riso-nearly-list"
+            onClick={() => onList(missing)}
+            aria-label={`Add ${missing.join(", ")} to the grocery list`}
+          >
+            + List
+          </button>
+        ))}
+    </li>
   );
 }
 
@@ -122,6 +143,9 @@ export function Home({
   onNavigate,
   onSelectRecipe,
   onFindRecipes,
+  onPickRecipeFor,
+  isOnGroceryList = () => false,
+  onAddToGroceryList,
 }) {
   const weekStart = currentWeekStart();
   const todayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
@@ -181,8 +205,21 @@ export function Home({
   const restaurantRecipe = recipes.find((r) => r.isPlaceholder && r.title === RESTAURANT_TITLE);
 
   const combinedHave = buildCombinedHave(pantryInventory, customStaples);
-  const makeableResults = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes) : [];
-  const makeableNow = makeableResults.filter((m) => m.missingIngredients.length === 0).slice(0, 3);
+  const makeableResults = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes, recipes.length) : [];
+  const readyNow = makeableResults.filter((m) => m.missingIngredients.length === 0);
+  const nearly = makeableResults.filter((m) => m.missingIngredients.length > 0 && m.missingIngredients.length <= 2);
+  // The three closest to makeable, or what's ready when nothing is close.
+  const nearlyRows = (nearly.length > 0 ? nearly : readyNow).slice(0, 3);
+  const listedAll = (names) => names.every((n) => isOnGroceryList(n));
+  const missingToList = [
+    ...new Set(nearlyRows.flatMap((m) => m.missingIngredients).filter((n) => !isOnGroceryList(n))),
+  ];
+
+  async function addToList(names) {
+    await onAddToGroceryList?.(names);
+    api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => {});
+    api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => {});
+  }
 
   const groceryItems = buildGroceryList(plannerEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
   const toBuy = groceryItems.filter((i) => !i.isStaple && !i.removed);
@@ -226,7 +263,15 @@ export function Home({
     .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0)
     .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt))
     .slice(0, 3);
-  const soonestUnused = useSoonItems.length > 0 && !usedThisWeek(useSoonItems[0].name, plannerEntries) ? useSoonItems[0] : null;
+  // Recipes that would use up two or more of them (or at least one).
+  const useSoonCores = useSoonItems.map((i) => canonicalize(i.name).core);
+  const usesOf = (recipe) =>
+    new Set((recipe.ingredients || []).map((i) => canonicalize(i.name).core).filter((c) => useSoonCores.includes(c))).size;
+  const realRecipes = recipes.filter((r) => !r.isPlaceholder);
+  const usesTwo = realRecipes.filter((r) => usesOf(r) >= 2).length;
+  const usesOne = realRecipes.filter((r) => usesOf(r) >= 1).length;
+
+  const tonightNote = tonightIsNote ? noteParts(tonightEntry.recipe.title) : null;
 
   return (
     <div className="riso-theme riso-home home-page" data-theme="light">
@@ -245,20 +290,50 @@ export function Home({
               nothing to buy!
             </span>
           )}
-          {tonightEntry ? (
+          {tonightNote ? (
+            <div className="riso-home-hero-body note">
+              <div className="riso-home-hero-emoji" aria-hidden="true">
+                {tonightNote.emoji}
+              </div>
+              <div className="riso-home-hero-info">
+                <div className="riso-eyebrow on-accent">Tonight · Dinner</div>
+                <h2 className="riso-home-hero-title">{tonightNote.text}</h2>
+                <div className="riso-home-hero-pills">
+                  <span className="riso-home-hero-pill cream">Not from a recipe</span>
+                  <span className="riso-home-hero-pill outline">Nothing to prep</span>
+                </div>
+                <p className="riso-home-hero-blurb">
+                  {tonightEntry.recipe.title === RESTAURANT_TITLE
+                    ? "Eating out, so there is no shopping list or cooking steps."
+                    : "Planned as a free-text meal, so there is no shopping list or cooking steps."}{" "}
+                  {openDaysLine(plannerEntries, todayIndex)}
+                </p>
+                <div className="riso-home-hero-actions">
+                  <button
+                    type="button"
+                    className="riso-btn hot"
+                    onClick={() =>
+                      onPickRecipeFor?.({ dayOfWeek: todayIndex, mealType: "dinner", note: tonightEntry.recipe.title })
+                    }
+                  >
+                    Pick a recipe instead
+                  </button>
+                  <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
+                    Change in planner
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : tonightEntry ? (
             <div className="riso-home-hero-body">
-              {tonightEntry.recipe.photoUrl && !tonightIsNote && (
+              {tonightEntry.recipe.photoUrl && (
                 <img src={tonightEntry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-home-hero-photo" />
               )}
               <div className="riso-home-hero-info">
                 <div className="riso-eyebrow on-accent">Tonight · Dinner</div>
                 <h2 className="riso-home-hero-title">{tonightEntry.recipe.title}</h2>
                 <p className="riso-home-hero-blurb">
-                  {tonightEntry.recipe.isPlaceholder
-                    ? tonightEntry.recipe.title === RESTAURANT_TITLE
-                      ? "Eating out tonight."
-                      : null
-                    : tonightMatch
+                  {tonightMatch
                     ? tonightAllHave
                       ? `You have all ${tonightMatch.totalCount} ingredients.`
                       : `You have ${tonightMatch.totalCount - tonightMatch.missingIngredients.length} of ${
@@ -269,25 +344,17 @@ export function Home({
                     : null}
                 </p>
                 <div className="riso-home-hero-actions">
-                  {tonightIsNote ? (
-                    <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
-                      Change in planner
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="riso-btn hot"
-                      onClick={() => onSelectRecipe(tonightEntry.recipe, null, true)}
-                    >
-                      Start cooking
-                    </button>
-                  )}
-                  {!tonightEntry.recipe.isPlaceholder && (
-                    <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
-                      Swap
-                    </button>
-                  )}
-                  {!tonightEntry.recipe.isPlaceholder && restaurantRecipe && (
+                  <button
+                    type="button"
+                    className="riso-btn hot"
+                    onClick={() => onSelectRecipe(tonightEntry.recipe, null, true)}
+                  >
+                    Start cooking
+                  </button>
+                  <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
+                    Swap
+                  </button>
+                  {restaurantRecipe && (
                     <button type="button" className="riso-btn outline-on-accent" onClick={handleEatingOut}>
                       Eating out
                     </button>
@@ -379,8 +446,9 @@ export function Home({
           <div className="riso-home-week-strip all-meals">
             {DAY_INDICES.map((d) => {
               const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
+              const past = isPastDay(stripWeekStart, d);
               return (
-                <div key={d} className={`riso-home-week-col${isToday ? " today" : ""}`}>
+                <div key={d} className={`riso-home-week-col${isToday ? " today" : ""}${past ? " past" : ""}`}>
                   <span className="riso-home-week-day-label">
                     {isToday ? "TODAY" : weekday.toUpperCase()} {dayNum}
                   </span>
@@ -425,12 +493,14 @@ export function Home({
           {DAY_INDICES.map((d) => {
             const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
             const entry = dinnerFor(d);
+            // Days gone by: greyscale, muted, no shadow (and nothing to plan).
+            const state = isToday ? " today" : isPastDay(stripWeekStart, d) ? " past" : "";
             // A custom note or "Restaurant" entry is the placeholder-recipe
             // mechanism (see isCustomNote/isBlankMarker in PlannerBoard.jsx)
             // - there's no real recipe or photo behind it, so it renders as
             // plain text with no click target, instead of a fake recipe card.
             return entry?.recipe.isPlaceholder ? (
-              <div key={d} className={`riso-home-week-day note${isToday ? " today" : ""}`}>
+              <div key={d} className={`riso-home-week-day note${state}`}>
                 <div className="riso-home-week-day-body">
                   <span className="riso-home-week-day-label">
                     {weekday.toUpperCase()} {dayNum}
@@ -442,7 +512,7 @@ export function Home({
               <button
                 key={d}
                 type="button"
-                className={`riso-home-week-day${isToday ? " today" : ""}`}
+                className={`riso-home-week-day${state}`}
                 onClick={() => onSelectRecipe(entry.recipe)}
               >
                 {entry.recipe.photoUrl ? (
@@ -457,11 +527,18 @@ export function Home({
                   <span className="riso-home-week-day-title">{entry.recipe.title}</span>
                 </div>
               </button>
+            ) : state === " past" ? (
+              <div key={d} className="riso-home-week-day empty past">
+                <span className="riso-home-week-day-label">
+                  {weekday.toUpperCase()} {dayNum}
+                </span>
+                <span className="riso-home-week-day-plan">—</span>
+              </div>
             ) : (
               <button
                 key={d}
                 type="button"
-                className={`riso-home-week-day empty${isToday ? " today" : ""}`}
+                className={`riso-home-week-day empty${state}`}
                 onClick={() => onNavigate("planner")}
               >
                 <span className="riso-home-week-day-label">
@@ -476,7 +553,7 @@ export function Home({
       </section>
 
       <div className="riso-home-bottom-row">
-        <section className="riso-home-mini">
+        <section className="riso-home-mini riso-home-useup">
           <div className="riso-home-mini-header">
             <h3>Use it up</h3>
             <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("inventory")}>
@@ -487,38 +564,76 @@ export function Home({
             <p className="riso-empty-note">Nothing expiring soon.</p>
           ) : (
             <>
-              <div className="riso-freshness-list">
-                {useSoonItems.map((item, i) => (
-                  <FreshnessRow key={item.id} item={item} index={i} />
+              <ul className="riso-home-rows">
+                {useSoonItems.map((item) => (
+                  <UseItUpRow key={item.id} item={item} />
                 ))}
-              </div>
-              {soonestUnused && (
-                <p className="riso-home-mini-footer">
-                  {soonestUnused.name} isn't in any meal this week.{" "}
-                  <button type="button" className="riso-home-mini-link" onClick={() => onFindRecipes?.(soonestUnused.name)}>
-                    Find a recipe
-                  </button>
-                </p>
+              </ul>
+              <div className="riso-home-mini-spacer" />
+              <p className="riso-home-mini-note">
+                {usesTwo > 0
+                  ? `${usesTwo} recipe${usesTwo === 1 ? " uses" : "s use"} two or more of these.`
+                  : usesOne > 0
+                  ? `${usesOne} recipe${usesOne === 1 ? " uses" : "s use"} at least one of these.`
+                  : "None of your recipes use these yet."}
+              </p>
+              {usesOne > 0 && (
+                <button
+                  type="button"
+                  className="riso-btn ink full"
+                  onClick={() => onFindRecipes?.(useSoonItems.map((i) => i.name).join(", "))}
+                >
+                  Cook with these →
+                </button>
               )}
             </>
           )}
         </section>
 
-        <section className="riso-home-mini">
+        <section className="riso-home-mini riso-home-makeable">
           <div className="riso-home-mini-header">
             <h3>Makeable now</h3>
             <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("makeable")}>
               All →
             </button>
           </div>
-          {makeableNow.length === 0 ? (
-            <p className="riso-empty-note">Nothing fully makeable with what's on hand yet.</p>
+          {combinedHave.length === 0 ? (
+            <p className="riso-empty-note">Add what you have to Inventory to see what you can make.</p>
           ) : (
-            <div className="home-makeable-list">
-              {makeableNow.map(({ recipe }) => (
-                <MakeableRow key={recipe.id} recipe={recipe} onOpen={onSelectRecipe} />
-              ))}
-            </div>
+            <>
+              <div className="riso-home-makeable-count">
+                <span className="riso-home-makeable-num">{readyNow.length}</span>
+                <span className="riso-home-makeable-sub">
+                  ready to cook now
+                  <br />
+                  <span>
+                    {nearly.length} {nearly.length === 1 ? "is" : "are"} one or two items away
+                  </span>
+                </span>
+              </div>
+              {nearlyRows.length > 0 && (
+                <ul className="riso-home-rows ruled">
+                  {nearlyRows.map((m) => (
+                    <NearlyRow
+                      key={m.recipe.id}
+                      match={m}
+                      onOpen={onSelectRecipe}
+                      listed={listedAll(m.missingIngredients)}
+                      onList={addToList}
+                    />
+                  ))}
+                </ul>
+              )}
+              <div className="riso-home-mini-spacer" />
+              {nearly.length > 0 &&
+                (missingToList.length > 0 ? (
+                  <button type="button" className="riso-btn full" onClick={() => addToList(missingToList)}>
+                    Add all {missingToList.length} missing to list
+                  </button>
+                ) : (
+                  <p className="riso-home-mini-note">Everything they're missing is on your list ✓</p>
+                ))}
+            </>
           )}
         </section>
 
