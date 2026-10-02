@@ -315,6 +315,19 @@ describe("regularPriceFor", () => {
     expect(at({ name: "CÔTELETTES DE PORC FRAIS", price: "4.99", price_text: "/lb", description: "11,00/kg\nreg. 6,99/lb - 15,41/kg" })).toBe(6.99);
     expect(at({ name: "biftecks ou rôti de contre-filet", price: "9.99", price_text: "/lb", description: "reg. de 20,77/lb - 45,80/kg à\n23,51/lb - 51,82/kg" })).toBe(20.77);
   });
+
+  // Metro's chicken legs came through as "Reg. $9.99/lb, 60% off": Flipp's
+  // original_price was the per-kg figure (the flyer prints reg. 4,99/lb).
+  it("reads Flipp's original price as per kg when the item text shows it is", () => {
+    const at = (item) => regularPriceFor(item, parseFlippPrice(item));
+    const legs = { name: "CUISSES DE POULET FRAIS AVEC DOS", price: "3.99", price_text: "/lb - 8,80$/kg", original_price: "9.99", dollars_off: 6, percent_off: 60, description: "" };
+    expect(at(legs)).toBe(4.53);
+    // Peppers: the regular per kg (8,80) matches 3.99/lb, so 3.99 is per lb.
+    const peppers = { name: "POIVRONS", price: "1.48", price_text: "/lb", original_price: "3.99", dollars_off: 2.51, percent_off: 63, description: "3,26/kg\n8,80/kg" };
+    expect(at(peppers)).toBe(3.99);
+    // No per-kg figure at all: the original stands.
+    expect(at({ name: "LARGE SEEDLESS RED GRAPES", price: "1.99", price_text: "/lb", original_price: "4.99", dollars_off: 3, percent_off: 60 })).toBe(4.99);
+  });
 });
 
 // Shaped like Flipp's real answers (October 2026): the flyer list has only
@@ -363,8 +376,9 @@ describe("fetchFlippDeals with each item's own page", () => {
     expect(find(/Lobo/)).toMatchObject({ unitPrice: 5.99, unitBasis: "each", regularPrice: 6.99, imageUrl: "https://f.wishabi.net/a.jpg" });
     // "rabais de 3$" is $3 off, not a $3 wine.
     expect(find(/Trois Pignons/)).toMatchObject({ price: "$3.00 off", unitPrice: null, unitBasis: null, regularPrice: null });
-    // Unit from price_text, regular from original_price.
-    expect(find(/cuisses/)).toMatchObject({ price: "$3.99/lb", unitPrice: 3.99, unitBasis: "lb", regularPrice: 9.99 });
+    // Unit from price_text; original_price 9.99 is per kg next to the
+    // "8,80$/kg" sale, so $4.53/lb regular (not 9.99/lb, "60% off").
+    expect(find(/cuisses/)).toMatchObject({ price: "$3.99/lb", unitPrice: 3.99, unitBasis: "lb", regularPrice: 4.53 });
     // "2/" from the page; "l'unité" is not litres.
     expect(find(/yogourt/)).toMatchObject({ price: "2/$7.00", unitPrice: 3.5, unitBasis: "each" });
     // "le 100 g" -> per lb.

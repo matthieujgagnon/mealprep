@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { groupDealsByIngredient } from "../lib/similarRecipes.js";
 import { dealEmoji } from "../lib/dealEmoji.js";
@@ -475,6 +475,13 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
                   </span>
                 ))}
               </div>
+              {/* With only this week's price, a lowest / average / highest of
+                  the same number reads like a real average - it isn't. */}
+              {!quebecRange && history.filter((m) => m.price != null).length <= 1 ? (
+                <p className="riso-deal-stats-none">
+                  Only this week's price so far, so there's no average yet. It builds up as each week's flyers are imported.
+                </p>
+              ) : (
               <div className="riso-deal-stats">
                 <div>
                   <span>LOWEST</span>
@@ -489,6 +496,7 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
                   <strong>{high != null ? money(high) : "—"}</strong>
                 </div>
               </div>
+              )}
             </div>
           )}
           {deal.freezeTip && <p className="riso-deal-detail-tip">❄ {deal.freezeTip}</p>}
@@ -1399,6 +1407,35 @@ export function FlyerDeals({
   function isCollapsed(name) {
     return collapsed.has(name) && words.length === 0;
   }
+
+  // "Jump to": a sticky row of the categories, so with everything open
+  // you can go straight to Meat & poultry instead of scrolling past the
+  // fruit. Jumping opens a folded category first. The chip of the
+  // category on screen is highlighted as you scroll.
+  const groupRefs = useRef(new Map());
+  const jumpBarRef = useRef(null);
+  const [activeGroup, setActiveGroup] = useState(null);
+  const jumpLock = useRef(0);
+  const controlsRef = useRef(null);
+  // Where the sticky bar sits: under the sticky search panel on a wide
+  // screen, at the very top on a phone (where the panel scrolls away).
+  function barBottom() {
+    const bar = jumpBarRef.current;
+    if (!bar) return 0;
+    return (parseFloat(getComputedStyle(bar).top) || 0) + bar.getBoundingClientRect().height;
+  }
+  function jumpTo(name) {
+    if (collapsed.has(name)) toggleGroup(name);
+    setActiveGroup(name);
+    jumpLock.current = Date.now() + 1000;
+    requestAnimationFrame(() => {
+      const el = groupRefs.current.get(name);
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - barBottom() - 12;
+      window.scrollTo({ top, behavior: "smooth" });
+    });
+  }
+
   function toggleGroup(name) {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -1457,6 +1494,44 @@ export function FlyerDeals({
   );
   const groups = useMemo(() => groupDealsByIngredient(deals?.deals || [], recipes), [deals, recipes]);
 
+  useEffect(() => {
+    let frame = 0;
+    function update() {
+      frame = 0;
+      if (Date.now() < jumpLock.current) return;
+      const line = barBottom() + 24;
+      let current = null;
+      for (const [name, el] of groupRefs.current) {
+        if (el && el.getBoundingClientRect().top <= line) current = name;
+      }
+      setActiveGroup(current ?? groupRefs.current.keys().next().value ?? null);
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [deals, slice, rank, storeFilter, salesOnly, query, collapsed]);
+  // The bar sits just under the sticky search panel, however tall it is.
+  useEffect(() => {
+    const panel = controlsRef.current;
+    const bar = jumpBarRef.current;
+    if (!panel || !bar || typeof ResizeObserver === "undefined") return undefined;
+    const set = () => bar.style.setProperty("--flyer-controls-h", `${panel.getBoundingClientRect().height}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(panel);
+    return () => ro.disconnect();
+  });
+  // Keep the highlighted chip visible in the bar.
+  useEffect(() => {
+    const chip = jumpBarRef.current?.querySelector(".riso-jump-chip.active");
+    chip?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activeGroup]);
   if (!deals) return <p className="riso-theme riso-flyers riso-empty">Loading this week's deals…</p>;
 
   const detailRaw = detailId != null ? deals.deals.find((d) => d.id === detailId) : null;
@@ -1619,7 +1694,7 @@ export function FlyerDeals({
 
       <div className="riso-whole-flyer">
         <h3 className="riso-whole-flyer-title">The whole flyer</h3>
-        <div className="riso-flyer-controls">
+        <div className="riso-flyer-controls" ref={controlsRef}>
           <div className="riso-flyer-controls-row">
             <input
               type="search"
@@ -1708,11 +1783,48 @@ export function FlyerDeals({
           </p>
         )}
 
+        {sliced.length > 1 && !words.length && (
+          <nav className="riso-jump-bar" aria-label="Jump to a category" ref={jumpBarRef}>
+            <span className="riso-jump-label">JUMP TO</span>
+            <div className="riso-jump-chips">
+              {sliced.map((group) => (
+                <button
+                  key={group.name}
+                  type="button"
+                  className={`riso-jump-chip${activeGroup === group.name ? " active" : ""}${isCollapsed(group.name) ? " folded" : ""}`}
+                  aria-current={activeGroup === group.name ? "true" : undefined}
+                  onClick={() => jumpTo(group.name)}
+                >
+                  {group.name} <span>{group.items.length}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="riso-jump-top"
+              aria-label="Back to the top"
+              title="Back to the top"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
+              ↑
+            </button>
+          </nav>
+        )}
+
         {sliced.length === 0 ? (
           <p className="riso-ing-empty">{words.length ? `Nothing on the flyers matches "${query.trim()}".` : "No ingredients match."}</p>
         ) : (
           sliced.map((group) => (
-            <section key={group.name} className="riso-ing-group" aria-label={group.name}>
+            <section
+              key={group.name}
+              className="riso-ing-group"
+              aria-label={group.name}
+              data-group={group.name}
+              ref={(el) => {
+                if (el) groupRefs.current.set(group.name, el);
+                else groupRefs.current.delete(group.name);
+              }}
+            >
               <button
                 type="button"
                 className={`riso-ing-group-head${isCollapsed(group.name) ? " collapsed" : ""}`}

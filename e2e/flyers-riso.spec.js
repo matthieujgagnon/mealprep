@@ -496,7 +496,7 @@ test("categories fold away, stay folded, and a search opens them", async ({ page
     ],
   });
   await openFlyers(page);
-  const produce = page.getByRole("button", { name: /Fruits & vegetables/ });
+  const produce = page.locator(".riso-ing-group-head", { hasText: "Fruits & vegetables" });
   await expect(produce).toHaveAttribute("aria-expanded", "true");
   await produce.click();
   await expect(produce).toHaveAttribute("aria-expanded", "false");
@@ -516,6 +516,48 @@ test("categories fold away, stay folded, and a search opens them", async ({ page
   await expect(page.locator(".riso-ing-card")).toHaveCount(0);
   await page.getByRole("button", { name: "Open all" }).click();
   await expect(page.locator(".riso-ing-card")).toHaveCount(2);
+});
+
+test("Jump to takes you straight to a category, opening it if it's folded", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, store: "Metro", source: "Flipp", category: "other", price: "$3.99", unitPrice: 3.99, unitBasis: "each", isCurrent: true };
+  const fruit = ["apples", "pears", "plums", "kiwis", "lemons", "limes", "oranges", "grapes", "carrots", "onions", "leeks", "beets", "celery", "spinach", "lettuce", "cabbage"];
+  await prisma.flyerDeal.createMany({
+    data: [
+      ...fruit.map((f) => ({ ...base, item: f, matchName: f })),
+      { ...base, item: "Lean ground beef", matchName: "ground beef" },
+      { ...base, item: "Pork chops", matchName: "pork chops" },
+      { ...base, item: "Cheddar cheese", matchName: "cheddar cheese" },
+    ],
+  });
+  await openFlyers(page);
+  await page.getByRole("button", { name: "Open all" }).click();
+
+  const bar = page.getByRole("navigation", { name: "Jump to a category" });
+  await expect(bar.getByRole("button", { name: /Meat & poultry/ })).toBeVisible();
+  await bar.getByRole("button", { name: /Dairy & eggs/ }).click();
+  const dairy = page.locator(".riso-ing-group-head", { hasText: "Dairy & eggs" });
+  // On screen, just under the sticky bar (not hidden behind it).
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+  await expect(dairy).toBeInViewport();
+  const barBottom = await bar.evaluate((el) => el.getBoundingClientRect().bottom);
+  expect((await dairy.boundingBox()).y).toBeGreaterThanOrEqual(barBottom - 1);
+  // Not hidden under the sticky search panel either.
+  const panelBottom = await page.locator(".riso-flyer-controls").evaluate((el) => el.getBoundingClientRect().bottom);
+  expect(barBottom).toBeGreaterThanOrEqual(panelBottom - 1);
+  await expect(bar.getByRole("button", { name: /Dairy & eggs/ })).toHaveClass(/active/);
+  // The bar stays on screen while scrolled.
+  await expect(bar).toBeInViewport();
+
+  // A folded category opens when you jump to it.
+  const meat = page.locator(".riso-ing-group-head", { hasText: "Meat & poultry" });
+  await meat.click();
+  await expect(meat).toHaveAttribute("aria-expanded", "false");
+  await bar.getByRole("button", { name: /Meat & poultry/ }).click();
+  await expect(meat).toHaveAttribute("aria-expanded", "true");
+  await expect(card(page, "Ground beef")).toBeInViewport();
 });
 
 test("Sales only keeps what's really on sale, with its saving on the card and in the briefing", async ({ page }) => {
