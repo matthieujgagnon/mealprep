@@ -4327,29 +4327,6 @@ input[type="date"].planner-week-picker {
   color: var(--riso-ink);
 }
 
-.riso-plan-form {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.riso-plan-form select {
-  font-family: var(--riso-font-body);
-  font-size: 11.5px;
-  padding: 4px 5px;
-  border-radius: 8px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-}
-
-.riso-added-note {
-  font-size: 11.5px;
-  color: var(--riso-green-text);
-  margin: 0;
-}
-
 .riso-empty {
   font-size: 13.5px;
   color: var(--riso-soft);
@@ -4593,96 +4570,6 @@ img.riso-deal-photo {
   justify-content: center;
   font-size: 11px;
   flex: none;
-}
-
-.riso-cook-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.riso-cook-header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.riso-cook-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 20px;
-}
-
-.riso-cook-card {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 22px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.riso-cook-thumb {
-  position: relative;
-  height: 140px;
-  border-bottom: 2px solid var(--riso-ink);
-  background: var(--riso-track);
-}
-
-.riso-cook-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.riso-cook-thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 28px;
-  color: var(--riso-muted);
-}
-
-.riso-cook-body {
-  flex: 1;
-  padding: 14px 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Inside the photo, so the card's rounded corner never clips it. */
-.riso-cook-save {
-  top: 10px;
-  right: 10px;
-  transform: rotate(4deg);
-}
-
-.riso-cook-title {
-  margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 17px;
-}
-
-.riso-cook-uses {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--riso-soft);
-}
-
-.riso-cook-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 6px;
-  flex-wrap: wrap;
 }
 
 .riso-whole-flyer {
@@ -5141,21 +5028,21 @@ button.riso-table-group-head:disabled {
   cursor: default;
 }
 
-/* Filter chips on the left, SORT on the right of the same row, lined up
-   with the first row of chips however many rows the chips wrap to. */
-.riso-recipes-filters {
+/* The page title on the left, SORT on the right, like the Planner's
+   title and its Fill button: the filter chips below get the whole row. */
+.riso-recipes-heading-row {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .riso-recipes-filter-chips {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   flex-wrap: wrap;
   align-items: center;
-  min-width: 0;
 }
 
 /* SORT and its pill wrap as one unit, never splitting or squashing. */
@@ -5207,18 +5094,18 @@ button.riso-table-group-head:disabled {
 }
 
 .riso-filter-chip {
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 18px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   color: var(--riso-ink);
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
   font-family: var(--riso-font-display);
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: 12.5px;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
@@ -5232,7 +5119,7 @@ button.riso-table-group-head:disabled {
 
 .riso-filter-chip-count {
   font-family: var(--riso-font-mono);
-  font-size: 10.5px;
+  font-size: 10px;
   opacity: 0.75;
 }
 
@@ -8411,9 +8298,32 @@ button.riso-protein-row:hover {
   box-shadow: 4px 4px 0 var(--riso-accent);
 }
 
+/* Days already gone read in black and white: photos, blue "have it"
+   borders and pink stickers all drop to greys. */
+.riso-planner-cell.past {
+  filter: grayscale(1);
+}
+
 .riso-planner-card.past,
 .riso-planner-note.past {
-  opacity: 0.5;
+  opacity: 0.7;
+}
+
+.riso-planner-day-header.past {
+  opacity: 0.55;
+}
+
+.rpm-slot.past {
+  filter: grayscale(1);
+}
+
+.rpm-slot.past .rpm-meal,
+.rpm-slot.past .rpm-note {
+  opacity: 0.7;
+}
+
+.rpm-day.past:not(.selected) {
+  opacity: 0.55;
 }
 
 .riso-planner-card.dragging,
@@ -10763,12 +10673,6 @@ button.riso-row-qty:focus-visible {
     min-width: 0;
   }
 
-  .riso-recipes-filters {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
   .riso-recipes-filter-chips {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -10782,7 +10686,7 @@ button.riso-row-qty:focus-visible {
   }
 
   .riso-recipes-sort-group {
-    align-self: flex-end;
+    margin-left: 0;
   }
 
   .riso-recipes-grid {
@@ -14542,12 +14446,13 @@ body.no-select {
 .riso-grocery-sale-row {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "name price"
-    "meta ends";
+    "photo name price"
+    "photo meta ends";
+  align-items: center;
   gap: 1px 8px;
-  padding: 8px 10px;
+  padding: 8px 10px 8px 8px;
   border: 2px solid var(--riso-ink);
   border-radius: 12px;
   background: var(--riso-surface);
@@ -14561,14 +14466,25 @@ body.no-select {
   box-shadow: 3px 3px 0 var(--riso-ink);
 }
 
+.riso-grocery-sale-photo {
+  grid-area: photo;
+  display: flex;
+}
+
+.riso-grocery-sale-photo .riso-deal-photo {
+  border-radius: 8px;
+}
+
 .riso-grocery-sale-name {
   grid-area: name;
+  align-self: end;
   font: 700 14px/1.25 var(--riso-font-display);
   overflow-wrap: anywhere;
 }
 
 .riso-grocery-sale-price {
   grid-area: price;
+  align-self: end;
   justify-self: end;
   font: 800 14px var(--riso-font-display);
   color: var(--riso-green-ink, #0b7a3b);
@@ -14577,12 +14493,14 @@ body.no-select {
 
 .riso-grocery-sale-meta {
   grid-area: meta;
+  align-self: start;
   font: 500 10.5px var(--riso-font-mono);
   color: var(--riso-soft);
 }
 
 .riso-grocery-sale-ends {
   grid-area: ends;
+  align-self: start;
   justify-self: end;
   font: 600 10.5px var(--riso-font-mono);
   color: var(--riso-soft);

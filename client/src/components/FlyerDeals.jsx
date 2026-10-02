@@ -17,12 +17,10 @@ import {
 } from "../lib/flyerIngredients.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { HintStrip, Switch } from "./RisoControls.jsx";
-import { hideBrokenPhoto } from "../lib/photos.js";
 import { flyerUrl, merchantMatches } from "../lib/flyerLinks.js";
 
 // Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
 // per the schema, mealType id matches PlannerEntry.mealType).
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEAL_TYPES = [
   { id: "breakfast", label: "Breakfast" },
   { id: "lunch", label: "Lunch" },
@@ -148,7 +146,7 @@ function photoHostLabel(url) {
 
 // The item's own photo from the flyer; a food emoji when there isn't one or
 // it won't load.
-function DealPhoto({ deal, size }) {
+export function DealPhoto({ deal, size }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [deal.imageUrl]);
   const src = dealPhotoSrc(deal);
@@ -164,84 +162,6 @@ function DealPhoto({ deal, size }) {
   ) : (
     <div className="riso-deal-photo placeholder" style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }} aria-hidden="true">
       {dealEmoji(deal)}
-    </div>
-  );
-}
-
-function AddToPlannerButton({ recipe, onAdd, label }) {
-  const [open, setOpen] = useState(false);
-  const [day, setDay] = useState(0);
-  const [meal, setMeal] = useState("dinner");
-  const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
-
-  async function handleAdd() {
-    setAdding(true);
-    try {
-      await onAdd(recipe.id, day, meal);
-      setAdded(true);
-      setOpen(false);
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  if (added) return <p className="riso-added-note">✓ Added to {WEEKDAY_LABELS[day]}</p>;
-
-  if (!open) {
-    return (
-      <button type="button" className="riso-btn primary small" onClick={() => setOpen(true)}>
-        {label || "+ Plan it"}
-      </button>
-    );
-  }
-
-  return (
-    <div className="riso-plan-form">
-      <select value={day} onChange={(e) => setDay(Number(e.target.value))}>
-        {WEEKDAY_LABELS.map((l, i) => (
-          <option key={l} value={i}>
-            {l}
-          </option>
-        ))}
-      </select>
-      <select value={meal} onChange={(e) => setMeal(e.target.value)}>
-        {MEAL_TYPES.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.label}
-          </option>
-        ))}
-      </select>
-      <button type="button" className="riso-btn primary small" onClick={handleAdd} disabled={adding}>
-        {adding ? "…" : "Add"}
-      </button>
-    </div>
-  );
-}
-
-function CookCard({ entry, onOpen, onAdd }) {
-  const { recipe, savings, usedNames } = entry;
-  return (
-    <div className="riso-cook-card">
-      <div className="riso-cook-thumb">
-        {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : <div className="riso-cook-thumb-placeholder">{recipe.title[0]}</div>}
-        {savings > 0 && (
-          <span className="riso-sticker yellow riso-cook-save">save {money(savings)}</span>
-        )}
-      </div>
-      <div className="riso-cook-body">
-        <h4 className="riso-cook-title">{recipe.title}</h4>
-        <p className="riso-cook-uses">
-          On sale: {usedNames.slice(0, 3).join(", ")}
-          {usedNames.length > 3 ? ` +${usedNames.length - 3} more` : ""}.
-        </p>
-        <div className="riso-cook-actions">
-          <AddToPlannerButton recipe={recipe} onAdd={onAdd} />
-          <button type="button" className="riso-btn small" onClick={() => onOpen(recipe)}>
-            View recipe
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1255,8 +1175,6 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
 export function FlyerDeals({
   user,
   recipes,
-  onSelectRecipe,
-  onAddToPlanner,
   isOnGroceryList,
   onAddToGroceryList,
   onRemoveFromGroceryList,
@@ -1577,28 +1495,6 @@ export function FlyerDeals({
     });
   const goneBy = new Date(Date.now() + ENDS_SOON_DAYS * 24 * 60 * 60 * 1000).toLocaleDateString("en-CA", { weekday: "long" }).toUpperCase();
 
-  // "What to cook": every recipe used by at least one on-sale ingredient,
-  // ranked by total savings (each matched deal's sixMonthHigh minus its
-  // current price, 0 with no history yet).
-  const recipeCookMap = new Map();
-  for (const group of groups) {
-    if (group.recipeCount === 0) continue;
-    const savingsFor = (d) => {
-      if (d.unitPrice == null || !(d.sixMonthHigh > 0) || d.isNew) return 0;
-      const under = Math.max(0, d.sixMonthHigh - comparePriceOf(d));
-      const amount = compareBasisOf(d) === d.unitBasis ? under : d.unitPrice * (under / d.sixMonthHigh);
-      return Math.round(amount * 100) / 100;
-    };
-    const savingsForGroup = Math.max(0, ...group.deals.map(savingsFor));
-    for (const recipe of group.recipes) {
-      if (!recipeCookMap.has(recipe.id)) recipeCookMap.set(recipe.id, { recipe, savings: 0, usedNames: [] });
-      const entry = recipeCookMap.get(recipe.id);
-      entry.savings += savingsForGroup;
-      entry.usedNames.push(group.label.toLowerCase());
-    }
-  }
-  const cookEntries = [...recipeCookMap.values()].sort((a, b) => b.savings - a.savings).slice(0, 3);
-
   const itemCount = deals.deals.length;
   const itemCountText = itemCount.toLocaleString("en-CA");
 
@@ -1673,20 +1569,6 @@ export function FlyerDeals({
           onOpen={(deal) => setDetailId(deal.id)}
         />
       </div>
-
-      {cookEntries.length > 0 && (
-        <div className="riso-cook-section">
-          <div className="riso-cook-header">
-            <p className="riso-eyebrow">What to cook</p>
-            <h3 className="riso-block-title">Meals built on this week's deals</h3>
-          </div>
-          <div className="riso-cook-grid">
-            {cookEntries.map((entry) => (
-              <CookCard key={entry.recipe.id} entry={entry} onOpen={onSelectRecipe} onAdd={onAddToPlanner} />
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="riso-whole-flyer">
         <h3 className="riso-whole-flyer-title">The whole flyer</h3>

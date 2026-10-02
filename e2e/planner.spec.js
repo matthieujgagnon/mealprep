@@ -204,3 +204,22 @@ test("the check on a meal card marks it leftover, then already have it", async (
   await card.locator(".riso-planner-card-have").click();
   await expect(card).toHaveClass(/\bhave\b/);
 });
+
+test("past days are black and white; today and later keep their colour", async ({ page }) => {
+  const [recipe] = await setup(page, [{ title: "Old soup" }]);
+  const lastWeek = mondayOf(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 6, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner" } });
+  await openPlanner(page);
+
+  const todayCell = page.locator(".riso-planner-cell").filter({ has: page.locator(".riso-planner-card") });
+  await expect(todayCell).toHaveCount(1);
+  await expect(todayCell).not.toHaveClass(/\bpast\b/);
+  await expect(page.locator(".riso-planner-cell.past")).toHaveCount(todayIndex() * 3);
+  await expect(page.locator(".riso-planner-day-header.past")).toHaveCount(todayIndex());
+
+  await page.getByRole("button", { name: "Previous week" }).click();
+  await expect(page.locator(".riso-planner-cell.past")).toHaveCount(21);
+  const card = page.locator(".riso-planner-cell.past", { has: page.locator(".riso-planner-card") });
+  await expect(card).toHaveCSS("filter", "grayscale(1)");
+});

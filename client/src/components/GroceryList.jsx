@@ -23,7 +23,7 @@ import { currentWeekStart, formatWeekRangeLabel, isCurrentWeek, parseDateKey, sh
 import { dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
-import { DealDetailModal } from "./FlyerDeals.jsx";
+import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
 
 // Per-item "which store do I usually get this at" preference — new in the
 // Riso redesign (there's no server schema for it yet). Lasting-but-not-
@@ -1255,6 +1255,9 @@ export function GroceryList({
                     return (
                       <li key={item.key}>
                         <button type="button" className="riso-grocery-sale-row" onClick={() => openDealDetail(deal, item.name)}>
+                          <span className="riso-grocery-sale-photo">
+                            <DealPhoto deal={deal} size={44} />
+                          </span>
                           <span className="riso-grocery-sale-name">{item.name}</span>
                           <span className="riso-grocery-sale-price">{deal.price}</span>
                           <span className="riso-grocery-sale-meta">

@@ -122,3 +122,22 @@ test("the Side filter shows side dishes", async ({ page }) => {
   await page.getByRole("button", { name: /^Side\s*\d+$/ }).click();
   await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Garlic asparagus"]);
 });
+
+test("SORT sits beside the title and the filter chips fit on one line", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.fill('input[type="email"]', `recipes-chips+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+  await page.request.post("/api/recipes", { data: { title: "Chips and dip", mealSlot: "snack", ingredients: [{ name: "chips" }] } });
+  await page.reload();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+
+  await expect(page.locator(".riso-recipes-heading-row").getByLabel("Sort recipes")).toBeVisible();
+  const chips = page.locator(".riso-recipes-filter-chips .riso-filter-chip");
+  await expect(chips.filter({ hasText: /^Snack\s*1$/ })).toHaveCount(1);
+  const tops = await chips.evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
+  expect(tops).toBe(1);
+});
