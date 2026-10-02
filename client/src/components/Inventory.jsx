@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { parseQuantityInput, unitLabel } from "../lib/units.js";
+import { formatFractionQuantity, parseQuantityInput, pickFraction, unitLabel } from "../lib/units.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
@@ -918,13 +918,15 @@ function PhotoPicker({ item, onUpdate }) {
     <div className="inv-panel-photo">
       <ItemPhoto item={item} />
       <div className="inv-panel-photo-actions">
-        <button type="button" className="link-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
-          {busy ? "Uploading…" : own ? "Change photo" : "Add your photo"}
-        </button>
         {link === null ? (
-          <button type="button" className="link-btn" onClick={() => setLink("")} disabled={busy}>
-            Paste a link
-          </button>
+          <span className="inv-panel-photo-pills">
+            <button type="button" className="inv-pill" onClick={() => fileRef.current?.click()} disabled={busy}>
+              {busy ? "Uploading…" : own ? "Change photo" : "Add photo"}
+            </button>
+            <button type="button" className="inv-pill" onClick={() => setLink("")} disabled={busy}>
+              Paste link
+            </button>
+          </span>
         ) : (
           <span className="inv-panel-photo-link">
             <input
@@ -951,7 +953,7 @@ function PhotoPicker({ item, onUpdate }) {
         )}
         {generic && !busy && (
           <span className="inv-panel-photo-credit">
-            Stock photo from TheMealDB ·{" "}
+            Stock photo ·{" "}
             <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: "none" })}>
               Hide it
             </button>
@@ -1053,7 +1055,27 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
           <button type="button" onClick={() => adjustQty(-1)} aria-label={`Decrease quantity by ${step}`}>
             −
           </button>
-          <span>{item.quantity ?? 0}</span>
+          <input
+            key={`${item.id}|${item.quantity}`}
+            type="text"
+            inputMode="decimal"
+            className="inv-qty-input"
+            aria-label="Quantity"
+            defaultValue={formatFractionQuantity(item.quantity ?? 0)}
+            onBlur={(e) => {
+              // "0.25", "1/2", "½", "1 1/2" or "1½"; anything else goes back.
+              const v = parseQuantityInput(e.target.value);
+              if (v == null || v < 0) e.target.value = formatFractionQuantity(item.quantity ?? 0);
+              else if (v !== item.quantity) onUpdate(item.id, { quantity: Math.round(v * 1000) / 1000 });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") {
+                e.currentTarget.value = formatFractionQuantity(item.quantity ?? 0);
+                e.currentTarget.blur();
+              }
+            }}
+          />
           <button type="button" onClick={() => adjustQty(1)} aria-label={`Increase quantity by ${step}`}>
             +
           </button>
@@ -1064,6 +1086,18 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
             emptyLabel="no measure"
             aria-label="Measure"
           />
+        </div>
+        <div className="inv-qty-chips">
+          {[["¼", 1 / 4], ["⅓", 1 / 3], ["½", 1 / 2], ["⅔", 2 / 3], ["¾", 3 / 4], ["1", 1]].map(([label, v]) => (
+            <button
+              key={label}
+              type="button"
+              aria-label={`Set to ${label}`}
+              onClick={() => onUpdate(item.id, { quantity: pickFraction(item.quantity, v) })}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 

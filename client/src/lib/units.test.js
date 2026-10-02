@@ -119,3 +119,37 @@ describe("unitLabel", () => {
     expect(UNIT_GROUPS[0].units[0]).toBe("unit");
   });
 });
+
+describe("inventory amounts in fractions", async () => {
+  const { parseQuantityInput, formatFractionQuantity, pickFraction } = await import("./units.js");
+
+  it("reads decimals, fractions, unicode fractions and mixed numbers", () => {
+    expect(parseQuantityInput("0.25")).toBe(0.25);
+    expect(parseQuantityInput("0,5")).toBe(0.5);
+    expect(parseQuantityInput("1/2")).toBe(0.5);
+    expect(parseQuantityInput("½")).toBe(0.5);
+    expect(parseQuantityInput("1 1/2")).toBe(1.5);
+    expect(parseQuantityInput("1½")).toBe(1.5);
+    expect(parseQuantityInput("1 ½")).toBe(1.5);
+    expect(parseQuantityInput("2 ⅓")).toBeCloseTo(2.333, 3);
+    expect(parseQuantityInput("abc")).toBe(null);
+    expect(parseQuantityInput("1/0")).toBe(null);
+  });
+
+  it("shows fractions where they fit, else up to 2 decimals", () => {
+    expect(formatFractionQuantity(0.25)).toBe("¼");
+    expect(formatFractionQuantity(1.5)).toBe("1 ½");
+    expect(formatFractionQuantity(1 / 3)).toBe("⅓");
+    expect(formatFractionQuantity(0.375)).toBe("⅜");
+    expect(formatFractionQuantity(3)).toBe("3");
+    expect(formatFractionQuantity(0.4)).toBe("0.4");
+    expect(formatFractionQuantity(500)).toBe("500");
+  });
+
+  it("quick-picks a fraction on top of the whole part when that's bigger", () => {
+    expect(pickFraction(2, 0.5)).toBe(2.5);
+    expect(pickFraction(2.75, 0.5)).toBe(0.5);
+    expect(pickFraction(0, 0.25)).toBe(0.25);
+    expect(pickFraction(3.5, 1)).toBe(1);
+  });
+});

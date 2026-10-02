@@ -58,6 +58,33 @@ test("a shelf's + adds an item straight to that shelf", async ({ page }) => {
   await expect(page.locator(".modal-content select").nth(1)).toHaveValue("fridge");
 });
 
+test("the panel's quantity takes fractions and has quick-pick chips", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await addItem(page, "Olive oil", "pantry");
+  await page.getByText("Olive oil", { exact: true }).click();
+  const qty = page.locator(".inv-panel").getByLabel("Quantity", { exact: true });
+
+  await qty.fill("1 1/2");
+  await qty.press("Enter");
+  await expect(qty).toHaveValue("1 ½");
+  await qty.fill("¼");
+  await qty.press("Enter");
+  await expect(qty).toHaveValue("¼");
+  // Nonsense goes back to the last amount.
+  await qty.fill("lots");
+  await qty.press("Enter");
+  await expect(qty).toHaveValue("¼");
+
+  // A chip on top of a whole amount: 2 then ½ is 2 ½.
+  await qty.fill("2");
+  await qty.press("Enter");
+  await page.getByRole("button", { name: "Set to ½" }).click();
+  await expect(qty).toHaveValue("2 ½");
+  await page.getByRole("button", { name: "Set to 1" }).click();
+  await expect(qty).toHaveValue("1");
+});
+
 test("the item name in the edit panel can be renamed", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
@@ -320,13 +347,13 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   const panel = page.locator(".inv-panel");
   await panel.getByRole("button", { name: "Remove photo" }).click();
   await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveAttribute("src", /ingredients\/Egg-Small\.png$/);
-  await expect(panel.getByText("Stock photo from TheMealDB")).toBeVisible();
+  await expect(panel.getByText("Stock photo ·")).toBeVisible();
   await panel.getByRole("button", { name: "Hide it" }).click();
   await expect(card("Eggs").locator(".inv-card-photo.placeholder")).toHaveText("🥚");
   await panel.getByRole("button", { name: "Show the stock photo" }).click();
   await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveCount(1);
   // Or a link to any picture.
-  await panel.getByRole("button", { name: "Paste a link" }).click();
+  await panel.getByRole("button", { name: "Paste link" }).click();
   await panel.getByLabel("Photo link").fill("https://example.com/eggs.png");
   await panel.getByLabel("Photo link").press("Enter");
   await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", "https://example.com/eggs.png");

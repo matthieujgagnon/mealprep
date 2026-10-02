@@ -17,28 +17,59 @@ const VOLUME_TO_ML = {
 };
 
 // Parses a quantity typed as free text — accepts a fraction ("1/4"), a mixed
-// number ("1 1/2"), a plain decimal ("0.25"), or an empty string. Recipe
-// entry shouldn't require converting "1/4 cup" to "0.25" in your head first.
+// number ("1 1/2"), a plain decimal ("0.25"), a unicode fraction ("½"), a
+// mixed one ("1½", "1 ½"), or an empty string. Recipe entry shouldn't
+// require converting "1/4 cup" to "0.25" in your head first.
 // Returns a number, or null if the input is empty/unparseable.
+const UNICODE_FRACTIONS = { "¼": 1 / 4, "½": 1 / 2, "¾": 3 / 4, "⅓": 1 / 3, "⅔": 2 / 3, "⅛": 1 / 8, "⅜": 3 / 8, "⅝": 5 / 8, "⅞": 7 / 8 };
 export function parseQuantityInput(raw) {
   if (raw == null) return null;
-  const str = String(raw).trim();
+  const str = String(raw).trim().replace(/(\d),(\d)/g, "$1.$2");
   if (!str) return null;
 
-  const mixed = str.match(/^(\d+)\s+(\d+)\/(\d+)$/);
-  if (mixed) {
-    const [, whole, num, den] = mixed;
-    return Number(den) === 0 ? null : Number(whole) + Number(num) / Number(den);
-  }
+  const plain = Number(str);
+  if (Number.isFinite(plain)) return plain;
 
-  const fraction = str.match(/^(\d+)\/(\d+)$/);
-  if (fraction) {
-    const [, num, den] = fraction;
-    return Number(den) === 0 ? null : Number(num) / Number(den);
+  // Whole numbers, fractions and unicode fractions, added up: "1 1/2",
+  // "1½", "1 ½".
+  const parts = str.replace(/(\d)([¼½¾⅓⅔⅛⅜⅝⅞])/g, "$1 $2").split(/\s+/);
+  let total = 0;
+  for (const part of parts) {
+    let m;
+    if (UNICODE_FRACTIONS[part] != null) total += UNICODE_FRACTIONS[part];
+    else if ((m = part.match(/^(\d+)\/(\d+)$/))) {
+      if (Number(m[2]) === 0) return null;
+      total += Number(m[1]) / Number(m[2]);
+    } else if (/^\d*\.?\d+$/.test(part)) total += Number(part);
+    else return null;
   }
+  return total;
+}
 
-  const value = Number(str);
-  return Number.isFinite(value) ? value : null;
+// How the inventory shows an amount: fractions where they fit (¼ ⅓ ½ ⅔ ¾
+// and eighths, "1 ½"), else a decimal of up to 2 places.
+const GLYPHS = [
+  [1 / 8, "⅛"], [1 / 4, "¼"], [1 / 3, "⅓"], [3 / 8, "⅜"], [1 / 2, "½"], [5 / 8, "⅝"], [2 / 3, "⅔"], [3 / 4, "¾"], [7 / 8, "⅞"],
+];
+export function formatFractionQuantity(qty) {
+  if (qty == null || !Number.isFinite(Number(qty))) return "";
+  const q = Number(qty);
+  const whole = Math.floor(q + 1e-6);
+  const frac = q - whole;
+  if (frac < 0.01) return String(whole);
+  const glyph = GLYPHS.find(([v]) => Math.abs(v - frac) < 0.01);
+  if (!glyph) return String(Math.round(q * 100) / 100);
+  return whole ? `${whole} ${glyph[1]}` : glyph[1];
+}
+
+// A quick-pick chip (¼ ⅓ ½ ⅔ ¾ 1): a fraction keeps the whole part when
+// that makes the amount bigger ("2" + ½ = 2 ½), else it becomes the
+// amount; 1 sets it to 1.
+export function pickFraction(current, value) {
+  const q = Number(current) || 0;
+  const whole = Math.floor(q + 1e-6);
+  if (value < 1 && whole + value > q) return Math.round((whole + value) * 1000) / 1000;
+  return value;
 }
 
 // The inverse of parseQuantityInput's fraction parsing — formats a scaled
