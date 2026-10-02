@@ -288,3 +288,51 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await page.locator(".inv-panel").getByRole("button", { name: "Remove photo" }).click();
   await expect(card("Eggs").locator(".inv-card-photo.placeholder")).toHaveText("🥚");
 });
+
+test("the amount can be changed right on the card, without opening the item", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  const email = `inv-qty+${Date.now()}@example.com`;
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText(email)).toBeVisible();
+  const add = (data) => page.request.post("/api/pantry-inventory", { data: { location: "fridge", ...data } });
+  await add({ name: "Greek yogurt", quantity: 500, unit: "g" });
+  await add({ name: "Cilantro", quantity: 1, unit: "bunch" });
+  await add({ name: "Mystery jam" });
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  const card = (name) => page.locator(".inv-card").filter({ hasText: name });
+  const saved = async (name) =>
+    (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === name).quantity;
+
+  // + steps by 50 g; Enter saves.
+  await card("Greek yogurt").getByRole("button", { name: /Change the amount of Greek yogurt/ }).click();
+  await card("Greek yogurt").getByRole("button", { name: "More Greek yogurt" }).click();
+  await expect(card("Greek yogurt").getByLabel("Amount of Greek yogurt (g)")).toHaveValue("550");
+  await card("Greek yogurt").getByLabel("Amount of Greek yogurt (g)").press("Enter");
+  await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 g");
+  await expect(page.locator(".inv-panel")).toHaveCount(0);
+  await expect.poll(() => saved("Greek yogurt")).toBe(550);
+
+  // Typing a fraction and tapping away saves too.
+  await card("Cilantro").locator(".inv-card-qty").click();
+  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").fill("1/2");
+  await page.locator(".riso-inv-title").click();
+  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
+  await expect.poll(() => saved("Cilantro")).toBe(0.5);
+
+  // Escape puts it back.
+  await card("Cilantro").locator(".inv-card-qty").click();
+  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").fill("9");
+  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").press("Escape");
+  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
+
+  // An item with no amount yet can get one.
+  await card("Mystery jam").getByRole("button", { name: "Change the amount of Mystery jam" }).click();
+  await card("Mystery jam").getByLabel("Amount of Mystery jam").fill("2");
+  await card("Mystery jam").getByLabel("Amount of Mystery jam").press("Enter");
+  await expect(card("Mystery jam").locator(".inv-card-qty-num")).toHaveText("2");
+  await expect(page.locator(".inv-panel")).toHaveCount(0);
+});

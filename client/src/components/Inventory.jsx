@@ -356,7 +356,89 @@ function ItemPhoto({ item }) {
   );
 }
 
-function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable = true }) {
+// Grams go 50 at a time, bottles and loaves a quarter at a time.
+function qtyStep(unit) {
+  return unit === "g" || unit === "ml" ? 50 : unit === "bottle" || unit === "loaf" ? 0.25 : 1;
+}
+
+// The card's amount: tap it to change it right there (− / typed / +).
+// Enter or tapping away saves, Escape puts it back. Its clicks and drags
+// stay off the card, so editing never opens the panel or starts a drag.
+function CardQuantity({ item, onUpdate }) {
+  const [draft, setDraft] = useState(null);
+  const inputRef = useRef(null);
+  const editing = draft !== null;
+  const step = qtyStep(item.unit);
+  const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  const keep = (e) => e.stopPropagation();
+  function save(text = draft) {
+    setDraft(null);
+    const next = parseQuantityInput(text);
+    if (next != null && next >= 0 && next !== item.quantity) onUpdate(item.id, { quantity: next });
+  }
+  function bump(dir) {
+    const current = parseQuantityInput(draft) ?? item.quantity ?? 0;
+    setDraft(String(Math.max(0, Math.round((current + dir * step) * 100) / 100)));
+    inputRef.current?.focus();
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className={`inv-card-qty${item.quantity == null ? " empty" : ""}`}
+        onClick={(e) => {
+          keep(e);
+          setDraft(item.quantity == null ? "" : String(item.quantity));
+        }}
+        onPointerDown={keep}
+        onKeyDown={keep}
+        aria-label={`Change the amount of ${item.name}${item.quantity != null ? `, now ${item.quantity}${unit ? ` ${unit}` : ""}` : ""}`}
+      >
+        {item.quantity != null ? <span className="inv-card-qty-num">{item.quantity}</span> : <span className="inv-card-qty-unit">+ qty</span>}
+        {item.quantity != null && unit && <span className="inv-card-qty-unit"> {unit}</span>}
+      </button>
+    );
+  }
+
+  return (
+    <span
+      className="inv-card-qty-edit"
+      onClick={keep}
+      onPointerDown={keep}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) save();
+      }}
+    >
+      <button type="button" onClick={() => bump(-1)} aria-label={`Less ${item.name}`}>
+        −
+      </button>
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="decimal"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") setDraft(null);
+        }}
+        aria-label={`Amount of ${item.name}${unit ? ` (${unit})` : ""}`}
+      />
+      <button type="button" onClick={() => bump(1)} aria-label={`More ${item.name}`}>
+        +
+      </button>
+    </span>
+  );
+}
+
+function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true }) {
   const line = expiryLine(item);
 
   // Draggable onto any other shelf (see App.jsx's handleDragEnd, routed via
@@ -367,7 +449,6 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
     data: { inventoryItemId: item.id, inventoryItem: item },
     disabled: !draggable,
   });
-  const hasQty = item.quantity != null || item.unit;
 
   return (
     <div
@@ -388,12 +469,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
           <span className="inv-card-name">{item.name}</span>
           {line?.expired && <span className="inv-card-expired">Expired</span>}
         </div>
-        {hasQty && (
-          <span className="inv-card-qty">
-            {item.quantity != null && <span className="inv-card-qty-num">{item.quantity}</span>}
-            {item.unit && <span className="inv-card-qty-unit"> {unitLabel(item.unit, item.quantity)}</span>}
-          </span>
-        )}
+        <CardQuantity item={item} onUpdate={onUpdate} />
         <span
           role="checkbox"
           aria-checked={selected}
@@ -574,6 +650,7 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
 function ShelfColumn({
   location,
   items,
+  onUpdate,
   activeItemId,
   selectedIds,
   onSelect,
@@ -681,6 +758,7 @@ function ShelfColumn({
             onSelect={() => onSelect(item.id)}
             draggable={draggable}
             onToggleSelect={() => onToggleSelect(item.id)}
+            onUpdate={onUpdate}
           />
         ))}
         {sorted.length === 0 && <div className="inv-shelf-empty">Drop items here</div>}
@@ -781,8 +859,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
     else setNameDraft(item.name);
   }
 
-  // Grams go 50 at a time, bottles and loaves a quarter at a time.
-  const step = item.unit === "g" || item.unit === "ml" ? 50 : item.unit === "bottle" || item.unit === "loaf" ? 0.25 : 1;
+  const step = qtyStep(item.unit);
   function adjustQty(dir) {
     const next = Math.max(0, Math.round(((item.quantity ?? 0) + dir * step) * 100) / 100);
     onUpdate(item.id, { quantity: next });
@@ -1166,6 +1243,7 @@ export function Inventory({
               key={loc.id}
               location={loc}
               items={items.filter((i) => i.location === loc.id)}
+              onUpdate={onUpdate}
               activeItemId={activeItemId}
               selectedIds={selectedIds}
               onSelect={setActiveItemId}
