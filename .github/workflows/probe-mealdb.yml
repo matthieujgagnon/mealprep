@@ -1,0 +1,21 @@
+name: probe-mealdb
+on: push
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ingredient list and image URL forms
+        run: |
+          curl -sS "https://www.themealdb.com/api/json/v1/1/list.php?i=list" -o list.json
+          echo "COUNT $(jq '.meals | length' list.json)"
+          echo "NAMES_START"
+          jq -r '[.meals[].strIngredient] | join("|")' list.json
+          echo "NAMES_END"
+          for n in "Chicken%20Breast" "Greek%20Yogurt" "Cilantro" "Prawns" "Basmati%20Rice"; do
+            for suf in ".png" "-Small.png" "-small.png" "-Medium.png"; do
+              u="https://www.themealdb.com/images/ingredients/${n}${suf}"
+              echo "$(curl -s -o /dev/null -w '%{http_code} %{size_download} %{content_type}' "$u") $u"
+            done
+          done
+          u="https://www.themealdb.com/images/ingredients/chicken%20breast.png"; echo "$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "$u") $u"
+          curl -sSI "https://www.themealdb.com/images/ingredients/Cilantro-Small.png" | grep -i "access-control\|cache-control\|content-type"
