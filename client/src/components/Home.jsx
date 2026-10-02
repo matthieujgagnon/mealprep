@@ -7,6 +7,8 @@ import { daysUntil, formatExpiry } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { useDeals } from "../lib/dealsStore.js";
+import { proteinName, proteinsOnSale } from "../lib/proteins.js";
+import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 const ALL_MEALS_KEY = "mealprep-home-all-meals";
@@ -108,27 +110,6 @@ function MakeableRow({ recipe, onOpen }) {
       <span className="riso-makeable-row-title">{recipe.title}</span>
       {totalTime > 0 && <span className="riso-makeable-row-time">{totalTime} min</span>}
     </button>
-  );
-}
-
-function PriceTag({ deal, index }) {
-  const rotation = index % 2 === 0 ? 1.5 : -1.5;
-  const [amount, ...unitParts] = deal.price.split("/");
-  const unit = unitParts.length ? `/${unitParts.join("/")}` : "";
-  return (
-    <div className="riso-price-tag" style={{ transform: `rotate(${rotation}deg)` }}>
-      <span className="riso-price-tag-hole" />
-      <div className="riso-price-tag-inner">
-        <span className="riso-price-tag-amount">
-          {amount}
-          {unit && <span className="riso-price-tag-unit">{unit}</span>}
-        </span>
-        <span className="riso-price-tag-body">
-          <span className="riso-price-tag-item">{deal.item}</span>
-          <span className="riso-price-tag-store">{deal.store}</span>
-        </span>
-      </div>
-    </div>
   );
 }
 
@@ -234,8 +215,12 @@ export function Home({
     setPlannerEntries(entries);
   }
 
-  const dealsShown = deals.slice(0, 3).map((d) => ({ ...d, matches: matchRecipesForDeal(d, recipes) }));
-  const topDealMatch = dealsShown.filter((d) => d.matches.length > 0).sort((a, b) => b.matches.length - a.matches.length)[0];
+  // The proteins on sale that the most recipes use.
+  const proteinDeals = proteinsOnSale(deals)
+    .map((k) => k.best)
+    .filter(Boolean)
+    .map((d) => ({ ...d, matches: matchRecipesForDeal(d, recipes) }));
+  const topDealMatch = proteinDeals.filter((d) => d.matches.length > 0).sort((a, b) => b.matches.length - a.matches.length)[0];
 
   const useSoonItems = pantryInventory
     .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0)
@@ -537,35 +522,24 @@ export function Home({
           )}
         </section>
 
-        <section className="riso-home-mini">
-          <div className="riso-home-mini-header">
-            <h3>On sale</h3>
-            <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("flyers")}>
-              Flyers →
-            </button>
-          </div>
-          {deals.length === 0 ? (
-            <p className="riso-empty-note">No flyer deals loaded yet.</p>
-          ) : (
-            <div className="riso-price-tag-list">
-              {dealsShown.map((d, i) => (
-                <PriceTag key={d.id} deal={d} index={i} />
-              ))}
-            </div>
-          )}
-          {topDealMatch && (
-            <p className="riso-home-mini-footer">
-              {topDealMatch.matches.length} of your recipes use {topDealMatch.item.toLowerCase()}.{" "}
-              <button
-                type="button"
-                className="riso-home-mini-link"
-                onClick={() => onFindRecipes?.(topDealMatch.matches[0].ingredientName)}
-              >
-                See them →
-              </button>
-            </p>
-          )}
-        </section>
+        <ProteinsOnSale
+          deals={deals}
+          onNavigate={onNavigate}
+          footer={
+            topDealMatch && (
+              <p className="riso-home-mini-footer">
+                {topDealMatch.matches.length} of your recipes use {proteinName(topDealMatch).toLowerCase()}.{" "}
+                <button
+                  type="button"
+                  className="riso-home-mini-link"
+                  onClick={() => onFindRecipes?.(topDealMatch.matches[0].ingredientName)}
+                >
+                  See them →
+                </button>
+              </p>
+            )
+          }
+        />
       </div>
     </div>
   );

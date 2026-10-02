@@ -148,6 +148,42 @@ describe("names and categories", () => {
     expect(toMatchName("TOURNEDOS DE POULET AVEC BACON SELECTION | SELECTION FROZEN CHICKEN TOURNEDOS WITH BACON")).toBe("selection frozen chicken tournedos");
   });
 
+  // Real names from Quebec flyers that used to lose the product: the pot
+  // pie, wings, burgers and cutlets all came out as plain "chicken".
+  it("keeps the product in French names", () => {
+    expect(toMatchName("PÂTÉ AU POULET IRRÉSISTIBLE, 1,2 kg")).toBe("chicken pie");
+    expect(toMatchName("AILLES DE POULET BENNY & CO., 550 g")).toBe("chicken wings");
+    expect(toMatchName("BURGERS AU POULET, SOUVLAKI OU TARTES AUX ÉPINARDS GRECQUE ARAHOVA, 490-678 G")).toBe("chicken burgers");
+    expect(toMatchName("escalope de poulet PC Menu bleu, 590 g")).toBe("chicken cutlet");
+    expect(toMatchName("PEPPERONI TRANCHÉ, CAPICOLLI OU SAUCISSE")).toBe("sliced pepperoni");
+    expect(toMatchName("TOURNEDOS DE SAUMON")).toBe("salmon tournedos");
+    expect(toMatchName("FILETS DE SOLE, 1100 g")).toBe("sole fillets");
+    expect(toMatchName("LAIT CONDENSÉ SUCRÉ")).toBe("sweetened condensed milk");
+    expect(toMatchName("LAIT AU CHOCOLAT")).toBe("chocolate milk");
+    expect(toMatchName("TOMATES RAISINS")).toBe("grape tomatoes");
+    expect(toMatchName("BOULETTES DE VIANDE")).toBe("meatballs");
+    expect(toMatchName("GIGOT D'AGNEAU")).toBe("lamb leg");
+    expect(toMatchName("RÔTI DE BAS DE PALETTE DÉSOSSÉ")).toBe("boneless blade roast");
+    // Pâte is dough, pâté a pie, pâtes pasta.
+    expect(toMatchName("PÂTE À TARTE FRANÇOIS HUBERT, 1 kg")).toBe("pie crust");
+    expect(toMatchName("PÂTÉS ST-HUBERT, 675-800 G")).toBe("pies");
+    expect(toMatchName("PÂTES ALIMENTAIRES BARILLA")).toBe("pasta");
+    expect(toMatchName("ÉMINCÉ DE POITRINE DE DINDE MAPLE LEAF")).toBe("shaved turkey breast");
+  });
+
+  it("reads the French half when the English half doesn't name the product", () => {
+    expect(toMatchName("ESCALOPE DE POULET PC MENU BLEU REFROIDI À L'AIR | AIR CHILLED, JUSQU'À/UP TO 590 G")).toBe("chicken cutlet");
+    expect(toMatchName("Poulet à bouillir | frozen boiling chicken, 2,7 kg")).toBe("frozen boiling chicken");
+  });
+
+  it("picks the choice that names the product", () => {
+    expect(toMatchName("OLD FASHIONED OR BLACK FOREST SMOKED HAM")).toBe("black forest smoked ham");
+    expect(toMatchName("SCHNEIDERS, MAPLE LEAF OR MÈRE MICHEL SMOKED HAM")).toBe("mère michel smoked ham");
+    expect(toMatchName("HOTHOUSE GRAPE, CHERRY OR MIXED TOMATOES")).toBe("mixed tomatoes");
+    expect(toMatchName("pâté au boeuf ou au poulet Swanson | Swanson beef or chicken pie, 200 g")).toBe("swanson beef pie");
+    expect(toMatchName("PC® BLUE MENU® GROUND CHICKEN OR MINCED TURKEY")).toBe("pc blue menu ground chicken");
+  });
+
   it("sorts items into the app's categories, French or English", () => {
     expect(categorize("Boneless Chicken Breasts")).toBe("protein");
     expect(categorize("Poitrine de poulet")).toBe("protein");
@@ -155,6 +191,7 @@ describe("names and categories", () => {
     expect(categorize("Hass Avocados")).toBe("produce");
     expect(categorize("Basmati Rice")).toBe("staple");
     expect(categorize("Dish soap")).toBe("other");
+    expect(categorize("McCAFÉ GROUND COFFEE, 300 g")).toBe("staple");
   });
 
   it("matches store names without matching inside other words", () => {
@@ -180,6 +217,34 @@ describe("normalizeFlippItem", () => {
       imageUrl: "https://f.wishabi.net/c1.jpg",
     });
     expect(normalizeFlippItem({ name: "", price: "1" }, flyer)).toBe(null);
+  });
+
+  // Metro's "375 points à l'achat d'un pâté au poulet, valeur de 3$" came
+  // through as a $3.00 pot pie at $1.13/lb, "72% under Quebec's average".
+  it("doesn't read a points value or a free item as a price", () => {
+    const flyer = { merchant: "Metro", validTo: "2026-10-07" };
+    const points = normalizeFlippItem(
+      { name: "PÂTÉ AU POULET IRRÉSISTIBLE", price: "3.0", sale_story: "375 points à l'achat d'un pâté au poulet Irrésistible, Valuer de 3$", description: "format écono 1,2 kg" },
+      flyer
+    );
+    expect(points).toMatchObject({ price: "Points offer", unitPrice: null, unitBasis: null, regularPrice: null, matchName: "chicken pie" });
+    const free = normalizeFlippItem(
+      {
+        name: "GRATUIT VIANDES CUISINÉES MAPLE LEAF | MAPLE LEAF COOKED MEATS",
+        price: "8.49",
+        pre_price_text: "ANNOUNCÉ À",
+        sale_story: "gratuit voir réduction sur reçu de caisse à l'achat de bacon Maple Leaf Valeur de 8,49$",
+      },
+      flyer
+    );
+    expect(free).toMatchObject({ price: "Free with purchase", unitPrice: null });
+    const bundle = normalizeFlippItem({ name: "SAUCISSES COCKTAIL HYGRADE", price: "15.99", pre_price_text: "ANNOUNCÉ À", sale_story: "Valeur de 6,98$" }, flyer);
+    expect(bundle).toMatchObject({ price: "Worth $6.98", unitPrice: null });
+    // Points on top of a real price keep the price.
+    const pumpkin = normalizeFlippItem({ name: "GROSSE CITROUILLE | LARGE PUMPKIN", price: "5.0", sale_story: "Obtenez PC Optimum 1 500 pts, 1.50$ remise en points" }, flyer);
+    expect(pumpkin).toMatchObject({ price: "$5.00", unitPrice: 5 });
+    const muffins = normalizeFlippItem({ name: "MUFFINS 6 UN.", price: "6.0", sale_story: "Obtenez PC Optimum 2 000 pts Valeur de $2" }, flyer);
+    expect(muffins).toMatchObject({ unitPrice: 6 });
   });
 });
 
@@ -235,6 +300,20 @@ describe("regularPriceFor", () => {
     expect(regularPriceFor({ sale_story: "SAVE UP TO $3" }, priced)).toBeNull();
     expect(regularPriceFor({ description: "Reg. $3.99" }, priced)).toBeNull();
     expect(regularPriceFor({}, priced)).toBeNull();
+  });
+
+  // From IGA's and Metro's real items: the sale is per lb, the regular
+  // price per kg.
+  it("converts a per-kg regular price to the per-lb sale's unit", () => {
+    const at = (item) => regularPriceFor(item, parseFlippPrice(item));
+    expect(at({ name: "FRENCH ROAST", price: "11.99", price_text: "/lb $26.43/kg", description: "Without pork fat\n\nRég. 30,19$/kg" })).toBe(13.69);
+    expect(at({ name: "FRESH PORK LOIN HALF", price: "3.99", price_text: "/lb $8.80/kg", description: "Rég. 12,19$/kg" })).toBe(5.53);
+    expect(at({ name: "PORC NAGANO FRESH PORK LOIN CHOPS", price: "12.99", price_text: "/lb $28.64/kg", description: "Coupe hôtel\nReg. $29.99/kg" })).toBe(13.6);
+    // A per-kg range whose low end isn't above the sale: no regular price.
+    expect(at({ name: "FILETS DE PORC FRAIS", price: "3.77", price_text: "/lb - 8,31$/kg", description: "prix membre 8,31/kg\nreg. 7,97 à 16,59/kg" })).toBe(null);
+    // Per lb stays per lb.
+    expect(at({ name: "CÔTELETTES DE PORC FRAIS", price: "4.99", price_text: "/lb", description: "11,00/kg\nreg. 6,99/lb - 15,41/kg" })).toBe(6.99);
+    expect(at({ name: "biftecks ou rôti de contre-filet", price: "9.99", price_text: "/lb", description: "reg. de 20,77/lb - 45,80/kg à\n23,51/lb - 51,82/kg" })).toBe(20.77);
   });
 });
 

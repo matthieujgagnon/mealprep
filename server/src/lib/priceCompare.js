@@ -11,6 +11,8 @@
 // ("Butter, 454 g" at $4.99 is $4.99/lb), so a pack price lines up with a
 // per-kilogram average and with other pack sizes.
 
+import { isFoodWord } from "./bilingual.js";
+
 const G_PER_LB = 453.59237;
 const G_PER_OZ = 28.349523;
 const NUM = String.raw`\d+(?:[.,]\d+)?`;
@@ -40,15 +42,32 @@ export function packageSize(text) {
   return { ml: amount * 1000 }; // l, litre(s), liter(s)
 }
 
+// How many items a pack holds when its name counts them ("SAC D'AVOCATS,
+// 5 UN.", "mini cucumbers, 6 un. bag", "12 ct"), or null. Eggs are priced
+// by the dozen everywhere, so a carton isn't split.
+const COUNT_RE = /(?<![\d.,])(\d{1,2})\s*(?:un|ct|count|units?|pcs?|pieces?|morceaux|'s)\b\.?/i;
+export function packCount(text) {
+  const t = String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/œ/gi, "oe");
+  if (/\b(eggs?|oeufs?)\b/i.test(t)) return null;
+  const m = COUNT_RE.exec(t);
+  const n = m ? Number(m[1]) : 0;
+  return n >= 2 && n <= 24 ? n : null;
+}
+
 // The deal's price in the basis it's best compared on: its own per-lb or
 // per-L price, a pack price turned into per lb / per L from the size in its
-// name, or else per item.
+// name, a counted bag's price per item, or else per item.
 export function comparablePrice(deal) {
   if (deal.unitPrice == null || !deal.unitBasis) return null;
   if (deal.unitBasis !== "each") return { price: deal.unitPrice, basis: deal.unitBasis };
   const size = packageSize(deal.item) || packageSize(deal.matchName);
   if (size?.grams >= 20) return { price: round2(deal.unitPrice / (size.grams / G_PER_LB)), basis: "lb" };
   if (size?.ml >= 50) return { price: round2(deal.unitPrice / (size.ml / 1000)), basis: "L" };
+  const count = packCount(deal.item);
+  if (count) return { price: round2(deal.unitPrice / count), basis: "each" };
   return { price: deal.unitPrice, basis: "each" };
 }
 
@@ -60,7 +79,7 @@ const STOP = new Set(
 // Store and national brands: "PC salmon fillets" and "salmon fillets" are
 // the same product for comparing prices.
 const BRANDS = new Set(
-  "pc presidents president's choice no name sans nom selection irresistibles compliments kirkland maple leaf olymel lafleur lactantia natrel quebon oikos danone activia liberte iogo yoplait kraft heinz barilla catelli gallo tropicana oasis del monte dole mccain cheerios kelloggs christie dempsters villaggio bonduelle green giant clover leaf hellmanns black diamond cracker barrel saputo armstrong campbells philadelphia becel sealtest schneiders janes tostitos doritos lays ruffles quaker st-hubert black label blue menu".split(" ")
+  "pc presidents president's choice no name sans nom selection irresistibles irresistible compliments kirkland maple leaf olymel lafleur prix nagano benny rachels ricardo cage liner seaquest marina rey exceldor fontaine famille acres stefano lesters paysan gusta swanson dalisa foppen mastro papille pogo menu bleu gaspesien artisan metrogo unisoya voltigeurs ferme mere michel hygrade furca gastronomiques plaisirs sterling boucanerie gosselin fumoirs arahova mamzells lactantia natrel quebon oikos danone activia liberte iogo yoplait kraft heinz barilla catelli gallo tropicana oasis del monte dole mccain cheerios kelloggs christie dempsters villaggio bonduelle green giant clover leaf hellmanns black diamond cracker barrel saputo armstrong campbells philadelphia becel sealtest schneiders janes tostitos doritos lays ruffles quaker st-hubert black label blue menu".split(" ")
 );
 
 function stem(word) {
@@ -89,6 +108,17 @@ export function productWords(text) {
   return [...new Set(words)].sort();
 }
 
+// A prepared or processed form costs something else than the raw product:
+// cooked, breaded or marinated chicken, a chicken pie or burgers aren't
+// "Whole chicken". Smoked only counts for products that aren't smoked
+// anyway (smoked salmon, not bacon).
+export const PREPARED = new Set(
+  "cooked hot roasted rotisserie breaded battered marinated seasoned stuffed skewer tournedo precooked smoked mock boiling burger nugget strip cutlet cutlette escalope fondue lasagna popcorn finger kebab souvlaki pulled bbq glazed wellington meatball tender".split(" ")
+);
+export const SMOKED_ANYWAY = new Set(["bacon", "wiener", "ham", "sausage"]);
+// Parts of the animal: chicken legs or wings aren't a whole chicken. A
+// Quebec "cuts" product ("Pork loin cuts") stands for any of its cuts.
+export const PARTS = new Set("breast thigh leg drumstick wing ground back neck liver gizzard tenderloin chop rib roast loin shoulder belly shank cube".split(" "));
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const weekOf = (date) => Math.floor(new Date(date).getTime() / WEEK_MS);
 const monthOf = (date) => new Date(date).toISOString().slice(0, 7);
@@ -117,10 +147,20 @@ export function buildHistoryIndex(rows, now = new Date()) {
   return { byKey, byWord };
 }
 
+// The words that say which product this is, beyond its main food: a cut
+// ("breast", "ground"), a prepared form ("cooked", "breaded") or another
+// food ("pie" in "chicken pie"). Another name only stands in for this one
+// when it has all of them: plain "chicken" prices never stand in for a
+// chicken pie, nor "salmon" for salmon fillets.
+function specifiers(words) {
+  return words.filter((w) => PREPARED.has(w) || PARTS.has(w) || isFoodWord(w));
+}
+
 // The past prices this deal is compared with, and where they come from.
 // Same store first; then the most specific product name - all of whose
 // words are in this deal's name ("salmon fillet" for "Atlantic salmon
-// fillets") - at any store. Needs prices from at least two weeks.
+// fillets"), and which names the same cut and form - at any store. Needs
+// prices from at least two weeks.
 export function findHistory(deal, index) {
   const cmp = comparablePrice(deal);
   if (!cmp) return null;
@@ -140,12 +180,14 @@ export function findHistory(deal, index) {
   // filling").
   const candidates = new Set();
   for (const w of words) for (const k of index.byWord.get(w) || []) candidates.add(k);
+  const mustHave = specifiers(words);
   let best = [];
   let bestSize = 0;
   for (const k of candidates) {
     const kWords = k.split(" ");
     if (!kWords.every((w) => words.includes(w))) continue;
     if (kWords.length === 1 && words.length > 2) continue;
+    if (!mustHave.every((w) => kWords.includes(w))) continue;
     const entries = index.byKey.get(k).filter(sameBasis);
     if (entries.length === 0) continue;
     if (kWords.length > bestSize) {
