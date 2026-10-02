@@ -772,6 +772,9 @@ const UNIT_WORDS = [
   "clove", "cloves", "can", "cans", "slice", "slices",
   "bunch", "bunches", "sprig", "sprigs", "stalk", "stalks", "head", "heads", "dash", "dashes",
   "jar", "jars", "package", "packages", "handful", "handfuls",
+  "piece", "pieces", "bottle", "bottles", "box", "boxes", "bag", "bags", "dozen",
+  "block", "blocks", "stick", "sticks", "loaf", "loaves", "fillet", "fillets",
+  "carton", "cartons", "tub", "tubs", "leaf", "leaves",
 ];
 
 // Canonical short form for each recognized unit — several ways of writing the
@@ -799,6 +802,18 @@ const UNIT_ALIASES = {
   jar: "jar", jars: "jar",
   package: "package", packages: "package",
   handful: "handful", handfuls: "handful",
+  piece: "piece", pieces: "piece",
+  bottle: "bottle", bottles: "bottle",
+  box: "box", boxes: "box",
+  bag: "bag", bags: "bag",
+  dozen: "dozen",
+  block: "block", blocks: "block",
+  stick: "stick", sticks: "stick",
+  loaf: "loaf", loaves: "loaf",
+  fillet: "fillet", fillets: "fillet",
+  carton: "carton", cartons: "carton",
+  tub: "tub", tubs: "tub",
+  leaf: "leaf", leaves: "leaf",
 };
 
 // Recipe sites commonly use unicode fraction characters ("¼ cup") instead of

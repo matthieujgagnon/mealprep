@@ -24,3 +24,37 @@ describe("parseIngredientText (the editor's Paste a whole list)", () => {
     expect(parseIngredientText("  \n ")).toEqual([]);
   });
 });
+
+describe("measures the editor offers are read from a pasted list too", () => {
+  const parse = (text) => parseIngredientText(text).map(({ name, quantity, unit }) => [quantity, unit, name]);
+
+  it("reads blocks, sticks, loaves, fillets, cartons, tubs and leaves", () => {
+    expect(
+      parse(
+        "1 block cheddar cheese\n2 sticks butter\n1 loaf sourdough\n2 fillets salmon\n1 carton eggs\n1 tub yogurt\n4 leaves basil"
+      )
+    ).toEqual([
+      [1, "block", "Cheddar cheese"],
+      [2, "stick", "Butter"],
+      [1, "loaf", "Sourdough"],
+      [2, "fillet", "Salmon"],
+      [1, "carton", "Eggs"],
+      [1, "tub", "Yogurt"],
+      [4, "leaf", "Basil"],
+    ]);
+  });
+
+  it("reads pieces, bottles, boxes, bags and dozens it used to miss", () => {
+    expect(parse("2 pieces ginger\n1 bottle white wine\n1 box spaghetti\n1 bag spinach\n1 dozen eggs")).toEqual([
+      [2, "piece", "Ginger"],
+      [1, "bottle", "White wine"],
+      [1, "box", "Spaghetti"],
+      [1, "bag", "Spinach"],
+      [1, "dozen", "Eggs"],
+    ]);
+  });
+
+  it("leaves a describing word alone", () => {
+    expect(parse("3 bay leaves")).toEqual([[3, null, "Bay leaves"]]);
+  });
+});

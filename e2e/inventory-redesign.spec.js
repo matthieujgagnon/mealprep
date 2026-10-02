@@ -325,6 +325,7 @@ test("the amount can be changed right on the card, without opening the item", as
   await add({ name: "Greek yogurt", quantity: 500, unit: "g" });
   await add({ name: "Cilantro", quantity: 1, unit: "bunch" });
   await add({ name: "Mystery jam" });
+  await add({ name: "Aged cheddar", quantity: 1 });
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   const card = (name) => page.locator(".inv-card").filter({ hasText: name });
@@ -376,4 +377,12 @@ test("the amount can be changed right on the card, without opening the item", as
   await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 cup");
   const cilantro = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Cilantro");
   expect(cilantro.unit).toBe("cup");
+
+  // A block of cheese.
+  await page.keyboard.press("Escape");
+  await card("Aged cheddar").locator(".inv-card-qty").click();
+  await card("Aged cheddar").getByLabel("Measure of Aged cheddar").selectOption("block");
+  await card("Aged cheddar").getByLabel("Amount of Aged cheddar").fill("2");
+  await card("Aged cheddar").getByLabel("Amount of Aged cheddar").press("Enter");
+  await expect(card("Aged cheddar").locator(".inv-card-qty")).toHaveText("2 blocks");
 });
