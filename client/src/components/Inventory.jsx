@@ -4,6 +4,9 @@ import { parseQuantityInput, unitLabel } from "../lib/units.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
+import { foodEmoji } from "../lib/dealEmoji.js";
+import { genericPhotoUrl } from "../lib/ingredientPhoto.js";
+import { isImageFile, uploadPhoto } from "../lib/photoUpload.js";
 import { BottomSheet, HintStrip } from "./RisoControls.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 
@@ -323,24 +326,138 @@ function storageTip(item) {
   return null;
 }
 
-// The status strip's fill: days left on a 4-week scale, pink within 3
-// days, yellow within a week, blue after that. Nothing from 28 days on,
-// or with no date.
-const STRIP_DAYS = 28;
-function stripFor(item) {
+// The expiry line down the card's left edge: days left on a 4-week scale,
+// filling from the bottom (at least 8% so it stays visible), pink within 3
+// days, yellow within a week, blue after that. Expired is full-height pink.
+// No line from 28 days on, or with no date.
+const LINE_DAYS = 28;
+function expiryLine(item) {
   if (!item.expiresAt) return null;
   const d = daysUntil(item.expiresAt);
-  if (d >= STRIP_DAYS) return null;
+  if (d >= LINE_DAYS) return null;
+  if (d <= 0) return { expired: true, height: "100%", color: "pink", label: "expired" };
   const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
-  // Past its date: the pill itself goes pink, on a plain grey strip.
-  if (d < 0) return { expired: true, label: "expired!" };
-  const label = d === 0 ? "today!" : d === 1 ? "tomorrow!" : d <= 7 ? `${d} days` : `${d}D`;
-  return { pct: `${Math.max(8, (d / STRIP_DAYS) * 100)}%`, color, label };
+  const label = d === 1 ? "use by tomorrow" : `${d} days left`;
+  return { height: `${Math.max(8, Math.round((d / LINE_DAYS) * 100))}%`, color, label };
 }
 
-function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable = true }) {
-  const strip = stripFor(item);
-  const tip = storageTip(item);
+// What a card shows: the item's own photo, else TheMealDB's generic picture
+// of the ingredient, else nothing (imageUrl "none" turns the generic off).
+function photoFor(item) {
+  if (item.imageUrl === "none") return null;
+  if (item.imageUrl) return { src: item.imageUrl, own: true };
+  const generic = genericPhotoUrl(item.name);
+  return generic ? { src: generic, own: false } : null;
+}
+
+// The photo, else a cream tile with a food emoji (or its first letter) -
+// and the same tile if the photo won't load.
+function ItemPhoto({ item }) {
+  const photo = photoFor(item);
+  const [failed, setFailed] = useState(null);
+  if (photo && failed !== photo.src) {
+    return (
+      <img
+        className={`inv-card-photo${photo.own ? "" : " generic"}`}
+        src={photo.src}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(photo.src)}
+      />
+    );
+  }
+  const emoji = foodEmoji(item.name, item.category);
+  return (
+    <span className={`inv-card-photo placeholder${emoji ? "" : " letter"}`} aria-hidden="true">
+      {emoji || (item.name.trim()[0] || "?").toUpperCase()}
+    </span>
+  );
+}
+
+// Grams go 50 at a time, bottles and loaves a quarter at a time.
+function qtyStep(unit) {
+  return unit === "g" || unit === "ml" ? 50 : unit === "bottle" || unit === "loaf" ? 0.25 : 1;
+}
+
+// The card's amount: tap it to change it right there (− / typed / +).
+// Enter or tapping away saves, Escape puts it back. Its clicks and drags
+// stay off the card, so editing never opens the panel or starts a drag.
+function CardQuantity({ item, onUpdate }) {
+  const [draft, setDraft] = useState(null);
+  const inputRef = useRef(null);
+  const editing = draft !== null;
+  const step = qtyStep(item.unit);
+  const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  const keep = (e) => e.stopPropagation();
+  function save(text = draft) {
+    setDraft(null);
+    const next = parseQuantityInput(text);
+    if (next != null && next >= 0 && next !== item.quantity) onUpdate(item.id, { quantity: next });
+  }
+  function bump(dir) {
+    const current = parseQuantityInput(draft) ?? item.quantity ?? 0;
+    setDraft(String(Math.max(0, Math.round((current + dir * step) * 100) / 100)));
+    inputRef.current?.focus();
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className={`inv-card-qty${item.quantity == null ? " empty" : ""}`}
+        onClick={(e) => {
+          keep(e);
+          setDraft(item.quantity == null ? "" : String(item.quantity));
+        }}
+        onPointerDown={keep}
+        onKeyDown={keep}
+        aria-label={`Change the amount of ${item.name}${item.quantity != null ? `, now ${item.quantity}${unit ? ` ${unit}` : ""}` : ""}`}
+      >
+        {item.quantity != null ? <span className="inv-card-qty-num">{item.quantity}</span> : <span className="inv-card-qty-unit">+ qty</span>}
+        {item.quantity != null && unit && <span className="inv-card-qty-unit"> {unit}</span>}
+      </button>
+    );
+  }
+
+  return (
+    <span
+      className="inv-card-qty-edit"
+      onClick={keep}
+      onPointerDown={keep}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) save();
+      }}
+    >
+      <button type="button" onClick={() => bump(-1)} aria-label={`Less ${item.name}`}>
+        −
+      </button>
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="decimal"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") setDraft(null);
+        }}
+        aria-label={`Amount of ${item.name}${unit ? ` (${unit})` : ""}`}
+      />
+      <button type="button" onClick={() => bump(1)} aria-label={`More ${item.name}`}>
+        +
+      </button>
+    </span>
+  );
+}
+
+function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true }) {
+  const line = expiryLine(item);
 
   // Draggable onto any other shelf (see App.jsx's handleDragEnd, routed via
   // the "inv-shelf-<location>" droppable ids below). PointerSensor's
@@ -355,17 +472,22 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
     <div
       ref={setNodeRef}
       {...(draggable ? { ...attributes, ...listeners } : {})}
-      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}`}
+      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}${line?.expired ? " expired" : ""}`}
       onClick={onSelect}
-      aria-label={`${item.name}${strip ? `, ${strip.label}` : ""}`}
+      aria-label={`${item.name}${line ? `, ${line.label}` : ""}`}
     >
-      <div className={`inv-card-strip${strip?.expired ? " expired" : ""}`}>
-        {strip && (
-          <>
-            {!strip.expired && <span className={`inv-card-fill ${strip.color}`} style={{ width: strip.pct }} />}
-            <span className={`inv-card-days${strip.expired ? " expired" : ""}`}>{strip.label}</span>
-          </>
-        )}
+      {line && (
+        <span className="inv-card-line" aria-hidden="true">
+          <span className={`inv-card-line-fill ${line.color}`} style={{ height: line.height }} />
+        </span>
+      )}
+      <div className="inv-card-body">
+        <ItemPhoto item={item} />
+        <div className="inv-card-main">
+          <span className="inv-card-name">{item.name}</span>
+          {line?.expired && <span className="inv-card-expired">Expired</span>}
+        </div>
+        <CardQuantity item={item} onUpdate={onUpdate} />
         <span
           role="checkbox"
           aria-checked={selected}
@@ -387,22 +509,6 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
         >
           {selected ? "✓" : ""}
         </span>
-      </div>
-      <div className="inv-card-body">
-        <div className="inv-card-main">
-          <span className="inv-card-name">{item.name}</span>
-          {(item.quantity != null || item.unit) && (
-            <span className="inv-card-qty">
-              {item.quantity ?? ""} {unitLabel(item.unit, item.quantity)}
-            </span>
-          )}
-        </div>
-        {tip && (
-          <div className="inv-card-tip">
-            {tip}
-            <span className="inv-card-source">USDA</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -562,6 +668,7 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
 function ShelfColumn({
   location,
   items,
+  onUpdate,
   activeItemId,
   selectedIds,
   onSelect,
@@ -669,6 +776,7 @@ function ShelfColumn({
             onSelect={() => onSelect(item.id)}
             draggable={draggable}
             onToggleSelect={() => onToggleSelect(item.id)}
+            onUpdate={onUpdate}
           />
         ))}
         {sorted.length === 0 && <div className="inv-shelf-empty">Drop items here</div>}
@@ -710,6 +818,103 @@ function AddSectionTile({ onAdd }) {
   );
 }
 
+// The card's photo, in the detail panel: upload one from the phone or
+// computer, or take it off to go back to the emoji tile.
+function PhotoPicker({ item, onUpdate }) {
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [link, setLink] = useState(null);
+
+  const photo = photoFor(item);
+  const own = photo?.own;
+  const generic = photo && !photo.own;
+  const hidden = item.imageUrl === "none";
+
+  async function saveLink() {
+    const url = (link || "").trim();
+    if (!url) return setLink(null);
+    if (!/^https?:\/\/\S+$/i.test(url)) return setError("Paste a link that starts with http:// or https://.");
+    setError(null);
+    setLink(null);
+    try {
+      await onUpdate(item.id, { imageUrl: url });
+    } catch (err) {
+      setError(err.message || "That link couldn't be saved.");
+    }
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!isImageFile(file)) return setError("Pick a JPEG, PNG, WebP or GIF photo.");
+    setBusy(true);
+    setError(null);
+    try {
+      await onUpdate(item.id, { imageUrl: await uploadPhoto(file) });
+    } catch (err) {
+      setError(err.message || "The photo couldn't be uploaded.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="inv-panel-photo">
+      <ItemPhoto item={item} />
+      <div className="inv-panel-photo-actions">
+        <button type="button" className="link-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
+          {busy ? "Uploading…" : own ? "Change photo" : "Add your photo"}
+        </button>
+        {link === null ? (
+          <button type="button" className="link-btn" onClick={() => setLink("")} disabled={busy}>
+            Paste a link
+          </button>
+        ) : (
+          <span className="inv-panel-photo-link">
+            <input
+              type="url"
+              autoFocus
+              placeholder="https://…"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveLink();
+                if (e.key === "Escape") setLink(null);
+              }}
+              aria-label="Photo link"
+            />
+            <button type="button" className="link-btn" onClick={saveLink}>
+              Use it
+            </button>
+          </span>
+        )}
+        {own && !busy && (
+          <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
+            Remove photo
+          </button>
+        )}
+        {generic && !busy && (
+          <span className="inv-panel-photo-credit">
+            Stock photo from TheMealDB ·{" "}
+            <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: "none" })}>
+              Hide it
+            </button>
+          </span>
+        )}
+        {hidden && genericPhotoUrl(item.name) && !busy && (
+          <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
+            Show the stock photo
+          </button>
+        )}
+        {error && <span className="inv-panel-photo-error">{error}</span>}
+      </div>
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={handleFile} aria-label="Item photo" />
+    </div>
+  );
+}
+
 function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple, onToggleStaple, labelFor = {} }) {
   const [nameDraft, setNameDraft] = useState(item.name);
 
@@ -727,8 +932,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
     else setNameDraft(item.name);
   }
 
-  // Grams go 50 at a time, bottles and loaves a quarter at a time.
-  const step = item.unit === "g" || item.unit === "ml" ? 50 : item.unit === "bottle" || item.unit === "loaf" ? 0.25 : 1;
+  const step = qtyStep(item.unit);
   function adjustQty(dir) {
     const next = Math.max(0, Math.round(((item.quantity ?? 0) + dir * step) * 100) / 100);
     onUpdate(item.id, { quantity: next });
@@ -786,6 +990,8 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
         />
         <span className="inv-panel-category">{item.category}</span>
       </div>
+
+      <PhotoPicker item={item} onUpdate={onUpdate} />
 
       <div>
         <div className="inv-panel-label">Quantity</div>
@@ -968,7 +1174,9 @@ export function Inventory({
   }
 
   const activeItem = items.find((i) => i.id === activeItemId);
-  const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3).length;
+  // "Soon" is 1 to 3 days; expired items are counted on their own.
+  const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 1 && daysUntil(i.expiresAt) <= 3).length;
+  const expiredCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 0).length;
 
   // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed) and the user's own
   // custom sections, in the user's order, with their names and sizes.
@@ -1055,6 +1263,7 @@ export function Inventory({
         <div className="riso-inv-title-block">
           <p className="riso-eyebrow">
             {items.length} item{items.length === 1 ? "" : "s"} · {soonCount} to use soon
+            {expiredCount > 0 && ` · ${expiredCount} expired`}
           </p>
           <h1 className="riso-inv-title">
             What you've <span className="accent">got.</span>
@@ -1107,6 +1316,7 @@ export function Inventory({
               key={loc.id}
               location={loc}
               items={items.filter((i) => i.location === loc.id)}
+              onUpdate={onUpdate}
               activeItemId={activeItemId}
               selectedIds={selectedIds}
               onSelect={setActiveItemId}

@@ -54,7 +54,11 @@ test("the store picker offers only the stores Flipp lists near the postal code",
   // Maxi and Provigo have no flyer on Flipp here, so they're dropped.
   await expect(strip.locator(".riso-import-dropped")).toContainText("Removed Maxi, Provigo");
   await strip.getByRole("button", { name: "Adonis" }).click();
-  await strip.getByRole("button", { name: "Save" }).click();
+  // Read the settings back only once the save has landed.
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/api/flyers/settings") && r.request().method() === "PUT"),
+    strip.getByRole("button", { name: "Save" }).click(),
+  ]);
   const saved = await (await page.request.get("/api/flyers/settings")).json();
   expect(saved.stores).toEqual(["Metro", "IGA extra", "Super C", "Adonis"]);
 });

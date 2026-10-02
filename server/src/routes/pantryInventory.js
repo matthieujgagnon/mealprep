@@ -57,7 +57,19 @@ pantryInventoryRouter.get("/suggest", async (req, res) => {
   res.json({ expiresAt, category });
 });
 
-// POST /api/pantry-inventory { name, quantity?, unit?, location?, category?, purchasedAt?, expiresAt? }
+// An item's photo: one uploaded through /api/recipe-images, a web link, or
+// "none" (no picture, not even the generic one the client would pick).
+// undefined = not given; null = no photo of its own; false = not a photo.
+function photoUrl(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const url = String(value).trim();
+  if (url === "none") return url;
+  if (url.length > 2000) return false;
+  return /^\/api\/recipe-images\/[\w-]+$/.test(url) || /^https?:\/\/\S+$/i.test(url) ? url : false;
+}
+
+// POST /api/pantry-inventory { name, quantity?, unit?, location?, category?, purchasedAt?, expiresAt?, imageUrl? }
 // If expiresAt/category aren't given, they're suggested from the bundled
 // USDA data - still just a starting point, edited later via PUT like any
 // other field. `core` is derived from `name` rather than taken from the
@@ -69,6 +81,8 @@ pantryInventoryRouter.post("/", async (req, res) => {
   if (category !== undefined && !CATEGORIES.includes(category)) {
     return res.status(400).json({ error: `category must be one of: ${CATEGORIES.join(", ")}` });
   }
+  const imageUrl = photoUrl(req.body.imageUrl);
+  if (imageUrl === false) return res.status(400).json({ error: "imageUrl must be an uploaded photo or a web link" });
 
   const location = (await resolveLocation(req.userId, req.body.location)) || suggestLocation(name);
   const purchasedAt = req.body.purchasedAt ? new Date(req.body.purchasedAt) : new Date();
@@ -87,12 +101,13 @@ pantryInventoryRouter.post("/", async (req, res) => {
       location,
       purchasedAt,
       expiresAt: resolvedExpiresAt,
+      imageUrl: imageUrl ?? null,
     },
   });
   res.status(201).json(enrichItem(item));
 });
 
-// PUT /api/pantry-inventory/:id { name?, quantity?, unit?, location?, category?, purchasedAt?, expiresAt? } -
+// PUT /api/pantry-inventory/:id { name?, quantity?, unit?, location?, category?, purchasedAt?, expiresAt?, imageUrl? } -
 // edits any field, most commonly the suggested expiration date itself.
 pantryInventoryRouter.put("/:id", async (req, res) => {
   const data = {};
@@ -118,6 +133,11 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   }
   if (req.body.purchasedAt !== undefined) data.purchasedAt = new Date(req.body.purchasedAt);
   if (req.body.expiresAt !== undefined) data.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
+  if (req.body.imageUrl !== undefined) {
+    const imageUrl = photoUrl(req.body.imageUrl);
+    if (imageUrl === false) return res.status(400).json({ error: "imageUrl must be an uploaded photo or a web link" });
+    data.imageUrl = imageUrl;
+  }
 
   const result = await prisma.pantryInventoryItem.updateMany({
     where: { id: req.params.id, userId: req.userId },

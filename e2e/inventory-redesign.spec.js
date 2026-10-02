@@ -230,28 +230,133 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp")).toHaveCount(0);
 });
 
-test("an expired item's pill is pink on a plain grey strip", async ({ page }) => {
+test("item cards: one row with photo, name and amount; the expiry line on the left; a quiet Expired tag", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
-  const email = `inv-expired+${Date.now()}@example.com`;
+  const email = `inv-cards+${Date.now()}@example.com`;
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText(email)).toBeVisible();
-  await page.request.post("/api/pantry-inventory", {
-    data: { name: "Bbq sauce", location: "fridge", expiresAt: new Date(Date.now() - 3 * 86400000).toISOString() },
+  const day = 86400000;
+  const add = (data) => page.request.post("/api/pantry-inventory", { data });
+  await add({ name: "Bbq sauce", location: "fridge", quantity: 0.25, unit: "cup", expiresAt: new Date(Date.now() - 3 * day).toISOString() });
+  await add({ name: "Cilantro", location: "fridge", quantity: 1, unit: "bunch", expiresAt: new Date(Date.now() + 2 * day).toISOString() });
+  await add({ name: "Greek yogurt", location: "fridge", quantity: 500, unit: "g", expiresAt: new Date(Date.now() + 6 * day).toISOString() });
+  await add({ name: "Eggs", location: "fridge", quantity: 8, expiresAt: new Date(Date.now() + 14 * day).toISOString() });
+  await add({ name: "Basmati rice", location: "pantry", quantity: 2, unit: "kg", expiresAt: new Date(Date.now() + 600 * day).toISOString() });
+  await add({ name: "Xylo widget", location: "pantry", category: "Other", expiresAt: null });
+  // Only an uploaded photo or a web link is kept as a photo.
+  const bad = await add({ name: "Odd", imageUrl: "javascript:alert(1)" });
+  expect(bad.status()).toBe(400);
+  // TheMealDB's stock photos, served locally; Cilantro's fails to load.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.route("https://www.themealdb.com/**", (route) =>
+    route.request().url().includes("Cilantro") ? route.abort() : route.fulfill({ contentType: "image/png", body: png })
+  );
+  await page.route("https://example.com/**", (route) => route.fulfill({ contentType: "image/png", body: png }));
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+
+  await expect(page.getByText("6 items · 1 to use soon · 1 expired")).toBeVisible();
+  const card = (name) => page.locator(".inv-card").filter({ hasText: name });
+  // Expired: pink-tinted card, full pink line, the quiet tag.
+  await expect(card("Bbq sauce")).toHaveClass(/expired/);
+  await expect(card("Bbq sauce").locator(".inv-card-expired")).toHaveText("Expired");
+  await expect(card("Bbq sauce").locator(".inv-card-line-fill.pink")).toHaveAttribute("style", /height: 100%/);
+  await expect(card("Bbq sauce").locator(".inv-card-qty")).toHaveText("0.25 cup");
+  // Days left set the line's colour; no tag, no label.
+  await expect(card("Cilantro").locator(".inv-card-line-fill.pink")).toHaveCount(1);
+  await expect(card("Greek yogurt").locator(".inv-card-line-fill.yellow")).toHaveCount(1);
+  await expect(card("Eggs").locator(".inv-card-line-fill.blue")).toHaveCount(1);
+  await expect(card("Cilantro").locator(".inv-card-expired")).toHaveCount(0);
+  // No line at all with 28+ days or no date.
+  await expect(card("Basmati rice").locator(".inv-card-line")).toHaveCount(0);
+  await expect(card("Xylo widget").locator(".inv-card-line")).toHaveCount(0);
+  // No photo of its own: TheMealDB's stock photo of the ingredient; if that
+  // won't load, a food emoji; with no match, the first letter.
+  await expect(card("Basmati rice").locator("img.inv-card-photo.generic")).toHaveAttribute(
+    "src",
+    "https://www.themealdb.com/images/ingredients/Basmati%20Rice-Small.png"
+  );
+  await expect(card("Cilantro").locator(".inv-card-photo.placeholder")).toHaveText("🌿");
+  await expect(card("Xylo widget").locator(".inv-card-photo.letter")).toHaveText("X");
+  await expect(page.locator(".inv-card").getByText("USDA")).toHaveCount(0);
+  // Every card is the same height.
+  const heights = await page.locator(".inv-card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  expect(new Set(heights).size).toBe(1);
+  expect(heights[0]).toBe(88);
+
+  // A photo added in the detail panel shows on the card.
+  await card("Eggs").click();
+  await page.locator(".inv-panel").getByLabel("Item photo").setInputFiles({
+    name: "eggs.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"),
   });
-  await page.request.post("/api/pantry-inventory", {
-    data: { name: "Yogurt", location: "fridge", expiresAt: new Date(Date.now() + 2 * 86400000).toISOString() },
-  });
+  await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", /\/api\/recipe-images\//);
+  await expect(page.locator(".inv-panel").getByRole("button", { name: "Change photo" })).toBeVisible();
+  // Removing it brings back the stock photo, which can be hidden too.
+  const panel = page.locator(".inv-panel");
+  await panel.getByRole("button", { name: "Remove photo" }).click();
+  await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveAttribute("src", /ingredients\/Egg-Small\.png$/);
+  await expect(panel.getByText("Stock photo from TheMealDB")).toBeVisible();
+  await panel.getByRole("button", { name: "Hide it" }).click();
+  await expect(card("Eggs").locator(".inv-card-photo.placeholder")).toHaveText("🥚");
+  await panel.getByRole("button", { name: "Show the stock photo" }).click();
+  await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveCount(1);
+  // Or a link to any picture.
+  await panel.getByRole("button", { name: "Paste a link" }).click();
+  await panel.getByLabel("Photo link").fill("https://example.com/eggs.png");
+  await panel.getByLabel("Photo link").press("Enter");
+  await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", "https://example.com/eggs.png");
+  await expect(card("Eggs").locator("img.inv-card-photo")).not.toHaveClass(/generic/);
+});
+
+test("the amount can be changed right on the card, without opening the item", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  const email = `inv-qty+${Date.now()}@example.com`;
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText(email)).toBeVisible();
+  const add = (data) => page.request.post("/api/pantry-inventory", { data: { location: "fridge", ...data } });
+  await add({ name: "Greek yogurt", quantity: 500, unit: "g" });
+  await add({ name: "Cilantro", quantity: 1, unit: "bunch" });
+  await add({ name: "Mystery jam" });
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   const card = (name) => page.locator(".inv-card").filter({ hasText: name });
-  await expect(card("Bbq sauce").locator(".inv-card-days")).toHaveText("expired!");
-  await expect(card("Bbq sauce").locator(".inv-card-days")).toHaveClass(/expired/);
-  await expect(card("Bbq sauce").locator(".inv-card-strip")).toHaveClass(/expired/);
-  await expect(card("Bbq sauce").locator(".inv-card-fill")).toHaveCount(0);
-  // Not expired yet: the coloured fill, plain pill.
-  await expect(card("Yogurt").locator(".inv-card-fill.pink")).toHaveCount(1);
-  await expect(card("Yogurt").locator(".inv-card-days")).not.toHaveClass(/expired/);
+  const saved = async (name) =>
+    (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === name).quantity;
+
+  // + steps by 50 g; Enter saves.
+  await card("Greek yogurt").getByRole("button", { name: /Change the amount of Greek yogurt/ }).click();
+  await card("Greek yogurt").getByRole("button", { name: "More Greek yogurt" }).click();
+  await expect(card("Greek yogurt").getByLabel("Amount of Greek yogurt (g)")).toHaveValue("550");
+  await card("Greek yogurt").getByLabel("Amount of Greek yogurt (g)").press("Enter");
+  await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 g");
+  await expect(page.locator(".inv-panel")).toHaveCount(0);
+  await expect.poll(() => saved("Greek yogurt")).toBe(550);
+
+  // Typing a fraction and tapping away saves too.
+  await card("Cilantro").locator(".inv-card-qty").click();
+  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").fill("1/2");
+  await page.locator(".riso-inv-title").click();
+  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
+  await expect.poll(() => saved("Cilantro")).toBe(0.5);
+
+  // Escape puts it back.
+  await card("Cilantro").locator(".inv-card-qty").click();
+  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").fill("9");
+  await card("Cilantro").getByLabel("Amount of Cilantro (bunch)").press("Escape");
+  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
+
+  // An item with no amount yet can get one.
+  await card("Mystery jam").getByRole("button", { name: "Change the amount of Mystery jam" }).click();
+  await card("Mystery jam").getByLabel("Amount of Mystery jam").fill("2");
+  await card("Mystery jam").getByLabel("Amount of Mystery jam").press("Enter");
+  await expect(card("Mystery jam").locator(".inv-card-qty-num")).toHaveText("2");
+  await expect(page.locator(".inv-panel")).toHaveCount(0);
 });
