@@ -64,12 +64,14 @@ test("the panel's quantity takes fractions and has quick-pick chips", async ({ p
   await addItem(page, "Olive oil", "pantry");
   await page.getByText("Olive oil", { exact: true }).click();
   const qty = page.locator(".inv-panel").getByLabel("Quantity", { exact: true });
+  // Each change is saved before the next one, so a chip adds to the saved amount.
+  const saved = () => page.waitForResponse((r) => r.request().method() === "PUT" && r.url().includes("/api/pantry-inventory/"));
 
   await qty.fill("1 1/2");
-  await qty.press("Enter");
+  await Promise.all([saved(), qty.press("Enter")]);
   await expect(qty).toHaveValue("1 ½");
   await qty.fill("¼");
-  await qty.press("Enter");
+  await Promise.all([saved(), qty.press("Enter")]);
   await expect(qty).toHaveValue("¼");
   // Nonsense goes back to the last amount.
   await qty.fill("lots");
@@ -78,8 +80,8 @@ test("the panel's quantity takes fractions and has quick-pick chips", async ({ p
 
   // A chip on top of a whole amount: 2 then ½ is 2 ½.
   await qty.fill("2");
-  await qty.press("Enter");
-  await page.getByRole("button", { name: "Set to ½" }).click();
+  await Promise.all([saved(), qty.press("Enter")]);
+  await Promise.all([saved(), page.getByRole("button", { name: "Set to ½" }).click()]);
   await expect(qty).toHaveValue("2 ½");
   await page.getByRole("button", { name: "Set to 1" }).click();
   await expect(qty).toHaveValue("1");
@@ -316,6 +318,11 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await expect(card("Cilantro").locator(".inv-card-line-fill.pink")).toHaveCount(1);
   await expect(card("Greek yogurt").locator(".inv-card-line-fill.yellow")).toHaveCount(1);
   await expect(card("Eggs").locator(".inv-card-line-fill.blue")).toHaveCount(1);
+  // The closer the date, the fuller the line.
+  const fill = async (name) => parseFloat(await card(name).locator(".inv-card-line-fill").evaluate((el) => el.style.height));
+  expect(await fill("Cilantro")).toBeGreaterThan(await fill("Greek yogurt"));
+  expect(await fill("Greek yogurt")).toBeGreaterThan(await fill("Eggs"));
+  expect(await fill("Cilantro")).toBeGreaterThan(85);
   await expect(card("Cilantro").locator(".inv-card-expired")).toHaveCount(0);
   // No line at all with 28+ days or no date.
   await expect(card("Basmati rice").locator(".inv-card-line")).toHaveCount(0);

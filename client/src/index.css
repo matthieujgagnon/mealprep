@@ -5141,11 +5141,21 @@ button.riso-table-group-head:disabled {
   cursor: default;
 }
 
+/* Filter chips on the left, SORT on the right of the same row, lined up
+   with the first row of chips however many rows the chips wrap to. */
 .riso-recipes-filters {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.riso-recipes-filter-chips {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  min-width: 0;
 }
 
 /* SORT and its pill wrap as one unit, never splitting or squashing. */
@@ -5155,10 +5165,6 @@ button.riso-table-group-head:disabled {
   align-items: center;
   flex: none;
   margin-left: auto;
-}
-
-.riso-recipes-filters-spacer {
-  flex: 1;
 }
 
 .riso-recipes-sort-label {
@@ -10758,6 +10764,12 @@ button.riso-row-qty:focus-visible {
   }
 
   .riso-recipes-filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .riso-recipes-filter-chips {
     flex-wrap: nowrap;
     overflow-x: auto;
     margin: 0 -18px;
@@ -10765,12 +10777,12 @@ button.riso-row-qty:focus-visible {
     scrollbar-width: none;
   }
 
-  .riso-recipes-filters::-webkit-scrollbar {
+  .riso-recipes-filter-chips::-webkit-scrollbar {
     display: none;
   }
 
-  .riso-recipes-filters-spacer {
-    flex: 0 0 4px;
+  .riso-recipes-sort-group {
+    align-self: flex-end;
   }
 
   .riso-recipes-grid {
