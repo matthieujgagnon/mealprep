@@ -24,7 +24,7 @@ This explains where the flyer deals come from and where their past prices come f
      These now read **Points offer**, **Free with purchase** or **Worth $X**, with no comparable price. They are never judged as a deal.
    - **Pack size.** A size printed only in the description ("3 lb bag") is added to the name, so a bag is compared per lb.
    - **Regular price.** It comes from the item page's `original_price`, dollars or percent off, or text such as "Reg. $6.99", "SAVE $2.00" or "économisez 25%". It is kept only when it makes sense: above the sale price and under 5× it.
-   - **Regular price per kg (new).** IGA and Metro print meat's sale price per lb but its regular price per kg. "$11.99/lb … Rég. 30,19$/kg" used to read as $30.19/lb regular, so 60% off; it is really $13.69/lb, so 12% off. The unit after the regular price is now read and converted. This inflated most meat "savings" at those two stores.
+   - **Regular price per kg (new).** IGA and Metro print meat's sale price per lb but its regular price per kg. "$11.99/lb … Rég. 30,19$/kg" used to read as $30.19/lb regular, so 60% off; it is really $13.69/lb, so 12% off. The unit after the regular price is now read and converted. This inflated most meat "savings" at those two stores. Flipp's own `original_price` field can be the per-kg figure too. Metro's chicken legs: "$3.99/lb – 8,80$/kg" came with an original price of 9.99 ("60% off") while the flyer prints "reg. 4,99/lb". When the item's text shows the sale per kg and the original sits just above it, the original is read as per kg.
    - **Match name** (`toMatchName`): the plain product name that everything else compares by. It lowercases the name and drops sizes and anything after "with/avec". Then it picks the right half or choice:
      - **Bilingual names.** For "French | English" names, the English half is used. If that half doesn't name a food, the French half is used instead. Example: "ESCALOPE DE POULET … | AIR CHILLED, UP TO 590 G" → *chicken cutlet*.
      - **Choices.** In "X or Y", the choice that names the product is used:
@@ -55,7 +55,7 @@ If none of the three exists, the deal is marked **New · no history yet**.
 
 **Prices are compared on the same footing.** A pack price becomes a per-lb or per-L price from its size: *Butter, 454 g* at $4.99 is $4.99/lb. A counted bag becomes a price per item (new): a "5 un." avocado bag at $4.50 is $0.90 each. Eggs stay per dozen.
 
-**The 6-month chart** shows each month's lowest price. **Low / high** are the lowest and highest prices over those weeks, this week included.
+**The 6-month chart** shows each month's lowest price. **Low / high** are the lowest and highest prices over those weeks, this week included. With only this week's price there is no lowest, average or highest to show, so the card says so instead of repeating the same price three times.
 
 ## 3. How the deals actually work
 

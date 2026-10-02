@@ -1789,6 +1789,15 @@ select {
   padding: 0;
 }
 
+.inv-shelf-add {
+  font: 800 18px/1 var(--riso-font-display);
+}
+
+.inv-shelf-add:hover,
+.inv-shelf-edit:hover {
+  background: var(--riso-yellow);
+}
+
 .inv-shelf-edit.on {
   background: var(--riso-yellow);
   font-weight: 800;
@@ -13359,6 +13368,87 @@ body.no-select {
   margin: -6px 0 0;
 }
 
+.riso-deal-stats-none {
+  margin: 0;
+  padding: 10px 14px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--riso-soft);
+}
+
+/* "Jump to": the categories in a sticky row above the cards. */
+.riso-jump-bar {
+  position: sticky;
+  /* Under the sticky search panel (8px from the top, then its height). */
+  top: calc(var(--flyer-controls-h, 0px) + 8px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 -4px;
+  padding: 8px 4px;
+  background: var(--riso-canvas);
+  border-bottom: 2px solid var(--riso-ink);
+}
+
+.riso-jump-label {
+  flex: none;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-jump-chips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding: 2px;
+}
+
+.riso-jump-chip,
+.riso-jump-top {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-jump-chip span {
+  font: 500 11px var(--riso-font-mono);
+  opacity: 0.7;
+}
+
+.riso-jump-chip:hover,
+.riso-jump-top:hover {
+  background: var(--riso-yellow);
+}
+
+.riso-jump-chip.active {
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+}
+
+.riso-jump-chip.folded:not(.active) {
+  border-style: dashed;
+  color: var(--riso-soft);
+}
+
+.riso-jump-top {
+  padding: 5px 10px;
+}
+
 .riso-ing-group {
   display: flex;
   flex-direction: column;
@@ -14097,6 +14187,11 @@ body.no-select {
 
   .riso-flyer-controls {
     position: static;
+  }
+
+  /* The search panel scrolls away on a phone; the jump row stays. */
+  .riso-jump-bar {
+    top: 0;
   }
 
   .riso-flyer-controls-label.rank {

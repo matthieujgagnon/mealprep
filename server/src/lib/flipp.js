@@ -257,7 +257,9 @@ function priceUnit(text) {
   return "L";
 }
 
-const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:[x×/]\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|l|ml|lb|lbs|oz|pk|pack|un|ct)\b\.?/gi;
+// "12/341-355 ml" (a case of 12, cans of 341 to 355 mL) is one size: read
+// without its range it was "355 ml", and a $36.99 case of beer $104/L.
+const SIZE_RE = /\b\d+(?:[.,]\d+)?\s*(?:[x×/]\s*\d+(?:[.,]\d+)?\s*)?(?:(?:-|–|à|to)\s*\d+(?:[.,]\d+)?\s*)?(?:kg|g|mg|l|ml|lb|lbs|oz|pk|pack|un|ct)\b\.?/gi;
 
 // A plain ingredient name to match against recipes: lowercase, no package
 // size, no "or"-alternatives, no brand-ish trailing detail after a comma.
@@ -372,6 +374,12 @@ export function regularPriceFor(item, priced) {
   const factor = priced.factor || 1;
   const upTo = /\bup to\b|\bjusqu/i.test(`${item.sale_story || ""} ${item.price_text || ""}`);
   const original = toNumber(item.original_price);
+  const perKg = originalIsPerKg(item, priced, original);
+  if (perKg != null) {
+    // Its dollars and percent off were worked out from the same per-kg
+    // number, so they're no better.
+    return sane(original * LB_PER_KG);
+  }
   if (original != null && sane(original * factor)) return sane(original * factor);
   const dollarsOff = Number(item.dollars_off);
   if (!upTo && dollarsOff > 0 && sane(priced.unitPrice + dollarsOff * factor)) return sane(priced.unitPrice + dollarsOff * factor);
@@ -398,6 +406,27 @@ function regularUnitFactor(after, priced) {
   if (unit === "kg") return LB_PER_KG;
   if (unit === "100g") return 10 * LB_PER_KG;
   return 1;
+}
+
+// Flipp's own original_price is sometimes the per-kg regular price next
+// to a per-lb sale. Metro's chicken legs: "$3.99/lb - 8,80$/kg" with
+// original_price 9.99 (and "60% off") while the flyer prints "reg.
+// 4,99/lb - 11,00/kg". When the item's text gives the sale per kg (8.80),
+// doesn't give the original per kg as a per-lb price would (9.99/lb is
+// 22.02/kg), and the original sits just above the per-kg sale price, the
+// original is per kg. Returns true then, else null.
+function originalIsPerKg(item, priced, original) {
+  if (original == null || priced?.unitBasis !== "lb" || (priced.factor || 1) !== 1) return null;
+  const text = [item.price_text, item.post_price_text, item.description, item.sale_story, item.disclaimer_text]
+    .filter((t) => typeof t === "string")
+    .join(" ");
+  const kgFigures = [...text.matchAll(/(\d+(?:[.,]\d{1,2})?)\s*\$?\s*\/\s*kg\b/gi)].map((m) => Number(m[1].replace(",", ".")));
+  if (kgFigures.length === 0) return null;
+  const saleKg = priced.unitPrice / LB_PER_KG;
+  const near = (a, b) => Math.abs(a - b) <= 0.03;
+  if (!kgFigures.some((k) => near(k, saleKg))) return null;
+  if (kgFigures.some((k) => near(k, original / LB_PER_KG))) return null;
+  return original > saleKg && original < saleKg * 1.8 ? true : null;
 }
 
 // The usual price from the item's own words ("REG. $6.99", "SAVE $2.00",

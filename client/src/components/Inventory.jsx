@@ -81,11 +81,11 @@ function layoutPayload(sections) {
 // bundled USDA FoodKeeper data as soon as there's enough to look up (a name
 // and a location) - both always shown as editable, never locked in, since
 // the suggestion is a starting point, not an authority.
-function AddInventoryItemForm({ onAdd, onDone, sections }) {
+function AddInventoryItemForm({ onAdd, onDone, sections, defaultLocation = "fridge" }) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
-  const [location, setLocation] = useState("fridge");
+  const [location, setLocation] = useState(defaultLocation);
   const [category, setCategory] = useState("Other");
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
@@ -718,6 +718,7 @@ function ShelfColumn({
   draggable = true,
   editing,
   onEdit,
+  onAddHere,
   onRename,
   onDelete,
   arrangeable,
@@ -793,6 +794,17 @@ function ShelfColumn({
         <span className="inv-shelf-count">{items.length}</span>
         <span className="inv-shelf-spacer" />
         {(editing || preview) && <span className="inv-shelf-size">{sizeLabel}</span>}
+        {!editing && onAddHere && (
+          <button
+            type="button"
+            className="inv-shelf-edit inv-shelf-add"
+            aria-label={`Add an item to ${location.label}`}
+            title={`Add to ${location.label}`}
+            onClick={onAddHere}
+          >
+            +
+          </button>
+        )}
         <button
           type="button"
           className={`inv-shelf-edit${editing ? " on" : ""}`}
@@ -1169,6 +1181,9 @@ export function Inventory({
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [activeItemId, setActiveItemId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
+  // The shelf a shelf's own + opened the form for (the toolbar's + Add
+  // item starts in the fridge).
+  const [addLocation, setAddLocation] = useState("fridge");
   const [showScan, setShowScan] = useState(false);
   const isPhone = useIsPhone();
   const [phoneShelf, setPhoneShelf] = useState("fridge");
@@ -1319,7 +1334,14 @@ export function Inventory({
           <button type="button" className="riso-inv-btn" onClick={() => setShowScan(true)}>
             Scan receipt
           </button>
-          <button type="button" className="riso-inv-btn primary" onClick={() => setShowAdd(true)}>
+          <button
+            type="button"
+            className="riso-inv-btn primary"
+            onClick={() => {
+              setAddLocation("fridge");
+              setShowAdd(true);
+            }}
+          >
             + Add item
           </button>
         </div>
@@ -1370,6 +1392,10 @@ export function Inventory({
               draggable={!isPhone}
               editing={editingId === loc.id}
               onEdit={(on) => setEditingId(on ? loc.id : null)}
+              onAddHere={() => {
+                setAddLocation(loc.id);
+                setShowAdd(true);
+              }}
               onRename={(name) => renameSection(loc, name)}
               onDelete={() => {
                 setEditingId(null);
@@ -1444,7 +1470,7 @@ export function Inventory({
 
       {showAdd && (
         <Modal title="Add item" onClose={() => setShowAdd(false)}>
-          <AddInventoryItemForm onAdd={onAdd} sections={sections} />
+          <AddInventoryItemForm key={addLocation} onAdd={onAdd} sections={sections} defaultLocation={addLocation} />
         </Modal>
       )}
       {showScan && (
