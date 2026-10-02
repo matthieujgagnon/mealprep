@@ -9,7 +9,7 @@ import {
   stepTimer,
   scaleStepText,
 } from "../lib/steps.js";
-import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, findBestDeal } from "../lib/similarRecipes.js";
+import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, coversIngredient, findSaleDeal } from "../lib/similarRecipes.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { SaleTag } from "./SaleTag.jsx";
 import { formatQuantity, unitLabel } from "../lib/units.js";
@@ -57,7 +57,7 @@ function locationLabel(locationId) {
 function findMatchedPantryItem(ing, pantryInventory) {
   const c = core(ing.name);
   if (c === null) return null;
-  return pantryInventory.find((item) => core(item.name) === c && (!item.expiresAt || daysUntil(item.expiresAt) >= 0)) || null;
+  return pantryInventory.find((item) => coversIngredient(item.name, ing.name) && (!item.expiresAt || daysUntil(item.expiresAt) >= 0)) || null;
 }
 
 // The "⋯" menu — Edit / View original / Leftovers keep… / Delete. A
@@ -344,7 +344,7 @@ export function RecipeDetailModal({
   function ingredientStatus(ing) {
     const c = core(ing.name);
     if (c === null) return "have";
-    if (!haveCores.has(c)) return "need";
+    if (!haveCores.has(c) || !combinedHave.some((n) => coversIngredient(n, ing.name))) return "need";
     if (expiringSoonCores.has(c)) return "soon";
     return "have";
   }
@@ -650,7 +650,7 @@ export function RecipeDetailModal({
                           key={key}
                           ing={ing}
                           status={ingredientStatus(ing)}
-                          deal={findBestDeal(ing.name, deals)}
+                          deal={findSaleDeal(ing.name, deals)}
                           scaledQty={scaledQty}
                           isOpen={openIngredientKey === key}
                           onToggle={() => setOpenIngredientKey((prev) => (prev === key ? null : key))}

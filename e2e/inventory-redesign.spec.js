@@ -229,3 +229,29 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await expect(page.locator(".inv-shelf", { hasText: "Pantry" }).getByText("Shrimp")).toBeVisible();
   await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp")).toHaveCount(0);
 });
+
+test("an expired item's pill is pink on a plain grey strip", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  const email = `inv-expired+${Date.now()}@example.com`;
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText(email)).toBeVisible();
+  await page.request.post("/api/pantry-inventory", {
+    data: { name: "Bbq sauce", location: "fridge", expiresAt: new Date(Date.now() - 3 * 86400000).toISOString() },
+  });
+  await page.request.post("/api/pantry-inventory", {
+    data: { name: "Yogurt", location: "fridge", expiresAt: new Date(Date.now() + 2 * 86400000).toISOString() },
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  const card = (name) => page.locator(".inv-card").filter({ hasText: name });
+  await expect(card("Bbq sauce").locator(".inv-card-days")).toHaveText("expired!");
+  await expect(card("Bbq sauce").locator(".inv-card-days")).toHaveClass(/expired/);
+  await expect(card("Bbq sauce").locator(".inv-card-strip")).toHaveClass(/expired/);
+  await expect(card("Bbq sauce").locator(".inv-card-fill")).toHaveCount(0);
+  // Not expired yet: the coloured fill, plain pill.
+  await expect(card("Yogurt").locator(".inv-card-fill.pink")).toHaveCount(1);
+  await expect(card("Yogurt").locator(".inv-card-days")).not.toHaveClass(/expired/);
+});

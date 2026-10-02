@@ -546,3 +546,50 @@ test("Sales only keeps what's really on sale, with its saving on the card and in
   await page.getByRole("button", { name: "Sales only" }).click();
   await expect(page.locator(".riso-ing-name")).toHaveCount(2);
 });
+
+test("a recipe's sale pill is only for a real sale and opens the deal; on hand needs the same cut; Makeable can hide the tags", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  await page.request.post("/api/recipes", {
+    data: { title: "Mango chicken", ingredients: [{ name: "mangoes" }, { name: "chicken thighs" }, { name: "quokka beans" }] },
+  });
+  await page.request.post("/api/pantry-inventory", { data: { name: "Chicken Breast Fillets", location: "fridge" } });
+  const base = { userId: user.id, source: "Flipp", category: "produce", unitBasis: "each", isCurrent: true };
+  await prisma.flyerDeal.createMany({
+    data: [
+      // In the flyer at its regular price: not a sale.
+      { ...base, store: "Metro", item: "Mangoes, peeled and cubed", matchName: "mangoes", price: "$11.99", unitPrice: 11.99 },
+      { ...base, store: "Maxi", item: "Mangoes", matchName: "mangoes", price: "$1.50", unitPrice: 1.5, regularPrice: 2.49 },
+      { ...base, store: "IGA", item: "Quokka beans", matchName: "quokka beans", price: "$2.99", unitPrice: 2.99 },
+    ],
+  });
+
+  await page.reload();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.getByText("Mango chicken", { exact: true }).click();
+  const row = (name) => page.locator(".riso-rc-ingredient").filter({ hasText: name });
+  // Chicken breasts in the fridge aren't chicken thighs.
+  await expect(row("chicken thighs").locator(".riso-rc-ingredient-dot")).not.toHaveClass(/have/);
+  await expect(row("mangoes").locator(".riso-sale-tag")).toHaveText("Maxi$1.50");
+  await expect(row("quokka beans").locator(".riso-sale-tag")).toHaveCount(0);
+
+  // The pill opens the deal's own card.
+  await row("mangoes").locator(".riso-sale-tag").click();
+  await expect(page.locator(".riso-deal-detail")).toBeVisible();
+  await expect(page.locator(".riso-deal-detail-name")).toHaveText("Mangoes");
+  await page.locator(".riso-deal-detail-close").click();
+  await expect(page.locator(".riso-deal-detail")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // Makeable: the same pill, and a switch to hide them (remembered).
+  await page.goto("/");
+  await page.getByRole("button", { name: "Makeable", exact: true }).click();
+  await expect(page.locator(".riso-makeable-need-row .riso-sale-tag")).toHaveText(["Maxi$1.50"]);
+  await page.getByRole("switch", { name: "Show sale tags" }).click();
+  await expect(page.locator(".riso-makeable-need-row .riso-sale-tag")).toHaveCount(0);
+  await page.reload();
+  await page.getByRole("button", { name: "Makeable", exact: true }).click();
+  await expect(page.getByRole("switch", { name: "Show sale tags" })).toHaveAttribute("aria-checked", "false");
+  await expect(page.locator(".riso-makeable-need-row .riso-sale-tag")).toHaveCount(0);
+});

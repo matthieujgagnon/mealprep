@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { core, findBestDeal, findRecipesByIngredients } from "../lib/similarRecipes.js";
+import { core, findRecipesByIngredients, findSaleDeal } from "../lib/similarRecipes.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { SaleTag } from "./SaleTag.jsx";
 import { daysUntil } from "../lib/pantryInventory.js";
@@ -9,6 +9,15 @@ import { formatDayLabel, isCurrentWeek } from "../lib/dates.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 
 const ALSO_HAVE_STORAGE_KEY = "mealprep-makeable-also-have";
+const SHOW_SALES_STORAGE_KEY = "mealprep-makeable-show-sales";
+
+function loadShowSales() {
+  try {
+    return localStorage.getItem(SHOW_SALES_STORAGE_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
 
 function loadAlsoHave() {
   try {
@@ -120,7 +129,7 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
 // Photo on top, then the title, then (when something's missing) "You need
 // n" with a + Add pill per item, and one right-aligned row of same-size
 // actions pinned to the bottom so cards in a row line up.
-function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, planFor, pickerProps, groceryProps }) {
+function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTonight, planFor, pickerProps, groceryProps, showSales }) {
   const { deals } = useDeals();
   const [planning, setPlanning] = useState(false);
   const plan = planFor(recipe);
@@ -180,7 +189,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
                 return (
                   <li key={name} className="riso-makeable-need-row">
                     <span className="riso-makeable-need-name">{name}</span>
-                    <SaleTag deal={findBestDeal(name, deals)} />
+                    {showSales && <SaleTag deal={findSaleDeal(name, deals)} />}
                     <button
                       type="button"
                       className={`riso-makeable-need-add${on ? " on" : ""}`}
@@ -254,6 +263,19 @@ export function WhatCanIMake({
   const [useInventory, setUseInventory] = useState(true);
   const [expiringFirst, setExpiringFirst] = useState(true);
   const [alsoHave, setAlsoHave] = useState(loadAlsoHave);
+  // The "Super C $3.99" sale tags on each card, on by default; remembered
+  // on this device.
+  const [showSales, setShowSales] = useState(loadShowSales);
+  function toggleShowSales() {
+    setShowSales((on) => {
+      try {
+        localStorage.setItem(SHOW_SALES_STORAGE_KEY, on ? "off" : "on");
+      } catch {
+        // best-effort
+      }
+      return !on;
+    });
+  }
   const [input, setInput] = useState("");
 
   function persistAlsoHave(next) {
@@ -376,6 +398,11 @@ export function WhatCanIMake({
             <Switch on={expiringFirst} onToggle={() => setExpiringFirst((v) => !v)} label="Use expiring items first" />
             <span className="riso-makeable-toggle-label">Use expiring items first</span>
           </div>
+          <div className="riso-makeable-toggle-divider" />
+          <div className="riso-makeable-toggle">
+            <Switch on={showSales} onToggle={toggleShowSales} label="Show sale tags" />
+            <span className="riso-makeable-toggle-label">Show sale tags</span>
+          </div>
         </div>
 
         <form
@@ -430,6 +457,7 @@ export function WhatCanIMake({
                   planFor={planState}
                   pickerProps={pickerProps}
                   groceryProps={groceryProps}
+                  showSales={showSales}
                 />
               ))}
             </div>

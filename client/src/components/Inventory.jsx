@@ -332,8 +332,10 @@ function stripFor(item) {
   const d = daysUntil(item.expiresAt);
   if (d >= STRIP_DAYS) return null;
   const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
-  const label = d < 0 ? "expired!" : d === 0 ? "today!" : d === 1 ? "tomorrow!" : d <= 7 ? `${d} days` : `${d}D`;
-  return { pct: `${Math.max(8, (Math.max(d, 0) / STRIP_DAYS) * 100)}%`, color, label };
+  // Past its date: the pill itself goes pink, on a plain grey strip.
+  if (d < 0) return { expired: true, label: "expired!" };
+  const label = d === 0 ? "today!" : d === 1 ? "tomorrow!" : d <= 7 ? `${d} days` : `${d}D`;
+  return { pct: `${Math.max(8, (d / STRIP_DAYS) * 100)}%`, color, label };
 }
 
 function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable = true }) {
@@ -357,11 +359,11 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, draggable 
       onClick={onSelect}
       aria-label={`${item.name}${strip ? `, ${strip.label}` : ""}`}
     >
-      <div className="inv-card-strip">
+      <div className={`inv-card-strip${strip?.expired ? " expired" : ""}`}>
         {strip && (
           <>
-            <span className={`inv-card-fill ${strip.color}`} style={{ width: strip.pct }} />
-            <span className="inv-card-days">{strip.label}</span>
+            {!strip.expired && <span className={`inv-card-fill ${strip.color}`} style={{ width: strip.pct }} />}
+            <span className={`inv-card-days${strip.expired ? " expired" : ""}`}>{strip.label}</span>
           </>
         )}
         <span
