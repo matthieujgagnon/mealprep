@@ -13,6 +13,7 @@ import {
   splitBilingual,
   tilePrice,
   unitLabel,
+  dealVerdict,
 } from "../lib/flyerIngredients.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { HintStrip, Switch } from "./RisoControls.jsx";
@@ -319,7 +320,7 @@ function endsLabel(days) {
 // Used by the Flyers page and the grocery list's deal tags; `others` lists
 // the same product at other stores, and the list/watch buttons show only
 // when given a handler.
-export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others = [], postalCode }) {
+export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others = [], postalCode, onOpenOther }) {
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") onClose();
@@ -329,6 +330,11 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
   }, [onClose]);
   const [photoFailed, setPhotoFailed] = useState(false);
   const [photoCheck, setPhotoCheck] = useState(null);
+  // Opening another product from "Also on sale" swaps the deal in place.
+  useEffect(() => {
+    setPhotoFailed(false);
+    setPhotoCheck(null);
+  }, [deal.id]);
 
   // When the photo doesn't show, ask the server what the photo site said.
   useEffect(() => {
@@ -418,6 +424,7 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
             {unit && <span>{unit}</span>}
           </div>
           {regularLabel(deal) && <p className="riso-deal-detail-reg">{regularLabel(deal)}, says the flyer</p>}
+          <Verdict deal={deal} />
           {deal.baseline && (
             <div className={`riso-deal-detail-avg ${goodNow ? "stock-up" : deal.baseline.verdict === "high" ? "high" : "normal"}`}>
               <div>
@@ -488,11 +495,23 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
           {others.length > 0 && (
             <div className="riso-deal-detail-others">
               <span className="riso-deal-detail-others-label">ALSO ON SALE</span>
-              {others.slice(0, 4).map((o) => (
-                <span key={o.id} className="riso-deal-detail-other">
-                  {o.store} · {o.price}
-                </span>
-              ))}
+              {others.slice(0, 4).map((o) =>
+                onOpenOther ? (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className="riso-deal-detail-other"
+                    title={`Open ${o.item} at ${o.store}`}
+                    onClick={() => onOpenOther(o)}
+                  >
+                    {o.store} · {o.price} →
+                  </button>
+                ) : (
+                  <span key={o.id} className="riso-deal-detail-other">
+                    {o.store} · {o.price}
+                  </span>
+                )
+              )}
             </div>
           )}
           <a className="riso-deal-detail-flyer" href={flyerUrl(deal.store, postalCode)} target="_blank" rel="noreferrer">
@@ -1098,6 +1117,27 @@ const MAX_TILES = 3;
 // One ingredient: its photo, names and a price tile per store (the
 // cheapest tinted green). Open, it spans the row and lists every store's
 // product, cheapest first, with + List and the 6-month range.
+// "Stock up · Its lowest price in 6 months, and it freezes." - the plain
+// answer to "would I buy it?" (see dealVerdict).
+function Verdict({ deal, compact = false }) {
+  const v = dealVerdict(deal);
+  if (!v) return null;
+  if (compact) {
+    return (
+      <p className={`riso-verdict ${v.key}`} title={v.reason}>
+        <b>{v.label}</b> <span>{v.reason}</span>
+      </p>
+    );
+  }
+  return (
+    <div className={`riso-deal-verdict ${v.key}`}>
+      <span className="riso-deal-verdict-label">WOULD I BUY IT?</span>
+      <strong>{v.label}</strong>
+      <p>{v.reason}</p>
+    </div>
+  );
+}
+
 function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
   const low = g.t != null && g.t <= LOW_T;
   const multi = g.tiles.filter((d) => tilePrice(d)?.basis === g.mainBasis).length > 1;
@@ -1141,6 +1181,7 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
         <div className="riso-ing-head">
           <h4 className="riso-ing-name">{g.name}</h4>
           {sub && <p className="riso-ing-sub">{sub}</p>}
+          <Verdict deal={g.saving?.deal || g.best} compact />
         </div>
         <div className={`riso-ing-tiles n${tiles.length}`} style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
           {tiles.map((d) => {
@@ -1724,6 +1765,7 @@ export function FlyerDeals({
           others={(ingredients.find((g) => g.variants.some((d) => d.id === detailDeal.id))?.variants || []).filter((d) => d.id !== detailDeal.id)}
           onClose={() => setDetailId(null)}
           onToggleWatch={() => toggleWatch(detailDeal)}
+          onOpenOther={(o) => setDetailId(o.id)}
           postalCode={importSettings?.postalCode}
         />
       )}

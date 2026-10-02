@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatQuantity, unitLabel } from "../lib/units.js";
 import { core } from "../lib/similarRecipes.js";
 import {
@@ -9,12 +9,8 @@ import {
   stepTimer,
   stepTitle,
   scaleStepText,
+  formatClock,
 } from "../lib/steps.js";
-
-function formatClock(seconds) {
-  const m = Math.floor(seconds / 60);
-  return `${m}:${String(seconds % 60).padStart(2, "0")}`;
-}
 
 function formatTotalTime(minutes) {
   if (!minutes) return null;
@@ -240,6 +236,40 @@ export function CookMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex, finished, timerSpec, anyTimerRunning, isLast]);
 
+  // Everything for the step - its text, what to check off, the timer -
+  // fits on the screen without scrolling: the step text starts at its full
+  // size and steps down a pixel at a time until the column fits (the timer
+  // scales with it). Only a very long step at the smallest size scrolls.
+  const leftRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = leftRef.current;
+    if (!el) return;
+    function fit() {
+      const phone = window.innerWidth < 768;
+      const overlay = el.closest(".cm-overlay");
+      const overflows = () => el.scrollHeight > el.clientHeight + 1;
+      // Tighter and tighter: smaller text; then compact pills and timer;
+      // then (on a phone) the photo makes way.
+      const stages = phone ? [[false, false], [true, false], [true, true]] : [[false, false], [true, false]];
+      for (const [compact, noPhoto] of stages) {
+        el.classList.toggle("compact", compact);
+        overlay?.classList.toggle("cm-no-photo", noPhoto);
+        let size = phone ? 24 : 36;
+        const min = phone ? 15 : 18;
+        el.style.setProperty("--cm-step-size", `${size}px`);
+        while (size > min && overflows()) {
+          size -= 1;
+          el.style.setProperty("--cm-step-size", `${size}px`);
+        }
+        if (!overflows()) return;
+      }
+    }
+    fit();
+    document.fonts?.ready.then(fit);
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [stepIndex, finished, scale, steps.length]);
+
   function onTouchStart(e) {
     touchStartX.current = e.touches[0].clientX;
   }
@@ -449,10 +479,10 @@ export function CookMode({
     : "▶ Start timer";
 
   return (
-    <div className="cm-overlay riso-theme" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="cm-overlay riso-theme cm-step-view" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {header}
       <main className="cm-main">
-        <div className="cm-left">
+        <div className="cm-left" ref={leftRef}>
           <div className="cm-step-head">
             <span className="cm-step-num">{stepIndex + 1}</span>
             <div>
@@ -520,7 +550,7 @@ export function CookMode({
         </div>
 
         <aside className="cm-right">
-          <div className="cm-photo">{image && <img src={image} alt="" />}</div>
+          <div className={`cm-photo${image ? "" : " empty"}`}>{image && <img src={image} alt="" />}</div>
           {nextStep && (
             <button type="button" className="cm-up-next" onClick={next}>
               <span className="cm-up-next-label">

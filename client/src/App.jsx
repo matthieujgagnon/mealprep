@@ -31,7 +31,7 @@ import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
-import { Inventory } from "./components/Inventory.jsx";
+import { Inventory, InventoryDragPreview } from "./components/Inventory.jsx";
 
 // Rendered inside <DragOverlay> — a floating copy that actually follows the
 // cursor, independent of wherever the real (now-dimmed) source element sits.
@@ -82,7 +82,7 @@ function DragPreview({ active }) {
   }
 
   if (inventoryItem) {
-    return <div className="drag-preview-chip">{inventoryItem.name}</div>;
+    return <InventoryDragPreview item={inventoryItem} />;
   }
 
   return null;

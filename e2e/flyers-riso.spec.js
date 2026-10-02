@@ -593,3 +593,36 @@ test("a recipe's sale pill is only for a real sale and opens the deal; on hand n
   await expect(page.getByRole("switch", { name: "Show sale tags" })).toHaveAttribute("aria-checked", "false");
   await expect(page.locator(".riso-makeable-need-row .riso-sale-tag")).toHaveCount(0);
 });
+
+test("each deal says whether to buy it, and Also on sale opens the other store's card", async ({ page }) => {
+  const email = uniqueEmail();
+  await signUp(page, email);
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const base = { userId: user.id, source: "Flipp", isCurrent: true, category: "produce" };
+  await prisma.flyerDeal.createMany({
+    data: [
+      { ...base, store: "Maxi", item: "Wombat apples", matchName: "wombat apples", price: "$0.99/lb", unitPrice: 0.99, unitBasis: "lb", regularPrice: 1.69 },
+      { ...base, store: "IGA", item: "Wombat apples, Gala", matchName: "wombat apples", price: "$1.49/lb", unitPrice: 1.49, unitBasis: "lb", regularPrice: 1.69 },
+      { ...base, store: "Metro", category: "other", item: "Numbat wine", matchName: "numbat wine", price: "$14.99", unitPrice: 14.99, unitBasis: "each" },
+    ],
+  });
+
+  await openFlyers(page);
+  // On the card: the plain answer.
+  await expect(card(page, "Wombat apples").locator(".riso-verdict b")).toHaveText("Stock up");
+  await expect(card(page, "Numbat wine").locator(".riso-verdict b")).toHaveText("Can't tell yet");
+
+  // In the open card, with why; Also on sale opens the other store's card.
+  await openCard(page, "Wombat apples");
+  await card(page, "Wombat apples").getByRole("button", { name: "Wombat apples details" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator(".riso-deal-verdict strong")).toHaveText("Stock up");
+  await expect(dialog.locator(".riso-deal-verdict p")).toHaveText("41% off the regular price, and it freezes.");
+  await dialog.getByRole("button", { name: "IGA · $1.49/lb →" }).click();
+  await expect(dialog.locator(".riso-deal-detail-name")).toHaveText("Wombat apples, Gala");
+  await expect(dialog.locator(".riso-deal-verdict strong")).toHaveText("Buy");
+  await expect(dialog.locator(".riso-deal-verdict p")).toHaveText("12% off the regular price.");
+  // And back.
+  await dialog.getByRole("button", { name: "Maxi · $0.99/lb →" }).click();
+  await expect(dialog.locator(".riso-deal-detail-name")).toHaveText("Wombat apples");
+});

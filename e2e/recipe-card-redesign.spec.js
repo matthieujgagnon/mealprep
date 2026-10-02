@@ -70,7 +70,7 @@ test("step timer chip starts a countdown", async ({ page }) => {
   await expect(page.locator(".riso-rc-meta-line")).toContainText(/Serves \d/);
   await timerChip.click();
   await page.waitForTimeout(1100);
-  await expect(timerChip).toContainText("04:5");
+  await expect(timerChip).toContainText("⏸ 4:5");
 });
 
 test("options menu opens and closes on outside click", async ({ page }) => {
@@ -128,4 +128,47 @@ test("phone width shows tabbed Ingredients/Steps layout", async ({ page }) => {
   await page.getByRole("button", { name: /Steps ·/ }).click();
   await expect(page.locator(".riso-rc-steps-wrap")).toBeVisible();
   await expect(page.locator(".riso-rc-ingredients-panel")).toBeHidden();
+});
+
+test("the photo gallery flips with the arrow keys and has a clear × to close", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.route("https://example.com/**", (route) => route.fulfill({ contentType: "image/png", body: png }));
+  const photos = ["https://example.com/a.png", "https://example.com/b.png", "https://example.com/c.png"];
+  await page.request.post("/api/recipes", {
+    data: { title: "Gallery Test", photoUrl: photos[0], photos, ingredients: [{ name: "quokka beans" }], instructions: ["Cook it."] },
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.getByText("Gallery Test", { exact: true }).click();
+
+  // On the card, ← → flip the cover photo.
+  const count = page.locator(".riso-rc-photo-count");
+  await expect(count).toHaveText("1 / 3 PHOTOS");
+  await page.keyboard.press("ArrowRight");
+  await expect(count).toHaveText("2 / 3 PHOTOS");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(count).toHaveText("3 / 3 PHOTOS");
+
+  // In the viewer too; Escape closes the viewer only, the × closes it too.
+  await count.click();
+  const viewer = page.getByRole("dialog", { name: "Photos" });
+  await expect(viewer.getByRole("button", { name: "Close photos" })).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(viewer.locator(".rc-lightbox-count")).toHaveText("1 / 3");
+  await page.keyboard.press("Escape");
+  await expect(viewer).toHaveCount(0);
+  await expect(page.locator(".riso-rc-modal")).toBeVisible();
+  await count.click();
+  await viewer.getByRole("button", { name: "Close photos" }).click();
+  await expect(viewer).toHaveCount(0);
+  await expect(page.locator(".riso-rc-modal")).toBeVisible();
+
+  // "+ Grocery list" on a missing ingredient says it's done.
+  await page.locator(".riso-rc-ingredient-row", { hasText: "quokka beans" }).click();
+  const add = page.getByRole("button", { name: "+ Grocery list" });
+  await add.hover();
+  await add.click();
+  await expect(page.getByRole("button", { name: "On grocery list ✓" })).toBeDisabled();
 });

@@ -1924,6 +1924,20 @@ select {
   opacity: 0.4;
 }
 
+/* The card following the pointer: the same card, tilted and lifted. */
+.inv-drag-preview {
+  width: 300px;
+  height: 88px;
+  background: transparent;
+  cursor: grabbing;
+}
+
+.inv-drag-preview .inv-card {
+  height: 100%;
+  transform: rotate(-2deg);
+  box-shadow: 5px 5px 0 var(--riso-ink);
+}
+
 /* Days left, filling from the bottom; absent with no date or 28+ days. */
 .inv-card-line {
   width: 12px;
@@ -5417,11 +5431,38 @@ button.riso-table-group-head:disabled {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border: none;
-  font-size: 24px;
+  background: var(--riso-surface, #fffdf8);
+  color: var(--riso-ink, #16181f);
+  border: 2px solid var(--riso-ink, #16181f);
+  box-shadow: 3px 3px 0 var(--riso-ink, #16181f);
+  font: 700 26px/1 var(--riso-font-display, sans-serif);
   cursor: pointer;
+}
+
+/* A clear way out: a big round × in the corner. */
+.rc-lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--riso-surface, #fffdf8);
+  color: var(--riso-ink, #16181f);
+  border: 2px solid var(--riso-ink, #16181f);
+  box-shadow: 3px 3px 0 var(--riso-ink, #16181f);
+  font: 700 28px/1 var(--riso-font-display, sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 3px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.rc-lightbox-close:hover,
+.rc-lightbox-arrow:hover {
+  background: var(--riso-yellow, #ffe14d);
 }
 
 .rc-lightbox-arrow.left {
@@ -6049,6 +6090,39 @@ button.riso-table-group-head:disabled {
   box-shadow: 2px 2px 0 var(--riso-ink);
 }
 
+/* Lifts on hover, presses in on click; once added it sits flat in yellow. */
+.riso-rc-ing-action,
+.riso-rc-add-missing-btn {
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+}
+
+.riso-rc-ing-action:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--riso-ink);
+}
+
+.riso-rc-ing-action:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.riso-rc-ing-action.added {
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  box-shadow: none;
+  cursor: default;
+}
+
+.riso-rc-add-missing-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.riso-rc-add-missing-btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
 .riso-rc-legend {
   display: flex;
   flex-wrap: wrap;
@@ -6108,6 +6182,13 @@ button.riso-table-group-head:disabled {
 .riso-rc-add-missing-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.riso-rc-add-missing-btn.added {
+  opacity: 1;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  box-shadow: none;
 }
 
 .riso-rc-planned-note {
@@ -6617,6 +6698,82 @@ button.riso-table-group-head:disabled {
 }
 
 /* ---------- Step view ---------- */
+/* The step view is one screen: top bar, the step, the bottom bar. The step
+   column fits itself to what's left (CookMode's fit effect shrinks the text);
+   the photo column shrinks its photo. */
+.cm-step-view {
+  overflow: hidden;
+}
+
+.cm-step-view .cm-main {
+  min-height: 0;
+  padding-bottom: 24px;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.cm-step-view .cm-left {
+  min-height: 0;
+  overflow-y: auto;
+  gap: 20px;
+}
+
+.cm-step-view .cm-right {
+  min-height: 0;
+  position: static;
+}
+
+.cm-step-view .cm-photo {
+  aspect-ratio: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: 520px;
+}
+
+.cm-step-view .cm-bottom {
+  position: static;
+  flex: none;
+}
+
+/* When even small text doesn't fit: smaller pills, a slimmer timer. */
+.cm-left.compact {
+  gap: 12px;
+}
+
+.cm-left.compact .cm-uses-pill {
+  height: 38px;
+  padding: 0 12px 0 6px;
+  gap: 8px;
+}
+
+.cm-left.compact .cm-uses-dot {
+  width: 24px;
+  height: 24px;
+}
+
+.cm-left.compact .cm-uses-pills {
+  gap: 6px;
+}
+
+.cm-left.compact .cm-timer {
+  padding: 10px 16px;
+  gap: 12px;
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.cm-left.compact .cm-timer-main,
+.cm-left.compact .cm-timer-btn {
+  height: 42px;
+}
+
+/* The readout and its buttons share one row instead of wrapping. */
+.cm-left.compact .cm-timer {
+  flex-wrap: nowrap;
+}
+
+.cm-left.compact .cm-timer-readout {
+  min-width: 0;
+}
 .cm-main {
   flex: 1;
   max-width: 1280px;
@@ -6670,7 +6827,7 @@ button.riso-table-group-head:disabled {
 
 .cm-step-text {
   margin: 0;
-  font: 500 36px/1.35 var(--riso-font-display);
+  font: 500 var(--cm-step-size, 36px)/1.35 var(--riso-font-display);
   letter-spacing: -0.01em;
   text-wrap: pretty;
 }
@@ -6781,7 +6938,7 @@ button.riso-table-group-head:disabled {
 }
 
 .cm-timer-time {
-  font: 800 76px/1 var(--riso-font-display);
+  font: 800 calc(var(--cm-step-size, 36px) * 2.1) / 1 var(--riso-font-display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -7198,12 +7355,43 @@ button.riso-table-group-head:disabled {
   }
 
   .cm-step-text {
-    font-size: 24px;
+    font-size: var(--cm-step-size, 24px);
     line-height: 1.4;
   }
 
   .cm-timer-time {
-    font-size: 52px;
+    font-size: calc(var(--cm-step-size, 24px) * 2.1);
+  }
+
+  .cm-step-view .cm-main {
+    grid-template-rows: auto minmax(0, 1fr);
+    padding-bottom: 12px;
+  }
+
+  .cm-step-view .cm-photo {
+    flex: none;
+    height: clamp(110px, 22dvh, 200px);
+  }
+
+  /* No step photo, or no room for one: the step gets the screen (and the
+     gap under the photo goes with it). */
+  .cm-step-view .cm-photo.empty,
+  .cm-step-view.cm-no-photo .cm-photo {
+    display: none;
+  }
+
+  .cm-step-view .cm-main {
+    row-gap: 0;
+  }
+
+  .cm-step-view:not(.cm-no-photo) .cm-right:has(.cm-photo:not(.empty)) {
+    margin-bottom: 18px;
+  }
+
+  .cm-uses-pill {
+    height: 42px;
+    padding: 0 12px 0 6px;
+    gap: 8px;
   }
 
   .cm-timer-btn {
@@ -9001,6 +9189,17 @@ button.riso-table-group-head:disabled {
   border: 1.5px solid var(--riso-ink);
   border-radius: 999px;
   font: 600 12px var(--riso-font-display);
+}
+
+button.riso-deal-detail-other {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  cursor: pointer;
+}
+
+button.riso-deal-detail-other:hover,
+button.riso-deal-detail-other:focus-visible {
+  background: var(--riso-yellow);
 }
 
 .riso-row-qty {
@@ -13293,6 +13492,71 @@ body.no-select {
 .riso-ing-name {
   margin: 0;
   font: 800 17px/1.15 var(--riso-font-display);
+}
+
+/* Would I buy it? One line on the card, a box in the open card. */
+.riso-verdict {
+  margin: 6px 0 0;
+  font: 500 12.5px/1.35 var(--riso-font-body);
+  color: var(--riso-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.riso-verdict b {
+  display: inline-block;
+  padding: 0 8px;
+  margin-right: 4px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  font: 800 11.5px/18px var(--riso-font-display);
+  color: var(--riso-ink);
+  background: var(--riso-surface);
+}
+
+.riso-verdict.stock-up b,
+.riso-deal-verdict.stock-up {
+  background: var(--riso-green);
+}
+
+.riso-verdict.buy b,
+.riso-deal-verdict.buy {
+  background: var(--riso-yellow);
+}
+
+.riso-verdict.skip b,
+.riso-deal-verdict.skip {
+  background: #ffe0f1;
+}
+
+.riso-deal-verdict {
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  padding: 10px 14px;
+  background: var(--riso-canvas);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 2px 12px;
+}
+
+.riso-deal-verdict-label {
+  grid-column: 1 / -1;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+}
+
+.riso-deal-verdict strong {
+  font: 800 20px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-deal-verdict p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.4;
 }
 
 .riso-ing-sub {

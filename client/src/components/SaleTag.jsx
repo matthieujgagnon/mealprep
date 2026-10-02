@@ -8,7 +8,7 @@ import { DealDetailModal } from "./FlyerDeals.jsx";
 // wherever it's something to buy (Recipe card, Makeable) - see
 // findSaleDeal for what counts as on sale. Tapping it opens the deal's own
 // card, the same one Flyers and the Grocery list open.
-export function SaleTag({ deal }) {
+export function SaleTag({ deal, others = [] }) {
   const [open, setOpen] = useState(null);
   if (!deal) return null;
   const perUnit =
@@ -22,10 +22,13 @@ export function SaleTag({ deal }) {
   // straight away and fills in the chart when it arrives.
   function openCard(e) {
     e.stopPropagation();
-    setOpen(deal);
+    show(deal);
+  }
+  function show(d) {
+    setOpen(d);
     api
-      .getDeal(deal.id)
-      .then((full) => setOpen((cur) => (cur ? { ...cur, ...full } : cur)))
+      .getDeal(d.id)
+      .then((full) => setOpen((cur) => (cur?.id === d.id ? { ...cur, ...full } : cur)))
       .catch(() => {});
   }
 
@@ -52,7 +55,12 @@ export function SaleTag({ deal }) {
       {open &&
         createPortal(
           <div onClick={(e) => e.stopPropagation()}>
-            <DealDetailModal deal={open} onClose={() => setOpen(null)} />
+            <DealDetailModal
+              deal={open}
+              others={[deal, ...others].filter((d) => d.id !== open.id)}
+              onOpenOther={show}
+              onClose={() => setOpen(null)}
+            />
           </div>,
           document.body
         )}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { core, findRecipesByIngredients, findSaleDeal } from "../lib/similarRecipes.js";
+import { core, findDealsFor, findRecipesByIngredients, findSaleDeal } from "../lib/similarRecipes.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { SaleTag } from "./SaleTag.jsx";
 import { daysUntil } from "../lib/pantryInventory.js";
@@ -189,7 +189,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
                 return (
                   <li key={name} className="riso-makeable-need-row">
                     <span className="riso-makeable-need-name">{name}</span>
-                    {showSales && <SaleTag deal={findSaleDeal(name, deals)} />}
+                    {showSales && <SaleTag deal={findSaleDeal(name, deals)} others={findDealsFor(name, deals)} />}
                     <button
                       type="button"
                       className={`riso-makeable-need-add${on ? " on" : ""}`}
