@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { en } from "./en.js";
 import { fr } from "./fr.js";
 import { SRC, hardCodedTexts, sourceFiles } from "./scan.js";
+import { COPY_TOKEN, HELP_COPIES, copyKeys } from "../lib/helpCopies.js";
 
 const PLURAL_FORMS = new Set(["zero", "one", "two", "few", "many", "other"]);
 
@@ -113,5 +114,38 @@ describe("no English typed straight into a screen", () => {
   const files = sourceFiles(SRC).filter((f) => f.endsWith(".jsx"));
   it.each(files.map((f) => [path.relative(SRC, f), f]))("%s", (_, file) => {
     expect(hardCodedTexts(file)).toEqual([]);
+  });
+});
+
+describe("Help button copies", () => {
+  const tokenIds = (text) => [...String(text).matchAll(COPY_TOKEN)].map((m) => m[1]);
+  const helpTexts = (flat) =>
+    Object.entries(flat).filter(([k]) => /^help\.(sections\.\w+\.lines|faq\.\w+\.a)$/.test(k));
+
+  it("every [[id]] in Help is a known copy, and both languages use the same ones in the same lines", () => {
+    const problems = [];
+    for (const [key, enLines] of helpTexts(FLAT_EN)) {
+      const frLines = FLAT_FR[key];
+      enLines.forEach((line, i) => {
+        const enIds = tokenIds(line).sort();
+        const frIds = tokenIds(frLines[i]).sort();
+        if (enIds.join() !== frIds.join()) problems.push(`${key}[${i}]: en [${enIds}] vs fr [${frIds}]`);
+        for (const id of [...enIds, ...frIds]) if (!HELP_COPIES[id]) problems.push(`${key}[${i}]: unknown copy ${id}`);
+      });
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("every copy reads labels that exist in both languages, and every copy is used", () => {
+    const problems = [];
+    for (const [id, copy] of Object.entries(HELP_COPIES)) {
+      for (const key of copyKeys(copy)) {
+        if (typeof FLAT_EN[key] === "undefined" && !(`${key}.other` in FLAT_EN)) problems.push(`${id}: ${key} missing in en`);
+        if (typeof FLAT_FR[key] === "undefined" && !(`${key}.other` in FLAT_FR)) problems.push(`${id}: ${key} missing in fr`);
+      }
+    }
+    const used = new Set(helpTexts(FLAT_EN).flatMap(([, lines]) => lines.flatMap(tokenIds)));
+    for (const id of Object.keys(HELP_COPIES)) if (!used.has(id)) problems.push(`${id}: not used in Help`);
+    expect(problems).toEqual([]);
   });
 });
