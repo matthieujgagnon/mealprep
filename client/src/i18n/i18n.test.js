@@ -81,6 +81,21 @@ describe("translations", () => {
     expect(same).toEqual([]);
   });
 
+  it("the Statistics Canada links open its page in the app's language", () => {
+    // t() falls back to English when a French text is missing, so a link that
+    // was never given a French address would quietly open the English page.
+    const KEYS = ["help.sources.statcan.tableUrl", "help.sources.statcan.licenceUrl"];
+    for (const key of KEYS) {
+      const enUrl = new URL(FLAT_EN[key]);
+      const frUrl = new URL(FLAT_FR[key]);
+      expect(enUrl.hostname, key).toMatch(/(^|\.)statcan\.gc\.ca$/);
+      expect(frUrl.hostname, key).toBe(enUrl.hostname);
+      expect(frUrl.href, key).not.toBe(enUrl.href);
+      expect(enUrl.pathname, key).toMatch(/\/en\//);
+      expect(frUrl.pathname, key).toMatch(/\/fr\//);
+    }
+  });
+
   it("every key the code asks for exists", () => {
     const missing = [];
     for (const file of sourceFiles(SRC).filter((f) => !f.includes(`${path.sep}i18n${path.sep}`))) {

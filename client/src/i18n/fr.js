@@ -1320,10 +1320,10 @@ export const fr = {
         name: "Statistique Canada",
         use: "Les prix moyens au Québec auxquels les aubaines des circulaires sont comparées (tableau 18-10-0245-01, prix de détail mensuels).",
         credit:
-          "Adapté de Statistique Canada, tableau 18-10-0245-01, données mensuelles les plus récentes publiées. Cela ne constitue pas une approbation de ce produit par Statistique Canada.",
+          "Adapté de Statistique Canada, \u00ab\u00a0Prix de détail moyens mensuels pour certains produits\u00a0\u00bb (tableau 18-10-0245-01), données mensuelles les plus récentes publiées. Cela ne constitue pas une approbation de ce produit par Statistique Canada.",
         tableUrl: "https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=1810024501",
         licenceLink: "Licence ouverte de Statistique Canada",
-        licenceUrl: "https://www.statcan.gc.ca/fr/reference/licence",
+        licenceUrl: "https://www.statcan.gc.ca/fr/avis/licence-ouverte",
       },
       usda: {
         use: "Les durées de conservation derrière les dates limites de l'inventaire, du Service de la sécurité et de l'inspection des aliments du département de l'Agriculture des États-Unis.",

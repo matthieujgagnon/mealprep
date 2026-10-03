@@ -1316,7 +1316,7 @@ export const en = {
           "Adapted from Statistics Canada, Monthly average retail prices for selected products, 18-10-0245-01, most recent monthly data published. This does not constitute an endorsement by Statistics Canada of this product.",
         tableUrl: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810024501",
         licenceLink: "Statistics Canada Open Licence",
-        licenceUrl: "https://statcan.gc.ca/reference/licence",
+        licenceUrl: "https://www.statcan.gc.ca/en/terms-conditions/open-licence",
       },
       usda: {
         use: "The storage times behind use-by dates in Inventory, from the US Department of Agriculture's Food Safety and Inspection Service.",
