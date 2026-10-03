@@ -743,25 +743,28 @@ export default function App({ user, onLogout }) {
           <h1 className="wordmark">
             matt mo <span>cookbook</span>
           </h1>
-          <div className="app-header-avatar" ref={avatarRef}>
-            <button
-              type="button"
-              className="app-header-avatar-btn"
-              aria-label={t("app.account")}
-              aria-expanded={avatarMenuOpen}
-              onClick={() => setAvatarMenuOpen((open) => !open)}
-            >
-              {(user.name || user.email).charAt(0).toUpperCase()}
-            </button>
-            {avatarMenuOpen && (
-              <div className="app-header-avatar-menu">
-                <span className="app-header-avatar-name">{user.name || user.email}</span>
-                <LanguageSwitch />
-                <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
-                  {t("app.logOut")}
-                </button>
-              </div>
-            )}
+          {/* On a phone: FR | EN right in the header, next to the avatar. */}
+          <div className="app-header-phone-tools">
+            <LanguageSwitch />
+            <div className="app-header-avatar" ref={avatarRef}>
+              <button
+                type="button"
+                className="app-header-avatar-btn"
+                aria-label={t("app.account")}
+                aria-expanded={avatarMenuOpen}
+                onClick={() => setAvatarMenuOpen((open) => !open)}
+              >
+                {(user.name || user.email).charAt(0).toUpperCase()}
+              </button>
+              {avatarMenuOpen && (
+                <div className="app-header-avatar-menu">
+                  <span className="app-header-avatar-name">{user.name || user.email}</span>
+                  <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
+                    {t("app.logOut")}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <nav className="tabs" aria-label={t("app.nav.label")}>
             <button
