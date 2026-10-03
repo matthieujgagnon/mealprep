@@ -5,6 +5,17 @@ import { expect, test } from "@playwright/test";
 // and closes by keyboard and by touch, the credits name every outside
 // source, and a long French menu never widens the page.
 
+const STATCAN = {
+  en: {
+    table: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810024501",
+    licence: "https://www.statcan.gc.ca/en/terms-conditions/open-licence",
+  },
+  fr: {
+    table: "https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=1810024501",
+    licence: "https://www.statcan.gc.ca/fr/avis/licence-ouverte",
+  },
+};
+
 const SECTIONS = {
   en: ["Home", "Recipes", "Recipe card", "Cook mode", "Planner", "Makeable", "Grocery and Store mode", "Flyers", "Inventory", "Account"],
   fr: ["Accueil", "Recettes", "Fiche de recette", "Mode cuisine", "Planificateur", "Faisable", "Épicerie et mode magasin", "Circulaires", "Inventaire", "Compte"],
@@ -49,8 +60,9 @@ test.describe("desktop, English", () => {
     await expect(page.locator("#help-credits .riso-help-licence")).toHaveText(
       "Adapted from Statistics Canada, Monthly average retail prices for selected products, 18-10-0245-01, most recent monthly data published. This does not constitute an endorsement by Statistics Canada of this product."
     );
-    const licence = page.getByRole("link", { name: /Statistics Canada Open Licence/ });
-    await expect(licence).toHaveAttribute("href", "https://statcan.gc.ca/reference/licence");
+    const credits = page.locator("#help-credits");
+    await expect(credits.getByRole("link", { name: /Statistics Canada Open Licence/ })).toHaveAttribute("href", STATCAN.en.licence);
+    await expect(credits.getByRole("link", { name: /Visit Statistics Canada/ })).toHaveAttribute("href", STATCAN.en.table);
     await page.screenshot({ path: test.info().outputPath("help-desktop-en.png"), fullPage: true });
   });
 
@@ -129,12 +141,38 @@ test.describe("phone, Quebec French", () => {
     await expect(page.locator("#help-credits")).toBeInViewport();
     await expectCredits(page);
     await expect(page.locator("#help-credits .riso-help-licence")).toHaveText(
-      "Adapté de Statistique Canada, tableau 18-10-0245-01, données mensuelles les plus récentes publiées. Cela ne constitue pas une approbation de ce produit par Statistique Canada."
+      "Adapté de Statistique Canada, « Prix de détail moyens mensuels pour certains produits » (tableau 18-10-0245-01), données mensuelles les plus récentes publiées. Cela ne constitue pas une approbation de ce produit par Statistique Canada."
     );
-    await expect(page.getByRole("link", { name: /Licence ouverte de Statistique Canada/ })).toHaveAttribute(
-      "href",
-      "https://www.statcan.gc.ca/fr/reference/licence"
-    );
+    const credits = page.locator("#help-credits");
+    await expect(credits.getByRole("link", { name: /Licence ouverte de Statistique Canada/ })).toHaveAttribute("href", STATCAN.fr.licence);
+    await expect(credits.getByRole("link", { name: /Visiter Statistique Canada/ })).toHaveAttribute("href", STATCAN.fr.table);
     await page.screenshot({ path: test.info().outputPath("help-phone-fr-credits.png") });
+  });
+});
+
+test.describe("desktop, switching language on the Help page", () => {
+  test.use({ locale: "en-CA", viewport: { width: 1280, height: 900 } });
+
+  test("the Statistics Canada links follow the language without a reload", async ({ page }) => {
+    await signUp(page, "en");
+    await page.getByRole("button", { name: "Help", exact: true }).click();
+    const credits = page.locator("#help-credits");
+    const links = credits.locator(".riso-help-source", { hasText: /Statistics Canada|Statistique Canada/ }).locator("a");
+    await expect(links).toHaveCount(2);
+    await expect(links.nth(0)).toHaveAttribute("href", STATCAN.en.table);
+    await expect(links.nth(1)).toHaveAttribute("href", STATCAN.en.licence);
+
+    await page.evaluate(() => {
+      window.__noReload = true;
+    });
+    await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "Français" }).click();
+    await expect(links.nth(0)).toHaveAttribute("href", STATCAN.fr.table);
+    await expect(links.nth(1)).toHaveAttribute("href", STATCAN.fr.licence);
+    await expect(credits.locator(".riso-help-licence")).toContainText("« Prix de détail moyens mensuels pour certains produits » (tableau 18-10-0245-01)");
+
+    await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "English" }).click();
+    await expect(links.nth(0)).toHaveAttribute("href", STATCAN.en.table);
+    await expect(links.nth(1)).toHaveAttribute("href", STATCAN.en.licence);
+    expect(await page.evaluate(() => window.__noReload)).toBe(true); // same page load throughout
   });
 });
