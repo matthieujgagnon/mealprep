@@ -1023,7 +1023,7 @@ export function GroceryList({
   const groups = buildGroups();
   const storeRows = shoppingItems.map((item) => {
     const deal = bestDeal(item);
-    return { item, deal, store: storeForItem(item, deal) };
+    return { item, deal, store: storeForItem(item, deal), category: categoryCache[item.core] || null };
   });
   const storesWithItems = storeOrder.filter((st) => storeRows.some((r) => r.store === st));
 
@@ -1364,6 +1364,9 @@ export function GroceryList({
           onDone={handleDoneShopping}
           onClose={() => setStoreMode(false)}
           storeLabel={storeLabel}
+          aisleLabel={aisleLabel}
+          aisleOrder={aisleOrder}
+          sendCount={toSendCount}
         />
       )}
       {openDeal && (

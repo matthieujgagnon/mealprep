@@ -35,6 +35,7 @@ export const fr = {
     // Names of sources.
     source: "SOURCE",
     usdaFoodkeeper: "USDA FOODKEEPER",
+    az: "A–Z",
   },
   auth: {
     eyebrow: "PLANIFICATION DES REPAS",
@@ -709,7 +710,12 @@ export const fr = {
     storeAria: "Magasin",
     leftAt: { one: "restant chez {store}", other: "restants chez {store}" },
     nothingFor: "Rien sur la liste pour {store}.",
-    done: "Terminé · {count} à l'inventaire",
+    done: "Terminé · ajouter {count} à l'inventaire",
+    sortAria: "Trier",
+    sortSection: "Rayon",
+    toLight: "Thème clair",
+    toDark: "Thème sombre",
+    sectionLeft: { one: "{count} RESTANT", other: "{count} RESTANTS" },
   },
   duration: {
     days: { one: "{count} jour", other: "{count} jours" },
