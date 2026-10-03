@@ -35,6 +35,7 @@ export const en = {
     // Names of sources.
     source: "SOURCE",
     usdaFoodkeeper: "USDA FOODKEEPER",
+    az: "A–Z",
   },
   auth: {
     eyebrow: "MEAL PREP",
@@ -707,7 +708,12 @@ export const en = {
     storeAria: "Store",
     leftAt: { one: "left at {store}", other: "left at {store}" },
     nothingFor: "Nothing on the list for {store}.",
-    done: "Done · {count} to Inventory",
+    done: "Done · add {count} to inventory",
+    sortAria: "Sort",
+    sortSection: "Section",
+    toLight: "Light theme",
+    toDark: "Dark theme",
+    sectionLeft: { one: "{count} LEFT", other: "{count} LEFT" },
   },
   duration: {
     days: { one: "{count} day", other: "{count} days" },
