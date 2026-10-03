@@ -526,6 +526,7 @@ function isGroupHeader(text) {
   const t = text.trim();
   if (t.length > 60) return false; // too long to plausibly be a header
   if (/^for\s+the\s+/i.test(t)) return true;
+  if (/^pour\s+(?:la|le|les|l['’])\s*\S/i.test(t) && !/\d/.test(t)) return true; // "Pour la sauce"
   if (t.endsWith(":") && !/\d/.test(t)) return true; // "Sauce:" but not "2 tbsp:"
   return false;
 }
@@ -879,6 +880,19 @@ const NOTE_TRIGGER_WORDS = new Set([
   "to", "for",
 ]);
 
+// The same notes in French ("gousses d'ail, hachées", "sel, au goût"),
+// compared without accents: word stems for the prep words, whole words
+// for the rest.
+const FR_NOTE_STEMS = /^(hach|emin|tranch|coup|rap|pel|epepin|egoutt|rinc|fondu|ramolli|battu|grill|cuit|decongel|eplu|ecras|concass|refroidi|tempere|divis)/;
+const FR_NOTE_WORDS = new Set(["en", "finement", "grossierement", "au", "facultatif", "facultative", "pour", "a", "environ", "bien"]);
+const foldAccents = (word) => word.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function isNoteWord(word) {
+  if (NOTE_TRIGGER_WORDS.has(word)) return true;
+  const folded = foldAccents(word);
+  return FR_NOTE_WORDS.has(folded) || FR_NOTE_STEMS.test(folded);
+}
+
 function splitTrailingNote(name) {
   const lastComma = name.lastIndexOf(",");
   if (lastComma === -1) return { name, notes: null };
@@ -886,7 +900,7 @@ function splitTrailingNote(name) {
   const after = name.slice(lastComma + 1).trim();
   if (!before || !after || after.length > 50) return { name, notes: null };
   const firstWord = after.split(/\s+/)[0]?.toLowerCase().replace(/[.,]$/, "");
-  if (!NOTE_TRIGGER_WORDS.has(firstWord)) return { name, notes: null };
+  if (!isNoteWord(firstWord)) return { name, notes: null };
   return { name: before, notes: after };
 }
 
@@ -899,7 +913,7 @@ function splitParentheticalNote(name) {
   const [, before, inside] = match;
   if (!before.trim() || inside.length > 50) return { name, notes: null };
   const firstWord = inside.trim().split(/\s+/)[0]?.toLowerCase().replace(/[.,]$/, "");
-  if (!NOTE_TRIGGER_WORDS.has(firstWord)) return { name, notes: null };
+  if (!isNoteWord(firstWord)) return { name, notes: null };
   return { name: before.trim(), notes: inside.trim() };
 }
 
@@ -914,8 +928,97 @@ function extractIngredientNote(name) {
   return splitParentheticalNote(name);
 }
 
+// French measures, as Quebec recipes write them, and the unit each one is
+// stored as (the same units as the English ones above, so a French and an
+// English recipe's "1 tbsp" merge on the grocery list). Longest first.
+const FR_UNITS = [
+  ["cuill[eè]res?\\s+[àa]\\s+soupe|cuill[eé]r[eé]es?\\s+[àa]\\s+soupe|cuil\\.?\\s*[àa]\\s*soupe|c\\.\\s*[àa]\\s*(?:soupe|s\\.?)|c\\.s\\.", "tbsp"],
+  ["cuill[eè]res?\\s+[àa]\\s+(?:th[ée]|caf[ée])|cuill[eé]r[eé]es?\\s+[àa]\\s+(?:th[ée]|caf[ée])|cuil\\.?\\s*[àa]\\s*(?:th[ée]|caf[ée])|c\\.\\s*[àa]\\s*(?:th[ée]|caf[ée]|t\\.?)|c\\.t\\.", "tsp"],
+  ["bo[iî]tes?\\s+de\\s+conserve|bo[iî]tes?|conserves?", "can"],
+  ["kilogrammes?|kilos?|kg", "kg"],
+  ["grammes?|g", "g"],
+  ["millilitres?|ml", "ml"],
+  ["litres?|l", "l"],
+  ["livres?|lbs?", "lb"],
+  ["onces?|oz", "oz"],
+  ["tasses?", "cup"],
+  ["pinc[ée]es?", "pinch"],
+  ["gousses?", "clove"],
+  ["tranches?", "slice"],
+  ["bottes?|bouquets?", "bunch"],
+  ["brins?", "sprig"],
+  ["branches?", "stalk"],
+  ["t[êe]tes?", "head"],
+  ["traits?", "dash"],
+  ["bocal|bocaux", "jar"],
+  ["pots?", "tub"],
+  ["paquets?|sachets?|enveloppes?", "package"],
+  ["poign[ée]es?", "handful"],
+  ["morceaux?", "piece"],
+  ["bouteilles?", "bottle"],
+  ["sacs?", "bag"],
+  ["douzaines?", "dozen"],
+  ["blocs?", "block"],
+  ["b[âa]tons?", "stick"],
+  ["feuilles?", "leaf"],
+  ["cartons?", "carton"],
+];
+const FR_UNIT_RE = new RegExp(
+  `^(${QTY_CHARS}+)\\s*(${FR_UNITS.map(([pattern]) => `(?:${pattern})`).join("|")})(?=[\\s(]|$)\\s*(.*)$`,
+  "i"
+);
+const FR_UNIT_TESTS = FR_UNITS.map(([pattern, unit]) => [new RegExp(`^(?:${pattern})$`, "i"), unit]);
+
+// "de", "d'", "du", "des" between the measure and the food ("2 tasses de
+// farine", "1 c. à soupe d'huile"), and English "of".
+function stripConnector(name) {
+  return name.replace(/^(?:of|de|du|des)\s+/i, "").replace(/^d['’]\s*/i, "");
+}
+
+// "1 boîte (796 ml) de tomates", "1 sac de 2 lb de carottes": the
+// package's size goes to the note.
+function splitLeadingSize(rest) {
+  const m =
+    rest.match(new RegExp(`^\\(\\s*(${QTY_CHARS}+\\s*[a-zA-Z.]+)\\s*\\)\\s*(.*)$`)) ||
+    rest.match(new RegExp(`^(?:de\\s+)?(${QTY_CHARS}+\\s*(?:g|kg|ml|l|lbs?|oz))\\s+(?:de\\s+|d['’]\\s*)(.*)$`, "i"));
+  return m ? { size: m[1].trim(), rest: m[2] } : { size: null, rest };
+}
+
+// A French line: "2 tasses de farine", "1 c. à soupe d'huile d'olive",
+// "3 gousses d'ail, hachées". null when it doesn't start with an amount
+// and a French measure.
+function parseFrenchLine(text, position) {
+  const m = text.match(FR_UNIT_RE);
+  if (!m) return null;
+  const [, qtyRaw, unitRaw, restRaw] = m;
+  const unit = FR_UNIT_TESTS.find(([re]) => re.test(unitRaw.trim()))?.[1];
+  if (!unit) return null;
+  const { size, rest } = splitLeadingSize(restRaw.trim());
+  let name = stripStrayParens(stripConnector(rest.trim()));
+  name = name.replace(/[,.\-–\s]+$/, "").trim();
+  if (!name) return null;
+  const { name: splitName, notes } = extractIngredientNote(name);
+  return {
+    name: capitalizeFirst(splitName.trim()),
+    quantity: parseFraction(qtyRaw.trim()),
+    unit,
+    notes: [size, notes].filter(Boolean).join(", ") || null,
+    position,
+  };
+}
+
+// French amounts: "1,5 tasse" (a decimal comma, not "1,000"), and "une
+// pincée" / "un oignon" (but not "un peu").
+function normalizeFrenchAmount(line) {
+  return line.replace(/^(\d+),(\d{1,2})(?=\s)/, "$1.$2").replace(/^une?\s+(?!peu\b)/i, "1 ");
+}
+
 function parseIngredientLine(line, position) {
-  const text = normalizeWordedRange(stripQuantityQualifier(stripDualUnitAlt(String(line).trim())));
+  const text = normalizeWordedRange(
+    stripQuantityQualifier(stripDualUnitAlt(normalizeFrenchAmount(String(line).trim())))
+  );
+  const french = parseFrenchLine(text, position);
+  if (french) return french;
 
   const match = text.match(new RegExp(`^(${QTY_CHARS}+)?\\s*([a-zA-Z]+\\.?)?\\s+(.*)$`));
 
@@ -943,8 +1046,10 @@ function parseIngredientLine(line, position) {
   let name = isKnownUnit ? rest.trim() : [unitRaw, rest].filter(Boolean).join(" ").trim();
 
   // "a pinch of salt" — once "pinch" is recognized as the unit, the leftover
-  // "of salt" still has a dangling connector word. Strip it.
+  // "of salt" still has a dangling connector word. Strip it (and its French
+  // counterparts, "500 g de bœuf").
   name = name.replace(/^of\s+/i, "");
+  if (isKnownUnit) name = stripConnector(name);
 
   // Strip a trailing "(30 mL)"/"(60 g)"-style parenthetical that just restates
   // the quantity in another unit — that info now lives in quantity/unit, so

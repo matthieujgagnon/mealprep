@@ -44,3 +44,31 @@ describe("what the recipe card counts as on hand, and as on sale", () => {
     expect(findSaleDeal("mangoes", [regular, sale])).toBe(sale);
   });
 });
+
+describe("French ingredient names", () => {
+  const fr = (id, item) => ({ id, item, matchName: item.split("|").pop().trim().toLowerCase(), unitPrice: 1, unitBasis: "each", store: "Metro" });
+  const deals = [
+    fr(1, "Poitrines de poulet désossées Maple Leaf, 500 g | Boneless chicken breasts"),
+    fr(2, "Lait de coco | Coconut milk"),
+    fr(3, "Lait 2 % | 2% milk"),
+    fr(4, "BŒUF HACHÉ MAIGRE | LEAN GROUND BEEF"),
+    fr(5, "Poulet pané | Breaded chicken"),
+    fr(6, "Poulet entier | Whole chicken"),
+    fr(7, "Beurre d'arachide | Peanut butter"),
+    fr(8, "Pois chiches en conserve | Canned chickpeas"),
+  ];
+  const ids = (name) => findDealsFor(name, deals).map((d) => d.id);
+
+  it("meet the French half of a Quebec flyer's name, accents or not", () => {
+    expect(ids("Poitrines de poulet")).toEqual([1]);
+    expect(ids("boeuf hache")).toEqual([4]);
+    expect(ids("Pois chiches")).toEqual([8]);
+    expect(ids("Lait de coco")).toEqual([2]);
+  });
+
+  it("but not another product that starts with the same food", () => {
+    expect(ids("Lait")).toEqual([3]); // not coconut milk
+    expect(ids("Poulet")).toEqual([6]); // not breaded chicken
+    expect(ids("Beurre")).toEqual([]); // not peanut butter
+  });
+});
