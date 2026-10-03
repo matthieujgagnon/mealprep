@@ -194,8 +194,19 @@ model GroceryCheckedItem {
   userId      String? // nullable only pre-backfill - see Recipe.userId
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   core        String // normalized ingredient name, matches the grocery list's item.key
-  // Set by "Done shopping" once the item has been added to Inventory, so
-  // it stays checked (bought) without being added a second time.
+  // What the check covers: the amount the row showed when it was checked, as
+  // { parts: [{ quantity, unit }], usedIn: [recipe titles] }. A meal added
+  // later that needs more leaves the extra unchecked. Null on a check made
+  // before amounts were saved: it covers whatever the row needs, until the
+  // list saves the amount (see tidyChecks in the client's groceryChecks.js).
+  covered     Json?
+  // What "Done shopping" has already put in Inventory, same shape. Those
+  // amounts are off the list; the row stays only to remember them, until no
+  // planned meal needs the item any more.
+  bought      Json?
+  // Before amounts were saved, "Done shopping" set this and left the row
+  // checked. Kept for those rows: true with no `bought` means everything the
+  // row needed was bought. New rows leave it false.
   inInventory Boolean  @default(false)
   createdAt   DateTime @default(now())
 

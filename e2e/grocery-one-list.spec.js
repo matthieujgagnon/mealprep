@@ -145,7 +145,7 @@ test("manual items, checks and store moves stay until changed, whichever days pa
   await expect(row(page, "paper towels")).toHaveCount(0);
   await expect(page.locator(".riso-grocery-removed")).toHaveCount(0);
   const checked = await (await page.request.get("/api/grocery-checked")).json();
-  expect(checked).toEqual(["garlic"]);
+  expect(checked.map((c) => c.core)).toEqual(["garlic"]);
 });
 
 test("On sale lists what to buy first, soonest-ending first", async ({ page }) => {

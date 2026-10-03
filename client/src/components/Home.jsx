@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
 import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
+import { applyChecks } from "../lib/groceryChecks.js";
 import { findBestDeal, findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
@@ -163,7 +164,8 @@ export function Home({
   // Every planned meal from today onward, across weeks: what the grocery
   // card is built from (the same list the Grocery tab shows).
   const [upcomingEntries, setUpcomingEntries] = useState([]);
-  const [checked, setChecked] = useState({});
+  // The list's saved check rows (see GroceryList); what is checked or bought is worked out from them.
+  const [checkRows, setCheckRows] = useState({});
   const [extraItems, setExtraItems] = useState([]);
   const [groceryOverrides, setGroceryOverrides] = useState([]);
   const { deals } = useDeals();
@@ -199,8 +201,8 @@ export function Home({
     api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => setUpcomingEntries([]));
     api
       .listGroceryChecked()
-      .then((cores) => setChecked(Object.fromEntries(cores.map((c) => [c, true]))))
-      .catch(() => setChecked({}));
+      .then((rows) => setCheckRows(Object.fromEntries(rows.map((row) => [row.core, row]))))
+      .catch(() => setCheckRows({}));
     api.listGroceryExtras().then(setExtraItems).catch(() => setExtraItems([]));
     api.listGroceryOverrides().then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
     // weekStart is always "today's" Monday here — this only needs to run once per mount.
@@ -235,11 +237,18 @@ export function Home({
   }
 
   const groceryItems = buildGroceryList(upcomingEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
-  const toBuy = groceryItems.filter((i) => !i.isStaple && !i.removed);
-  const checkedCount = toBuy.filter((i) => checked[i.key]).length;
+  // What's still to buy: what "Done shopping" bought is off the list.
+  const { items: toBuy, checked, bought } = applyChecks(
+    groceryItems.filter((i) => !i.isStaple && !i.removed),
+    checkRows
+  );
+  const allBought = toBuy.length === 0 && bought.length > 0;
+  // After "Done shopping" the card keeps showing the trip: everything bought.
+  const totalCount = allBought ? bought.length : toBuy.length;
+  const checkedCount = allBought ? bought.length : toBuy.filter((i) => checked[i.key]).length;
   const saleCount = toBuy.filter((i) => !checked[i.key] && findBestDeal(i.name, deals)).length;
-  const groceriesDone = toBuy.length > 0 && checkedCount === toBuy.length;
-  const progressPct = toBuy.length > 0 ? Math.round((checkedCount / toBuy.length) * 100) : 0;
+  const groceriesDone = totalCount > 0 && checkedCount === totalCount;
+  const progressPct = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
 
   const todaysDinner = plannerEntries.filter((e) => e.dayOfWeek === todayIndex && e.mealType === "dinner");
   const tonightBlank = todaysDinner.some(isBlankMarker);
@@ -400,13 +409,13 @@ export function Home({
           {groceriesDone ? (
             <div className="riso-home-grocery-done">
               <span className="riso-home-grocery-done-title">{t("home.groceriesDone")}</span>
-              <span className="riso-home-grocery-unit wide">{t("home.allBought", { count: toBuy.length })}</span>
+              <span className="riso-home-grocery-unit wide">{t("home.allBought", { count: totalCount })}</span>
             </div>
           ) : (
             <div className="riso-home-grocery-count">
-              <span className="home-grocery-number">{toBuy.length - checkedCount}</span>
+              <span className="home-grocery-number">{totalCount - checkedCount}</span>
               <span className="riso-home-grocery-unit">
-                {toBuy.length === 0 ? t("home.nothingYet") : t("home.leftToGrab", { count: toBuy.length - checkedCount })}
+                {totalCount === 0 ? t("home.nothingYet") : t("home.leftToGrab", { count: totalCount - checkedCount })}
               </span>
             </div>
           )}
@@ -414,7 +423,7 @@ export function Home({
             <div className="riso-home-grocery-fill" style={{ width: `${progressPct}%` }} />
           </div>
           <p className="riso-home-grocery-line">
-            {t("home.inCart", { checked: checkedCount, total: toBuy.length })}
+            {t("home.inCart", { checked: checkedCount, total: totalCount })}
             {saleCount > 0 ? t("home.onSale", { count: saleCount }) : ""}
           </p>
           <button

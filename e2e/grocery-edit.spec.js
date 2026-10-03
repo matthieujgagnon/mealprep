@@ -181,18 +181,19 @@ test("stores: add one and drag an item into it; it stays there", async ({ page }
   ).toBeVisible();
 });
 
-test("Done shopping keeps items bought, adds them to Inventory once, and says the groceries are done", async ({ page }) => {
+test("Done shopping adds the checked items to Inventory once, takes them off the list, and says the groceries are done", async ({ page }) => {
   await setup(page);
   for (const name of ["Garlic", "Lemon", "Spaghetti"]) await row(page, name).click();
   // Everything in the cart: the card goes dark before Done shopping.
   await expect(page.locator(".riso-grocery-cart")).toHaveClass(/done/);
   await page.getByRole("button", { name: "Done shopping · add 3 to inventory" }).click();
-  await expect(page.getByText("Groceries done ✓")).toBeVisible();
-  // Still checked after a reload, and not added a second time.
+  await expect(page.locator(".riso-grocery-cart-done")).toHaveText("Groceries done ✓ Everything's in your Inventory.");
+  await expect(row(page, "Garlic")).toHaveCount(0);
+  // Still off the list after a reload, and not added a second time.
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("Groceries done ✓")).toBeVisible();
+  await expect(page.locator(".riso-grocery-cart-done")).toBeVisible();
+  await expect(row(page, "Garlic")).toHaveCount(0);
   const inventory = await (await page.request.get("/api/pantry-inventory")).json();
   expect(inventory.filter((i) => /garlic/i.test(i.name))).toHaveLength(1);
 

@@ -1189,7 +1189,7 @@ export const fr = {
           "Choisissez une vue : [[viewTabs]].",
           "Par magasin, un article en rabais commence dans le magasin qui a l'aubaine. Une étiquette verte [[dealTag]] montre où il coûte le moins cher et ouvre l'article de la circulaire.",
           "Glissez un article vers un autre magasin et il y reste. Glissez un magasin par sa poignée [[grip]] pour les réordonner, ou ajoutez vos propres magasins.",
-          "Touchez un article pour le cocher. Les articles cochés descendent au bas et restent cochés jusqu'à ce que vous les décochiez. Touchez une quantité pour mettre la vôtre.",
+          "Touchez un article pour le cocher. Les articles cochés descendent au bas. Une coche couvre la quantité que la ligne indiquait quand vous l'avez cochée, et elle reste jusqu'à ce que vous décochiez l'article ou que vous ayez fini l'épicerie. Si un repas ajouté plus tard demande plus de cet ingrédient, la ligne revient non cochée, avec seulement la quantité en plus, par exemple +200 g. Touchez une quantité pour mettre la vôtre.",
           "« Retirer » [[rowRemove]] enlève un article de la liste jusqu'à ce que les repas qui en ont besoin quittent votre plan. La recette ne change pas. Les pastilles sous la liste [[removedChip]] permettent de le ramener. Un article que vous avez ajouté vous-même est supprimé.",
           "Écrivez dans la zone du haut pour ajouter vos propres articles, comme 2 citrons. [[share]] envoie ce qui reste sous forme de liste en texte.",
           "La bande « En rabais » liste les aubaines sur les articles de votre liste, celles qui finissent le plus tôt en premier.",
@@ -1197,6 +1197,7 @@ export const fr = {
           "Appuyez sur [[atStore]] pour le mode magasin. Il montre un magasin à la fois, avec ses articles groupés par rayon dans l'ordre du parcours, ou de A à Z.",
           "Un gros compteur et une barre de progression montrent ce qui reste. Touchez une ligne pour la cocher. Choisissez un thème clair ou sombre.",
           "Une fois terminé, appuyez sur [[doneShopping]] pour ajouter les articles cochés à votre inventaire. Ils vont au frigo, au congélateur ou au garde-manger avec une date limite tirée d'USDA FoodKeeper.",
+          "Ces articles quittent ensuite la liste et leurs coches sont effacées. Un repas ajouté plus tard qui demande le même ingrédient le ramène non coché, avec seulement la quantité qu'il reste à acheter. Un article coché que vous avez ajouté vous-même est supprimé. Le bouton « Terminé » du mode magasin fait la même chose.",
         ],
       },
       flyers: {
