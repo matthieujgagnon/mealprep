@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const groceryItemOverridesRouter = Router();
 
@@ -7,7 +8,7 @@ export const groceryItemOverridesRouter = Router();
 // and custom quantities (see GroceryItemOverride).
 groceryItemOverridesRouter.get("/", async (req, res) => {
   const { week } = req.query;
-  if (!week) return res.status(400).json({ error: "week is required" });
+  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
   const overrides = await prisma.groceryItemOverride.findMany({
     where: { userId: req.userId, weekStart: week },
   });
@@ -20,7 +21,7 @@ groceryItemOverridesRouter.get("/", async (req, res) => {
 // Responds with the override, or null once there's nothing left of it.
 groceryItemOverridesRouter.put("/", async (req, res) => {
   const { weekStart, key } = req.body;
-  if (!weekStart || !key) return res.status(400).json({ error: "weekStart and key are required" });
+  if (!weekStart || !key) return res.status(400).json(fail(req, "required", { fields: "weekStart, key" }));
 
   const data = {};
   if ("quantity" in req.body) {

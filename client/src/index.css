@@ -857,6 +857,41 @@ select {
   font-family: var(--riso-font-display);
 }
 
+/* FR | EN: two small pills in one outline, the current one filled. */
+.riso-lang-switch {
+  display: inline-flex;
+  flex: none;
+  border: 2px solid var(--riso-ink, #16181f);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--riso-surface, #fffdf8);
+}
+
+.riso-lang-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--riso-ink, #16181f);
+  font: 600 11px/1 var(--riso-font-mono, monospace);
+  letter-spacing: 0.08em;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+
+.riso-lang-switch button.active {
+  background: var(--riso-ink, #16181f);
+  color: var(--riso-canvas, #f4f1ea);
+}
+
+.riso-lang-switch button:focus-visible {
+  outline: 2px solid var(--riso-accent, #2323ff);
+  outline-offset: -4px;
+}
+
+.riso-auth-lang {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .riso-auth-col {
   width: 100%;
   max-width: 440px;

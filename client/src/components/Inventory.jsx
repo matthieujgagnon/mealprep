@@ -3,21 +3,23 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { formatFractionQuantity, parseQuantityInput, pickFraction, unitLabel } from "../lib/units.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
-import { daysUntil } from "../lib/pantryInventory.js";
+import { categoryLabel, daysUntil } from "../lib/pantryInventory.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { genericPhotoUrl } from "../lib/ingredientPhoto.js";
 import { isImageFile, uploadPhoto } from "../lib/photoUpload.js";
 import { BottomSheet, HintStrip } from "./RisoControls.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
+import { t } from "../i18n/index.js";
+import { formatDate, formatDayRange } from "../i18n/format.js";
 
 // Fridge and Freezer sit side by side, Pantry after - see the design
 // handoff. "Counter" is a fourth USDA location the bundled data supports
 // but this app has no dedicated shelf for yet (deferred per the handoff's
 // own note that it's optional).
 const SHELF_LOCATIONS = [
-  { id: "fridge", label: "Fridge" },
-  { id: "freezer", label: "Freezer" },
-  { id: "pantry", label: "Pantry" },
+  { id: "fridge", get label() { return t("locations.fridge"); } },
+  { id: "freezer", get label() { return t("locations.freezer"); } },
+  { id: "pantry", get label() { return t("locations.pantry"); } },
 ];
 
 // Shelves sit on a 12-column grid (Riso Inventory handoff): Fridge and
@@ -151,18 +153,18 @@ function AddInventoryItemForm({ onAdd, onDone, sections, defaultLocation = "frid
       <input
         autoFocus
         type="text"
-        placeholder="e.g. Chicken breast"
+        placeholder={t("inventory.namePlaceholder")}
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <input
         type="text"
-        placeholder="Qty"
+        placeholder={t("inventory.qtyPlaceholder")}
         value={quantity}
         onChange={(e) => setQuantity(e.target.value)}
         style={{ width: 56 }}
       />
-      <UnitSelect aria-label="Unit" value={unit} onChange={setUnit} emptyLabel="unit" />
+      <UnitSelect aria-label={t("inventory.unitAria")} value={unit} onChange={setUnit} emptyLabel={t("inventory.unitEmpty")} />
       <select value={location} onChange={(e) => setLocation(e.target.value)}>
         {sections.map((l) => (
           <option key={l.id} value={l.id}>
@@ -174,10 +176,10 @@ function AddInventoryItemForm({ onAdd, onDone, sections, defaultLocation = "frid
         type="date"
         value={expiresAt}
         onChange={(e) => setExpiresAt(e.target.value)}
-        title={suggesting ? "Looking up a suggested date…" : "Expiration date"}
+        title={suggesting ? t("inventory.lookingUp") : t("inventory.expirationDate")}
       />
       <button className="btn primary btn-sm" type="submit" disabled={adding}>
-        Add
+        {t("inventory.add")}
       </button>
     </form>
   );
@@ -238,10 +240,7 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
     const selectedCount = pending.filter((row) => row.selected).length;
     return (
       <div className="receipt-review">
-        <p className="receipt-review-intro">
-          Found {pending.length} item{pending.length === 1 ? "" : "s"} — uncheck anything that isn't
-          actually food, fix any misread names, then add the rest.
-        </p>
+        <p className="receipt-review-intro">{t("inventory.found", { count: pending.length })}</p>
         <ul className="receipt-review-list">
           {pending.map((row, i) => (
             <li key={i} className="receipt-review-row">
@@ -249,7 +248,7 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
                 type="checkbox"
                 checked={row.selected}
                 onChange={(e) => updateRow(i, { selected: e.target.checked })}
-                aria-label={`Include ${row.name}`}
+                aria-label={t("inventory.include", { name: row.name })}
               />
               <input
                 type="text"
@@ -274,7 +273,7 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
         {error && <p className="flyer-upload-error">{error}</p>}
         <div className="receipt-review-actions">
           <button type="button" className="btn primary" onClick={handleAddSelected} disabled={saving || selectedCount === 0}>
-            {saving ? "Adding…" : `Add ${selectedCount} item${selectedCount === 1 ? "" : "s"} to inventory`}
+            {saving ? t("inventory.adding") : t("inventory.addSelected", { count: selectedCount })}
           </button>
         </div>
       </div>
@@ -284,7 +283,7 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
   return (
     <div className="flyer-upload-form">
       <label className="form-label">
-        Receipt photo or PDF
+        {t("inventory.receiptLabel")}
         <input
           type="file"
           accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -292,7 +291,7 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
           disabled={uploading}
         />
       </label>
-      {uploading && <p className="receipt-review-intro">Reading…</p>}
+      {uploading && <p className="receipt-review-intro">{t("inventory.reading")}</p>}
       {error && <p className="flyer-upload-error">{error}</p>}
     </div>
   );
@@ -302,7 +301,7 @@ function Modal({ title, onClose, children }) {
   return (
     <div className="modal-overlay riso-inv-form-overlay" onClick={onClose}>
       <div className="card modal-content riso-inv-form-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close riso-inv-form-close" onClick={onClose} aria-label="Close">
+        <button className="modal-close riso-inv-form-close" onClick={onClose} aria-label={t("common.close")}>
           ×
         </button>
         <h3 className="riso-inv-form-title">{title}</h3>
@@ -312,18 +311,21 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-const LOCATION_WORD = { fridge: "fridge", freezer: "freezer", pantry: "pantry" };
-
 // The card's storage tip, from the USDA FoodKeeper ranges the server sends
 // (item.locations): in the freezer "Keeps 3-6 months frozen"; elsewhere
 // "Freeze for 3-6 months" when it freezes, else "5-7 days in the fridge".
 function storageTip(item) {
   const here = item.locations?.[item.location];
   const freezer = item.locations?.freezer;
-  if (item.location === "freezer") return here ? `Keeps ${here.rangeLabel} frozen` : null;
-  if (freezer) return `Freeze for ${freezer.rangeLabel}`;
-  if (here && LOCATION_WORD[item.location]) return `${here.rangeLabel} in the ${LOCATION_WORD[item.location]}`;
+  if (item.location === "freezer") return here ? t("inventory.tipKeepsFrozen", { range: rangeText(here) }) : null;
+  if (freezer) return t("inventory.tipFreezeFor", { range: rangeText(freezer) });
+  if (here && ["fridge", "pantry"].includes(item.location)) return t(`inventory.tipIn.${item.location}`, { range: rangeText(here) });
   return null;
+}
+
+// "3–6 months" / "3 à 6 mois" from the USDA range the server sends.
+function rangeText(data) {
+  return data.minDays != null && data.maxDays != null ? formatDayRange(data.minDays, data.maxDays) : data.rangeLabel;
 }
 
 // The expiry line down the card's left edge: how close the date is on a
@@ -336,9 +338,9 @@ function expiryLine(item) {
   if (!item.expiresAt) return null;
   const d = daysUntil(item.expiresAt);
   if (d >= LINE_DAYS) return null;
-  if (d <= 0) return { expired: true, label: "expired" };
+  if (d <= 0) return { expired: true, label: t("inventory.expired") };
   const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
-  const label = d === 1 ? "use by tomorrow" : `${d} days left`;
+  const label = d === 1 ? t("inventory.useByTomorrow") : t("inventory.daysLeft", { count: d });
   return { height: `${Math.max(8, Math.round((1 - d / LINE_DAYS) * 100))}%`, color, label };
 }
 
@@ -422,9 +424,17 @@ function CardQuantity({ item, onUpdate }) {
         }}
         onPointerDown={keep}
         onKeyDown={keep}
-        aria-label={`Change the amount of ${item.name}${item.quantity != null ? `, now ${item.quantity}${unit ? ` ${unit}` : ""}` : ""}`}
+        aria-label={
+          item.quantity != null
+            ? t("inventory.changeAmountNow", { name: item.name, amount: `${item.quantity}${unit ? ` ${unit}` : ""}` })
+            : t("inventory.changeAmount", { name: item.name })
+        }
       >
-        {item.quantity != null ? <span className="inv-card-qty-num">{item.quantity}</span> : <span className="inv-card-qty-unit">+ qty</span>}
+        {item.quantity != null ? (
+          <span className="inv-card-qty-num">{item.quantity}</span>
+        ) : (
+          <span className="inv-card-qty-unit">{t("inventory.addQty")}</span>
+        )}
         {item.quantity != null && unit && <span className="inv-card-qty-unit"> {unit}</span>}
       </button>
     );
@@ -444,7 +454,7 @@ function CardQuantity({ item, onUpdate }) {
         if (!e.currentTarget.contains(e.relatedTarget)) save();
       }}
     >
-      <button type="button" onClick={() => bump(-1)} aria-label={`Less ${item.name}`}>
+      <button type="button" onClick={() => bump(-1)} aria-label={t("inventory.less", { name: item.name })}>
         −
       </button>
       <input
@@ -454,9 +464,9 @@ function CardQuantity({ item, onUpdate }) {
         value={draft.qty}
         onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
         onKeyDown={onKeys}
-        aria-label={`Amount of ${item.name}`}
+        aria-label={t("inventory.amountOf", { name: item.name })}
       />
-      <button type="button" onClick={() => bump(1)} aria-label={`More ${item.name}`}>
+      <button type="button" onClick={() => bump(1)} aria-label={t("inventory.more", { name: item.name })}>
         +
       </button>
       <UnitSelect
@@ -465,7 +475,7 @@ function CardQuantity({ item, onUpdate }) {
         onChange={(u) => setDraft({ ...draft, unit: u })}
         onKeyDown={onKeys}
         emptyLabel="—"
-        aria-label={`Measure of ${item.name}`}
+        aria-label={t("inventory.measureOf", { name: item.name })}
       />
     </span>
   );
@@ -528,7 +538,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, 
         <ItemPhoto item={item} />
         <div className="inv-card-main">
           <span className="inv-card-name">{item.name}</span>
-          {line?.expired && <span className="inv-card-expired">Expired</span>}
+          {line?.expired && <span className="inv-card-expired">{t("inventory.expiredTag")}</span>}
         </div>
         <CardQuantity item={item} onUpdate={onUpdate} />
         <span
@@ -548,7 +558,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, 
               onToggleSelect();
             }
           }}
-          aria-label={`Select ${item.name}`}
+          aria-label={t("inventory.select", { name: item.name })}
         >
           {selected ? "✓" : ""}
         </span>
@@ -558,9 +568,9 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, 
 }
 
 const WIDTH_PRESETS = [
-  { label: "Full width", span: GRID_COLUMNS },
-  { label: "Half", span: 6 },
-  { label: "Third", span: 4 },
+  { id: "full", span: GRID_COLUMNS, get label() { return t("inventory.widthFull"); } },
+  { id: "half", span: 6, get label() { return t("inventory.widthHalf"); } },
+  { id: "third", span: 4, get label() { return t("inventory.widthThird"); } },
 ];
 
 // A shelf's header in edit mode: its name as an input, the size presets
@@ -588,7 +598,7 @@ function useShelfEditor({ location, span, height, onRename, onResize, onDelete, 
     nameInput: (
       <input
         className="inv-shelf-name-input"
-        aria-label="Section name"
+        aria-label={t("inventory.sectionName")}
         value={name}
         maxLength={40}
         autoFocus
@@ -612,20 +622,21 @@ function useShelfEditor({ location, span, height, onRename, onResize, onDelete, 
     controls: (
       <div className="inv-shelf-controls">
         {WIDTH_PRESETS.map((p) => (
-          <button key={p.label} type="button" className={span === p.span ? "on" : ""} onClick={() => onResize({ span: p.span, height })}>
+          <button key={p.id} type="button" className={span === p.span ? "on" : ""} onClick={() => onResize({ span: p.span, height })}>
             {p.label}
           </button>
         ))}
         <button type="button" className={height ? "" : "on"} onClick={() => onResize({ span, height: null })}>
-          Auto height
+          {t("inventory.autoHeight")}
         </button>
         {location.custom && (
           <button type="button" className="danger" onClick={onDelete}>
-            Delete shelf
+            {t("inventory.deleteShelf")}
           </button>
         )}
         <span className="inv-shelf-controls-note">
-          {location.custom ? "Its items move to the Pantry. " : ""}Drag cards between shelves any time.
+          {location.custom ? `${t("inventory.itemsToPantry")} ` : ""}
+          {t("inventory.dragBetween")}
         </span>
         {error && <p className="inv-section-editor-error">{error}</p>}
       </div>
@@ -700,7 +711,7 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
       type="button"
       className="inv-shelf-resize"
       aria-label={label}
-      title="Drag to resize. Double-click for auto height."
+      title={t("inventory.resizeTitle")}
       onPointerDown={onPointerDown}
       onDoubleClick={() => onCommit({ span, height: null })}
       onKeyDown={onKeyDown}
@@ -752,7 +763,7 @@ function ShelfColumn({
   if (editing) classes.push("editing");
   if (moveState?.id === location.id) classes.push("moving");
   if (moveState?.overId === location.id) classes.push(moveState.after ? "drop-after" : "drop-before");
-  const sizeLabel = `${span}/${GRID_COLUMNS} · ${height ? `${height}PX` : "AUTO"}`;
+  const sizeLabel = `${span}/${GRID_COLUMNS} · ${height ? `${height}PX` : t("inventory.sizeAuto")}`;
 
   const editor = useShelfEditor({
     location,
@@ -773,15 +784,15 @@ function ShelfColumn({
       className={classes.join(" ")}
       style={{ "--span": span, height: height ? `${height}px` : undefined }}
       data-section-id={location.id}
-      aria-label={`${location.label} section`}
+      aria-label={t("inventory.sectionAria", { name: location.label })}
     >
       <div className="inv-shelf-header">
         {arrangeable && (
           <button
             type="button"
             className="inv-shelf-grip"
-            aria-label={`Move the "${location.label}" section`}
-            title="Drag to move this shelf (arrow keys work too)"
+            aria-label={t("inventory.moveSection", { name: location.label })}
+            title={t("inventory.moveTitle")}
             onPointerDown={(e) => onStartMove(location.id, e)}
             onKeyDown={(e) => {
               if (e.key === "ArrowLeft" || e.key === "ArrowUp") onMoveByKey(location.id, -1, e);
@@ -799,8 +810,8 @@ function ShelfColumn({
           <button
             type="button"
             className="inv-shelf-edit inv-shelf-add"
-            aria-label={`Add an item to ${location.label}`}
-            title={`Add to ${location.label}`}
+            aria-label={t("inventory.addItemTo", { name: location.label })}
+            title={t("inventory.addTo", { name: location.label })}
             onClick={onAddHere}
           >
             +
@@ -809,8 +820,10 @@ function ShelfColumn({
         <button
           type="button"
           className={`inv-shelf-edit${editing ? " on" : ""}`}
-          aria-label={editing ? `Done editing the "${location.label}" section` : `Edit the "${location.label}" section`}
-          title={editing ? "Done" : "Edit shelf"}
+          aria-label={
+            editing ? t("inventory.doneEditing", { name: location.label }) : t("inventory.editSection", { name: location.label })
+          }
+          title={editing ? t("inventory.done") : t("inventory.editShelf")}
           onMouseDown={(e) => editing && e.preventDefault()}
           onClick={async () => {
             if (editing) await editor.commitName();
@@ -834,11 +847,11 @@ function ShelfColumn({
             onUpdate={onUpdate}
           />
         ))}
-        {sorted.length === 0 && <div className="inv-shelf-empty">Drop items here</div>}
+        {sorted.length === 0 && <div className="inv-shelf-empty">{t("inventory.dropHere")}</div>}
       </div>
       {arrangeable && (
         <ResizeHandle
-          label={`Resize the "${location.label}" section`}
+          label={t("inventory.resizeSection", { name: location.label })}
           span={location.span}
           height={location.height}
           shelfRef={shelfRef}
@@ -868,7 +881,7 @@ function AddSectionTile({ onAdd }) {
         }
       }}
     >
-      {adding ? "Adding…" : "+ Add shelf"}
+      {adding ? t("inventory.adding") : t("inventory.addShelf")}
     </button>
   );
 }
@@ -889,13 +902,13 @@ function PhotoPicker({ item, onUpdate }) {
   async function saveLink() {
     const url = (link || "").trim();
     if (!url) return setLink(null);
-    if (!/^https?:\/\/\S+$/i.test(url)) return setError("Paste a link that starts with http:// or https://.");
+    if (!/^https?:\/\/\S+$/i.test(url)) return setError(t("inventory.linkHttp"));
     setError(null);
     setLink(null);
     try {
       await onUpdate(item.id, { imageUrl: url });
     } catch (err) {
-      setError(err.message || "That link couldn't be saved.");
+      setError(err.message || t("inventory.linkFailed"));
     }
   }
 
@@ -903,13 +916,13 @@ function PhotoPicker({ item, onUpdate }) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!isImageFile(file)) return setError("Pick a JPEG, PNG, WebP or GIF photo.");
+    if (!isImageFile(file)) return setError(t("inventory.pickImage"));
     setBusy(true);
     setError(null);
     try {
       await onUpdate(item.id, { imageUrl: await uploadPhoto(file) });
     } catch (err) {
-      setError(err.message || "The photo couldn't be uploaded.");
+      setError(err.message || t("inventory.uploadFailed"));
     } finally {
       setBusy(false);
     }
@@ -922,10 +935,10 @@ function PhotoPicker({ item, onUpdate }) {
         {link === null ? (
           <span className="inv-panel-photo-pills">
             <button type="button" className="inv-pill" onClick={() => fileRef.current?.click()} disabled={busy}>
-              {busy ? "Uploading…" : own ? "Change photo" : "Add photo"}
+              {busy ? t("inventory.uploading") : own ? t("inventory.changePhoto") : t("inventory.addPhoto")}
             </button>
             <button type="button" className="inv-pill" onClick={() => setLink("")} disabled={busy}>
-              Paste link
+              {t("inventory.pasteLink")}
             </button>
           </span>
         ) : (
@@ -940,34 +953,37 @@ function PhotoPicker({ item, onUpdate }) {
                 if (e.key === "Enter") saveLink();
                 if (e.key === "Escape") setLink(null);
               }}
-              aria-label="Photo link"
+              aria-label={t("inventory.photoLink")}
             />
             <button type="button" className="link-btn" onClick={saveLink}>
-              Use it
+              {t("inventory.useIt")}
             </button>
           </span>
         )}
         {own && !busy && (
           <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
-            Remove photo
+            {t("inventory.removePhoto")}
           </button>
         )}
         {generic && !busy && (
           <span className="inv-panel-photo-credit">
-            Stock photo ·{" "}
+            {t("inventory.stockPhoto")}{" "}
             <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: "none" })}>
-              Hide it
+              {t("inventory.hideIt")}
             </button>
           </span>
         )}
         {hidden && genericPhotoUrl(item.name) && !busy && (
           <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
-            Show the stock photo
+            {t("inventory.showStock")}
           </button>
         )}
         {error && <span className="inv-panel-photo-error">{error}</span>}
       </div>
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={handleFile} aria-label="Item photo" />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden
+        onChange={handleFile}
+        aria-label={t("inventory.itemPhoto")}
+      />
     </div>
   );
 }
@@ -1016,12 +1032,14 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
   );
 
   const useByText = item.expiresAt
-    ? `Use by ${new Date(item.expiresAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: daysUntil(item.expiresAt) > 300 ? "numeric" : undefined,
-      })}.`
-    : "No date yet.";
+    ? t("inventory.useBy", {
+        date: formatDate(new Date(item.expiresAt), {
+          month: "short",
+          day: "numeric",
+          year: daysUntil(item.expiresAt) > 300 ? "numeric" : undefined,
+        }),
+      })
+    : t("inventory.noDate");
 
   const recipeCount = recipes.filter(
     (r) => !r.isPlaceholder && r.ingredients?.some((i) => i.name?.toLowerCase().includes(item.name.toLowerCase()))
@@ -1043,17 +1061,17 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
               e.currentTarget.blur();
             }
           }}
-          aria-label="Item name"
+          aria-label={t("inventory.itemName")}
         />
-        <span className="inv-panel-category">{item.category}</span>
+        <span className="inv-panel-category">{categoryLabel(item.category)}</span>
       </div>
 
       <PhotoPicker item={item} onUpdate={onUpdate} />
 
       <div>
-        <div className="inv-panel-label">Quantity</div>
+        <div className="inv-panel-label">{t("inventory.quantity")}</div>
         <div className="inv-qty-stepper">
-          <button type="button" onClick={() => adjustQty(-1)} aria-label={`Decrease quantity by ${step}`}>
+          <button type="button" onClick={() => adjustQty(-1)} aria-label={t("inventory.decrease", { step })}>
             −
           </button>
           <input
@@ -1061,7 +1079,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
             type="text"
             inputMode="decimal"
             className="inv-qty-input"
-            aria-label="Quantity"
+            aria-label={t("inventory.quantity")}
             defaultValue={formatFractionQuantity(item.quantity ?? 0)}
             onBlur={(e) => {
               // "0.25", "1/2", "½", "1 1/2" or "1½"; anything else goes back.
@@ -1077,15 +1095,15 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
               }
             }}
           />
-          <button type="button" onClick={() => adjustQty(1)} aria-label={`Increase quantity by ${step}`}>
+          <button type="button" onClick={() => adjustQty(1)} aria-label={t("inventory.increase", { step })}>
             +
           </button>
           <UnitSelect
             className="inv-panel-unit"
             value={item.unit || ""}
             onChange={(u) => onUpdate(item.id, { unit: u || null })}
-            emptyLabel="no measure"
-            aria-label="Measure"
+            emptyLabel={t("inventory.noMeasure")}
+            aria-label={t("inventory.measure")}
           />
         </div>
         <div className="inv-qty-chips">
@@ -1093,7 +1111,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
             <button
               key={label}
               type="button"
-              aria-label={`Set to ${label}`}
+              aria-label={t("inventory.setTo", { value: label })}
               onClick={() => onUpdate(item.id, { quantity: pickFraction(item.quantity, v) })}
             >
               {label}
@@ -1103,7 +1121,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
       </div>
 
       <div>
-        <div className="inv-panel-label">Stored in · USDA</div>
+        <div className="inv-panel-label">{t("inventory.storedIn")}</div>
         <div className="inv-storage-pills">
           {pillLocations.map((l) => {
             const data = item.locations?.[l.id];
@@ -1117,7 +1135,7 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
                 onClick={() => onUpdate(item.id, { location: l.id, expiresAt: data ? data.expiresAt : null })}
               >
                 <span>{labelFor[l.id] || l.label}</span>
-                {data && <span className="inv-storage-pill-range">{data.rangeLabel}</span>}
+                {data && <span className="inv-storage-pill-range">{rangeText(data)}</span>}
               </button>
             );
           })}
@@ -1128,9 +1146,9 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
         <div className="inv-panel-tip">
           <span>❄ {tip}</span>
           <span className="inv-panel-tip-source">
-            SOURCE
+            {t("same.source")}
             <br />
-            USDA FOODKEEPER
+            {t("same.usdaFoodkeeper")}
           </span>
         </div>
       )}
@@ -1138,13 +1156,13 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
       <p className="inv-use-by">
         {useByText}{" "}
         <button type="button" className="link-btn" onClick={pickDate}>
-          Pick a date
+          {t("inventory.pickDate")}
         </button>
         <input
           ref={dateRef}
           type="date"
           className="inv-use-by-picker"
-          aria-label="Use-by date"
+          aria-label={t("inventory.useByDate")}
           value={item.expiresAt ? item.expiresAt.slice(0, 10) : ""}
           onChange={(e) => onUpdate(item.id, { expiresAt: e.target.value || null })}
         />
@@ -1152,18 +1170,18 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
 
       <div className="inv-panel-staple">
         <button type="button" className={`btn subtle btn-sm${isStaple ? " active" : ""}`} onClick={() => onToggleStaple(item)}>
-          {isStaple ? "★ Pantry staple" : "☆ Mark as pantry staple"}
+          {isStaple ? t("inventory.staple") : t("inventory.markStaple")}
         </button>
       </div>
 
       <div className="inv-panel-footer">
-        {recipeCount} of your recipes use {item.name}.{" "}
+        {t("home.recipesUse", { count: recipeCount, name: item.name })}{" "}
         <button type="button" className="link-btn" onClick={() => onFindRecipes(item.name)}>
-          See them →
+          {t("home.seeThem")}
         </button>
         <br />
         <button type="button" className="link-btn subtle" onClick={() => onDelete(item.id)}>
-          Remove (typo or duplicate, not used/tossed)
+          {t("inventory.removeTypo")}
         </button>
       </div>
     </aside>
@@ -1173,20 +1191,20 @@ function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple,
 function FloatingActionBar({ count, onFindRecipes, onConsume, onFreeze, onClear }) {
   return (
     <div className="inv-action-bar">
-      <span className="inv-action-count">{count} selected</span>
+      <span className="inv-action-count">{t("inventory.selected", { count })}</span>
       <button type="button" className="inv-action-btn primary" onClick={onFindRecipes}>
-        Find recipes
+        {t("inventory.findRecipes")}
       </button>
       <button type="button" className="inv-action-btn" onClick={() => onConsume("consumed")}>
-        Used up
+        {t("inventory.usedUp")}
       </button>
       <button type="button" className="inv-action-btn" onClick={() => onConsume("wasted")}>
-        Tossed
+        {t("inventory.tossed")}
       </button>
       <button type="button" className="inv-action-btn" onClick={onFreeze}>
-        Freeze
+        {t("inventory.freeze")}
       </button>
-      <button type="button" className="inv-action-btn" onClick={onClear} aria-label="Clear selection">
+      <button type="button" className="inv-action-btn" onClick={onClear} aria-label={t("inventory.clearSelection")}>
         ×
       </button>
     </div>
@@ -1339,8 +1357,8 @@ export function Inventory({
   // rename mode.
   async function addShelf() {
     const taken = new Set(sections.map((sec) => sec.label.toLowerCase()));
-    let name = "New shelf";
-    for (let n = 2; taken.has(name.toLowerCase()); n++) name = `New shelf ${n}`;
+    let name = t("inventory.newShelf");
+    for (let n = 2; taken.has(name.toLowerCase()); n++) name = t("inventory.newShelfN", { n });
     const created = await onAddLocation(name);
     if (created?.id) {
       setEditingId(created.id);
@@ -1358,16 +1376,19 @@ export function Inventory({
       <div className="riso-inv-header">
         <div className="riso-inv-title-block">
           <p className="riso-eyebrow">
-            {items.length} item{items.length === 1 ? "" : "s"} · {soonCount} to use soon
-            {expiredCount > 0 && ` · ${expiredCount} expired`}
+            {[
+              t("inventory.itemCount", { count: items.length }),
+              t("inventory.soonCount", { count: soonCount }),
+              ...(expiredCount > 0 ? [t("inventory.expiredCount", { count: expiredCount })] : []),
+            ].join(" · ")}
           </p>
           <h1 className="riso-inv-title">
-            What you've <span className="accent">got.</span>
+            {t("inventory.title")} <span className="accent">{t("inventory.titleAccent")}</span>
           </h1>
         </div>
         <div className="riso-inv-header-actions">
           <button type="button" className="riso-inv-btn" onClick={() => setShowScan(true)}>
-            Scan receipt
+            {t("inventory.scanReceipt")}
           </button>
           <button
             type="button"
@@ -1377,25 +1398,19 @@ export function Inventory({
               setShowAdd(true);
             }}
           >
-            + Add item
+            {t("inventory.addItem")}
           </button>
         </div>
       </div>
 
       <HintStrip userId={user.id} screenKey="inventory-v2">
-        Shelves are sorted by what expires first. Click an item to edit it. Storage tips come from USDA
-        FoodKeeper. Tick several to mark them used up, tossed or frozen all at once. Pink means use it within 3
-        days.
+        {t("inventory.hint")}
       </HintStrip>
 
-      {items.length === 0 && (
-        <p className="empty-state">
-          Nothing tracked yet — add what's in your fridge, pantry, or freezer above.
-        </p>
-      )}
+      {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
       {isPhone && (
-        <div className="riso-inv-shelf-switch" role="tablist" aria-label="Shelf">
+        <div className="riso-inv-shelf-switch" role="tablist" aria-label={t("inventory.shelfAria")}>
           {shelfLocations.map((loc) => (
             <button
               key={loc.id}
@@ -1448,7 +1463,7 @@ export function Inventory({
       </div>
 
       {activeItem && isPhone && (
-        <BottomSheet label={`Edit ${activeItem.name}`} onClose={() => setActiveItemId(null)}>
+        <BottomSheet label={t("inventory.editName", { name: activeItem.name })} onClose={() => setActiveItemId(null)}>
           <EditPanel
             item={activeItem}
             recipes={recipes}
@@ -1472,7 +1487,7 @@ export function Inventory({
               type="button"
               className="riso-inv-edit-close"
               onClick={() => setActiveItemId(null)}
-              aria-label="Close"
+              aria-label={t("common.close")}
             >
               ×
             </button>
@@ -1504,12 +1519,12 @@ export function Inventory({
       )}
 
       {showAdd && (
-        <Modal title="Add item" onClose={() => setShowAdd(false)}>
+        <Modal title={t("inventory.addItemTitle")} onClose={() => setShowAdd(false)}>
           <AddInventoryItemForm key={addLocation} onAdd={onAdd} sections={sections} defaultLocation={addLocation} />
         </Modal>
       )}
       {showScan && (
-        <Modal title="Scan receipt" onClose={() => setShowScan(false)}>
+        <Modal title={t("inventory.scanReceipt")} onClose={() => setShowScan(false)}>
           <ReceiptScanPanel onAdd={onAdd} onDone={() => setShowScan(false)} sections={sections} />
         </Modal>
       )}

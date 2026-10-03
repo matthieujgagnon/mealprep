@@ -18,6 +18,7 @@ export async function refreshBaselines({ fetchImpl = fetch } = {}) {
     ...prices.map((p) => {
       const latest = p.history[p.history.length - 1];
       const data = {
+        productFr: p.productFr || null,
         item: p.item,
         unitBasis: p.unitBasis,
         price: latest.price,
@@ -65,6 +66,14 @@ export async function loadBaselines() {
     } catch {
       // keep empty
     }
-    return { product: r.product, item: r.item, unitBasis: r.unitBasis, price: r.price, month: r.month, history };
+    return {
+      product: r.product,
+      ...(r.productFr ? { productFr: r.productFr } : {}),
+      item: r.item,
+      unitBasis: r.unitBasis,
+      price: r.price,
+      month: r.month,
+      history,
+    };
   });
 }

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const plannerRouter = Router();
 
@@ -21,7 +22,7 @@ function serializeEntry(e) {
 plannerRouter.get("/", async (req, res) => {
   const { week } = req.query;
   if (!week) {
-    return res.status(400).json({ error: "week (Monday, YYYY-MM-DD) query param is required" });
+    return res.status(400).json(fail(req, "required", { fields: "week (YYYY-MM-DD)" }));
   }
   const entries = await prisma.plannerEntry.findMany({
     where: { weekStart: week, userId: req.userId },
@@ -38,13 +39,13 @@ plannerRouter.post("/", async (req, res) => {
   if (!recipeId || !weekStart || dayOfWeek === undefined || !mealType) {
     return res
       .status(400)
-      .json({ error: "recipeId, weekStart, dayOfWeek, and mealType are required" });
+      .json(fail(req, "required", { fields: "recipeId, weekStart, dayOfWeek, mealType" }));
   }
   // Confirms the recipe being placed is actually this user's own before
   // creating a planner entry that points at it - otherwise a guessed or
   // leaked recipeId from another account could be placed on this planner.
   const recipe = await prisma.recipe.findFirst({ where: { id: recipeId, userId: req.userId } });
-  if (!recipe) return res.status(404).json({ error: "Recipe not found" });
+  if (!recipe) return res.status(404).json(fail(req, "notFound.recipe"));
 
   const entry = await prisma.plannerEntry.create({
     data: {
@@ -96,7 +97,7 @@ async function findOrCreatePlaceholderRecipe(userId, title) {
 plannerRouter.post("/blank", async (req, res) => {
   const { weekStart, dayOfWeek, mealType, note } = req.body;
   if (!weekStart || dayOfWeek === undefined || !mealType) {
-    return res.status(400).json({ error: "weekStart, dayOfWeek, and mealType are required" });
+    return res.status(400).json(fail(req, "required", { fields: "weekStart, dayOfWeek, mealType" }));
   }
 
   const title = typeof note === "string" && note.trim() ? note.trim() : BLANK_TITLE;
@@ -119,7 +120,7 @@ plannerRouter.post("/blank", async (req, res) => {
 plannerRouter.post("/copy-week", async (req, res) => {
   const { fromWeekStart, toWeekStart } = req.body;
   if (!fromWeekStart || !toWeekStart) {
-    return res.status(400).json({ error: "fromWeekStart and toWeekStart are required" });
+    return res.status(400).json(fail(req, "required", { fields: "fromWeekStart, toWeekStart" }));
   }
   const [source, existingTarget] = await Promise.all([
     prisma.plannerEntry.findMany({ where: { weekStart: fromWeekStart, userId: req.userId } }),
@@ -170,9 +171,9 @@ plannerRouter.put("/:id/note", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
     include: { recipe: true },
   });
-  if (!entry) return res.status(404).json({ error: "Planner entry not found" });
+  if (!entry) return res.status(404).json(fail(req, "notFound.plannerEntry"));
   if (!entry.recipe.isPlaceholder) {
-    return res.status(400).json({ error: "Only a blank/note card can be edited this way" });
+    return res.status(400).json(fail(req, "onlyNoteEditable"));
   }
 
   const title = typeof note === "string" && note.trim() ? note.trim() : BLANK_TITLE;
@@ -202,7 +203,7 @@ plannerRouter.put("/:id", async (req, res) => {
       ...(alreadyHave !== undefined && { alreadyHave }),
     },
   });
-  if (count === 0) return res.status(404).json({ error: "Planner entry not found" });
+  if (count === 0) return res.status(404).json(fail(req, "notFound.plannerEntry"));
 
   const entry = await prisma.plannerEntry.findFirst({ where: { id: req.params.id, userId: req.userId } });
   res.json(entry);

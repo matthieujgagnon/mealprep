@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const pantryStaplesRouter = Router();
 
@@ -29,7 +30,7 @@ function upsertStaple(userId, core, data) {
 pantryStaplesRouter.post("/", async (req, res) => {
   const { core } = req.body;
   if (!core || !core.trim()) {
-    return res.status(400).json({ error: "core is required" });
+    return res.status(400).json(fail(req, "required", { fields: "core" }));
   }
   const normalized = core.trim().toLowerCase();
   const staple = await upsertStaple(req.userId, normalized, { excluded: false });

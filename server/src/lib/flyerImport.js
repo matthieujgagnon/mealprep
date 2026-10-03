@@ -24,7 +24,28 @@ function parseStores(json) {
   }
 }
 
+// The last import's outcome is saved as data ({ ok, stores, count,
+// photos, failed } or { ok: false, detail }) so each screen can say it in
+// its own language; lastImportMessage stays as the English sentence.
+// Rows saved before that hold the sentence itself.
+function parseImportInfo(raw) {
+  if (!raw || raw[0] !== "{") return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function importSentence(info) {
+  if (!info) return null;
+  if (!info.ok) return `Flipp: ${String(info.detail || "").replace(/^Flipp: /, "")}.`;
+  const note = info.failed ? ` Couldn't read: ${info.failed}` : "";
+  return `${info.stores}: ${photoNote(info)}${note}`;
+}
+
 export function serializeSettings(row) {
+  const info = parseImportInfo(row.lastImportMessage);
   return {
     postalCode: row.postalCode,
     stores: parseStores(row.stores),
@@ -33,7 +54,8 @@ export function serializeSettings(row) {
     lastImportOk: row.lastImportOk,
     lastImportCount: row.lastImportCount,
     lastImportSource: row.lastImportSource,
-    lastImportMessage: row.lastImportMessage,
+    lastImportMessage: info ? importSentence(info) : row.lastImportMessage,
+    lastImportInfo: info,
     lastSuccessAt: row.lastSuccessAt,
   };
 }
@@ -53,6 +75,7 @@ export async function updateSettings(userId, { postalCode, stores, autoImport })
     if (!isValidPostalCode(postalCode)) {
       const err = new Error("That doesn't look like a Canadian postal code (e.g. H2T 2S3).");
       err.status = 400;
+      err.code = "postalCode";
       throw err;
     }
     data.postalCode = normalizePostalCode(postalCode);
@@ -61,6 +84,7 @@ export async function updateSettings(userId, { postalCode, stores, autoImport })
     if (!Array.isArray(stores)) {
       const err = new Error("stores must be a list of store names.");
       err.status = 400;
+      err.code = "storesList";
       throw err;
     }
     const clean = [...new Set(stores.map((s) => String(s).trim()).filter(Boolean))].slice(0, 20);
@@ -96,11 +120,24 @@ export async function importFlipp(userId, settings, { fetchImpl = fetch } = {}) 
       : result.flyers.length
         ? "the flyers had no priced items"
         : `no grocery flyers found near ${settings.postalCode}${stores.length ? ` for ${stores.join(", ")}` : ""}`;
-    throw new Error(`Flipp: ${why}`);
+    const err = new Error(`Flipp: ${why}`);
+    // What went wrong as a code, so each screen can say it in its language.
+    if (result.failures?.length) Object.assign(err, { code: "storesFailed", vars: { failures: result.failures } });
+    else if (result.flyers.length) Object.assign(err, { code: "noPriced", vars: {} });
+    else if (stores.length) Object.assign(err, { code: "noFlyersFor", vars: { postal: settings.postalCode, stores: stores.join(", ") } });
+    else Object.assign(err, { code: "noFlyers", vars: { postal: settings.postalCode } });
+    throw err;
   }
   const saved = await saveCurrentDeals(userId, result.deals);
   const repaired = await repairPastFlippRows(userId, result.deals.map((d) => ({ ...d, source: FLIPP_SOURCE })));
-  return { count: result.deals.length, photos: countPhotos(result.deals), stores: saved, failed: result.failed, repaired };
+  return {
+    count: result.deals.length,
+    photos: countPhotos(result.deals),
+    stores: saved,
+    failed: result.failed,
+    failures: result.failures || [],
+    repaired,
+  };
 }
 
 // Flipp rows matched by the name the import gives them now (the English
@@ -179,13 +216,20 @@ export async function runImportForUser(userId, { fetchImpl = fetch } = {}) {
   const settings = await getOrCreateSettings(userId);
   try {
     const result = await importFlipp(userId, settings, { fetchImpl });
-    const note = result.failed.length ? `Couldn't read: ${result.failed.join("; ")}` : null;
+    const info = {
+      ok: true,
+      stores: result.stores.join(", "),
+      count: result.count,
+      photos: result.photos,
+      failed: result.failed.join("; "),
+      ...(result.failures.length ? { failures: result.failures } : {}),
+    };
     return serializeSettings(
       await record(userId, {
         lastImportOk: true,
         lastImportCount: result.count,
         lastImportSource: FLIPP_SOURCE,
-        lastImportMessage: `${result.stores.join(", ")}: ${photoNote(result)}${note ? ` ${note}` : ""}`,
+        lastImportMessage: JSON.stringify(info),
       })
     );
   } catch (err) {
@@ -194,7 +238,11 @@ export async function runImportForUser(userId, { fetchImpl = fetch } = {}) {
         lastImportOk: false,
         lastImportCount: 0,
         lastImportSource: null,
-        lastImportMessage: `Flipp: ${err.message.replace(/^Flipp: /, "")}.`.slice(0, 500),
+        lastImportMessage: JSON.stringify({
+          ok: false,
+          detail: err.message.replace(/^Flipp: /, "").slice(0, 400),
+          ...(err.code ? { code: err.code, vars: err.vars || {} } : {}),
+        }),
       })
     );
   }

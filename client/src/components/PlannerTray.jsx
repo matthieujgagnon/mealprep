@@ -13,11 +13,12 @@ import {
   suggestedGroups,
 } from "../lib/plannerSuggestions.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { t } from "../i18n/index.js";
 
 const TABS = [
-  { id: "suggested", label: "Suggested" },
-  { id: "around", label: "Plan around" },
-  { id: "all", label: "All" },
+  { id: "suggested", get label() { return t("tray.tabSuggested"); } },
+  { id: "around", get label() { return t("tray.tabAround"); } },
+  { id: "all", get label() { return t("tray.tabAll"); } },
 ];
 
 export function slotLabel(slot) {
@@ -34,7 +35,7 @@ function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
     data: { recipe, fromTray: true },
     disabled: !draggable,
   });
-  const dragProps = draggable ? { ...listeners, ...attributes, "aria-label": `${recipe.title} - drag onto a slot` } : {};
+  const dragProps = draggable ? { ...listeners, ...attributes, "aria-label": t("tray.dragAria", { title: recipe.title }) } : {};
   const time = formatTrayTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
   const nothingToBuy = stats.totalCount > 0 && stats.missingCount === 0;
   const pct = stats.totalCount > 0 ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
@@ -49,7 +50,7 @@ function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
         type="button"
         className="riso-tray-tile-photo"
         onClick={() => onOpen(recipe)}
-        aria-label={`Open ${recipe.title}`}
+        aria-label={t("planner.open", { title: recipe.title })}
       >
         {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} draggable="false" />}
         {time && <span className="riso-tray-tile-time">⏱ {time.toLowerCase()}</span>}
@@ -57,8 +58,8 @@ function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
       <button
         type="button"
         className="riso-tray-tile-add"
-        title="Add to the plan"
-        aria-label={`Add ${recipe.title} to the plan`}
+        title={t("tray.addToPlan")}
+        aria-label={t("tray.addTitleToPlan", { title: recipe.title })}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => onAdd(recipe)}
       >
@@ -73,10 +74,10 @@ function TrayTile({ tile, onAdd, onOpen, draggable = true }) {
         )}
         <span className={`riso-tray-tile-meta${nothingToBuy ? " ready" : ""}`}>
           {nothingToBuy
-            ? "nothing to buy!"
+            ? t("tray.nothingToBuy")
             : stats.totalCount > 0
-              ? `${stats.missingCount} to buy · ${stats.matchedCount} of ${stats.totalCount} on hand`
-              : "no ingredients listed"}
+              ? t("tray.haveMeta", { buy: stats.missingCount, have: stats.matchedCount, total: stats.totalCount })
+              : t("tray.noIngredients")}
         </span>
         {tile.reason && <span className="riso-tray-tile-reason">{tile.reason}</span>}
       </div>
@@ -136,7 +137,7 @@ export function PlannerTray({
     setNoteDraft(target?.note || "");
   }, [target?.dayOfWeek, target?.mealType, target?.note]);
 
-  const { ranked, expiringCores } = rankRecipesForTray({
+  const { ranked, expiringCores, nameOf } = rankRecipesForTray({
     recipes,
     upcomingEntries,
     pantryInventory,
@@ -151,7 +152,7 @@ export function PlannerTray({
     );
   }
 
-  const expiringNames = expiringCores.slice(0, 8).map(capitalize);
+  const expiringNames = expiringCores.slice(0, 8).map(nameOf);
   const shownCores = new Set(expiringCores);
   const kitchenNames = [
     ...new Set(
@@ -162,7 +163,7 @@ export function PlannerTray({
     ),
   ]
     .slice(0, 10)
-    .map(capitalize);
+    .map(nameOf);
   const listedCores = new Set([...shownCores, ...kitchenNames.map((n) => core(n) || n.toLowerCase())]);
   const otherPicks = picks.filter((p) => !listedCores.has(core(p) || p.toLowerCase()));
 
@@ -174,30 +175,30 @@ export function PlannerTray({
     groups = [
       {
         id: "matches",
-        title: pickedCores.size > 0 ? `MATCHES · ${matches.length}` : "PICK INGREDIENTS ABOVE",
+        title: pickedCores.size > 0 ? t("tray.matches", { count: matches.length }) : t("tray.pickAbove"),
         tone: "paper",
         tiles: matches,
       },
     ];
   } else {
     const all = searchRecipes(ranked, query);
-    groups = [{ id: "all", title: `ALL RECIPES · ${all.length}`, tone: "paper", tiles: all }];
+    groups = [{ id: "all", title: t("tray.allRecipes", { count: all.length }), tone: "paper", tiles: all }];
   }
 
   const hint = inSheet
-    ? "Tap + on a recipe, or type a note below."
+    ? t("tray.hintSheet")
     : target
-    ? `Tap + on a recipe to put it in ${slotLabel(target)}, or drag it anywhere.`
-    : "Drag a recipe onto the board, or tap + to drop it in the next empty slot.";
+    ? t("tray.hintTarget", { slot: slotLabel(target) })
+    : t("tray.hintNone");
 
   return (
-    <aside className={`riso-planner-tray${inSheet ? " in-sheet" : ""}`} aria-label="Add recipes">
+    <aside className={`riso-planner-tray${inSheet ? " in-sheet" : ""}`} aria-label={t("tray.addRecipes")}>
       <div className="riso-tray-head">
-        <h2 className="riso-tray-title">{inSheet && target ? `Add to ${slotLabel(target)}` : "Add recipes"}</h2>
+        <h2 className="riso-tray-title">{inSheet && target ? t("tray.addTo", { slot: slotLabel(target) }) : t("tray.addRecipes")}</h2>
         {target && !inSheet && (
           <span className="riso-tray-target">
             {slotLabel(target)}
-            <button type="button" onClick={onClearTarget} aria-label="Clear selected slot">
+            <button type="button" onClick={onClearTarget} aria-label={t("tray.clearSlot")}>
               ×
             </button>
           </span>
@@ -210,8 +211,8 @@ export function PlannerTray({
           type="text"
           className="riso-tray-note-input"
           value={noteDraft}
-          placeholder={inSheet ? "✎ Add a note instead, e.g. Eating out ↵" : "…or type a note, e.g. Eating out ↵"}
-          aria-label={`Note for ${slotLabel(target)}`}
+          placeholder={inSheet ? t("tray.notePlaceholderSheet") : t("tray.notePlaceholder")}
+          aria-label={t("tray.noteFor", { slot: slotLabel(target) })}
           onChange={(e) => setNoteDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) return; // mid-emoji or accent
@@ -231,11 +232,11 @@ export function PlannerTray({
 
       {tab === "around" && (
         <div className="riso-tray-chip-groups">
-          <ChipGroup label="EXPIRING" tone="pink" names={expiringNames} picked={pickedCores} onToggle={togglePick} />
-          <ChipGroup label="IN YOUR KITCHEN" tone="paper" names={kitchenNames} picked={pickedCores} onToggle={togglePick} />
-          <ChipGroup label="YOUR PICKS" tone="paper" names={otherPicks} picked={pickedCores} onToggle={togglePick} />
+          <ChipGroup label={t("tray.expiring")} tone="pink" names={expiringNames} picked={pickedCores} onToggle={togglePick} />
+          <ChipGroup label={t("tray.inKitchen")} tone="paper" names={kitchenNames} picked={pickedCores} onToggle={togglePick} />
+          <ChipGroup label={t("tray.yourPicks")} tone="paper" names={otherPicks} picked={pickedCores} onToggle={togglePick} />
           {expiringNames.length + kitchenNames.length + otherPicks.length === 0 && (
-            <p className="riso-tray-empty">Add items to your Inventory to plan around them.</p>
+            <p className="riso-tray-empty">{t("tray.inventoryEmpty")}</p>
           )}
         </div>
       )}
@@ -245,20 +246,20 @@ export function PlannerTray({
           type="search"
           className="riso-tray-search"
           value={query}
-          placeholder="Search your recipes"
-          aria-label="Search your recipes"
+          placeholder={t("tray.search")}
+          aria-label={t("tray.search")}
           onChange={(e) => setQuery(e.target.value)}
         />
       )}
 
       <div className="riso-tray-list">
-        {groups.length === 0 && <p className="riso-tray-empty">No recipes yet.</p>}
+        {groups.length === 0 && <p className="riso-tray-empty">{t("tray.noRecipes")}</p>}
         {groups.map((group) => (
           <div key={group.id} className="riso-tray-group">
             <span className={`riso-tray-group-pill ${group.tone}`}>{group.title}</span>
             <div className="riso-tray-cards">
-              {group.tiles.map((t) => (
-                <TrayTile key={t.recipe.id} tile={t} onAdd={onPlaceRecipe} onOpen={onOpenRecipe} draggable={!inSheet} />
+              {group.tiles.map((tile) => (
+                <TrayTile key={tile.recipe.id} tile={tile} onAdd={onPlaceRecipe} onOpen={onOpenRecipe} draggable={!inSheet} />
               ))}
             </div>
           </div>

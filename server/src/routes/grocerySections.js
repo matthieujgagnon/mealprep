@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const grocerySectionsRouter = Router();
 
@@ -17,7 +18,7 @@ grocerySectionsRouter.get("/", async (req, res) => {
 grocerySectionsRouter.post("/", async (req, res) => {
   const { name } = req.body;
   if (!name || !name.trim()) {
-    return res.status(400).json({ error: "name is required" });
+    return res.status(400).json(fail(req, "required", { fields: "name" }));
   }
   const trimmedName = name.trim();
   const count = await prisma.grocerySection.count({ where: { userId: req.userId } });
@@ -29,7 +30,7 @@ grocerySectionsRouter.post("/", async (req, res) => {
     res.status(201).json(section);
   } catch (err) {
     if (err.code === "P2002") {
-      return res.status(409).json({ error: `A section named "${trimmedName}" already exists` });
+      return res.status(409).json(fail(req, "sectionExists", { name: trimmedName }));
     }
     throw err;
   }
@@ -40,7 +41,7 @@ grocerySectionsRouter.post("/", async (req, res) => {
 grocerySectionsRouter.put("/reorder", async (req, res) => {
   const { orderedIds } = req.body;
   if (!Array.isArray(orderedIds)) {
-    return res.status(400).json({ error: "orderedIds[] is required" });
+    return res.status(400).json(fail(req, "required", { fields: "orderedIds[]" }));
   }
   await prisma.$transaction(
     orderedIds.map((id, position) =>
@@ -53,9 +54,9 @@ grocerySectionsRouter.put("/reorder", async (req, res) => {
 // PUT /api/grocery-sections/:id { name } - rename a section/store.
 grocerySectionsRouter.put("/:id", async (req, res) => {
   const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
-  if (!name) return res.status(400).json({ error: "name is required" });
+  if (!name) return res.status(400).json(fail(req, "required", { fields: "name" }));
   const section = await prisma.grocerySection.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!section) return res.status(404).json({ error: "Section not found" });
+  if (!section) return res.status(404).json(fail(req, "notFound.section"));
   try {
     const saved = await prisma.grocerySection.update({
       where: { id: section.id },
@@ -64,7 +65,7 @@ grocerySectionsRouter.put("/:id", async (req, res) => {
     });
     res.json(saved);
   } catch (err) {
-    if (err.code === "P2002") return res.status(409).json({ error: `A store named "${name}" already exists` });
+    if (err.code === "P2002") return res.status(409).json(fail(req, "storeExists", { name }));
     throw err;
   }
 });
@@ -79,12 +80,12 @@ grocerySectionsRouter.delete("/:id", async (req, res) => {
 grocerySectionsRouter.post("/:id/assign", async (req, res) => {
   const { core } = req.body;
   if (!core || !core.trim()) {
-    return res.status(400).json({ error: "core is required" });
+    return res.status(400).json(fail(req, "required", { fields: "core" }));
   }
   const section = await prisma.grocerySection.findFirst({
     where: { id: req.params.id, userId: req.userId },
   });
-  if (!section) return res.status(404).json({ error: "Section not found" });
+  if (!section) return res.status(404).json(fail(req, "notFound.section"));
   const normalized = core.trim().toLowerCase();
 
   const assignment = await prisma.groceryAssignment.upsert({

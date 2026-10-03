@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const groceryExtraItemsRouter = Router();
 
 // GET /api/grocery-extra-items?week=YYYY-MM-DD - manually-added items for a week.
 groceryExtraItemsRouter.get("/", async (req, res) => {
   const { week } = req.query;
-  if (!week) return res.status(400).json({ error: "week is required" });
+  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
 
   const items = await prisma.groceryExtraItem.findMany({
     where: { userId: req.userId, weekStart: week },
@@ -19,7 +20,7 @@ groceryExtraItemsRouter.get("/", async (req, res) => {
 groceryExtraItemsRouter.post("/", async (req, res) => {
   const { weekStart, name, quantity, unit } = req.body;
   if (!weekStart || !name || !name.trim()) {
-    return res.status(400).json({ error: "weekStart and name are required" });
+    return res.status(400).json(fail(req, "required", { fields: "weekStart, name" }));
   }
   // Hand-added rows are never merged on the list, so the same name twice in
   // a week (a double-tap, two screens adding the same item) would be two
@@ -66,7 +67,7 @@ const WEEK_RE = /^\d{4}-\d{2}-\d{2}$/;
 groceryExtraItemsRouter.post("/push", async (req, res) => {
   const { fromWeek, toWeek, key, name, quantity, unit, quantityText } = req.body || {};
   if (!WEEK_RE.test(fromWeek || "") || !WEEK_RE.test(toWeek || "") || !key || fromWeek === toWeek || !name || !String(name).trim()) {
-    return res.status(400).json({ error: "fromWeek, toWeek, key and name are required" });
+    return res.status(400).json(fail(req, "required", { fields: "fromWeek, toWeek, key, name" }));
   }
   const userId = req.userId;
   const existing = await prisma.groceryExtraItem.findFirst({

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { scrapeRecipe, parseIngredientText } from "../lib/scrapeRecipe.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
+import { fail } from "../lib/i18n.js";
 
 export const recipesRouter = Router();
 
@@ -16,13 +17,30 @@ function readMealSlot(value) {
   return MEAL_SLOTS.includes(value) ? { ok: true, value } : { ok: false };
 }
 
-function scrapeErrorResponse(res, err) {
-  const needsManualEntry =
-    String(err.message).startsWith("NO_STRUCTURED_DATA") ||
-    String(err.message).startsWith("FETCH_FAILED");
+// The scraper's English reasons, as messages in the reader's language.
+const SCRAPE_REASONS = [
+  [/took too long/, "scrape.timeout"],
+  [/Couldn't reach this URL \((.*)\)/, "scrape.unreachable", (m) => ({ detail: m[1] })],
+  [/Failed to fetch URL \(status (\d+)\)/, "scrape.status", (m) => ({ status: m[1] })],
+  [/valid URL/, "scrape.invalidUrl"],
+  [/Only http and https/, "scrape.httpOnly"],
+  [/Couldn't resolve/, "scrape.unresolved"],
+  [/can't be imported/, "scrape.blocked"],
+  [/^NO_STRUCTURED_DATA/, "scrape.noData"],
+];
+
+function scrapeErrorResponse(req, res, err) {
+  const text = String(err.message);
+  const reason = text.startsWith("NO_STRUCTURED_DATA") ? "noData" : text.startsWith("FETCH_FAILED") ? "fetch" : null;
+  const needsManualEntry = reason != null;
+  for (const [re, key, vars] of SCRAPE_REASONS) {
+    const m = re.exec(text);
+    if (m) return res.status(needsManualEntry ? 422 : 502).json(fail(req, key, vars?.(m), { needsManualEntry, reason }));
+  }
   return res.status(needsManualEntry ? 422 : 502).json({
-    error: err.message.replace(/^(NO_STRUCTURED_DATA|FETCH_FAILED):\s*/, ""),
+    error: text.replace(/^(NO_STRUCTURED_DATA|FETCH_FAILED):\s*/, ""),
     needsManualEntry,
+    reason,
   });
 }
 
@@ -55,20 +73,20 @@ recipesRouter.get("/:id", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
     include: { ingredients: true },
   });
-  if (!recipe) return res.status(404).json({ error: "Recipe not found" });
+  if (!recipe) return res.status(404).json(fail(req, "notFound.recipe"));
   res.json(serializeRecipe(recipe));
 });
 
 // POST /api/recipes/import { url } - scrape + save a recipe from a URL
 recipesRouter.post("/import", async (req, res) => {
   const { url } = req.body;
-  if (!url) return res.status(400).json({ error: "url is required" });
+  if (!url) return res.status(400).json(fail(req, "required", { fields: "url" }));
 
   let parsed;
   try {
     parsed = await scrapeRecipe(url);
   } catch (err) {
-    return scrapeErrorResponse(res, err);
+    return scrapeErrorResponse(req, res, err);
   }
 
   const recipe = await prisma.recipe.create({
@@ -106,7 +124,7 @@ recipesRouter.post("/import", async (req, res) => {
 // still empty - that merge happens client-side).
 recipesRouter.post("/scrape", async (req, res) => {
   const { url } = req.body;
-  if (!url) return res.status(400).json({ error: "url is required" });
+  if (!url) return res.status(400).json(fail(req, "required", { fields: "url" }));
   try {
     const parsed = await scrapeRecipe(url);
     res.json({
@@ -114,7 +132,7 @@ recipesRouter.post("/scrape", async (req, res) => {
       fridgeLifeDays: estimateFridgeLifeDays(parsed.ingredients.map((i) => i.name)),
     });
   } catch (err) {
-    return scrapeErrorResponse(res, err);
+    return scrapeErrorResponse(req, res, err);
   }
 });
 
@@ -122,7 +140,7 @@ recipesRouter.post("/scrape", async (req, res) => {
 // list into qty/unit/name/note rows with the importer's own parser.
 recipesRouter.post("/parse-ingredients", async (req, res) => {
   const { text } = req.body;
-  if (typeof text !== "string") return res.status(400).json({ error: "text is required" });
+  if (typeof text !== "string") return res.status(400).json(fail(req, "required", { fields: "text" }));
   res.json({ ingredients: parseIngredientText(text.slice(0, 20000)) });
 });
 
@@ -131,10 +149,10 @@ recipesRouter.post("/", async (req, res) => {
   const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, tags } = req.body;
 
   if (!title || !Array.isArray(ingredients)) {
-    return res.status(400).json({ error: "title and ingredients[] are required" });
+    return res.status(400).json(fail(req, "required", { fields: "title, ingredients[]" }));
   }
   const mealSlot = readMealSlot(req.body.mealSlot);
-  if (!mealSlot.ok) return res.status(400).json({ error: `mealSlot must be one of ${MEAL_SLOTS.join(", ")}` });
+  if (!mealSlot.ok) return res.status(400).json(fail(req, "mustBeOneOf", { field: "mealSlot", options: MEAL_SLOTS.join(", ") }));
 
   const recipe = await prisma.recipe.create({
     data: {
@@ -176,7 +194,7 @@ recipesRouter.post("/", async (req, res) => {
 recipesRouter.put("/reorder", async (req, res) => {
   const { orderedIds } = req.body;
   if (!Array.isArray(orderedIds)) {
-    return res.status(400).json({ error: "orderedIds[] is required" });
+    return res.status(400).json(fail(req, "required", { fields: "orderedIds[]" }));
   }
   await prisma.$transaction(
     orderedIds.map((id, position) =>
@@ -190,7 +208,7 @@ recipesRouter.put("/reorder", async (req, res) => {
 recipesRouter.put("/:id", async (req, res) => {
   const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
   const mealSlot = readMealSlot(req.body.mealSlot);
-  if (!mealSlot.ok) return res.status(400).json({ error: `mealSlot must be one of ${MEAL_SLOTS.join(", ")}` });
+  if (!mealSlot.ok) return res.status(400).json(fail(req, "mustBeOneOf", { field: "mealSlot", options: MEAL_SLOTS.join(", ") }));
 
   const { count } = await prisma.recipe.updateMany({
     where: { id: req.params.id, userId: req.userId },
@@ -212,7 +230,7 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(instructions !== undefined && { instructions: JSON.stringify(instructions) }),
     },
   });
-  if (count === 0) return res.status(404).json({ error: "Recipe not found" });
+  if (count === 0) return res.status(404).json(fail(req, "notFound.recipe"));
 
   if (Array.isArray(ingredients)) {
     await prisma.ingredient.deleteMany({ where: { recipeId: req.params.id } });

@@ -15,6 +15,7 @@ model User {
   email        String   @unique
   name         String?
   passwordHash String
+  locale       String? // "fr" | "en": the app's language for this account (and its emails); null until first chosen
   createdAt    DateTime @default(now())
 
   sessions              Session[]
@@ -465,6 +466,7 @@ model FlyerSettings {
 model PriceBaseline {
   id        String   @id @default(cuid())
   product   String   @unique // StatCan's own name, e.g. "Chicken breasts, per kilogram"
+  productFr String? // and its French name, e.g. "Poitrines de poulet, par kilogramme"
   item      String // the part before the comma, lowercase: what deals are matched on
   unitBasis String // "lb" | "L" | "each", same bases as FlyerDeal.unitBasis
   price     Float // latest month, converted to unitBasis

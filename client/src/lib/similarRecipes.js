@@ -253,12 +253,20 @@ export function findRecipesByIngredients(haveNames, allRecipes, limit = 30) {
       if (cores.length === 0) return null;
       const matched = cores.filter((c) => haveCores.has(c));
       const missing = cores.filter((c) => !haveCores.has(c));
+      // Shown as the recipe writes them ("Pois chiches"), not as the
+      // matching key ("poi chich").
+      const asWritten = new Map();
+      for (const ing of r.ingredients || []) {
+        const c = core(ing.name);
+        if (c && !asWritten.has(c)) asWritten.set(c, capitalize(String(ing.name).trim()));
+      }
+      const name = (c) => asWritten.get(c) || capitalize(c);
       return {
         recipe: r,
         matchedCount: matched.length,
         totalCount: cores.length,
-        matchedIngredients: matched.map((c) => capitalize(c)),
-        missingIngredients: missing.map((c) => capitalize(c)),
+        matchedIngredients: matched.map(name),
+        missingIngredients: missing.map(name),
       };
     })
     .filter((m) => m && m.matchedCount > 0)

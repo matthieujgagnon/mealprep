@@ -1,4 +1,6 @@
 import { UNIT_GROUPS, convertToUnit, formatQuantity, unitLabel } from "./units.js";
+import { formatNumber } from "../i18n/format.js";
+import { getLang } from "../i18n/index.js";
 
 // Produce/variety adjectives that shouldn't fragment the grocery list into
 // separate line items (a "California avocado" and a plain "avocado" are the
@@ -198,7 +200,10 @@ export function canonicalize(rawName) {
   });
   let core = coreWords.map(singularize).join(" ").trim();
   core = CORE_ALIASES[core] || core;
-  return { core, varieties };
+  // The same words as written, before singularizing: the singular rules
+  // are English ones ("pois chiches" -> "poi chich"), so French shows these.
+  const written = coreWords.join(" ").trim();
+  return { core, varieties, written };
 }
 
 // Combines every ingredient across all planner entries into one deduplicated
@@ -261,14 +266,15 @@ export function buildGroceryList(
 
     for (const ing of recipe.ingredients || []) {
       const unit = groceryUnit(ing.unit);
-      const { core, varieties } = canonicalize(ing.name);
+      const { core, varieties, written } = canonicalize(ing.name);
       const resolvedCore = core || ing.name.toLowerCase();
+      const shownName = capitalize(getLang() === "fr" && written ? written : resolvedCore);
       const qty = ing.quantity != null ? ing.quantity * scale : null;
 
       if (!map.has(resolvedCore)) {
         map.set(resolvedCore, {
           core: resolvedCore,
-          name: capitalize(resolvedCore),
+          name: shownName,
           parts: [],
           usedIn: new Set(),
           varieties: new Set(),
@@ -283,8 +289,7 @@ export function buildGroceryList(
       existing.usedIn.add(recipe.title);
       varieties.forEach((v) => existing.varieties.add(v));
       // Keep the shorter display name (fewer prep words attached)
-      const newName = capitalize(resolvedCore);
-      if (newName.length < existing.name.length) existing.name = newName;
+      if (shownName.length < existing.name.length) existing.name = shownName;
 
       addQuantityPart(existing.parts, qty, unit || null);
     }
@@ -360,7 +365,7 @@ export function formatAmount(parts) {
     .filter((p) => p.quantity != null)
     .map((p) => {
       const { qty, unit } = scaleUp(p.quantity, p.unit);
-      const amount = qty >= 10 ? String(Math.round(qty * 10) / 10) : formatQuantity(qty);
+      const amount = qty >= 10 ? formatNumber(Math.round(qty * 10) / 10, { useGrouping: false }) : formatQuantity(qty);
       return unit ? `${amount} ${unitLabel(unit, qty)}` : amount;
     })
     .join(" + ");

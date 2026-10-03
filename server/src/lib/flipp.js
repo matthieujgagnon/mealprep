@@ -25,6 +25,15 @@ export function isValidPostalCode(postalCode) {
   return /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizePostalCode(postalCode));
 }
 
+// An error with a code (and its values) the app can word in its own
+// language; the message stays the English sentence.
+export function flippError(code, vars, message) {
+  const err = new Error(message);
+  err.code = code;
+  err.vars = vars;
+  return err;
+}
+
 async function getJson(url, fetchImpl) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
@@ -35,14 +44,19 @@ async function getJson(url, fetchImpl) {
       headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (mealprep flyer import)" },
     });
   } catch (err) {
-    throw new Error(err.name === "AbortError" ? "Flipp took too long to answer" : "couldn't connect to Flipp");
+    throw err.name === "AbortError"
+      ? flippError("timeout", {}, "Flipp took too long to answer")
+      : flippError("unreachable", {}, "couldn't connect to Flipp");
   }
   try {
-    if (!res.ok) throw new Error(`Flipp answered ${res.status} for ${new URL(url).pathname}`);
+    if (!res.ok) {
+      const path = new URL(url).pathname;
+      throw flippError("status", { status: res.status, path }, `Flipp answered ${res.status} for ${path}`);
+    }
     try {
       return await res.json();
     } catch {
-      throw new Error("Flipp's answer wasn't readable - it may have changed");
+      throw flippError("unreadable", {}, "Flipp's answer wasn't readable - it may have changed");
     }
   } finally {
     clearTimeout(timer);
@@ -506,6 +520,7 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
 
   const perFlyer = wanted.map(() => []); // kept in flyer order
   const failed = [];
+  const failures = []; // the same, as { store, code, vars, message }
   const queue = wanted.map((flyer, i) => ({ flyer, i }));
   const lookups = { tried: 0, found: 0 };
   async function worker() {
@@ -521,6 +536,7 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
         }
       } catch (err) {
         failed.push(`${flyer.merchant}: ${err.message}`);
+        failures.push({ store: flyer.merchant, code: err.code || null, vars: err.vars || {}, message: err.message });
       }
     }
   }
@@ -538,6 +554,7 @@ export async function fetchFlippDeals({ postalCode, stores = [], fetchImpl = fet
     deals: unique,
     flyers: wanted.map((f) => ({ merchant: storeFor(f.merchant), validTo: isoDate(f.validTo) })),
     failed,
+    failures,
   };
 }
 

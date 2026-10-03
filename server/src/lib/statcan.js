@@ -54,7 +54,12 @@ export function readCubeMetadata(data) {
     quebecId: quebec.memberId,
     products: (products.member || [])
       .filter((m) => m.memberId != null && m.memberNameEn)
-      .map((m) => ({ id: m.memberId, name: String(m.memberNameEn).trim() })),
+      .map((m) => ({
+        id: m.memberId,
+        name: String(m.memberNameEn).trim(),
+        // Statistics Canada names each product in French too.
+        ...(m.memberNameFr ? { nameFr: String(m.memberNameFr).trim() } : {}),
+      })),
   };
 }
 
@@ -125,7 +130,13 @@ export async function fetchQuebecPrices({ months = 12, fetchImpl = fetch } = {})
         .filter((pt) => /^\d{4}-\d{2}$/.test(pt.month))
         .sort((a, b) => a.month.localeCompare(b.month));
       if (points.length) {
-        results.push({ product: p.name, item: p.parsed.item, unitBasis: p.parsed.basis, history: points });
+        results.push({
+          product: p.name,
+          ...(p.nameFr ? { productFr: p.nameFr } : {}),
+          item: p.parsed.item,
+          unitBasis: p.parsed.basis,
+          history: points,
+        });
       }
     });
   }

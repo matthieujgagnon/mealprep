@@ -1,5 +1,6 @@
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const recipeImagesRouter = Router();
 
@@ -12,10 +13,10 @@ const MAX_BYTES = 8 * 1024 * 1024;
 recipeImagesRouter.post("/", express.raw({ type: () => true, limit: MAX_BYTES }), async (req, res) => {
   const mimeType = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
   if (!ACCEPTED.includes(mimeType)) {
-    return res.status(415).json({ error: "Only JPEG, PNG, WebP or GIF photos can be added." });
+    return res.status(415).json(fail(req, "photoType"));
   }
   if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
-    return res.status(400).json({ error: "The photo was empty." });
+    return res.status(400).json(fail(req, "photoEmpty"));
   }
   const image = await prisma.recipeImage.create({
     data: { userId: req.userId, mimeType, data: req.body },
@@ -30,7 +31,7 @@ recipeImagesRouter.get("/:id", async (req, res) => {
   const image = await prisma.recipeImage.findFirst({
     where: { id: req.params.id, userId: req.userId },
   });
-  if (!image) return res.status(404).json({ error: "Photo not found." });
+  if (!image) return res.status(404).json(fail(req, "notFound.photo"));
   res.set("Content-Type", image.mimeType);
   res.set("Cache-Control", "private, max-age=31536000, immutable");
   res.send(image.data);

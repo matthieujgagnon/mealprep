@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const recipeCategoriesRouter = Router();
 
@@ -16,7 +17,7 @@ recipeCategoriesRouter.get("/", async (req, res) => {
 recipeCategoriesRouter.post("/", async (req, res) => {
   const { name } = req.body;
   if (!name || !name.trim()) {
-    return res.status(400).json({ error: "name is required" });
+    return res.status(400).json(fail(req, "required", { fields: "name" }));
   }
   const trimmedName = name.trim();
   const count = await prisma.recipeCategory.count({ where: { userId: req.userId } });
@@ -27,7 +28,7 @@ recipeCategoriesRouter.post("/", async (req, res) => {
     res.status(201).json(category);
   } catch (err) {
     if (err.code === "P2002") {
-      return res.status(409).json({ error: `A category named "${trimmedName}" already exists` });
+      return res.status(409).json(fail(req, "categoryExists", { name: trimmedName }));
     }
     throw err;
   }
@@ -38,7 +39,7 @@ recipeCategoriesRouter.post("/", async (req, res) => {
 recipeCategoriesRouter.put("/reorder", async (req, res) => {
   const { orderedIds } = req.body;
   if (!Array.isArray(orderedIds)) {
-    return res.status(400).json({ error: "orderedIds[] is required" });
+    return res.status(400).json(fail(req, "required", { fields: "orderedIds[]" }));
   }
   await prisma.$transaction(
     orderedIds.map((id, position) =>

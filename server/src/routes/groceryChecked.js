@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const groceryCheckedRouter = Router();
 
@@ -8,7 +9,7 @@ export const groceryCheckedRouter = Router();
 // just needs the set) rather than the full rows.
 groceryCheckedRouter.get("/", async (req, res) => {
   const { week } = req.query;
-  if (!week) return res.status(400).json({ error: "week is required" });
+  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
 
   const rows = await prisma.groceryCheckedItem.findMany({
     where: { weekStart: week, userId: req.userId },
@@ -21,7 +22,7 @@ groceryCheckedRouter.get("/", async (req, res) => {
 // already added to Inventory by "Done shopping".
 groceryCheckedRouter.get("/in-inventory", async (req, res) => {
   const { week } = req.query;
-  if (!week) return res.status(400).json({ error: "week is required" });
+  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
   const rows = await prisma.groceryCheckedItem.findMany({
     where: { weekStart: week, userId: req.userId, inInventory: true },
     select: { core: true },
@@ -34,7 +35,7 @@ groceryCheckedRouter.get("/in-inventory", async (req, res) => {
 groceryCheckedRouter.post("/in-inventory", async (req, res) => {
   const { weekStart, cores } = req.body;
   if (!weekStart || !Array.isArray(cores)) {
-    return res.status(400).json({ error: "weekStart and cores are required" });
+    return res.status(400).json(fail(req, "required", { fields: "weekStart, cores" }));
   }
   const normalized = [...new Set(cores.filter((c) => typeof c === "string" && c.trim()).map((c) => c.trim().toLowerCase()))];
   await prisma.$transaction(
@@ -54,7 +55,7 @@ groceryCheckedRouter.post("/in-inventory", async (req, res) => {
 groceryCheckedRouter.post("/", async (req, res) => {
   const { weekStart, core } = req.body;
   if (!weekStart || !core || !core.trim()) {
-    return res.status(400).json({ error: "weekStart and core are required" });
+    return res.status(400).json(fail(req, "required", { fields: "weekStart, core" }));
   }
   const normalized = core.trim().toLowerCase();
 
@@ -74,7 +75,7 @@ groceryCheckedRouter.post("/", async (req, res) => {
 // lands here.
 groceryCheckedRouter.delete("/", async (req, res) => {
   const { week } = req.query;
-  if (!week) return res.status(400).json({ error: "week is required" });
+  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
 
   await prisma.groceryCheckedItem.deleteMany({ where: { weekStart: week, userId: req.userId } });
   res.status(204).send();

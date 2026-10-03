@@ -25,6 +25,7 @@ import { watchlistRouter } from "./routes/watchlist.js";
 import { recipeImagesRouter } from "./routes/recipeImages.js";
 import { cronRouter } from "./routes/cron.js";
 import { startFlyerScheduler } from "./lib/flyerImport.js";
+import { fail } from "./lib/i18n.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -80,7 +81,7 @@ app.get(/^(?!\/api).*/, (req, res, next) => {
 app.use((err, req, res, next) => {
   console.error(`${req.method} ${req.originalUrl} failed:`, err);
   if (res.headersSent) return next(err);
-  res.status(err.status || 500).json({ error: "Something went wrong - please try again." });
+  res.status(err.status || 500).json(fail(req, "generic"));
 });
 
 // Last line of defence: log a stray rejection rather than exiting.

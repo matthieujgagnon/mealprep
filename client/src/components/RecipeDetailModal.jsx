@@ -18,9 +18,9 @@ import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
-
-const WEEKDAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const MEAL_LABEL = { breakfast: "breakfast", lunch: "lunch", dinner: "dinner" };
+import { formatRecipeTime } from "../lib/mealSlots.js";
+import { dict, t } from "../i18n/index.js";
+import { formatList } from "../i18n/format.js";
 
 // Ingredients are already sorted by position server-side, and group
 // assignment happened in that same order, so same-group ingredients are
@@ -40,13 +40,7 @@ function clusterByGroup(ingredients) {
 
 
 function formatMinutes(totalMinutes) {
-  const m = Math.round(totalMinutes);
-  if (m >= 60) {
-    const h = Math.floor(m / 60);
-    const rem = m % 60;
-    return `${h} h${rem ? ` ${rem} min` : ""}`;
-  }
-  return `${m} min`;
+  return formatRecipeTime(Math.round(totalMinutes));
 }
 
 function locationLabel(locationId) {
@@ -71,19 +65,21 @@ function OptionsMenu({ onEdit, onDelete, onEditLeftoverDays, fridgeLifeDays, sou
       <div className="riso-rc-menu-catcher" onClick={onClose} />
       <div className="riso-rc-menu">
         <button type="button" onClick={onEdit}>
-          Edit recipe
+          {t("recipeCard.editRecipe")}
         </button>
         {sourceUrl && (
           <a href={sourceUrl} target="_blank" rel="noreferrer">
-            View original ↗
+            {t("recipeCard.viewOriginal")}
           </a>
         )}
         <button type="button" onClick={onEditLeftoverDays}>
-          Leftovers keep… {fridgeLifeDays ? `${fridgeLifeDays} day${fridgeLifeDays === 1 ? "" : "s"}` : "not set"}
+          {t("recipeCard.leftoversKeep", {
+            days: fridgeLifeDays ? t("recipeCard.days", { count: fridgeLifeDays }) : t("recipeCard.notSet"),
+          })}
         </button>
         <div className="riso-rc-menu-divider" />
         <button type="button" className="danger" onClick={onDelete}>
-          Delete recipe
+          {t("recipeCard.deleteRecipe")}
         </button>
       </div>
     </>
@@ -109,8 +105,14 @@ function PhotoLightbox({ photos, index, onIndex, onClose }) {
   }, [index, photos.length, onIndex, onClose]);
 
   return (
-    <div className="rc-lightbox-overlay" role="dialog" aria-label="Photos" onClick={onClose}>
-      <button type="button" className="rc-lightbox-close" onClick={onClose} aria-label="Close photos" title="Close (Esc)">
+    <div className="rc-lightbox-overlay" role="dialog" aria-label={t("recipeCard.photos")} onClick={onClose}>
+      <button
+        type="button"
+        className="rc-lightbox-close"
+        onClick={onClose}
+        aria-label={t("recipeCard.closePhotos")}
+        title={t("recipeCard.closeEsc")}
+      >
         ×
       </button>
       {photos.length > 1 && (
@@ -121,7 +123,7 @@ function PhotoLightbox({ photos, index, onIndex, onClose }) {
             e.stopPropagation();
             onIndex((index - 1 + photos.length) % photos.length);
           }}
-          aria-label="Previous photo"
+          aria-label={t("recipeCard.prevPhoto")}
         >
           ‹
         </button>
@@ -135,7 +137,7 @@ function PhotoLightbox({ photos, index, onIndex, onClose }) {
             e.stopPropagation();
             onIndex((index + 1) % photos.length);
           }}
-          aria-label="Next photo"
+          aria-label={t("recipeCard.nextPhoto")}
         >
           ›
         </button>
@@ -182,7 +184,11 @@ function StepTimerChip({ timer }) {
         }
       }}
     >
-      {finished ? "✓ Done" : running ? `⏸ ${formatClock(remaining)}` : `▶ Start ${timer.label} timer`}
+      {finished
+        ? t("steps.timerDone")
+        : running
+        ? `⏸ ${formatClock(remaining)}`
+        : t("steps.startTimer", { label: timer.label })}
     </button>
   );
 }
@@ -238,16 +244,16 @@ function IngredientRow({
       setAdding(false);
     }
   }
-  const where = matched ? locationLabel(matched.location) : "inventory";
+  const where = (matched ? locationLabel(matched.location) : t("recipeCard.inventory")).toLowerCase();
 
   let why;
   if (status === "need") {
-    why = "Not in your inventory, so it's unchecked. If you already have some, mark it and it's added to Inventory.";
+    why = t("recipeCard.whyNeed");
   } else if (status === "soon") {
-    const expiry = matched?.expiresAt ? formatExpiry(matched.expiresAt).toLowerCase() : "soon";
-    why = `In your ${where}. No other meal this week uses it, so this recipe is a good way to finish it (${expiry}).`;
+    const expiry = matched?.expiresAt ? formatExpiry(matched.expiresAt).toLowerCase() : t("recipeCard.soon");
+    why = t("recipeCard.whySoon", { where, expiry });
   } else {
-    why = `In your ${where}. Checked automatically. Cooking this recipe takes it out of Inventory.`;
+    why = t("recipeCard.whyHave", { where });
   }
 
   return (
@@ -257,9 +263,9 @@ function IngredientRow({
         <span className="riso-rc-ingredient-name">
           {ing.name}
           {ing.notes && <span className="riso-rc-ingredient-note"> {ing.notes}</span>}
-          {isPerishable(ing.name) && <span className="perishable-dot" title="Perishable ingredient" />}
+          {isPerishable(ing.name) && <span className="perishable-dot" title={t("recipeCard.perishable")} />}
         </span>
-        {status === "soon" && <span className="riso-rc-use-soon-sticker">use soon!</span>}
+        {status === "soon" && <span className="riso-rc-use-soon-sticker">{t("recipeCard.useSoon")}</span>}
         {status === "need" && <SaleTag deal={deal} others={saleOthers} />}
         <span className="riso-rc-ingredient-qty">
           {scaledQty != null
@@ -279,19 +285,19 @@ function IngredientRow({
                   onClick={addToList}
                   disabled={adding || added}
                 >
-                  {added ? "On grocery list ✓" : adding ? "Adding…" : "+ Grocery list"}
+                  {added ? t("recipeCard.onList") : adding ? t("recipeCard.adding") : t("recipeCard.addOne")}
                 </button>
                 <button type="button" className="riso-rc-ing-action" onClick={() => onAddPantryItem({ name: ing.name })}>
-                  I have it
+                  {t("recipeCard.haveIt")}
                 </button>
               </>
             ) : (
               <>
                 <button type="button" className="riso-rc-ing-action" onClick={() => onRemoveFromInventory(ing)}>
-                  I'm out of this
+                  {t("recipeCard.outOfIt")}
                 </button>
                 <button type="button" className="riso-rc-ing-action" onClick={() => onNavigate?.("inventory")}>
-                  Open in Inventory
+                  {t("recipeCard.openInventory")}
                 </button>
               </>
             )}
@@ -422,14 +428,14 @@ export function RecipeDetailModal({
 
   function handleDeleteClick() {
     setMenuOpen(false);
-    if (window.confirm(`Delete "${recipe.title}"? This can't be undone.`)) {
+    if (window.confirm(t("recipeCard.confirmDelete", { title: recipe.title }))) {
       onDelete?.(recipe.id);
     }
   }
 
   function handleEditLeftoverDays() {
     setMenuOpen(false);
-    const input = window.prompt("Leftovers keep for how many days?", recipe.fridgeLifeDays ?? "");
+    const input = window.prompt(t("recipeCard.promptLeftovers"), recipe.fridgeLifeDays ?? "");
     if (input === null) return;
     const days = input.trim() === "" ? null : Math.max(0, Math.round(Number(input)));
     if (input.trim() !== "" && Number.isNaN(days)) return;
@@ -464,8 +470,8 @@ export function RecipeDetailModal({
   const stickerText = recipe.isPlaceholder
     ? null
     : missingIngredients.length > 0
-      ? `${missingIngredients.length} thing${missingIngredients.length === 1 ? "" : "s"} to buy`
-      : "nothing to buy!";
+      ? t("recipeCard.thingsToBuy", { count: missingIngredients.length })
+      : t("recipeCard.nothingToBuy");
   const stickerBg = missingIngredients.length > 0 ? "var(--riso-yellow)" : "var(--riso-green)";
 
   return (
@@ -484,7 +490,7 @@ export function RecipeDetailModal({
             <div className="riso-rc-hero-photo placeholder" />
           )}
           <button type="button" className="riso-rc-back" onClick={onClose}>
-            ← Recipes
+            {t("recipeCard.back")}
           </button>
           <div className="riso-rc-hero-actions">
             {!recipe.isPlaceholder && (
@@ -492,8 +498,8 @@ export function RecipeDetailModal({
                 <button
                   type="button"
                   className="riso-rc-round-btn"
-                  aria-label="More actions"
-                  title="More"
+                  aria-label={t("recipeCard.moreActions")}
+                  title={t("recipeCard.more")}
                   onClick={() => setMenuOpen((o) => !o)}
                 >
                   ⋯
@@ -513,7 +519,13 @@ export function RecipeDetailModal({
                 )}
               </div>
             )}
-            <button type="button" className="riso-rc-round-btn" title="Close (Esc)" aria-label="Close" onClick={onClose}>
+            <button
+              type="button"
+              className="riso-rc-round-btn"
+              title={t("recipeCard.closeEsc")}
+              aria-label={t("recipeCard.close")}
+              onClick={onClose}
+            >
               ×
             </button>
           </div>
@@ -526,10 +538,10 @@ export function RecipeDetailModal({
             <button
               type="button"
               className="riso-rc-photo-count"
-              title="Open the photos (← → to flip)"
+              title={t("recipeCard.openPhotos")}
               onClick={() => setLightboxOpen(true)}
             >
-              {activePhotoIndex + 1} / {gallery.length} PHOTOS
+              {t("recipeCard.photoCount", { n: activePhotoIndex + 1, total: gallery.length })}
             </button>
           )}
         </div>
@@ -546,8 +558,7 @@ export function RecipeDetailModal({
         <div className="riso-rc-content">
           {sharedWithWeek?.length > 0 && (
             <p className="shared-with-week-note">
-              Reuses {sharedWithWeek.length === 1 ? "an ingredient" : "ingredients"} from this
-              week's plan: {sharedWithWeek.join(", ")}
+              {t("recipeCard.reuses", { count: sharedWithWeek.length, items: formatList(sharedWithWeek) })}
             </p>
           )}
 
@@ -558,9 +569,9 @@ export function RecipeDetailModal({
                 <div className="riso-rc-meta-line">
                   {[
                     totalTime > 0 && formatMinutes(totalTime),
-                    `Serves ${recipe.baseServings || defaultServings}`,
-                    recipe.fridgeLifeDays && `Leftovers keep ${recipe.fridgeLifeDays} day${recipe.fridgeLifeDays === 1 ? "" : "s"}`,
-                    recipe.sourceUrl && `From ${new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")}`,
+                    t("recipeCard.serves", { count: recipe.baseServings || defaultServings }),
+                    recipe.fridgeLifeDays && t("recipeCard.keepsDays", { count: recipe.fridgeLifeDays }),
+                    recipe.sourceUrl && t("recipeCard.from", { site: new URL(recipe.sourceUrl).hostname.replace(/^www\./, "") }),
                   ]
                     .filter(Boolean)
                     .map((part, i) => (
@@ -575,7 +586,7 @@ export function RecipeDetailModal({
                 {(recipe.tags || []).map((tag) => (
                   <span key={tag} className="riso-rc-tag-chip">
                     {tag}
-                    <button aria-label={`Remove tag ${tag}`} onClick={() => removeTag(tag)}>
+                    <button aria-label={t("recipeCard.removeTag", { tag })} onClick={() => removeTag(tag)}>
                       ×
                     </button>
                   </span>
@@ -583,7 +594,7 @@ export function RecipeDetailModal({
                 <input
                   className="riso-rc-tag-input"
                   type="text"
-                  placeholder="+ Tag"
+                  placeholder={t("recipeCard.addTag")}
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -600,7 +611,7 @@ export function RecipeDetailModal({
               <div className="riso-rc-actions-row">
                 {recipe.instructions?.length > 0 && (
                   <button type="button" className="riso-rc-btn-primary" onClick={() => setCookModeOn(true)}>
-                    Start cooking
+                    {t("recipeCard.startCooking")}
                   </button>
                 )}
                 {recipe.sourceUrl && (
@@ -608,10 +619,10 @@ export function RecipeDetailModal({
                     href={recipe.sourceUrl}
                     target="_blank"
                     rel="noreferrer"
-                    title={`Opens ${new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} in a new tab`}
+                    title={t("recipeCard.opensInTab", { site: new URL(recipe.sourceUrl).hostname.replace(/^www\./, "") })}
                     className="riso-rc-btn-open-original"
                   >
-                    Open original ↗
+                    {t("recipeCard.openOriginal")}
                   </a>
                 )}
               </div>
@@ -624,7 +635,7 @@ export function RecipeDetailModal({
                     onClose();
                   }}
                 >
-                  Plan around this
+                  {t("recipeCard.planAround")}
                 </button>
               )}
             </div>
@@ -636,31 +647,31 @@ export function RecipeDetailModal({
               className={phoneTab === "ingredients" ? "active" : ""}
               onClick={() => setPhoneTab("ingredients")}
             >
-              Ingredients · {allIngredients.length}
+              {t("recipeCard.ingredientsTab", { count: allIngredients.length })}
             </button>
             <button
               type="button"
               className={phoneTab === "steps" ? "active" : ""}
               onClick={() => setPhoneTab("steps")}
             >
-              Steps · {recipe.instructions?.length || 0}
+              {t("recipeCard.stepsTab", { count: recipe.instructions?.length || 0 })}
             </button>
           </div>
 
           <div className="riso-rc-body">
             <aside className={`riso-rc-ingredients-panel${phoneTab === "steps" ? " rc-phone-hidden" : ""}`}>
               <div className="riso-rc-panel-header">
-                <h3>Ingredients</h3>
+                <h3>{t("recipeCard.ingredients")}</h3>
                 <div className="riso-rc-servings-stepper">
                   <button
                     type="button"
                     onClick={() => setServings((s) => Math.max(1, s - 1))}
-                    aria-label="Decrease servings"
+                    aria-label={t("recipeCard.decreaseServings")}
                   >
                     −
                   </button>
-                  <span>{servings} servings</span>
-                  <button type="button" onClick={() => setServings((s) => s + 1)} aria-label="Increase servings">
+                  <span>{t("recipeCard.servings", { count: servings })}</span>
+                  <button type="button" onClick={() => setServings((s) => s + 1)} aria-label={t("recipeCard.increaseServings")}>
                     +
                   </button>
                 </div>
@@ -669,7 +680,7 @@ export function RecipeDetailModal({
               {allIngredients.length > 0 && (
                 <div className="riso-rc-have-meter">
                   <div className="riso-rc-have-label">
-                    You have {haveCount} of {allIngredients.length} in your inventory
+                    {t("recipeCard.haveOf", { have: haveCount, total: allIngredients.length })}
                   </div>
                   <div className="riso-rc-have-track">
                     <div
@@ -681,8 +692,8 @@ export function RecipeDetailModal({
               )}
 
               <div className="riso-rc-why-note">
-                <span className="riso-rc-why-sticker">why?</span>
-                <p>Checks come from your Inventory, so they update on their own. Tap any ingredient to see where it is or to change it.</p>
+                <span className="riso-rc-why-sticker">{t("recipeCard.why")}</span>
+                <p>{t("recipeCard.whyNote")}</p>
               </div>
 
               <div className="riso-rc-ingredient-list">
@@ -717,16 +728,16 @@ export function RecipeDetailModal({
               <div className="riso-rc-legend">
                 <span>
                   <span className="riso-rc-legend-dot have" />
-                  In inventory
+                  {t("recipeCard.inInventory")}
                 </span>
                 <span>
                   <span className="riso-rc-legend-dot" />
-                  Need to buy
+                  {t("recipeCard.needToBuy")}
                 </span>
                 {anyUseSoon && (
                   <span>
-                    <span className="riso-rc-legend-sticker">use soon!</span>
-                    Expires in 3 days or less
+                    <span className="riso-rc-legend-sticker">{t("recipeCard.useSoon")}</span>
+                    {t("recipeCard.expiresSoon")}
                   </span>
                 )}
               </div>
@@ -736,11 +747,13 @@ export function RecipeDetailModal({
                   <div className="riso-rc-planned-note">
                     <span className="riso-rc-planned-check">✓</span>
                     <p>
-                      Planned for {WEEKDAY_FULL[plannedEntry.dayOfWeek]} {MEAL_LABEL[plannedEntry.mealType] || plannedEntry.mealType}, so
-                      the {missingIngredients.length} missing item{missingIngredients.length === 1 ? " is" : "s are"} already on your
-                      grocery list.{" "}
+                      {t("recipeCard.planned", {
+                        count: missingIngredients.length,
+                        day: dict().days.long[plannedEntry.dayOfWeek],
+                        meal: t(`meals.${plannedEntry.mealType}`).toLowerCase(),
+                      })}{" "}
                       <button type="button" className="riso-rc-planned-link" onClick={() => onNavigate?.("grocery")}>
-                        View list →
+                        {t("recipeCard.viewList")}
                       </button>
                     </p>
                   </div>
@@ -752,10 +765,10 @@ export function RecipeDetailModal({
                     disabled={addingMissing || addedMissing}
                   >
                     {addedMissing
-                      ? "Added to grocery list ✓"
+                      ? t("recipeCard.addedMissing")
                       : addingMissing
-                        ? "Adding…"
-                        : `Add ${missingIngredients.length} missing to grocery list`}
+                        ? t("recipeCard.adding")
+                        : t("recipeCard.addMissing", { count: missingIngredients.length })}
                   </button>
                 )
               )}
@@ -765,8 +778,8 @@ export function RecipeDetailModal({
               {recipe.instructions?.length > 0 && (
                 <>
                   <div className="riso-rc-steps-header">
-                    <h3>Steps</h3>
-                    <span>Quantities in the steps follow the servings.</span>
+                    <h3>{t("recipeCard.steps")}</h3>
+                    <span>{t("recipeCard.stepsNote")}</span>
                   </div>
                   <ol className="riso-rc-step-list">
                     {(() => {
@@ -784,7 +797,7 @@ export function RecipeDetailModal({
 
               {recipe.notes && (
                 <div className="rc-notes">
-                  <p className="rc-notes-label">Notes</p>
+                  <p className="rc-notes-label">{t("recipeCard.notes")}</p>
                   <p className="rc-notes-text">{recipe.notes}</p>
                 </div>
               )}
@@ -794,8 +807,8 @@ export function RecipeDetailModal({
           {similar.length > 0 && (
             <div className="riso-rc-similar">
               <div className="riso-rc-similar-header">
-                <h3>Uses the same ingredients</h3>
-                <span>Cook one of these next to finish what's left.</span>
+                <h3>{t("recipeCard.similarTitle")}</h3>
+                <span>{t("recipeCard.similarNote")}</span>
               </div>
               <div className="riso-rc-similar-grid">
                 {similar.map(({ recipe: match, sharedCount }) => (
@@ -807,7 +820,7 @@ export function RecipeDetailModal({
                     )}
                     <span className="riso-rc-similar-info">
                       <span className="riso-rc-similar-title">{match.title}</span>
-                      <span className="riso-rc-similar-shared">{sharedCount} SHARED</span>
+                      <span className="riso-rc-similar-shared">{t("recipeCard.shared", { count: sharedCount })}</span>
                     </span>
                   </button>
                 ))}
