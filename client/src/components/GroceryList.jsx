@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -16,7 +16,16 @@ import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { groceryShared } from "../lib/groceryCache.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { buildGroceryList, formatAmount } from "../lib/groceryList.js";
+import { buildGroceryList } from "../lib/groceryList.js";
+import {
+  amountLabel,
+  applyChecks,
+  boughtSnapshot,
+  checkSnapshot,
+  recipeAmountLabel,
+  setCovered,
+  tidyChecks,
+} from "../lib/groceryChecks.js";
 import { staleOverrideKeys } from "../lib/groceryDedupe.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
 import { parseQuantityInput } from "../lib/units.js";
@@ -107,7 +116,7 @@ const VIEWS = [
 // clearing it goes back to the recipe amount.
 function QuantityCell({ item, onSave }) {
   const [editing, setEditing] = useState(false);
-  const recipeAmount = formatAmount(item.parts);
+  const recipeAmount = recipeAmountLabel(item);
   const [draft, setDraft] = useState("");
 
   function start(e) {
@@ -401,16 +410,14 @@ export function GroceryList({
   // Every planned meal from today onward, across all weeks: the list is built
   // from these, so a meal drops off the list once its day has passed.
   const [entries, setEntries] = useState([]);
-  // Which ingredient cores are checked off — lives on the server
-  // (see api.listGroceryChecked/checkGroceryItem) so checking something off
-  // on one device shows up on another instead of being stuck in that one
-  // browser's localStorage.
-  const [checked, setChecked] = useState({});
+  // The saved check rows, by row key - live on the server (see
+  // api.listGroceryChecked/checkGroceryItem) so checking something off on one
+  // device shows up on another instead of being stuck in that one browser's
+  // localStorage. A row says what its check covers and what "Done shopping"
+  // has bought; `checked` below is worked out from them and the list.
+  const [checkRows, setCheckRows] = useState({});
   const [extraItems, setExtraItems] = useState([]);
   const [overrides, setOverrides] = useState([]);
-  // Checked items already added to Inventory by "Done shopping" - they stay
-  // checked (you bought them) but are never added twice.
-  const [inInventory, setInInventory] = useState(() => new Set());
   // Your own stores/sections (GrocerySection) and which ingredient goes where.
   const [sections, setSections] = useState(() => groceryShared.sections || []);
   const [sectionsLoaded, setSectionsLoaded] = useState(() => groceryShared.sections != null);
@@ -433,11 +440,9 @@ export function GroceryList({
   // between views never re-fetches a core it already has.
   const [categoryCache, setCategoryCache] = useState({});
   const [aisleOrder, setAisleOrder] = useState([]);
-  // Tracks which items have already been sent to the pantry this "Done
-  // shopping" pass, purely to stop a double-click from adding the same item
-  // twice before `checked` resets — not persisted, a stray re-add on reload
-  // is harmless (you bought it again).
-  const [pantryAddedKeys, setPantryAddedKeys] = useState(() => new Set());
+  // True while "Done shopping" is sending items to Inventory, so a double
+  // click can't add the same items twice.
+  const doneShopping = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -493,8 +498,8 @@ export function GroceryList({
     }
   }
 
-  // Everything the list is made of (planned meals, checkmarks, hand-added
-  // items, removed rows / own amounts, what's gone to Inventory) loads
+  // Everything the list is made of (planned meals, checkmarks and what's been
+  // bought, hand-added items, removed rows / own amounts) loads
   // together, and the list waits for it - showing the rows first made every
   // item flash unchecked. A visit after the first shows the last loaded
   // state straight away.
@@ -503,10 +508,9 @@ export function GroceryList({
     const cached = groceryShared.list;
     if (cached) {
       setEntries(cached.entries);
-      setChecked(cached.checked);
+      setCheckRows(cached.checkRows);
       setExtraItems(cached.extraItems);
       setOverrides(cached.overrides);
-      setInInventory(cached.inInventory);
       setLoaded(true);
     }
     Promise.allSettled([
@@ -514,15 +518,13 @@ export function GroceryList({
       api.listGroceryChecked(),
       api.listGroceryExtras(),
       api.listGroceryOverrides(),
-      api.listGroceryInInventory(),
     ]).then((results) => {
       if (cancelled) return;
       const value = (i, fallback) => (results[i].status === "fulfilled" ? results[i].value : fallback);
       setEntries(value(0, cached?.entries ?? []));
-      setChecked(Object.fromEntries(value(1, []).map((c) => [c, true])));
+      setCheckRows(Object.fromEntries(value(1, []).map((row) => [row.core, row])));
       setExtraItems(value(2, []));
       setOverrides(value(3, []));
-      setInInventory(new Set(value(4, [])));
       setFresh(results.every((r) => r.status === "fulfilled"));
       setLoaded(true);
     });
@@ -534,8 +536,8 @@ export function GroceryList({
 
   const ready = loaded && dealsLoaded && sectionsLoaded;
   useEffect(() => {
-    if (loaded) groceryShared.list = { entries, checked, extraItems, overrides, inInventory };
-  }, [loaded, entries, checked, extraItems, overrides, inInventory]);
+    if (loaded) groceryShared.list = { entries, checkRows, extraItems, overrides };
+  }, [loaded, entries, checkRows, extraItems, overrides]);
 
   // A removal (or own amount) on a recipe row lasts only while a planned meal
   // still needs the item: once the meals that needed it have left the plan,
@@ -549,7 +551,38 @@ export function GroceryList({
   }, [loaded, fresh, entries, overrides]);
 
   const items = buildGroceryList(entries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
-  const shoppingItems = items.filter((i) => !i.isStaple && !i.removed);
+
+  // Saved checks and purchases follow the plan: once no planned meal needs an
+  // item, its row goes, so a later meal starts fresh; amounts the meals no
+  // longer need are cut back; and checks from before amounts were saved get
+  // theirs.
+  useEffect(() => {
+    if (!loaded || !fresh) return;
+    const { set, remove } = tidyChecks(items, checkRows);
+    if (set.length === 0 && remove.length === 0) return;
+    setCheckRows((prev) => {
+      const next = { ...prev };
+      for (const key of remove) delete next[key];
+      for (const { key, covered, bought } of set) next[key] = { core: key, covered, bought, inInventory: false };
+      return next;
+    });
+    api
+      .tidyGroceryChecked(
+        set.map(({ key, covered, bought }) => ({ core: key, covered, bought })),
+        remove
+      )
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, fresh, entries, extraItems, checkRows]);
+  // What's left to buy: rows already bought are gone, and a row that needs
+  // more than was checked or bought shows only the extra, unchecked.
+  const applied = applyChecks(
+    items.filter((i) => !i.isStaple && !i.removed),
+    checkRows
+  );
+  const shoppingItems = applied.items;
+  const checked = applied.checked;
+  const boughtCount = applied.bought.length;
   const hiddenKeys = new Set(overrides.filter((o) => o.hidden).map((o) => o.key));
   const removedItems = items.filter((i) => !i.isStaple && i.removed && !hiddenKeys.has(i.key));
 
@@ -741,34 +774,30 @@ export function GroceryList({
 
   // Optimistic: flip the checkbox immediately, then persist — reverting if
   // the request fails, so a dropped connection doesn't leave the UI showing
-  // a check that never actually saved.
+  // a check that never actually saved. A check covers what the row shows now.
   async function toggle(key) {
+    const item = shoppingItems.find((i) => i.key === key);
+    if (!item) return;
     const wasChecked = !!checked[key];
-    setChecked((prev) => ({ ...prev, [key]: !wasChecked }));
-    // Unchecking deletes the server row, "added to Inventory" mark included.
-    if (wasChecked) {
-      setInInventory((prev) => {
-        const next = new Set(prev);
-        next.delete(key);
+    const before = checkRows[key];
+    const covered = wasChecked ? null : checkSnapshot(item);
+    setCheckRows((prev) => setCovered(prev, key, covered));
+    try {
+      if (wasChecked) await api.uncheckGroceryItem(key);
+      else await api.checkGroceryItem(key, covered);
+    } catch {
+      setCheckRows((prev) => {
+        const next = { ...prev };
+        if (before) next[key] = before;
+        else delete next[key];
         return next;
       });
     }
-    try {
-      if (wasChecked) await api.uncheckGroceryItem(key);
-      else await api.checkGroceryItem(key);
-    } catch {
-      setChecked((prev) => ({ ...prev, [key]: wasChecked }));
-    }
   }
 
-  async function clearChecked() {
-    setChecked({});
-    await api.clearGroceryChecked();
-  }
-
+  // Adds one item to Inventory; false when it didn't go.
   async function addToPantry(item) {
-    if (!onAddPantryItem || pantryAddedKeys.has(item.key)) return;
-    setPantryAddedKeys((prev) => new Set(prev).add(item.key));
+    if (!onAddPantryItem) return false;
     try {
       // Your own amount wins ("2 packs" -> 2 packs), else the recipe amount.
       const own = item.customQuantity?.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s*(.*)$/);
@@ -777,29 +806,44 @@ export function GroceryList({
         quantity: own ? parseQuantityInput(own[1]) : item.customQuantity ? null : item.parts?.[0]?.quantity ?? null,
         unit: own ? own[2].trim() || null : item.customQuantity ? null : item.parts?.[0]?.unit ?? null,
       });
+      return true;
     } catch {
-      setPantryAddedKeys((prev) => {
-        const next = new Set(prev);
-        next.delete(item.key);
-        return next;
-      });
+      return false;
     }
   }
 
   // Checking something off is exactly the moment you know you bought it, so
   // "Done shopping" is when every checked item lands in Inventory (with a
   // USDA use-by date, via the same suggest logic the pantry-add endpoint
-  // already runs). Items stay checked afterwards - the list shows them as
-  // bought - and are remembered as added so they're never added twice.
+  // already runs) and leaves the list: what was bought is remembered, so a
+  // meal added later that needs more shows only the extra, unchecked. A
+  // checked hand-added item is just deleted. Store mode's button and the
+  // button on this page both come here.
   async function handleDoneShopping() {
-    const toAdd = shoppingItems.filter((i) => checked[i.key] && !inInventory.has(i.key));
-    for (const item of toAdd) {
-      await addToPantry(item);
+    if (doneShopping.current) return;
+    doneShopping.current = true;
+    try {
+      const sent = [];
+      for (const item of shoppingItems.filter((i) => checked[i.key])) {
+        if (await addToPantry(item)) sent.push(item);
+      }
+      if (sent.length === 0) return;
+      const manualKeys = new Set(sent.filter((i) => i.isManual).map((i) => i.key));
+      setCheckRows((prev) => {
+        const next = { ...prev };
+        for (const item of sent) {
+          if (item.isManual) delete next[item.key];
+          else next[item.key] = { core: item.key, covered: null, bought: boughtSnapshot(item), inInventory: false };
+        }
+        return next;
+      });
+      setExtraItems((prev) => prev.filter((x) => !manualKeys.has(`extra-${x.id}`)));
+      await api
+        .markGroceryInInventory(sent.map((i) => ({ core: i.key, bought: i.isManual ? null : boughtSnapshot(i) })))
+        .catch(() => {});
+    } finally {
+      doneShopping.current = false;
     }
-    const keys = toAdd.map((i) => i.key);
-    if (keys.length === 0) return;
-    setInInventory((prev) => new Set([...prev, ...keys]));
-    await api.markGroceryInInventory(keys).catch(() => {});
   }
 
   // Plain-text copy of what's still to buy, grouped like the list on screen.
@@ -810,7 +854,7 @@ export function GroceryList({
       if (open.length === 0) continue;
       lines.push("", group.label);
       for (const { item } of open) {
-        const amount = item.customQuantity || formatAmount(item.parts);
+        const amount = amountLabel(item);
         lines.push(`- ${item.name}${amount ? ` (${amount})` : ""}`);
       }
     }
@@ -971,12 +1015,17 @@ export function GroceryList({
   const storesWithItems = storeOrder.filter((st) => storeRows.some((r) => r.store === st));
 
   const doneCount = shoppingItems.filter((i) => checked[i.key]).length;
-  const toSendCount = shoppingItems.filter((i) => checked[i.key] && !inInventory.has(i.key)).length;
-  const allBought = shoppingItems.length > 0 && shoppingItems.every((i) => checked[i.key] && inInventory.has(i.key));
+  // Every checked row still on the list is waiting for "Done shopping".
+  const toSendCount = doneCount;
+  // Everything on the list is bought: it's empty, and says so.
+  const allBought = shoppingItems.length === 0 && boughtCount > 0;
   // Everything's in the cart: the card goes dark even before "Done shopping".
   const allInCart = shoppingItems.length > 0 && shoppingItems.every((i) => checked[i.key]);
   const totalCount = shoppingItems.length;
-  const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+  // Once everything is bought the card keeps showing the trip: all of them.
+  const cartDone = allBought ? boughtCount : doneCount;
+  const cartTotal = allBought ? boughtCount : totalCount;
+  const pct = cartTotal > 0 ? Math.round((cartDone / cartTotal) * 100) : 0;
 
   // The sidebar's On sale list: what on this list is on sale, the saving,
   // and when each sale ends (soonest first), so you know what to buy first.
@@ -1045,7 +1094,7 @@ export function GroceryList({
           ) : entries.length === 0 && extraItems.length === 0 && sections.length === 0 ? (
             <p className="riso-empty">{t("grocery.nothingPlanned")}</p>
           ) : groups.length === 0 ? (
-            <p className="riso-empty">{t("grocery.nothingToBuy")}</p>
+            <p className="riso-empty">{allBought ? t("grocery.groceriesDone") : t("grocery.nothingToBuy")}</p>
           ) : view === "store" ? (
             <DndContext
               sensors={sensors}
@@ -1149,11 +1198,11 @@ export function GroceryList({
         )}
 
         <aside className="riso-grocery-aside">
-          <section className={`riso-grocery-cart${allInCart ? " done" : ""}`}>
+          <section className={`riso-grocery-cart${allInCart || allBought ? " done" : ""}`}>
             <div className="riso-eyebrow on-pink">{t("grocery.inCart")}</div>
             <div className="riso-grocery-cart-count">
-              <span className="riso-grocery-cart-num">{doneCount}</span>
-              <span className="riso-grocery-cart-label">{t("grocery.ofItems", { count: totalCount })}</span>
+              <span className="riso-grocery-cart-num">{cartDone}</span>
+              <span className="riso-grocery-cart-label">{t("grocery.ofItems", { count: cartTotal })}</span>
             </div>
             <div className="riso-grocery-cart-track">
               <div className="riso-grocery-cart-fill" style={{ width: `${pct}%` }} />

@@ -1183,7 +1183,7 @@ export const en = {
           "Choose a view: [[viewTabs]].",
           "By store, an item on sale starts in the store with the deal. A green tag [[dealTag]] shows where it's cheapest and opens the flyer item.",
           "Drag an item into another store and it stays there. Drag a store by its grip [[grip]] to reorder, or add your own stores.",
-          "Tap an item to check it off. Checked items drop to the bottom and stay checked until you uncheck them. Tap an amount to set your own.",
+          "Tap an item to check it off. Checked items drop to the bottom. A check covers the amount the row showed when you checked it, and it stays until you uncheck the item or finish shopping. If a meal you add later needs more of that ingredient, the row comes back unchecked with only the extra, like +200 g. Tap an amount to set your own.",
           "Remove [[rowRemove]] takes an item off the list until the meals that need it leave your plan. The recipe doesn't change. Use the chips below the list [[removedChip]] to bring items back. An item you added yourself is deleted instead.",
           "Type in the box at the top to add your own items, like 2 lemons. [[share]] sends what's left as a text list.",
           "The On sale strip lists deals for items on your list, soonest-ending first.",
@@ -1191,6 +1191,7 @@ export const en = {
           "Press [[atStore]] for Store mode. It shows one store at a time, with its items grouped by section in walking order, or A to Z.",
           "A big count and a progress bar show what's left. Tap a row to check it off. Choose a light or dark theme.",
           "When you're done, press [[doneShopping]] to add the checked items to your Inventory. They go to the Fridge, Freezer or Pantry with a use-by date from USDA FoodKeeper.",
+          "Then those items leave the list and their checks are cleared. A meal you add later that needs the same ingredient brings it back unchecked, with only the amount you still need to buy. A checked item you added yourself is deleted. The Done button in Store mode does the same.",
         ],
       },
       flyers: {

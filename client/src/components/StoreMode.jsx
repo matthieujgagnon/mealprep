@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatAmount } from "../lib/groceryList.js";
+import { amountLabel } from "../lib/groceryChecks.js";
 import { splitBilingual } from "../lib/bilingual.js";
 import { getLang, t } from "../i18n/index.js";
 import { localizePrice } from "../i18n/format.js";
@@ -155,7 +155,7 @@ export function StoreMode({
             )}
             {group.rows.map(({ item, deal }) => {
               const on = !!checked[item.key];
-              const qty = item.customQuantity || formatAmount(item.parts);
+              const qty = amountLabel(item);
               const line = detailLine(item, deal);
               // Not the name again ("Limes" on sale as "Limes").
               const detail = line && line.toLowerCase() !== item.name.toLowerCase() ? line : "";
