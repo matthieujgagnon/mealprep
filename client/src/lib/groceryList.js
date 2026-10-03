@@ -206,7 +206,7 @@ export function canonicalize(rawName) {
   return { core, varieties, written };
 }
 
-// Combines every ingredient across all planner entries into one deduplicated
+// Combines every ingredient across the given planner entries into one deduplicated
 // list, scaling quantities by whatever servings each planned meal was set to,
 // and grouping similar ingredients (e.g. "avocado" + "California avocado")
 // into a single line. customStaples is the user's saved list (from the
@@ -237,10 +237,13 @@ export function canonicalize(rawName) {
 // gets a `core` so it can be dragged into store sections/staples and filed
 // alongside matching recipe ingredients the same way everything else is.
 //
-// overrides are this week's GroceryItemOverride rows, matched by row key:
-// a removed row comes back flagged `removed` (callers leave it off the list
-// but can offer to restore it), and `customQuantity` is the user's own
-// amount, shown alongside what the recipes call for.
+// plannerEntries is every planned meal from today onward, across all weeks:
+// the same ingredient from several meals, in any week, is one row.
+//
+// overrides are GroceryItemOverride rows, matched by row key: a removed row
+// comes back flagged `removed` (callers leave it off the list but can offer
+// to restore it), and `customQuantity` is the user's own amount, shown
+// alongside what the recipes call for.
 export function buildGroceryList(
   plannerEntries,
   customStaples = [],
@@ -334,8 +337,6 @@ export function buildGroceryList(
         : SPICE_WORDS.includes(resolvedCore),
       isManual: true,
       manualId: extra.id,
-      // Pushed here from that week's list.
-      pushedFrom: extra.pushedFrom || null,
     };
   });
 
@@ -343,7 +344,7 @@ export function buildGroceryList(
   return [...recipeItems, ...manualItems]
     .map((item) => {
       const o = overrideByKey.get(item.key);
-      return { ...item, removed: !!o?.removed, movedTo: (o?.removed && o?.movedTo) || null, customQuantity: o?.quantity || null };
+      return { ...item, removed: !!o?.removed, customQuantity: o?.quantity || null };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }

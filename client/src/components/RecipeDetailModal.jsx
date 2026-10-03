@@ -19,6 +19,7 @@ import { CookMode } from "./CookMode.jsx";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { formatRecipeTime } from "../lib/mealSlots.js";
+import { isPastDay } from "../lib/dates.js";
 import { dict, t } from "../i18n/index.js";
 import { formatList } from "../i18n/format.js";
 
@@ -401,11 +402,11 @@ export function RecipeDetailModal({
   // The "use soon!" key only means something when an ingredient wears it.
   const anyUseSoon = allIngredients.some((ing) => ingredientStatus(ing) === "soon");
 
-  // Already scheduled *for the currently-viewed week* — matches the same
-  // week `weekStart` would add grocery extras to, which is exactly what
-  // the "already on your grocery list" copy needs to stay true.
+  // Already scheduled in the currently-viewed week, today or later: the
+  // grocery list covers every planned meal from today on, so the "already
+  // on your grocery list" copy is only true for those.
   const plannedEntry = weekStart
-    ? plannerEntries.find((e) => e.recipe?.id === recipe.id && !e.recipe?.isPlaceholder)
+    ? plannerEntries.find((e) => e.recipe?.id === recipe.id && !e.recipe?.isPlaceholder && !isPastDay(weekStart, e.dayOfWeek))
     : null;
 
   async function addTag() {

@@ -1,5 +1,5 @@
 import { clearDeals } from "./lib/dealsStore.js";
-import { groceryShared } from "./lib/groceryCache.js";
+import { clearGroceryShared } from "./lib/groceryCache.js";
 import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
@@ -15,7 +15,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { t } from "./i18n/index.js";
 import { LanguageSwitch } from "./components/RisoControls.jsx";
-import { currentWeekStart, shiftWeek } from "./lib/dates.js";
+import { currentWeekStart, shiftWeek, toDateKey } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { core } from "./lib/similarRecipes.js";
@@ -165,8 +165,9 @@ export default function App({ user, onLogout }) {
   // { recipe: null } for a new one, null when closed.
   const [recipeEditor, setRecipeEditor] = useState(null);
   const editorDirty = useRef(false);
-  const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items for weekStart
-  const [groceryOverrides, setGroceryOverrides] = useState([]); // this week's removed rows / own quantities (GroceryItemOverride)
+  const [upcomingEntries, setUpcomingEntries] = useState([]); // every planned meal from today onward, across weeks: what the grocery list is built from
+  const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items
+  const [groceryOverrides, setGroceryOverrides] = useState([]); // removed rows / own quantities (GroceryItemOverride)
   const [isDragActive, setIsDragActive] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState(null); // the dnd-kit `active` object for whatever's currently being dragged, for <DragOverlay>
   // Which droppable id a drag is currently hovering, tracked only to drive
@@ -219,55 +220,58 @@ export default function App({ user, onLogout }) {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setLoadError(true));
   }, [weekStart]);
 
-  // Hand-added grocery items for the week. Re-fetched on tab change too,
-  // since the Grocery and Home tabs add/remove items through their own
-  // state. Drives the grocery de-duplication below.
+  // What's on the grocery list: the upcoming meals, hand-added items and
+  // removed rows. Re-fetched on tab change, since the Grocery and Home tabs
+  // and the Planner change them through their own state. Drives the grocery
+  // de-duplication below.
   useEffect(() => {
-    api.listGroceryExtras(weekStart).then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
-    api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
-  }, [weekStart, tab]);
+    const today = toDateKey(new Date());
+    api.listPlannerUpcoming(today).then(setUpcomingEntries).catch(() => setUpcomingEntries([]));
+    api.listGroceryExtras().then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
+    api.listGroceryOverrides().then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
+  }, [tab]);
 
-  const groceryCores = coresOnGroceryList(plannerEntries, plannerExtraItems, groceryOverrides);
+  const groceryCores = coresOnGroceryList(upcomingEntries, plannerExtraItems, groceryOverrides);
 
   function isOnGroceryList(name) {
     return groceryCores.has(groceryCore(name));
   }
 
-  // Adds only what isn't already on this week's list (from a planned recipe
+  // Adds only what isn't already on the list (from a planned recipe
   // or added earlier), so tapping "+ Add all" twice, or adding an item a
   // planned recipe already needs, never makes a duplicate row.
   async function addToGroceryList(names) {
     const seen = new Set(groceryCores);
-    const removedRows = removedRecipeRows(plannerEntries, groceryOverrides);
+    const removedRows = removedRecipeRows(upcomingEntries, groceryOverrides);
     const created = [];
     for (const name of names) {
       const c = groceryCore(name);
       if (seen.has(c)) continue;
       seen.add(c);
       if (removedRows.has(c)) {
-        // A planned recipe already needs it but it was removed for this
-        // week - bring that row back rather than adding a second one.
+        // A planned recipe already needs it but it was removed - bring
+        // that row back rather than adding a second one.
         await setGroceryOverride(removedRows.get(c), { removed: false });
         continue;
       }
-      created.push(await api.addGroceryExtra(weekStart, { name, quantity: null, unit: null }));
+      created.push(await api.addGroceryExtra({ name, quantity: null, unit: null }));
     }
     if (created.length > 0) setPlannerExtraItems((prev) => [...prev, ...created]);
   }
 
   async function setGroceryOverride(key, patch) {
-    const saved = await api.setGroceryOverride(weekStart, key, patch);
+    const saved = await api.setGroceryOverride(key, patch);
     setGroceryOverrides((prev) => [...prev.filter((o) => o.key !== key), ...(saved ? [saved] : [])]);
   }
 
-  // Hand-added rows are deleted; a planned recipe's row is removed for this
-  // week only (the recipe itself is untouched).
+  // Hand-added rows are deleted; a planned recipe's row is removed until the
+  // meals that need it leave the plan (the recipe itself is untouched).
   async function removeFromGroceryList(name) {
     const c = groceryCore(name);
     const matches = plannerExtraItems.filter((item) => groceryCore(item.name) === c);
     await Promise.all(matches.map((item) => api.deleteGroceryExtra(item.id)));
     setPlannerExtraItems((prev) => prev.filter((item) => !matches.includes(item)));
-    const recipeRow = buildGroceryList(plannerEntries, [], {}, [], [], groceryOverrides).find(
+    const recipeRow = buildGroceryList(upcomingEntries, [], {}, [], [], groceryOverrides).find(
       (item) => item.core === c && !item.removed
     );
     if (recipeRow) await setGroceryOverride(recipeRow.key, { removed: true });
@@ -314,12 +318,13 @@ export default function App({ user, onLogout }) {
     await api.deleteRecipe(id);
     setRecipes((prev) => prev.filter((r) => r.id !== id));
     setPlannerEntries((prev) => prev.filter((e) => e.recipeId !== id));
+    setUpcomingEntries((prev) => prev.filter((e) => e.recipeId !== id));
   }
 
   async function handleLogout() {
     await api.logout();
     clearDeals();
-    groceryShared.sections = null;
+    clearGroceryShared();
     onLogout();
   }
 
@@ -1029,9 +1034,6 @@ export default function App({ user, onLogout }) {
         {tab === "grocery" && (
           <GroceryList
             user={user}
-            plannerEntries={plannerEntries}
-            weekStart={weekStart}
-            onChangeWeek={setWeekStart}
             customStaples={customStaples}
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}

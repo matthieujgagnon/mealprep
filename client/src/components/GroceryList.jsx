@@ -17,15 +17,16 @@ import { api } from "../api.js";
 import { groceryShared } from "../lib/groceryCache.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { buildGroceryList, formatAmount } from "../lib/groceryList.js";
+import { staleOverrideKeys } from "../lib/groceryDedupe.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
 import { parseQuantityInput } from "../lib/units.js";
-import { currentWeekStart, formatWeekRangeLabel, isCurrentWeek, parseDateKey, shiftWeek } from "../lib/dates.js";
+import { parseDateKey, toDateKey } from "../lib/dates.js";
 import { dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
 import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
-import { t, tx } from "../i18n/index.js";
-import { formatShortDay, formatWeekday, localizePrice } from "../i18n/format.js";
+import { t } from "../i18n/index.js";
+import { formatWeekday, localizePrice } from "../i18n/format.js";
 
 // Per-item "which store do I usually get this at" preference — new in the
 // Riso redesign (there's no server schema for it yet). Lasting-but-not-
@@ -49,19 +50,12 @@ function aisleLabel(id) {
   return t(`aisles.${id || "other"}`);
 }
 
-// The last loaded state of each week's list, so coming back to the tab shows
-// it straight away instead of every item unchecked until the server answers.
-const weekCache = new Map();
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 function daysUntilKey(key) {
   const today = new Date();
   const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   const d = parseDateKey(key);
   return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - start) / DAY_MS);
-}
-function longDay(key) {
-  return formatShortDay(parseDateKey(key));
 }
 // "ends today", "ends tomorrow", "ends Wed"
 function endsLabel(key, left) {
@@ -204,7 +198,7 @@ function DealTag({ deal, onOpen }) {
   );
 }
 
-function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStore, sub, onDelete, onPush, onSetQuantity, dragging, rowRef, dragProps }) {
+function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
   return (
     <div
       ref={rowRef}
@@ -235,11 +229,6 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
             {item.name}
             {item.varieties.length > 0 && ` (${item.varieties.join(", ")})`}
           </span>
-          {item.pushedFrom && (
-            <span className="riso-row-carried" title={t("grocery.pushedFrom", { week: formatWeekRangeLabel(item.pushedFrom) })}>
-              {t("grocery.fromLastWeek")}
-            </span>
-          )}
         </span>
         {sub && <span className="riso-row-sub">{sub}</span>}
       </span>
@@ -249,25 +238,11 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
         showStore && <span className="riso-row-store static">{storeLabel(store)}</span>
       )}
       <QuantityCell item={item} onSave={onSetQuantity} />
-      {onPush && !checked && (
-        <button
-          type="button"
-          className="riso-row-push"
-          aria-label={t("grocery.pushAria", { name: item.name })}
-          title={t("grocery.pushTitle")}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPush();
-          }}
-        >
-          →
-        </button>
-      )}
       <button
         type="button"
         className="riso-row-delete"
         aria-label={t("grocery.removeAria", { name: item.name })}
-        title={item.isManual ? t("grocery.deleteItem") : t("grocery.removeFromWeek")}
+        title={item.isManual ? t("grocery.deleteItem") : t("grocery.removeFromList")}
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -411,9 +386,6 @@ function AddStoreForm({ onAdd }) {
 
 export function GroceryList({
   user,
-  plannerEntries,
-  weekStart,
-  onChangeWeek,
   customStaples,
   excludedStaples,
   stapleCategories,
@@ -423,16 +395,13 @@ export function GroceryList({
   // waits for both (see `ready` below) - drawing it before they arrived
   // put items in "Any store" for a moment, then moved them.
   const { deals: allDeals, loaded: dealsLoaded } = useDeals();
-  // The deals that still run during the week on screen: none for a past
-  // week, and for next week only the ones whose flyer hasn't ended by then.
-  const deals = useMemo(() => {
-    if (weekStart < currentWeekStart()) return [];
-    return allDeals.filter((d) => !d.validUntil || d.validUntil >= weekStart);
-  }, [allDeals, weekStart]);
-  const nextWeek = shiftWeek(weekStart, 1);
-  // "Push to next week" on an item whose sale ends before then asks first.
-  const [pushAsk, setPushAsk] = useState(null); // { item, deal }
-  // Which ingredient cores are checked off this week — lives on the server
+  // The deals still running today.
+  const today = toDateKey(new Date());
+  const deals = useMemo(() => allDeals.filter((d) => !d.validUntil || d.validUntil >= today), [allDeals, today]);
+  // Every planned meal from today onward, across all weeks: the list is built
+  // from these, so a meal drops off the list once its day has passed.
+  const [entries, setEntries] = useState([]);
+  // Which ingredient cores are checked off — lives on the server
   // (see api.listGroceryChecked/checkGroceryItem) so checking something off
   // on one device shows up on another instead of being stuck in that one
   // browser's localStorage.
@@ -445,7 +414,10 @@ export function GroceryList({
   // Your own stores/sections (GrocerySection) and which ingredient goes where.
   const [sections, setSections] = useState(() => groceryShared.sections || []);
   const [sectionsLoaded, setSectionsLoaded] = useState(() => groceryShared.sections != null);
-  const [loadedWeek, setLoadedWeek] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  // The server has answered everything this visit (not just the cache), so
+  // what's on screen is the whole truth and stale saved rows can be cleared.
+  const [fresh, setFresh] = useState(false);
   const [draggingItem, setDraggingItem] = useState(null);
   // The flyer item open in the detail view (tapping a row's deal tag).
   const [openDeal, setOpenDeal] = useState(null);
@@ -521,52 +493,65 @@ export function GroceryList({
     }
   }
 
-  // Everything week-specific (checkmarks, hand-added items, removed rows /
-  // own amounts, what's gone to Inventory) loads together, and the list
-  // waits for it - showing the rows first made every item flash unchecked.
-  // A week seen before shows its cached state straight away.
+  // Everything the list is made of (planned meals, checkmarks, hand-added
+  // items, removed rows / own amounts, what's gone to Inventory) loads
+  // together, and the list waits for it - showing the rows first made every
+  // item flash unchecked. A visit after the first shows the last loaded
+  // state straight away.
   useEffect(() => {
     let cancelled = false;
-    const cached = weekCache.get(weekStart);
+    const cached = groceryShared.list;
     if (cached) {
+      setEntries(cached.entries);
       setChecked(cached.checked);
       setExtraItems(cached.extraItems);
       setOverrides(cached.overrides);
       setInInventory(cached.inInventory);
-      setLoadedWeek(weekStart);
-    } else {
-      setLoadedWeek(null);
+      setLoaded(true);
     }
-    const fallback = (p, value) => p.catch(() => value);
-    Promise.all([
-      fallback(api.listGroceryChecked(weekStart), []),
-      fallback(api.listGroceryExtras(weekStart), []),
-      fallback(api.listGroceryOverrides(weekStart), []),
-      fallback(api.listGroceryInInventory(weekStart), []),
-    ]).then(([cores, extras, overrideRows, sent]) => {
+    Promise.allSettled([
+      api.listPlannerUpcoming(today),
+      api.listGroceryChecked(),
+      api.listGroceryExtras(),
+      api.listGroceryOverrides(),
+      api.listGroceryInInventory(),
+    ]).then((results) => {
       if (cancelled) return;
-      setChecked(Object.fromEntries(cores.map((c) => [c, true])));
-      setExtraItems(extras);
-      setOverrides(overrideRows);
-      setInInventory(new Set(sent));
-      setLoadedWeek(weekStart);
+      const value = (i, fallback) => (results[i].status === "fulfilled" ? results[i].value : fallback);
+      setEntries(value(0, cached?.entries ?? []));
+      setChecked(Object.fromEntries(value(1, []).map((c) => [c, true])));
+      setExtraItems(value(2, []));
+      setOverrides(value(3, []));
+      setInInventory(new Set(value(4, [])));
+      setFresh(results.every((r) => r.status === "fulfilled"));
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [weekStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const loaded = loadedWeek === weekStart;
   const ready = loaded && dealsLoaded && sectionsLoaded;
   useEffect(() => {
-    if (loaded) weekCache.set(weekStart, { checked, extraItems, overrides, inInventory });
-  }, [loaded, weekStart, checked, extraItems, overrides, inInventory]);
+    if (loaded) groceryShared.list = { entries, checked, extraItems, overrides, inInventory };
+  }, [loaded, entries, checked, extraItems, overrides, inInventory]);
 
-  const items = buildGroceryList(plannerEntries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
+  // A removal (or own amount) on a recipe row lasts only while a planned meal
+  // still needs the item: once the meals that needed it have left the plan,
+  // the saved row is cleared, so a later meal that needs it starts fresh.
+  useEffect(() => {
+    if (!loaded || !fresh) return;
+    const stale = staleOverrideKeys(entries, overrides);
+    if (stale.length === 0) return;
+    setOverrides((prev) => prev.filter((o) => !stale.includes(o.key)));
+    api.clearGroceryOverrides(stale).catch(() => {});
+  }, [loaded, fresh, entries, overrides]);
+
+  const items = buildGroceryList(entries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
   const shoppingItems = items.filter((i) => !i.isStaple && !i.removed);
   const hiddenKeys = new Set(overrides.filter((o) => o.hidden).map((o) => o.key));
-  const removedItems = items.filter((i) => !i.isStaple && i.removed && !i.movedTo && !hiddenKeys.has(i.key));
-  const pushedItems = items.filter((i) => !i.isStaple && i.removed && i.movedTo);
+  const removedItems = items.filter((i) => !i.isStaple && i.removed && !hiddenKeys.has(i.key));
 
   // Each item's grocery aisle ("Fruits & vegetables", "Pantry", ...) - the
   // same aisles the Flyers page groups by - for the aisle view and the line
@@ -618,7 +603,7 @@ export function GroceryList({
   const bestDeal = (item) => bestDealByName.get(item.name) ?? null;
 
   // The stores the user actually shops at, in the order they first appear in
-  // this week's flyer deals — there's no saved "my stores" list in the
+  // the flyer deals — there's no saved "my stores" list in the
   // schema, so this is derived instead. Falls back to a single default
   // bucket before any deals have ever been uploaded.
   // Your own stores (in your order) plus any store with a flyer deal. Items
@@ -675,7 +660,7 @@ export function GroceryList({
     return all;
   }
 
-  // Filing an item under a store saves it for every week (by ingredient).
+  // Filing an item under a store saves it for good (by ingredient).
   // A flyer store you haven't made your own yet becomes one on first use -
   // in the place it's shown, so the stores don't jump around.
   async function moveToStore(item, storeName) {
@@ -769,8 +754,8 @@ export function GroceryList({
       });
     }
     try {
-      if (wasChecked) await api.uncheckGroceryItem(weekStart, key);
-      else await api.checkGroceryItem(weekStart, key);
+      if (wasChecked) await api.uncheckGroceryItem(key);
+      else await api.checkGroceryItem(key);
     } catch {
       setChecked((prev) => ({ ...prev, [key]: wasChecked }));
     }
@@ -778,7 +763,7 @@ export function GroceryList({
 
   async function clearChecked() {
     setChecked({});
-    await api.clearGroceryChecked(weekStart);
+    await api.clearGroceryChecked();
   }
 
   async function addToPantry(item) {
@@ -804,8 +789,8 @@ export function GroceryList({
   // Checking something off is exactly the moment you know you bought it, so
   // "Done shopping" is when every checked item lands in Inventory (with a
   // USDA use-by date, via the same suggest logic the pantry-add endpoint
-  // already runs). Items stay checked afterwards - the list shows the week
-  // as bought - and are remembered as added so they're never added twice.
+  // already runs). Items stay checked afterwards - the list shows them as
+  // bought - and are remembered as added so they're never added twice.
   async function handleDoneShopping() {
     const toAdd = shoppingItems.filter((i) => checked[i.key] && !inInventory.has(i.key));
     for (const item of toAdd) {
@@ -814,12 +799,12 @@ export function GroceryList({
     const keys = toAdd.map((i) => i.key);
     if (keys.length === 0) return;
     setInInventory((prev) => new Set([...prev, ...keys]));
-    await api.markGroceryInInventory(weekStart, keys).catch(() => {});
+    await api.markGroceryInInventory(keys).catch(() => {});
   }
 
   // Plain-text copy of what's still to buy, grouped like the list on screen.
   function listAsText() {
-    const lines = [t("grocery.listTitle", { week: formatWeekRangeLabel(weekStart) })];
+    const lines = [t("grocery.shareTitle")];
     for (const group of groups) {
       const open = group.sorted.filter((r) => !checked[r.item.key]);
       if (open.length === 0) continue;
@@ -852,7 +837,7 @@ export function GroceryList({
     e.preventDefault();
     const parsed = parseAddInput(addValue);
     if (!parsed || !parsed.name) return;
-    const created = await api.addGroceryExtra(weekStart, { name: parsed.name, quantity: parsed.quantity, unit: null });
+    const created = await api.addGroceryExtra({ name: parsed.name, quantity: parsed.quantity, unit: null });
     // The server hands back the existing row (quantity merged) for a name
     // already on the list, so replace rather than append.
     setExtraItems((prev) =>
@@ -873,53 +858,11 @@ export function GroceryList({
     const current = prev.find((o) => o.key === key) || { key, quantity: null, removed: false };
     setOverrides([...prev.filter((o) => o.key !== key), { ...current, ...patch }]);
     try {
-      const saved = await api.setGroceryOverride(weekStart, key, patch);
+      const saved = await api.setGroceryOverride(key, patch);
       setOverrides((now) => [...now.filter((o) => o.key !== key), ...(saved ? [saved] : [])]);
     } catch {
       setOverrides(prev);
     }
-  }
-
-  // "→": off this week's list, onto next week's. A sale that ends before
-  // next week is worth a second look first.
-  async function pushItem(item, deal, { force = false } = {}) {
-    if (!force && deal?.validUntil && deal.validUntil < nextWeek) {
-      setPushAsk({ item, deal });
-      return;
-    }
-    setPushAsk(null);
-    const single = item.parts.length === 1 ? item.parts[0] : { quantity: null, unit: null };
-    const quantityText = item.customQuantity || (item.parts.length > 1 ? formatAmount(item.parts) : null);
-    setOverrides((prev) => [
-      ...prev.filter((o) => o.key !== item.key),
-      { ...(prev.find((o) => o.key === item.key) || { key: item.key, quantity: null }), removed: true, movedTo: nextWeek },
-    ]);
-    try {
-      const { override } = await api.pushGroceryItem({
-        fromWeek: weekStart,
-        toWeek: nextWeek,
-        key: item.key,
-        name: item.name,
-        quantity: single.quantity,
-        unit: single.unit,
-        quantityText,
-      });
-      setOverrides((now) => [...now.filter((o) => o.key !== item.key), override]);
-    } catch {
-      setOverrides((now) => now.filter((o) => !(o.key === item.key && o.movedTo === nextWeek)));
-    }
-    weekCache.delete(nextWeek);
-  }
-
-  async function pullBack(item) {
-    setOverrides((prev) =>
-      prev.map((o) => (o.key === item.key ? { ...o, removed: false, movedTo: null } : o)).filter((o) => o.removed || o.quantity)
-    );
-    await api.pullBackGroceryItem(weekStart, item.key).catch(() => {});
-    weekCache.delete(item.movedTo);
-    const [extras, overrideRows] = await Promise.all([api.listGroceryExtras(weekStart), api.listGroceryOverrides(weekStart)]).catch(() => [null, null]);
-    if (extras) setExtraItems(extras);
-    if (overrideRows) setOverrides(overrideRows);
   }
 
   function removeItem(item) {
@@ -1042,15 +985,8 @@ export function GroceryList({
     .filter((r) => r.deal && !checked[r.item.key])
     .map((r) => ({ ...r, saving: dealSavings(r.deal), ends: r.deal.validUntil || null }))
     .sort((a, b) => (a.ends || "9999").localeCompare(b.ends || "9999") || (b.saving?.pct ?? 0) - (a.saving?.pct ?? 0));
-  // Pushed to next week while on sale now, with the sale over by then.
-  const missedSales = pushedItems
-    .map((item) => ({ item, deal: findDealsFor(item.name, deals)[0] || null }))
-    .filter((r) => r.deal?.validUntil && r.deal.validUntil < (r.item.movedTo || nextWeek));
 
-  const weekLabel = isCurrentWeek(weekStart)
-    ? formatWeekRangeLabel(weekStart)
-    : t("grocery.weekOf", { week: formatWeekRangeLabel(weekStart) });
-  const subLabel = t("grocery.subLabel", { week: weekLabel.toUpperCase(), count: totalCount - doneCount });
+  const subLabel = t("grocery.subLabel", { count: totalCount - doneCount });
 
   const hintText = view === "store" ? t("grocery.hintStore") : t("grocery.hintOther");
 
@@ -1063,24 +999,6 @@ export function GroceryList({
             {t("grocery.title")} <span className="accent">{t("grocery.titleAccent")}</span>
           </h1>
         </div>
-        {onChangeWeek && (
-          <div className="riso-planner-nav-row riso-grocery-week-nav" role="group" aria-label={t("grocery.weekAria")}>
-            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, -1))} aria-label={t("planner.prevWeek")}>
-              ‹
-            </button>
-            <span className="riso-planner-week-label">{formatWeekRangeLabel(weekStart, { year: false })}</span>
-            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, 1))} aria-label={t("planner.nextWeek")}>
-              ›
-            </button>
-            {isCurrentWeek(weekStart) ? (
-              <span className="riso-planner-week-badge">{t("planner.thisWeekBadge")}</span>
-            ) : (
-              <button type="button" className="riso-chip small" onClick={() => onChangeWeek(currentWeekStart())}>
-                {t("planner.thisWeek")}
-              </button>
-            )}
-          </div>
-        )}
         <Segmented options={VIEWS} value={view} onChange={setView} />
         <div className="riso-grocery-share-wrap">
           <button
@@ -1124,8 +1042,8 @@ export function GroceryList({
                 <div key={i} className="riso-grocery-loading-row" />
               ))}
             </div>
-          ) : plannerEntries.length === 0 && extraItems.length === 0 && sections.length === 0 ? (
-            <p className="riso-empty">{t("grocery.nothingPlanned", { week: weekLabel })}</p>
+          ) : entries.length === 0 && extraItems.length === 0 && sections.length === 0 ? (
+            <p className="riso-empty">{t("grocery.nothingPlanned")}</p>
           ) : groups.length === 0 ? (
             <p className="riso-empty">{t("grocery.nothingToBuy")}</p>
           ) : view === "store" ? (
@@ -1163,7 +1081,6 @@ export function GroceryList({
                               store={row.store}
                               sub={subLineFor(row)}
                               onDelete={() => removeItem(row.item)}
-                              onPush={() => pushItem(row.item, row.deal)}
                               onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
                             />
                           ))}
@@ -1197,30 +1114,11 @@ export function GroceryList({
                     showStore
                     sub={subLineFor(row)}
                     onDelete={() => removeItem(row.item)}
-                    onPush={() => pushItem(row.item, row.deal)}
                     onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
                   />
                 ))}
               </section>
             ))
-          )}
-
-          {pushedItems.length > 0 && (
-            <div className="riso-grocery-removed pushed" aria-label={t("grocery.pushedLabel")}>
-              <span className="riso-grocery-removed-label">{t("grocery.pushedLabel")}</span>
-              {pushedItems.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className="riso-grocery-removed-chip"
-                  aria-label={t("grocery.bringBackAria", { name: item.name })}
-                  title={t("grocery.bringBackTitle")}
-                  onClick={() => pullBack(item)}
-                >
-                  {item.name} <span aria-hidden="true">↺</span>
-                </button>
-              ))}
-            </div>
           )}
 
           {removedItems.length > 0 && (
@@ -1309,52 +1207,13 @@ export function GroceryList({
               </>
             ) : (
               <>
-                <p className="riso-grocery-sale-amt">
-                  {isCurrentWeek(weekStart) || weekStart > currentWeekStart() ? t("grocery.noDealsYet") : t("grocery.noDealsThatWeek")}
-                </p>
-                <p className="riso-grocery-sale-copy">
-                  {weekStart < currentWeekStart() ? t("grocery.pastFlyers") : t("grocery.noMatchDeals")}
-                </p>
+                <p className="riso-grocery-sale-amt">{t("grocery.noDealsYet")}</p>
+                <p className="riso-grocery-sale-copy">{t("grocery.noMatchDeals")}</p>
               </>
-            )}
-            {missedSales.length > 0 && (
-              <div className="riso-grocery-sale-missed">
-                <p>{t("grocery.missed")}</p>
-                {missedSales.map(({ item, deal }) => (
-                  <button key={item.key} type="button" className="riso-grocery-removed-chip" onClick={() => pullBack(item)}>
-                    {t("grocery.bringBack", { name: item.name, store: deal.store, price: localizePrice(deal.price) })}{" "}
-                    <span aria-hidden="true">↺</span>
-                  </button>
-                ))}
-              </div>
             )}
           </section>
         </aside>
       </div>
-      {pushAsk && (
-        <div className="riso-push-ask-overlay" onClick={() => setPushAsk(null)}>
-          <div className="riso-push-ask" role="dialog" aria-label={t("grocery.saleEndsAria")} onClick={(e) => e.stopPropagation()}>
-            <p className="riso-eyebrow">{t("grocery.saleEndsFirst")}</p>
-            <p className="riso-push-ask-text">
-              {tx("grocery.pushAskText", {
-                name: <strong>{pushAsk.item.name}</strong>,
-                price: localizePrice(pushAsk.deal.price),
-                store: pushAsk.deal.store,
-                until: longDay(pushAsk.deal.validUntil),
-                next: longDay(nextWeek),
-              })}
-            </p>
-            <div className="riso-push-ask-actions">
-              <button type="button" className="riso-push-ask-keep" onClick={() => setPushAsk(null)}>
-                {t("grocery.keepThisWeek")}
-              </button>
-              <button type="button" className="riso-push-ask-go" onClick={() => pushItem(pushAsk.item, pushAsk.deal, { force: true })}>
-                {t("grocery.pushAnyway")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {storeMode && (
         <StoreMode
           rows={storeRows}

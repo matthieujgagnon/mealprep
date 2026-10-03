@@ -9,12 +9,6 @@ const prisma = new PrismaClient();
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-
 async function signUp(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -39,9 +33,8 @@ async function seedList(page) {
       deal("Super C", "Poitrines de poulet Maple Leaf | Maple Leaf chicken breasts", "chicken breasts", "$4.87/lb", 4.87, "lb", "meat"),
     ],
   });
-  const weekStart = mondayOf(new Date());
   for (const [name, quantity] of [["ground beef", 1], ["limes", 2], ["chicken breasts", 2], ["rice", 1], ["cilantro", 1], ["frozen peas", 1]]) {
-    await page.request.post("/api/grocery-extra-items", { data: { weekStart, name, quantity } });
+    await page.request.post("/api/grocery-extra-items", { data: { name, quantity } });
   }
   await page.reload();
 }

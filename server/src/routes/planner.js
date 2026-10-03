@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { fail } from "../lib/i18n.js";
+import { upcomingWhere } from "../lib/upcomingMeals.js";
 
 export const plannerRouter = Router();
 
@@ -28,6 +29,20 @@ plannerRouter.get("/", async (req, res) => {
     where: { weekStart: week, userId: req.userId },
     include: { recipe: { include: { ingredients: true } } },
     orderBy: [{ dayOfWeek: "asc" }, { position: "asc" }],
+  });
+  res.json(entries.map(serializeEntry));
+});
+
+// GET /api/planner/upcoming?from=YYYY-MM-DD - every placement from that day
+// onward, across all weeks, with recipe details included. The grocery list
+// is built from this: one list for every planned meal that hasn't happened.
+plannerRouter.get("/upcoming", async (req, res) => {
+  const where = upcomingWhere(req.query.from);
+  if (!where) return res.status(400).json(fail(req, "required", { fields: "from (YYYY-MM-DD)" }));
+  const entries = await prisma.plannerEntry.findMany({
+    where: { userId: req.userId, ...where },
+    include: { recipe: { include: { ingredients: true } } },
+    orderBy: [{ weekStart: "asc" }, { dayOfWeek: "asc" }, { position: "asc" }],
   });
   res.json(entries.map(serializeEntry));
 });

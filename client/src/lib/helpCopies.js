@@ -88,7 +88,6 @@ export const HELP_COPIES = {
   },
   dealTag: { kind: "deal" },
   grip: { kind: "icon", cls: "riso-group-grip", glyph: "⠿" },
-  rowPush: { kind: "icon", cls: "riso-row-push", glyph: "→" },
   rowRemove: { kind: "icon", cls: "riso-row-delete", glyph: "×" },
   removedChip: { kind: "removed" },
   share: { kind: "pill", cls: "riso-grocery-share", label: "grocery.share" },

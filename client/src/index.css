@@ -9355,37 +9355,29 @@ button.riso-table-group-head:disabled {
   font-weight: 500;
 }
 
-/* Where it's cheapest this week and the price - opens the flyer item. */
+/* Where it's cheapest and the price - opens the flyer item. One solid green
+   pill: the store name and the price sit side by side, evenly spaced, in the
+   same lettering (a monospace price spread "$2.49" out as "$2 . 49"). */
 .riso-row-deal {
   flex: none;
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
+  gap: 8px;
   height: 28px;
-  padding: 0;
+  padding: 0 12px;
   border: 1.5px solid var(--riso-ink);
   border-radius: 14px;
-  overflow: hidden;
   background: var(--riso-green);
   color: #16181f;
   font: 700 12px var(--riso-font-display);
+  letter-spacing: normal;
   white-space: nowrap;
   cursor: pointer;
 }
 
-.riso-row-deal-store {
-  display: flex;
-  align-items: center;
-  padding: 0 9px 0 11px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  border-right: 1.5px solid var(--riso-ink);
-}
-
+.riso-row-deal-store,
 .riso-row-deal-price {
-  display: flex;
-  align-items: center;
-  padding: 0 11px 0 9px;
-  font-family: var(--riso-font-mono);
+  letter-spacing: normal;
 }
 
 .riso-row-deal:hover .riso-row-deal-price {
@@ -14821,42 +14813,7 @@ body.no-select {
   font-weight: 800;
 }
 
-/* Grocery: week picker, "→ next week", carried-over tag, On sale list. */
-.riso-grocery-week-nav {
-  margin: 0;
-}
-
-.riso-row-push {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 800 14px/1 var(--riso-font-display);
-  cursor: pointer;
-  padding: 0;
-}
-
-.riso-row-push:hover {
-  background: var(--riso-yellow);
-}
-
-.riso-row-carried {
-  margin-left: 8px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--riso-canvas);
-  border: 1.5px dashed var(--riso-ink);
-  font: 600 10.5px/18px var(--riso-font-mono);
-  white-space: nowrap;
-}
-
-.riso-grocery-removed.pushed {
-  border-style: dashed;
-}
-
+/* Grocery: On sale list. */
 .riso-grocery-sale-list {
   list-style: none;
   margin: 10px 0 8px;
@@ -14933,84 +14890,6 @@ body.no-select {
 .riso-grocery-sale-ends.soon {
   color: #8a0f55;
   font-weight: 800;
-}
-
-.riso-grocery-sale-missed {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1.5px dashed var(--riso-ink);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.riso-grocery-sale-missed p {
-  margin: 0;
-}
-
-.riso-push-ask-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  background: rgba(22, 24, 31, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.riso-push-ask {
-  width: 380px;
-  max-width: 100%;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 22px;
-  box-shadow: 6px 6px 0 var(--riso-ink);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.riso-push-ask-text {
-  margin: 0;
-  font-size: 14.5px;
-  line-height: 1.45;
-}
-
-.riso-push-ask-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.riso-push-ask-actions button {
-  height: 38px;
-  padding: 0 16px;
-  border-radius: 19px;
-  border: 2px solid var(--riso-ink);
-  font: 700 14px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-push-ask-keep {
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-}
-
-.riso-push-ask-go {
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-}
-
-/* Pushed, not removed: no strikethrough. */
-.riso-grocery-removed.pushed .riso-grocery-removed-chip,
-.riso-grocery-sale-missed .riso-grocery-removed-chip {
-  text-decoration: none;
-  background: var(--riso-surface);
 }
 
 /* ---------- Help: guide, FAQ and credits (Riso Poster) ---------- */
@@ -15345,14 +15224,12 @@ body.no-select {
 }
 
 .riso-help-copy .riso-group-grip,
-.riso-help-copy .riso-row-push,
 .riso-help-copy .riso-row-delete {
   margin: 0;
   padding: 0;
   font-size: 12px;
 }
 
-.riso-help-copy .riso-row-push,
 .riso-help-copy .riso-row-delete {
   width: 20px;
   height: 20px;
@@ -15364,6 +15241,12 @@ body.no-select {
   height: 22px;
   white-space: nowrap;
   font-size: 10.5px;
+}
+
+/* The deal tag copy keeps the real tag's look, just smaller. */
+.riso-help-copy .riso-help-copy-body.riso-row-deal {
+  gap: 6px;
+  padding: 0 9px;
 }
 
 .riso-help-copy .riso-help-copy-body.riso-grocery-removed-chip {
@@ -15382,14 +15265,6 @@ body.no-select {
 
 .riso-help-copy .riso-grocery-store-btn span {
   font-size: 8.5px;
-}
-
-.riso-help-copy .riso-row-deal-store {
-  padding: 0 7px 0 8px;
-}
-
-.riso-help-copy .riso-row-deal-price {
-  padding: 0 8px 0 7px;
 }
 
 /* The app styles these two on phones only (they don't exist on a computer),

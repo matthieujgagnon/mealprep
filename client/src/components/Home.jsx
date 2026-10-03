@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek } from "../lib/dates.js";
+import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
 import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
 import { findBestDeal, findRecipesByIngredients } from "../lib/similarRecipes.js";
 import { daysUntil } from "../lib/pantryInventory.js";
@@ -160,6 +160,9 @@ export function Home({
   const todayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
 
   const [plannerEntries, setPlannerEntries] = useState([]);
+  // Every planned meal from today onward, across weeks: what the grocery
+  // card is built from (the same list the Grocery tab shows).
+  const [upcomingEntries, setUpcomingEntries] = useState([]);
   const [checked, setChecked] = useState({});
   const [extraItems, setExtraItems] = useState([]);
   const [groceryOverrides, setGroceryOverrides] = useState([]);
@@ -193,12 +196,13 @@ export function Home({
 
   useEffect(() => {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setPlannerEntries([]));
+    api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => setUpcomingEntries([]));
     api
-      .listGroceryChecked(weekStart)
+      .listGroceryChecked()
       .then((cores) => setChecked(Object.fromEntries(cores.map((c) => [c, true]))))
       .catch(() => setChecked({}));
-    api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => setExtraItems([]));
-    api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
+    api.listGroceryExtras().then(setExtraItems).catch(() => setExtraItems([]));
+    api.listGroceryOverrides().then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
     // weekStart is always "today's" Monday here — this only needs to run once per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -226,11 +230,11 @@ export function Home({
 
   async function addToList(names) {
     await onAddToGroceryList?.(names);
-    api.listGroceryExtras(weekStart).then(setExtraItems).catch(() => {});
-    api.listGroceryOverrides(weekStart).then(setGroceryOverrides).catch(() => {});
+    api.listGroceryExtras().then(setExtraItems).catch(() => {});
+    api.listGroceryOverrides().then(setGroceryOverrides).catch(() => {});
   }
 
-  const groceryItems = buildGroceryList(plannerEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
+  const groceryItems = buildGroceryList(upcomingEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
   const toBuy = groceryItems.filter((i) => !i.isStaple && !i.removed);
   const checkedCount = toBuy.filter((i) => checked[i.key]).length;
   const saleCount = toBuy.filter((i) => !checked[i.key] && findBestDeal(i.name, deals)).length;
@@ -259,6 +263,7 @@ export function Home({
     await api.placeOnPlanner({ recipeId: restaurantRecipe.id, weekStart, dayOfWeek: todayIndex, mealType: "dinner" });
     const entries = await api.listPlanner(weekStart);
     setPlannerEntries(entries);
+    api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => {});
   }
 
   // The proteins on sale that the most recipes use.

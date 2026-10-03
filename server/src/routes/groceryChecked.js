@@ -4,45 +4,40 @@ import { fail } from "../lib/i18n.js";
 
 export const groceryCheckedRouter = Router();
 
-// GET /api/grocery-checked?week=YYYY-MM-DD - which ingredient cores are
-// checked off for a given week. Returns a plain array of cores (the client
-// just needs the set) rather than the full rows.
+// GET /api/grocery-checked - which ingredient cores are checked off. Returns
+// a plain array of cores (the client just needs the set) rather than the
+// full rows. One list for all planned meals, so no week.
 groceryCheckedRouter.get("/", async (req, res) => {
-  const { week } = req.query;
-  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
-
   const rows = await prisma.groceryCheckedItem.findMany({
-    where: { weekStart: week, userId: req.userId },
+    where: { userId: req.userId },
     select: { core: true },
   });
   res.json(rows.map((r) => r.core));
 });
 
-// GET /api/grocery-checked/in-inventory?week=YYYY-MM-DD - checked items
-// already added to Inventory by "Done shopping".
+// GET /api/grocery-checked/in-inventory - checked items already added to
+// Inventory by "Done shopping".
 groceryCheckedRouter.get("/in-inventory", async (req, res) => {
-  const { week } = req.query;
-  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
   const rows = await prisma.groceryCheckedItem.findMany({
-    where: { weekStart: week, userId: req.userId, inInventory: true },
+    where: { userId: req.userId, inInventory: true },
     select: { core: true },
   });
   res.json(rows.map((r) => r.core));
 });
 
-// POST /api/grocery-checked/in-inventory { weekStart, cores } - mark checked
-// items as added to Inventory (checking them first if needed).
+// POST /api/grocery-checked/in-inventory { cores } - mark checked items as
+// added to Inventory (checking them first if needed).
 groceryCheckedRouter.post("/in-inventory", async (req, res) => {
-  const { weekStart, cores } = req.body;
-  if (!weekStart || !Array.isArray(cores)) {
-    return res.status(400).json(fail(req, "required", { fields: "weekStart, cores" }));
+  const { cores } = req.body;
+  if (!Array.isArray(cores)) {
+    return res.status(400).json(fail(req, "required", { fields: "cores" }));
   }
   const normalized = [...new Set(cores.filter((c) => typeof c === "string" && c.trim()).map((c) => c.trim().toLowerCase()))];
   await prisma.$transaction(
     normalized.map((core) =>
       prisma.groceryCheckedItem.upsert({
-        where: { userId_weekStart_core: { userId: req.userId, weekStart, core } },
-        create: { userId: req.userId, weekStart, core, inInventory: true },
+        where: { userId_core: { userId: req.userId, core } },
+        create: { userId: req.userId, core, inInventory: true },
         update: { inInventory: true },
       })
     )
@@ -50,42 +45,38 @@ groceryCheckedRouter.post("/in-inventory", async (req, res) => {
   res.json(normalized);
 });
 
-// POST /api/grocery-checked { weekStart, core } - check an item off.
+// POST /api/grocery-checked { core } - check an item off.
 // Idempotent: checking the same item twice just no-ops the second time.
 groceryCheckedRouter.post("/", async (req, res) => {
-  const { weekStart, core } = req.body;
-  if (!weekStart || !core || !core.trim()) {
-    return res.status(400).json(fail(req, "required", { fields: "weekStart, core" }));
+  const { core } = req.body;
+  if (!core || !core.trim()) {
+    return res.status(400).json(fail(req, "required", { fields: "core" }));
   }
   const normalized = core.trim().toLowerCase();
 
-  // Real upsert now that (userId, weekStart, core) is a DB-level unique
-  // constraint - "checked" is just a row's existence, so update is a no-op.
+  // Real upsert now that (userId, core) is a DB-level unique constraint -
+  // "checked" is just a row's existence, so update is a no-op.
   await prisma.groceryCheckedItem.upsert({
-    where: { userId_weekStart_core: { userId: req.userId, weekStart, core: normalized } },
-    create: { userId: req.userId, weekStart, core: normalized },
+    where: { userId_core: { userId: req.userId, core: normalized } },
+    create: { userId: req.userId, core: normalized },
     update: {},
   });
-  res.status(201).json({ weekStart, core: normalized });
+  res.status(201).json({ core: normalized });
 });
 
-// DELETE /api/grocery-checked?week=YYYY-MM-DD - clear every checked item for
-// a week at once (the "Clear checked items" button). Registered before the
-// :weekStart/:core route below so a request with no path segments always
-// lands here.
+// DELETE /api/grocery-checked - clear every checked item at once (the
+// "Clear checked items" button). Registered before the :core route below so
+// a request with no path segment always lands here.
 groceryCheckedRouter.delete("/", async (req, res) => {
-  const { week } = req.query;
-  if (!week) return res.status(400).json(fail(req, "required", { fields: "week" }));
-
-  await prisma.groceryCheckedItem.deleteMany({ where: { weekStart: week, userId: req.userId } });
+  await prisma.groceryCheckedItem.deleteMany({ where: { userId: req.userId } });
   res.status(204).send();
 });
 
-// DELETE /api/grocery-checked/:weekStart/:core - uncheck a single item.
-groceryCheckedRouter.delete("/:weekStart/:core", async (req, res) => {
+// DELETE /api/grocery-checked/:core - uncheck a single item.
+groceryCheckedRouter.delete("/:core", async (req, res) => {
   const normalized = req.params.core.toLowerCase();
   await prisma.groceryCheckedItem.deleteMany({
-    where: { weekStart: req.params.weekStart, core: normalized, userId: req.userId },
+    where: { core: normalized, userId: req.userId },
   });
   res.status(204).send();
 });
