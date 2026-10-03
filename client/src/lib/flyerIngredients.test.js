@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildIngredients, dealSavings, dealVerdict, ingredientKeyOf, sliceIngredients, splitBilingual, RANKS } from "./flyerIngredients.js";
+import {
+  buildIngredients,
+  dealSavings,
+  dealVerdict,
+  frenchProductName,
+  ingredientKeyOf,
+  ingredientNames,
+  savingText,
+  sliceIngredients,
+  splitBilingual,
+  RANKS,
+} from "./flyerIngredients.js";
+import { setLang } from "../i18n/index.js";
 
 const deal = (id, store, item, unitPrice, unitBasis = "each", extra = {}) => ({
   id,
@@ -230,5 +242,52 @@ describe("dealVerdict: would I buy it?", () => {
     expect(dealVerdict({ ...base, price: "Points offer", unitPrice: null, unitBasis: null })).toMatchObject({ key: "unknown", label: "Not a price" });
     expect(dealVerdict({ ...base, price: "Free with purchase", unitPrice: null, unitBasis: null }).reason).toMatch(/^Free when/);
     expect(dealVerdict({ ...base, price: "$3.00 off", unitPrice: null, unitBasis: null })).toMatchObject({ key: "buy" });
+  });
+});
+
+describe("in French", () => {
+  const inFrench = (fn) => {
+    setLang("fr");
+    try {
+      return fn();
+    } finally {
+      setLang("en");
+    }
+  };
+
+  it("titles a card with the French half of the product's name, without brand or size", () => {
+    expect(frenchProductName("Poitrines de poulet désossées Maple Leaf, 500 g")).toBe("Poitrines de poulet désossées");
+    expect(frenchProductName("BŒUF HACHÉ MAIGRE")).toBe("Bœuf haché maigre");
+    expect(frenchProductName("Fraises fraîches 1 lb")).toBe("Fraises");
+    expect(frenchProductName("")).toBe(null);
+  });
+
+  it("shows the French name first and the English one under it", () => {
+    const [bananas] = buildIngredients([deal(1, "Metro", "Bananas | bananes importées", 0.89, "lb")]);
+    expect(ingredientNames(bananas, "en")).toEqual({ name: "Bananas", sub: "bananes importées" });
+    expect(ingredientNames(bananas, "fr")).toEqual({ name: "Bananes importées", sub: "Bananas" });
+    // No French half: the flyer's own name.
+    const [kiwis] = buildIngredients([deal(2, "Maxi", "Kiwis", 0.5)]);
+    expect(ingredientNames(kiwis, "fr")).toEqual({ name: "Kiwis", sub: null });
+  });
+
+  it("says the saving and the verdict in French", () => {
+    inFrench(() => {
+      const saving = dealSavings({ unitPrice: 3, regularPrice: 4, price: "$3" });
+      expect(savingText(saving)).toBe("25 % de rabais sur le prix régulier");
+      expect(dealVerdict({ unitPrice: 3, regularPrice: 4, price: "$3" })).toMatchObject({
+        key: "stock-up",
+        label: "Faites des réserves",
+        reason: "25 % de rabais sur le prix régulier.",
+      });
+      expect(dealSavings({ unitPrice: null, price: "$3.00 off" }).why.replace(/\s/g, " ")).toBe("3,00 $ de rabais");
+      expect(RANKS.az.label).toBe("De A à Z");
+    });
+  });
+
+  it("names the slices in French", () => {
+    const list = buildIngredients([deal(1, "Metro", "Bananas", 0.89, "lb")]);
+    const groups = inFrench(() => sliceIngredients(list, "category", [{ id: "produce" }, { id: "other" }]));
+    expect(groups).toEqual([{ id: "produce", name: "Fruits et légumes", items: list }]);
   });
 });

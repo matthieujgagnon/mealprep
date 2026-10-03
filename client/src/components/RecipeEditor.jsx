@@ -35,6 +35,7 @@ import {
   rowsToIngredients,
   stepsToInstructions,
 } from "../lib/recipeForm.js";
+import { t } from "../i18n/index.js";
 
 // A textarea that grows to fit what's typed, so long notes and steps show
 // in full instead of scrolling inside a small box.
@@ -70,7 +71,14 @@ function SortableRow({ id, className, children }) {
       className={`${className}${isDragging ? " dragging" : ""}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <button type="button" className="re-handle" aria-label="Drag to reorder" title="Drag to reorder" {...attributes} {...listeners}>
+      <button
+        type="button"
+        className="re-handle"
+        aria-label={t("editor.dragToReorder")}
+        title={t("editor.dragToReorder")}
+        {...attributes}
+        {...listeners}
+      >
         ⠿
       </button>
       {children}
@@ -91,20 +99,20 @@ function SortablePhoto({ photo, isCover, onCover, onRemove }) {
       {...attributes}
       {...listeners}
       role="button"
-      aria-label={isCover ? "Cover photo" : "Make this the cover photo"}
+      aria-label={isCover ? t("editor.coverPhoto") : t("editor.makeCover")}
       onClick={onCover}
     >
       {broken ? (
-        <span className="re-photo-broken">Couldn't load this photo</span>
+        <span className="re-photo-broken">{t("editor.photoBroken")}</span>
       ) : (
         <img src={photo.url} alt="" draggable={false} onError={() => setBroken(true)} />
       )}
-      {isCover && <span className="re-photo-cover">Cover</span>}
+      {isCover && <span className="re-photo-cover">{t("editor.cover")}</span>}
       <button
         type="button"
         className="re-photo-remove"
-        aria-label="Remove photo"
-        title="Remove photo"
+        aria-label={t("editor.removePhoto")}
+        title={t("editor.removePhoto")}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
@@ -123,7 +131,11 @@ function Stepper({ label, value, unit, help, step, accent, onChange }) {
     <div className="re-stepper">
       <span className="re-label">{label}</span>
       <div className="re-stepper-pill">
-        <button type="button" aria-label={`Less ${label.toLowerCase()}`} onClick={() => onChange(String(Math.max(0, n - step)))}>
+        <button
+          type="button"
+          aria-label={t("editor.less", { what: label.toLowerCase() })}
+          onClick={() => onChange(String(Math.max(0, n - step)))}
+        >
           −
         </button>
         <label className="re-stepper-value">
@@ -138,7 +150,7 @@ function Stepper({ label, value, unit, help, step, accent, onChange }) {
           />
           {unit && <span className="re-stepper-unit">{unit}</span>}
         </label>
-        <button type="button" aria-label={`More ${label.toLowerCase()}`} onClick={() => onChange(String(n + step))}>
+        <button type="button" aria-label={t("editor.more", { what: label.toLowerCase() })} onClick={() => onChange(String(n + step))}>
           +
         </button>
       </div>
@@ -273,7 +285,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
   async function addPhotoFiles(files) {
     const images = [...files].filter(isImageFile);
     if (images.length === 0) {
-      setPhotoMessage("Only JPEG, PNG, WebP or GIF pictures can be added.");
+      setPhotoMessage(t("editor.onlyImages"));
       return;
     }
     setPhotoMessage(null);
@@ -298,7 +310,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
     }
     const url = droppedImageUrl(e.dataTransfer);
     if (url) addPhotoUrls([url]);
-    else setPhotoMessage("That didn't look like a picture. Try saving it first, then drop the file.");
+    else setPhotoMessage(t("editor.notAPicture"));
   }
 
   function removePhoto(id) {
@@ -414,7 +426,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
   async function handleReimport() {
     const url = state.sourceUrl.trim();
     if (!/^https?:\/\//i.test(url)) {
-      setReimport({ busy: false, message: "Add the recipe's link first (starting with https://)." });
+      setReimport({ busy: false, message: t("editor.linkFirst") });
       return;
     }
     setReimport({ busy: true, message: null });
@@ -425,39 +437,39 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
       const filled = [];
       if (!s.title.trim() && scraped.title) {
         patch.title = scraped.title;
-        filled.push("title");
+        filled.push(t("editor.filledFields.title"));
       }
       if (s.photos.length === 0 && scraped.photos?.length) {
         const photos = scraped.photos.map((u) => ({ id: makeLocalId(), url: u }));
         patch.photos = photos;
         patch.coverId = photos[Math.max(0, scraped.photos.indexOf(scraped.photoUrl))].id;
-        filled.push("photos");
+        filled.push(t("editor.filledFields.photos"));
       }
       if (!s.prep && scraped.prepTimeMinutes) {
         patch.prep = String(scraped.prepTimeMinutes);
-        filled.push("prep time");
+        filled.push(t("editor.filledFields.prep"));
       }
       if (!s.cook && scraped.cookTimeMinutes) {
         patch.cook = String(scraped.cookTimeMinutes);
-        filled.push("cook time");
+        filled.push(t("editor.filledFields.cook"));
       }
       if (!s.rows.some((r) => !r.isSection && r.name.trim()) && scraped.ingredients?.length) {
         patch.rows = ingredientsToRows(scraped.ingredients);
-        filled.push("ingredients");
+        filled.push(t("editor.filledFields.ingredients"));
         // Servings go with the ingredient amounts they were written for.
         if (scraped.baseServings) patch.servings = String(scraped.baseServings);
       }
       if (!s.steps.some((st) => st.text.trim()) && scraped.instructions?.length) {
         patch.steps = instructionsToSteps(scraped.instructions);
-        filled.push("steps");
+        filled.push(t("editor.filledFields.steps"));
       }
       if (!s.fridge && scraped.fridgeLifeDays) patch.fridge = String(scraped.fridgeLifeDays);
       set(patch);
       setReimport({
         busy: false,
         message: filled.length
-          ? `Filled in ${filled.join(", ")} from the link.`
-          : "Nothing was empty, so nothing changed.",
+          ? t("editor.filled", { fields: filled.join(", ") })
+          : t("editor.nothingEmpty"),
       });
     } catch (err) {
       setReimport({ busy: false, message: err.message });
@@ -466,7 +478,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
 
   async function handleSave() {
     if (!payload.title) {
-      setError("Give the recipe a title first.");
+      setError(t("editor.titleFirst"));
       return;
     }
     setSaving(true);
@@ -483,7 +495,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
   }
 
   function handleCancel() {
-    if (dirty && !window.confirm("Leave without saving your changes?")) return;
+    if (dirty && !window.confirm(t("editor.leaveUnsaved"))) return;
     onDirtyChange?.(false);
     onCancel();
   }
@@ -499,11 +511,11 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
   const havePct = stats.totalCount ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
   const stepCount = payload.instructions.filter((st) => typeof st !== "string" || !st.endsWith(":")).length;
   const checks = [
-    { ok: !!payload.title, label: "Title" },
-    { ok: total > 0, label: "Prep or cook time", hint: "Add a time so it can be sorted" },
-    { ok: !!state.mealSlot, label: "Planner slot", hint: "Pick a planner slot" },
-    { ok: state.photos.length > 0, label: "At least one photo" },
-    { ok: payload.ingredients.length > 0 && stepCount > 0, label: "Ingredients and steps" },
+    { id: "title", ok: !!payload.title, label: t("editor.checks.title") },
+    { id: "time", ok: total > 0, label: t("editor.checks.time"), hint: t("editor.checks.timeHint") },
+    { id: "slot", ok: !!state.mealSlot, label: t("editor.checks.slot"), hint: t("editor.checks.slotHint") },
+    { id: "photo", ok: state.photos.length > 0, label: t("editor.checks.photo") },
+    { id: "body", ok: payload.ingredients.length > 0 && stepCount > 0, label: t("editor.checks.body") },
   ];
 
   let stepNumber = 0;
@@ -512,10 +524,10 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
     <div className="riso-theme re-page" data-theme="light">
       <div className="re-heading">
         <button type="button" className="riso-eyebrow re-back" onClick={handleCancel}>
-          ← RECIPES · {isNew ? "NEW" : "EDITING"}
+          {t("editor.back", { mode: isNew ? t("editor.modeNew") : t("editor.modeEditing") })}
         </button>
         <h1 className="re-title">
-          {isNew ? "New" : "Edit"} <span className="accent">recipe.</span>
+          {isNew ? t("editor.titleNew") : t("editor.titleEdit")} <span className="accent">{t("editor.titleAccent")}</span>
         </h1>
       </div>
 
@@ -525,40 +537,39 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
           <section className="re-section">
             <div className="re-section-head">
               <span className="re-num">1</span>
-              <h2>The basics</h2>
+              <h2>{t("editor.basics")}</h2>
             </div>
             <label className="re-field">
-              <span className="re-label">TITLE</span>
+              <span className="re-label">{t("editor.titleLabel")}</span>
               <input
                 className="re-title-input"
                 value={state.title}
                 onChange={(e) => set({ title: e.target.value })}
-                placeholder="Grandma's lasagna"
+                placeholder={t("editor.titlePlaceholder")}
               />
             </label>
             <div className="re-field">
-              <span className="re-label">RECIPE LINK</span>
+              <span className="re-label">{t("editor.linkLabel")}</span>
               <div className="re-link-row">
                 <input
                   className="re-pill-input"
                   type="url"
-                  aria-label="Recipe link"
+                  aria-label={t("editor.linkAria")}
                   value={state.sourceUrl}
                   onChange={(e) => set({ sourceUrl: e.target.value })}
                   placeholder="https://…"
                 />
                 <button type="button" className="re-btn" onClick={handleReimport} disabled={reimport.busy}>
-                  {reimport.busy ? "Reading…" : "↻ Re-import"}
+                  {reimport.busy ? t("editor.reading") : t("editor.reimport")}
                 </button>
               </div>
               <span className="re-help">
-                {reimport.message ||
-                  "Shown as “Open original” on the recipe card. Re-import refills any empty fields; it won't overwrite what you've edited."}
+                {reimport.message || t("editor.linkHelp")}
               </span>
             </div>
             <div className="re-field">
-              <span className="re-label">PLANNER SLOT · WHERE DOES IT SIT ON THE CALENDAR? PICK ONE</span>
-              <div className="re-slots" role="radiogroup" aria-label="Planner slot">
+              <span className="re-label">{t("editor.slotLabel")}</span>
+              <div className="re-slots" role="radiogroup" aria-label={t("editor.slotAria")}>
                 {RECIPE_SLOTS.map((slot) => {
                   const on = state.mealSlot === slot.id;
                   return (
@@ -585,11 +596,9 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
             <div className="re-section-head spread">
               <div className="re-section-title">
                 <span className="re-num">2</span>
-                <h2>Photos</h2>
+                <h2>{t("editor.photos")}</h2>
               </div>
-              <span className="re-count">
-                {state.photos.length} PHOTO{state.photos.length === 1 ? "" : "S"}
-              </span>
+              <span className="re-count">{t("editor.photoCount", { count: state.photos.length })}</span>
             </div>
             <DndContext sensors={photoSensors} collisionDetection={closestCenter} onDragEnd={reorder("photos")}>
               <SortableContext items={state.photos.map((p) => p.id)} strategy={rectSortingStrategy}>
@@ -605,7 +614,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                   ))}
                   {Array.from({ length: uploading }, (_, i) => (
                     <div key={`up-${i}`} className="re-photo uploading">
-                      <span>Adding…</span>
+                      <span>{t("editor.adding")}</span>
                     </div>
                   ))}
                   <div
@@ -618,13 +627,13 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                     onDrop={handleZoneDrop}
                   >
                     <button type="button" className="re-zone-title" onClick={() => fileInputRef.current?.click()}>
-                      Drop a picture here
+                      {t("editor.dropHere")}
                     </button>
-                    <span className="re-zone-or">OR</span>
+                    <span className="re-zone-or">{t("editor.or")}</span>
                     <input
                       className="re-zone-url"
-                      aria-label="Photo URL"
-                      placeholder="Paste a photo URL and press Enter"
+                      aria-label={t("editor.photoUrl")}
+                      placeholder={t("editor.photoUrlPlaceholder")}
                       onKeyDown={(e) => {
                         if (e.key !== "Enter") return;
                         e.preventDefault();
@@ -634,7 +643,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                           e.currentTarget.value = "";
                           setPhotoMessage(null);
                         } else {
-                          setPhotoMessage("That link should start with https://");
+                          setPhotoMessage(t("editor.httpsOnly"));
                         }
                       }}
                     />
@@ -644,7 +653,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                       accept="image/jpeg,image/png,image/webp,image/gif"
                       multiple
                       hidden
-                      aria-label="Choose photos"
+                      aria-label={t("editor.choosePhotos")}
                       onChange={(e) => {
                         if (e.target.files?.length) addPhotoFiles(e.target.files);
                         e.target.value = "";
@@ -655,7 +664,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
               </SortableContext>
             </DndContext>
             <span className="re-help">
-              {photoMessage || "Drag photos to reorder them. Click one to make it the cover. Tap “Drop a picture here” to pick one from your device."}
+              {photoMessage || t("editor.photosHelp")}
             </span>
           </section>
 
@@ -664,23 +673,45 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
             <div className="re-section-head spread">
               <div className="re-section-title">
                 <span className="re-num">3</span>
-                <h2>Time and servings</h2>
+                <h2>{t("editor.timeServings")}</h2>
               </div>
               <div className="re-total">
-                <span>TOTAL</span>
-                <strong>{total ? formatRecipeTime(total) : "not set"}</strong>
+                <span>{t("editor.total")}</span>
+                <strong>{total ? formatRecipeTime(total) : t("editor.notSet")}</strong>
               </div>
             </div>
             <div className="re-steppers">
-              <Stepper label="SERVINGS" value={state.servings} step={1} help="Scales the grocery list." onChange={(v) => set({ servings: v })} />
-              <Stepper label="PREP" unit="MIN" accent value={state.prep} step={5} help="Chopping, measuring, marinating." onChange={(v) => set({ prep: v })} />
-              <Stepper label="COOK" unit="MIN" accent value={state.cook} step={5} help="Time on the stove or in the oven." onChange={(v) => set({ cook: v })} />
               <Stepper
-                label="FRIDGE LIFE"
-                unit="DAYS"
+                label={t("editor.servings")}
+                value={state.servings}
+                step={1}
+                help={t("editor.servingsHelp")}
+                onChange={(v) => set({ servings: v })}
+              />
+              <Stepper
+                label={t("editor.prep")}
+                unit={t("editor.minUnit")}
+                accent
+                value={state.prep}
+                step={5}
+                help={t("editor.prepHelp")}
+                onChange={(v) => set({ prep: v })}
+              />
+              <Stepper
+                label={t("editor.cook")}
+                unit={t("editor.minUnit")}
+                accent
+                value={state.cook}
+                step={5}
+                help={t("editor.cookHelp")}
+                onChange={(v) => set({ cook: v })}
+              />
+              <Stepper
+                label={t("editor.fridge")}
+                unit={t("editor.daysUnit")}
                 value={state.fridge}
                 step={1}
-                help={!fridgeTouched && state.fridge ? "Guessed from the ingredients. Change it any time." : "Used for leftovers in Inventory."}
+                help={!fridgeTouched && state.fridge ? t("editor.fridgeGuessed") : t("editor.fridgeHelp")}
                 onChange={(v) => {
                   setFridgeTouched(true);
                   set({ fridge: v });
@@ -694,16 +725,16 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
             <div className="re-section-head spread">
               <div className="re-section-title">
                 <span className="re-num">4</span>
-                <h2>Ingredients</h2>
+                <h2>{t("editor.ingredients")}</h2>
               </div>
-              <span className="re-count">{payload.ingredients.length} INGREDIENTS · DRAG ⠿ TO REORDER</span>
+              <span className="re-count">{t("editor.ingredientCount", { count: payload.ingredients.length })}</span>
             </div>
             <div className="re-ing-grid re-ing-labels" aria-hidden="true">
               <span />
-              <span>QTY</span>
-              <span>UNIT</span>
-              <span>INGREDIENT</span>
-              <span>NOTE</span>
+              <span>{t("editor.qty")}</span>
+              <span>{t("editor.unit")}</span>
+              <span>{t("editor.ingredient")}</span>
+              <span>{t("editor.note")}</span>
               <span />
             </div>
             <DndContext sensors={handleSensors} collisionDetection={closestCenter} onDragEnd={reorder("rows")}>
@@ -714,13 +745,13 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                       <SortableRow key={row._id} id={row._id} className="re-ing-section">
                         <input
                           className="re-heading-pill"
-                          aria-label="Section name"
-                          placeholder="Section name, e.g. Dressing"
+                          aria-label={t("editor.sectionName")}
+                          placeholder={t("editor.sectionPlaceholder")}
                           value={row.name}
                           style={{ width: `${Math.max(22, row.name.length + 4)}ch` }}
                           onChange={(e) => updateRow(row._id, "name", e.target.value)}
                         />
-                        <button type="button" className="re-x" aria-label="Remove section" onClick={() => removeRow(row._id)}>
+                        <button type="button" className="re-x" aria-label={t("editor.removeSection")} onClick={() => removeRow(row._id)}>
                           ×
                         </button>
                       </SortableRow>
@@ -728,7 +759,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                       <SortableRow key={row._id} id={row._id} className="re-ing-grid re-ing-row">
                         <input
                           className="re-box re-qty"
-                          aria-label="Quantity"
+                          aria-label={t("editor.quantity")}
                           inputMode="decimal"
                           placeholder="1 1/2"
                           value={row.quantity}
@@ -736,26 +767,26 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                         />
                         <UnitSelect
                           className="re-box re-unit"
-                          aria-label="Unit"
+                          aria-label={t("editor.unitAria")}
                           emptyLabel="—"
                           value={row.unit}
                           onChange={(u) => updateRow(row._id, "unit", u)}
                         />
                         <input
                           className="re-box re-name"
-                          aria-label="Ingredient"
-                          placeholder="Ingredient"
+                          aria-label={t("editor.ingredientAria")}
+                          placeholder={t("editor.ingredientPlaceholder")}
                           value={row.name}
                           onChange={(e) => updateRow(row._id, "name", e.target.value)}
                         />
                         <AutoTextarea
                           className="re-note"
-                          aria-label="Note"
-                          placeholder="e.g. melted"
+                          aria-label={t("editor.noteAria")}
+                          placeholder={t("editor.notePlaceholder")}
                           value={row.notes}
                           onChange={(e) => updateRow(row._id, "notes", e.target.value.replace(/\n/g, " "))}
                         />
-                        <button type="button" className="re-x" aria-label="Remove ingredient" onClick={() => removeRow(row._id)}>
+                        <button type="button" className="re-x" aria-label={t("editor.removeIngredient")} onClick={() => removeRow(row._id)}>
                           ×
                         </button>
                       </SortableRow>
@@ -766,30 +797,30 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
             </DndContext>
             <div className="re-actions">
               <button type="button" className="re-btn soft" onClick={() => set((s) => ({ rows: [...s.rows, emptyIngredient()] }))}>
-                + Add ingredient
+                {t("editor.addIngredient")}
               </button>
               <button type="button" className="re-btn" onClick={() => set((s) => ({ rows: [...s.rows, emptyIngredientSection()] }))}>
-                + Add section
+                {t("editor.addSection")}
               </button>
               <button type="button" className="re-btn dashed" onClick={() => setPasteOpen((o) => !o)} aria-expanded={pasteOpen}>
-                Paste a whole list
+                {t("editor.pasteList")}
               </button>
             </div>
             {pasteOpen && (
               <div className="re-paste">
                 <textarea
-                  aria-label="Ingredient list"
+                  aria-label={t("editor.pasteAria")}
                   rows={5}
                   value={pasteText}
                   onChange={(e) => setPasteText(e.target.value)}
-                  placeholder={"One ingredient per line, e.g.\n2 cups flour\n1 tbsp butter, melted\nFor the sauce:\n3 tbsp soy sauce"}
+                  placeholder={t("editor.pastePlaceholder")}
                 />
                 <div className="re-actions">
                   <button type="button" className="re-btn primary" onClick={addPastedList} disabled={pasteBusy || !pasteText.trim()}>
-                    {pasteBusy ? "Reading…" : "Add these"}
+                    {pasteBusy ? t("editor.reading") : t("editor.addThese")}
                   </button>
                   <button type="button" className="re-btn" onClick={() => setPasteOpen(false)}>
-                    Close
+                    {t("editor.close")}
                   </button>
                 </div>
               </div>
@@ -801,11 +832,9 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
             <div className="re-section-head spread">
               <div className="re-section-title">
                 <span className="re-num">5</span>
-                <h2>Instructions</h2>
+                <h2>{t("editor.instructions")}</h2>
               </div>
-              <span className="re-count">
-                {stepCount} STEP{stepCount === 1 ? "" : "S"} · DRAG ⠿ TO REORDER
-              </span>
+              <span className="re-count">{t("editor.stepCount", { count: stepCount })}</span>
             </div>
             <DndContext sensors={handleSensors} collisionDetection={closestCenter} onDragEnd={reorder("steps")}>
               <SortableContext items={state.steps.map((st) => st._id)} strategy={verticalListSortingStrategy}>
@@ -817,14 +846,14 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                           <div className="re-step-main">
                             <input
                               className="re-heading-pill"
-                              aria-label="Section heading"
-                              placeholder="Section title, e.g. Sauce"
+                              aria-label={t("editor.headingAria")}
+                              placeholder={t("editor.headingPlaceholder")}
                               value={step.text}
                               style={{ width: `${Math.max(22, step.text.length + 4)}ch` }}
                               onChange={(e) => updateStep(step._id, { text: e.target.value })}
                             />
                           </div>
-                          <button type="button" className="re-x" aria-label="Remove heading" onClick={() => removeStep(step._id)}>
+                          <button type="button" className="re-x" aria-label={t("editor.removeHeading")} onClick={() => removeStep(step._id)}>
                             ×
                           </button>
                         </SortableRow>
@@ -838,8 +867,8 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                         <div className="re-step-main" onDrop={(e) => handleStepDrop(step._id, e)}>
                           <AutoTextarea
                             className="re-step-text"
-                            aria-label={`Step ${stepNumber}`}
-                            placeholder="Describe this step"
+                            aria-label={t("editor.stepAria", { n: stepNumber })}
+                            placeholder={t("editor.stepPlaceholder")}
                             value={step.text}
                             inputRef={(el) => {
                               if (el) stepInputs.current.set(step._id, el);
@@ -852,7 +881,11 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                             {step.image ? (
                               <span className="re-step-photo">
                                 <img src={step.image} alt="" />
-                                <button type="button" aria-label="Remove step photo" onClick={() => updateStep(step._id, { image: null })}>
+                                <button
+                                  type="button"
+                                  aria-label={t("editor.removeStepPhoto")}
+                                  onClick={() => updateStep(step._id, { image: null })}
+                                >
                                   ×
                                 </button>
                               </span>
@@ -865,12 +898,12 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
                                   stepFileRef.current?.click();
                                 }}
                               >
-                                + photo
+                                {t("editor.addPhoto")}
                               </button>
                             )}
                           </div>
                         </div>
-                        <button type="button" className="re-x" aria-label="Delete step" onClick={() => removeStep(step._id)}>
+                        <button type="button" className="re-x" aria-label={t("editor.deleteStep")} onClick={() => removeStep(step._id)}>
                           ×
                         </button>
                       </SortableRow>
@@ -884,7 +917,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
               hidden
-              aria-label="Choose a step photo"
+              aria-label={t("editor.chooseStepPhoto")}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file && stepPhotoTarget.current) setStepPhotoFromFile(stepPhotoTarget.current, file);
@@ -893,75 +926,71 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
             />
             <div className="re-steps-foot">
               <button type="button" className="re-btn primary" onClick={() => set((s) => ({ steps: [...s.steps, emptyStep()] }))}>
-                + Add step
+                {t("editor.addStep")}
               </button>
               <button type="button" className="re-btn" onClick={() => set((s) => ({ steps: [...s.steps, emptyStepHeading()] }))}>
-                + Add section heading
+                {t("editor.addHeading")}
               </button>
-              <span className="re-help">Headings split a long recipe into parts, like “Make the sauce”.</span>
+              <span className="re-help">{t("editor.headingsHelp")}</span>
             </div>
-            <span className="re-help">
-              Times like “20 minutes” in a step become timers in cook mode. Importing a link fills these in for you.
-            </span>
+            <span className="re-help">{t("editor.timersHelp")}</span>
           </section>
 
           {/* 6. Notes */}
           <section className="re-section">
             <div className="re-section-head">
               <span className="re-num">6</span>
-              <h2>Your notes</h2>
-              <span className="re-count muted">OPTIONAL</span>
+              <h2>{t("editor.notes")}</h2>
+              <span className="re-count muted">{t("editor.optional")}</span>
             </div>
             <textarea
               className="re-notes"
-              aria-label="Your notes"
+              aria-label={t("editor.notes")}
               value={state.notes}
               onChange={(e) => set({ notes: e.target.value })}
-              placeholder="Used less salt than called for. Great with rice."
+              placeholder={t("editor.notesPlaceholder")}
             />
           </section>
         </div>
 
         <aside className="re-preview">
-          <span className="re-label">HOW IT LOOKS IN YOUR COOKBOOK</span>
+          <span className="re-label">{t("editor.previewLabel")}</span>
           <div className="re-preview-card">
             <div className="re-preview-photo">
               {cover && <img key={cover.url} src={cover.url} alt="" onError={hideBrokenPhoto} />}
               <span className={`re-preview-time${total ? "" : " unset"}`}>
                 <span aria-hidden="true">⏱</span>
-                {total ? formatRecipeTime(total) : "add time"}
+                {total ? formatRecipeTime(total) : t("editor.addTime")}
               </span>
             </div>
             <div className="re-preview-body">
-              <strong>{state.title.trim() || "Untitled recipe"}</strong>
+              <strong>{state.title.trim() || t("editor.untitled")}</strong>
               <span className="re-preview-meta">
-                {payload.ingredients.length} INGREDIENTS · SERVES {Number(state.servings) || 4}
+                {t("editor.previewMeta", { count: payload.ingredients.length, servings: Number(state.servings) || 4 })}
               </span>
               <div className="riso-recipe-card-havebar">
                 <div className="riso-recipe-card-havebar-fill" style={{ width: `${havePct}%` }} />
               </div>
               <span className="re-preview-have">
                 {stats.totalCount
-                  ? `${stats.missingCount} to buy · ${stats.matchedCount} on hand`
-                  : "no ingredients yet"}
+                  ? t("editor.previewHave", { buy: stats.missingCount, have: stats.matchedCount })
+                  : t("editor.noIngredients")}
               </span>
             </div>
           </div>
           <div className="re-checklist">
             <div className="re-checklist-head">
-              <strong>Ready to plan?</strong>
-              <span>
-                {checks.filter((c) => c.ok).length} OF {checks.length}
-              </span>
+              <strong>{t("editor.readyToPlan")}</strong>
+              <span>{t("editor.checksOf", { done: checks.filter((c) => c.ok).length, total: checks.length })}</span>
             </div>
             {checks.map((c) => (
-              <div key={c.label} className={`re-check${c.ok ? " ok" : ""}`}>
+              <div key={c.id} className={`re-check${c.ok ? " ok" : ""}`}>
                 <span className="re-check-dot">{c.ok ? "✓" : ""}</span>
                 <span>{c.ok ? c.label : c.hint || c.label}</span>
               </div>
             ))}
           </div>
-          <p className="re-help">The card sorts by total time. Set prep and cook time so this recipe shows up under “Quickest”.</p>
+          <p className="re-help">{t("editor.sortHelp")}</p>
         </aside>
       </div>
 
@@ -974,17 +1003,17 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
           ) : dirty ? (
             <span className="re-unsaved">
               <span className="re-unsaved-dot" />
-              UNSAVED CHANGES
+              {t("editor.unsaved")}
             </span>
           ) : (
-            <span className="re-unsaved muted">NO CHANGES YET</span>
+            <span className="re-unsaved muted">{t("editor.noChanges")}</span>
           )}
           <span className="re-savebar-spacer" />
           <button type="button" className="re-btn big" onClick={handleCancel}>
-            Cancel
+            {t("editor.cancel")}
           </button>
           <button type="button" className="re-btn primary big" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving…" : isNew ? "Save recipe" : "Save changes"}
+            {saving ? t("editor.saving") : isNew ? t("editor.saveRecipe") : t("editor.saveChanges")}
           </button>
         </div>
       </div>

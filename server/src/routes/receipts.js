@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { GoogleGenAI, Type, ApiError } from "@google/genai";
+import { fail } from "../lib/i18n.js";
 
 export const receiptsRouter = Router();
 
@@ -48,10 +49,10 @@ const ITEMS_SCHEMA = {
 // backstop for whatever slips through.
 receiptsRouter.post("/parse", upload.single("file"), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: "file is required" });
+    return res.status(400).json(fail(req, "fileRequired"));
   }
   if (!ACCEPTED_MIMETYPES.includes(req.file.mimetype)) {
-    return res.status(400).json({ error: "file must be a PDF, JPG, PNG, or WebP" });
+    return res.status(400).json(fail(req, "fileType"));
   }
 
   try {
@@ -80,7 +81,7 @@ receiptsRouter.post("/parse", upload.single("file"), async (req, res) => {
 
     const parsed = JSON.parse(response.text);
     if (!parsed || !Array.isArray(parsed.items)) {
-      return res.status(502).json({ error: "Could not read any items from this receipt." });
+      return res.status(502).json(fail(req, "receiptUnreadable"));
     }
 
     const items = parsed.items
@@ -91,7 +92,7 @@ receiptsRouter.post("/parse", upload.single("file"), async (req, res) => {
       }));
 
     if (items.length === 0) {
-      return res.status(502).json({ error: "Could not read any items from this receipt." });
+      return res.status(502).json(fail(req, "receiptUnreadable"));
     }
 
     res.json({ items });
@@ -99,17 +100,15 @@ receiptsRouter.post("/parse", upload.single("file"), async (req, res) => {
     if (err instanceof ApiError) {
       if (err.status === 401 || err.status === 403) {
         console.error("Gemini authentication error:", err.message);
-        return res.status(502).json({
-          error: "Server is missing a valid GEMINI_API_KEY. Ask the app owner to configure it.",
-        });
+        return res.status(502).json(fail(req, "geminiKey"));
       }
       if (err.status === 429) {
-        return res.status(429).json({ error: "Rate limited by the Gemini API - try again shortly." });
+        return res.status(429).json(fail(req, "geminiRate"));
       }
       console.error("Gemini API error:", err.status, err.message);
-      return res.status(502).json({ error: "Gemini API error: " + err.message });
+      return res.status(502).json(fail(req, "geminiError", { detail: err.message }));
     }
     console.error("Receipt parse failed:", err);
-    res.status(500).json({ error: "Failed to process receipt." });
+    res.status(500).json(fail(req, "receiptFailed"));
   }
 });

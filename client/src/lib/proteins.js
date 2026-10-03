@@ -5,15 +5,16 @@
 // (see dealVerdict / dealSavings), then its lowest price per lb.
 import { capitalize } from "./groceryList.js";
 import { dealSavings, dealVerdict, foldText, productText, tilePrice } from "./flyerIngredients.js";
+import { t } from "../i18n/index.js";
 
 export const PROTEINS = [
-  { id: "chicken", label: "Chicken", emoji: "🍗", re: /\b(chicken|poulet|cornish hens?)\b/ },
-  { id: "beef", label: "Beef", emoji: "🥩", re: /\b(beef|boeuf|bifteck|steaks?|roasts?|roti|sirloin|surlonge|striploin|strip loin|contre-filet|ribeye|faux-filet|brisket|bavette|stewing)\b/ },
-  { id: "pork", label: "Pork", emoji: "🐖", re: /\b(pork|porc)\b/ },
-  { id: "fish", label: "Fish", emoji: "🐟", re: /\b(salmon|saumon|trout|truite|tilapia|cod|morue|haddock|aiglefin|sole|halibut|fletan|pollock|goberge|tuna|thon|basa|mackerel|maquereau|arctic char|omble|steelhead|fish|poissons?)\b/ },
-  { id: "seafood", label: "Seafood", emoji: "🦐", re: /\b(shrimps?|crevettes?|scallops?|petoncles?|mussels?|moules|lobsters?|homards?|crabs?|crabes?|calamari|squid|calmars?|oysters?|huitres?|clams?|palourdes)\b/ },
-  { id: "turkey", label: "Turkey", emoji: "🦃", re: /\b(turkey|dinde|dindon)\b/ },
-  { id: "lamb-veal", label: "Lamb & veal", emoji: "🐑", re: /\b(lamb|agneau|veal|veau)\b/ },
+  { id: "chicken", get label() { return t("proteins.kinds.chicken"); }, emoji: "🍗", re: /\b(chicken|poulet|cornish hens?)\b/ },
+  { id: "beef", get label() { return t("proteins.kinds.beef"); }, emoji: "🥩", re: /\b(beef|boeuf|bifteck|steaks?|roasts?|roti|sirloin|surlonge|striploin|strip loin|contre-filet|ribeye|faux-filet|brisket|bavette|stewing)\b/ },
+  { id: "pork", get label() { return t("proteins.kinds.pork"); }, emoji: "🐖", re: /\b(pork|porc)\b/ },
+  { id: "fish", get label() { return t("proteins.kinds.fish"); }, emoji: "🐟", re: /\b(salmon|saumon|trout|truite|tilapia|cod|morue|haddock|aiglefin|sole|halibut|fletan|pollock|goberge|tuna|thon|basa|mackerel|maquereau|arctic char|omble|steelhead|fish|poissons?)\b/ },
+  { id: "seafood", get label() { return t("proteins.kinds.seafood"); }, emoji: "🦐", re: /\b(shrimps?|crevettes?|scallops?|petoncles?|mussels?|moules|lobsters?|homards?|crabs?|crabes?|calamari|squid|calmars?|oysters?|huitres?|clams?|palourdes)\b/ },
+  { id: "turkey", get label() { return t("proteins.kinds.turkey"); }, emoji: "🦃", re: /\b(turkey|dinde|dindon)\b/ },
+  { id: "lamb-veal", get label() { return t("proteins.kinds.lamb-veal"); }, emoji: "🐑", re: /\b(lamb|agneau|veal|veau)\b/ },
 ];
 
 // Prepared or processed: not a plain cut of meat or fish.

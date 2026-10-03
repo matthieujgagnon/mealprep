@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma.js";
+import { fail } from "./i18n.js";
 
 const SESSION_COOKIE = "session";
 const SESSION_DAYS = 30;
@@ -38,12 +39,12 @@ export async function destroySession(req, res) {
 // /api/health) - looks up the session cookie, attaches req.userId, or 401s.
 export async function requireAuth(req, res, next) {
   const token = req.cookies?.[SESSION_COOKIE];
-  if (!token) return res.status(401).json({ error: "Not logged in" });
+  if (!token) return res.status(401).json(fail(req, "notLoggedIn"));
 
   const session = await prisma.session.findUnique({ where: { id: token } });
   if (!session || session.expiresAt < new Date()) {
     res.clearCookie(SESSION_COOKIE);
-    return res.status(401).json({ error: "Session expired - please log in again" });
+    return res.status(401).json(fail(req, "sessionExpired"));
   }
 
   req.userId = session.userId;

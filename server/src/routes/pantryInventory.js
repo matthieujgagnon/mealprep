@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { suggestExpiration, suggestAllLocations, suggestCategory, suggestLocation, CATEGORIES } from "../lib/foodkeeper.js";
+import { fail } from "../lib/i18n.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -47,9 +48,9 @@ pantryInventoryRouter.get("/", async (req, res) => {
 // re-suggest if the user changes the location after typing a name).
 pantryInventoryRouter.get("/suggest", async (req, res) => {
   const { name, location } = req.query;
-  if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
+  if (!name || !name.trim()) return res.status(400).json(fail(req, "required", { fields: "name" }));
   if (!LOCATIONS.includes(location)) {
-    return res.status(400).json({ error: `location must be one of: ${LOCATIONS.join(", ")}` });
+    return res.status(400).json(fail(req, "mustBeOneOf", { field: "location", options: LOCATIONS.join(", ") }));
   }
   const purchasedAt = req.query.purchasedAt ? new Date(req.query.purchasedAt) : new Date();
   const expiresAt = suggestExpiration(name, location, purchasedAt);
@@ -77,12 +78,12 @@ function photoUrl(value) {
 // the grocery list uses.
 pantryInventoryRouter.post("/", async (req, res) => {
   const { name, quantity, unit, expiresAt, category } = req.body;
-  if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
+  if (!name || !name.trim()) return res.status(400).json(fail(req, "required", { fields: "name" }));
   if (category !== undefined && !CATEGORIES.includes(category)) {
-    return res.status(400).json({ error: `category must be one of: ${CATEGORIES.join(", ")}` });
+    return res.status(400).json(fail(req, "mustBeOneOf", { field: "category", options: CATEGORIES.join(", ") }));
   }
   const imageUrl = photoUrl(req.body.imageUrl);
-  if (imageUrl === false) return res.status(400).json({ error: "imageUrl must be an uploaded photo or a web link" });
+  if (imageUrl === false) return res.status(400).json(fail(req, "imageUrlInvalid"));
 
   const location = (await resolveLocation(req.userId, req.body.location)) || suggestLocation(name);
   const purchasedAt = req.body.purchasedAt ? new Date(req.body.purchasedAt) : new Date();
@@ -112,7 +113,7 @@ pantryInventoryRouter.post("/", async (req, res) => {
 pantryInventoryRouter.put("/:id", async (req, res) => {
   const data = {};
   if (req.body.name !== undefined) {
-    if (!req.body.name.trim()) return res.status(400).json({ error: "name cannot be empty" });
+    if (!req.body.name.trim()) return res.status(400).json(fail(req, "nameEmpty"));
     data.name = req.body.name.trim();
     data.core = req.body.name.trim().toLowerCase();
   }
@@ -121,13 +122,13 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   if (req.body.location !== undefined) {
     const resolved = await resolveLocation(req.userId, req.body.location);
     if (!resolved) {
-      return res.status(400).json({ error: "location must be a built-in location or one of your own sections" });
+      return res.status(400).json(fail(req, "locationInvalid"));
     }
     data.location = resolved;
   }
   if (req.body.category !== undefined) {
     if (!CATEGORIES.includes(req.body.category)) {
-      return res.status(400).json({ error: `category must be one of: ${CATEGORIES.join(", ")}` });
+      return res.status(400).json(fail(req, "mustBeOneOf", { field: "category", options: CATEGORIES.join(", ") }));
     }
     data.category = req.body.category;
   }
@@ -135,7 +136,7 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   if (req.body.expiresAt !== undefined) data.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
   if (req.body.imageUrl !== undefined) {
     const imageUrl = photoUrl(req.body.imageUrl);
-    if (imageUrl === false) return res.status(400).json({ error: "imageUrl must be an uploaded photo or a web link" });
+    if (imageUrl === false) return res.status(400).json(fail(req, "imageUrlInvalid"));
     data.imageUrl = imageUrl;
   }
 
@@ -143,7 +144,7 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
     data,
   });
-  if (result.count === 0) return res.status(404).json({ error: "Item not found" });
+  if (result.count === 0) return res.status(404).json(fail(req, "notFound.item"));
   const item = await prisma.pantryInventoryItem.findFirst({ where: { id: req.params.id, userId: req.userId } });
   res.json(enrichItem(item));
 });
@@ -157,16 +158,16 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
 pantryInventoryRouter.post("/consume", async (req, res) => {
   const { ids, action } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
-    return res.status(400).json({ error: "ids must be a non-empty array" });
+    return res.status(400).json(fail(req, "mustBeArray", { field: "ids" }));
   }
   if (action !== "consumed" && action !== "wasted") {
-    return res.status(400).json({ error: "action must be 'consumed' or 'wasted'" });
+    return res.status(400).json(fail(req, "consumeAction"));
   }
 
   const items = await prisma.pantryInventoryItem.findMany({
     where: { id: { in: ids }, userId: req.userId },
   });
-  if (items.length === 0) return res.status(404).json({ error: "No matching items" });
+  if (items.length === 0) return res.status(404).json(fail(req, "notFound.items"));
 
   await prisma.$transaction([
     prisma.pantryConsumptionLog.createMany({

@@ -1,12 +1,30 @@
 import { currentWeekStart } from "./dates.js";
+import { dict, t } from "../i18n/index.js";
 
-export const MEAL_TYPES = [
-  { id: "breakfast", label: "Breakfast" },
-  { id: "lunch", label: "Lunch" },
-  { id: "dinner", label: "Dinner" },
-];
-export const MEAL_LABEL = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
-export const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Labels are read when used, so they're always in the current language.
+export const MEAL_TYPES = ["breakfast", "lunch", "dinner"].map((id) => ({
+  id,
+  get label() {
+    return t(`meals.${id}`);
+  },
+}));
+export const MEAL_LABEL = {
+  get breakfast() {
+    return t("meals.breakfast");
+  },
+  get lunch() {
+    return t("meals.lunch");
+  },
+  get dinner() {
+    return t("meals.dinner");
+  },
+};
+export const DAY_SHORT = new Proxy([0, 1, 2, 3, 4, 5, 6], {
+  get(target, prop) {
+    if (typeof prop === "string" && /^\d$/.test(prop)) return dict().days.short[Number(prop)];
+    return Reflect.get(target, prop);
+  },
+});
 
 export function todayIndex() {
   return (new Date().getDay() + 6) % 7; // Monday = 0

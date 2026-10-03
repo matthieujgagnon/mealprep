@@ -4,6 +4,8 @@ import { capitalize } from "./groceryList.js";
 import { recipeHaveStats } from "./onHand.js";
 import { isNoteEntry } from "./plannerSlots.js";
 import { recipeSlot } from "./mealSlots.js";
+import { t } from "../i18n/index.js";
+import { formatList } from "../i18n/format.js";
 
 // The planner looks a week ahead, so "expiring" here is anything going off
 // within 7 days - wider than the 3-day "use soon" line elsewhere.
@@ -28,8 +30,17 @@ export function formatTrayTime(minutes) {
   return minutes >= 60 ? `${Math.floor(minutes / 60)} H` : `${minutes} MIN`;
 }
 
-function joinNames(cores) {
-  return cores.join(", ");
+// Ingredients are matched by their core ("poi chich") but shown as the
+// kitchen or the recipe writes them ("Pois chiches").
+function namesAsWritten(pantryInventory, recipes) {
+  const names = new Map();
+  const add = (name) => {
+    const c = core(name);
+    if (c && !names.has(c)) names.set(c, capitalize(String(name).trim()));
+  };
+  for (const item of pantryInventory) add(item.name);
+  for (const r of recipes) for (const ing of r.ingredients || []) add(ing.name);
+  return (c) => names.get(c) || capitalize(c);
 }
 
 // Ranks every recipe for the tray. `upcomingEntries` are this week's
@@ -69,7 +80,15 @@ export function rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, 
     })
     .sort((a, b) => b.score - a.score || a.recipe.title.localeCompare(b.recipe.title));
 
-  return { ranked, expiringCores, unusedExpiringCores: unusedExpiring };
+  const nameOf = namesAsWritten(pantryInventory, recipes);
+  for (const x of ranked) x.nameOf = nameOf;
+  return { ranked, expiringCores, unusedExpiringCores: unusedExpiring, nameOf };
+}
+
+// "Spinach, Feta" as a list; "spinach and feta" inside a sentence.
+function namesOf(x, cores, { inSentence = false } = {}) {
+  const names = cores.map((c) => (x.nameOf ? x.nameOf(c) : capitalize(c)));
+  return inSentence ? formatList(names.map((n) => n.charAt(0).toLowerCase() + n.slice(1))) : names.join(", ");
 }
 
 function tile(info, reason) {
@@ -92,8 +111,13 @@ export function suggestedGroups(ranked) {
   const nothing = pick(ranked.filter((x) => x.stats.totalCount > 0 && x.stats.missingCount === 0), 2);
 
   const groups = [
-    { id: "expiring", title: "USES WHAT'S EXPIRING", tone: "pink", tiles: expiring.map((x) => tile(x, `Uses ${joinNames(x.expUsed)}`)) },
-    { id: "nothing", title: "NOTHING TO BUY", tone: "yellow", tiles: nothing.map((x) => tile(x, "Everything is in your kitchen")) },
+    {
+      id: "expiring",
+      title: t("tray.groupExpiring"),
+      tone: "pink",
+      tiles: expiring.map((x) => tile(x, t("tray.uses", { names: namesOf(x, x.expUsed, { inSentence: true }) }))),
+    },
+    { id: "nothing", title: t("tray.groupNothing"), tone: "yellow", tiles: nothing.map((x) => tile(x, t("tray.allHere"))) },
   ].filter((g) => g.tiles.length > 0);
 
   // No inventory yet: still offer something rather than an empty tray.
@@ -102,9 +126,9 @@ export function suggestedGroups(ranked) {
     if (top.length > 0) {
       groups.push({
         id: "top",
-        title: "GOOD THIS WEEK",
+        title: t("tray.groupTop"),
         tone: "paper",
-        tiles: top.map((x) => tile(x, x.cores.slice(0, 3).map(capitalize).join(", "))),
+        tiles: top.map((x) => tile(x, namesOf(x, x.cores.slice(0, 3)))),
       });
     }
   }
@@ -119,7 +143,7 @@ export function planAroundMatches(ranked, pickedCores, limit = 6) {
     .filter(({ matched }) => matched.length > 0)
     .sort((a, b) => b.matched.length - a.matched.length || b.x.score - a.x.score)
     .slice(0, limit)
-    .map(({ x, matched }) => tile(x, `Uses ${joinNames(matched)}`));
+    .map(({ x, matched }) => tile(x, t("tray.uses", { names: namesOf(x, matched, { inSentence: true }) })));
 }
 
 export function searchRecipes(ranked, query) {
@@ -132,5 +156,5 @@ export function searchRecipes(ranked, query) {
         x.recipe.title.toLowerCase().includes(q) ||
         x.recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))
     )
-    .map((x) => tile(x, x.cores.slice(0, 3).map(capitalize).join(", ")));
+    .map((x) => tile(x, namesOf(x, x.cores.slice(0, 3))));
 }

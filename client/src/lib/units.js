@@ -1,3 +1,5 @@
+import { getLang, t } from "../i18n/index.js";
+
 // Conversion factors to a common base unit per class.
 // Weight base: grams. Volume base: milliliters.
 const WEIGHT_TO_G = {
@@ -58,7 +60,7 @@ export function formatFractionQuantity(qty) {
   const frac = q - whole;
   if (frac < 0.01) return String(whole);
   const glyph = GLYPHS.find(([v]) => Math.abs(v - frac) < 0.01);
-  if (!glyph) return String(Math.round(q * 100) / 100);
+  if (!glyph) return decimal(Math.round(q * 100) / 100);
   return whole ? `${whole} ${glyph[1]}` : glyph[1];
 }
 
@@ -87,7 +89,13 @@ export function formatQuantity(qty) {
   if (nearestFrac) {
     return `${whole > 0 ? whole + " " : ""}${fracMap[nearestFrac]}`;
   }
-  return String(rounded);
+  return decimal(rounded);
+}
+
+// 1.5 -> "1.5" / "1,5"
+function decimal(n) {
+  const text = String(n);
+  return getLang() === "fr" ? text.replace(".", ",") : text;
 }
 
 function unitClass(unit) {
@@ -124,11 +132,12 @@ export function convertToUnit(quantity, fromUnit, toUnit) {
   return (quantity * VOLUME_TO_ML[from]) / VOLUME_TO_ML[to];
 }
 
-export const UNIT_SYSTEMS = [
-  { id: "original", label: "As written" },
-  { id: "oz", label: "Ounces (oz)" },
-  { id: "tbsp", label: "Tablespoons (tbsp)" },
-];
+export const UNIT_SYSTEMS = ["original", "oz", "tbsp"].map((id) => ({
+  id,
+  get label() {
+    return t(`units.systems.${id}`);
+  },
+}));
 
 /**
  * Converts a {quantity, unit} pair into the target system.
@@ -178,30 +187,33 @@ export function convertIngredient(quantity, unit, targetSystem) {
 // stick of butter, a loaf of bread, a fillet of fish, a portion of leftovers
 // are things you count; a carton of milk or a tub of yogurt is the package.
 export const UNIT_GROUPS = [
-  {
-    label: "Count",
-    units: ["unit", "piece", "slice", "block", "stick", "loaf", "fillet", "portion", "dozen"],
+  { id: "count", units: ["unit", "piece", "slice", "block", "stick", "loaf", "fillet", "portion", "dozen"] },
+  { id: "produce", units: ["clove", "head", "bunch", "stalk", "sprig", "leaf", "handful"] },
+  { id: "package", units: ["can", "jar", "bottle", "carton", "tub", "package", "box", "bag"] },
+  { id: "volume", units: ["tsp", "tbsp", "cup", "fl_oz", "ml", "l"] },
+  { id: "weight", units: ["g", "kg", "oz", "lb"] },
+  { id: "little", units: ["pinch", "dash"] },
+].map((group) => ({
+  ...group,
+  get label() {
+    return t(`units.groups.${group.id}`);
   },
-  { label: "Produce", units: ["clove", "head", "bunch", "stalk", "sprig", "leaf", "handful"] },
-  { label: "Package", units: ["can", "jar", "bottle", "carton", "tub", "package", "box", "bag"] },
-  { label: "Volume", units: ["tsp", "tbsp", "cup", "fl_oz", "ml", "l"] },
-  { label: "Weight", units: ["g", "kg", "oz", "lb"] },
-  { label: "A little", units: ["pinch", "dash"] },
-];
+}));
 
-const ABBREVIATED = new Set(["g", "kg", "mg", "ml", "l", "tsp", "tbsp", "oz", "lb", "fl_oz"]);
-const IRREGULAR_PLURAL = { dozen: "dozen", leaf: "leaves", loaf: "loaves" };
+const SAME_IN_BOTH = { g: "g", kg: "kg", mg: "mg", ml: "ml", l: "L", oz: "oz", lb: "lb" };
 
 // How a unit reads next to an amount: "3 units", "1 clove", "2 bunches",
-// "250 ml", "1 L", "4 fl oz". Abbreviations never take a plural.
+// "250 ml", "1 L", "4 fl oz" ("3 unités", "1 gousse", "2 bottes", "2 c. à
+// soupe" in French). Abbreviations never take a plural. French counts
+// anything under 2 as one ("1,5 tasse"). A unit saved before it was on
+// the list reads as it was typed.
 export function unitLabel(unit, qty = 1) {
   if (!unit) return "";
-  if (unit === "l") return "L";
-  if (unit === "fl_oz") return "fl oz";
-  if (ABBREVIATED.has(unit) || qty == null || qty <= 1) return unit;
-  if (IRREGULAR_PLURAL[unit]) return IRREGULAR_PLURAL[unit];
-  if (/(ch|sh|s|x)$/.test(unit)) return `${unit}es`;
-  return `${unit}s`;
+  if (SAME_IN_BOTH[unit]) return SAME_IN_BOTH[unit];
+  const forms = t(`units.names.${unit}`, { count: 1 }) === `units.names.${unit}` ? null : unit;
+  if (!forms) return unit;
+  const plural = qty != null && (getLang() === "fr" ? qty >= 2 : qty > 1);
+  return t(`units.names.${unit}`, { count: plural ? 2 : 1 });
 }
 
 // Dropdown label for a unit on its own ("units", "fl oz", "L").

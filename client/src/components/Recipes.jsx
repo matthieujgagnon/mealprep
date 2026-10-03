@@ -5,10 +5,25 @@ import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { RECIPE_SLOTS, formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { t } from "../i18n/index.js";
 
-const SLOT_FILTERS = Object.fromEntries(RECIPE_SLOTS.map((s) => [s.label, s.id]));
-const FILTERS = ["All", "Makeable now", "Uses expiring", ...RECIPE_SLOTS.map((s) => s.label)];
-const SORT_LABELS = ["Recently added", "Fewest missing", "Quickest"];
+// Filter ids stay the same in both languages; labels follow the language.
+const FILTERS = [
+  ...["all", "makeable", "expiring"].map((id) => ({
+    id,
+    get label() {
+      return t(`recipes.filters.${id}`);
+    },
+  })),
+  ...RECIPE_SLOTS.map((slot) => ({
+    id: `slot:${slot.id}`,
+    slot: slot.id,
+    get label() {
+      return slot.label;
+    },
+  })),
+];
+const SORTS = ["recent", "fewest", "quickest"];
 
 
 // Matches on title, tags, and ingredient names — same fields App.jsx's own
@@ -59,9 +74,9 @@ function RecipeCard({ recipe, stats, usesExpiring, onClick }) {
         <div className="riso-recipe-card-chips">
           <span className={`riso-recipe-chip time${totalTime > 0 ? "" : " unset"}`}>
             <span className="riso-recipe-chip-clock" aria-hidden="true">⏱</span>
-            {totalTime > 0 ? formatRecipeTime(totalTime) : "add time"}
+            {totalTime > 0 ? formatRecipeTime(totalTime) : t("recipes.addTime")}
           </span>
-          {usesExpiring && <span className="riso-recipe-chip expiring">uses expiring ingredients</span>}
+          {usesExpiring && <span className="riso-recipe-chip expiring">{t("recipes.usesExpiring")}</span>}
         </div>
         <div className="riso-recipe-card-spacer" />
         {stats.totalCount > 0 && (
@@ -71,10 +86,10 @@ function RecipeCard({ recipe, stats, usesExpiring, onClick }) {
         )}
         <div className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
           {nothingToBuy
-            ? `all ${stats.totalCount} on hand · nothing to buy!`
+            ? t("recipes.allOnHand", { count: stats.totalCount })
             : stats.totalCount > 0
-              ? `${stats.matchedCount} of ${stats.totalCount} on hand · ${stats.missingCount} to buy`
-              : "no ingredients listed"}
+              ? t("recipes.someOnHand", { have: stats.matchedCount, total: stats.totalCount, buy: stats.missingCount })
+              : t("recipes.noIngredients")}
         </div>
       </div>
     </button>
@@ -108,21 +123,21 @@ export function Recipes({
 
   function matchesFilter(recipe, filterId) {
     switch (filterId) {
-      case "All":
+      case "all":
         return true;
-      case "Makeable now": {
+      case "makeable": {
         const stats = recipeHaveStats(recipe, haveCores);
         return stats.totalCount > 0 && stats.missingCount === 0;
       }
-      case "Uses expiring":
+      case "expiring":
         return findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes, 3).size > 0;
       default:
-        return filterId in SLOT_FILTERS ? recipeSlot(recipe) === SLOT_FILTERS[filterId] : true;
+        return filterId.startsWith("slot:") ? recipeSlot(recipe) === filterId.slice(5) : true;
     }
   }
 
   const filterCounts = Object.fromEntries(
-    FILTERS.map((f) => [f, allRecipes.filter((r) => matchesFilter(r, f)).length])
+    FILTERS.map((f) => [f.id, allRecipes.filter((r) => matchesFilter(r, f.id)).length])
   );
 
   let visible = allRecipes.filter((r) => matchesFilter(r, filter));
@@ -150,8 +165,8 @@ export function Recipes({
     visible = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  const makeableCount = filterCounts["Makeable now"];
-  const expiringCount = filterCounts["Uses expiring"];
+  const makeableCount = filterCounts.makeable;
+  const expiringCount = filterCounts.expiring;
 
   async function handleImportSubmit(e) {
     e.preventDefault();
@@ -174,19 +189,19 @@ export function Recipes({
       <div className="riso-recipes-heading-row">
         <div className="riso-recipes-heading">
           <div className="riso-eyebrow">
-            {allRecipes.length} RECIPES · {makeableCount} MAKEABLE NOW · {expiringCount} USE EXPIRING ITEMS
+            {t("recipes.eyebrow", { count: allRecipes.length, makeable: makeableCount, expiring: expiringCount })}
           </div>
           <h1 className="riso-recipes-title">
-            Your <span className="accent">recipes.</span>
+            {t("recipes.titleStart")} <span className="accent">{t("recipes.titleAccent")}</span>
           </h1>
         </div>
         <div className="riso-recipes-sort-group">
-          <span className="riso-recipes-sort-label">SORT</span>
+          <span className="riso-recipes-sort-label">{t("recipes.sort")}</span>
           <label className="riso-recipes-sort-btn">
-            <select aria-label="Sort recipes" value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
-              {SORT_LABELS.map((label, i) => (
-                <option key={label} value={i}>
-                  {label}
+            <select aria-label={t("recipes.sortLabel")} value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
+              {SORTS.map((id, i) => (
+                <option key={id} value={i}>
+                  {t(`recipes.sorts.${id}`)}
                 </option>
               ))}
             </select>
@@ -197,21 +212,21 @@ export function Recipes({
 
       <form className="riso-recipes-searchbar" onSubmit={handleImportSubmit}>
         <div className="riso-recipes-searchbar-label" style={{ background: isUrl ? "var(--riso-yellow)" : "var(--riso-canvas)" }}>
-          {isUrl ? "IMPORT" : "SEARCH"}
+          {isUrl ? t("recipes.import") : t("recipes.search")}
         </div>
         <input
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search by name, tag or ingredient, or paste a recipe link to import it"
+          placeholder={t("recipes.searchPlaceholder")}
         />
         {isUrl ? (
           <button type="submit" className="riso-recipes-searchbar-btn primary" disabled={importing}>
-            {importing ? "Importing…" : "Import recipe"}
+            {importing ? t("recipes.importing") : t("recipes.importRecipe")}
           </button>
         ) : (
           <button type="button" className="riso-recipes-searchbar-btn" onClick={onNewRecipe}>
-            + New recipe
+            {t("recipes.newRecipe")}
           </button>
         )}
       </form>
@@ -219,28 +234,24 @@ export function Recipes({
         <p className="import-error">
           {importError.message}
           {importError.needsManualEntry &&
-            (importError.message?.startsWith("Failed to fetch")
-              ? " — this site is blocking automated requests, so it can't be auto-imported. You can add it manually instead."
-              : " — this site doesn't expose structured recipe data, so it can't be auto-imported. You can add it manually instead.")}
+            (importError.reason === "noData" ? t("recipes.noData") : t("recipes.blocked"))}
         </p>
       )}
 
       <HintStrip userId={user.id} screenKey="recipes-v2">
-        Type to search your recipes, or paste a link from any recipe site to import it. The yellow chip is
-        total prep and cook time; the pink chip flags expiring ingredients. The bar shows
-        how many ingredients are already in your Inventory. Cards with a shadow need nothing from the store.
+        {t("recipes.hint")}
       </HintStrip>
 
       <div className="riso-recipes-filter-chips">
         {FILTERS.map((f) => (
           <button
-            key={f}
+            key={f.id}
             type="button"
-            className={`riso-filter-chip${filter === f ? " active" : ""}`}
-            onClick={() => onFilterChange(f)}
+            className={`riso-filter-chip${filter === f.id ? " active" : ""}`}
+            onClick={() => onFilterChange(f.id)}
           >
-            {f}
-            <span className="riso-filter-chip-count">{filterCounts[f]}</span>
+            {f.label}
+            <span className="riso-filter-chip-count">{filterCounts[f.id]}</span>
           </button>
         ))}
       </div>
@@ -251,16 +262,14 @@ export function Recipes({
             key={r.id}
             recipe={r}
             stats={recipeHaveStats(r, haveCores)}
-            usesExpiring={matchesFilter(r, "Uses expiring")}
+            usesExpiring={matchesFilter(r, "expiring")}
             onClick={onSelectRecipe}
           />
         ))}
       </div>
       {visible.length === 0 && !isUrl && (
         <p className="riso-recipes-empty">
-          {allRecipes.length === 0
-            ? "No recipes yet. Paste a link above to import one, or add one by hand."
-            : "No recipes match. Paste a link above to import one."}
+          {allRecipes.length === 0 ? t("recipes.emptyNone") : t("recipes.emptyNoMatch")}
         </p>
       )}
     </div>

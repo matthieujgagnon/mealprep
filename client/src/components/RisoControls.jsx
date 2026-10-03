@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { isHintDismissed, dismissHint } from "../lib/hints.js";
+import { api } from "../api.js";
+import { LANGS, setLang, t, useLang } from "../i18n/index.js";
 
 // 48x28 track switch - design_handoff_riso's shared "Switch" component.
 export function Switch({ on, onToggle, label }) {
@@ -45,7 +47,7 @@ export function HintStrip({ userId, screenKey, children }) {
   return (
     <div className="riso-hint-strip">
       <span className="riso-sticker yellow riso-hint-sticker" style={{ position: "static" }}>
-        how it works
+        {t("common.howItWorks")}
       </span>
       <p className="riso-hint-text">{children}</p>
       <button
@@ -56,7 +58,7 @@ export function HintStrip({ userId, screenKey, children }) {
           setDismissed(true);
         }}
       >
-        Got it
+        {t("common.gotIt")}
       </button>
     </div>
   );
@@ -81,6 +83,34 @@ export function BottomSheet({ onClose, label, children }) {
         <span className="riso-sheet-handle" aria-hidden="true" />
         {children}
       </div>
+    </div>
+  );
+}
+
+// FR | EN, each written in its own language. Signed in, the choice is
+// saved to the account so it follows you to other devices (and the app's
+// emails come in it too).
+export function LanguageSwitch({ persist = true }) {
+  const lang = useLang();
+  return (
+    <div className="riso-lang-switch" role="group" aria-label={t("lang.label")}>
+      {LANGS.map((code) => (
+        <button
+          key={code}
+          type="button"
+          lang={code === "fr" ? "fr-CA" : "en-CA"}
+          className={lang === code ? "active" : ""}
+          aria-pressed={lang === code}
+          aria-label={t(code === "fr" ? "same.langFr" : "same.langEn")}
+          title={t(code === "fr" ? "same.langFr" : "same.langEn")}
+          onClick={() => {
+            setLang(code);
+            if (persist) api.saveLocale(code).catch(() => {});
+          }}
+        >
+          {t(code === "fr" ? "same.fr" : "same.en")}
+        </button>
+      ))}
     </div>
   );
 }

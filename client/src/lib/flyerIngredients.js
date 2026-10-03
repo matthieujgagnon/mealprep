@@ -5,6 +5,8 @@
 // brand, size or filler words, decides which ingredient a product is.
 import { canonicalize, capitalize } from "./groceryList.js";
 import { splitBilingual } from "./bilingual.js";
+import { getLang, locale, t } from "../i18n/index.js";
+import { formatDayRange, localizePrice } from "../i18n/format.js";
 
 export { splitBilingual };
 
@@ -42,6 +44,45 @@ const FILLER = new Set([
 ]);
 
 const SIZE_WORD = /^(\d+([.,]\d+)?)(g|kg|ml|l|lb|lbs|oz|ct|pk|x)?$/;
+
+// French words that dress up a product name without naming it, dropped
+// from the ends of the French name ("Fraises fraîches" -> "Fraises").
+const FILLER_FR = new Set([
+  "frais", "fraiche", "fraiches", "biologique", "biologiques", "bio", "format", "familial", "economique", "paquet",
+  "sac", "boite", "gros", "grosse", "assortis", "assorties", "varies", "variees", "selectionnes", "selectionnees",
+  "produit", "de", "du", "des", "d", "a", "au", "aux", "et", "ou", "en",
+]);
+// A unit on its own, after its number ("1 lb", "500 g", "12 un.").
+const UNIT_WORD = /^(g|kg|ml|l|lb|lbs|oz|ct|pk|un\.?|unites?)$/;
+const foldWord = (w) => w.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9'%.-]/g, "");
+
+// The French half of a product name as a card title: "Poitrines de poulet
+// désossées Maple Leaf, 500 g" -> "Poitrines de poulet désossées". Brands,
+// sizes and the pack go; the words keep their accents.
+export function frenchProductName(text) {
+  if (!text) return null;
+  const raw = String(text).normalize("NFC").split(/[,([]/)[0].replace(/[®™*]/g, " ");
+  // Flyers that shout ("BŒUF HACHÉ") go to lower case; others keep their
+  // capitals ("saumon de l'Atlantique").
+  const base = raw === raw.toUpperCase() ? raw.toLowerCase() : raw;
+  // Folding keeps one letter per precomposed letter, so a brand found in the
+  // folded text sits at the same place in the real one.
+  const folded = base.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  let kept = base;
+  if (folded.length === base.length) {
+    const chars = base.split("");
+    for (const m of folded.matchAll(BRAND_RE)) {
+      const start = m.index + m[1].length;
+      for (let i = start; i < start + m[2].length; i++) chars[i] = " ";
+    }
+    kept = chars.join("");
+  }
+  const words = kept.split(/\s+/).filter((w) => w && !SIZE_WORD.test(foldWord(w)) && !UNIT_WORD.test(foldWord(w)));
+  while (words.length && FILLER_FR.has(foldWord(words[0]))) words.shift();
+  while (words.length && FILLER_FR.has(foldWord(words[words.length - 1]))) words.pop();
+  const name = words.join(" ").trim();
+  return name ? name[0].toUpperCase() + name.slice(1) : null;
+}
 
 // The words that name the product: "Maple Leaf bacon, 375 g" -> "bacon".
 export function productText(deal) {
@@ -155,22 +196,31 @@ export function tilePrice(deal) {
 // tile with no price ("$3.00 off") still counts as on sale, with no pct.
 export function dealSavings(deal) {
   if (!deal) return null;
-  if (deal.unitPrice == null && / off$/.test(deal.price || "")) return { pct: null, why: deal.price };
+  if (deal.unitPrice == null && / off$/.test(deal.price || "")) return { pct: null, why: localizePrice(deal.price) };
   const options = [];
   if (deal.regularPrice > deal.unitPrice && deal.unitPrice != null) {
-    options.push({ pct: (deal.regularPrice - deal.unitPrice) / deal.regularPrice, why: "off the regular price" });
+    options.push({ pct: (deal.regularPrice - deal.unitPrice) / deal.regularPrice, why: t("deals.whyRegular") });
   }
   if (deal.baseline?.pct != null && deal.baseline.pct <= -10) {
-    options.push({ pct: -deal.baseline.pct / 100, why: "under Quebec's average" });
+    options.push({ pct: -deal.baseline.pct / 100, why: t("deals.whyQuebec") });
   }
-  const t = rangePosition(deal);
+  const pos = rangePosition(deal);
   const cur = deal.comparePrice ?? deal.unitPrice;
-  if (t != null && t <= 0.25 && deal.sixMonthHigh > cur) {
-    options.push({ pct: (deal.sixMonthHigh - cur) / deal.sixMonthHigh, why: "under its 6-month high" });
+  if (pos != null && pos <= 0.25 && deal.sixMonthHigh > cur) {
+    options.push({ pct: (deal.sixMonthHigh - cur) / deal.sixMonthHigh, why: t("deals.whySixMonth") });
   }
   const best = options.sort((a, b) => b.pct - a.pct)[0];
   return best && best.pct >= 0.05 ? { pct: Math.min(best.pct, 0.95), why: best.why } : null;
 }
+
+// "41% off the regular price" / "41 % de rabais sur le prix régulier";
+// "$3.00 off" when the flyer gives only the amount.
+export function savingText(saving) {
+  if (!saving) return "";
+  return saving.pct != null ? t("deals.savingPct", { pct: Math.round(saving.pct * 100), why: saving.why }) : saving.why;
+}
+
+const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
 
 // Would I buy it? A plain answer for a flyer item, from the same signals
 // the cards show: its real saving (dealSavings), where it sits in its own
@@ -185,39 +235,40 @@ export function dealVerdict(deal) {
   // Points offers and free-with-purchase items have no price to judge.
   if (deal.unitPrice == null && deal.price && !/ off$/.test(deal.price)) {
     const reason = /^points/i.test(deal.price)
-      ? "A points offer: the flyer gives what the points are worth, not the price."
+      ? t("deals.reasonPoints")
       : /^free/i.test(deal.price)
-        ? "Free when you buy the other item the flyer names."
-        : "The flyer only says what it's worth, not what it costs.";
-    return { key: "unknown", label: "Not a price", reason };
+        ? t("deals.reasonFree")
+        : t("deals.reasonWorth");
+    return { key: "unknown", label: t("deals.verdictNotPrice"), reason };
   }
   const saving = dealSavings(deal);
-  const t = rangePosition(deal);
+  const pos = rangePosition(deal);
   const vsQuebec = deal.baseline?.pct;
-  const pctText = saving?.pct != null ? `${Math.round(saving.pct * 100)}% ${saving.why}` : saving?.why;
-  const freezes = deal.freezeTip ? ", and it freezes" : "";
-  if (saving && ((t != null && t <= 0.05) || (saving.pct != null && saving.pct >= 0.25))) {
-    const why = t != null && t <= 0.05 ? "Its lowest price in 6 months" : pctText[0].toUpperCase() + pctText.slice(1);
-    return { key: "stock-up", label: "Stock up", reason: `${why}${freezes}.` };
+  const pctText = savingText(saving);
+  const freezes = deal.freezeTip ? t("deals.andFreezes") : "";
+  if (saving && ((pos != null && pos <= 0.05) || (saving.pct != null && saving.pct >= 0.25))) {
+    const why = pos != null && pos <= 0.05 ? t("deals.lowest6") : upperFirst(pctText);
+    return { key: "stock-up", label: t("deals.verdictStockUp"), reason: `${why}${freezes}.` };
   }
-  if (saving) return { key: "buy", label: "Buy", reason: `${pctText[0].toUpperCase() + pctText.slice(1)}.` };
-  if ((t != null && t >= 0.6) || (vsQuebec != null && vsQuebec >= 10)) {
+  if (saving) return { key: "buy", label: t("deals.verdictBuy"), reason: `${upperFirst(pctText)}.` };
+  if ((pos != null && pos >= 0.6) || (vsQuebec != null && vsQuebec >= 10)) {
     return {
       key: "skip",
-      label: "Skip",
-      reason: vsQuebec != null && vsQuebec >= 10 ? `${vsQuebec}% over Quebec's average. Wait for a sale.` : "Pricier than it's been lately. Wait for a sale.",
+      label: t("deals.verdictSkip"),
+      reason: vsQuebec != null && vsQuebec >= 10 ? t("deals.overQuebec", { pct: vsQuebec }) : t("deals.pricier"),
     };
   }
-  const known = t != null || vsQuebec != null || deal.regularPrice != null || deal.sixMonthHigh != null;
-  if (!known) return { key: "unknown", label: "Can't tell yet", reason: "No past prices to compare with yet." };
-  return { key: "fair", label: "Only if you need it", reason: "A normal price, not a deal." };
+  const known = pos != null || vsQuebec != null || deal.regularPrice != null || deal.sixMonthHigh != null;
+  if (!known) return { key: "unknown", label: t("deals.verdictCantTell"), reason: t("deals.noPast") };
+  return { key: "fair", label: t("deals.verdictFair"), reason: t("deals.normal") };
 }
 
+// "per lb" / "la lb" under a price.
 export function unitLabel(basis) {
-  if (basis === "lb") return "per lb";
-  if (basis === "L") return "per L";
-  if (basis === "kg") return "per kg";
-  return "each";
+  if (basis === "lb") return t("deals.perLb");
+  if (basis === "L") return t("deals.perL");
+  if (basis === "kg") return t("deals.perKg");
+  return t("deals.perEach");
 }
 
 // Where a deal sits in its own 6-month range: 0 = the low, 1 = the high.
@@ -296,7 +347,7 @@ export function buildIngredients(deals, { store = null, storeOrder = [], today =
     // tub and yogurt tubes), so it doesn't count as one.
     const gap = comparable.length > 1 && hi > 0 && hi <= lo * MAX_GAP_RATIO ? (hi - lo) / hi : 0;
     const best = variants[0];
-    const t = rangePosition(best);
+    const pos = rangePosition(best);
 
     // Named after a product that is exactly this ingredient when there is
     // one ("Bananas"), in its own words rather than the singular key.
@@ -307,6 +358,10 @@ export function buildIngredients(deals, { store = null, storeOrder = [], today =
     const fr = all.map((d) => splitBilingual(d.item).fr).find(Boolean);
     const { en } = splitBilingual(own.item);
     const sub = fr || (en && en.toLowerCase() !== name.toLowerCase() ? en : null);
+    // The card's title in French: the French half of the product's own name
+    // when the flyer gives one.
+    const frOwn = splitBilingual(own.item).fr;
+    const frName = frenchProductName(frOwn || fr);
 
     const endsList = all.map((d) => daysLeft(d.validUntil, today)).filter((n) => n != null && n >= 0);
     const freezeDeal = all.find((d) => d.freezeTip);
@@ -323,8 +378,13 @@ export function buildIngredients(deals, { store = null, storeOrder = [], today =
       key,
       name,
       sub,
+      frName,
       aisle: [...aisleCount.entries()].sort((a, b) => b[1] - a[1])[0][0],
-      freeze: freezeDeal ? freezeDeal.freezeTip.replace(/^Freezes\s+/i, "").replace(/\.$/, "") : null,
+      freeze: freezeDeal
+        ? freezeDeal.freezeRange
+          ? formatDayRange(freezeDeal.freezeRange.min, freezeDeal.freezeRange.max)
+          : freezeDeal.freezeTip.replace(/^Freezes\s+/i, "").replace(/\.$/, "")
+        : null,
       endsIn: endsList.length ? Math.min(...endsList) : null,
       photoDeal: variants.find((d) => d.imageUrl) || best,
       variants,
@@ -334,17 +394,29 @@ export function buildIngredients(deals, { store = null, storeOrder = [], today =
       hi,
       gap,
       best,
-      t,
+      t: pos,
       saving,
       onSale: !!saving,
       // "Best deal": the biggest real saving first, then a low spot in its
       // 6-month range and the gap between stores.
-      score: (saving?.pct ?? (saving ? 0.1 : 0)) + (t == null ? gap * 0.2 : (1 - t) * 0.15 + gap * 0.1),
+      score: (saving?.pct ?? (saving ? 0.1 : 0)) + (pos == null ? gap * 0.2 : (1 - pos) * 0.15 + gap * 0.1),
       search: foldText(`${name} ${sub || ""} ${all.map((d) => `${d.item} ${d.matchName || ""}`).join(" ")}`),
     });
   }
   return result;
 }
+
+// What an ingredient card is called on screen: in French its French name
+// (with the English one under it), in English as before (with the French
+// one under it).
+export function ingredientNames(g, lang = getLang()) {
+  if (lang === "fr" && g.frName) {
+    return { name: g.frName, sub: g.frName.toLowerCase() !== g.name.toLowerCase() ? g.name : null };
+  }
+  return { name: g.name, sub: g.sub };
+}
+
+const byName = (a, b) => ingredientNames(a).name.localeCompare(ingredientNames(b).name, locale());
 
 export function foldText(text) {
   return String(text || "")
@@ -354,26 +426,31 @@ export function foldText(text) {
 }
 
 export const RANKS = {
-  best: { label: "Best deal", sort: (a, b) => b.score - a.score || a.name.localeCompare(b.name) },
-  gap: { label: "Store gap", sort: (a, b) => b.gap - a.gap || a.name.localeCompare(b.name) },
-  cheapest: { label: "Cheapest", sort: (a, b) => (a.lo ?? Infinity) - (b.lo ?? Infinity) || a.name.localeCompare(b.name) },
-  az: { label: "A to Z", sort: (a, b) => a.name.localeCompare(b.name) },
+  best: { get label() { return t("deals.rankBest"); }, sort: (a, b) => b.score - a.score || byName(a, b) },
+  gap: { get label() { return t("deals.rankGap"); }, sort: (a, b) => b.gap - a.gap || byName(a, b) },
+  cheapest: { get label() { return t("deals.rankCheapest"); }, sort: (a, b) => (a.lo ?? Infinity) - (b.lo ?? Infinity) || byName(a, b) },
+  az: { get label() { return t("deals.rankAz"); }, sort: byName },
 };
 
-// The groups each "Slice by" makes, in display order.
+// The groups each "Slice by" makes, in display order: { id, name, items }
+// (the id stays put when the language changes; the name is shown).
 export function sliceIngredients(list, slice, aisles) {
   let order;
   let keyOf;
+  let nameOf;
   if (slice === "ends") {
-    order = ["Ends within 2 days", "Ends this week", "Later"];
+    order = ["ends2", "endsWeek", "later"];
     keyOf = (g) => (g.endsIn != null && g.endsIn <= 2 ? order[0] : g.endsIn != null && g.endsIn <= 7 ? order[1] : order[2]);
+    nameOf = (id) => t({ ends2: "deals.sliceEnds2", endsWeek: "deals.sliceEndsWeek", later: "deals.sliceLater" }[id]);
   } else if (slice === "freeze") {
-    order = ["Freezes well", "Eat fresh"];
+    order = ["freezes", "fresh"];
     keyOf = (g) => (g.freeze ? order[0] : order[1]);
+    nameOf = (id) => t(id === "freezes" ? "deals.sliceFreezes" : "deals.sliceFresh");
   } else {
-    order = aisles.map((a) => a.label);
-    const label = Object.fromEntries(aisles.map((a) => [a.id, a.label]));
-    keyOf = (g) => label[g.aisle] || label.other || "Other";
+    order = aisles.map((a) => a.id);
+    const known = new Set(order);
+    keyOf = (g) => (known.has(g.aisle) ? g.aisle : "other");
+    nameOf = (id) => t(`aisles.${id}`);
   }
   const map = new Map();
   for (const g of list) {
@@ -381,5 +458,5 @@ export function sliceIngredients(list, slice, aisles) {
     if (!map.has(k)) map.set(k, []);
     map.get(k).push(g);
   }
-  return order.filter((n) => map.has(n)).map((n) => ({ name: n, items: map.get(n) }));
+  return order.filter((id) => map.has(id)).map((id) => ({ id, name: nameOf(id), items: map.get(id) }));
 }

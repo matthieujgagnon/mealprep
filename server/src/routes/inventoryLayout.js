@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const inventoryLayoutRouter = Router();
 
@@ -26,7 +27,7 @@ inventoryLayoutRouter.get("/", async (req, res) => {
 // Replaces the whole layout; list order is the display order.
 inventoryLayoutRouter.put("/", async (req, res) => {
   const { sections } = req.body;
-  if (!Array.isArray(sections)) return res.status(400).json({ error: "sections must be an array" });
+  if (!Array.isArray(sections)) return res.status(400).json(fail(req, "mustBeArray", { field: "sections" }));
   const seen = new Set();
   const data = [];
   for (const s of sections) {

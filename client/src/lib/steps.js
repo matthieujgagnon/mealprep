@@ -1,3 +1,4 @@
+import { t } from "../i18n/index.js";
 import { formatQuantity } from "./units.js";
 
 export function stepText(step) {
@@ -46,7 +47,7 @@ export function stepHeadingText(step) {
 // single timer chip per step (multi-timer steps are rare, and the first
 // duration mentioned is almost always the one that matters for pacing the
 // rest of the step). Returns null when the step doesn't mention a duration.
-const DURATION_RE = /\b(\d+)\s*(hour|hr|minute|min)s?\b/i;
+const DURATION_RE = /\b(\d+)\s*(hour|hr|heure|minute|min)s?\b/i;
 
 export function stepTimer(step) {
   const m = DURATION_RE.exec(stepText(step));
@@ -68,13 +69,14 @@ export function formatClock(seconds) {
 }
 
 // "3-minute", "20-minute", "1-hour", "1 h 30 min": the timer chip reads
-// "Start 20-minute timer" (never MIN or HR in capitals).
+// "Start 20-minute timer" (never MIN or HR in capitals). In French "20
+// minutes", "1 heure": "Minuterie de 20 minutes".
 export function durationLabel(seconds) {
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}-minute`;
+  if (minutes < 60) return t("steps.minutes", { count: minutes });
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return m ? `${h} h ${m} min` : `${h}-hour`;
+  return m ? `${h} h ${m} min` : t("steps.hours", { count: h });
 }
 
 const FRACTION_GLYPHS = { "½": 0.5, "⅓": 1 / 3, "⅔": 2 / 3, "¼": 0.25, "¾": 0.75, "⅛": 0.125 };
@@ -99,7 +101,7 @@ function parseNumberToken(token) {
 
 // Skip a duration ("20 minutes", "1 hr") right after the number — doubling
 // servings doesn't mean doubling the time something roasts or rests.
-const AFTER_DURATION_RE = /^\s*(hours?|hrs?|minutes?|mins?)\b/i;
+const AFTER_DURATION_RE = /^\s*(hours?|hrs?|heures?|minutes?|mins?)\b/i;
 
 // Scales the standalone numbers in a step's instruction text by the same
 // factor the ingredient list scales by (servings / baseServings) — "add 2

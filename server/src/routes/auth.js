@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword, createSession, destroySession, requireAuth } from "../lib/auth.js";
 import { seedPlaceholderRecipesForUser } from "../lib/placeholders.js";
 import { sendPasswordResetEmail } from "../lib/mailer.js";
+import { fail, langOf, msg, normalizeLang } from "../lib/i18n.js";
 
 export const authRouter = Router();
 
@@ -13,7 +14,7 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RESET_REQUEST_COOLDOWN_MS = 2 * 60 * 1000;
 
 function serializeUser(user) {
-  return { id: user.id, email: user.email, name: user.name };
+  return { id: user.id, email: user.email, name: user.name, locale: user.locale || null };
 }
 
 // POST /api/auth/signup { email, password, name? } - creates an account.
@@ -25,22 +26,22 @@ function serializeUser(user) {
 authRouter.post("/signup", async (req, res) => {
   const { email, password, name } = req.body;
   if (!email || !email.trim() || !password) {
-    return res.status(400).json({ error: "email and password are required" });
+    return res.status(400).json(fail(req, "emailPasswordRequired"));
   }
   if (password.length < 8) {
-    return res.status(400).json({ error: "password must be at least 8 characters" });
+    return res.status(400).json(fail(req, "passwordTooShort"));
   }
   const normalizedEmail = email.trim().toLowerCase();
 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
-    return res.status(409).json({ error: "An account with that email already exists" });
+    return res.status(409).json(fail(req, "emailTaken"));
   }
 
   const isFirstUser = (await prisma.user.count()) === 0;
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
-    data: { email: normalizedEmail, name: name?.trim() || null, passwordHash },
+    data: { email: normalizedEmail, name: name?.trim() || null, passwordHash, locale: normalizeLang(req.body.locale) || langOf(req) },
   });
 
   if (isFirstUser) {
@@ -70,11 +71,11 @@ authRouter.post("/signup", async (req, res) => {
 authRouter.post("/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ error: "email and password are required" });
+    return res.status(400).json(fail(req, "emailPasswordRequired"));
   }
   const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    return res.status(401).json({ error: "Incorrect email or password" });
+    return res.status(401).json(fail(req, "wrongLogin"));
   }
   await createSession(res, user.id);
   res.json(serializeUser(user));
@@ -90,7 +91,16 @@ authRouter.post("/logout", async (req, res) => {
 // every app load to decide whether to show the login form or the app.
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
-  if (!user) return res.status(401).json({ error: "Not logged in" });
+  if (!user) return res.status(401).json(fail(req, "notLoggedIn"));
+  res.json(serializeUser(user));
+});
+
+// PATCH /api/auth/me { locale: "fr" | "en" } - the account's language, for
+// the app on every device and for the emails it sends.
+authRouter.patch("/me", requireAuth, async (req, res) => {
+  const locale = normalizeLang(req.body?.locale);
+  if (!locale || String(req.body.locale).length > 5) return res.status(400).json(fail(req, "badLocale"));
+  const user = await prisma.user.update({ where: { id: req.userId }, data: { locale } });
   res.json(serializeUser(user));
 });
 
@@ -101,11 +111,11 @@ authRouter.get("/me", requireAuth, async (req, res) => {
 authRouter.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   if (!email || !email.trim()) {
-    return res.status(400).json({ error: "email is required" });
+    return res.status(400).json(fail(req, "emailRequired"));
   }
 
   const genericResponse = () =>
-    res.json({ message: "If that email has an account, we've sent a link to reset the password." });
+    res.json({ message: msg(req, "resetSent") });
 
   const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (!user) return genericResponse();
@@ -123,7 +133,7 @@ authRouter.post("/forgot-password", async (req, res) => {
   const resetUrl = `${appUrl}/reset-password?token=${token.id}`;
 
   try {
-    await sendPasswordResetEmail(user.email, resetUrl);
+    await sendPasswordResetEmail(user.email, resetUrl, user.locale || langOf(req));
   } catch (err) {
     console.error("Failed to send password reset email:", err.message);
     // Still a generic response - a delivery failure shouldn't tell an
@@ -141,15 +151,15 @@ authRouter.post("/forgot-password", async (req, res) => {
 authRouter.post("/reset-password", async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) {
-    return res.status(400).json({ error: "token and password are required" });
+    return res.status(400).json(fail(req, "tokenPasswordRequired"));
   }
   if (password.length < 8) {
-    return res.status(400).json({ error: "password must be at least 8 characters" });
+    return res.status(400).json(fail(req, "passwordTooShort"));
   }
 
   const resetToken = await prisma.passwordResetToken.findUnique({ where: { id: token } });
   if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
-    return res.status(400).json({ error: "This reset link is invalid or has expired. Request a new one." });
+    return res.status(400).json(fail(req, "resetInvalid"));
   }
 
   const passwordHash = await hashPassword(password);
@@ -159,5 +169,5 @@ authRouter.post("/reset-password", async (req, res) => {
     prisma.session.deleteMany({ where: { userId: resetToken.userId } }),
   ]);
 
-  res.json({ message: "Password updated - you can now log in." });
+  res.json({ message: msg(req, "passwordUpdated") });
 });

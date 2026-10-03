@@ -14,40 +14,57 @@ import {
   tilePrice,
   unitLabel,
   dealVerdict,
+  ingredientNames,
+  savingText,
 } from "../lib/flyerIngredients.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { HintStrip, Switch } from "./RisoControls.jsx";
 import { flyerUrl, merchantMatches } from "../lib/flyerLinks.js";
-
-// Same day/meal vocabulary as PlannerBoard's own picker (dayOfWeek 0=Monday
-// per the schema, mealType id matches PlannerEntry.mealType).
-const MEAL_TYPES = [
-  { id: "breakfast", label: "Breakfast" },
-  { id: "lunch", label: "Lunch" },
-  { id: "dinner", label: "Dinner" },
-];
+import { dict, getLang, t, tx } from "../i18n/index.js";
+import { formatDate, formatDayRange, formatMoney, formatMonthDay, formatNumber, formatShortDay, localizePrice } from "../i18n/format.js";
 
 const ENDS_SOON_DAYS = 2;
-const money = (n) => `$${n.toFixed(2)}`;
+const money = (n) => formatMoney(n);
 
 // The aisles the "By category" view groups by, in walking order. The server
 // sends its own list with the deals (GET /api/deals -> aisles); this is the
-// fallback for an older server.
+// fallback for an older server. Their names are the app's own (aisles.*).
 const DEFAULT_AISLES = [
-  { id: "produce", label: "Fruits & vegetables" },
-  { id: "meat", label: "Meat & poultry" },
-  { id: "seafood", label: "Fish & seafood" },
-  { id: "dairy", label: "Dairy & eggs" },
-  { id: "deli", label: "Deli & ready meals" },
-  { id: "bakery", label: "Bakery" },
-  { id: "frozen", label: "Frozen" },
-  { id: "pantry", label: "Pantry" },
-  { id: "snacks", label: "Snacks & sweets" },
-  { id: "drinks", label: "Drinks" },
-  { id: "household", label: "Household & personal care" },
-  { id: "other", label: "Other" },
-];
-const AISLE_LABEL = Object.fromEntries(DEFAULT_AISLES.map((a) => [a.id, a.label]));
+  "produce", "meat", "seafood", "dairy", "deli", "bakery", "frozen", "pantry", "snacks", "drinks", "household", "other",
+].map((id) => ({ id }));
+const aisleLabel = (id) => t(`aisles.${id || "other"}`);
+
+// "Sep" / "SEPT" for the chart's months.
+const monthShort = (month) => dict().months.short[Number(String(month).slice(5, 7)) - 1].replace(/\.$/, "").toUpperCase();
+
+// How a flyer photo check went, in the app's language (see the server's
+// checkDealPhoto); older answers carry only the English reason.
+function photoWhy(attempt) {
+  if (!attempt) return t("flyers.photoUnreadable");
+  if (attempt.code) return t(`flyers.photoWhy.${attempt.code}`, { status: attempt.status, detail: attempt.detail });
+  return attempt.reason || t("flyers.photoUnreadable");
+}
+
+// What the weekly import found, in the app's language (lastImportInfo),
+// or the sentence an older import saved.
+function importNote(settings) {
+  const info = settings.lastImportInfo;
+  if (!info) return settings.lastImportMessage || null;
+  const failure = (f) => `${f.store}: ${f.code ? t(`flyers.flipp.${f.code}`, f.vars) : f.message}`;
+  if (!info.ok) {
+    const why =
+      info.code === "storesFailed"
+        ? (info.vars?.failures || []).map(failure).join("; ")
+        : info.code
+          ? t(`flyers.flipp.${info.code}`, info.vars)
+          : info.detail;
+    return t("flyers.importFailed", { why });
+  }
+  const photos = info.photos === info.count ? t("flyers.importNoteAll") : formatNumber(info.photos);
+  const note = t("flyers.importNote", { stores: info.stores, count: info.count, photos });
+  const failed = info.failures ? info.failures.map(failure).join("; ") : info.failed;
+  return failed ? `${note} ${t("flyers.importNoteFailed", { failed })}` : note;
+}
 
 function readStored(key, fallback) {
   try {
@@ -81,14 +98,14 @@ function regularLabel(deal) {
   if (!deal.regularPrice || deal.unitPrice == null) return null;
   const off = Math.round(((deal.regularPrice - deal.unitPrice) / deal.regularPrice) * 100);
   const per = deal.unitBasis && deal.unitBasis !== "each" ? `/${deal.unitBasis}` : "";
-  return `Reg. ${money(deal.regularPrice)}${per} · ${off}% off`;
+  return t("flyers.regular", { price: `${money(deal.regularPrice)}${per}`, off });
 }
 
 // Where a deal's usual range comes from (GET /api/deals -> rangeSource).
 const RANGE_SOURCE = {
-  store: { short: "6 mo · this store", long: "at this store" },
-  stores: { short: "6 mo · all stores", long: "at every store" },
-  quebec: { short: "Quebec avg · 6 mo", long: "Quebec average (Statistics Canada)" },
+  store: { get long() { return t("flyers.rangeStoreLong"); } },
+  stores: { get long() { return t("flyers.rangeStoresLong"); } },
+  quebec: { get long() { return t("flyers.rangeQuebecLong"); } },
 };
 
 // The deal's price on the same footing as its range: per lb / per L when
@@ -103,30 +120,33 @@ function meterFor(deal) {
   const source = RANGE_SOURCE[deal.rangeSource] || RANGE_SOURCE.store;
   const quebec = deal.rangeSource === "quebec";
   // The same price every week isn't a low.
-  if (high <= low && !quebec) return { low, high, pos: "50%", dot: "var(--riso-surface)", verdict: "SAME PRICE", good: false, source };
-  const t = high > low ? (cur - low) / (high - low) : cur < low ? -1 : cur > high ? 2 : 0.5;
-  const clamped = Math.max(0, Math.min(1, t));
-  const verdict = quebec
-    ? t <= 0.02
-      ? "UNDER QC AVG"
-      : t < 0.4
-        ? "GOOD VS QC"
-        : "QC USUAL"
-    : t <= 0.05
+  if (high <= low && !quebec) {
+    return { low, high, pos: "50%", dot: "var(--riso-surface)", key: "same", verdict: t("flyers.meterSame"), good: false, source };
+  }
+  const at = high > low ? (cur - low) / (high - low) : cur < low ? -1 : cur > high ? 2 : 0.5;
+  const clamped = Math.max(0, Math.min(1, at));
+  const key = quebec
+    ? at <= 0.02
+      ? "underQc"
+      : at < 0.4
+        ? "goodQc"
+        : "usualQc"
+    : at <= 0.05
       ? deal.rangeSource === "stores"
-        ? "LOWEST AROUND"
-        : "6-MO LOW"
-      : t < 0.4
-        ? "GOOD PRICE"
-        : "USUAL · WAIT";
-  const good = t < 0.4;
-  return { low, high, pos: `${Math.round(clamped * 100)}%`, dot: good ? "var(--riso-green)" : "var(--riso-surface)", verdict, good, source };
+        ? "lowestAround"
+        : "low6"
+      : at < 0.4
+        ? "good"
+        : "usual";
+  const verdict = t(`flyers.meter${key[0].toUpperCase()}${key.slice(1)}`);
+  const good = at < 0.4;
+  return { low, high, pos: `${Math.round(clamped * 100)}%`, dot: good ? "var(--riso-green)" : "var(--riso-surface)", key, verdict, good, source };
 }
 
 function monthLabel(month) {
   const [y, m] = String(month || "").split("-").map(Number);
   if (!y || !m) return "";
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(undefined, { month: "short", year: "numeric", timeZone: "UTC" });
+  return formatDate(new Date(Date.UTC(y, m - 1, 1)), { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
 // Web photos come through the app's own server (GET /api/deals/:id/photo),
@@ -140,7 +160,7 @@ function photoHostLabel(url) {
   try {
     return new URL(url).hostname;
   } catch {
-    return "the photo";
+    return t("flyers.thePhoto");
   }
 }
 
@@ -194,7 +214,7 @@ function UploadFlyerForm({ onUploaded }) {
   if (!open) {
     return (
       <button type="button" className="riso-btn" onClick={() => setOpen(true)}>
-        Upload flyer
+        {t("flyers.uploadFlyer")}
       </button>
     );
   }
@@ -202,11 +222,17 @@ function UploadFlyerForm({ onUploaded }) {
   return (
     <form className="riso-upload-form" onSubmit={handleUpload}>
       <label className="form-label">
-        Store (or a name for this upload)
-        <input type="text" value={store} onChange={(e) => setStore(e.target.value)} placeholder="e.g. Metro" required />
+        {t("flyers.uploadStore")}
+        <input
+          type="text"
+          value={store}
+          onChange={(e) => setStore(e.target.value)}
+          placeholder={t("flyers.uploadStorePlaceholder")}
+          required
+        />
       </label>
       <label className="form-label">
-        Flyer PDF or photo
+        {t("flyers.uploadFile")}
         <input
           type="file"
           accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -215,22 +241,18 @@ function UploadFlyerForm({ onUploaded }) {
         />
       </label>
       <button type="submit" className="riso-btn primary" disabled={uploading}>
-        {uploading ? "Reading…" : "Extract deals"}
+        {uploading ? t("flyers.reading") : t("flyers.extract")}
       </button>
       <button type="button" className="riso-btn" onClick={() => setOpen(false)}>
-        Cancel
+        {t("flyers.cancel")}
       </button>
       {error && <p className="riso-error">{error}</p>}
     </form>
   );
 }
 
-const MONTH_SHORT = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
 function endsLabel(days) {
-  if (days <= 0) return "ENDS TODAY";
-  if (days === 1) return "ENDS TOMORROW";
-  return `ENDS IN ${days} DAYS`;
+  return endsText(days).toUpperCase();
 }
 
 // A deal's own detail: its picture, the price, the last 6 months as bars
@@ -280,11 +302,11 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
   const barMax = prices.length ? Math.max(...prices) : 0;
   const floor = low != null ? low * 0.9 : 0;
   const span = barMax > floor ? barMax - floor : 1;
-  const isLow = meter && meter.verdict === "6-MO LOW";
+  const isLow = meter && meter.key === "low6";
   const unitText = comparePriceOf(deal) != null ? `${money(comparePriceOf(deal))}/${compareBasisOf(deal)}` : null;
   const quebecRange = deal.rangeSource === "quebec";
   // Skip the unit price when the printed price already says the same thing.
-  const unit = unitText && unitText.replace(/\s/g, "") !== deal.price.replace(/\s/g, "") ? unitText : null;
+  const unit = unitText && unitText.replace(/\s/g, "") !== localizePrice(deal.price).replace(/\s/g, "") ? unitText : null;
   // A manually uploaded flyer keeps its page; imported items have their own photo.
   const flyerPage =
     !deal.imageUrl && deal.source && !["Le Rabais", "Flipp"].includes(deal.source) ? api.flyerUploadImageUrl(deal.source) : null;
@@ -309,46 +331,54 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
               {dealEmoji(deal)}
             </span>
           )}
-          {isLow && <span className="riso-deal-detail-low">6-month low!</span>}
+          {isLow && <span className="riso-deal-detail-low">{t("flyers.lowBadge")}</span>}
           {photoCheck && (
             <p className="riso-deal-detail-photo-why">
               {photoCheck.ok
-                ? "The app's server got this photo, but the page couldn't show it."
-                : `Photo didn't load: ${photoHostLabel(photoCheck.url)} ${photoCheck.tries.at(-1)?.reason || "couldn't be read"}.`}{" "}
+                ? t("flyers.photoServerOk")
+                : t("flyers.photoFailed", { host: photoHostLabel(photoCheck.url), reason: photoWhy(photoCheck.tries.at(-1)) })}{" "}
               {photoCheck.url && (
                 <a href={photoCheck.url} target="_blank" rel="noreferrer">
-                  Open the photo ↗
+                  {t("flyers.openPhoto")}
                 </a>
               )}
             </p>
           )}
           {flyerPage && (
             <a className="riso-deal-detail-page" href={flyerPage} target="_blank" rel="noreferrer">
-              See the flyer page ↗
+              {t("flyers.seePage")}
             </a>
           )}
         </div>
         <div className="riso-deal-detail-body">
-          <button type="button" className="riso-deal-detail-close" aria-label="Close" title="Close" onClick={onClose}>
+          <button
+            type="button"
+            className="riso-deal-detail-close"
+            aria-label={t("flyers.close")}
+            title={t("flyers.close")}
+            onClick={onClose}
+          >
             ×
           </button>
           <div className="riso-deal-detail-head">
             <span className="riso-deal-detail-eyebrow">
-              {deal.store.toUpperCase()} · {(deal.aisleLabel || AISLE_LABEL[deal.aisle] || "Other").toUpperCase()}
+              {deal.store.toUpperCase()} · {aisleLabel(deal.aisle).toUpperCase()}
             </span>
             <h3 className="riso-deal-detail-name">{deal.item}</h3>
             {deal.endsInDays != null && <span className="riso-deal-detail-ends">{endsLabel(deal.endsInDays)}</span>}
           </div>
           <div className="riso-deal-detail-price">
-            <strong>{deal.price}</strong>
+            <strong>{localizePrice(deal.price)}</strong>
             {unit && <span>{unit}</span>}
           </div>
-          {regularLabel(deal) && <p className="riso-deal-detail-reg">{regularLabel(deal)}, says the flyer</p>}
+          {regularLabel(deal) && <p className="riso-deal-detail-reg">{t("flyers.saysFlyer", { regular: regularLabel(deal) })}</p>}
           <Verdict deal={deal} />
           {deal.baseline && (
             <div className={`riso-deal-detail-avg ${goodNow ? "stock-up" : deal.baseline.verdict === "high" ? "high" : "normal"}`}>
               <div>
-                <span className="riso-deal-detail-avg-label">QUEBEC AVERAGE · {monthLabel(deal.baseline.month).toUpperCase()}</span>
+                <span className="riso-deal-detail-avg-label">
+                  {t("flyers.quebecAverage", { month: monthLabel(deal.baseline.month).toUpperCase() })}
+                </span>
                 <strong>
                   {money(deal.baseline.price)}/{deal.baseline.basis || compareBasisOf(deal)}
                 </strong>
@@ -356,10 +386,8 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
               <p>
                 <b>{quebecHeadline(deal.baseline, goodNow)}</b>
                 {" · "}
-                {deal.baseline.pct === 0
-                  ? "the same as what it usually costs in Quebec"
-                  : `${Math.abs(deal.baseline.pct)}% ${deal.baseline.pct < 0 ? "less" : "more"} than it usually costs in Quebec`}{" "}
-                <span className="riso-deal-detail-avg-source">(Statistics Canada: {deal.baseline.product})</span>
+                {quebecCompare(deal.baseline)}{" "}
+                <span className="riso-deal-detail-avg-source">{t("flyers.statcanSource", { product: statcanName(deal.baseline) })}</span>
               </p>
             </div>
           )}
@@ -367,12 +395,12 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
             <div className="riso-deal-detail-history">
               <div className="riso-deal-detail-history-head">
                 <strong>
-                  {quebecRange ? "Quebec average, last 6 months" : "Last 6 months"}
+                  {quebecRange ? t("flyers.quebecLast6") : t("flyers.last6")}
                   <small className="riso-deal-detail-history-source">
-                    {meter ? ` · ${meter.source.long}` : ""} · per {compareBasisOf(deal)}
+                    {meter ? ` · ${meter.source.long}` : ""} · {unitLabel(compareBasisOf(deal))}
                   </small>
                 </strong>
-                <span className={meter?.good ? "good" : ""}>{meter ? meter.verdict : "NEW · NO HISTORY YET"}</span>
+                <span className={meter?.good ? "good" : ""}>{meter ? meter.verdict : t("flyers.newNoHistory")}</span>
               </div>
               <div className="riso-deal-bars">
                 {history.map((m, i) => {
@@ -391,70 +419,68 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
               <div className="riso-deal-bar-months">
                 {history.map((m, i) => (
                   <span key={m.month} className={!quebecRange && i === history.length - 1 ? "now" : ""}>
-                    {MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]}
+                    {monthShort(m.month)}
                   </span>
                 ))}
               </div>
               {/* With only this week's price, a lowest / average / highest of
                   the same number reads like a real average - it isn't. */}
               {!quebecRange && history.filter((m) => m.price != null).length <= 1 ? (
-                <p className="riso-deal-stats-none">
-                  Only this week's price so far, so there's no average yet. It builds up as each week's flyers are imported.
-                </p>
+                <p className="riso-deal-stats-none">{t("flyers.onlyThisWeek")}</p>
               ) : (
               <div className="riso-deal-stats">
                 <div>
-                  <span>LOWEST</span>
+                  <span>{t("flyers.lowest")}</span>
                   <strong className="good">{low != null ? money(low) : "—"}</strong>
                 </div>
                 <div>
-                  <span>AVERAGE</span>
+                  <span>{t("flyers.average")}</span>
                   <strong>{avg != null ? money(avg) : "—"}</strong>
                 </div>
                 <div>
-                  <span>HIGHEST</span>
+                  <span>{t("flyers.highest")}</span>
                   <strong>{high != null ? money(high) : "—"}</strong>
                 </div>
               </div>
               )}
             </div>
           )}
-          {deal.freezeTip && <p className="riso-deal-detail-tip">❄ {deal.freezeTip}</p>}
+          {deal.freezeTip && <p className="riso-deal-detail-tip">❄ {freezeText(deal)}</p>}
           {others.length > 0 && (
             <div className="riso-deal-detail-others">
-              <span className="riso-deal-detail-others-label">ALSO ON SALE</span>
+              <span className="riso-deal-detail-others-label">{t("flyers.alsoOnSale")}</span>
               {others.slice(0, 4).map((o) =>
                 onOpenOther ? (
                   <button
                     key={o.id}
                     type="button"
                     className="riso-deal-detail-other"
-                    title={`Open ${o.item} at ${o.store}`}
+                    title={t("flyers.openAt", { item: o.item, store: o.store })}
                     onClick={() => onOpenOther(o)}
                   >
-                    {o.store} · {o.price} →
+                    {o.store} · {localizePrice(o.price)} →
                   </button>
                 ) : (
                   <span key={o.id} className="riso-deal-detail-other">
-                    {o.store} · {o.price}
+                    {o.store} · {localizePrice(o.price)}
                   </span>
                 )
               )}
             </div>
           )}
           <a className="riso-deal-detail-flyer" href={flyerUrl(deal.store, postalCode)} target="_blank" rel="noreferrer">
-            Open the {deal.store} flyer ↗
+            {t("flyers.openFlyer", { store: deal.store })}
           </a>
           {(onList || onToggleWatch) && (
             <div className="riso-deal-detail-actions">
               {onList && (
                 <button type="button" className={`riso-deal-detail-list${deal.isListed ? " on" : ""}`} onClick={onList}>
-                  {deal.isListed ? "✓ On your grocery list" : "+ Add to grocery list"}
+                  {deal.isListed ? t("flyers.onList") : t("flyers.addToList")}
                 </button>
               )}
               {onToggleWatch && (
                 <button type="button" className={`riso-deal-detail-watch${deal.isWatching ? " on" : ""}`} onClick={onToggleWatch}>
-                  {deal.isWatching ? "★ Watching" : "☆ Watch this"}
+                  {deal.isWatching ? t("flyers.watching") : t("flyers.watch")}
                 </button>
               )}
             </div>
@@ -471,7 +497,7 @@ function formatPostal(pc) {
 
 function formatWhen(iso) {
   if (!iso) return null;
-  return new Date(iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  return formatShortDay(new Date(iso));
 }
 
 // Where the weekly import reads from: postal code, which stores, on/off.
@@ -538,7 +564,7 @@ function ImportSettings({ settings, onSaved, onClose }) {
     <div className="riso-import-settings">
       <div className="riso-import-settings-row">
         <label className="riso-import-field">
-          <span>POSTAL CODE</span>
+          <span>{t("flyers.postalCode")}</span>
           <input
             value={postalCode}
             onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
@@ -548,12 +574,12 @@ function ImportSettings({ settings, onSaved, onClose }) {
           />
         </label>
         <div className="riso-import-auto">
-          <Switch on={autoImport} onToggle={() => setAutoImport((v) => !v)} label="Import every week" />
-          <span>Import every Thursday</span>
+          <Switch on={autoImport} onToggle={() => setAutoImport((v) => !v)} label={t("flyers.importWeekly")} />
+          <span>{t("flyers.importThursday")}</span>
         </div>
       </div>
       <div className="riso-import-field">
-        <span>STORES {stores.length === 0 ? "· NONE PICKED = EVERY GROCERY FLYER NEAR YOU" : `· ${stores.length} PICKED`}</span>
+        <span>{stores.length === 0 ? t("flyers.storesNone") : t("flyers.storesPicked", { count: stores.length })}</span>
         <div className="riso-import-stores">
           {choices.map((name) => (
             <button
@@ -570,27 +596,26 @@ function ImportSettings({ settings, onSaved, onClose }) {
         </div>
         <p className="riso-import-note">
           {nearbyError
-            ? `${nearbyError}. Your stores are kept as they are until Flipp answers.`
+            ? t("flyers.nearbyError", { error: nearbyError })
             : nearby
               ? nearby.length
-                ? `Flipp has grocery flyers near ${formatPostal(postalCode.replace(/\s/g, ""))} from ${nearby.length} store${nearby.length === 1 ? "" : "s"}.`
-                : "Flipp has no grocery flyers near this postal code."
-              : "Looking up the stores near you on Flipp…"}
+                ? t("flyers.nearbyCount", { postal: formatPostal(postalCode.replace(/\s/g, "")), count: nearby.length })
+                : t("flyers.nearbyNone")
+              : t("flyers.nearbyLooking")}
         </p>
         {dropped.length > 0 && (
           <p className="riso-import-note riso-import-dropped">
-            Removed {dropped.join(", ")}: Flipp has no flyer from {dropped.length === 1 ? "it" : "them"} near this postal
-            code, so {dropped.length === 1 ? "it" : "they"} can't be imported. Save to keep this change.
+            {t("flyers.dropped", { count: dropped.length, stores: dropped.join(", ") })}
           </p>
         )}
       </div>
       {error && <p className="riso-error">{error}</p>}
       <div className="riso-import-actions">
         <button type="button" className="riso-btn" onClick={onClose}>
-          Cancel
+          {t("flyers.cancel")}
         </button>
         <button type="button" className="riso-btn primary" onClick={save} disabled={saving}>
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("flyers.saving") : t("flyers.save")}
         </button>
       </div>
     </div>
@@ -600,10 +625,10 @@ function ImportSettings({ settings, onSaved, onClose }) {
 function shortDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
-  return d.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+  return formatMonthDay(d);
 }
 
-const pct = (n, total) => (total ? `${Math.round((n / total) * 100)}%` : "—");
+const pct = (n, total) => (total ? formatNumber(n / total, { style: "percent", maximumFractionDigits: 0 }) : "—");
 
 // "Did the import work?": what each store's flyer gave this week, the
 // prices that couldn't be read, what the prices are compared with, the
@@ -638,58 +663,56 @@ function ImportReport({ onFixed }) {
     }
   }
 
-  if (error) return <p className="riso-error">Couldn't check the import: {error}</p>;
-  if (!report) return <p className="riso-import-note">Checking this week's import…</p>;
+  if (error) return <p className="riso-error">{t("flyers.reportError", { error })}</p>;
+  if (!report) return <p className="riso-import-note">{t("flyers.reportChecking")}</p>;
 
   const c = report.compared;
   const comparable = c.store + c.stores + c.quebec + c.none;
   return (
-    <div className="riso-report" aria-label="Import check">
-      <h4 className="riso-report-title">This week's import</h4>
+    <div className="riso-report" aria-label={t("flyers.reportAria")}>
+      <h4 className="riso-report-title">{t("flyers.reportTitle")}</h4>
       {report.stores.length === 0 ? (
-        <p className="riso-import-note">No flyer deals yet - Import now pulls this week's.</p>
+        <p className="riso-import-note">{t("flyers.reportNone")}</p>
       ) : (
         <div className="riso-report-table" role="table">
           <div className="riso-report-row head" role="row">
-            <span role="columnheader">Store</span>
-            <span role="columnheader">From</span>
-            <span role="columnheader">Items</span>
-            <span role="columnheader">Price read</span>
-            <span role="columnheader">Per lb / L</span>
-            <span role="columnheader">Photos</span>
-            <span role="columnheader">Ends</span>
-            <span role="columnheader">Imported</span>
+            <span role="columnheader">{t("flyers.colStore")}</span>
+            <span role="columnheader">{t("flyers.colFrom")}</span>
+            <span role="columnheader">{t("flyers.colItems")}</span>
+            <span role="columnheader">{t("flyers.colPriceRead")}</span>
+            <span role="columnheader">{t("flyers.colPerUnit")}</span>
+            <span role="columnheader">{t("flyers.colPhotos")}</span>
+            <span role="columnheader">{t("flyers.colEnds")}</span>
+            <span role="columnheader">{t("flyers.colImported")}</span>
           </div>
           {report.stores.map((s) => (
             <div key={`${s.store}|${s.source}`} className="riso-report-row" role="row">
               <span role="cell" className="store">{s.store}</span>
-              <span role="cell" data-label="From">{s.source || "Upload"}</span>
-              <span role="cell" data-label="Items">{s.items}</span>
-              <span role="cell" data-label="Price read" className={s.priced < s.items ? "warn" : ""}>
+              <span role="cell" data-label={t("flyers.colFrom")}>{s.source || t("flyers.upload")}</span>
+              <span role="cell" data-label={t("flyers.colItems")}>{s.items}</span>
+              <span role="cell" data-label={t("flyers.colPriceRead")} className={s.priced < s.items ? "warn" : ""}>
                 {s.priced} · {pct(s.priced, s.items)}
               </span>
-              <span role="cell" data-label="Per lb / L">{s.perUnit}</span>
-              <span role="cell" data-label="Photos">{pct(s.photos, s.items)}</span>
-              <span role="cell" data-label="Ends">{shortDate(s.endsOn)}</span>
-              <span role="cell" data-label="Imported">{shortDate(s.importedAt)}</span>
+              <span role="cell" data-label={t("flyers.colPerUnit")}>{s.perUnit}</span>
+              <span role="cell" data-label={t("flyers.colPhotos")}>{pct(s.photos, s.items)}</span>
+              <span role="cell" data-label={t("flyers.colEnds")}>{shortDate(s.endsOn)}</span>
+              <span role="cell" data-label={t("flyers.colImported")}>{shortDate(s.importedAt)}</span>
             </div>
           ))}
         </div>
       )}
 
       <p className="riso-report-line">
-        <b>Compared with:</b> its own 6 months at that store {c.store} · the same product at other stores {c.stores} ·
-        Quebec's average {c.quebec} · nothing yet {c.none}
-        {comparable > 0 && ` (${pct(comparable - c.none, comparable)} of prices have something to compare with)`}
+        <b>{t("flyers.comparedLabel")}</b>{" "}
+        {t("flyers.comparedLine", { store: c.store, stores: c.stores, quebec: c.quebec, none: c.none })}
+        {comparable > 0 && ` ${t("flyers.comparedShare", { pct: pct(comparable - c.none, comparable) })}`}
       </p>
 
       <p className="riso-report-line">
-        <b>Price history:</b>{" "}
+        <b>{t("flyers.historyLabel")}</b>{" "}
         {report.historyWeeks.length === 0
-          ? "no earlier weeks stored yet - each import adds one."
-          : `${report.historyWeeks.length} earlier week${report.historyWeeks.length === 1 ? "" : "s"} stored, back to ${shortDate(
-              report.historyWeeks.at(-1).week
-            )}.`}
+          ? t("flyers.historyNone")
+          : t("flyers.historyWeeks", { count: report.historyWeeks.length, date: shortDate(report.historyWeeks.at(-1).week) })}
       </p>
       {report.historyWeeks.length > 0 && (
         <div className="riso-report-weeks">
@@ -703,9 +726,7 @@ function ImportReport({ onFixed }) {
 
       {report.unreadableCount > 0 && (
         <details className="riso-report-details">
-          <summary>
-            {report.unreadableCount} price{report.unreadableCount === 1 ? "" : "s"} couldn't be read (shown, but not compared)
-          </summary>
+          <summary>{t("flyers.unreadable", { count: report.unreadableCount })}</summary>
           <ul>
             {report.unreadable.map((u, i) => (
               <li key={i}>
@@ -719,18 +740,20 @@ function ImportReport({ onFixed }) {
       {report.fixable.count > 0 && (
         <div className="riso-report-fix">
           <p>
-            <b>
-              {report.fixable.count} older price{report.fixable.count === 1 ? " was" : "s were"} saved per item but {report.fixable.count === 1 ? "was" : "were"} per lb
-            </b>{" "}
-            (e.g. {report.fixable.examples.slice(0, 3).map((e) => `${e.store} ${e.item} ${e.price}`).join(", ")}). They throw off the 6-month
-            range.
+            <b>{t("flyers.fixableHead", { count: report.fixable.count })}</b>{" "}
+            {t("flyers.fixableExamples", {
+              examples: report.fixable.examples
+                .slice(0, 3)
+                .map((e) => `${e.store} ${e.item} ${localizePrice(e.price)}`)
+                .join(", "),
+            })}
           </p>
           <button type="button" className="riso-btn primary small" onClick={fix} disabled={fixing}>
-            {fixing ? "Fixing…" : "Mark them per lb"}
+            {fixing ? t("flyers.fixing") : t("flyers.markPerLb")}
           </button>
         </div>
       )}
-      {fixedCount != null && <p className="riso-import-note">Fixed {fixedCount} price{fixedCount === 1 ? "" : "s"}.</p>}
+      {fixedCount != null && <p className="riso-import-note">{t("flyers.fixed", { count: fixedCount })}</p>}
     </div>
   );
 }
@@ -740,38 +763,46 @@ function ImportReport({ onFixed }) {
 function AutoImportStrip({ settings, importing, onImport, onSettingsSaved, onDealsChanged }) {
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
-  const where = settings.stores.length ? settings.stores.join(", ") : "every grocery flyer";
+  const where = settings.stores.length ? settings.stores.join(", ") : t("flyers.everyFlyer");
   const last = settings.lastImportAt
     ? settings.lastImportOk
-      ? `Last import ${formatWhen(settings.lastImportAt)}: ${settings.lastImportCount} deals from ${settings.lastImportSource}.`
-      : `Last import ${formatWhen(settings.lastImportAt)} didn't work.`
-    : "Nothing imported yet.";
+      ? t("flyers.lastOk", {
+          when: formatWhen(settings.lastImportAt),
+          count: settings.lastImportCount,
+          source: settings.lastImportSource,
+        })
+      : t("flyers.lastFailed", { when: formatWhen(settings.lastImportAt) })
+    : t("flyers.nothingYet");
+  const note = importNote(settings);
 
   return (
     <section className={`riso-auto-import${settings.lastImportAt && !settings.lastImportOk ? " failed" : ""}`}>
       <div className="riso-auto-import-main">
         <span className={`riso-auto-import-badge${settings.autoImport ? " on" : ""}`}>
-          {settings.autoImport ? "auto-import on" : "auto-import off"}
+          {settings.autoImport ? t("flyers.autoOn") : t("flyers.autoOff")}
         </span>
         <div className="riso-auto-import-text">
           <p>
-            {settings.autoImport ? "Every Thursday" : "When you press Import now"}, this week's flyers from{" "}
-            <strong>{where}</strong> near {formatPostal(settings.postalCode)} are pulled in from Flipp, and each week's prices are kept for the 6-month history.
+            {tx("flyers.autoText", {
+              when: settings.autoImport ? t("flyers.everyThursday") : t("flyers.whenYouPress"),
+              where: <strong>{where}</strong>,
+              postal: formatPostal(settings.postalCode),
+            })}
           </p>
           <p className="riso-auto-import-last">
             {last}
-            {settings.lastImportMessage && <span> {settings.lastImportMessage}</span>}
+            {note && <span> {note}</span>}
           </p>
         </div>
         <div className="riso-auto-import-buttons">
           <button type="button" className="riso-btn" onClick={() => setChecking((o) => !o)} aria-expanded={checking}>
-            Check import
+            {t("flyers.checkImport")}
           </button>
           <button type="button" className="riso-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-            Settings
+            {t("flyers.settings")}
           </button>
           <button type="button" className="riso-btn primary" onClick={onImport} disabled={importing}>
-            {importing ? "Importing…" : "Import now"}
+            {importing ? t("flyers.importing") : t("flyers.importNow")}
           </button>
         </div>
       </div>
@@ -790,26 +821,39 @@ let lastDeals = null;
 const GROUP_PAGE = 12;
 
 const SLICES = [
-  { id: "category", label: "Category" },
-  { id: "ends", label: "Ends soon" },
-  { id: "freeze", label: "Can freeze" },
+  { id: "category", get label() { return t("flyers.sliceCategory"); } },
+  { id: "ends", get label() { return t("flyers.sliceEnds"); } },
+  { id: "freeze", get label() { return t("flyers.sliceFreeze"); } },
 ];
 const SLICE_KEY = "flyers-slice";
 const COLLAPSED_KEY = "flyers-collapsed";
 const RANK_KEY = "flyers-rank";
 const SALES_KEY = "flyers-sales-only";
 
-// "41% off the regular price", "$3.00 off".
-function savingText(saving) {
-  return saving.pct != null ? `${Math.round(saving.pct * 100)}% ${saving.why}` : saving.why;
-}
 const LOW_T = 0.05;
+
+// Quebec's average against this price, in words.
+function quebecCompare(baseline) {
+  if (baseline.pct === 0) return t("flyers.sameAsQuebec");
+  return t(baseline.pct < 0 ? "flyers.lessThanQuebec" : "flyers.moreThanQuebec", { pct: Math.abs(baseline.pct) });
+}
+
+// Statistics Canada's own name for the product, in French when it gave one.
+function statcanName(baseline) {
+  return (getLang() === "fr" && baseline.productFr) || baseline.product;
+}
+
+// "Freezes 3–6 months." from the USDA range the server sends.
+function freezeText(deal) {
+  if (!deal.freezeRange) return deal.freezeTip;
+  return t("flyers.freezes", { range: formatDayRange(deal.freezeRange.min, deal.freezeRange.max) });
+}
 
 // "$0.79/lb" on the same footing the tiles compare on, or the flyer's own
 // price text when it couldn't be read as one number.
 function priceText(deal) {
   const p = tilePrice(deal);
-  if (!p) return deal.price;
+  if (!p) return localizePrice(deal.price);
   return `${money(p.price)}${p.basis === "each" ? "" : `/${p.basis}`}`;
 }
 
@@ -818,7 +862,7 @@ function priceText(deal) {
 // so it's never mistaken for 99¢/lb loose apples or read as a $2 price.
 function shelfPrice(deal) {
   const p = tilePrice(deal);
-  if (!p) return { main: deal.price, unit: "" };
+  if (!p) return { main: localizePrice(deal.price), unit: "" };
   if (deal.unitBasis === "each" && p.basis !== "each" && deal.unitPrice != null) {
     return { main: money(deal.unitPrice), unit: `${money(p.price)}/${p.basis}` };
   }
@@ -826,9 +870,9 @@ function shelfPrice(deal) {
 }
 
 function endsText(days) {
-  if (days <= 0) return "ends today";
-  if (days === 1) return "ends tomorrow";
-  return `ends in ${days} days`;
+  if (days <= 0) return t("flyers.endsToday");
+  if (days === 1) return t("flyers.endsTomorrow");
+  return t("flyers.endsInDays", { count: days });
 }
 
 const cardId = (key) => `flyer-ing-${key.replace(/[^a-z0-9]+/gi, "-")}`;
@@ -853,17 +897,23 @@ function CoverPhoto({ deal }) {
 function BriefPanel({ tone, kicker, title, rows, emptyText, onOpen }) {
   return (
     <section className={`riso-brief ${tone}`}>
-      {tone === "accent" && <span className="riso-brief-sticker">real deals!</span>}
+      {tone === "accent" && <span className="riso-brief-sticker">{t("flyers.realDeals")}</span>}
       <p className="riso-brief-kicker">{kicker}</p>
       <h3 className="riso-brief-title">{title}</h3>
       {rows.length === 0 ? (
         <p className="riso-brief-empty">{emptyText}</p>
       ) : (
         rows.map(({ g, sub, deal }) => (
-          <button key={g.key} type="button" className="riso-brief-row" onClick={() => onOpen(deal)} aria-label={`${g.name}: ${priceText(deal)} at ${deal.store}, open the deal`}>
+          <button
+            key={g.key}
+            type="button"
+            className="riso-brief-row"
+            onClick={() => onOpen(deal)}
+            aria-label={t("flyers.briefAria", { name: ingredientNames(g).name, price: priceText(deal), store: deal.store })}
+          >
             <DealPhoto deal={g.photoDeal} size={56} />
             <span className="riso-brief-row-info">
-              <span className="riso-brief-row-name">{g.name}</span>
+              <span className="riso-brief-row-name">{ingredientNames(g).name}</span>
               <span className="riso-brief-row-sub">{sub}</span>
             </span>
             <span className="riso-brief-row-price">
@@ -879,9 +929,9 @@ function BriefPanel({ tone, kicker, title, rows, emptyText, onOpen }) {
 
 // "30% UNDER QC AVG": a no-history deal against Quebec's average price.
 function baselineVerdict({ pct }) {
-  if (pct <= -1) return `${-pct}% UNDER QC AVG`;
-  if (pct >= 1) return `${pct}% OVER QC AVG`;
-  return "SAME AS QC AVG";
+  if (pct <= -1) return t("flyers.baselineUnder", { pct: -pct });
+  if (pct >= 1) return t("flyers.baselineOver", { pct });
+  return t("flyers.baselineSame");
 }
 
 // One test for "good price" everywhere a deal is judged: in the lowest 40%
@@ -896,8 +946,8 @@ function isGoodPrice(deal) {
 
 // The Quebec banner's headline, judged by isGoodPrice.
 function quebecHeadline(baseline, good) {
-  if (good) return "Stock-up price";
-  return baseline.verdict === "high" ? "Pricier than usual" : "Near the usual price";
+  if (good) return t("flyers.headlineStockUp");
+  return baseline.verdict === "high" ? t("flyers.headlinePricier") : t("flyers.headlineNear");
 }
 
 // Lowest / average / highest over the 6 months.
@@ -937,16 +987,16 @@ function PriceHistory({ deal }) {
   const qcStats = qcPrices.length
     ? { low: Math.min(...qcPrices), high: Math.max(...qcPrices), avg: qcPrices.reduce((a, c) => a + c, 0) / qcPrices.length }
     : null;
-  const stats = ownHistory || quebecRange ? { low, avg, high, label: "" } : qcStats ? { ...qcStats, label: "QC " } : null;
+  const stats = ownHistory || quebecRange ? { low, avg, high, qc: false } : qcStats ? { ...qcStats, qc: true } : null;
   const weeks = deal.historyWeeks;
-  const unit = basis === "each" ? "each" : `per ${basis}`;
+  const unit = unitLabel(basis);
 
   return (
     <div className="riso-ing-history">
       {b && (
         <div className={`riso-ing-qc${good ? " good" : ""}`}>
           <div className="riso-ing-qc-top">
-            <span className="riso-ing-qc-label">QUEBEC AVERAGE · {monthLabel(b.month).toUpperCase()}</span>
+            <span className="riso-ing-qc-label">{t("flyers.quebecAverage", { month: monthLabel(b.month).toUpperCase() })}</span>
             <strong>
               {money(b.price)}/{b.basis || basis}
             </strong>
@@ -954,31 +1004,31 @@ function PriceHistory({ deal }) {
           <p className="riso-ing-qc-line">
             <b>{quebecHeadline(b, good)}</b>
             {" · "}
-            {b.pct === 0
-              ? "the same as what it usually costs in Quebec"
-              : `${Math.abs(b.pct)}% ${b.pct < 0 ? "less" : "more"} than it usually costs in Quebec`}
+            {quebecCompare(b)}
           </p>
-          <p className="riso-ing-qc-source">(Statistics Canada: {b.product})</p>
+          <p className="riso-ing-qc-source">{t("flyers.statcanSource", { product: statcanName(b) })}</p>
         </div>
       )}
       {showChart ? (
         <>
           <div className="riso-ing-chart-head">
             <span>
-              <strong>{quebecRange ? "Quebec average, last 6 months" : "Last 6 months"}</strong>
+              <strong>{quebecRange ? t("flyers.quebecLast6") : t("flyers.last6")}</strong>
               <small>
                 {" "}
                 ·{" "}
                 {quebecRange
-                  ? "Statistics Canada"
+                  ? t("flyers.statcan")
                   : ownHistory
-                    ? `cheapest store${weeks ? `, ${weeks} week${weeks === 1 ? "" : "s"} of flyers` : ""}`
-                    : "this week's flyer"}{" "}
+                    ? weeks
+                      ? `${t("flyers.cheapestStore")}, ${t("flyers.weeksOfFlyers", { count: weeks })}`
+                      : t("flyers.cheapestStore")
+                    : t("flyers.thisWeeksFlyer")}{" "}
                 · {unit}
               </small>
             </span>
             <span className={`riso-ing-verdict${good ? " good" : ""}`}>
-              {meter ? meter.verdict : b ? baselineVerdict(b) : "NO HISTORY YET"}
+              {meter ? meter.verdict : b ? baselineVerdict(b) : t("flyers.noHistoryYet")}
             </span>
           </div>
           <div className="riso-ing-bars">
@@ -997,44 +1047,44 @@ function PriceHistory({ deal }) {
                       <span
                         className="riso-ing-qc-mark"
                         style={{ bottom: height(qc) }}
-                        title={`Quebec average: ${money(qc)}/${basis}`}
-                        aria-label={`Quebec average ${money(qc)}`}
+                        title={t("flyers.qcMarkTitle", { price: `${money(qc)}/${basis}` })}
+                        aria-label={t("flyers.qcMarkAria", { price: money(qc) })}
                       />
                     )}
                   </span>
-                  <span className="riso-ing-bar-month">{MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]}</span>
+                  <span className="riso-ing-bar-month">{monthShort(m.month)}</span>
                 </div>
               );
             })}
           </div>
           {qcByMonth.size > 0 && (
             <p className="riso-ing-legend">
-              <span className="riso-ing-legend-bar" /> lowest flyer price that month
-              <span className="riso-ing-legend-mark" /> Quebec average (Statistics Canada)
+              <span className="riso-ing-legend-bar" /> {t("flyers.legendBar")}
+              <span className="riso-ing-legend-mark" /> {t("flyers.legendMark")}
             </p>
           )}
           {stats && (
             <div className="riso-ing-stats">
               <div>
-                <span>{stats.label}LOWEST</span>
+                <span>{stats.qc ? t("flyers.qcLowest") : t("flyers.lowest")}</span>
                 <strong className="good">{stats.low != null ? money(stats.low) : "—"}</strong>
               </div>
               <div>
-                <span>{stats.label}AVERAGE</span>
+                <span>{stats.qc ? t("flyers.qcAverage") : t("flyers.average")}</span>
                 <strong>{stats.avg != null ? money(stats.avg) : "—"}</strong>
               </div>
               <div>
-                <span>{stats.label}HIGHEST</span>
+                <span>{stats.qc ? t("flyers.qcHighest") : t("flyers.highest")}</span>
                 <strong>{stats.high != null ? money(stats.high) : "—"}</strong>
               </div>
             </div>
           )}
           {!ownHistory && !quebecRange && (
-            <p className="riso-ing-range-none">No flyer history for this item yet. It builds each week from the imports.</p>
+            <p className="riso-ing-range-none">{t("flyers.noFlyerHistory")}</p>
           )}
         </>
       ) : (
-        <p className="riso-ing-range-none">No history for this item yet. It builds each week from the imports.</p>
+        <p className="riso-ing-range-none">{t("flyers.noHistory")}</p>
       )}
     </div>
   );
@@ -1059,7 +1109,7 @@ function Verdict({ deal, compact = false }) {
   }
   return (
     <div className={`riso-deal-verdict ${v.key}`}>
-      <span className="riso-deal-verdict-label">WOULD I BUY IT?</span>
+      <span className="riso-deal-verdict-label">{t("flyers.wouldIBuy")}</span>
       <strong>{v.label}</strong>
       <p>{v.reason}</p>
     </div>
@@ -1075,7 +1125,8 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
       ? g.tiles.filter((d) => [...g.tiles].sort((a, b) => (tilePrice(a)?.price ?? Infinity) - (tilePrice(b)?.price ?? Infinity)).slice(0, MAX_TILES).includes(d))
       : g.tiles;
   const isBest = (d) => multi && tilePrice(d)?.basis === g.mainBasis && tilePrice(d)?.price === g.lo;
-  const sub = [g.sub, g.freeze ? `freezes ${g.freeze}` : null].filter(Boolean).join(" · ");
+  const names = ingredientNames(g);
+  const sub = [names.sub, g.freeze ? t("flyers.freezesShort", { range: g.freeze }) : null].filter(Boolean).join(" · ");
 
   return (
     <article id={cardId(g.key)} className={`riso-ing-card${open ? " open" : ""}${low ? " low" : ""}`}>
@@ -1084,7 +1135,7 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
         role="button"
         tabIndex={0}
         aria-expanded={open}
-        aria-label={`${g.name}: every store's price`}
+        aria-label={t("flyers.cardAria", { name: names.name })}
         onClick={onToggle}
         onKeyDown={(e) => {
           if (e.target !== e.currentTarget) return;
@@ -1097,17 +1148,19 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
         <div className="riso-ing-photo">
           <CoverPhoto deal={g.photoDeal} />
           {g.endsIn != null && g.endsIn <= ENDS_SOON_DAYS && (
-            <span className="riso-ing-ends">{g.endsIn <= 0 ? "ENDS TODAY" : g.endsIn === 1 ? "ENDS TOMORROW" : `ENDS IN ${g.endsIn}D`}</span>
+            <span className="riso-ing-ends">
+              {g.endsIn <= 1 ? endsLabel(g.endsIn) : t("flyers.endsInShort", { count: g.endsIn })}
+            </span>
           )}
-          {low && <span className="riso-ing-low">6-MO LOW</span>}
+          {low && <span className="riso-ing-low">{t("flyers.lowTag")}</span>}
           {g.saving && (
             <span className="riso-ing-save" title={`${g.saving.deal.store}: ${savingText(g.saving)}`}>
-              {g.saving.pct != null ? `${Math.round(g.saving.pct * 100)}% OFF` : g.saving.why.toUpperCase()}
+              {g.saving.pct != null ? t("flyers.pctOff", { pct: Math.round(g.saving.pct * 100) }) : g.saving.why.toUpperCase()}
             </span>
           )}
         </div>
         <div className="riso-ing-head">
-          <h4 className="riso-ing-name">{g.name}</h4>
+          <h4 className="riso-ing-name">{names.name}</h4>
           {sub && <p className="riso-ing-sub">{sub}</p>}
           <Verdict deal={g.saving?.deal || g.best} compact />
         </div>
@@ -1119,7 +1172,7 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
               <div key={d.store} className={`riso-ing-tile${best ? " best" : ""}`}>
                 <div className="riso-ing-tile-store">
                   <span>{d.store.toUpperCase()}</span>
-                  {best && <span className="riso-ing-dot" title="Cheapest" aria-label="cheapest" />}
+                  {best && <span className="riso-ing-dot" title={t("flyers.cheapest")} aria-label={t("flyers.cheapestAria")} />}
                 </div>
                 <div className="riso-ing-tile-price">{shelf.main}</div>
                 <div className={`riso-ing-tile-unit${shelf.unit.includes("/") ? " per" : ""}`}>{shelf.unit}</div>
@@ -1128,20 +1181,22 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
           })}
         </div>
         {g.tiles.length > tiles.length && (
-          <p className="riso-ing-more">+{g.tiles.length - tiles.length} more store{g.tiles.length - tiles.length === 1 ? "" : "s"}</p>
+          <p className="riso-ing-more">{t("flyers.moreStores", { count: g.tiles.length - tiles.length })}</p>
         )}
       </div>
       {open && (
         <div className="riso-ing-panel">
-          <p className="riso-ing-panel-label">ALL STORES, CHEAPEST FIRST</p>
+          <p className="riso-ing-panel-label">{t("flyers.allStores")}</p>
           {g.variants.map((d) => {
-            const { en, fr } = splitBilingual(d.item);
+            const halves = splitBilingual(d.item);
+            // Each product's name in the app's language first, the other under it.
+            const [en, fr] = getLang() === "fr" && halves.fr ? [halves.fr, halves.en] : [halves.en, halves.fr];
             const listed = isListedAt(g, d.store);
             return (
               <div key={d.id} className="riso-ing-variant">
                 <DealPhoto deal={d} size={40} />
                 <span className="riso-ing-variant-store">{d.store.toUpperCase()}</span>
-                <button type="button" className="riso-ing-variant-names" aria-label={`${d.item} details`} onClick={() => onOpenDeal(d)}>
+                <button type="button" className="riso-ing-variant-names" aria-label={t("flyers.detailsAria", { item: d.item })} onClick={() => onOpenDeal(d)}>
                   <span className="riso-ing-variant-name">{en}</span>
                   {(fr || regularLabel(d)) && <span className="riso-ing-variant-fr">{fr || regularLabel(d)}</span>}
                 </button>
@@ -1157,10 +1212,12 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
                   type="button"
                   className={`riso-ing-list${listed ? " on" : ""}`}
                   aria-pressed={listed}
-                  aria-label={listed ? `Take ${g.name} at ${d.store} off the grocery list` : `Add ${g.name} at ${d.store} to the grocery list`}
+                  aria-label={
+                    listed ? t("flyers.takeOff", { name: names.name, store: d.store }) : t("flyers.addAt", { name: names.name, store: d.store })
+                  }
                   onClick={() => onList(g, d)}
                 >
-                  {listed ? "✓" : "+ List"}
+                  {listed ? "✓" : t("flyers.plusList")}
                 </button>
               </div>
             );
@@ -1299,7 +1356,7 @@ export function FlyerDeals({
   }
 
   async function clearAllDeals() {
-    if (!window.confirm("Clear all uploaded flyer deals? This can't be undone.")) return;
+    if (!window.confirm(t("flyers.clearConfirm"))) return;
     setClearing(true);
     try {
       await api.clearFlyerDeals();
@@ -1397,14 +1454,17 @@ export function FlyerDeals({
   // A briefing row opens its ingredient's card and brings it into view.
 
   const aisles = deals?.aisles?.length ? deals.aisles : DEFAULT_AISLES;
-  const aisleLabels = useMemo(() => Object.fromEntries(aisles.map((a) => [a.id, a.label])), [aisles]);
   const stores = deals?.stores || [];
 
   // Recomputed only when the deals or the store change - not on every
   // click (a week of flyers is 1,500+ items).
+  // Savings and freezer times are worded in the app's language, so a
+  // language change recomputes too.
+  const lang = getLang();
   const ingredients = useMemo(
     () => buildIngredients(deals?.deals || [], { store: storeFilter, storeOrder: stores }),
-    [deals, storeFilter, stores]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deals, storeFilter, stores, lang]
   );
   const groups = useMemo(() => groupDealsByIngredient(deals?.deals || [], recipes), [deals, recipes]);
 
@@ -1446,12 +1506,11 @@ export function FlyerDeals({
     const chip = jumpBarRef.current?.querySelector(".riso-jump-chip.active");
     chip?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [activeGroup]);
-  if (!deals) return <p className="riso-theme riso-flyers riso-empty">Loading this week's deals…</p>;
+  if (!deals) return <p className="riso-theme riso-flyers riso-empty">{t("flyers.loading")}</p>;
 
   const detailRaw = detailId != null ? deals.deals.find((d) => d.id === detailId) : null;
   const detailDeal = detailRaw && {
     ...detailRaw,
-    aisleLabel: aisleLabels[detailRaw.aisle] || "Other",
     isWatching: watchlist.has((detailRaw.matchName || detailRaw.item).trim().toLowerCase()),
     endsInDays: endsInDays(detailRaw.validUntil),
   };
@@ -1470,7 +1529,7 @@ export function FlyerDeals({
   const lowRows = shownIngredients
     .filter((g) => g.t != null && g.t <= LOW_T)
     .sort(bestSort)
-    .map((g) => ({ g, deal: g.best, sub: "6-month low" }));
+    .map((g) => ({ g, deal: g.best, sub: t("flyers.lowSub") }));
   const saleRows = shownIngredients
     .filter((g) => g.saving?.pct != null && !lowRows.some((r) => r.g === g))
     .sort((a, b) => b.saving.pct - a.saving.pct)
@@ -1483,7 +1542,7 @@ export function FlyerDeals({
     .map((g) => {
       const priciest = [...g.tiles].filter((d) => tilePrice(d)?.basis === g.mainBasis).sort((a, b) => tilePrice(b).price - tilePrice(a).price)[0];
       const per = g.mainBasis && g.mainBasis !== "each" ? `/${g.mainBasis}` : "";
-      return { g, deal: g.best, sub: `save ${money(g.hi - g.lo)}${per} vs ${priciest.store.toLowerCase()}` };
+      return { g, deal: g.best, sub: t("flyers.gapSub", { amount: `${money(g.hi - g.lo)}${per}`, store: priciest.store.toLowerCase() }) };
     });
   const endingSoon = shownIngredients
     .filter((g) => g.endsIn != null && g.endsIn <= ENDS_SOON_DAYS)
@@ -1493,26 +1552,30 @@ export function FlyerDeals({
       const deal = g.variants.find((d) => d.validUntil && daysUntil(d.validUntil) === g.endsIn) || g.best;
       return { g, deal, sub: endsText(g.endsIn) };
     });
-  const goneBy = new Date(Date.now() + ENDS_SOON_DAYS * 24 * 60 * 60 * 1000).toLocaleDateString("en-CA", { weekday: "long" }).toUpperCase();
+  const goneBy = formatDate(new Date(Date.now() + ENDS_SOON_DAYS * 24 * 60 * 60 * 1000), { weekday: "long" }).toUpperCase();
 
   const itemCount = deals.deals.length;
-  const itemCountText = itemCount.toLocaleString("en-CA");
+  const itemCountText = formatNumber(itemCount);
 
   return (
     <div className="riso-theme riso-flyers">
       <div className="riso-flyers-header">
         <div>
           <p className="riso-eyebrow">
-            {stores.join(" + ")} · {itemCount} items{deals.weekOf ? ` · week of ${deals.weekOf}` : ""}
+            {[
+              stores.join(" + "),
+              t("flyers.itemsCount", { count: itemCount }),
+              ...(deals.weekOf ? [t("flyers.weekOf", { date: /^\d{4}-\d{2}-\d{2}$/.test(deals.weekOf) ? formatMonthDay(deals.weekOf) : deals.weekOf })] : []),
+            ].join(" · ")}
           </p>
           <h2 className="riso-flyers-title">
-            This week's <span className="accent">deals, sorted.</span>
+            {t("flyers.title")} <span className="accent">{t("flyers.titleAccent")}</span>
           </h2>
         </div>
         <div className="riso-flyers-actions">
           {!deals.isMockData && (
             <button type="button" className="riso-btn" onClick={clearAllDeals} disabled={clearing}>
-              {clearing ? "Clearing…" : "Clear all deals"}
+              {clearing ? t("flyers.clearing") : t("flyers.clearAll")}
             </button>
           )}
           <UploadFlyerForm onUploaded={reloadChanged} />
@@ -1531,59 +1594,56 @@ export function FlyerDeals({
 
       {deals.isMockData && (
         <p className="riso-flyers-sample-note">
-          <span className="riso-sticker yellow">sample</span>
-          These are example deals so you can see how this page works. Press Import now to pull in this week's real flyers.
+          <span className="riso-sticker yellow">{t("flyers.sample")}</span>
+          {t("flyers.sampleNote")}
         </p>
       )}
 
       <HintStrip userId={user.id} screenKey="flyers-v4">
-        Each card is one ingredient. The tiles show the best price at each store, and the green dot marks the cheapest.
-        Click a card to see every store, the French names and the 6-month price range. Until an item has its own
-        history, it is compared with Quebec's average price from Statistics Canada. Pink means the deal ends within 2
-        days.
+        {t("flyers.hint")}
       </HintStrip>
 
       <div className="riso-briefing">
         <BriefPanel
           tone="accent"
-          kicker="BEST DEALS THIS WEEK"
-          title="Deals to grab"
+          kicker={t("flyers.bestKicker")}
+          title={t("flyers.bestTitle")}
           rows={lows}
-          emptyText="No sales found in this week's flyers yet."
+          emptyText={t("flyers.bestEmpty")}
           onOpen={(deal) => setDetailId(deal.id)}
         />
         <BriefPanel
           tone="plain"
-          kicker="SAME ITEM, DIFFERENT STORE"
-          title="Biggest store gaps"
+          kicker={t("flyers.gapKicker")}
+          title={t("flyers.gapTitle")}
           rows={gaps}
-          emptyText="Only one store has these items."
+          emptyText={t("flyers.gapEmpty")}
           onOpen={(deal) => setDetailId(deal.id)}
         />
         <BriefPanel
           tone="hot"
-          kicker={`GONE BY ${goneBy}`}
-          title="Ends soon"
+          kicker={t("flyers.goneBy", { day: goneBy })}
+          title={t("flyers.endsTitle")}
           rows={endingSoon}
-          emptyText={`Nothing ends in the next ${ENDS_SOON_DAYS} days.`}
+          emptyText={t("flyers.endsEmpty", { count: ENDS_SOON_DAYS })}
           onOpen={(deal) => setDetailId(deal.id)}
         />
       </div>
 
       <div className="riso-whole-flyer">
-        <h3 className="riso-whole-flyer-title">The whole flyer</h3>
+        <h3 className="riso-whole-flyer-title">{t("flyers.wholeFlyer")}</h3>
         <div className="riso-flyer-controls" ref={controlsRef}>
           <div className="riso-flyer-controls-row">
             <input
               type="search"
               className="riso-flyer-search"
               value={query}
-              placeholder={`Search ${itemCountText} flyer items, e.g. chicken, fromage`}
-              aria-label="Search flyer items"
+              placeholder={t("flyers.searchPlaceholder", { count: itemCountText })}
+              aria-label={t("flyers.searchAria")}
               onChange={(e) => setQuery(e.target.value)}
             />
             {stores.length > 1 && (
-              <div className="riso-store-switch" role="group" aria-label="Store">
+              <div className="riso-store-switch" role="group" aria-label={t("flyers.storeAria")}>
                 {[null, ...stores].map((s) => (
                   <button
                     key={s || "all"}
@@ -1592,7 +1652,7 @@ export function FlyerDeals({
                     aria-pressed={storeFilter === s}
                     onClick={() => setStoreFilter(s)}
                   >
-                    {s || "All stores"}
+                    {s || t("flyers.allStoresChip")}
                   </button>
                 ))}
               </div>
@@ -1604,11 +1664,11 @@ export function FlyerDeals({
               className={`riso-slice-chip sale${salesOnly ? " active" : ""}`}
               aria-pressed={salesOnly}
               onClick={toggleSalesOnly}
-              title="Only ingredients with a real saving this week"
+              title={t("flyers.salesOnlyTitle")}
             >
-              Sales only
+              {t("flyers.salesOnly")}
             </button>
-            <span className="riso-flyer-controls-label">SLICE BY</span>
+            <span className="riso-flyer-controls-label">{t("flyers.sliceBy")}</span>
             {SLICES.map((c) => (
               <button
                 key={c.id}
@@ -1620,7 +1680,7 @@ export function FlyerDeals({
                 {c.label}
               </button>
             ))}
-            <span className="riso-flyer-controls-label rank">RANK BY</span>
+            <span className="riso-flyer-controls-label rank">{t("flyers.rankBy")}</span>
             {Object.entries(RANKS).map(([id, r]) => (
               <button
                 key={id}
@@ -1635,24 +1695,21 @@ export function FlyerDeals({
           </div>
         </div>
         <div className="riso-flyer-summary-row">
-          <p className="riso-flyer-summary">
-            {shownIngredients.length} ingredient{shownIngredients.length === 1 ? "" : "s"} · tap a card for every store,
-            bilingual names and the price range
-          </p>
+          <p className="riso-flyer-summary">{t("flyers.summary", { count: shownIngredients.length })}</p>
           {sliced.length > 1 && !words.length && (
             <span className="riso-flyer-fold">
-              <button type="button" onClick={() => setAllCollapsed(sliced.map((g) => g.name), true)}>
-                Fold all
+              <button type="button" onClick={() => setAllCollapsed(sliced.map((g) => g.id), true)}>
+                {t("flyers.foldAll")}
               </button>
-              <button type="button" onClick={() => setAllCollapsed(sliced.map((g) => g.name), false)}>
-                Open all
+              <button type="button" onClick={() => setAllCollapsed(sliced.map((g) => g.id), false)}>
+                {t("flyers.openAll")}
               </button>
             </span>
           )}
         </div>
         {stores.length > 0 && (
           <p className="riso-flyer-links">
-            <span>OPEN THE FLYER</span>
+            <span>{t("flyers.openTheFlyer")}</span>
             {(storeFilter ? [storeFilter] : stores).map((s) => (
               <a key={s} href={flyerUrl(s, importSettings?.postalCode)} target="_blank" rel="noreferrer">
                 {s} ↗
@@ -1662,16 +1719,16 @@ export function FlyerDeals({
         )}
 
         {sliced.length > 1 && !words.length && (
-          <nav className="riso-jump-bar" aria-label="Jump to a category" ref={jumpBarRef}>
-            <span className="riso-jump-label">JUMP TO</span>
+          <nav className="riso-jump-bar" aria-label={t("flyers.jumpAria")} ref={jumpBarRef}>
+            <span className="riso-jump-label">{t("flyers.jumpTo")}</span>
             <div className="riso-jump-chips">
               {sliced.map((group) => (
                 <button
-                  key={group.name}
+                  key={group.id}
                   type="button"
-                  className={`riso-jump-chip${activeGroup === group.name ? " active" : ""}${isCollapsed(group.name) ? " folded" : ""}`}
-                  aria-current={activeGroup === group.name ? "true" : undefined}
-                  onClick={() => jumpTo(group.name)}
+                  className={`riso-jump-chip${activeGroup === group.id ? " active" : ""}${isCollapsed(group.id) ? " folded" : ""}`}
+                  aria-current={activeGroup === group.id ? "true" : undefined}
+                  onClick={() => jumpTo(group.id)}
                 >
                   {group.name} <span>{group.items.length}</span>
                 </button>
@@ -1680,8 +1737,8 @@ export function FlyerDeals({
             <button
               type="button"
               className="riso-jump-top"
-              aria-label="Back to the top"
-              title="Back to the top"
+              aria-label={t("flyers.backToTop")}
+              title={t("flyers.backToTop")}
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             >
               ↑
@@ -1690,36 +1747,38 @@ export function FlyerDeals({
         )}
 
         {sliced.length === 0 ? (
-          <p className="riso-ing-empty">{words.length ? `Nothing on the flyers matches "${query.trim()}".` : "No ingredients match."}</p>
+          <p className="riso-ing-empty">
+            {words.length ? t("flyers.nothingMatches", { query: query.trim() }) : t("flyers.noIngredients")}
+          </p>
         ) : (
           sliced.map((group) => (
             <section
-              key={group.name}
+              key={group.id}
               className="riso-ing-group"
               aria-label={group.name}
-              data-group={group.name}
+              data-group={group.id}
               ref={(el) => {
-                if (el) groupRefs.current.set(group.name, el);
-                else groupRefs.current.delete(group.name);
+                if (el) groupRefs.current.set(group.id, el);
+                else groupRefs.current.delete(group.id);
               }}
             >
               <button
                 type="button"
-                className={`riso-ing-group-head${isCollapsed(group.name) ? " collapsed" : ""}`}
-                aria-expanded={!isCollapsed(group.name)}
-                onClick={() => toggleGroup(group.name)}
+                className={`riso-ing-group-head${isCollapsed(group.id) ? " collapsed" : ""}`}
+                aria-expanded={!isCollapsed(group.id)}
+                onClick={() => toggleGroup(group.id)}
                 disabled={words.length > 0}
               >
                 <span className="riso-ing-group-caret" aria-hidden="true">
-                  {isCollapsed(group.name) ? "▸" : "▾"}
+                  {isCollapsed(group.id) ? "▸" : "▾"}
                 </span>
                 <h4>{group.name}</h4>
                 <span className="riso-ing-group-count">{group.items.length}</span>
                 <span className="riso-ing-group-rule" />
               </button>
-              {!isCollapsed(group.name) && (
+              {!isCollapsed(group.id) && (
               <div className="riso-ing-grid">
-                {(showAllGroups.has(group.name) || words.length
+                {(showAllGroups.has(group.id) || words.length
                   ? group.items
                   : group.items.filter((g, i) => i < GROUP_PAGE || expanded.has(g.key))
                 ).map((g) => (
@@ -1735,13 +1794,13 @@ export function FlyerDeals({
                 ))}
               </div>
               )}
-              {!isCollapsed(group.name) && !showAllGroups.has(group.name) && !words.length && group.items.length > GROUP_PAGE && (
+              {!isCollapsed(group.id) && !showAllGroups.has(group.id) && !words.length && group.items.length > GROUP_PAGE && (
                 <button
                   type="button"
                   className="riso-ing-more-btn"
-                  onClick={() => setShowAllGroups((prev) => new Set(prev).add(group.name))}
+                  onClick={() => setShowAllGroups((prev) => new Set(prev).add(group.id))}
                 >
-                  Show all {group.items.length} in {group.name}
+                  {t("flyers.showAll", { count: group.items.length, group: group.name })}
                 </button>
               )}
             </section>

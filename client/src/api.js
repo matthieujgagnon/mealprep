@@ -1,15 +1,21 @@
+import { getLang, t } from "./i18n/index.js";
+
 const BASE = "/api";
 
+// Every request says which language the person reads, so the server's
+// messages (errors, emails) come back in it.
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     credentials: "include",
     ...options,
+    headers: { "Content-Type": "application/json", ...options.headers, "X-Lang": getLang() },
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const err = new Error(data?.error || `Request failed (${res.status})`);
+    const err = new Error(data?.error || t("common.requestFailed", { status: res.status }));
     err.needsManualEntry = data?.needsManualEntry;
+    err.reason = data?.reason ?? null;
+    err.code = data?.code ?? null;
     throw err;
   }
   return data;
@@ -17,7 +23,9 @@ async function request(path, options = {}) {
 
 export const api = {
   signup: (email, password, name) =>
-    request("/auth/signup", { method: "POST", body: JSON.stringify({ email, password, name }) }),
+    request("/auth/signup", { method: "POST", body: JSON.stringify({ email, password, name, locale: getLang() }) }),
+  // The account's language ("fr" | "en").
+  saveLocale: (locale) => request("/auth/me", { method: "PATCH", body: JSON.stringify({ locale }) }),
   login: (email, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
@@ -84,9 +92,14 @@ export const api = {
     const form = new FormData();
     form.append("store", store);
     form.append("file", file);
-    const res = await fetch(`${BASE}/flyers/upload`, { method: "POST", body: form, credentials: "include" });
+    const res = await fetch(`${BASE}/flyers/upload`, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+      headers: { "X-Lang": getLang() },
+    });
     const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+    if (!res.ok) throw new Error(data?.error || t("common.requestFailed", { status: res.status }));
     return data;
   },
   clearFlyerDeals: () => request("/flyers", { method: "DELETE" }),
@@ -171,9 +184,14 @@ export const api = {
   parseReceipt: async (file) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${BASE}/receipts/parse`, { method: "POST", body: form, credentials: "include" });
+    const res = await fetch(`${BASE}/receipts/parse`, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+      headers: { "X-Lang": getLang() },
+    });
     const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+    if (!res.ok) throw new Error(data?.error || t("common.requestFailed", { status: res.status }));
     return data;
   },
   // Returns { expiresAt, category } - both suggested from the same bundled

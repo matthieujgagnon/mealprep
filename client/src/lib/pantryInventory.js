@@ -1,3 +1,5 @@
+import { t } from "../i18n/index.js";
+
 // Shared between Inventory.jsx (full CRUD UI) and WhatCanIMake.jsx (the
 // read-mostly checklist + filters on Makeable) - previously duplicated
 // verbatim in both files.
@@ -22,11 +24,19 @@ export const CATEGORIES = [
   "Other",
 ];
 
-export const LOCATIONS = [
-  { id: "fridge", label: "Fridge" },
-  { id: "pantry", label: "Pantry" },
-  { id: "freezer", label: "Freezer" },
-];
+// A FoodKeeper category in the reader's language (the stored value stays
+// the English name).
+export function categoryLabel(category) {
+  return category ? t(`foodCategories.${category}`) : "";
+}
+
+// The three built-in shelves; their labels follow the language.
+export const LOCATIONS = ["fridge", "pantry", "freezer"].map((id) => ({
+  id,
+  get label() {
+    return t(`locations.${id}`);
+  },
+}));
 
 export function daysUntil(dateStr) {
   const ms = new Date(dateStr).getTime() - Date.now();
@@ -34,10 +44,10 @@ export function daysUntil(dateStr) {
 }
 
 export function formatExpiry(expiresAt) {
-  if (!expiresAt) return "No date set";
+  if (!expiresAt) return t("expiry.none");
   const days = daysUntil(expiresAt);
-  if (days < 0) return `Expired ${Math.abs(days)}d ago`;
-  if (days === 0) return "Expires today";
-  if (days === 1) return "Expires tomorrow";
-  return `Expires in ${days}d`;
+  if (days < 0) return t("expiry.expiredAgo", { days: Math.abs(days) });
+  if (days === 0) return t("expiry.today");
+  if (days === 1) return t("expiry.tomorrow");
+  return t("expiry.inDays", { days });
 }

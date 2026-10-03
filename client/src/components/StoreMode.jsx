@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { formatAmount } from "../lib/groceryList.js";
+import { t } from "../i18n/index.js";
+import { localizePrice } from "../i18n/format.js";
 
 // Extra-large list for use in the shop (Riso Mobile.dc.html "Store mode"):
 // full-screen on ink, one store at a time, big rows, checked items sink.
-export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose }) {
+export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose, storeLabel = (s) => s }) {
   const firstWithItems = stores.find((s) => rows.some((r) => r.store === s && !checked[r.item.key])) || stores[0];
   const [store, setStore] = useState(firstWithItems);
   const [busy, setBusy] = useState(false);
@@ -26,17 +28,17 @@ export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose }) 
   const doneCount = rows.filter((r) => checked[r.item.key]).length;
 
   return (
-    <div className="riso-theme store-mode" role="dialog" aria-modal="true" aria-label="Store mode">
+    <div className="riso-theme store-mode" role="dialog" aria-modal="true" aria-label={t("storeMode.aria")}>
       <header className="store-mode-head">
         <div className="store-mode-top">
           <button type="button" className="store-mode-back" onClick={onClose}>
-            ← List
+            {t("storeMode.back")}
           </button>
           {stores.length > 1 && (
-            <div className="store-mode-stores" role="tablist" aria-label="Store">
+            <div className="store-mode-stores" role="tablist" aria-label={t("storeMode.storeAria")}>
               {stores.map((s) => (
                 <button key={s} type="button" role="tab" aria-selected={s === store} className={s === store ? "on" : ""} onClick={() => setStore(s)}>
-                  {s}
+                  {storeLabel(s)}
                 </button>
               ))}
             </div>
@@ -44,7 +46,7 @@ export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose }) 
         </div>
         <div className="store-mode-count">
           <span className="store-mode-num">{left}</span>
-          <span className="store-mode-at">left at {store}</span>
+          <span className="store-mode-at">{t("storeMode.leftAt", { count: left, store: storeLabel(store) })}</span>
         </div>
         <div className="store-mode-track" aria-hidden="true">
           <div style={{ width: `${pct}%` }} />
@@ -52,7 +54,7 @@ export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose }) 
       </header>
 
       <ul className="store-mode-list">
-        {sorted.length === 0 && <li className="store-mode-empty">Nothing on the list for {store}.</li>}
+        {sorted.length === 0 && <li className="store-mode-empty">{t("storeMode.nothingFor", { store: storeLabel(store) })}</li>}
         {sorted.map(({ item, deal }) => {
           const on = !!checked[item.key];
           const qty = item.customQuantity || formatAmount(item.parts);
@@ -64,7 +66,7 @@ export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose }) 
                   <span className="store-mode-name">{item.name}</span>
                   {qty && <span className="store-mode-qty">{qty}</span>}
                 </span>
-                {deal?.price && <span className="store-mode-sale">{deal.price}</span>}
+                {deal?.price && <span className="store-mode-sale">{localizePrice(deal.price)}</span>}
               </button>
             </li>
           );
@@ -86,7 +88,7 @@ export function StoreMode({ rows, stores, checked, onToggle, onDone, onClose }) 
             }
           }}
         >
-          Done · {doneCount} to Inventory
+          {t("storeMode.done", { count: doneCount })}
         </button>
       </footer>
     </div>

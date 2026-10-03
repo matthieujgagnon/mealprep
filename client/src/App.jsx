@@ -13,6 +13,8 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
+import { t } from "./i18n/index.js";
+import { LanguageSwitch } from "./components/RisoControls.jsx";
 import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore, removedRecipeRows } from "./lib/groceryDedupe.js";
@@ -47,9 +49,9 @@ function DragPreview({ active }) {
     if (recipe.isPlaceholder) {
       return (
         <div className="riso-theme riso-planner-drag-preview note">
-          <span className="riso-planner-note-label">✎ NOTE</span>
+          <span className="riso-planner-note-label">{t("app.dragNote")}</span>
           <span className="riso-planner-note-text">
-            {recipe.title === "No meal planned" ? "Skipped" : recipe.title}
+            {recipe.title === "No meal planned" ? t("app.skipped") : recipe.title}
           </span>
         </div>
       );
@@ -68,7 +70,7 @@ function DragPreview({ active }) {
         {recipe.photoUrl ? (
           <img className="meal-card-photo" src={recipe.photoUrl} alt="" />
         ) : (
-          <div className="meal-card-photo placeholder">no photo</div>
+          <div className="meal-card-photo placeholder">{t("app.noPhoto")}</div>
         )}
         <div className="meal-card-body">
           <p className="meal-card-title">{recipe.title}</p>
@@ -157,7 +159,7 @@ export default function App({ user, onLogout }) {
   const [inventoryLayout, setInventoryLayout] = useState([]); // section order/size/built-in names (InventorySectionLayout)
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
-  const [recipeFilter, setRecipeFilter] = useState("All");
+  const [recipeFilter, setRecipeFilter] = useState("all");
   // The full-page recipe editor on the Recipes tab: { recipe } to edit one,
   // { recipe: null } for a new one, null when closed.
   const [recipeEditor, setRecipeEditor] = useState(null);
@@ -301,7 +303,7 @@ export default function App({ user, onLogout }) {
 
   // Header nav: leaving the editor with unsaved changes asks first.
   function goToTab(next) {
-    if (recipeEditor && editorDirty.current && !window.confirm("Leave without saving your changes?")) return;
+    if (recipeEditor && editorDirty.current && !window.confirm(t("app.leaveUnsaved"))) return;
     setRecipeEditor(null);
     editorDirty.current = false;
     setTab(next);
@@ -521,7 +523,7 @@ export default function App({ user, onLogout }) {
   async function handlePlaceFromTray(recipe) {
     const slot = plannerTarget || findNextEmptySlot(plannerEntries, weekStart);
     if (!slot) {
-      setTrayMessage("Every slot from today on is full - pick a slot on the board to replace it.");
+      setTrayMessage(t("app.slotsFull"));
       return;
     }
     setTrayMessage(null);
@@ -745,7 +747,7 @@ export default function App({ user, onLogout }) {
             <button
               type="button"
               className="app-header-avatar-btn"
-              aria-label="Account"
+              aria-label={t("app.account")}
               aria-expanded={avatarMenuOpen}
               onClick={() => setAvatarMenuOpen((open) => !open)}
             >
@@ -754,69 +756,71 @@ export default function App({ user, onLogout }) {
             {avatarMenuOpen && (
               <div className="app-header-avatar-menu">
                 <span className="app-header-avatar-name">{user.name || user.email}</span>
+                <LanguageSwitch />
                 <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
-                  Log out
+                  {t("app.logOut")}
                 </button>
               </div>
             )}
           </div>
-          <nav className="tabs">
+          <nav className="tabs" aria-label={t("app.nav.label")}>
             <button
               className={`tab${tab === "home" ? " active" : ""}`}
               onClick={() => goToTab("home")}
             >
-              Home
+              {t("app.nav.home")}
             </button>
             <button
               className={`tab${tab === "collection" ? " active" : ""}`}
               onClick={() => goToTab("collection")}
             >
-              Recipes
+              {t("app.nav.recipes")}
             </button>
             <button
               className={`tab${tab === "planner" ? " active" : ""}`}
               onClick={() => goToTab("planner")}
             >
-              Planner
+              {t("app.nav.planner")}
             </button>
             <button
               className={`tab${tab === "makeable" ? " active" : ""}`}
               onClick={() => goToTab("makeable")}
             >
-              Makeable
+              {t("app.nav.makeable")}
             </button>
             <button
               className={`tab${tab === "grocery" ? " active" : ""}`}
               onClick={() => goToTab("grocery")}
             >
-              Grocery
+              {t("app.nav.grocery")}
             </button>
             <button
               className={`tab${tab === "flyers" ? " active" : ""}`}
               onClick={() => goToTab("flyers")}
             >
-              Flyers
+              {t("app.nav.flyers")}
             </button>
             <button
               className={`tab${tab === "inventory" ? " active" : ""}`}
               onClick={() => goToTab("inventory")}
             >
-              Inventory
+              {t("app.nav.inventory")}
             </button>
           </nav>
           <div className="app-header-account">
+            <LanguageSwitch />
             <span className="app-header-account-name">{user.name || user.email}</span>
             <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
-              Log out
+              {t("app.logOut")}
             </button>
           </div>
         </header>
 
         {loadError && (
           <div className="load-error-banner">
-            Couldn't load everything — check your connection.
+            {t("app.loadError")}
             <button type="button" className="btn subtle btn-sm" onClick={loadInitialData}>
-              Try again
+              {t("app.tryAgain")}
             </button>
           </div>
         )}
@@ -862,7 +866,7 @@ export default function App({ user, onLogout }) {
             recipes={recipes}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
-              setRecipeFilter("All");
+              setRecipeFilter("all");
               setTab("collection");
             }}
             onFindRecipesForSelection={() => setTab("makeable")}
@@ -886,7 +890,7 @@ export default function App({ user, onLogout }) {
             onSelectRecipe={openRecipe}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
-              setRecipeFilter("All");
+              setRecipeFilter("all");
               setTab("collection");
             }}
             onPickRecipeFor={(slot) => {
@@ -934,9 +938,7 @@ export default function App({ user, onLogout }) {
         {tab === "planner" && (
           <div className="riso-theme riso-planner" data-theme="light">
             {plannableRecipes.length === 0 ? (
-              <p className="riso-planner-empty">
-                Import or add a recipe first, then click a meal slot here to add it.
-              </p>
+              <p className="riso-planner-empty">{t("app.plannerEmpty")}</p>
             ) : (
               <>
                 {isPhone ? (

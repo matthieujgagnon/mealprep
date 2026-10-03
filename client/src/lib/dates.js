@@ -5,6 +5,8 @@
 // date for anyone not on UTC. All arithmetic below builds Dates from
 // year/month/day components instead, so it stays in local time throughout.
 
+import { dict, t } from "../i18n/index.js";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function pad2(n) {
@@ -50,33 +52,50 @@ export function isCurrentWeek(weekStart) {
   return weekStart === currentWeekStart();
 }
 
-const MONTH_NAMES = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-// "Aug 31 – Sep 6, 2026"
-export function formatWeekRangeLabel(weekStart) {
+// "Aug 31 – Sep 6, 2026" / "31 août – 6 sept. 2026"
+// "Aug 31 – Sep 6, 2026" / "31 août – 6 sept. 2026"; without the year
+// when { year: false }.
+export function formatWeekRangeLabel(weekStart, { year = true } = {}) {
   const start = parseDateKey(weekStart);
   const end = parseDateKey(addDays(weekStart, 6));
-  const startLabel = `${MONTH_NAMES[start.getMonth()]} ${start.getDate()}`;
-  const endLabel =
-    start.getMonth() === end.getMonth()
-      ? `${end.getDate()}`
-      : `${MONTH_NAMES[end.getMonth()]} ${end.getDate()}`;
-  return `${startLabel} – ${endLabel}, ${end.getFullYear()}`;
+  const months = dict().months.short;
+  const vars = {
+    month: months[start.getMonth()],
+    startDay: start.getDate(),
+    endMonth: months[end.getMonth()],
+    endDay: end.getDate(),
+    year: end.getFullYear(),
+  };
+  const sameMonth = start.getMonth() === end.getMonth();
+  if (!year) return t(sameMonth ? "dates.weekSameMonth" : "dates.weekTwoMonths", vars);
+  return t(sameMonth ? "dates.rangeSameMonth" : "dates.rangeTwoMonths", vars);
+}
+
+// "Monday, Sep 28" / "Lundi 28 sept."
+export function formatWeekdayMonthDay(date) {
+  const d = dict();
+  const weekday = d.days.long[(date.getDay() + 6) % 7];
+  return t("dates.weekdayMonthDay", {
+    weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1),
+    month: d.months.short[date.getMonth()],
+    day: date.getDate(),
+  });
+}
+
+// "Aug 31" / "31 août"
+export function formatMonthDayKey(key) {
+  const date = parseDateKey(key);
+  return t("dates.monthDay", { month: dict().months.short[date.getMonth()], day: date.getDate() });
 }
 
 // { weekday: "Mon", dayNum: 31, monthShort: "Aug" } for the given offset (0-6)
-// within a week starting at weekStart.
-const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
+// within a week starting at weekStart (in French: "lun.", 31, "août").
 export function formatDayLabel(weekStart, dayOfWeek) {
   const date = parseDateKey(addDays(weekStart, dayOfWeek));
   return {
-    weekday: WEEKDAY_NAMES[dayOfWeek],
+    weekday: dict().days.short[dayOfWeek],
     dayNum: date.getDate(),
-    monthShort: MONTH_NAMES[date.getMonth()],
+    monthShort: dict().months.short[date.getMonth()],
     isToday: toDateKey(date) === toDateKey(new Date()),
   };
 }

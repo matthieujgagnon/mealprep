@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { freezeTip } from "../lib/foodkeeper.js";
+import { freezeRange, freezeTip } from "../lib/foodkeeper.js";
 import { loadBaselines } from "../lib/baselines.js";
 import { compareToBaseline, findBaseline } from "../lib/statcan.js";
 import { tidyDealTitle } from "../lib/dealTitle.js";
 import { AISLES, aisleFor } from "../lib/dealAisle.js";
 import { buildHistoryIndex, comparablePrice, findHistory, monthlySeries } from "../lib/priceCompare.js";
 import { checkDealPhoto, loadDealPhoto } from "../lib/dealPhoto.js";
+import { fail } from "../lib/i18n.js";
 
 export const dealsRouter = Router();
 
@@ -130,6 +131,7 @@ export function attachBaselines(deals, baselines) {
       ...deal,
       baseline: {
         product: match.product,
+        ...(match.productFr ? { productFr: match.productFr } : {}),
         price: match.price,
         month: match.month,
         basis: compare.basis,
@@ -148,23 +150,25 @@ export function attachBaselines(deals, baselines) {
 // runs over every deal, not just the ones with a usable unitPrice.
 function attachFreezeTips(deals) {
   return deals.map((deal) => {
-    const tip = freezeTip(deal.matchName || deal.item);
-    return tip ? { ...deal, freezeTip: tip } : deal;
+    const name = deal.matchName || deal.item;
+    const tip = freezeTip(name);
+    return tip ? { ...deal, freezeTip: tip, freezeRange: freezeRange(name) } : deal;
   });
 }
 
 // Sample data shown until at least one real flyer has been uploaded via
-// POST /api/flyers/upload - structured the way real flyer items look, so it
+// POST /api/flyers/upload - structured the way real flyer items look
+// (French | English, as Quebec flyers name them), so it
 // reads the same as the real thing before any deals exist yet.
 const MOCK_DEALS = [
-  { id: "d1", store: "Metro", category: "protein", item: "Boneless chicken breast", price: "$4.99/lb", validUntil: "2026-09-03" },
-  { id: "d2", store: "Provigo", category: "protein", item: "Ground beef, extra lean", price: "$5.49/lb", validUntil: "2026-09-03" },
-  { id: "d3", store: "Super C", category: "produce", item: "Bell peppers", price: "$1.49/lb", validUntil: "2026-09-03" },
-  { id: "d4", store: "Maxi", category: "produce", item: "Broccoli crowns", price: "$1.99/lb", validUntil: "2026-09-03" },
-  { id: "d5", store: "IGA", category: "protein", item: "Atlantic salmon fillet", price: "$9.99/lb", validUntil: "2026-09-03" },
-  { id: "d6", store: "Metro", category: "staple", item: "Pasta, 900g", price: "$1.99", validUntil: "2026-09-03" },
-  { id: "d7", store: "Provigo", category: "produce", item: "Roma tomatoes", price: "$1.29/lb", validUntil: "2026-09-03" },
-  { id: "d8", store: "Super C", category: "staple", item: "Rice, 2kg bag", price: "$3.99", validUntil: "2026-09-03" },
+  { id: "d1", store: "Metro", category: "protein", item: "Poitrines de poulet désossées | Boneless chicken breast", price: "$4.99/lb", unitPrice: 4.99, unitBasis: "lb", validUntil: "2026-09-03" },
+  { id: "d2", store: "Provigo", category: "protein", item: "Bœuf haché extra-maigre | Ground beef, extra lean", price: "$5.49/lb", unitPrice: 5.49, unitBasis: "lb", validUntil: "2026-09-03" },
+  { id: "d3", store: "Super C", category: "produce", item: "Poivrons | Bell peppers", price: "$1.49/lb", unitPrice: 1.49, unitBasis: "lb", validUntil: "2026-09-03" },
+  { id: "d4", store: "Maxi", category: "produce", item: "Couronnes de brocoli | Broccoli crowns", price: "$1.99/lb", unitPrice: 1.99, unitBasis: "lb", validUntil: "2026-09-03" },
+  { id: "d5", store: "IGA", category: "protein", item: "Filet de saumon de l'Atlantique | Atlantic salmon fillet", price: "$9.99/lb", unitPrice: 9.99, unitBasis: "lb", validUntil: "2026-09-03" },
+  { id: "d6", store: "Metro", category: "staple", item: "Pâtes, 900 g | Pasta, 900g", price: "$1.99", unitPrice: 1.99, unitBasis: "each", validUntil: "2026-09-03" },
+  { id: "d7", store: "Provigo", category: "produce", item: "Tomates italiennes | Roma tomatoes", price: "$1.29/lb", unitPrice: 1.29, unitBasis: "lb", validUntil: "2026-09-03" },
+  { id: "d8", store: "Super C", category: "staple", item: "Riz, sac de 2 kg | Rice, 2kg bag", price: "$3.99", unitPrice: 3.99, unitBasis: "each", validUntil: "2026-09-03" },
 ];
 
 // Building the week's deals with their 6-month history is the slow part
@@ -289,7 +293,7 @@ dealsRouter.get("/:id([^/]+)", async (req, res, next) => {
   if (req.params.id === "aisles") return next();
   const built = await getDeals(req.userId, stageTimer());
   const deal = built.byId?.get(req.params.id);
-  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!deal) return res.status(404).json(fail(req, "notFound.deal"));
   res.json(deal);
 });
 
@@ -323,7 +327,7 @@ dealsRouter.get("/:id/photo-check", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
     select: { imageUrl: true },
   });
-  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!deal) return res.status(404).json(fail(req, "notFound.deal"));
   if (!deal.imageUrl) return res.json({ url: null, ok: false, tries: [] });
   res.json(await checkDealPhoto(deal.imageUrl));
 });

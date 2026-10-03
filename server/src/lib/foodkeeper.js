@@ -324,6 +324,9 @@ export function suggestAllLocations(name, purchasedAt) {
       expiresAt: new Date(purchased.getTime() + midDays * 24 * 60 * 60 * 1000),
       defaultDays: midDays,
       rangeLabel: formatDayRange(min, max),
+      // The raw range too, so the app can say it in its own language.
+      minDays: min,
+      maxDays: max,
     };
   }
   return result;
@@ -336,8 +339,14 @@ export function suggestAllLocations(name, purchasedAt) {
 // recommend freezing at all), so the caller can simply omit the tip rather
 // than guessing.
 export function freezeTip(name) {
+  const range = freezeRange(name);
+  return range ? `Freezes ${formatDayRange(range.min, range.max)}.` : null;
+}
+
+// The same freezer range as numbers ({ min, max } days), for the app to
+// word in its own language.
+export function freezeRange(name) {
   const match = findBestMatch(name);
   if (!match?.freezeDays) return null;
-  const { min, max } = match.freezeDays;
-  return `Freezes ${formatDayRange(min, max)}.`;
+  return { min: match.freezeDays.min, max: match.freezeDays.max };
 }

@@ -52,7 +52,7 @@ export async function loadDealPhoto(url, { fetchImpl = fetch } = {}) {
 // What happened fetching the photo, for the item's detail view when it
 // doesn't show: each address tried and the answer it got.
 export async function checkDealPhoto(url, { fetchImpl = fetch } = {}) {
-  if (!isFetchableImageUrl(url)) return { url, ok: false, tries: [{ url, reason: "not a web address the app can fetch" }] };
+  if (!isFetchableImageUrl(url)) return { url, ok: false, tries: [{ url, code: "notFetchable", reason: "not a web address the app can fetch" }] };
   const tries = [];
   for (const attempt of attemptsFor(url)) {
     const { photo, ...result } = await fetchImage(attempt, fetchImpl);
@@ -83,7 +83,8 @@ function refererFor(url) {
   return /(^|\.)lerabais\.com$/i.test(new URL(url).hostname) ? "https://lerabais.com/" : "https://flipp.com/";
 }
 
-// { photo } on success, else { status?, contentType?, reason }.
+// { photo } on success, else { status?, contentType?, code, reason } - the
+// code lets the app say the reason in its own language.
 async function fetchImage(url, fetchImpl) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -99,15 +100,17 @@ async function fetchImage(url, fetchImpl) {
       },
     });
     const contentType = (res.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-    if (!res.ok) return { status: res.status, contentType, reason: `answered ${res.status}` };
+    if (!res.ok) return { status: res.status, contentType, code: "status", reason: `answered ${res.status}` };
     const body = Buffer.from(await res.arrayBuffer());
-    if (body.length === 0) return { status: res.status, contentType, reason: "sent an empty file" };
-    if (body.length > MAX_BYTES) return { status: res.status, contentType, reason: "sent a file over 3 MB" };
+    if (body.length === 0) return { status: res.status, contentType, code: "empty", reason: "sent an empty file" };
+    if (body.length > MAX_BYTES) return { status: res.status, contentType, code: "tooBig", reason: "sent a file over 3 MB" };
     const type = contentType.startsWith("image/") && contentType !== "image/svg+xml" ? contentType : sniffImageType(body);
-    if (!type) return { status: res.status, contentType, reason: `sent ${contentType || "something"} that isn't a photo` };
+    if (!type) return { status: res.status, contentType, code: "notPhoto", reason: `sent ${contentType || "something"} that isn't a photo` };
     return { photo: { type, body } };
   } catch (err) {
-    return { reason: err.name === "AbortError" ? "took over 15 seconds" : `couldn't be reached (${err.cause?.code || err.message})` };
+    if (err.name === "AbortError") return { code: "timeout", reason: "took over 15 seconds" };
+    const detail = err.cause?.code || err.message;
+    return { code: "unreachable", detail, reason: `couldn't be reached (${detail})` };
   } finally {
     clearTimeout(timer);
   }

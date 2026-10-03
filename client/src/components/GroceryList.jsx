@@ -24,6 +24,8 @@ import { dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
 import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
+import { t, tx } from "../i18n/index.js";
+import { formatShortDay, formatWeekday, localizePrice } from "../i18n/format.js";
 
 // Per-item "which store do I usually get this at" preference — new in the
 // Riso redesign (there's no server schema for it yet). Lasting-but-not-
@@ -35,6 +37,17 @@ import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
 const STORE_PREF_KEY = "mealprep-grocery-store-pref";
 const DEFAULT_STORE = "Metro";
 const ANY_STORE = "Any store"; // unfiled items with no sale, once you've made stores of your own
+
+// What a store is called on screen: your own and flyer stores by their
+// name, the catch-all bucket in the app's language.
+export function storeLabel(name) {
+  return name === ANY_STORE ? t("grocery.anyStore") : name;
+}
+
+// A grocery aisle by its id ("produce" -> "Fruits & vegetables").
+function aisleLabel(id) {
+  return t(`aisles.${id || "other"}`);
+}
 
 // The last loaded state of each week's list, so coming back to the tab shows
 // it straight away instead of every item unchecked until the server answers.
@@ -48,14 +61,14 @@ function daysUntilKey(key) {
   return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - start) / DAY_MS);
 }
 function longDay(key) {
-  return parseDateKey(key).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return formatShortDay(parseDateKey(key));
 }
 // "ends today", "ends tomorrow", "ends Wed"
 function endsLabel(key, left) {
-  if (left != null && left < 0) return "ended";
-  if (left === 0) return "ends today";
-  if (left === 1) return "ends tomorrow";
-  return `ends ${parseDateKey(key).toLocaleDateString("en-US", { weekday: "short" })}`;
+  if (left != null && left < 0) return t("grocery.ended");
+  if (left === 0) return t("grocery.endsToday");
+  if (left === 1) return t("grocery.endsTomorrow");
+  return t("grocery.endsOn", { day: formatWeekday(parseDateKey(key), "short") });
 }
 
 function loadStorePrefs() {
@@ -90,9 +103,9 @@ function parseAddInput(raw) {
 const MANUAL_GROUP_LABEL = "Added by you";
 
 const VIEWS = [
-  { id: "store", label: "By store" },
-  { id: "aisle", label: "By aisle" },
-  { id: "recipe", label: "By recipe" },
+  { id: "store", get label() { return t("grocery.viewStore"); } },
+  { id: "aisle", get label() { return t("grocery.viewAisle"); } },
+  { id: "recipe", get label() { return t("grocery.viewRecipe"); } },
 ];
 
 // The amount cell: your own amount when you've set one (with what the
@@ -122,9 +135,9 @@ function QuantityCell({ item, onSave }) {
       <span className="riso-row-qty editing" onClick={(e) => e.stopPropagation()}>
         <input
           autoFocus
-          aria-label={`Amount of ${item.name}`}
+          aria-label={t("grocery.amountOf", { name: item.name })}
           value={draft}
-          placeholder="e.g. 2 packs"
+          placeholder={t("grocery.amountPlaceholder")}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
@@ -144,7 +157,7 @@ function QuantityCell({ item, onSave }) {
               onSave(null);
             }}
           >
-            use recipe amount
+            {t("grocery.useRecipeAmount")}
           </button>
         )}
       </span>
@@ -155,17 +168,17 @@ function QuantityCell({ item, onSave }) {
     <button
       type="button"
       className={`riso-row-qty${item.customQuantity ? " custom" : ""}${!item.customQuantity && !recipeAmount ? " empty" : ""}`}
-      title="Tap to set your own amount"
-      aria-label={`Edit amount of ${item.name}`}
+      title={t("grocery.setOwnAmount")}
+      aria-label={t("grocery.editAmountOf", { name: item.name })}
       onClick={start}
     >
       {item.customQuantity ? (
         <>
           <span className="riso-row-qty-mine">{item.customQuantity}</span>
-          {recipeAmount && !item.isManual && <span className="riso-row-qty-recipe">recipe: {recipeAmount}</span>}
+          {recipeAmount && !item.isManual && <span className="riso-row-qty-recipe">{t("grocery.recipeAmount", { amount: recipeAmount })}</span>}
         </>
       ) : (
-        <span className="riso-row-qty-mine">{recipeAmount || "+ amount"}</span>
+        <span className="riso-row-qty-mine">{recipeAmount || t("grocery.addAmount")}</span>
       )}
     </button>
   );
@@ -179,14 +192,14 @@ function DealTag({ deal, onOpen }) {
     <button
       type="button"
       className="riso-row-deal"
-      title={`On sale at ${deal.store} - see the flyer item`}
+      title={t("grocery.onSaleAt", { store: deal.store })}
       onClick={(e) => {
         e.stopPropagation();
         onOpen();
       }}
     >
       <span className="riso-row-deal-store">{deal.store}</span>
-      <span className="riso-row-deal-price">{deal.price}</span>
+      <span className="riso-row-deal-price">{localizePrice(deal.price)}</span>
     </button>
   );
 }
@@ -198,7 +211,7 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
       className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}`}
       role="button"
       tabIndex={0}
-      aria-label={`Check off ${item.name}`}
+      aria-label={t("grocery.checkOff", { name: item.name })}
       aria-pressed={checked}
       onClick={onToggle}
       onKeyDown={(e) => {
@@ -211,7 +224,7 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
       {...dragProps}
     >
       {dragProps && (
-        <span className="riso-row-grip" aria-hidden="true" title="Drag to another store">
+        <span className="riso-row-grip" aria-hidden="true" title={t("grocery.dragToStore")}>
           ⠿
         </span>
       )}
@@ -223,8 +236,8 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
             {item.varieties.length > 0 && ` (${item.varieties.join(", ")})`}
           </span>
           {item.pushedFrom && (
-            <span className="riso-row-carried" title={`Pushed from the week of ${formatWeekRangeLabel(item.pushedFrom)}`}>
-              from last week
+            <span className="riso-row-carried" title={t("grocery.pushedFrom", { week: formatWeekRangeLabel(item.pushedFrom) })}>
+              {t("grocery.fromLastWeek")}
             </span>
           )}
         </span>
@@ -233,15 +246,15 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
       {deal ? (
         <DealTag deal={deal} onOpen={onOpenDeal} />
       ) : (
-        showStore && <span className="riso-row-store static">{store}</span>
+        showStore && <span className="riso-row-store static">{storeLabel(store)}</span>
       )}
       <QuantityCell item={item} onSave={onSetQuantity} />
       {onPush && !checked && (
         <button
           type="button"
           className="riso-row-push"
-          aria-label={`Push ${item.name} to next week`}
-          title="Not this week: push it to next week's list"
+          aria-label={t("grocery.pushAria", { name: item.name })}
+          title={t("grocery.pushTitle")}
           onClick={(e) => {
             e.stopPropagation();
             onPush();
@@ -253,8 +266,8 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
       <button
         type="button"
         className="riso-row-delete"
-        aria-label={`Remove ${item.name}`}
-        title={item.isManual ? "Delete this item" : "Remove from this week's list (the recipe isn't changed)"}
+        aria-label={t("grocery.removeAria", { name: item.name })}
+        title={item.isManual ? t("grocery.deleteItem") : t("grocery.removeFromWeek")}
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -288,7 +301,7 @@ function StoreGroup({ storeName, children, className }) {
     <section
       ref={setNodeRef}
       className={`${className}${itemOver ? " drop-active" : ""}${isDragging ? " store-dragging" : ""}`}
-      aria-label={`${storeName} store`}
+      aria-label={t("grocery.storeAria", { store: storeLabel(storeName) })}
       style={{ transform: CSS.Translate.toString(transform), transition }}
     >
       {children({ handleRef: setActivatorNodeRef, handleProps: { ...listeners, ...attributes } })}
@@ -306,9 +319,9 @@ function StoreGroupHead({ group, section, onRename, onRemove, handleRef, handleP
       <span
         ref={handleRef}
         className="riso-group-grip"
-        title="Drag to reorder your stores"
+        title={t("grocery.reorderStores")}
         {...handleProps}
-        aria-label={`Reorder the ${group.name} store`}
+        aria-label={t("grocery.reorderStore", { store: group.label })}
       >
         ⠿
       </span>
@@ -316,7 +329,7 @@ function StoreGroupHead({ group, section, onRename, onRemove, handleRef, handleP
         <input
           autoFocus
           className="riso-group-name-input"
-          aria-label="Store name"
+          aria-label={t("grocery.storeName")}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={async () => {
@@ -332,15 +345,18 @@ function StoreGroupHead({ group, section, onRename, onRemove, handleRef, handleP
           }}
         />
       ) : section ? (
-        <button type="button" className="riso-group-name as-button" title="Rename this store" onClick={() => setEditing(true)}>
-          {group.name}
+        <button type="button" className="riso-group-name as-button" title={t("grocery.renameStore")} onClick={() => setEditing(true)}>
+          {group.label}
         </button>
       ) : (
-        <p className="riso-group-name">{group.name}</p>
+        <p className="riso-group-name">{group.label}</p>
       )}
       <span className="riso-group-count">{group.count}</span>
       {section && (
-        <button type="button" className="riso-group-remove" aria-label={`Remove the ${group.name} store`} title="Remove this store" onClick={onRemove}>
+        <button type="button" className="riso-group-remove" aria-label={t("grocery.removeStoreAria", { store: group.label })}
+          title={t("grocery.removeStore")}
+          onClick={onRemove}
+        >
           ×
         </button>
       )}
@@ -355,7 +371,7 @@ function AddStoreForm({ onAdd }) {
   if (!open) {
     return (
       <button type="button" className="riso-grocery-add-store" onClick={() => setOpen(true)}>
-        + Add store
+        {t("grocery.addStore")}
       </button>
     );
   }
@@ -375,12 +391,18 @@ function AddStoreForm({ onAdd }) {
         }
       }}
     >
-      <input autoFocus aria-label="Store name" placeholder="e.g. Costco" value={name} onChange={(e) => setName(e.target.value)} />
+      <input
+        autoFocus
+        aria-label={t("grocery.storeName")}
+        placeholder={t("grocery.storePlaceholder")}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
       <button type="submit" className="riso-grocery-add-btn">
-        Add
+        {t("grocery.add")}
       </button>
       <button type="button" className="riso-grocery-add-store-cancel" onClick={() => setOpen(false)}>
-        Cancel
+        {t("grocery.cancel")}
       </button>
       {error && <p className="riso-grocery-add-store-error">{error}</p>}
     </form>
@@ -433,7 +455,8 @@ export function GroceryList({
   const [view, setView] = useState("store");
   const [storeMode, setStoreMode] = useState(false);
   const [storePrefs, setStorePrefs] = useState(loadStorePrefs);
-  // core -> grocery aisle label ("Fruits & vegetables", "Pantry", ...),
+  // core -> grocery aisle id ("produce", "pantry", ...; shown as
+  // "Fruits & vegetables", "Pantry"),
   // fetched lazily (see the effect below) and cached here so flipping
   // between views never re-fetches a core it already has.
   const [categoryCache, setCategoryCache] = useState({});
@@ -557,18 +580,21 @@ export function GroceryList({
       .groceryAisles(missing.map((core) => byCore.get(core)))
       .then(({ aisles, byName }) => {
         if (cancelled) return;
-        const labels = Object.fromEntries(aisles.map((a, i) => [a.id, { label: a.label, order: i }]));
-        setAisleOrder(aisles.map((a) => a.label));
+        const known = new Set(aisles.map((a) => a.id));
+        setAisleOrder(aisles.map((a) => a.id));
         setCategoryCache((prev) => {
           const next = { ...prev };
-          for (const core of missing) next[core] = labels[byName[byCore.get(core)]]?.label || "Other";
+          for (const core of missing) {
+            const id = byName[byCore.get(core)];
+            next[core] = known.has(id) ? id : "other";
+          }
           return next;
         });
       })
       .catch(() => {
         // Couldn't ask: file them under "Other" rather than wait forever.
         if (cancelled) return;
-        setCategoryCache((prev) => ({ ...prev, ...Object.fromEntries(missing.map((core) => [core, prev[core] || "Other"])) }));
+        setCategoryCache((prev) => ({ ...prev, ...Object.fromEntries(missing.map((core) => [core, prev[core] || "other"])) }));
       });
     return () => {
       cancelled = true;
@@ -793,11 +819,11 @@ export function GroceryList({
 
   // Plain-text copy of what's still to buy, grouped like the list on screen.
   function listAsText() {
-    const lines = [`Grocery list · ${formatWeekRangeLabel(weekStart)}`];
+    const lines = [t("grocery.listTitle", { week: formatWeekRangeLabel(weekStart) })];
     for (const group of groups) {
       const open = group.sorted.filter((r) => !checked[r.item.key]);
       if (open.length === 0) continue;
-      lines.push("", group.name);
+      lines.push("", group.label);
       for (const { item } of open) {
         const amount = item.customQuantity || formatAmount(item.parts);
         lines.push(`- ${item.name}${amount ? ` (${amount})` : ""}`);
@@ -810,14 +836,14 @@ export function GroceryList({
     const text = listAsText();
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Grocery list", text });
+        await navigator.share({ title: t("grocery.shareTitle"), text });
         return;
       }
       await navigator.clipboard.writeText(text);
-      setShareNote("Copied - paste it anywhere");
+      setShareNote(t("grocery.copied"));
     } catch (err) {
       if (err?.name === "AbortError") return; // closed the share sheet
-      setShareNote("Couldn't share - try again");
+      setShareNote(t("grocery.shareFailed"));
     }
     setTimeout(() => setShareNote(null), 2500);
   }
@@ -930,7 +956,7 @@ export function GroceryList({
       }
     } else if (view === "aisle") {
       for (const row of rows) {
-        const key = row.category || "Other";
+        const key = row.category || "other";
         if (!buckets.has(key)) {
           buckets.set(key, []);
           order.push(key);
@@ -939,7 +965,7 @@ export function GroceryList({
       }
       // Walking order through the store, like the Flyers page.
       const rank = (key) => (aisleOrder.includes(key) ? aisleOrder.indexOf(key) : aisleOrder.length);
-      order.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+      order.sort((a, b) => rank(a) - rank(b) || aisleLabel(a).localeCompare(aisleLabel(b)));
     } else {
       for (const row of rows) {
         const names = row.item.usedIn.length > 0 ? row.item.usedIn : [MANUAL_GROUP_LABEL];
@@ -965,17 +991,27 @@ export function GroceryList({
         const sales = groupRows.filter((r) => r.deal).length;
         const remaining = groupRows.filter((r) => !checked[r.item.key]).length;
         const sorted = [...groupRows].sort((a, b) => (checked[a.item.key] ? 1 : 0) - (checked[b.item.key] ? 1 : 0));
+        const label =
+          view === "store"
+            ? storeLabel(key)
+            : view === "aisle"
+              ? aisleLabel(key)
+              : key === MANUAL_GROUP_LABEL
+                ? t("grocery.addedByYou")
+                : key;
+        const left = t("grocery.groupLeft", { count: remaining });
         return {
           key,
           name: key,
+          label,
           sorted,
-          count: `${remaining} LEFT${view === "store" && sales ? ` · ${sales} ON SALE` : ""}`,
+          count: view === "store" && sales ? `${left} · ${t("grocery.groupOnSale", { count: sales })}` : left,
         };
       });
   }
 
   function subLineFor(row) {
-    const category = row.category || "";
+    const category = row.category ? aisleLabel(row.category) : "";
     if (view === "aisle") return row.item.usedIn.join(" · ").toUpperCase();
     if (view === "store") {
       const first = row.item.usedIn[0] || "";
@@ -1013,13 +1049,10 @@ export function GroceryList({
 
   const weekLabel = isCurrentWeek(weekStart)
     ? formatWeekRangeLabel(weekStart)
-    : `week of ${formatWeekRangeLabel(weekStart)}`;
-  const subLabel = `${weekLabel.toUpperCase()} · ${totalCount - doneCount} TO BUY`;
+    : t("grocery.weekOf", { week: formatWeekRangeLabel(weekStart) });
+  const subLabel = t("grocery.subLabel", { week: weekLabel.toUpperCase(), count: totalCount - doneCount });
 
-  const hintText =
-    view === "store"
-      ? "Sale items start in the store with the deal; the green tag shows where it's cheapest and opens the flyer item. Drag an item into another store and it stays there every week; drag a store by its ⠿ to reorder your stores. Add your own stores below the list."
-      : "This list is built from your Planner. Tap an item to check it off. Checked items drop to the bottom.";
+  const hintText = view === "store" ? t("grocery.hintStore") : t("grocery.hintOther");
 
   return (
     <div className="riso-theme riso-grocery" data-theme="light">
@@ -1027,23 +1060,23 @@ export function GroceryList({
         <div className="riso-grocery-title-block">
           <div className="riso-eyebrow">{subLabel}</div>
           <h1 className="riso-grocery-title">
-            Grocery <span className="accent">list.</span>
+            {t("grocery.title")} <span className="accent">{t("grocery.titleAccent")}</span>
           </h1>
         </div>
         {onChangeWeek && (
-          <div className="riso-planner-nav-row riso-grocery-week-nav" role="group" aria-label="Week">
-            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, -1))} aria-label="Previous week">
+          <div className="riso-planner-nav-row riso-grocery-week-nav" role="group" aria-label={t("grocery.weekAria")}>
+            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, -1))} aria-label={t("planner.prevWeek")}>
               ‹
             </button>
-            <span className="riso-planner-week-label">{formatWeekRangeLabel(weekStart).replace(/, \d{4}$/, "")}</span>
-            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, 1))} aria-label="Next week">
+            <span className="riso-planner-week-label">{formatWeekRangeLabel(weekStart, { year: false })}</span>
+            <button type="button" className="riso-planner-nav-arrow" onClick={() => onChangeWeek(shiftWeek(weekStart, 1))} aria-label={t("planner.nextWeek")}>
               ›
             </button>
             {isCurrentWeek(weekStart) ? (
-              <span className="riso-planner-week-badge">this week</span>
+              <span className="riso-planner-week-badge">{t("planner.thisWeekBadge")}</span>
             ) : (
               <button type="button" className="riso-chip small" onClick={() => onChangeWeek(currentWeekStart())}>
-                This week
+                {t("planner.thisWeek")}
               </button>
             )}
           </div>
@@ -1055,9 +1088,9 @@ export function GroceryList({
             className="riso-grocery-share"
             onClick={handleShare}
             disabled={totalCount - doneCount === 0}
-            title="Send what's left to buy as a text list"
+            title={t("grocery.shareHint")}
           >
-            Share
+            {t("grocery.share")}
           </button>
           {shareNote && (
             <span className="riso-grocery-share-note" role="status">
@@ -1076,28 +1109,25 @@ export function GroceryList({
           <form className="riso-grocery-add" onSubmit={handleAddSubmit}>
             <input
               type="text"
-              placeholder="Add an item, e.g. 2 lemons"
+              placeholder={t("grocery.addPlaceholder")}
               value={addValue}
               onChange={(e) => setAddValue(e.target.value)}
             />
             <button type="submit" className="riso-grocery-add-btn">
-              Add
+              {t("grocery.add")}
             </button>
           </form>
 
           {!ready || (view === "aisle" && !aislesReady) ? (
-            <div className="riso-grocery-loading" aria-busy="true" aria-label="Loading your list">
+            <div className="riso-grocery-loading" aria-busy="true" aria-label={t("grocery.loading")}>
               {[0, 1, 2].map((i) => (
                 <div key={i} className="riso-grocery-loading-row" />
               ))}
             </div>
           ) : plannerEntries.length === 0 && extraItems.length === 0 && sections.length === 0 ? (
-            <p className="riso-empty">
-              Nothing planned for {weekLabel} yet — plan a few meals on the Planner tab and your
-              grocery list builds itself. You can still add items by hand above.
-            </p>
+            <p className="riso-empty">{t("grocery.nothingPlanned", { week: weekLabel })}</p>
           ) : groups.length === 0 ? (
-            <p className="riso-empty">Nothing to buy — everything's a leftover, already on hand, or a pantry staple.</p>
+            <p className="riso-empty">{t("grocery.nothingToBuy")}</p>
           ) : view === "store" ? (
             <DndContext
               sensors={sensors}
@@ -1121,7 +1151,7 @@ export function GroceryList({
                             handleRef={handleRef}
                             handleProps={handleProps}
                           />
-                          {group.sorted.length === 0 && <p className="riso-group-empty">Drag items here</p>}
+                          {group.sorted.length === 0 && <p className="riso-group-empty">{t("grocery.dragHere")}</p>}
                           {group.sorted.map((row) => (
                             <DraggableGroceryRow
                               key={`${group.key}-${row.item.key}`}
@@ -1152,7 +1182,7 @@ export function GroceryList({
             groups.map((group) => (
               <section key={group.key} className="riso-group">
                 <div className="riso-group-head" style={{ background: "var(--riso-canvas)" }}>
-                  <p className="riso-group-name">{group.name}</p>
+                  <p className="riso-group-name">{group.label}</p>
                   <span className="riso-group-count">{group.count}</span>
                 </div>
                 {group.sorted.map((row) => (
@@ -1176,15 +1206,15 @@ export function GroceryList({
           )}
 
           {pushedItems.length > 0 && (
-            <div className="riso-grocery-removed pushed" aria-label="Pushed to next week">
-              <span className="riso-grocery-removed-label">Pushed to next week</span>
+            <div className="riso-grocery-removed pushed" aria-label={t("grocery.pushedLabel")}>
+              <span className="riso-grocery-removed-label">{t("grocery.pushedLabel")}</span>
               {pushedItems.map((item) => (
                 <button
                   key={item.key}
                   type="button"
                   className="riso-grocery-removed-chip"
-                  aria-label={`Bring ${item.name} back to this week`}
-                  title="Bring it back to this week"
+                  aria-label={t("grocery.bringBackAria", { name: item.name })}
+                  title={t("grocery.bringBackTitle")}
                   onClick={() => pullBack(item)}
                 >
                   {item.name} <span aria-hidden="true">↺</span>
@@ -1195,20 +1225,20 @@ export function GroceryList({
 
           {removedItems.length > 0 && (
             <div className="riso-grocery-removed">
-              <span className="riso-grocery-removed-label">Removed this week</span>
+              <span className="riso-grocery-removed-label">{t("grocery.removedLabel")}</span>
               {removedItems.map((item) => (
                 <button
                   key={item.key}
                   type="button"
                   className="riso-grocery-removed-chip"
-                  aria-label={`Put ${item.name} back on the list`}
+                  aria-label={t("grocery.putBackAria", { name: item.name })}
                   onClick={() => setOverride(item.key, { removed: false })}
                 >
                   {item.name} <span aria-hidden="true">↺</span>
                 </button>
               ))}
               <button type="button" className="riso-grocery-removed-clear" onClick={clearRemoved}>
-                Clear
+                {t("grocery.clear")}
               </button>
             </div>
           )}
@@ -1216,37 +1246,37 @@ export function GroceryList({
 
         {totalCount > 0 && (
           <button type="button" className="riso-grocery-store-btn" onClick={() => setStoreMode(true)}>
-            I'm at the store <span>BIG MODE</span>
+            {t("grocery.atStore")} <span>{t("grocery.bigMode")}</span>
           </button>
         )}
 
         <aside className="riso-grocery-aside">
           <section className={`riso-grocery-cart${allInCart ? " done" : ""}`}>
-            <div className="riso-eyebrow on-pink">In the cart</div>
+            <div className="riso-eyebrow on-pink">{t("grocery.inCart")}</div>
             <div className="riso-grocery-cart-count">
               <span className="riso-grocery-cart-num">{doneCount}</span>
-              <span className="riso-grocery-cart-label">of {totalCount} items</span>
+              <span className="riso-grocery-cart-label">{t("grocery.ofItems", { count: totalCount })}</span>
             </div>
             <div className="riso-grocery-cart-track">
               <div className="riso-grocery-cart-fill" style={{ width: `${pct}%` }} />
             </div>
             {allBought ? (
-              <p className="riso-grocery-cart-done">Groceries done ✓ Everything's in your Inventory.</p>
+              <p className="riso-grocery-cart-done">{t("grocery.groceriesDone")}</p>
             ) : (
               <button type="button" className="riso-grocery-cart-btn" disabled={toSendCount === 0} onClick={handleDoneShopping}>
-                Done shopping · add {toSendCount} to inventory
+                {t("grocery.doneShopping", { count: toSendCount })}
               </button>
             )}
-            <p className="riso-grocery-cart-note">
-              Checked items go to the Fridge, Freezer or Pantry with a USDA use-by date.
-            </p>
+            <p className="riso-grocery-cart-note">{t("grocery.cartNote")}</p>
           </section>
 
           <section className="riso-grocery-sale">
             <span className="riso-sticker yellow" style={{ top: -14, right: 18, transform: "rotate(5deg)" }}>
-              save!
+              {t("grocery.saveSticker")}
             </span>
-            <div className="riso-eyebrow">On sale{onSaleRows.length > 0 ? ` · ${onSaleRows.length} on this list` : ""}</div>
+            <div className="riso-eyebrow">
+              {onSaleRows.length > 0 ? t("grocery.onSaleCount", { count: onSaleRows.length }) : t("grocery.onSale")}
+            </div>
             {onSaleRows.length > 0 ? (
               <>
                 <ul className="riso-grocery-sale-list">
@@ -1259,10 +1289,11 @@ export function GroceryList({
                             <DealPhoto deal={deal} size={44} />
                           </span>
                           <span className="riso-grocery-sale-name">{item.name}</span>
-                          <span className="riso-grocery-sale-price">{deal.price}</span>
+                          <span className="riso-grocery-sale-price">{localizePrice(deal.price)}</span>
                           <span className="riso-grocery-sale-meta">
-                            {deal.store}
-                            {saving?.pct != null ? ` · ${Math.round(saving.pct * 100)}% off` : ""}
+                            {saving?.pct != null
+                              ? `${deal.store} · ${t("grocery.pctOff", { pct: Math.round(saving.pct * 100) })}`
+                              : deal.store}
                           </span>
                           {ends && (
                             <span className={`riso-grocery-sale-ends${left != null && left <= 2 ? " soon" : ""}`}>
@@ -1274,24 +1305,25 @@ export function GroceryList({
                     );
                   })}
                 </ul>
-                <p className="riso-grocery-sale-copy">Soonest-ending first. Tap one for the flyer item.</p>
+                <p className="riso-grocery-sale-copy">{t("grocery.saleCopy")}</p>
               </>
             ) : (
               <>
-                <p className="riso-grocery-sale-amt">No deals {isCurrentWeek(weekStart) || weekStart > currentWeekStart() ? "yet" : "that week"}</p>
+                <p className="riso-grocery-sale-amt">
+                  {isCurrentWeek(weekStart) || weekStart > currentWeekStart() ? t("grocery.noDealsYet") : t("grocery.noDealsThatWeek")}
+                </p>
                 <p className="riso-grocery-sale-copy">
-                  {weekStart < currentWeekStart()
-                    ? "Past weeks' flyers are over."
-                    : "Nothing on this list matches a flyer deal that runs this week."}
+                  {weekStart < currentWeekStart() ? t("grocery.pastFlyers") : t("grocery.noMatchDeals")}
                 </p>
               </>
             )}
             {missedSales.length > 0 && (
               <div className="riso-grocery-sale-missed">
-                <p>Pushed to next week, but the sale ends before then:</p>
+                <p>{t("grocery.missed")}</p>
                 {missedSales.map(({ item, deal }) => (
                   <button key={item.key} type="button" className="riso-grocery-removed-chip" onClick={() => pullBack(item)}>
-                    {item.name} · {deal.store} {deal.price} — bring back <span aria-hidden="true">↺</span>
+                    {t("grocery.bringBack", { name: item.name, store: deal.store, price: localizePrice(deal.price) })}{" "}
+                    <span aria-hidden="true">↺</span>
                   </button>
                 ))}
               </div>
@@ -1301,18 +1333,23 @@ export function GroceryList({
       </div>
       {pushAsk && (
         <div className="riso-push-ask-overlay" onClick={() => setPushAsk(null)}>
-          <div className="riso-push-ask" role="dialog" aria-label="The sale ends before next week" onClick={(e) => e.stopPropagation()}>
-            <p className="riso-eyebrow">Sale ends first</p>
+          <div className="riso-push-ask" role="dialog" aria-label={t("grocery.saleEndsAria")} onClick={(e) => e.stopPropagation()}>
+            <p className="riso-eyebrow">{t("grocery.saleEndsFirst")}</p>
             <p className="riso-push-ask-text">
-              <strong>{pushAsk.item.name}</strong> is {pushAsk.deal.price} at {pushAsk.deal.store} until{" "}
-              {longDay(pushAsk.deal.validUntil)}. Next week's list starts {longDay(nextWeek)}, after the sale.
+              {tx("grocery.pushAskText", {
+                name: <strong>{pushAsk.item.name}</strong>,
+                price: localizePrice(pushAsk.deal.price),
+                store: pushAsk.deal.store,
+                until: longDay(pushAsk.deal.validUntil),
+                next: longDay(nextWeek),
+              })}
             </p>
             <div className="riso-push-ask-actions">
               <button type="button" className="riso-push-ask-keep" onClick={() => setPushAsk(null)}>
-                Keep it this week
+                {t("grocery.keepThisWeek")}
               </button>
               <button type="button" className="riso-push-ask-go" onClick={() => pushItem(pushAsk.item, pushAsk.deal, { force: true })}>
-                Push anyway
+                {t("grocery.pushAnyway")}
               </button>
             </div>
           </div>
@@ -1326,6 +1363,7 @@ export function GroceryList({
           onToggle={toggle}
           onDone={handleDoneShopping}
           onClose={() => setStoreMode(false)}
+          storeLabel={storeLabel}
         />
       )}
       {openDeal && (

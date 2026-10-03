@@ -7,6 +7,7 @@ import { Switch, HintStrip } from "./RisoControls.jsx";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, findNextEmptySlot, todayIndex } from "../lib/plannerSlots.js";
 import { formatDayLabel, isCurrentWeek } from "../lib/dates.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { t, tx } from "../i18n/index.js";
 
 const ALSO_HAVE_STORAGE_KEY = "mealprep-makeable-also-have";
 const SHOW_SALES_STORAGE_KEY = "mealprep-makeable-show-sales";
@@ -54,16 +55,16 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
   const takenLabel = taken
     ? taken.recipe?.isPlaceholder
       ? taken.recipe.title === "No meal planned"
-        ? "a blank card"
-        : `"${taken.recipe.title}"`
+        ? t("makeable.blankCard")
+        : t("makeable.quoted", { title: taken.recipe.title })
       : taken.recipe?.title
     : null;
 
   return (
-    <div className="riso-makeable-plan" role="group" aria-label={`Plan ${recipe.title}`}>
+    <div className="riso-makeable-plan" role="group" aria-label={t("makeable.planAria", { title: recipe.title })}>
       <div className="riso-makeable-plan-head">
-        <strong>Plan it</strong>
-        <span>PICK A DAY AND A MEAL</span>
+        <strong>{t("makeable.planIt")}</strong>
+        <span>{t("makeable.pickDayMeal")}</span>
       </div>
       <div className="riso-makeable-plan-days">
         {DAY_SHORT.map((label, d) => {
@@ -76,7 +77,7 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
               className={`riso-makeable-plan-day${d === day ? " on" : ""}${isToday ? " today" : ""}`}
               disabled={past}
               aria-pressed={d === day}
-              aria-label={`${label} ${dayNum}${isToday ? " (today)" : ""}`}
+              aria-label={t(isToday ? "makeable.dayAriaToday" : "makeable.dayAria", { day: label, num: dayNum })}
               onClick={() => setDay(d)}
             >
               <span>{label.slice(0, 2).toUpperCase()}</span>
@@ -99,10 +100,10 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
         ))}
       </div>
       <p className="riso-makeable-plan-note">
-        {takenLabel ? `Replaces ${takenLabel} in that slot.` : "That slot is free."}
+        {takenLabel ? t("makeable.replaces", { what: takenLabel }) : t("makeable.slotFree")}
       </p>
       <div className="riso-makeable-plan-actions">
-        <button type="button" className="riso-makeable-plan-close" aria-label="Close" title="Close" onClick={onClose}>
+        <button type="button" className="riso-makeable-plan-close" aria-label={t("common.close")} title={t("common.close")} onClick={onClose}>
           ×
         </button>
         <button
@@ -119,7 +120,7 @@ function PlanPicker({ recipe, weekStart, plannerEntries, initialSlot, onPlace, o
             }
           }}
         >
-          Plan for {DAY_SHORT[day]} · {MEAL_LABEL[meal]}
+          {t("makeable.planFor", { day: DAY_SHORT[day], meal: MEAL_LABEL[meal] })}
         </button>
       </div>
     </div>
@@ -156,7 +157,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
     <div className="riso-makeable-card">
       <button type="button" className="riso-makeable-card-photo" onClick={onOpen} title={recipe.title}>
         {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
-        {ready && <span className="riso-makeable-ready-sticker">nothing to buy!</span>}
+        {ready && <span className="riso-makeable-ready-sticker">{t("makeable.nothingToBuy")}</span>}
       </button>
       <div className="riso-makeable-card-body">
         <div className="riso-makeable-card-info">
@@ -165,11 +166,11 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
           </button>
           <div className="riso-makeable-card-meta">
             {totalTime > 0 && `${formatMinutes(totalTime)} · `}
-            {ingredientCount} INGREDIENT{ingredientCount === 1 ? "" : "S"}
+            {t("makeable.ingredientCount", { count: ingredientCount })}
           </div>
           {atRiskUsed.length > 0 && (
             <div className="riso-makeable-card-uses">
-              <span className="riso-makeable-uses-pill">use it up</span>
+              <span className="riso-makeable-uses-pill">{t("makeable.useItUp")}</span>
               <span>{atRiskUsed.join(", ")}</span>
             </div>
           )}
@@ -179,9 +180,11 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
           <div className="riso-makeable-need">
             <div className="riso-makeable-need-head">
               <span className="riso-makeable-need-title">
-                You need <span className="riso-makeable-need-count">{missingIngredients.length}</span>
+                {tx("makeable.youNeed", {
+                  count: <span className="riso-makeable-need-count">{missingIngredients.length}</span>,
+                })}
               </span>
-              <span className="riso-makeable-need-hint">Add one at a time, or all at once</span>
+              <span className="riso-makeable-need-hint">{t("makeable.addHint")}</span>
             </div>
             <ul className="riso-makeable-need-list">
               {shown.map((name) => {
@@ -194,10 +197,10 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
                       type="button"
                       className={`riso-makeable-need-add${on ? " on" : ""}`}
                       onClick={() => (on ? onRemove(name) : onAdd([name]))}
-                      aria-label={on ? `Remove ${name} from grocery list` : `Add ${name} to grocery list`}
-                      title={on ? "On your grocery list" : "Add to grocery list"}
+                      aria-label={on ? t("makeable.removeFromList", { name }) : t("makeable.addToList", { name })}
+                      title={on ? t("makeable.onListTitle") : t("makeable.addToListTitle")}
                     >
-                      {on ? "✓ On list" : "+ Add"}
+                      {on ? t("makeable.onList") : t("makeable.add")}
                     </button>
                   </li>
                 );
@@ -205,7 +208,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
               {hiddenCount > 0 && (
                 <li className="riso-makeable-need-row more">
                   <span className="riso-makeable-need-name">
-                    and {hiddenCount} more ingredient{hiddenCount === 1 ? "" : "s"}
+                    {t("makeable.andMore", { count: hiddenCount })}
                   </span>
                 </li>
               )}
@@ -216,7 +219,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
         <div className="riso-makeable-actions">
           {ready ? (
             <button type="button" className="riso-makeable-action cook" onClick={onCookTonight}>
-              Cook tonight
+              {t("makeable.cookTonight")}
             </button>
           ) : (
             <button
@@ -228,7 +231,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
                   : onAdd(missingIngredients.filter((name) => !isOnGroceryList(name)))
               }
             >
-              {allOn ? "✓ All on your grocery list" : `+ Add all ${missingIngredients.length} to list`}
+              {allOn ? t("makeable.allOnList") : t("makeable.addAll", { count: missingIngredients.length })}
             </button>
           )}
           {planButton}
@@ -352,7 +355,7 @@ export function WhatCanIMake({
   function planState(recipe) {
     const planned = plannerEntries.find((e) => e.recipe?.id === recipe.id);
     return {
-      label: planned ? `✓ ${DAY_SHORT[planned.dayOfWeek]} · ${MEAL_LABEL[planned.mealType]}` : "Plan",
+      label: planned ? `✓ ${DAY_SHORT[planned.dayOfWeek]} · ${MEAL_LABEL[planned.mealType]}` : t("makeable.plan"),
       planned: !!planned,
       nextSlot,
     };
@@ -364,44 +367,46 @@ export function WhatCanIMake({
   };
 
   const groups = [
-    { key: "ready", title: "Ready now", note: "NOTHING TO BUY", pillClass: "blue", items: readyNow },
-    { key: "short", title: "One or two short", note: "QUICK TOP-UP", pillClass: "yellow", items: oneOrTwoShort },
-    { key: "shop", title: "Needs a shop", note: "3 OR MORE MISSING", pillClass: "paper", items: needsAShop },
+    { key: "ready", title: t("makeable.groupReady"), note: t("makeable.groupReadyNote"), pillClass: "blue", items: readyNow },
+    {
+      key: "short",
+      title: t("makeable.groupShort"),
+      note: t("makeable.groupShortNote"),
+      pillClass: "yellow",
+      items: oneOrTwoShort,
+    },
+    { key: "shop", title: t("makeable.groupShop"), note: t("makeable.groupShopNote"), pillClass: "paper", items: needsAShop },
   ].filter((g) => g.items.length > 0);
 
   return (
     <div className="riso-theme riso-makeable" data-theme="light">
       <div className="riso-makeable-heading">
-        <div className="riso-eyebrow">RANKED BY HOW LITTLE YOU'D NEED TO BUY</div>
+        <div className="riso-eyebrow">{t("makeable.eyebrow")}</div>
         <h1 className="riso-makeable-title">
-          What can I <span className="accent">make?</span>
+          {t("makeable.title")} <span className="accent">{t("makeable.titleAccent")}</span>
         </h1>
       </div>
 
       <HintStrip userId={user.id} screenKey="makeable-v2">
-        Recipes are matched against what's in your Inventory. Each card lists what you still need; add
-        items one by one, or all at once. Add anything else you have on hand below. "Use expiring items first" moves recipes that finish food expiring soon to the top
-        of each group.
+        {t("makeable.hint")}
       </HintStrip>
 
       <section className="riso-makeable-controls">
         <div className="riso-makeable-toggles">
           <div className="riso-makeable-toggle">
-            <Switch on={useInventory} onToggle={() => setUseInventory((v) => !v)} label="Use my inventory" />
-            <span className="riso-makeable-toggle-label">Use my inventory</span>
-            <span className="riso-makeable-toggle-meta">
-              {pantryInventory.length} ITEM{pantryInventory.length === 1 ? "" : "S"}
-            </span>
+            <Switch on={useInventory} onToggle={() => setUseInventory((v) => !v)} label={t("makeable.useInventory")} />
+            <span className="riso-makeable-toggle-label">{t("makeable.useInventory")}</span>
+            <span className="riso-makeable-toggle-meta">{t("makeable.itemCount", { count: pantryInventory.length })}</span>
           </div>
           <div className="riso-makeable-toggle-divider" />
           <div className="riso-makeable-toggle">
-            <Switch on={expiringFirst} onToggle={() => setExpiringFirst((v) => !v)} label="Use expiring items first" />
-            <span className="riso-makeable-toggle-label">Use expiring items first</span>
+            <Switch on={expiringFirst} onToggle={() => setExpiringFirst((v) => !v)} label={t("makeable.expiringFirst")} />
+            <span className="riso-makeable-toggle-label">{t("makeable.expiringFirst")}</span>
           </div>
           <div className="riso-makeable-toggle-divider" />
           <div className="riso-makeable-toggle">
-            <Switch on={showSales} onToggle={toggleShowSales} label="Show sale tags" />
-            <span className="riso-makeable-toggle-label">Show sale tags</span>
+            <Switch on={showSales} onToggle={toggleShowSales} label={t("makeable.showSales")} />
+            <span className="riso-makeable-toggle-label">{t("makeable.showSales")}</span>
           </div>
         </div>
 
@@ -412,11 +417,11 @@ export function WhatCanIMake({
             addAlsoHave(input);
           }}
         >
-          <span className="riso-makeable-also-have-label">ALSO HAVE</span>
+          <span className="riso-makeable-also-have-label">{t("makeable.alsoHave")}</span>
           {alsoHave.map((name) => (
             <span key={name} className="riso-makeable-also-have-chip">
               {name}
-              <button type="button" onClick={() => removeAlsoHave(name)} aria-label={`Remove ${name}`}>
+              <button type="button" onClick={() => removeAlsoHave(name)} aria-label={t("makeable.removeName", { name })}>
                 ×
               </button>
             </span>
@@ -426,17 +431,15 @@ export function WhatCanIMake({
             className="riso-makeable-also-have-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Add an ingredient that isn't in your inventory, then press Enter"
+            placeholder={t("makeable.alsoPlaceholder")}
           />
         </form>
       </section>
 
       {combinedHave.length === 0 ? (
-        <p className="riso-makeable-empty">
-          Turn on Use my inventory, or add a few ingredients above, to see what you can make.
-        </p>
+        <p className="riso-makeable-empty">{t("makeable.emptyNone")}</p>
       ) : groups.length === 0 ? (
-        <p className="riso-makeable-empty">No recipes match yet — try adding a few more ingredients.</p>
+        <p className="riso-makeable-empty">{t("makeable.noMatch")}</p>
       ) : (
         groups.map((group) => (
           <section key={group.key} className="riso-makeable-group">

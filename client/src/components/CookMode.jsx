@@ -12,43 +12,62 @@ import {
   scaleStepText,
   formatClock,
 } from "../lib/steps.js";
+import { t } from "../i18n/index.js";
 
 function formatTotalTime(minutes) {
   if (!minutes) return null;
   if (minutes >= 60) {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return `${h} H${m ? ` ${m} MIN` : ""}`;
+    return m ? t("cookMode.hoursMinutes", { h, m }) : t("cookMode.hours", { h });
   }
-  return `${minutes} MIN`;
+  return t("cookMode.minutes", { m: minutes });
 }
 
 // "ROASTING…" for a roast step, per the design; a plain "RUNNING…" when the
-// step doesn't say what's happening.
+// step doesn't say what's happening. Reads English and French steps.
 const TIMER_VERBS = [
-  ["roast", "ROASTING"],
-  ["bake", "BAKING"],
-  ["simmer", "SIMMERING"],
-  ["boil", "BOILING"],
-  ["fry", "FRYING"],
-  ["grill", "GRILLING"],
-  ["rest", "RESTING"],
-  ["chill", "CHILLING"],
-  ["marinate", "MARINATING"],
-  ["rise", "RISING"],
-  ["steam", "STEAMING"],
-  ["cook", "COOKING"],
+  ["roast", /\broast|\brôti|\broti/],
+  ["bake", /\bbake|\bau four|\benfourn/],
+  ["simmer", /\bsimmer|\bmijot/],
+  ["boil", /\bboil|\bbouill/],
+  ["fry", /\bfry|\bfrire|\bfrit/],
+  ["grill", /\bgrill/],
+  ["rest", /\brest\b|\brest[^a]|\brepos/],
+  ["chill", /\bchill|\bréfrig|\brefroid/],
+  ["marinate", /\bmarinat|\bmariner/],
+  ["rise", /\brise|\blever|\blève/],
+  ["steam", /\bsteam|\bvapeur/],
+  ["cook", /\bcook|\bcuire|\bcuisson/],
 ];
 function runningLabel(text) {
-  const t = (text || "").toLowerCase();
-  const hit = TIMER_VERBS.find(([w]) => new RegExp(`\\b${w}`).test(t));
-  return `${hit ? hit[1] : "RUNNING"}…`;
+  const lower = (text || "").toLowerCase();
+  const hit = TIMER_VERBS.find(([, re]) => re.test(lower));
+  return `${t(`cookMode.verbs.${hit ? hit[0] : "running"}`)}…`;
 }
 
 // USDA FoodKeeper guidance for cooked leftovers.
 const LEFTOVER_STORAGE = [
-  { id: "fridge", label: "Fridge", range: "3–4 DAYS", days: 4 },
-  { id: "freezer", label: "Freezer", range: "2–3 MONTHS", days: 75 },
+  {
+    id: "fridge",
+    days: 4,
+    get label() {
+      return t("cookMode.fridge");
+    },
+    get range() {
+      return t("cookMode.fridgeRange");
+    },
+  },
+  {
+    id: "freezer",
+    days: 75,
+    get label() {
+      return t("cookMode.freezer");
+    },
+    get range() {
+      return t("cookMode.freezerRange");
+    },
+  },
 ];
 
 // A short beep on timer completion - synthesized so there's no audio asset
@@ -160,7 +179,7 @@ export function CookMode({
     playBeep();
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       try {
-        new Notification("Time's up", { body: recipe.title });
+        new Notification(t("cookMode.timeUp"), { body: recipe.title });
       } catch {
         // Some contexts need a service worker; the beep already fired.
       }
@@ -188,7 +207,7 @@ export function CookMode({
   }
 
   function handleExit() {
-    if (anyTimerRunning && !window.confirm("A timer is still running. Exit cook mode anyway?")) return;
+    if (anyTimerRunning && !window.confirm(t("cookMode.confirmExit"))) return;
     onExit();
   }
 
@@ -302,9 +321,9 @@ export function CookMode({
     setSaving(true);
     try {
       await onAddPantryItem?.({
-        name: `${recipe.title} (leftovers)`,
+        name: t("cookMode.leftoversName", { title: recipe.title }),
         quantity: portions,
-        unit: portions === 1 ? "portion" : "portions",
+        unit: "portion",
         location: storage,
         category: "Deli & Prepared Foods",
         expiresAt: new Date(
@@ -319,28 +338,30 @@ export function CookMode({
   }
 
   const totalTime = formatTotalTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
-  const meta = ["COOK MODE", `SERVES ${serves}`, totalTime].filter(Boolean).join(" · ");
+  const meta = [t("cookMode.meta"), t("cookMode.serves", { count: serves }), totalTime].filter(Boolean).join(" · ");
   const otherRunning = Object.entries(timers).filter(([key, t]) => t.running && Number(key) !== stepIndex);
 
   const header = (
     <header className="cm-topbar">
       <button type="button" className="cm-back" onClick={handleExit}>
-        ← Recipe
+        {t("cookMode.back")}
       </button>
       <div className="cm-title-block">
         <div className="cm-recipe-title">{recipe.title}</div>
         <div className="cm-meta">{meta}</div>
       </div>
       {steps.length > 0 && (
-        <div className="cm-segments" role="tablist" aria-label="Steps">
+        <div className="cm-segments" role="tablist" aria-label={t("cookMode.steps")}>
           {steps.map((s, i) => (
             <button
               key={i}
               type="button"
               role="tab"
               aria-selected={!finished && i === stepIndex}
-              aria-label={`Step ${i + 1}${stepTitle(s) ? `: ${stepTitle(s)}` : ""}`}
-              title={`Step ${i + 1}`}
+              aria-label={
+                stepTitle(s) ? t("cookMode.stepLabelTitle", { n: i + 1, title: stepTitle(s) }) : t("cookMode.stepLabel", { n: i + 1 })
+              }
+              title={t("cookMode.stepLabel", { n: i + 1 })}
               className={`cm-segment${finished || i < stepIndex ? " done" : i === stepIndex ? " current" : ""}`}
               onClick={() => goToStep(i)}
             />
@@ -351,7 +372,7 @@ export function CookMode({
         <button
           type="button"
           className="cm-running-chip"
-          title="Another step's timer is running - go to it"
+          title={t("cookMode.otherRunning")}
           onClick={() => goToStep(Number(otherRunning[0][0]))}
         >
           ⏱ {formatClock(otherRunning[0][1].remaining)}
@@ -367,9 +388,15 @@ export function CookMode({
         <span className="cm-awake-track">
           <span />
         </span>
-        Keep screen on
+        {t("cookMode.keepAwake")}
       </button>
-      <button type="button" className="cm-exit" aria-label="Exit cook mode" title="Exit cook mode" onClick={handleExit}>
+      <button
+        type="button"
+        className="cm-exit"
+        aria-label={t("cookMode.exit")}
+        title={t("cookMode.exit")}
+        onClick={handleExit}
+      >
         ×
       </button>
     </header>
@@ -380,9 +407,9 @@ export function CookMode({
       <div className="cm-overlay riso-theme" onClick={(e) => e.stopPropagation()}>
         {header}
         <main className="cm-empty">
-          <p>This recipe doesn't have any steps to walk through yet.</p>
+          <p>{t("cookMode.noSteps")}</p>
           <button type="button" className="cm-btn primary" onClick={onExit}>
-            Back to recipe
+            {t("cookMode.backToRecipe")}
           </button>
         </main>
       </div>
@@ -395,34 +422,31 @@ export function CookMode({
         {header}
         <main className="cm-done">
           <div className="cm-done-left">
-            <span className="cm-done-sticker">all done!</span>
+            <span className="cm-done-sticker">{t("cookMode.allDone")}</span>
             <h2 className="cm-done-title">
-              Dinner's <span className="accent">ready.</span>
+              {t("cookMode.readyStart")} <span className="accent">{t("cookMode.readyAccent")}</span>
             </h2>
-            <p className="cm-done-copy">
-              Marking it as cooked takes the ingredients you used out of your Inventory, so Makeable and the
-              grocery list stay accurate.
-            </p>
+            <p className="cm-done-copy">{t("cookMode.doneCopy")}</p>
             <div className="cm-done-actions">
               <button type="button" className={`cm-btn${cooked ? "" : " primary"}`} onClick={markCooked} disabled={cooked}>
-                {cooked ? "✓ Removed from Inventory" : "Mark as cooked"}
+                {cooked ? t("cookMode.removed") : t("cookMode.markCooked")}
               </button>
               <button type="button" className="cm-btn" onClick={() => goToStep(0)}>
-                Back to step 1
+                {t("cookMode.backToStep1")}
               </button>
             </div>
           </div>
 
-          <section className="cm-leftovers" aria-label="Save leftovers">
-            <h3 className="cm-leftovers-title">Save leftovers?</h3>
+          <section className="cm-leftovers" aria-label={t("cookMode.saveLeftoversLabel")}>
+            <h3 className="cm-leftovers-title">{t("cookMode.saveLeftoversQ")}</h3>
             <div className="cm-leftovers-row">
-              <span className="cm-leftovers-label">Portions left</span>
+              <span className="cm-leftovers-label">{t("cookMode.portionsLeft")}</span>
               <div className="cm-stepper">
-                <button type="button" aria-label="Fewer portions" onClick={() => { setPortions((n) => Math.max(0, n - 1)); setSavedTo(null); }}>
+                <button type="button" aria-label={t("cookMode.fewer")} onClick={() => { setPortions((n) => Math.max(0, n - 1)); setSavedTo(null); }}>
                   −
                 </button>
                 <span aria-live="polite">{portions}</span>
-                <button type="button" aria-label="More portions" onClick={() => { setPortions((n) => n + 1); setSavedTo(null); }}>
+                <button type="button" aria-label={t("cookMode.more")} onClick={() => { setPortions((n) => n + 1); setSavedTo(null); }}>
                   +
                 </button>
               </div>
@@ -446,10 +470,10 @@ export function CookMode({
             </div>
             <p className="cm-leftovers-line">
               {portions === 0
-                ? "Nothing left over."
+                ? t("cookMode.nothingLeft")
                 : storage === "fridge"
-                ? `${portions} portion${portions === 1 ? "" : "s"} go${portions === 1 ? "es" : ""} to your Fridge and show${portions === 1 ? "s" : ""} up as "leftover" in the Planner.`
-                : `${portions} portion${portions === 1 ? "" : "s"} go${portions === 1 ? "es" : ""} to your Freezer.`}
+                ? t("cookMode.toFridge", { count: portions })
+                : t("cookMode.toFreezer", { count: portions })}
             </p>
             <button
               type="button"
@@ -457,7 +481,7 @@ export function CookMode({
               onClick={saveLeftovers}
               disabled={saving || portions === 0 || !!savedTo}
             >
-              {savedTo ? `✓ Saved to ${savedTo}` : "Save leftovers"}
+              {savedTo ? t("cookMode.savedTo", { place: savedTo }) : t("cookMode.saveLeftovers")}
             </button>
           </section>
         </main>
@@ -471,14 +495,19 @@ export function CookMode({
   const used = stepIngredients(currentStep, recipe.ingredients || []);
   const nextStep = !isLast ? steps[stepIndex + 1] : null;
   const remaining = timer ? timer.remaining : timerSpec?.seconds;
-  const timerLabel = timer && timer.remaining === 0 ? "TIME'S UP" : timer?.running ? runningLabel(`${title} ${text}`) : "TIMER";
+  const timerLabel =
+    timer && timer.remaining === 0
+      ? t("cookMode.timeUpLabel")
+      : timer?.running
+      ? runningLabel(`${title} ${text}`)
+      : t("cookMode.timer");
   const timerButton = timer?.running
-    ? "Pause"
+    ? t("cookMode.pause")
     : timer && timer.remaining === 0
-    ? "▶ Start again"
+    ? t("cookMode.startAgain")
     : timer && timer.remaining < timer.total
-    ? "Resume"
-    : "▶ Start timer";
+    ? t("cookMode.resume")
+    : t("cookMode.startTimer");
 
   // On a phone the timer sits under the step; on a wider screen it moves to
   // the photo column so the step and its ingredients get the room.
@@ -493,10 +522,10 @@ export function CookMode({
           {timerButton}
         </button>
         <button type="button" className="cm-timer-btn" onClick={addMinute}>
-          +1 min
+          {t("cookMode.plusMinute")}
         </button>
         <button type="button" className="cm-timer-btn" onClick={resetTimer}>
-          Reset
+          {t("cookMode.reset")}
         </button>
       </div>
     </div>
@@ -510,9 +539,7 @@ export function CookMode({
           <div className="cm-step-head">
             <span className="cm-step-num">{stepIndex + 1}</span>
             <div>
-              <div className="cm-step-count">
-                STEP {stepIndex + 1} OF {steps.length}
-              </div>
+              <div className="cm-step-count">{t("cookMode.stepOf", { n: stepIndex + 1, total: steps.length })}</div>
               {title && <div className="cm-step-title">{title}</div>}
             </div>
           </div>
@@ -521,8 +548,8 @@ export function CookMode({
           {used.length > 0 && (
             <div className="cm-uses">
               <div className="cm-uses-head">
-                <span className="cm-uses-label">FOR THIS STEP</span>
-                <span className="cm-uses-hint">Tap to check off as you add them.</span>
+                <span className="cm-uses-label">{t("cookMode.forThisStep")}</span>
+                <span className="cm-uses-hint">{t("cookMode.tapToCheck")}</span>
               </div>
               <div className="cm-uses-pills">
                 {used.map((ing) => {
@@ -561,7 +588,7 @@ export function CookMode({
           {nextStep && (
             <button type="button" className="cm-up-next" onClick={next}>
               <span className="cm-up-next-label">
-                UP NEXT · STEP {stepIndex + 2}
+                {t("cookMode.upNext", { n: stepIndex + 2 })}
                 {stepTitle(nextStep) ? ` · ${stepTitle(nextStep).toUpperCase()}` : ""}
               </span>
               <span className="cm-up-next-text">{stepBody(nextStep)}</span>
@@ -573,13 +600,11 @@ export function CookMode({
       <footer className="cm-bottom">
         <div className="cm-bottom-inner">
           <button type="button" className="cm-prev" disabled={stepIndex === 0} onClick={() => goToStep(stepIndex - 1)}>
-            ← Previous
+            {t("cookMode.previous")}
           </button>
-          <span className="cm-bottom-count">
-            STEP {stepIndex + 1} OF {steps.length}
-          </span>
+          <span className="cm-bottom-count">{t("cookMode.stepOf", { n: stepIndex + 1, total: steps.length })}</span>
           <button type="button" className={`cm-next${isLast ? " finish" : ""}`} onClick={next}>
-            {isLast ? "Finish ✓" : "Next step →"}
+            {isLast ? t("cookMode.finish") : t("cookMode.nextStep")}
           </button>
         </div>
       </footer>

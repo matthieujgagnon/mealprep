@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { fail } from "../lib/i18n.js";
 
 export const watchlistRouter = Router();
 
@@ -21,7 +22,7 @@ watchlistRouter.get("/", async (req, res) => {
 watchlistRouter.post("/", async (req, res) => {
   const { matchName } = req.body;
   if (!matchName || !matchName.trim()) {
-    return res.status(400).json({ error: "matchName is required" });
+    return res.status(400).json(fail(req, "required", { fields: "matchName" }));
   }
   const normalized = matchName.trim().toLowerCase();
   const item = await prisma.watchlistItem.upsert({

@@ -29,7 +29,7 @@ const METADATA = [
           dimensionNameEn: "Products",
           member: [
             { memberId: 3, memberNameEn: "Chicken breasts, per kilogram" },
-            { memberId: 9, memberNameEn: "Milk, 2 litres" },
+            { memberId: 9, memberNameEn: "Milk, 2 litres", memberNameFr: "Lait, 2 litres" },
             { memberId: 12, memberNameEn: "Eggs, 12 units" },
             { memberId: 20, memberNameEn: "Infant formula, 900 grams" },
             { memberId: 30, memberNameEn: "Toilet paper, 12 rolls" },
@@ -104,6 +104,9 @@ describe("Statistics Canada table", () => {
       ],
     });
     expect(prices[1].history).toEqual([{ month: "2026-08", price: 3.05 }]);
+    // The French name comes along when Statistics Canada gives one.
+    expect(prices[1].productFr).toBe("Lait, 2 litres");
+    expect(prices[0]).not.toHaveProperty("productFr");
   });
 });
 

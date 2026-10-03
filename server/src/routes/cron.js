@@ -2,6 +2,7 @@ import { Router } from "express";
 import { timingSafeEqual } from "crypto";
 import { runDueImports } from "../lib/flyerImport.js";
 import { refreshBaselinesIfDue } from "../lib/baselines.js";
+import { fail } from "../lib/i18n.js";
 
 export const cronRouter = Router();
 
@@ -20,8 +21,8 @@ function authorized(req) {
 // how many ran, and refreshes the Statistics Canada averages when they're
 // a week old. Without CRON_SECRET set on the server, it refuses.
 cronRouter.post("/flyer-import", async (req, res) => {
-  if (!process.env.CRON_SECRET) return res.status(503).json({ error: "CRON_SECRET is not set on the server." });
-  if (!authorized(req)) return res.status(401).json({ error: "Not authorized." });
+  if (!process.env.CRON_SECRET) return res.status(503).json(fail(req, "cronSecretMissing"));
+  if (!authorized(req)) return res.status(401).json(fail(req, "notAuthorized"));
   const [imports, baselines] = await Promise.all([runDueImports(), refreshBaselinesIfDue()]);
   res.json({ ...imports, baselines });
 });

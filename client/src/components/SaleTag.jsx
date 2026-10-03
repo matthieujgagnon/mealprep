@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
-import { dealSavings } from "../lib/flyerIngredients.js";
+import { dealSavings, savingText as savingWords } from "../lib/flyerIngredients.js";
 import { DealDetailModal } from "./FlyerDeals.jsx";
+import { t } from "../i18n/index.js";
+import { formatUnitPrice, localizePrice } from "../i18n/format.js";
 
 // "Super C $3.99": where an ingredient is on sale this week, next to it
 // wherever it's something to buy (Recipe card, Makeable) - see
@@ -13,10 +15,10 @@ export function SaleTag({ deal, others = [] }) {
   if (!deal) return null;
   const perUnit =
     deal.unitBasis === "each" && deal.compareBasis && deal.compareBasis !== "each" && deal.comparePrice != null
-      ? ` · $${deal.comparePrice.toFixed(2)}/${deal.compareBasis}`
+      ? ` · ${formatUnitPrice(deal.comparePrice, deal.compareBasis)}`
       : "";
   const saving = dealSavings(deal);
-  const savingText = saving ? (saving.pct != null ? ` · ${Math.round(saving.pct * 100)}% ${saving.why}` : ` · ${saving.why}`) : "";
+  const savingText = saving ? ` · ${savingWords(saving)}` : "";
 
   // The list has each deal without its 6-month history; the card opens
   // straight away and fills in the chart when it arrives.
@@ -39,8 +41,8 @@ export function SaleTag({ deal, others = [] }) {
         role="button"
         tabIndex={0}
         className="riso-sale-tag"
-        title={`On sale: ${deal.item}${perUnit}${savingText}`}
-        aria-label={`On sale at ${deal.store}, ${deal.price}: see the deal`}
+        title={t("saleTag.title", { item: deal.item, perUnit, saving: savingText })}
+        aria-label={t("saleTag.label", { store: deal.store, price: localizePrice(deal.price) })}
         onClick={openCard}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -50,7 +52,7 @@ export function SaleTag({ deal, others = [] }) {
         }}
       >
         <span className="riso-sale-tag-store">{deal.store}</span>
-        <span className="riso-sale-tag-price">{deal.price}</span>
+        <span className="riso-sale-tag-price">{localizePrice(deal.price)}</span>
       </span>
       {open &&
         createPortal(

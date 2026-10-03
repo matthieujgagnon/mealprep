@@ -12,6 +12,7 @@ import {
   serializeSettings,
   updateSettings,
 } from "../lib/flyerImport.js";
+import { fail, langOf, msg } from "../lib/i18n.js";
 
 export const flyersRouter = Router();
 
@@ -94,13 +95,13 @@ const DEALS_SCHEMA = {
 flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
   const { store } = req.body;
   if (!store || !store.trim()) {
-    return res.status(400).json({ error: "store is required" });
+    return res.status(400).json(fail(req, "required", { fields: "store" }));
   }
   if (!req.file) {
-    return res.status(400).json({ error: "file is required" });
+    return res.status(400).json(fail(req, "fileRequired"));
   }
   if (!ACCEPTED_MIMETYPES.includes(req.file.mimetype)) {
-    return res.status(400).json({ error: "file must be a PDF, JPG, PNG, or WebP" });
+    return res.status(400).json(fail(req, "fileType"));
   }
 
   try {
@@ -137,7 +138,7 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
 
     const parsed = JSON.parse(response.text);
     if (!parsed || !Array.isArray(parsed.deals)) {
-      return res.status(502).json({ error: "Could not extract deals from this file." });
+      return res.status(502).json(fail(req, "flyerUnreadable"));
     }
 
     const UNIT_BASES = ["lb", "each", "L"];
@@ -197,18 +198,16 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
     if (err instanceof ApiError) {
       if (err.status === 401 || err.status === 403) {
         console.error("Gemini authentication error:", err.message);
-        return res.status(502).json({
-          error: "Server is missing a valid GEMINI_API_KEY. Ask the app owner to configure it.",
-        });
+        return res.status(502).json(fail(req, "geminiKey"));
       }
       if (err.status === 429) {
-        return res.status(429).json({ error: "Rate limited by the Gemini API - try again shortly." });
+        return res.status(429).json(fail(req, "geminiRate"));
       }
       console.error("Gemini API error:", err.status, err.message);
-      return res.status(502).json({ error: "Gemini API error: " + err.message });
+      return res.status(502).json(fail(req, "geminiError", { detail: err.message }));
     }
     console.error("Flyer upload failed:", err);
-    res.status(500).json({ error: "Failed to process flyer." });
+    res.status(500).json(fail(req, "flyerFailed"));
   }
 });
 
@@ -224,7 +223,9 @@ flyersRouter.put("/settings", async (req, res) => {
     const row = await updateSettings(req.userId, req.body || {});
     res.json(serializeSettings(row));
   } catch (err) {
-    if (err.status === 400) return res.status(400).json({ error: err.message });
+    if (err.status === 400) {
+      return res.status(400).json(err.code === "postalCode" ? fail(req, "postalCode") : fail(req, "mustBeArray", { field: "stores" }));
+    }
     throw err;
   }
 });
@@ -242,12 +243,13 @@ flyersRouter.post("/import", async (req, res) => {
 flyersRouter.get("/stores", async (req, res) => {
   const postalCode = req.query.postalCode || (await getOrCreateSettings(req.userId)).postalCode;
   if (!isValidPostalCode(postalCode)) {
-    return res.status(400).json({ error: "That doesn't look like a Canadian postal code (e.g. H2T 2S3)." });
+    return res.status(400).json(fail(req, "postalCode"));
   }
   try {
     res.json({ stores: await listFlippStores(postalCode) });
   } catch (err) {
-    res.status(502).json({ error: `Couldn't reach Flipp: ${err.message}` });
+    const detail = err.code ? msg(langOf(req), `flipp.${err.code}`, err.vars) : err.message;
+    res.status(502).json(fail(req, "flippUnreachable", { detail }));
   }
 });
 
@@ -294,7 +296,7 @@ flyersRouter.get("/image/:source", async (req, res) => {
   const upload = await prisma.flyerUpload.findUnique({
     where: { userId_source: { userId: req.userId, source: req.params.source } },
   });
-  if (!upload) return res.status(404).json({ error: "No stored flyer image for this source." });
+  if (!upload) return res.status(404).json(fail(req, "notFound.flyerImage"));
   res.set("Content-Type", upload.mimeType);
   res.send(upload.data);
 });
