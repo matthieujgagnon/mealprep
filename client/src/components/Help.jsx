@@ -19,14 +19,14 @@ const SECTION_IDS = [
 ];
 const FAQ_IDS = ["flyers", "import", "groceryItem", "shelfLife", "language", "data"];
 
-// What each source is used for is translated; so is Statistics Canada's name.
-// The other names are the same in both languages (same.*), and so are the
-// addresses.
+// What each source is used for is translated; so is Statistics Canada's name,
+// its credit and its pages (a French page in French). The other names are
+// the same in both languages (same.*), and so are their addresses.
 const SOURCES = [
   {
     id: "statcan",
     name: "help.sources.statcan.name",
-    href: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810024501",
+    hrefKey: "help.sources.statcan.tableUrl",
     licence: true,
   },
   { id: "usda", name: "same.usdaName", href: "https://www.foodsafety.gov/keep-food-safe/foodkeeper-app" },
@@ -145,15 +145,25 @@ export function Help() {
             <li key={source.id} className="riso-help-source">
               <h3 className="riso-help-source-name">{t(source.name)}</h3>
               <p>{t(`help.sources.${source.id}.use`)}</p>
-              {source.licence && <p className="riso-help-licence">{t("help.licenceLine")}</p>}
+              {source.licence && <p className="riso-help-licence">{t("help.sources.statcan.credit")}</p>}
               <a
                 className="riso-btn riso-help-source-link"
-                href={source.href}
+                href={source.hrefKey ? t(source.hrefKey) : source.href}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {t("help.visit", { name: t(source.name) })} ↗
               </a>
+              {source.licence && (
+                <a
+                  className="riso-btn riso-help-source-link"
+                  href={t("help.sources.statcan.licenceUrl")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("help.sources.statcan.licenceLink")} ↗
+                </a>
+              )}
             </li>
           ))}
         </ul>

@@ -26,7 +26,11 @@ async function expectCredits(page) {
   for (const name of ["Statistics Canada|Statistique Canada", "USDA FoodKeeper", "TheMealDB", "Flipp", "Le Rabais", "Google Gemini"]) {
     await expect(credits.locator(".riso-help-source-name", { hasText: new RegExp(name) })).toHaveCount(1);
   }
-  await expect(credits.locator(".riso-help-licence")).toContainText(/Open Government Licence – Canada|Licence du gouvernement ouvert – Canada/);
+  // The credit is the Statistics Canada Open Licence's "adapted" wording; the
+  // Open Government Licence – Canada line isn't used by any source.
+  await expect(credits.locator(".riso-help-licence")).toHaveCount(1);
+  await expect(credits).not.toContainText(/Open Government Licen[cs]e|Licence du gouvernement ouvert/);
+  await expect(credits).not.toContainText(/\[[^\]]*\]/); // no placeholders left
 }
 
 test.describe("desktop, English", () => {
@@ -42,7 +46,11 @@ test.describe("desktop, English", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Questions and answers" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Sources and credits" })).toBeVisible();
     await expectCredits(page);
-    await expect(page.locator("#help-credits .riso-help-licence")).toHaveText("Contains information licensed under the Open Government Licence – Canada.");
+    await expect(page.locator("#help-credits .riso-help-licence")).toHaveText(
+      "Adapted from Statistics Canada, Monthly average retail prices for selected products, 18-10-0245-01, most recent monthly data published. This does not constitute an endorsement by Statistics Canada of this product."
+    );
+    const licence = page.getByRole("link", { name: /Statistics Canada Open Licence/ });
+    await expect(licence).toHaveAttribute("href", "https://statcan.gc.ca/reference/licence");
     await page.screenshot({ path: test.info().outputPath("help-desktop-en.png"), fullPage: true });
   });
 
@@ -120,7 +128,13 @@ test.describe("phone, Quebec French", () => {
     await page.getByRole("navigation", { name: "Sections de l'aide" }).getByRole("button", { name: "Sources et crédits" }).tap();
     await expect(page.locator("#help-credits")).toBeInViewport();
     await expectCredits(page);
-    await expect(page.locator("#help-credits .riso-help-licence")).toContainText("Licence du gouvernement ouvert – Canada");
+    await expect(page.locator("#help-credits .riso-help-licence")).toHaveText(
+      "Adapté de Statistique Canada, tableau 18-10-0245-01, données mensuelles les plus récentes publiées. Cela ne constitue pas une approbation de ce produit par Statistique Canada."
+    );
+    await expect(page.getByRole("link", { name: /Licence ouverte de Statistique Canada/ })).toHaveAttribute(
+      "href",
+      "https://www.statcan.gc.ca/fr/reference/licence"
+    );
     await page.screenshot({ path: test.info().outputPath("help-phone-fr-credits.png") });
   });
 });
