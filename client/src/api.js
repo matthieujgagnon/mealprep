@@ -57,6 +57,9 @@ export const api = {
     request("/recipe-images", { method: "POST", headers: { "Content-Type": blob.type }, body: blob }),
 
   listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
+  // Every planned meal from `from` (a "YYYY-MM-DD" day) onward, across weeks:
+  // what the grocery list is built from.
+  listPlannerUpcoming: (from) => request(`/planner/upcoming?from=${encodeURIComponent(from)}`),
   placeOnPlanner: (payload) =>
     request("/planner", { method: "POST", body: JSON.stringify(payload) }),
   markSlotBlank: (weekStart, dayOfWeek, mealType, note) =>
@@ -119,37 +122,27 @@ export const api = {
   addToWatchlist: (matchName) => request("/watchlist", { method: "POST", body: JSON.stringify({ matchName }) }),
   removeFromWatchlist: (matchName) => request(`/watchlist/${encodeURIComponent(matchName)}`, { method: "DELETE" }),
 
-  listGroceryExtras: (weekStart) =>
-    request(`/grocery-extra-items?week=${encodeURIComponent(weekStart)}`),
-  addGroceryExtra: (weekStart, item) =>
-    request("/grocery-extra-items", { method: "POST", body: JSON.stringify({ weekStart, ...item }) }),
-  pushGroceryItem: (body) => request("/grocery-extra-items/push", { method: "POST", body: JSON.stringify(body) }),
-  pullBackGroceryItem: (fromWeek, key) =>
-    request("/grocery-extra-items/pull-back", { method: "POST", body: JSON.stringify({ fromWeek, key }) }),
+  listGroceryExtras: () => request("/grocery-extra-items"),
+  addGroceryExtra: (item) => request("/grocery-extra-items", { method: "POST", body: JSON.stringify(item) }),
   deleteGroceryExtra: (id) => request(`/grocery-extra-items/${id}`, { method: "DELETE" }),
 
-  listGroceryOverrides: (weekStart) =>
-    request(`/grocery-item-overrides?week=${encodeURIComponent(weekStart)}`),
+  listGroceryOverrides: () => request("/grocery-item-overrides"),
   // patch: { quantity?: string | null, removed?: boolean }. Resolves to the
   // saved override, or null once it has nothing left to change.
-  setGroceryOverride: (weekStart, key, patch) =>
-    request("/grocery-item-overrides", { method: "PUT", body: JSON.stringify({ weekStart, key, ...patch }) }),
+  setGroceryOverride: (key, patch) =>
+    request("/grocery-item-overrides", { method: "PUT", body: JSON.stringify({ key, ...patch }) }),
+  // Forgets what's saved about rows whose meals have all left the plan.
+  clearGroceryOverrides: (keys) =>
+    request("/grocery-item-overrides/clear", { method: "POST", body: JSON.stringify({ keys }) }),
 
-  listGroceryChecked: (weekStart) =>
-    request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`),
-  checkGroceryItem: (weekStart, core) =>
-    request("/grocery-checked", { method: "POST", body: JSON.stringify({ weekStart, core }) }),
-  uncheckGroceryItem: (weekStart, core) =>
-    request(`/grocery-checked/${encodeURIComponent(weekStart)}/${encodeURIComponent(core)}`, {
-      method: "DELETE",
-    }),
-  clearGroceryChecked: (weekStart) =>
-    request(`/grocery-checked?week=${encodeURIComponent(weekStart)}`, { method: "DELETE" }),
+  listGroceryChecked: () => request("/grocery-checked"),
+  checkGroceryItem: (core) => request("/grocery-checked", { method: "POST", body: JSON.stringify({ core }) }),
+  uncheckGroceryItem: (core) => request(`/grocery-checked/${encodeURIComponent(core)}`, { method: "DELETE" }),
+  clearGroceryChecked: () => request("/grocery-checked", { method: "DELETE" }),
   // Checked items "Done shopping" already put in Inventory.
-  listGroceryInInventory: (weekStart) =>
-    request(`/grocery-checked/in-inventory?week=${encodeURIComponent(weekStart)}`),
-  markGroceryInInventory: (weekStart, cores) =>
-    request("/grocery-checked/in-inventory", { method: "POST", body: JSON.stringify({ weekStart, cores }) }),
+  listGroceryInInventory: () => request("/grocery-checked/in-inventory"),
+  markGroceryInInventory: (cores) =>
+    request("/grocery-checked/in-inventory", { method: "POST", body: JSON.stringify({ cores }) }),
 
   listPantryStaples: () => request("/pantry-staples"),
   addPantryStaple: (core) =>

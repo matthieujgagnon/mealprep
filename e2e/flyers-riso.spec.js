@@ -187,7 +187,7 @@ test("watching from the detail view persists", async ({ page }) => {
   await expect(page.getByRole("dialog").getByRole("button", { name: "★ Watching" })).toBeVisible();
 });
 
-test("+ List puts the ingredient on this week's list under that store", async ({ page }) => {
+test("+ List puts the ingredient on the grocery list under that store", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -372,8 +372,9 @@ test("on the grocery list, a sale item's tag shows where it's cheapest, wherever
   const recipe = await (
     await page.request.post("/api/recipes", { data: { title: "BLT", ingredients: [{ name: "bacon" }, { name: "lemon juice" }, { name: "red bell pepper" }] } })
   ).json();
+  // Next week's Monday: its meals are always still ahead (the list covers meals from today on).
   const monday = new Date();
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) + 7);
   const weekStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: 2, mealType: "dinner" } });
   const base = { userId: user.id, source: "Flipp", category: "other", unitBasis: "each", isCurrent: true };

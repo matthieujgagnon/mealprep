@@ -3,14 +3,16 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Every grocery row can be removed (recipe rows for this week only, with a
-// way back) and can carry your own amount next to the recipe's.
+// Every grocery row can be removed (recipe rows until their meals leave the
+// plan, with a way back) and can carry your own amount next to the recipe's.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+// Next week's Monday: its meals are always still ahead, whatever day the
+// test runs (the list only covers meals from today on).
+function nextMonday() {
+  const x = new Date();
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 }
 
@@ -35,7 +37,7 @@ async function setup(page) {
     })
   ).json();
   await page.request.post("/api/planner", {
-    data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: 0, mealType: "dinner" },
+    data: { recipeId: recipe.id, weekStart: nextMonday(), dayOfWeek: 0, mealType: "dinner" },
   });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
@@ -84,7 +86,7 @@ test("any row can be removed, and a removed recipe row can be put back", async (
   await page.getByRole("button", { name: "Remove paper towels", exact: true }).click();
   await expect(row(page, "paper towels")).toHaveCount(0);
 
-  // Removal is saved for the week.
+  // Removal is saved.
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(row(page, "Lemon")).toHaveCount(0);
@@ -116,7 +118,7 @@ test("a leftover meal adds nothing to the list, and there's no Left off card", a
     await page.request.post("/api/recipes", { data: { title: "Leftover soup", ingredients: [{ name: "leek", quantity: 2 }] } })
   ).json();
   await page.request.post("/api/planner", {
-    data: { recipeId: soup.id, weekStart: mondayOf(new Date()), dayOfWeek: 1, mealType: "lunch", isLeftover: true },
+    data: { recipeId: soup.id, weekStart: nextMonday(), dayOfWeek: 1, mealType: "lunch", isLeftover: true },
   });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
@@ -125,7 +127,7 @@ test("a leftover meal adds nothing to the list, and there's no Left off card", a
   await expect(page.getByText("Left off this week")).toHaveCount(0);
 });
 
-test("Clear empties the Removed this week strip and the rows stay off the list", async ({ page }) => {
+test("Clear empties the Removed strip and the rows stay off the list", async ({ page }) => {
   await setup(page);
   await page.getByRole("button", { name: "Remove Lemon", exact: true }).click();
   await expect(page.locator(".riso-grocery-removed")).toContainText("Lemon");
@@ -143,7 +145,7 @@ test("checked items never show as unchecked while the list loads", async ({ page
   await row(page, "Garlic").click();
   await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "true");
   // Slow the checkmarks down: the rows must wait for them.
-  await page.route("**/api/grocery-checked?**", async (route) => {
+  await page.route("**/api/grocery-checked", async (route) => {
     await new Promise((r) => setTimeout(r, 800));
     await route.continue();
   });

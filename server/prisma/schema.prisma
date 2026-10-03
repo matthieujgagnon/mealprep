@@ -183,15 +183,16 @@ model GroceryAssignment {
   @@unique([userId, core])
 }
 
-// A checked-off grocery item for a given week. Existence of a row = checked;
-// unchecking deletes it. Previously lived in the browser's localStorage
-// (per-device only), which meant checking something off on one phone didn't
-// show up on another — this table is what makes the list actually sync.
+// A checked-off grocery item. Existence of a row = checked; unchecking
+// deletes it. The grocery list is one persistent list (every planned meal
+// from today on), so a check stays until you uncheck it. Previously lived
+// in the browser's localStorage (per-device only), which meant checking
+// something off on one phone didn't show up on another - this table is what
+// makes the list actually sync.
 model GroceryCheckedItem {
   id          String   @id @default(cuid())
   userId      String? // nullable only pre-backfill - see Recipe.userId
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekStart   String
   core        String // normalized ingredient name, matches the grocery list's item.key
   // Set by "Done shopping" once the item has been added to Inventory, so
   // it stays checked (bought) without being added a second time.
@@ -199,54 +200,46 @@ model GroceryCheckedItem {
   createdAt   DateTime @default(now())
 
   // Real unique constraint - see RecipeCategory's @@unique comment above.
-  @@unique([userId, weekStart, core])
+  @@unique([userId, core])
 }
 
-// A manually-typed grocery item for a given week, on top of whatever the
-// planner's recipes already generate (e.g. "paper towels", or extra onions
-// beyond what a recipe calls for). Kept as its own line rather than merged
-// into a recipe-derived row's quantity - see groceryList.js's
-// buildGroceryList - so adding/removing one never touches what a recipe
-// contributes. Existence of a row = it's on the list; deleting it removes
-// just that one line.
+// A manually-typed grocery item, on top of whatever the planner's recipes
+// already generate (e.g. "paper towels", or extra onions beyond what a
+// recipe calls for). Kept as its own line rather than merged into a
+// recipe-derived row's quantity - see groceryList.js's buildGroceryList - so
+// adding/removing one never touches what a recipe contributes. Existence of
+// a row = it's on the list; deleting it removes just that one line.
 model GroceryExtraItem {
   id        String   @id @default(cuid())
   userId    String? // nullable only pre-backfill - see Recipe.userId
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekStart String
   name      String
   quantity  Float?
   unit      String?
-  // Pushed here from another week's list ("→ Next week"): the week it came
-  // from and its row key there, so the push can be undone.
-  pushedFrom String?
-  pushedKey  String?
   createdAt DateTime @default(now())
 
-  @@index([userId, weekStart])
+  @@index([userId])
 }
 
-// Per-week changes to one grocery list row (keyed by the row's key - the
-// ingredient core for recipe rows, "extra-<id>" for hand-added ones):
-// `removed` hides a recipe-derived row you don't need this week, and
-// `quantity` is your own amount ("2 packs"), shown next to what the recipes
-// call for. Recipe amounts themselves are never changed.
+// Changes to one grocery list row (keyed by the row's key - the ingredient
+// core for recipe rows, "extra-<id>" for hand-added ones): `removed` takes a
+// recipe-derived row off the list until the meals that need it leave the
+// plan (the client clears the row then), and `quantity` is your own amount
+// ("2 packs"), shown next to what the recipes call for. Recipe amounts
+// themselves are never changed.
 model GroceryItemOverride {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekStart String
   key       String
   quantity  String?
   removed   Boolean  @default(false)
-  // A removed row cleared from the "Removed this week" strip.
+  // A removed row cleared from the "Removed" strip.
   hidden    Boolean  @default(false)
-  // Pushed to another week's list instead of bought this week.
-  movedTo   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, weekStart, key])
+  @@unique([userId, key])
 }
 
 // A single deal extracted from an uploaded flyer PDF or photo via Gemini,
