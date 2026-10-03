@@ -183,6 +183,14 @@ test("on a phone too", async ({ page }) => {
     await expectAllFrench(page, name);
   }
 
+  // FR | EN sits right in the phone header, next to the avatar.
+  const phoneSwitch = page.locator(".app-header-phone-tools .riso-lang-switch");
+  await expect(phoneSwitch).toBeVisible();
+  await phoneSwitch.getByRole("button", { name: "English" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Inventory");
+  await phoneSwitch.getByRole("button", { name: "Français" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Inventaire");
+
   // Store mode, on the grocery list.
   await page.getByRole("button", { name: "Épicerie", exact: true }).first().click();
   await page.getByRole("button", { name: /Je suis au magasin/ }).click();
@@ -203,7 +211,7 @@ test("the language follows the account, and the server answers in it", async ({ 
   expect((await (await page.request.get("/api/auth/me")).json()).locale).toBe("fr");
 
   // Switching to English changes the app straight away and is saved.
-  await page.locator(".riso-lang-switch").first().getByRole("button", { name: "English" }).click();
+  await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "English" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   await expect(page.locator("html")).toHaveAttribute("lang", "en-CA");
   await expect.poll(async () => (await (await page.request.get("/api/auth/me")).json()).locale).toBe("en");
@@ -215,7 +223,7 @@ test("the language follows the account, and the server answers in it", async ({ 
   await expect(page.locator(".tab.active")).toHaveText("Home");
 
   // And back to French.
-  await page.locator(".riso-lang-switch").first().getByRole("button", { name: "Français" }).click();
+  await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "Français" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Accueil");
   await expect.poll(async () => (await (await page.request.get("/api/auth/me")).json()).locale).toBe("fr");
 });

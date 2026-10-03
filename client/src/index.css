@@ -9748,7 +9748,7 @@ button.riso-row-qty:focus-visible {
    then a horizontally scrolling row of 40px pills. The pill row is the one
    place the tabs scroll, so it carries vertical padding for the active
    pill's 3px shadow - a scroll container clips on both axes. */
-.app-header-avatar {
+.app-header-phone-tools {
   display: none;
 }
 
@@ -9793,8 +9793,36 @@ button.riso-row-qty:focus-visible {
     display: none;
   }
 
+  .app-header-phone-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Big enough to tap. */
+  .app-header-phone-tools .riso-lang-switch button {
+    min-height: 32px;
+    padding: 0 11px;
+    font-size: 12px;
+  }
+
+  /* The smallest phones: a smaller logo keeps it, FR | EN and the avatar
+     on one row. */
+  @media (max-width: 359px) {
+    .wordmark {
+      font-size: 17px;
+    }
+
+    .app-header-phone-tools {
+      gap: 6px;
+    }
+
+    .app-header-phone-tools .riso-lang-switch button {
+      padding: 0 8px;
+    }
+  }
+
   .app-header-avatar {
-    display: block;
     position: relative;
   }
 
