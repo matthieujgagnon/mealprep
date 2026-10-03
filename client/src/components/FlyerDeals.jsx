@@ -1317,8 +1317,14 @@ export function FlyerDeals({
   }, [sections]);
   const sameStore = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
+  // An ingredient goes on the list under the name it's shown with (French
+  // in French); one put there in the other language still counts.
+  const listNames = (g) => [...new Set([ingredientNames(g).name, g.name])];
+  const listedName = (g) => listNames(g).find((n) => isOnGroceryList(n)) || null;
+
   function isListedAt(g, store) {
-    return isOnGroceryList(g.name) && sameStore(storeOfCore.get(groceryCore(g.name)), store);
+    const name = listedName(g);
+    return !!name && sameStore(storeOfCore.get(groceryCore(name)), store);
   }
 
   function fileUnder(core, sectionId) {
@@ -1334,14 +1340,17 @@ export function FlyerDeals({
   // takes it off.
   async function listAt(g, deal) {
     invalidateGroceryShared();
-    const core = groceryCore(g.name);
     if (isListedAt(g, deal.store)) {
-      onRemoveFromGroceryList(g.name);
+      const name = listedName(g);
+      const core = groceryCore(name);
+      onRemoveFromGroceryList(name);
       fileUnder(core, null);
       api.unassignFromGrocerySection(core).catch(() => {});
       return;
     }
-    if (!isOnGroceryList(g.name)) await onAddToGroceryList([g.name]);
+    const name = listedName(g) || ingredientNames(g).name;
+    const core = groceryCore(name);
+    if (!isOnGroceryList(name)) await onAddToGroceryList([name]);
     try {
       let section = sections.find((s) => sameStore(s.name, deal.store));
       if (!section) {

@@ -1,6 +1,6 @@
 import { canonicalize, capitalize, STAPLE_WORDS, SPICE_WORDS } from "./groceryList.js";
 import { familyKey } from "./ingredientFamilies.js";
-import { dealSavings } from "./flyerIngredients.js";
+import { dealSavings, frenchProductName, splitBilingual } from "./flyerIngredients.js";
 
 // Perishable ingredients that typically go bad within a week if bought fresh.
 // Used to flag "use it up" nudges on the planner and grocery list.
@@ -339,6 +339,39 @@ function dealKey(deal) {
   return key;
 }
 
+// French ingredient names meet the French half of a Quebec flyer's name
+// ("poitrines de poulet" -> "Poitrines de poulet désossées | Boneless
+// chicken breasts"), compared without accents. French puts the food first,
+// so the deal's name starts with the ingredient - unless the next word
+// makes it another product: "lait de coco" isn't milk, "poulet pané" isn't
+// chicken to roast.
+const foldFr = (text) =>
+  String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/œ/gi, "oe")
+    .replace(/æ/gi, "ae")
+    .toLowerCase();
+const FR_OTHER_PRODUCT = new Set([
+  "de", "du", "des", "a", "au", "aux", "pour", "sauce", "pane", "panee", "fume", "fumee", "cuit", "cuite",
+  "precuit", "precuite", "marine", "marinee", "assaisonne", "assaisonnee", "glace", "glacee",
+]);
+const frenchKeyCache = new WeakMap();
+function dealKeyFr(deal) {
+  if (frenchKeyCache.has(deal)) return frenchKeyCache.get(deal);
+  const fr = frenchProductName(splitBilingual(deal.item || "").fr);
+  const key = fr ? foldFr(canonicalize(fr).core) : "";
+  frenchKeyCache.set(deal, key);
+  return key;
+}
+function matchesFrench(want, key) {
+  if (!want || !key) return false;
+  if (key === want) return true;
+  if (!key.startsWith(`${want} `)) return false;
+  const next = key.slice(want.length + 1).split(" ")[0];
+  return !FR_OTHER_PRODUCT.has(next) && !/^[dl]'/.test(next);
+}
+
 // Every flyer deal for a grocery ingredient, best price first. A deal
 // matches when its product is the ingredient, or ends with it ("Maple Leaf
 // bacon" for bacon, "cherry tomatoes" for tomatoes) - but not when the
@@ -348,9 +381,10 @@ function dealKey(deal) {
 export function findDealsFor(ingredientName, deals) {
   const want = ingredientKey(ingredientName);
   if (!want) return [];
+  const wantFr = foldFr(want);
   const matches = deals.filter((d) => {
     const key = dealKey(d);
-    return key === want || key.endsWith(` ${want}`);
+    return key === want || key.endsWith(` ${want}`) || matchesFrench(wantFr, dealKeyFr(d));
   });
   const price = (d) => d.comparePrice ?? d.unitPrice ?? Infinity;
   const basis = (d) => d.compareBasis || d.unitBasis || "each";

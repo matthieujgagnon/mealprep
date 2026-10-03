@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // The whole app in Quebec French: a browser set to French gets French
 // without asking, every screen (and its buttons' labels, tooltips and
@@ -227,3 +230,60 @@ test("the language follows the account, and the server answers in it", async ({ 
   await expect(page.locator(".tab.active")).toHaveText("Accueil");
   await expect.poll(async () => (await (await page.request.get("/api/auth/me")).json()).locale).toBe("fr");
 });
+
+test("a French recipe reads its measures, and meets French flyer deals", async ({ page }) => {
+  await signUpInFrench(page);
+  const me = await (await page.request.get("/api/auth/me")).json();
+  await prisma.flyerDeal.create({
+    data: {
+      userId: me.user?.id ?? me.id,
+      store: "Metro",
+      source: "Metro",
+      category: "meat",
+      item: "Poitrines de poulet désossées | Boneless chicken breasts",
+      matchName: "boneless chicken breasts",
+      price: "$4.99/lb",
+      unitPrice: 4.99,
+      unitBasis: "lb",
+      regularPrice: 7.99,
+      isCurrent: true,
+    },
+  });
+  await page.reload();
+
+  // Pasting a French list fills in amount, measure, food and note.
+  await page.getByRole("button", { name: "Recettes", exact: true }).click();
+  await page.getByRole("button", { name: /nouvelle recette/i }).click();
+  await page.getByLabel("TITRE").fill("Poulet au citron");
+  await page.getByRole("button", { name: "Coller une liste complète" }).click();
+  await page
+    .getByLabel("Liste d'ingrédients")
+    .fill("2 tasses de bouillon de poulet\n1 c. à soupe d'huile d'olive\n3 gousses d'ail, hachées\n500 g de poitrines de poulet");
+  await page.getByRole("button", { name: "Ajouter ceux-ci" }).click();
+  await expect(page.locator('input[aria-label="Ingrédient"]')).toHaveCount(4);
+  await expect(page.locator('input[aria-label="Ingrédient"]').nth(0)).toHaveValue("Bouillon de poulet");
+  await expect(page.locator('input[aria-label="Ingrédient"]').nth(1)).toHaveValue("Huile d'olive");
+  await expect(page.locator('input[aria-label="Ingrédient"]').nth(2)).toHaveValue("Ail");
+  await expect(page.getByRole("textbox", { name: "Note", exact: true }).nth(2)).toHaveValue("hachées");
+  await expect(page.locator('input[aria-label="Ingrédient"]').nth(3)).toHaveValue("Poitrines de poulet");
+  await expect(page.locator('input[aria-label="Quantité"]').nth(0)).toHaveValue("2");
+  await page.getByRole("button", { name: "Enregistrer la recette" }).click();
+
+  // The chicken is on sale: the recipe's card says so, from the French
+  // half of the flyer's name.
+  await page.getByText("Poulet au citron").first().click();
+  await expect(page.locator(".riso-sale-tag", { hasText: "Metro" }).first()).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // + Liste on the flyer card puts the French name on the grocery list,
+  // with its Metro deal tag.
+  await page.getByRole("button", { name: "Circulaires", exact: true }).click();
+  const card = page.locator(".riso-ing-card", { hasText: "Poitrines de poulet désossées" });
+  await card.locator(".riso-ing-main").click();
+  await card.getByRole("button", { name: /Ajouter Poitrines de poulet désossées/ }).click();
+  await page.getByRole("button", { name: "Épicerie", exact: true }).click();
+  const row = page.locator(".riso-row", { hasText: "Poitrines de poulet désossées" });
+  await expect(row).toBeVisible();
+  await expect(row.locator(".riso-row-deal")).toContainText("Metro");
+});
+
