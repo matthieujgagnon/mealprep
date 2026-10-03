@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { dict, t, useLang } from "../i18n/index.js";
+import { HelpText } from "./HelpCopies.jsx";
 
 // The in-app guide: one section per screen, a FAQ and the outside sources.
 // Every word lives in en.js / fr.js under "help" (the sections and answers
-// are lists of sentences, so they're read from the dictionary directly).
+// are lists of sentences, so they're read from the dictionary directly). A
+// sentence that names a button writes [[id]] there, and HelpText draws a
+// small copy of that button in its place.
 
 const SECTION_IDS = [
   "home",
@@ -36,6 +39,19 @@ const SOURCES = [
   { id: "gemini", name: "same.gemini", href: "https://ai.google.dev/gemini-api" },
 ];
 
+// A credit's link button: full width of its card, the words on the left
+// (wrapping inside the button when long) and the arrow on the right.
+function SourceLink({ href, label }) {
+  return (
+    <a className="riso-btn riso-help-source-link" href={href} target="_blank" rel="noopener noreferrer">
+      <span className="riso-help-source-link-label">{label}</span>
+      <span className="riso-help-source-link-arrow" aria-hidden="true">
+        ↗
+      </span>
+    </a>
+  );
+}
+
 function jumpTo(id) {
   const el = document.getElementById(`help-${id}`);
   if (!el) return;
@@ -65,7 +81,9 @@ function FaqItem({ id, open, onToggle, question, answer }) {
       </h3>
       <div id={panelId} role="region" aria-labelledby={buttonId} className="riso-help-faq-a" hidden={!open}>
         {answer.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
+          <p key={paragraph}>
+            <HelpText text={paragraph} />
+          </p>
         ))}
       </div>
     </div>
@@ -111,7 +129,9 @@ export function Help() {
           </h2>
           <ul className="riso-help-lines">
             {help.sections[id].lines.map((line) => (
-              <li key={line}>{line}</li>
+              <li key={line}>
+                <HelpText text={line} />
+              </li>
             ))}
           </ul>
         </section>
@@ -146,24 +166,10 @@ export function Help() {
               <h3 className="riso-help-source-name">{t(source.name)}</h3>
               <p>{t(`help.sources.${source.id}.use`)}</p>
               {source.licence && <p className="riso-help-licence">{t("help.sources.statcan.credit")}</p>}
-              <a
-                className="riso-btn riso-help-source-link"
-                href={source.hrefKey ? t(source.hrefKey) : source.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t("help.visit", { name: t(source.name) })} ↗
-              </a>
-              {source.licence && (
-                <a
-                  className="riso-btn riso-help-source-link"
-                  href={t("help.sources.statcan.licenceUrl")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t("help.sources.statcan.licenceLink")} ↗
-                </a>
-              )}
+              <div className="riso-help-source-links">
+                <SourceLink href={source.hrefKey ? t(source.hrefKey) : source.href} label={t("help.visit", { name: t(source.name) })} />
+                {source.licence && <SourceLink href={t("help.sources.statcan.licenceUrl")} label={t("help.sources.statcan.licenceLink")} />}
+              </div>
             </li>
           ))}
         </ul>
