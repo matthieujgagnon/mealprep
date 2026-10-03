@@ -19,6 +19,7 @@ import { currentWeekStart, shiftWeek } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { core } from "./lib/similarRecipes.js";
+import { Help } from "./components/Help.jsx";
 import { Home } from "./components/Home.jsx";
 import { RecipeEditor } from "./components/RecipeEditor.jsx";
 import { Recipes } from "./components/Recipes.jsx";
@@ -112,7 +113,7 @@ function collisionDetection(args) {
 }
 
 export default function App({ user, onLogout }) {
-  const [tab, setTab] = useState("home"); // "home" | "collection" | "planner"
+  const [tab, setTab] = useState("home"); // "home" | "collection" | "planner" | ... | "help" (not in the nav: opened from the account area)
   const isPhone = useIsPhone();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
@@ -759,6 +760,17 @@ export default function App({ user, onLogout }) {
               {avatarMenuOpen && (
                 <div className="app-header-avatar-menu">
                   <span className="app-header-avatar-name">{user.name || user.email}</span>
+                  <button
+                    type="button"
+                    className="btn subtle btn-sm"
+                    aria-current={tab === "help" ? "page" : undefined}
+                    onClick={() => {
+                      setAvatarMenuOpen(false);
+                      goToTab("help");
+                    }}
+                  >
+                    {t("app.help")}
+                  </button>
                   <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
                     {t("app.logOut")}
                   </button>
@@ -813,6 +825,14 @@ export default function App({ user, onLogout }) {
           <div className="app-header-account">
             <LanguageSwitch />
             <span className="app-header-account-name">{user.name || user.email}</span>
+            <button
+              type="button"
+              className="btn subtle btn-sm"
+              aria-current={tab === "help" ? "page" : undefined}
+              onClick={() => goToTab("help")}
+            >
+              {t("app.help")}
+            </button>
             <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
               {t("app.logOut")}
             </button>
@@ -827,6 +847,8 @@ export default function App({ user, onLogout }) {
             </button>
           </div>
         )}
+
+        {tab === "help" && <Help />}
 
         {tab === "flyers" && (
           <FlyerDeals

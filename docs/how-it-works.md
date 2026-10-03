@@ -1,0 +1,91 @@
+# How the app works (for contributors)
+
+This is a map of the project for someone opening it for the first time. For what each screen does for a user, open **Help** in the app. For how flyer deals are read and judged, see [How the Flyers work](flyers-how-it-works.md).
+
+## Stack
+
+- **Frontend:** React 18 with Vite, plain CSS (`client/src/index.css`), and `@dnd-kit` for drag and drop.
+- **Backend:** Node with Express.
+- **Database:** Postgres through Prisma. Migrations live in `server/prisma/migrations/`.
+- **Language:** every text is in both Quebec French and English (see "Languages" below).
+- **Hosting:** the server also serves the built client. The README describes the Render and Neon setup.
+
+## Folder layout
+
+| Path | What is in it |
+| --- | --- |
+| `client/src/App.jsx` | The shell: header, tabs, shared data, and which screen shows. |
+| `client/src/components/` | One file per screen or big piece (`Home`, `Recipes`, `RecipeDetailModal`, `CookMode`, `PlannerBoard`, `WhatCanIMake`, `GroceryList`, `StoreMode`, `FlyerDeals`, `Inventory`, `Help`). `RisoControls.jsx` holds the shared Riso Poster controls. |
+| `client/src/lib/` | Plain logic with unit tests: grocery list building, units, dates, flyer ingredient cards. |
+| `client/src/i18n/` | `en.js`, `fr.js`, the `t()` helper and the guards that check both languages. |
+| `client/src/index.css` | All styles. The Riso Poster colours, fonts and shadows are tokens on `.riso-theme`. |
+| `server/src/index.js` | Starts Express, mounts the routes and runs the hourly checks. |
+| `server/src/routes/` | One router per area (`recipes`, `planner`, `pantryInventory`, `flyers`, `deals`, `receipts`, `auth`, `cron`...). |
+| `server/src/lib/` | Server logic with unit tests: the Flipp reader, price comparison, Statistics Canada averages, FoodKeeper matching, recipe import. |
+| `server/data/foodkeeper.json` | The bundled USDA FoodKeeper storage times. |
+| `server/prisma/schema.prisma` | The database tables. |
+| `e2e/` | Playwright browser tests. |
+| `docs/` | These documents. |
+
+## Where the data comes from
+
+| Source | Used for | Where |
+| --- | --- | --- |
+| Flipp | Weekly flyer deals, prices and photos. | `server/src/lib/flipp.js`, `flyerImport.js` |
+| Statistics Canada | Quebec average prices (table 18-10-0245-01), through its public Web Data Service. Licensed under the Open Government Licence – Canada. | `server/src/lib/statcan.js`, `baselines.js` |
+| USDA FoodKeeper | Storage times behind use-by dates. | `server/data/foodkeeper.json`, `server/src/lib/foodkeeper.js` |
+| TheMealDB | Generic ingredient pictures for Inventory items with no photo. | `client/src/lib/ingredientPhoto.js` |
+| Google Gemini | Reads uploaded flyer and receipt files. | `server/src/routes/flyers.js`, `receipts.js` |
+| Le Rabais | An older flyer source. Nothing is imported from it now; old rows are retired. | `server/src/lib/flyerImport.js` |
+
+The in-app **Sources and credits** section lists the same sources. If you add or drop one, update `help.sources` in both language files and `SOURCES` in `client/src/components/Help.jsx`.
+
+## Run it locally
+
+1. Make a Postgres database. [Neon](https://neon.tech) has a free one, or run Postgres yourself.
+2. Create `server/.env` with these names. Use your own values and never commit this file:
+   - `DATABASE_URL`: your Postgres connection string.
+   - `PORT`: for example `4000`.
+   - `APP_URL`: for example `http://localhost:5173`.
+   - `GEMINI_API_KEY`: optional. Only flyer upload and receipt scanning need it.
+   - `RESEND_API_KEY`: optional. Only "forgot password" emails need it.
+   - `CRON_SECRET`: optional. Only the weekly wake-up call needs it.
+3. Install and set up the database:
+   ```bash
+   npm install
+   npm run setup
+   ```
+4. Start the server and the client in two terminals:
+   ```bash
+   npm run dev:server   # http://localhost:4000
+   npm run dev:client   # http://localhost:5173
+   ```
+
+## Quality gates
+
+Continuous integration (`.github/workflows/ci.yml`) runs on every push and pull request, against a throwaway Postgres:
+
+1. `npm run build` applies every migration to a fresh database and builds the client.
+2. `npm test` runs the unit tests (Vitest). This includes the language guards.
+3. `npm run test:e2e` runs the browser tests (Playwright) against the built app.
+
+While working, run only what your change touches. For example, `npx vitest run client/src/i18n` for text changes, or `npx playwright test e2e/help.spec.js` for one browser test (build first with `npm run build`). Let CI run the whole suite.
+
+## Languages
+
+- Every text is `t("screen.key")`. The words live in `client/src/i18n/en.js` and `fr.js`, with the same keys. Write Quebec French first.
+- A name that reads the same in both languages goes under `same.*`.
+- Lists of sentences (like the Help sections) are read with `dict()`.
+- `client/src/i18n/i18n.test.js` fails when:
+  - the two files have different keys or placeholders;
+  - a French text is just English left in place;
+  - a key used in code doesn't exist;
+  - English is typed straight into a screen.
+
+## Design
+
+Screens use the Riso Poster look: paper background, ink outlines, hard shadows, and blue, pink, yellow and green accents. Colours come from the `--riso-*` tokens in `index.css`. Reuse the existing classes (`riso-chip`, `riso-btn`, `riso-eyebrow`...) before adding new ones, and add no new colours.
+
+## Weekly flyer import
+
+The server checks hourly while awake and imports on Thursdays. A GitHub Action (`.github/workflows/flyer-import.yml`) wakes a sleeping free-tier server on Thursday and Friday. The details, including the secrets the action needs, are in the README and in [How the Flyers work](flyers-how-it-works.md).

@@ -15007,3 +15007,251 @@ body.no-select {
   text-decoration: none;
   background: var(--riso-surface);
 }
+
+/* ---------- Help: guide, FAQ and credits (Riso Poster) ---------- */
+
+.riso-help {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-help-intro {
+  margin: 8px 0 0;
+  max-width: 60ch;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+/* The section menu: pills that wrap onto more rows, and a long French name
+   wraps inside its own pill instead of widening the page. */
+.riso-help-menu .riso-chip {
+  height: auto;
+  min-height: 32px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 14px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.riso-help-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  padding: 24px 28px;
+  scroll-margin-top: 16px;
+}
+
+.riso-help-card-title {
+  margin: 0 0 14px;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.riso-help-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.riso-help-lines li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--riso-soft);
+  overflow-wrap: anywhere;
+}
+
+.riso-help-lines li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--riso-accent);
+}
+
+.riso-help-faq-item + .riso-help-faq-item {
+  border-top: 2px dashed var(--riso-dash-strong);
+}
+
+.riso-help-faq-heading {
+  margin: 0;
+}
+
+.riso-help-faq-q {
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: none;
+  background: none;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.riso-help-faq-q:focus-visible {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.riso-help-faq-mark {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--riso-surface);
+  font-family: var(--riso-font-mono);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.riso-help-faq-item.open .riso-help-faq-mark {
+  background: var(--riso-yellow);
+}
+
+.riso-help-faq-a {
+  padding: 0 0 14px;
+}
+
+.riso-help-faq-a p {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--riso-soft);
+  overflow-wrap: anywhere;
+}
+
+.riso-help-faq-a p:last-child {
+  margin-bottom: 0;
+}
+
+.riso-help-credits-intro {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--riso-soft);
+}
+
+.riso-help-sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.riso-help-source {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+}
+
+.riso-help-source-name {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.riso-help-source p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+  overflow-wrap: anywhere;
+}
+
+.riso-help-source p.riso-help-licence {
+  padding: 8px 10px;
+  background: var(--riso-surface);
+  border: 2px dashed var(--riso-ink);
+  border-radius: 12px;
+  font-weight: 600;
+  color: var(--riso-ink);
+}
+
+.riso-help-source-link {
+  align-self: flex-start;
+  height: auto;
+  min-height: 40px;
+  max-width: 100%;
+  margin-top: auto;
+  padding: 8px 16px;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.riso-help-source-link:focus-visible {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+/* The header's Help button, while the Help page is open. */
+.app-header-account .btn.subtle[aria-current="page"],
+.app-header-avatar-menu .btn.subtle[aria-current="page"] {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+@media (max-width: 767px) {
+  .riso-help {
+    gap: 18px;
+  }
+
+  .riso-help-menu .riso-chip {
+    min-height: 36px;
+  }
+
+  .riso-help-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+    scroll-margin-top: 130px;
+  }
+
+  .riso-help-card-title {
+    font-size: 24px;
+  }
+}

@@ -5,6 +5,8 @@
 - **Backend:** Node + Express
 - **DB:** Postgres via Prisma (hosted on Neon — see deployment below)
 
+New to the code? [docs/how-it-works.md](docs/how-it-works.md) maps the stack, folders, data sources and quality gates.
+
 ## Local development
 
 1. Create a free Postgres database at [neon.tech](https://neon.tech) and copy its connection string.
