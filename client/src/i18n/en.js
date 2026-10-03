@@ -1308,11 +1308,15 @@ export const en = {
     },
     creditsIntro: "This app uses information and services from these outside sources. It isn't made by, or endorsed by, any of them.",
     visit: "Visit {name}",
-    licenceLine: "Contains information licensed under the Open Government Licence – Canada.",
     sources: {
       statcan: {
         name: "Statistics Canada",
         use: "The Quebec average prices that flyer deals are compared with (table 18-10-0245-01, monthly retail prices).",
+        credit:
+          "Adapted from Statistics Canada, Monthly average retail prices for selected products, 18-10-0245-01, most recent monthly data published. This does not constitute an endorsement by Statistics Canada of this product.",
+        tableUrl: "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810024501",
+        licenceLink: "Statistics Canada Open Licence",
+        licenceUrl: "https://statcan.gc.ca/reference/licence",
       },
       usda: {
         use: "The storage times behind use-by dates in Inventory, from the US Department of Agriculture's Food Safety and Inspection Service.",

@@ -32,7 +32,7 @@ This is a map of the project for someone opening it for the first time. For what
 | Source | Used for | Where |
 | --- | --- | --- |
 | Flipp | Weekly flyer deals, prices and photos. | `server/src/lib/flipp.js`, `flyerImport.js` |
-| Statistics Canada | Quebec average prices (table 18-10-0245-01), through its public Web Data Service. Licensed under the Open Government Licence – Canada. | `server/src/lib/statcan.js`, `baselines.js` |
+| Statistics Canada | Quebec average prices (table 18-10-0245-01), through its public Web Data Service. The app converts units and compares prices, so it credits the data as adapted, under the [Statistics Canada Open Licence](https://statcan.gc.ca/reference/licence). | `server/src/lib/statcan.js`, `baselines.js` |
 | USDA FoodKeeper | Storage times behind use-by dates. | `server/data/foodkeeper.json`, `server/src/lib/foodkeeper.js` |
 | TheMealDB | Generic ingredient pictures for Inventory items with no photo. | `client/src/lib/ingredientPhoto.js` |
 | Google Gemini | Reads uploaded flyer and receipt files. | `server/src/routes/flyers.js`, `receipts.js` |
