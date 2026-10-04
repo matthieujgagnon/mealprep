@@ -157,16 +157,39 @@ test.describe("The recipes an item is for, in Grocery", () => {
       await expect(rowFor(page, "Carrot").locator(".riso-row-recipes-more")).toHaveCount(0);
       // A hand-added item shows nothing.
       await expect(rowFor(page, "Paper towels").locator(".riso-row-recipes")).toHaveText("");
-      // The recipes sit to the left of the item's name, in a different (monospace) font.
+      // The recipes sit to the right of the item's name, on the same line, in a
+      // different (monospace) font and a lighter gray than the name.
       const rowOnion = rowFor(page, "Onion");
-      const xs = await rowOnion.evaluate((e) => ({
-        recipes: e.querySelector(".riso-row-recipes").getBoundingClientRect().right,
-        name: e.querySelector(".riso-row-name").getBoundingClientRect().left,
-        recipesFont: getComputedStyle(e.querySelector(".riso-row-recipes")).fontFamily,
-        nameFont: getComputedStyle(e.querySelector(".riso-row-name")).fontFamily,
-      }));
-      expect(xs.recipes).toBeLessThanOrEqual(xs.name);
-      expect(xs.recipesFont).not.toBe(xs.nameFont);
+      const look = await rowOnion.evaluate((e) => {
+        const name = e.querySelector(".riso-row-name");
+        const rec = e.querySelector(".riso-row-recipes");
+        const nb = name.getBoundingClientRect();
+        const rb = rec.getBoundingClientRect();
+        const lum = (c) => c.match(/\d+/g).slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
+        return {
+          rightOfName: rb.left >= nb.right - 1,
+          sameLine: Math.abs(rb.top + rb.height / 2 - (nb.top + nb.height / 2)) < 8,
+          recipesFont: getComputedStyle(rec).fontFamily,
+          recipesStyle: ((c) => [c.fontFamily, c.fontSize, c.letterSpacing, c.color].join("|"))(getComputedStyle(rec)),
+          aisleStyle: ((c) => [c.fontFamily, c.fontSize, c.letterSpacing, c.color].join("|"))(getComputedStyle(e.querySelector(".riso-row-sub"))),
+          nameFont: getComputedStyle(name).fontFamily,
+          recipesSize: parseFloat(getComputedStyle(rec).fontSize),
+          nameSize: parseFloat(getComputedStyle(name).fontSize),
+          recipesLum: lum(getComputedStyle(rec).color),
+          nameLum: lum(getComputedStyle(name).color),
+        };
+      });
+      expect(look.rightOfName).toBe(true);
+      // The item's own name is never cut off because of the recipes.
+      for (const n of ["Onion", "Carrot", "Tomato"]) {
+        const nm = rowFor(page, n).locator(".riso-row-name");
+        expect(await nm.evaluate((e) => e.scrollWidth <= e.clientWidth + 2), n).toBe(true);
+      }
+      expect(look.sameLine).toBe(true);
+      expect(look.recipesFont).not.toBe(look.nameFont);
+      expect(look.recipesStyle).toBe(look.aisleStyle); // the same font, size, spacing and gray as the aisle line in By store (both in capitals)
+      expect(look.recipesSize).toBeLessThan(look.nameSize);
+      expect(look.recipesLum).toBeGreaterThan(look.nameLum); // grayer (lighter) than the name
       // The tooltip lists them all.
       await expect(onion).toHaveAttribute("title", /Tacos, Chili with a really long name that goes on and on, Soup/);
     });
@@ -182,9 +205,8 @@ test.describe("The recipes an item is for, in Grocery", () => {
       );
       expect(sizes.length).toBeGreaterThanOrEqual(4);
       expect(new Set(sizes).size, sizes.join(" ")).toBe(1);
-      // The long name ends in an ellipsis and the "+1" is still fully there.
+      // The "+1" is always fully there, and the names end in an ellipsis when short of room.
       const names = rowFor(page, "Onion").locator(".riso-row-recipes-names");
-      expect(await names.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
       expect(await names.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
       await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toBeVisible();
     });
@@ -208,6 +230,10 @@ test.describe("The recipes an item is for, in Grocery", () => {
       const heights = await page.locator(".riso-row").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       expect(new Set(heights).size, heights.join(" ")).toBe(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      for (const n of ["Onion", "Carrot", "Tomato"]) {
+        const nm = rowFor(page, n).locator(".riso-row-name");
+        expect(await nm.evaluate((e) => e.scrollWidth <= e.clientWidth + 2), n).toBe(true);
+      }
       // The long recipe name is cut off, the "+1" is not.
       const names = rowFor(page, "Onion").locator(".riso-row-recipes-names");
       expect(await names.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
@@ -222,12 +248,17 @@ test.describe("The recipes an item is for, in Grocery", () => {
       expect(rowHeights.length).toBeGreaterThanOrEqual(4);
       expect(new Set(rowHeights).size, rowHeights.join(" ")).toBe(1);
       const onionRow = mode.locator(".store-mode-row", { has: page.locator(".store-mode-name", { hasText: /^Onion$/ }) });
+      expect(await onionRow.locator(".store-mode-name").evaluate((e) => e.scrollWidth <= e.clientWidth + 2)).toBe(true);
       const cut = onionRow.locator(".store-mode-recipes-names");
       expect(await cut.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true); // "…"
       expect(await cut.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
-      // ...to the left of the name here too.
-      const left = await onionRow.evaluate((e) => e.querySelector(".store-mode-recipes").getBoundingClientRect().right <= e.querySelector(".store-mode-name").getBoundingClientRect().left);
-      expect(left).toBe(true);
+      // ...to the right of the name here too, on the same line.
+      const right = await onionRow.evaluate((e) => {
+        const r = e.querySelector(".store-mode-recipes").getBoundingClientRect();
+        const n = e.querySelector(".store-mode-name").getBoundingClientRect();
+        return r.left >= n.right - 1 && Math.abs(r.top + r.height / 2 - (n.top + n.height / 2)) < 8;
+      });
+      expect(right).toBe(true);
       await expect(onionRow.locator(".store-mode-recipes-more")).toHaveText("+1");
       // An item you added shows no recipes line, and is still the same height.
       await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" }).locator(".store-mode-recipes")).toHaveCount(1);
