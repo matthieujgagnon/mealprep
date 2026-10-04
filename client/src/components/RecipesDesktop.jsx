@@ -385,7 +385,8 @@ export function RecipesDesktop({
       </div>
 
       <div className="rv2-chips" role="group" aria-label={t("recipes.d.mealAria")}>
-        {MEAL_CHIPS.map((c) => (
+        {/* "All" stands on its own, then a rule, then the meal types and the extra chips, like the Flyers. */}
+        {[MEAL_CHIPS[0]].map((c) => (
           <button
             key={c.id}
             type="button"
@@ -397,19 +398,34 @@ export function RecipesDesktop({
             <span className="riso-filter-chip-count">{chipCount(c.id)}</span>
           </button>
         ))}
-        <span className="rv2-chips-gap" aria-hidden="true" />
-        {EXTRA_CHIPS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className={`riso-filter-chip rv2-chip${filter === c.id ? " active" : ""}`}
-            aria-pressed={filter === c.id}
-            onClick={() => onFilterChange(c.id)}
-          >
-            {c.label}
-            <span className="riso-filter-chip-count">{chipCount(c.id)}</span>
-          </button>
-        ))}
+        <span className="rv2-chips-rule" aria-hidden="true" />
+        <div className="rv2-chips-cats">
+          {MEAL_CHIPS.slice(1).map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`riso-filter-chip rv2-chip${filter === c.id ? " active" : ""}`}
+              aria-pressed={filter === c.id}
+              onClick={() => onFilterChange(c.id)}
+            >
+              {c.label}
+              <span className="riso-filter-chip-count">{chipCount(c.id)}</span>
+            </button>
+          ))}
+          <span className="rv2-chips-gap" aria-hidden="true" />
+          {EXTRA_CHIPS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`riso-filter-chip rv2-chip${filter === c.id ? " active" : ""}`}
+              aria-pressed={filter === c.id}
+              onClick={() => onFilterChange(c.id)}
+            >
+              {c.label}
+              <span className="riso-filter-chip-count">{chipCount(c.id)}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="rv2-countline">
