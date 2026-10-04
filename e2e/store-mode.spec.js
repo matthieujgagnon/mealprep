@@ -59,7 +59,7 @@ test("Store mode groups each store's list by section, sorts A to Z, and remember
   await expect(mode.locator(".store-mode-num")).toHaveText("5");
   await expect(mode.locator(".store-mode-section-pill")).toHaveText(["Fruits & vegetables", "Meat & poultry", "Frozen", "Pantry"]);
   const beef = mode.locator(".store-mode-row", { hasText: "Ground beef" });
-  await expect(beef.locator(".store-mode-sale")).toHaveText("Metro$5.44/lb");
+  await expect(beef.locator(".store-mode-sale")).toHaveCount(0); // Store mode shows no sale tag
   await expect(beef.locator(".store-mode-brand")).toHaveText("Irresistibles");
   await page.screenshot({ path: test.info().outputPath("dark-section.png") });
 
@@ -127,7 +127,7 @@ test.describe("in French", () => {
     await expect(mode.locator(".store-mode-section-left").first()).toHaveText("2 RESTANTS");
     const beef = mode.locator(".store-mode-row", { hasText: "Ground beef" });
     await expect(beef.locator(".store-mode-brand")).toHaveText("Irresistibles");
-    await expect(beef.locator(".store-mode-sale")).toHaveText(/^Metro5,44\s\$\/lb$/);
+    await expect(beef.locator(".store-mode-sale")).toHaveCount(0);
     await expect(mode.getByRole("button", { name: "Rayon" })).toHaveAttribute("aria-pressed", "true");
     await expect(mode.getByRole("button", { name: "Terminé · ajouter 0 à l'inventaire" })).toBeDisabled();
     await page.screenshot({ path: test.info().outputPath("fr-dark.png") });

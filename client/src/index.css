@@ -9958,7 +9958,7 @@ button.riso-protein-bar {
 
 .riso-row-need.wide {
   height: 26px;
-  margin: 0 6px;
+  margin: 0;
   padding: 0 10px;
   border-radius: 13px;
 }
@@ -9996,8 +9996,7 @@ button.riso-protein-bar {
   font: 700 11.5px var(--riso-font-mono);
 }
 
-.riso-row-deal-div,
-.store-mode-sale-div {
+.riso-row-deal-div {
   flex: none;
   width: 1.5px;
   height: 11px;
@@ -10015,7 +10014,6 @@ button.riso-protein-bar {
   position: relative;
   flex: none;
   height: 30px;
-  margin-right: 6px;
   padding: 0 12px;
   border: 2px solid var(--riso-ink);
   border-radius: 15px;
@@ -10036,25 +10034,47 @@ button.riso-protein-bar {
 
 /* How many to buy: a plain number, a pill. The column is fixed so the numbers and
    the × line up from row to row. */
+.riso-row-slot {
+  flex: none;
+  width: 200px;
+  margin-right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.riso-row-needcol {
+  flex: none;
+  width: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .riso-row-qtycol {
   flex: none;
-  width: 82px;
+  width: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .riso-row-qty {
-  width: 78px;
-  height: 26px;
+  width: 42px;
+  height: 42px;
   box-sizing: border-box;
-  padding: 0 6px;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 13px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
   background: var(--riso-track);
   color: var(--riso-ink);
-  font: 700 13px var(--riso-font-mono);
+  font: 700 16px var(--riso-font-mono);
   text-align: center;
+}
+
+.riso-row-qty.long {
+  font-size: 12px;
+  letter-spacing: -0.04em;
 }
 
 .riso-row.checked .riso-row-qty {
@@ -10110,7 +10130,7 @@ button.riso-protein-bar {
     --gi-min: 108px;
   }
 
-  .riso-row-need.wide {
+  .riso-row-needcol {
     display: none;
   }
 
@@ -10118,12 +10138,25 @@ button.riso-protein-bar {
     display: flex;
   }
 
-  .riso-row-qtycol {
-    width: 64px;
+  /* The slot dissolves: "+ Inventory" is a plain part of the cluster, and the
+     sale tag sits in the row's bottom right corner, the same place on every
+     row. Rows with a tag keep room for it under the text. */
+  .riso-row-slot {
+    display: contents;
   }
 
-  .riso-row-qty {
-    width: 60px;
+  .riso-row-deal {
+    position: absolute;
+    right: 17px;
+    bottom: 12px;
+  }
+
+  .riso-row.has-deal .riso-row-main {
+    padding-bottom: 34px;
+  }
+
+  .riso-row-qtycol {
+    width: 50px;
   }
 
   /* A checked row's "+ Inventory" drops under the number and the ×, so the
@@ -10271,32 +10304,9 @@ button.riso-protein-bar {
   white-space: nowrap;
 }
 
-.store-mode-sale {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 28px;
-  box-sizing: border-box;
-  padding: 0 8px;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 6px;
-  background: var(--riso-green);
-  color: var(--riso-ink);
-  white-space: nowrap;
-}
 
-.store-mode-sale-store {
-  font: 600 13px var(--riso-font-display);
-}
 
-.store-mode-sale-price {
-  font: 700 13px var(--riso-font-mono);
-}
 
-.store-mode-sale-div {
-  height: 14px;
-}
 
 /* Checked, in the dark Store mode: the row goes dark, the box green with an ink tick. */
 .store-mode[data-sm-theme="dark"] .store-mode-row.on {
@@ -10306,9 +10316,9 @@ button.riso-protein-bar {
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-check {
-  background: var(--riso-green);
-  border-color: var(--riso-green);
-  color: var(--riso-ink);
+  background: var(--riso-accent);
+  border-color: var(--riso-accent);
+  color: var(--riso-on-accent);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-brand,
@@ -10428,11 +10438,6 @@ button.riso-deal-detail-other {
 button.riso-deal-detail-other:hover,
 button.riso-deal-detail-other:focus-visible {
   background: var(--riso-yellow);
-}
-
-button.riso-row-qty:hover,
-button.riso-row-qty:focus-visible {
-  border-color: var(--riso-dash-strong);
 }
 
 .riso-grocery-removed {

@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { cancelAdd } from "./inventory-confirm.js";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // The grocery item (design handoff: docs/design/grocery-item/README.md): one
 // component drawn the same in By store, By aisle, By recipe and Store mode.
@@ -35,6 +38,17 @@ async function setup(page) {
     ).json();
     await page.request.post("/api/planner", { data: { recipeId: r.id, weekStart: nextMonday(), dayOfWeek: i, mealType: "dinner" } });
   }
+  const me = await (await page.request.get("/api/auth/me")).json();
+  const userId = me.user?.id ?? me.id;
+  const deal = (store, item, matchName, price, unitPrice, unitBasis, category) => ({
+    userId, store, source: store, category, item, matchName, price, unitPrice, unitBasis, regularPrice: unitPrice * 1.4, isCurrent: true,
+  });
+  await prisma.flyerDeal.createMany({
+    data: [
+      deal("Metro", "Bœuf haché | Ground beef", "ground beef", "$8.99/lb", 8.99, "lb", "meat"),
+      deal("Super C", "Citrons | Lemons", "lemon", "$1.99", 1.99, "each", "produce"),
+    ],
+  });
   await page.request.post("/api/grocery-extra-items", { data: { name: "Toilet paper", quantity: 2 } });
   await page.request.post("/api/grocery-sections", { data: { name: "Costco" } });
   await page.reload();
@@ -67,6 +81,28 @@ test.describe("on a computer", () => {
       // The aisle and the store are not repeated on the row.
       await expect(beef.locator(".riso-row-sub, .riso-row-store, .riso-row-grip")).toHaveCount(0);
     }
+  });
+
+  test("the number is a round pill, and the sale tags line up in one column on the right", async ({ page }) => {
+    await setup(page);
+    const qty = await page.locator(".riso-row-qty").first().boundingBox();
+    expect(Math.abs(qty.width - qty.height)).toBeLessThanOrEqual(1);
+    expect(await page.locator(".riso-row-qty").first().evaluate((e) => getComputedStyle(e).borderRadius)).toBe("50%");
+    const tags = page.locator(".riso-row-deal");
+    await expect(tags).toHaveCount(2);
+    const spots = await page.locator(".riso-row").evaluateAll((rows) =>
+      rows
+        .map((r) => ({ tag: r.querySelector(".riso-row-deal"), name: r.querySelector(".riso-row-name"), qty: r.querySelector(".riso-row-qty") }))
+        .filter((x) => x.tag)
+        .map((x) => ({ left: Math.round(x.tag.getBoundingClientRect().left), afterName: x.tag.getBoundingClientRect().left >= x.name.getBoundingClientRect().right, beforeQty: x.tag.getBoundingClientRect().right <= x.qty.getBoundingClientRect().left }))
+    );
+    expect(new Set(spots.map((x) => x.left)).size).toBe(1); // the same left edge on every row
+    expect(spots.every((x) => x.afterName && x.beforeQty)).toBe(true);
+    // The recipe quantity pills and the numbers line up too.
+    const centers = await page.locator(".riso-row-need.wide").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.parentElement.getBoundingClientRect().left)))]);
+    expect(centers).toHaveLength(1);
+    const qtyLefts = await page.locator(".riso-row-qty").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
+    expect(qtyLefts).toHaveLength(1);
   });
 
   test("a hand-added item shows only its name and its number", async ({ page }) => {
@@ -189,6 +225,28 @@ test.describe("on a phone", () => {
     }
   });
 
+  test("on a phone the sale tag sits in the bottom right corner of its row, lined up with the ×", async ({ page }) => {
+    await setup(page);
+    const tags = page.locator(".riso-row-deal");
+    await expect(tags).toHaveCount(2);
+    const spots = await page.locator(".riso-row").evaluateAll((rows) =>
+      rows
+        .filter((r) => r.querySelector(".riso-row-deal"))
+        .map((r) => {
+          const tag = r.querySelector(".riso-row-deal").getBoundingClientRect();
+          const del = r.querySelector(".riso-row-delete").getBoundingClientRect();
+          const qty = r.querySelector(".riso-row-qty").getBoundingClientRect();
+          const row = r.getBoundingClientRect();
+          return { gap: Math.abs(tag.right - (del.right - 7)), underNumber: tag.top >= qty.bottom - 1, inRow: tag.bottom <= row.bottom && tag.left >= row.left };
+        })
+    );
+    for (const x of spots) {
+      expect(x.gap).toBeLessThanOrEqual(2);
+      expect(x.underNumber).toBe(true);
+      expect(x.inRow).toBe(true);
+    }
+  });
+
   test("Store mode draws the same item at 120 px, and the whole row checks it", async ({ page }) => {
     await setup(page);
     await page.getByRole("button", { name: /I'm at the store/ }).click();
@@ -204,8 +262,11 @@ test.describe("on a phone", () => {
     await expect(beef.locator(".store-mode-need")).toHaveText("750 g");
     await expect(beef.locator(".store-mode-qty")).toHaveText("1");
     await expect(beef.locator(".riso-row-delete, .riso-row-toinv")).toHaveCount(0); // no × and no inventory button here
+    // No sale tag here, and a checked row's box is blue in the dark theme.
+    await expect(mode.locator(".store-mode-sale, .riso-row-deal")).toHaveCount(0);
     await beef.click();
     await expect(beef).toHaveClass(/\bon\b/);
+    expect(await beef.locator(".store-mode-check").evaluate((e) => getComputedStyle(e).backgroundColor)).toBe("rgb(35, 35, 255)");
     const cut = await mode.locator(".store-mode-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
     expect(cut).toBe(false);
   });
