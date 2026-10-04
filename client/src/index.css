@@ -9745,31 +9745,22 @@ button.riso-protein-bar {
     display: flex;
   }
 
-  /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale
-     tag sits just left of the number, narrow, with the store over the price,
-     so the name still gets the room. */
+  /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale tag
+     sits just left of the number and looks like it does on a computer: store, a
+     divider, price. (On a narrow phone it stacks, see below.) */
   .riso-row-slot {
     display: contents;
   }
 
   .riso-row-deal {
-    flex-direction: column;
-    justify-content: center;
-    gap: 1px;
-    height: auto;
-    min-height: 38px;
+    gap: 6px;
     margin-right: 6px;
-    padding: 3px 7px;
-  }
-
-  .riso-row-deal-div {
-    display: none;
+    padding: 0 7px;
   }
 
   .riso-row-deal-store,
   .riso-row-deal-price {
     font-size: 11px;
-    line-height: 14px;
   }
 
   .riso-row-qtycol {
@@ -16693,4 +16684,28 @@ body.no-select {
 
 .riso-itemform .link-btn.subtle {
   color: var(--riso-muted);
+}
+
+/* On a narrow phone the tag has no room in one line: the store over the price, the
+   divider across, the same green tag. */
+@media (max-width: 479px) {
+  .riso-row-deal {
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 2px;
+    height: auto;
+    padding: 3px 7px;
+    text-align: center;
+  }
+
+  .riso-row-deal-div {
+    width: auto;
+    height: 1.5px;
+  }
+
+  .riso-row-deal-store,
+  .riso-row-deal-price {
+    line-height: 13px;
+  }
 }
