@@ -1274,7 +1274,7 @@ export const en = {
       inventory: {
         title: "Inventory",
         lines: [
-          "Inventory is what's in your kitchen, on shelves: Fridge, Freezer and Pantry, plus any you add. The shelf pill at the top has a chip for each shelf: tap one to jump to it. The round [[addShelfPill]] beside the pill adds a new shelf. On a phone, the pill is the full width, all the shelves are on one page and the pill stays pinned at the top.",
+          "Inventory is what's in your kitchen, on shelves: Fridge, Freezer and Pantry, plus any you add. The shelf pill at the top has a chip for each shelf: tap one to jump to it. The round [[addShelfPill]] beside the pill adds a new shelf. The pill is the full width less the round button, stays pinned at the top as you scroll, and lights the chip of the shelf you're on. On a phone all the shelves are on one page.",
           "Each shelf also has its own round [[addItemHere]] in its header, which adds an item straight to that shelf.",
           "Items are sorted by what expires first. Pink means use it within 3 days.",
           "[[addItem]] takes a name, an amount and a shelf. The app suggests a use-by date from USDA FoodKeeper. You can change it. Typing an item in here counts as confirming it.",

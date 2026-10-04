@@ -1280,7 +1280,7 @@ export const fr = {
       inventory: {
         title: "Inventaire",
         lines: [
-          "L'inventaire, c'est ce qu'il y a dans votre cuisine, rangé sur des tablettes : frigo, congélateur et garde-manger, plus celles que vous ajoutez. La barre arrondie du haut a une pastille par tablette : touchez-en une pour y aller. Le [[addShelfPill]] rond à côté de la barre ajoute une nouvelle tablette. Sur un téléphone, la barre prend toute la largeur, toutes les tablettes sont sur une seule page et la barre reste épinglée en haut.",
+          "L'inventaire, c'est ce qu'il y a dans votre cuisine, rangé sur des tablettes : frigo, congélateur et garde-manger, plus celles que vous ajoutez. La barre arrondie du haut a une pastille par tablette : touchez-en une pour y aller. Le [[addShelfPill]] rond à côté de la barre ajoute une nouvelle tablette. La barre prend toute la largeur moins le bouton rond, reste épinglée en haut quand vous défilez et allume la pastille de la tablette où vous êtes. Sur un téléphone, toutes les tablettes sont sur une seule page.",
           "Chaque tablette a aussi son propre [[addItemHere]] rond dans son en-tête, qui ajoute un article directement sur cette tablette.",
           "Les articles sont triés selon ce qui expire en premier. Le rose veut dire à utiliser d'ici 3 jours.",
           "[[addItem]] demande un nom, une quantité et une tablette. L'application suggère une date limite tirée d'USDA FoodKeeper. Vous pouvez la changer. Écrire un article ici compte comme une confirmation.",

@@ -235,3 +235,48 @@ test.describe("inventory on a phone", () => {
     await expect(page.locator('.inv-shelf[data-section-id="pantry"]')).toBeInViewport();
   });
 });
+
+test.describe("inventory on a computer", () => {
+  test.use({ viewport: { width: 1280, height: 700 } });
+
+  test("the shelf chips are the phone's: full width, pinned while you scroll, and the shelf you're on is lit", async ({ page }) => {
+    await signUp(page);
+    for (const [name, location] of [["Milk", "fridge"], ["Peas", "freezer"], ["Pasta", "pantry"]]) {
+      for (let i = 0; i < 8; i++) await page.request.post("/api/pantry-inventory", { data: { name: `${name} ${i}`, location } });
+    }
+    await page.reload();
+    await page.getByRole("button", { name: "Inventory", exact: true }).click();
+    await expect(page.locator(".inv-shelf")).toHaveCount(3);
+
+    // The pill fills the width less the round +, which sits beside it.
+    const pill = await page.locator(".riso-inv-shelf-switch").boundingBox();
+    const plus = await page.getByRole("button", { name: "Add a shelf" }).boundingBox();
+    expect(plus.x).toBeGreaterThanOrEqual(pill.x + pill.width);
+    expect(pill.width).toBeGreaterThan(1000);
+    expect(plus.width).toBe(plus.height);
+    await expect(page.getByRole("tab", { name: /^Fridge/ })).toHaveAttribute("aria-selected", "true");
+
+    // Pinned at the top of the window while the shelves scroll under it.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect.poll(async () => Math.round((await page.locator(".riso-inv-shelf-pin").boundingBox()).y)).toBe(0);
+
+    // A chip jumps to its shelf, lights up, and scrolling lights the shelf you reach.
+    await page.getByRole("tab", { name: /^Freezer/ }).click();
+    await expect(page.locator('.inv-shelf[data-section-id="freezer"]')).toBeInViewport();
+    await expect(page.getByRole("tab", { name: /^Freezer/ })).toHaveAttribute("aria-selected", "true");
+    // Wait for the smooth scroll to land before scrolling on by hand.
+    let lastY = -1;
+    await expect
+      .poll(async () => {
+        const y = await page.evaluate(() => window.scrollY);
+        const still = y === lastY;
+        lastY = y;
+        return still;
+      })
+      .toBe(true);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(page.getByRole("tab", { name: /^Pantry/ })).toHaveAttribute("aria-selected", "true");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page.getByRole("tab", { name: /^Fridge/ })).toHaveAttribute("aria-selected", "true");
+  });
+});

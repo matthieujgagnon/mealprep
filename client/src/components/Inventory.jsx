@@ -1232,10 +1232,14 @@ export function Inventory({
   const [addLocation, setAddLocation] = useState("fridge");
   const [showScan, setShowScan] = useState(false);
   const isPhone = useIsPhone();
-  // On a phone every shelf is on one continuous page, and the shelf chips are
-  // pinned under the header: tapping one scrolls to its shelf, and the chip
-  // of the shelf you're looking at is the lit one.
-  const [phoneShelf, setPhoneShelf] = useState("fridge");
+  // The shelf chips are pinned at the top while you scroll (under the header on
+  // a phone): tapping one scrolls to its shelf, and the chip of the shelf you're
+  // looking at is the lit one. The same on a phone and on a computer.
+  const [currentShelf, setCurrentShelf] = useState("fridge");
+  const currentShelfRef = useRef(currentShelf);
+  currentShelfRef.current = currentShelf;
+  // While a tapped chip scrolls its shelf into place, that chip stays lit.
+  const jumpLock = useRef(null);
   const [editingId, setEditingId] = useState(null);
   const staples = new Set(customStaples || []);
 
@@ -1308,21 +1312,48 @@ export function Inventory({
     return () => observer.disconnect();
   }, [isPhone]);
 
-  // Light the chip of the shelf whose top has passed the line under the chips.
+  // Light the chip of the shelf whose top has passed the line under the chips
+  // (the lowest top that has; shelves side by side on a computer tie, and the
+  // first of them wins).
   const shelfIds = shelfLocations.map((loc) => loc.id).join("|");
   useEffect(() => {
-    if (!isPhone) return undefined;
     let frame = 0;
+    let settle = 0;
     const update = () => {
       frame = 0;
+      if (jumpLock.current && Date.now() < jumpLock.current.until) {
+        setCurrentShelf(jumpLock.current.id);
+        // Look again once the jump is over.
+        clearTimeout(settle);
+        settle = setTimeout(onScroll, jumpLock.current.until - Date.now() + 30);
+        return;
+      }
       const pin = document.querySelector(".riso-inv-shelf-pin");
       const line = (pin ? pin.getBoundingClientRect().bottom : 0) + 12;
       let current = null;
+      let currentTop = -Infinity;
+      const tops = {};
       for (const id of shelfIds.split("|")) {
         const el = document.querySelector(`.inv-shelves [data-section-id="${id}"]`);
-        if (el && (current === null || el.getBoundingClientRect().top <= line)) current = id;
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top;
+        tops[id] = top;
+        if (current === null) {
+          current = id;
+          currentTop = top;
+        } else if (top <= line && (currentTop > line || top > currentTop)) {
+          current = id;
+          currentTop = top;
+        }
       }
-      if (current) setPhoneShelf(current);
+      // Shelves side by side share a top: keep the one already lit (the one you
+      // tapped) rather than jumping to the first of them.
+      const lit = currentShelfRef.current;
+      if (lit && lit !== current && tops[lit] !== undefined && Math.abs(tops[lit] - currentTop) < 3) current = lit;
+      // Near the bottom the last shelf may be too short to reach the line.
+      const ids = shelfIds.split("|");
+      if (window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 12) current = ids[ids.length - 1];
+      if (current) setCurrentShelf(current);
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -1332,11 +1363,13 @@ export function Inventory({
     return () => {
       window.removeEventListener("scroll", onScroll);
       if (frame) cancelAnimationFrame(frame);
+      clearTimeout(settle);
     };
-  }, [isPhone, shelfIds, items.length]);
+  }, [shelfIds, items.length]);
 
   function jumpToShelf(id) {
-    setPhoneShelf(id);
+    setCurrentShelf(id);
+    jumpLock.current = { id, until: Date.now() + 1000 };
     document.querySelector(`.inv-shelves [data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   const labelFor = Object.fromEntries(sections.map((sec) => [sec.id, sec.label]));
@@ -1439,14 +1472,14 @@ export function Inventory({
 
       <div className="riso-inv-shelf-pin">
         <div className="riso-inv-shelf-bar">
-          <div className="riso-inv-shelf-switch" role={isPhone ? "tablist" : "group"} aria-label={t("inventory.shelfAria")}>
+          <div className="riso-inv-shelf-switch" role="tablist" aria-label={t("inventory.shelfAria")}>
             {shelfLocations.map((loc) => (
               <button
                 key={loc.id}
                 type="button"
-                role={isPhone ? "tab" : undefined}
-                aria-selected={isPhone ? phoneShelf === loc.id : undefined}
-                className={isPhone && phoneShelf === loc.id ? "on" : ""}
+                role="tab"
+                aria-selected={currentShelf === loc.id}
+                className={currentShelf === loc.id ? "on" : ""}
                 onClick={() => jumpToShelf(loc.id)}
               >
                 {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
@@ -1486,7 +1519,7 @@ export function Inventory({
               onRename={(name) => renameSection(loc, name)}
               onDelete={() => {
                 setEditingId(null);
-                if (isPhone) setPhoneShelf("fridge");
+                setCurrentShelf("fridge");
                 onDeleteLocation(loc.id);
               }}
               arrangeable={!isPhone}

@@ -11768,9 +11768,24 @@ button.riso-deal-detail-other:focus-visible {
   cursor: default;
 }
 
-/* The shelf pill: a chip per shelf that jumps to it. On a computer it is as wide
-   as its chips; on a phone it is the full width (see the phone rules below).
-   The round + that adds a shelf sits beside the pill, outside it. */
+/* The shelf pill: a chip per shelf that jumps to it, the same on a computer and
+   on a phone. It takes all the width the round + leaves, stays pinned at the top
+   while you scroll (under the app header on a phone), and the chip of the shelf
+   you're looking at is lit. The round + that adds a shelf sits beside the pill,
+   outside it. */
+.riso-inv-shelf-pin {
+  position: sticky;
+  top: var(--inv-sticky-top, 0px);
+  z-index: 40;
+  margin: -6px -40px 0;
+  padding: 6px 40px 8px;
+  background: var(--riso-canvas);
+}
+
+.inv-shelves [data-section-id] {
+  scroll-margin-top: calc(var(--inv-sticky-top, 0px) + 66px);
+}
+
 .riso-inv-shelf-bar {
   display: flex;
   align-items: center;
@@ -11779,7 +11794,8 @@ button.riso-deal-detail-other:focus-visible {
 
 .riso-inv-shelf-switch {
   display: flex;
-  width: fit-content;
+  flex: 1 1 0;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   border: 2px solid var(--riso-ink);
@@ -11820,6 +11836,7 @@ button.riso-deal-detail-other:focus-visible {
   border: 2px solid var(--riso-ink);
   border-radius: 24px;
   background: var(--riso-surface);
+  font: 700 12.5px var(--riso-font-display);
 }
 
 .riso-inv-shelf-bar button.add-shelf:hover {
@@ -11854,22 +11871,8 @@ button.riso-deal-detail-other:focus-visible {
   /* One continuous page of shelves; the chips stay pinned under the app
      header and jump to a shelf. */
   .riso-inv-shelf-pin {
-    position: sticky;
-    top: var(--inv-sticky-top, 0px);
-    z-index: 40;
     margin: -6px -18px 0;
     padding: 6px 18px 8px;
-    background: var(--riso-canvas);
-  }
-
-  .inv-shelves [data-section-id] {
-    scroll-margin-top: calc(var(--inv-sticky-top, 0px) + 66px);
-  }
-
-  /* The pill takes all the width the round + leaves. */
-  .riso-inv-shelf-switch {
-    flex: 1 1 0;
-    width: auto;
   }
 
   .inv-shelves {
