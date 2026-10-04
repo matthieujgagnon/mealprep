@@ -1620,7 +1620,7 @@ select {
   margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
+  gap: 4px 0;
   font-family: var(--riso-font-display);
   font-weight: 600;
   font-size: 15px;
@@ -1631,7 +1631,7 @@ select {
 
 .riso-inv-summary span + span::before {
   content: "·";
-  margin-right: 14px;
+  margin: 0 10px;
   color: var(--riso-muted);
 }
 
@@ -2615,7 +2615,9 @@ select {
 }
 
 /* ---------- Inventory confirmation sheet (and the receipt popup) ---------- */
-.riso-confirm-overlay {
+/* Above Store mode, Cook mode and the receipt popup (more specific than
+   .modal-overlay, which comes later in this file). */
+.modal-overlay.riso-confirm-overlay {
   z-index: 300;
 }
 

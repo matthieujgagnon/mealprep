@@ -304,7 +304,7 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  await expect(page.getByText("6 items · 1 to use soon · 1 expired")).toBeVisible();
+  await expect(page.locator(".riso-inv-summary")).toHaveText("6 items1 to use soon1 expired"); // three parts, the dots between them are drawn by CSS
   const card = (name) => page.locator(".inv-card").filter({ hasText: name });
   // Expired: pink-tinted card and the quiet tag - no line.
   await expect(card("Bbq sauce")).toHaveClass(/expired/);
