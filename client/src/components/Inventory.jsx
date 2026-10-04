@@ -821,6 +821,59 @@ function ShelfColumn({
 
 // "+ Add shelf" at the end of the grid makes a new shelf and opens it
 // ready to rename.
+// The last segment of the shelf pill: "+ Shelf" turns into a field for the new
+// shelf's name (Enter adds it, Escape cancels).
+function AddShelfSegment({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState(null);
+
+  async function submit() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setOpen(false);
+      return;
+    }
+    try {
+      await onAdd(trimmed);
+      setName("");
+      setError(null);
+      setOpen(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="add-shelf" onClick={() => setOpen(true)} title={t("inventory.addShelf")}>
+        {t("inventory.shelfPill")}
+      </button>
+    );
+  }
+  return (
+    <span className="add-shelf form">
+      <input
+        autoFocus
+        aria-label={t("inventory.shelfName")}
+        placeholder={t("inventory.shelfNamePlaceholder")}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit();
+          if (e.key === "Escape") {
+            setName("");
+            setError(null);
+            setOpen(false);
+          }
+        }}
+        onBlur={() => !error && submit()}
+      />
+      {error && <span className="add-shelf-error" role="alert">{error}</span>}
+    </span>
+  );
+}
+
 function PhotoPicker({ item, onUpdate }) {
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -1161,6 +1214,7 @@ export function Inventory({
   locations,
   layout,
   onSaveLayout,
+  onAddLocation,
   onRenameLocation,
   onDeleteLocation,
 }) {
@@ -1377,24 +1431,30 @@ export function Inventory({
 
       {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
-      {isPhone && (
-        <div className="riso-inv-shelf-pin">
-          <div className="riso-inv-shelf-switch" role="tablist" aria-label={t("inventory.shelfAria")}>
-            {shelfLocations.map((loc) => (
-              <button
-                key={loc.id}
-                type="button"
-                role="tab"
-                aria-selected={phoneShelf === loc.id}
-                className={phoneShelf === loc.id ? "on" : ""}
-                onClick={() => jumpToShelf(loc.id)}
-              >
-                {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
-              </button>
-            ))}
-          </div>
+      <div className="riso-inv-shelf-pin">
+        <div className="riso-inv-shelf-switch" role={isPhone ? "tablist" : "group"} aria-label={t("inventory.shelfAria")}>
+          {shelfLocations.map((loc) => (
+            <button
+              key={loc.id}
+              type="button"
+              role={isPhone ? "tab" : undefined}
+              aria-selected={isPhone ? phoneShelf === loc.id : undefined}
+              className={isPhone && phoneShelf === loc.id ? "on" : ""}
+              onClick={() => jumpToShelf(loc.id)}
+            >
+              {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
+            </button>
+          ))}
+          <AddShelfSegment
+            onAdd={async (name) => {
+              const created = await onAddLocation(name);
+              // Scroll to it once it's on the page.
+              if (created?.id) setTimeout(() => jumpToShelf(created.id), 50);
+            }}
+          />
         </div>
-      )}
+      </div>
+
 
       <div className="inv-shelves">
         {shelfLocations

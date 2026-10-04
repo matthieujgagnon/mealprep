@@ -808,7 +808,10 @@ export const fr = {
     editShelf: "Modifier la tablette",
     dropHere: "Déposez des articles ici",
     resizeSection: "Redimensionner la section « {name} »",
-    addShelf: "+ Ajouter une tablette",
+    addShelf: "Ajouter une tablette",
+    shelfPill: "+ Tablette",
+    shelfName: "Nom de la tablette",
+    shelfNamePlaceholder: "Nom de la tablette",
     newShelf: "Nouvelle tablette",
     newShelfN: "Nouvelle tablette {n}",
     linkHttp: "Collez un lien qui commence par http:// ou https://.",
@@ -1259,7 +1262,7 @@ export const fr = {
       inventory: {
         title: "Inventaire",
         lines: [
-          "L'inventaire, c'est ce qu'il y a dans votre cuisine, rangé sur des tablettes : frigo, congélateur et garde-manger, plus celles que vous avez déjà faites. Sur un téléphone, toutes les tablettes sont sur une seule page : les pastilles du haut mènent à une tablette.",
+          "L'inventaire, c'est ce qu'il y a dans votre cuisine, rangé sur des tablettes : frigo, congélateur et garde-manger, plus celles que vous ajoutez. Les pastilles du haut mènent à une tablette, et [[addShelfPill]] au bout de la rangée en ajoute une nouvelle. Sur un téléphone, toutes les tablettes sont sur une seule page et les pastilles restent épinglées en haut.",
           "Les articles sont triés selon ce qui expire en premier. Le rose veut dire à utiliser d'ici 3 jours.",
           "[[addItem]] demande un nom, une quantité et une tablette. L'application suggère une date limite tirée d'USDA FoodKeeper. Vous pouvez la changer. Écrire un article ici compte comme une confirmation.",
           "[[scanReceipt]] lit une photo ou un PDF de votre reçu avec Google Gemini et ouvre la fenêtre de confirmation. Désactivez ce qui n'est pas de la nourriture.",

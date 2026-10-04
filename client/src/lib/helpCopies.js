@@ -125,6 +125,7 @@ export const HELP_COPIES = {
   usedUp: { kind: "pill", cls: "inv-action-btn", label: "inventory.usedUp", dark: true },
   tossed: { kind: "pill", cls: "inv-action-btn", label: "inventory.tossed", dark: true },
   freeze: { kind: "pill", cls: "inv-action-btn", label: "inventory.freeze", dark: true },
+  addShelfPill: { kind: "pill", cls: "riso-help-copy-shelf-pill", label: "inventory.shelfPill" },
   editShelf: { kind: "icon", cls: "inv-shelf-edit", glyph: "✎" },
 
   // Account, in the header

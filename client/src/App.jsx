@@ -459,6 +459,12 @@ export default function App({ user, onLogout }) {
     await api.consumePantryInventoryItems(ids, action);
   }
 
+  async function handleAddPantryLocation(name) {
+    const created = await api.addPantryLocation(name);
+    setPantryLocations((prev) => [...prev, created]);
+    return created;
+  }
+
   // Items still in a deleted section move back to Pantry server-side (see
   // POST /pantry-locations/:id) - mirrored here so the shelves don't show a
   // stale/missing column for them until the next full reload.
@@ -958,6 +964,7 @@ export default function App({ user, onLogout }) {
             layout={inventoryLayout}
             onSaveLayout={handleSaveInventoryLayout}
             onRenameLocation={handleRenamePantryLocation}
+            onAddLocation={handleAddPantryLocation}
             onDeleteLocation={handleDeletePantryLocation}
           />
         )}

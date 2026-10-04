@@ -807,7 +807,10 @@ export const en = {
     editShelf: "Edit shelf",
     dropHere: "Drop items here",
     resizeSection: 'Resize the "{name}" section',
-    addShelf: "+ Add shelf",
+    addShelf: "Add a shelf",
+    shelfPill: "+ Shelf",
+    shelfName: "Shelf name",
+    shelfNamePlaceholder: "Shelf name",
     newShelf: "New shelf",
     newShelfN: "New shelf {n}",
     linkHttp: "Paste a link that starts with http:// or https://.",
@@ -1253,7 +1256,7 @@ export const en = {
       inventory: {
         title: "Inventory",
         lines: [
-          "Inventory is what's in your kitchen, on shelves: Fridge, Freezer and Pantry, plus any shelves you already made. On a phone, all the shelves are on one page: the chips at the top jump to a shelf.",
+          "Inventory is what's in your kitchen, on shelves: Fridge, Freezer and Pantry, plus any you add. The chips at the top jump to a shelf, and [[addShelfPill]] at the end of them adds a new one. On a phone, all the shelves are on one page and the chips stay pinned at the top.",
           "Items are sorted by what expires first. Pink means use it within 3 days.",
           "[[addItem]] takes a name, an amount and a shelf. The app suggests a use-by date from USDA FoodKeeper. You can change it. Typing an item in here counts as confirming it.",
           "[[scanReceipt]] reads a photo or PDF of your receipt with Google Gemini and opens the confirmation sheet. Switch off anything that isn't food.",
