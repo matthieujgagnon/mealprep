@@ -810,35 +810,9 @@ select {
   box-shadow: var(--riso-shadow);
 }
 
-.app-header-account {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  /* flex: 0 1 auto (shrinkable), not flex: none - a long email is real
-     content this can't just refuse to yield width for. Paired with the
-     name's own min-width:0 + ellipsis below, so a long email truncates
-     instead of forcing the row (and on a narrow viewport, the page) wider
-     than expected - see .tabs's own min-width:0 comment for what that
-     causes on a real mobile viewport. */
-  flex: 0 1 auto;
-  min-width: 0;
-  margin-left: auto;
-}
-
-.app-header-account-name {
-  font-family: var(--riso-font-body);
-  font-size: 14px;
-  color: var(--riso-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
 /* .btn.subtle is styled for a dark page (light card, dark text on a dark
    backdrop) - the header is now its own paper-colored bar, so it needs the
    inverse: an ink-outlined card-colored button instead. */
-.app-header-account .btn.subtle,
 .app-header-avatar-menu .btn.subtle,
 .riso-help-copy .btn.subtle {
   background: var(--riso-surface);
@@ -846,7 +820,6 @@ select {
   border: 2px solid var(--riso-ink);
 }
 
-.app-header-account .btn.subtle:hover,
 .app-header-avatar-menu .btn.subtle:hover {
   background: var(--riso-track);
 }
@@ -1551,58 +1524,6 @@ select {
   font-size: 13px;
 }
 
-/* Receipt import: review step between "Gemini read the file" and "these
-   items actually get saved" - a plain list of editable/deselectable rows,
-   deliberately unstyled as anything fancier since it's a one-time,
-   short-lived review UI. */
-.receipt-review {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 14px;
-}
-
-.receipt-review-intro {
-  margin: 0 0 10px;
-  font-size: 13px;
-  color: var(--ink-soft);
-}
-
-.receipt-review-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.receipt-review-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.receipt-review-row input[type="text"] {
-  flex: 1;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 13px;
-}
-
-.receipt-review-row select {
-  font-size: 12px;
-}
-
-.receipt-review-actions {
-  display: flex;
-  gap: 8px;
-}
-
 /* Inventory page (shelves + edit panel + select-and-act) - a handful of
    dark-surface tokens the rest of the app's palette doesn't already have a
    name for, scoped to this page rather than added to the global palette
@@ -1664,6 +1585,31 @@ select {
   display: flex;
   gap: 10px;
   flex: none;
+}
+
+/* "36 items · 0 to use soon · 3 expired": Riso display type, not the mono
+   eyebrow. */
+.riso-inv-summary {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--riso-soft);
+}
+
+.riso-inv-summary span + span::before {
+  content: "·";
+  margin: 0 10px;
+  color: var(--riso-muted);
+}
+
+.riso-inv-summary .expired {
+  color: var(--riso-danger);
 }
 
 .riso-inv-btn {
@@ -2633,14 +2579,232 @@ select {
 
 .riso-inv-form-modal .pantry-add-form input,
 .riso-inv-form-modal .pantry-add-form select,
-.riso-inv-form-modal .flyer-upload-form input,
-.riso-inv-form-modal .receipt-review-row input,
-.riso-inv-form-modal .receipt-review-row select {
+.riso-inv-form-modal .flyer-upload-form input {
   font-family: var(--riso-font-body);
   border: 1.5px solid var(--riso-dash-strong);
   border-radius: 8px;
   background: var(--riso-canvas);
   color: var(--riso-ink);
+}
+
+/* ---------- Inventory confirmation sheet (and the receipt popup) ---------- */
+/* Above Store mode, Cook mode and the receipt popup (more specific than
+   .modal-overlay, which comes later in this file). */
+.modal-overlay.riso-confirm-overlay {
+  z-index: 300;
+}
+
+.riso-confirm {
+  max-width: 920px;
+  width: 100%;
+}
+
+.riso-confirm-intro {
+  margin: 0 0 16px;
+  font-family: var(--riso-font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--riso-soft);
+}
+
+.riso-confirm-head,
+.riso-confirm-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1.5fr) minmax(160px, 1.1fr) minmax(104px, 0.7fr) 148px;
+  gap: 10px;
+  align-items: center;
+}
+
+.riso-confirm-head {
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--riso-ink);
+  font-family: var(--riso-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+}
+
+.riso-confirm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.riso-confirm-row {
+  padding: 10px 0;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.riso-confirm-row:first-child {
+  border-top: none;
+}
+
+.riso-confirm-row.off {
+  opacity: 0.45;
+}
+
+.riso-confirm-on {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--riso-accent);
+  cursor: pointer;
+}
+
+.riso-confirm input[type="text"],
+.riso-confirm input[type="date"],
+.riso-confirm select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 10px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+  font-size: 14px;
+}
+
+.riso-confirm input:focus-visible,
+.riso-confirm select:focus-visible {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+.riso-confirm-amount {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.riso-confirm-amount input {
+  flex: 0 0 62px;
+  width: 62px;
+}
+
+.riso-confirm-amount select {
+  flex: 1;
+}
+
+.riso-confirm-actions {
+  position: sticky;
+  bottom: -28px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 0 0;
+  background: var(--riso-surface);
+  border-top: 2px solid var(--riso-ink);
+}
+
+.riso-confirm .riso-confirm-go {
+  height: 44px;
+  padding: 0 22px;
+  font-size: 14px;
+}
+
+.riso-confirm-error {
+  margin: 10px 0 0;
+  font-family: var(--riso-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--riso-danger);
+}
+
+.riso-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: min(420px, 100%);
+}
+
+.riso-receipt-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 22px 18px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-canvas);
+  cursor: pointer;
+}
+
+.riso-receipt-drop.busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.riso-receipt-drop-title {
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 17px;
+}
+
+.riso-receipt-drop-hint {
+  font-family: var(--riso-font-body);
+  font-size: 13px;
+  color: var(--riso-soft);
+}
+
+.riso-receipt-drop input[type="file"] {
+  margin-top: 8px;
+  font-family: var(--riso-font-body);
+  font-size: 13px;
+  max-width: 100%;
+}
+
+.riso-receipt-found {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.riso-receipt-found p {
+  margin: 0;
+  font-family: var(--riso-font-body);
+  font-size: 13.5px;
+  color: var(--riso-soft);
+  flex: 1 1 200px;
+}
+
+@media (max-width: 767px) {
+  .riso-confirm-head {
+    display: none;
+  }
+
+  .riso-confirm-row {
+    grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "on name name"
+      ". amount amount"
+      ". shelf date";
+    row-gap: 8px;
+    padding: 12px 0;
+  }
+
+  .riso-confirm-on { grid-area: on; }
+  .riso-confirm-name { grid-area: name; }
+  .riso-confirm-amount { grid-area: amount; }
+  .riso-confirm-shelf { grid-area: shelf; }
+  .riso-confirm-date { grid-area: date; }
+
+  .riso-confirm {
+    padding: 22px 16px;
+    max-height: 92vh;
+  }
+
+  .riso-confirm-actions {
+    bottom: -22px;
+  }
+
+  .riso-confirm-actions .btn {
+    flex: 1;
+  }
 }
 
 .inv-action-bar {
@@ -9293,11 +9457,17 @@ button.riso-table-group-head:disabled {
   white-space: nowrap;
 }
 
+/* Every row is the same size: one line for the name (an ellipsis when it's
+   long), a line reserved for the brand and one for the aisle/recipes, and a
+   fixed slot on the right for the sale or store tag (or "To inventory" once
+   it's checked) - so rows line up whether or not an item has a brand or a sale. */
 .riso-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 18px;
+  padding: 10px 18px;
+  min-height: 78px;
+  box-sizing: border-box;
   border-top: 1.5px dashed var(--riso-dash-strong);
   cursor: pointer;
 }
@@ -9310,8 +9480,15 @@ button.riso-table-group-head:disabled {
   background: var(--riso-canvas);
 }
 
-.riso-row.checked {
+/* A checked row fades, except "To inventory": that's the thing to press. */
+.riso-row.checked > :not(.riso-row-slot) {
   opacity: 0.5;
+}
+
+button.riso-row-check {
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .riso-row-check {
@@ -9346,6 +9523,24 @@ button.riso-table-group-head:disabled {
   font-family: var(--riso-font-display);
   font-weight: 700;
   font-size: 15.5px;
+  line-height: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The flyer product's brand, when it has one: a small subtitle under the
+   name. The line is there (empty) on every row. */
+.riso-row-brand {
+  min-height: 16px;
+  font-family: var(--riso-font-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--riso-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .riso-row-name.struck {
@@ -9353,10 +9548,54 @@ button.riso-table-group-head:disabled {
 }
 
 .riso-row-sub {
+  min-height: 14px;
   font-family: var(--riso-font-mono);
   font-size: 10px;
+  line-height: 14px;
   letter-spacing: 0.06em;
   color: var(--riso-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The tag column: the sale tag, the store tag, or "To inventory" on a
+   checked row. Always the same width, so the amounts line up too. */
+.riso-row-slot {
+  flex: none;
+  width: 172px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.riso-row-slot > * {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.riso-row-slot .riso-row-deal-store {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-row-toinv {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-row-toinv:hover {
+  background: var(--riso-ink);
 }
 
 .riso-row-sale {
@@ -9532,6 +9771,8 @@ button.riso-deal-detail-other:focus-visible {
   font-weight: 500;
   font-size: 12px;
   white-space: nowrap;
+  width: 96px;
+  box-sizing: border-box;
   min-width: 64px;
   text-align: right;
   display: flex;
@@ -9790,13 +10031,8 @@ button.riso-row-qty:focus-visible {
    then a horizontally scrolling row of 40px pills. The pill row is the one
    place the tabs scroll, so it carries vertical padding for the active
    pill's 3px shadow - a scroll container clips on both axes. */
-.app-header-phone-tools {
-  display: none;
-}
-
-/* The account menu: the avatar button and what opens under it. Phones always
-   use it; a computer does too when the name, Help and Log out don't fit on
-   the header's one row (.is-compact, set by useHeaderCollapse). */
+/* The account menu: the avatar button and what opens under it (the name, Help
+   and Log out), on a computer and on a phone. */
 .app-header-avatar {
   position: relative;
 }
@@ -9840,11 +10076,8 @@ button.riso-row-qty:focus-visible {
   white-space: nowrap;
 }
 
-.app-header.is-compact .app-header-account {
-  display: none;
-}
-
-.app-header.is-compact .app-header-phone-tools {
+/* FR | EN and the avatar, at the right of the header on a computer too. */
+.app-header-phone-tools {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -9867,8 +10100,45 @@ button.riso-row-qty:focus-visible {
    longer: logo + 7 tabs + FR | EN + the avatar need about 1150px at full
    size, so between 1024 and 1280 the logo, gaps and tab padding give up to
    ~150px as the window narrows (--squeeze is how many px short of full size
-   the window is, 0 to 141). The name, Help and Log out move into the
-   avatar menu when they don't fit (useHeaderCollapse). */
+   the window is, 0 to 141). */
+
+/* When the header still wraps (a wide font), it tightens a step at a time: a
+   smaller logo, tabs and gaps (useHeaderTightness, .is-tight then .is-tighter). */
+@media (min-width: 1024px) {
+  .app-header.is-tight {
+    gap: 10px;
+  }
+
+  .app-header.is-tight .wordmark {
+    font-size: 22px;
+  }
+
+  .app-header.is-tight .tabs {
+    gap: 0;
+  }
+
+  .app-header.is-tight .tab {
+    padding: 0 7px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-header.is-tighter {
+    gap: 8px;
+  }
+
+  .app-header.is-tighter .wordmark {
+    font-size: 20px;
+  }
+
+  .app-header.is-tighter .tab {
+    padding: 0 5px;
+    font-size: 12.5px;
+    letter-spacing: -0.01em;
+  }
+}
+
 @media (min-width: 1024px) and (max-width: 1279px) {
   .app-header {
     --squeeze: clamp(0px, calc(1165px - 100vw), 141px);
@@ -9913,10 +10183,6 @@ button.riso-row-qty:focus-visible {
   .wordmark span {
     padding: 0 6px;
     border-radius: 5px;
-  }
-
-  .app-header-account {
-    display: none;
   }
 
   .app-header-phone-tools {
@@ -10188,13 +10454,8 @@ button.riso-row-qty:focus-visible {
     position: static;
   }
 
-  .riso-row {
-    flex-wrap: wrap;
-  }
-
-  .riso-row-qty {
-    text-align: left;
-    align-items: flex-start;
+  .riso-row-slot {
+    width: 140px;
   }
 }
 
@@ -10621,10 +10882,21 @@ button.riso-row-qty:focus-visible {
   }
 
   .riso-row {
-    min-height: 52px;
+    min-height: 62px;
     gap: 10px;
     padding: 8px 14px;
     flex-wrap: nowrap;
+  }
+
+  /* The tag column shrinks to its tag on a phone, and an item's amount sits
+     in a column of its own width. */
+  .riso-row-slot {
+    width: auto;
+    max-width: 118px;
+  }
+
+  .riso-row-qty {
+    width: auto;
   }
 
   .riso-row-check {
@@ -11018,6 +11290,21 @@ button.riso-row-qty:focus-visible {
 
 /* ---------- Inventory, phone (Riso Mobile.dc.html) ---------- */
 @media (max-width: 767px) {
+  /* One continuous page of shelves; the chips stay pinned under the app
+     header and jump to a shelf. */
+  .riso-inv-shelf-pin {
+    position: sticky;
+    top: var(--inv-sticky-top, 0px);
+    z-index: 40;
+    margin: -6px -18px 0;
+    padding: 6px 18px 8px;
+    background: var(--riso-canvas);
+  }
+
+  .inv-shelves [data-section-id] {
+    scroll-margin-top: calc(var(--inv-sticky-top, 0px) + 66px);
+  }
+
   .riso-inv-shelf-switch {
     display: flex;
     border: 2px solid var(--riso-ink);
@@ -14359,6 +14646,20 @@ body.no-select {
   text-overflow: ellipsis;
 }
 
+.riso-ing-variant-brand,
+.riso-deal-detail-brand {
+  font-family: var(--riso-font-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--riso-soft);
+}
+
+.riso-deal-detail-brand {
+  display: block;
+  margin-top: -2px;
+}
+
 .riso-ing-variant-fr {
   font: 500 11px var(--riso-font-display);
   color: var(--riso-muted);
@@ -15489,7 +15790,6 @@ body.no-select {
 }
 
 /* The header's Help button, while the Help page is open. */
-.app-header-account .btn.subtle[aria-current="page"],
 .app-header-avatar-menu .btn.subtle[aria-current="page"] {
   background: var(--riso-ink);
   color: var(--riso-canvas);

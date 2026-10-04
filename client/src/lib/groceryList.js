@@ -337,6 +337,8 @@ export function buildGroceryList(
         : SPICE_WORDS.includes(resolvedCore),
       isManual: true,
       manualId: extra.id,
+      // The flyer deal it was added from, if it was: tapping the row opens it.
+      dealId: extra.dealId || null,
     };
   });
 

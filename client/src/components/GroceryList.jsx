@@ -30,7 +30,7 @@ import { staleOverrideKeys } from "../lib/groceryDedupe.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { parseDateKey, toDateKey } from "../lib/dates.js";
-import { dealSavings } from "../lib/flyerIngredients.js";
+import { brandOf, dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
 import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
@@ -207,21 +207,47 @@ function DealTag({ deal, onOpen }) {
   );
 }
 
-function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
+// The "To inventory" button on a checked row: opens the Inventory
+// confirmation for just this item.
+function ToInventoryButton({ item, onClick }) {
+  return (
+    <button
+      type="button"
+      className="riso-row-toinv"
+      aria-label={t("grocery.toInventoryAria", { name: item.name })}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+    >
+      {t("grocery.toInventory")}
+    </button>
+  );
+}
+
+// Every row is the same size: the name takes one line (long ones end in an
+// ellipsis), the brand line and the tag slot on the right are always there,
+// empty or not, so rows line up whether or not an item has a brand or a sale.
+// An item added from a flyer deal opens that deal when tapped (its check
+// circle still checks it off); every other row checks off when tapped.
+function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onToInventory, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
+  const brand = brandOf(deal || flyerDeal);
+  const label = item.name + (item.varieties.length > 0 ? ` (${item.varieties.join(", ")})` : "");
+  const activate = flyerDeal ? () => onOpenDeal(flyerDeal) : onToggle;
   return (
     <div
       ref={rowRef}
       className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}`}
       role="button"
       tabIndex={0}
-      aria-label={t("grocery.checkOff", { name: item.name })}
-      aria-pressed={checked}
-      onClick={onToggle}
+      aria-label={flyerDeal ? t("grocery.openDeal", { name: item.name }) : t("grocery.checkOff", { name: item.name })}
+      aria-pressed={flyerDeal ? undefined : checked}
+      onClick={activate}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onToggle();
+          activate();
         }
       }}
       {...dragProps}
@@ -231,21 +257,41 @@ function GroceryRow({ item, checked, onToggle, deal, onOpenDeal, store, showStor
           ⠿
         </span>
       )}
-      <span className={`riso-row-check${checked ? " on" : ""}`}>{checked ? "✓" : ""}</span>
-      <span className="riso-row-main">
-        <span className="riso-row-namerow">
-          <span className={`riso-row-name${checked ? " struck" : ""}`}>
-            {item.name}
-            {item.varieties.length > 0 && ` (${item.varieties.join(", ")})`}
-          </span>
-        </span>
-        {sub && <span className="riso-row-sub">{sub}</span>}
-      </span>
-      {deal ? (
-        <DealTag deal={deal} onOpen={onOpenDeal} />
+      {flyerDeal ? (
+        <button
+          type="button"
+          className={`riso-row-check${checked ? " on" : ""}`}
+          role="checkbox"
+          aria-checked={checked}
+          aria-label={t("grocery.checkOff", { name: item.name })}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+        >
+          {checked ? "✓" : ""}
+        </button>
       ) : (
-        showStore && <span className="riso-row-store static">{storeLabel(store)}</span>
+        <span className={`riso-row-check${checked ? " on" : ""}`}>{checked ? "✓" : ""}</span>
       )}
+      <span className="riso-row-main">
+        <span className={`riso-row-name${checked ? " struck" : ""}`} title={label}>
+          {label}
+        </span>
+        <span className="riso-row-brand" title={brand ? t("grocery.brand", { brand }) : undefined}>
+          {brand}
+        </span>
+        <span className="riso-row-sub">{sub}</span>
+      </span>
+      <span className="riso-row-slot">
+        {checked ? (
+          <ToInventoryButton item={item} onClick={onToInventory} />
+        ) : deal ? (
+          <DealTag deal={deal} onOpen={() => onOpenDeal(deal)} />
+        ) : (
+          showStore && <span className="riso-row-store static">{storeLabel(store)}</span>
+        )}
+      </span>
       <QuantityCell item={item} onSave={onSetQuantity} />
       <button
         type="button"
@@ -398,7 +444,7 @@ export function GroceryList({
   customStaples,
   excludedStaples,
   stapleCategories,
-  onAddPantryItem,
+  onRequestInventoryAdd,
 }) {
   // Deals and stores decide which store each item sits in, so the list
   // waits for both (see `ready` below) - drawing it before they arrived
@@ -440,8 +486,8 @@ export function GroceryList({
   // between views never re-fetches a core it already has.
   const [categoryCache, setCategoryCache] = useState({});
   const [aisleOrder, setAisleOrder] = useState([]);
-  // True while "Done shopping" is sending items to Inventory, so a double
-  // click can't add the same items twice.
+  // True while a confirmation sheet for grocery items is open or sending, so
+  // a double click can't open two or add the same items twice.
   const doneShopping = useRef(false);
 
   useEffect(() => {
@@ -634,6 +680,13 @@ export function GroceryList({
     return map;
   }, [itemNamesKey, deals]);
   const bestDeal = (item) => bestDealByName.get(item.name) ?? null;
+  // The flyer deal an item was added from, when it was added from one and the
+  // deal is still around (else its best match by name): tapping the row opens
+  // it. An item added by hand, or from a recipe, has none.
+  const flyerDealFor = (item) => {
+    if (!item.dealId) return null;
+    return allDeals.find((d) => d.id === item.dealId) || bestDeal(item);
+  };
 
   // The stores the user actually shops at, in the order they first appear in
   // the flyer deals — there's no saved "my stores" list in the
@@ -795,39 +848,33 @@ export function GroceryList({
     }
   }
 
-  // Adds one item to Inventory; false when it didn't go.
-  async function addToPantry(item) {
-    if (!onAddPantryItem) return false;
-    try {
-      // Your own amount wins ("2 packs" -> 2 packs), else the recipe amount.
-      const own = item.customQuantity?.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s*(.*)$/);
-      await onAddPantryItem({
-        name: item.name,
-        quantity: own ? parseQuantityInput(own[1]) : item.customQuantity ? null : item.parts?.[0]?.quantity ?? null,
-        unit: own ? own[2].trim() || null : item.customQuantity ? null : item.parts?.[0]?.unit ?? null,
-      });
-      return true;
-    } catch {
-      return false;
-    }
+  // What goes to the confirmation sheet for one grocery item: your own amount
+  // wins ("2 packs" -> 2 packs), else the recipe amount.
+  function inventoryDraft(item) {
+    const own = item.customQuantity?.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s*(.*)$/);
+    return {
+      ref: item.key,
+      name: item.name,
+      quantity: own ? parseQuantityInput(own[1]) : item.customQuantity ? null : item.parts?.[0]?.quantity ?? null,
+      unit: own ? own[2].trim() || null : item.customQuantity ? null : item.parts?.[0]?.unit ?? null,
+    };
   }
 
-  // Checking something off is exactly the moment you know you bought it, so
-  // "Done shopping" is when every checked item lands in Inventory (with a
-  // USDA use-by date, via the same suggest logic the pantry-add endpoint
-  // already runs) and leaves the list: what was bought is remembered, so a
-  // meal added later that needs more shows only the extra, unchecked. A
-  // checked hand-added item is just deleted. Store mode's button and the
-  // button on this page both come here.
-  async function handleDoneShopping() {
-    if (doneShopping.current) return;
+  // Everything that sends grocery items to Inventory comes here ("Done
+  // shopping" on this page and in Store mode, and a row's "To inventory"):
+  // it opens the confirmation sheet, and only what's confirmed goes in (with
+  // a USDA use-by date, as suggested in the sheet) and leaves the list. What
+  // was bought is remembered, so a meal added later that needs more shows only
+  // the extra, unchecked. A hand-added item that goes in is just deleted.
+  // Cancelling leaves the list exactly as it was. Resolves true when something
+  // went in.
+  async function sendToInventory(list) {
+    if (doneShopping.current || list.length === 0 || !onRequestInventoryAdd) return false;
     doneShopping.current = true;
     try {
-      const sent = [];
-      for (const item of shoppingItems.filter((i) => checked[i.key])) {
-        if (await addToPantry(item)) sent.push(item);
-      }
-      if (sent.length === 0) return;
+      const added = await onRequestInventoryAdd(list.map(inventoryDraft));
+      const sent = added?.length ? list.filter((i) => added.includes(i.key)) : [];
+      if (sent.length === 0) return false;
       const manualKeys = new Set(sent.filter((i) => i.isManual).map((i) => i.key));
       setCheckRows((prev) => {
         const next = { ...prev };
@@ -841,10 +888,13 @@ export function GroceryList({
       await api
         .markGroceryInInventory(sent.map((i) => ({ core: i.key, bought: i.isManual ? null : boughtSnapshot(i) })))
         .catch(() => {});
+      return true;
     } finally {
       doneShopping.current = false;
     }
   }
+
+  const handleDoneShopping = () => sendToInventory(shoppingItems.filter((i) => checked[i.key]));
 
   // Plain-text copy of what's still to buy, grouped like the list on screen.
   function listAsText() {
@@ -1126,7 +1176,9 @@ export function GroceryList({
                               checked={!!checked[row.item.key]}
                               onToggle={() => toggle(row.item.key)}
                               deal={row.deal}
-                              onOpenDeal={() => openDealDetail(row.deal, row.item.name)}
+                              flyerDeal={flyerDealFor(row.item)}
+                              onOpenDeal={(d) => openDealDetail(d, row.item.name)}
+                              onToInventory={() => sendToInventory([row.item])}
                               store={row.store}
                               sub={subLineFor(row)}
                               onDelete={() => removeItem(row.item)}
@@ -1158,7 +1210,9 @@ export function GroceryList({
                     checked={!!checked[row.item.key]}
                     onToggle={() => toggle(row.item.key)}
                     deal={row.deal}
-                    onOpenDeal={() => openDealDetail(row.deal, row.item.name)}
+                    flyerDeal={flyerDealFor(row.item)}
+                    onOpenDeal={(d) => openDealDetail(d, row.item.name)}
+                    onToInventory={() => sendToInventory([row.item])}
                     store={row.store}
                     showStore
                     sub={subLineFor(row)}

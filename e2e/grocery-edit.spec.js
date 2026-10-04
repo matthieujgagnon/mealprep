@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { confirmAdd } from "./inventory-confirm.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -187,6 +188,7 @@ test("Done shopping adds the checked items to Inventory once, takes them off the
   // Everything in the cart: the card goes dark before Done shopping.
   await expect(page.locator(".riso-grocery-cart")).toHaveClass(/done/);
   await page.getByRole("button", { name: "Done shopping · add 3 to inventory" }).click();
+  await confirmAdd(page);
   await expect(page.locator(".riso-grocery-cart-done")).toHaveText("Groceries done ✓ Everything's in your Inventory.");
   await expect(row(page, "Garlic")).toHaveCount(0);
   // Still off the list after a reload, and not added a second time.

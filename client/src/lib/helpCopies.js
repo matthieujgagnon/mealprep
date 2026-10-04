@@ -95,6 +95,7 @@ export const HELP_COPIES = {
   removedChip: { kind: "removed" },
   share: { kind: "pill", cls: "riso-grocery-share", label: "grocery.share" },
   atStore: { kind: "atStore" },
+  toInventory: { kind: "pill", cls: "riso-row-toinv", label: "grocery.toInventory" },
   doneShopping: { kind: "pill", cls: "riso-grocery-cart-btn", label: "grocery.doneShopping", vars: { count: 3 }, strong: true },
 
   // Flyers

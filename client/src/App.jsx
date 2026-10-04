@@ -28,14 +28,15 @@ import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
 import { PlannerTray } from "./components/PlannerTray.jsx";
 import { PlannerMobile } from "./components/PlannerMobile.jsx";
 import { useIsPhone } from "./hooks/useIsPhone.js";
-import { useHeaderCollapse } from "./hooks/useHeaderCollapse.js";
+import { useHeaderTightness } from "./hooks/useHeaderTightness.js";
 import { emptyUpcomingSlots, findNextEmptySlot, isCustomNote, todayIndex } from "./lib/plannerSlots.js";
 import { isBreakfastRecipe, isDessertRecipe, isPrepRecipe, isSideRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
-import { Inventory, InventoryDragPreview } from "./components/Inventory.jsx";
+import { Inventory, InventoryDragPreview, shelfOptions } from "./components/Inventory.jsx";
+import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 
 // Rendered inside <DragOverlay> — a floating copy that actually follows the
 // cursor, independent of wherever the real (now-dimmed) source element sits.
@@ -119,20 +120,25 @@ export default function App({ user, onLogout }) {
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
   const headerRef = useRef(null);
-  // On a computer the account area collapses into the avatar menu when it
-  // wouldn't fit on one row with the logo and the tabs. The key is what
-  // changes how wide the inline version is.
-  const headerCompact = useHeaderCollapse(headerRef, {
+  // On a computer the header tightens, as far as it takes, to stay on one row
+  // with the logo, the tabs, FR | EN and the avatar. The key is what changes
+  // how wide the tabs are.
+  const headerLevel = useHeaderTightness(headerRef, {
     enabled: !isPhone,
-    resetKey: `${t("app.logOut")}|${user.name || user.email}`,
+    resetKey: t("app.nav.planner"),
   });
   useEffect(() => {
     if (!avatarMenuOpen) return undefined;
     const close = (event) => {
       if (!avatarRef.current?.contains(event.target)) setAvatarMenuOpen(false);
     };
+    const onKey = (event) => event.key === "Escape" && setAvatarMenuOpen(false);
     document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [avatarMenuOpen]);
   // The phone nav is a horizontally scrolling pill row - keep the active pill
   // on screen when the tab changes from elsewhere (e.g. Home's "Open list →").
@@ -249,7 +255,7 @@ export default function App({ user, onLogout }) {
   // Adds only what isn't already on the list (from a planned recipe
   // or added earlier), so tapping "+ Add all" twice, or adding an item a
   // planned recipe already needs, never makes a duplicate row.
-  async function addToGroceryList(names) {
+  async function addToGroceryList(names, { dealId = null } = {}) {
     const seen = new Set(groceryCores);
     const removedRows = removedRecipeRows(upcomingEntries, groceryOverrides);
     const created = [];
@@ -263,7 +269,7 @@ export default function App({ user, onLogout }) {
         await setGroceryOverride(removedRows.get(c), { removed: false });
         continue;
       }
-      created.push(await api.addGroceryExtra({ name, quantity: null, unit: null }));
+      created.push(await api.addGroceryExtra({ name, quantity: null, unit: null, ...(dealId && { dealId }) }));
     }
     if (created.length > 0) setPlannerExtraItems((prev) => [...prev, ...created]);
   }
@@ -338,9 +344,8 @@ export default function App({ user, onLogout }) {
   }
 
   // What the account area offers besides the language switch and the name.
-  // Shown inline on a wide computer, and in the avatar menu on a phone or
-  // when the inline version wouldn't fit. A new entry (the Admin link)
-  // shows up in both places by being added here.
+  // Shown in the avatar menu. A new entry (the Admin link) shows up there by
+  // being added here.
   const accountActions = [
     { id: "help", label: t("app.help"), current: tab === "help", onSelect: () => goToTab("help") },
     { id: "logout", label: t("app.logOut"), onSelect: handleLogout },
@@ -398,6 +403,43 @@ export default function App({ user, onLogout }) {
     setPantryInventory((prev) => [...prev, created]);
   }
 
+  // The only way anything but Inventory's own add form reaches Inventory: it
+  // opens the confirmation sheet and resolves with the `ref`s of the rows that
+  // were added (an empty list when nothing was), or null if it was cancelled
+  // before anything was. Nothing is added until the sheet is confirmed.
+  const [inventoryAsk, setInventoryAsk] = useState(null);
+  function requestInventoryAdd(drafts, { title, intro } = {}) {
+    return new Promise((resolve) => {
+      setInventoryAsk({ drafts, title, intro, added: [], resolve });
+    });
+  }
+
+  async function confirmInventoryAdd(rows) {
+    const ask = inventoryAsk;
+    const failed = [];
+    for (const { ref, ...item } of rows) {
+      try {
+        await handleAddPantryItem(item);
+        ask.added.push(ref);
+      } catch {
+        failed.push(ref);
+      }
+    }
+    if (failed.length > 0) {
+      // Keep what went in out of the sheet, so a retry doesn't add it twice.
+      const error = new Error(t("inventoryConfirm.failed"));
+      error.added = rows.map((r) => r.ref).filter((r) => !failed.includes(r));
+      throw error;
+    }
+    ask.resolve(ask.added);
+    setInventoryAsk(null);
+  }
+
+  function cancelInventoryAdd() {
+    inventoryAsk.resolve(inventoryAsk.added.length > 0 ? inventoryAsk.added : null);
+    setInventoryAsk(null);
+  }
+
   async function handleUpdatePantryItem(id, payload) {
     const updated = await api.updatePantryInventoryItem(id, payload);
     setPantryInventory((prev) => prev.map((i) => (i.id === id ? updated : i)));
@@ -415,12 +457,6 @@ export default function App({ user, onLogout }) {
     const idSet = new Set(ids);
     setPantryInventory((prev) => prev.filter((i) => !idSet.has(i.id)));
     await api.consumePantryInventoryItems(ids, action);
-  }
-
-  async function handleAddPantryLocation(name) {
-    const created = await api.addPantryLocation(name);
-    setPantryLocations((prev) => [...prev, created]);
-    return created;
   }
 
   // Items still in a deleted section move back to Pantry server-side (see
@@ -765,12 +801,12 @@ export default function App({ user, onLogout }) {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
       <div className={`app${isDragActive ? " dnd-active" : ""}`}>
-        <header ref={headerRef} className={`app-header riso-theme${headerCompact ? " is-compact" : ""}`}>
+        <header ref={headerRef} className={`app-header riso-theme${headerLevel >= 1 ? " is-tight" : ""}${headerLevel >= 2 ? " is-tighter" : ""}`}>
           <h1 className="wordmark">
             matt mo <span>cookbook</span>
           </h1>
-          {/* On a phone, or when the account area doesn't fit on a computer:
-              FR | EN right in the header, next to the avatar. */}
+          {/* FR | EN right in the header, next to the avatar. The name, Help and
+              Log out are in the avatar's menu, on a phone and on a computer. */}
           <div className="app-header-phone-tools">
             <LanguageSwitch />
             <div className="app-header-avatar" ref={avatarRef}>
@@ -848,21 +884,6 @@ export default function App({ user, onLogout }) {
               {t("app.nav.inventory")}
             </button>
           </nav>
-          <div className="app-header-account">
-            <LanguageSwitch />
-            <span className="app-header-account-name">{user.name || user.email}</span>
-            {accountActions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                className="btn subtle btn-sm"
-                aria-current={action.current ? "page" : undefined}
-                onClick={action.onSelect}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
         </header>
 
         {loadError && (
@@ -875,6 +896,17 @@ export default function App({ user, onLogout }) {
         )}
 
         {tab === "help" && <Help />}
+
+        {inventoryAsk && (
+          <InventoryConfirmSheet
+            drafts={inventoryAsk.drafts}
+            sections={shelfOptions(pantryLocations, inventoryLayout)}
+            title={inventoryAsk.title}
+            intro={inventoryAsk.intro}
+            onConfirm={confirmInventoryAdd}
+            onCancel={cancelInventoryAdd}
+          />
+        )}
 
         {tab === "flyers" && (
           <FlyerDeals
@@ -908,6 +940,7 @@ export default function App({ user, onLogout }) {
             user={user}
             items={pantryInventory}
             onAdd={handleAddPantryItem}
+            onRequestInventoryAdd={requestInventoryAdd}
             onUpdate={handleUpdatePantryItem}
             onDelete={handleDeletePantryItem}
             onConsume={handleConsumePantryItems}
@@ -924,7 +957,6 @@ export default function App({ user, onLogout }) {
             locations={pantryLocations}
             layout={inventoryLayout}
             onSaveLayout={handleSaveInventoryLayout}
-            onAddLocation={handleAddPantryLocation}
             onRenameLocation={handleRenamePantryLocation}
             onDeleteLocation={handleDeletePantryLocation}
           />
@@ -1058,7 +1090,7 @@ export default function App({ user, onLogout }) {
             customStaples={customStaples}
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
-            onAddPantryItem={handleAddPantryItem}
+            onRequestInventoryAdd={requestInventoryAdd}
           />
         )}
 
@@ -1098,7 +1130,7 @@ export default function App({ user, onLogout }) {
               setWeekStart(currentWeekStart());
               setTab("planner");
             }}
-            onAddPantryItem={handleAddPantryItem}
+            onRequestInventoryAdd={requestInventoryAdd}
             onDeletePantryItem={handleDeletePantryItem}
             onAddToGroceryList={addToGroceryList}
             onConsumePantryItems={handleConsumePantryItems}

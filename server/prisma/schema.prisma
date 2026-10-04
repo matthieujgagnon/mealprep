@@ -227,6 +227,7 @@ model GroceryExtraItem {
   name      String
   quantity  Float?
   unit      String?
+  dealId    String? // the flyer deal it was added from (Flyers -> add to list); tapping the row opens that deal. Null for an item typed by hand or added from a recipe.
   createdAt DateTime @default(now())
 
   @@index([userId])

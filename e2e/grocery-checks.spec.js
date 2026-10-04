@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { confirmAdd } from "./inventory-confirm.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -60,6 +61,7 @@ test("Done shopping takes the bought items off the list; a later meal shows only
   // Only the chicken is checked: it goes, the rice stays.
   await row(page, "Chicken").click();
   await doneButton(page, 1).click();
+  await confirmAdd(page);
   await expect(row(page, "Chicken")).toHaveCount(0);
   await expect(row(page, "Rice")).toBeVisible();
   await expect(row(page, "Rice")).toHaveAttribute("aria-pressed", "false");
@@ -76,6 +78,7 @@ test("Done shopping takes the bought items off the list; a later meal shows only
   await row(page, "Chicken").click();
   await expect(row(page, "Chicken")).toContainText("200 g");
   await doneButton(page, 1).click();
+  await confirmAdd(page);
   await expect(row(page, "Chicken")).toHaveCount(0);
   await page.reload();
   await openGrocery(page);
@@ -90,6 +93,7 @@ test("everything bought empties the list and says so, also on Home", async ({ pa
   await row(page, "Chicken").click();
   await row(page, "Rice").click();
   await doneButton(page, 2).click();
+  await confirmAdd(page);
   await expect(page.locator(".riso-grocery-cart-done")).toBeVisible();
   await expect(page.locator(".riso-empty")).toHaveText("Groceries done ✓ Everything's in your Inventory.");
   await page.getByRole("button", { name: "Home", exact: true }).click();
@@ -132,6 +136,7 @@ test("unchecking clears the check, and a row that was bought keeps what was boug
   // extra leaves the bought 500 g bought.
   await row(page, "Chicken").click();
   await doneButton(page, 1).click();
+  await confirmAdd(page);
   await place(page, soup.id, 2);
   await page.reload();
   await openGrocery(page);
@@ -150,6 +155,7 @@ test("a checked hand-added item leaves the list when Done shopping is pressed", 
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await row(page, "paper towels").click();
   await doneButton(page, 1).click();
+  await confirmAdd(page);
   await expect(row(page, "paper towels")).toHaveCount(0);
   await expect(row(page, "Chicken")).toBeVisible();
   expect(await (await page.request.get("/api/grocery-extra-items")).json()).toEqual([]);
@@ -185,6 +191,7 @@ test("a bought item is forgotten once no planned meal needs it", async ({ page }
   await setup(page);
   await row(page, "Chicken").click();
   await doneButton(page, 1).click();
+  await confirmAdd(page);
   await expect(row(page, "Chicken")).toHaveCount(0);
   expect((await (await page.request.get("/api/grocery-checked")).json()).map((c) => c.core)).toEqual(["chicken"]);
 
@@ -205,6 +212,7 @@ test.describe("on a phone", () => {
     const mode = page.getByRole("dialog", { name: "Store mode" });
     await modeRow(page, "Chicken").click();
     await mode.getByRole("button", { name: "Done · add 1 to inventory" }).click();
+    await confirmAdd(page);
     await expect(mode).toHaveCount(0);
     await expect(row(page, "Chicken")).toHaveCount(0);
 

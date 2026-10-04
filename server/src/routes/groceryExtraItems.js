@@ -13,9 +13,10 @@ groceryExtraItemsRouter.get("/", async (req, res) => {
   res.json(items);
 });
 
-// POST /api/grocery-extra-items { name, quantity?, unit? }
+// POST /api/grocery-extra-items { name, quantity?, unit?, dealId? } - dealId is
+// the flyer deal the item was added from.
 groceryExtraItemsRouter.post("/", async (req, res) => {
-  const { name, quantity, unit } = req.body;
+  const { name, quantity, unit, dealId } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json(fail(req, "required", { fields: "name" }));
   }
@@ -42,6 +43,7 @@ groceryExtraItemsRouter.post("/", async (req, res) => {
       name: name.trim(),
       quantity: typeof quantity === "number" ? quantity : null,
       unit: unit || null,
+      dealId: typeof dealId === "string" && dealId ? dealId : null,
     },
   });
   res.status(201).json(item);

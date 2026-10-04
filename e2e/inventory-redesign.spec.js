@@ -127,12 +127,12 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  // A shelf is addable even with zero items in the whole inventory; it
-  // opens ready to rename.
-  await page.getByRole("button", { name: "+ Add shelf" }).click();
-  await expect(page.getByLabel("Section name")).toHaveValue("New shelf");
-  await page.getByLabel("Section name").fill("Garage Freezer");
-  await page.keyboard.press("Enter");
+  // There's no "Add shelf" button any more; a shelf made earlier still works
+  // (made here through the API).
+  await expect(page.getByRole("button", { name: /Add shelf/ })).toHaveCount(0);
+  await page.request.post("/api/pantry-locations", { data: { name: "Garage Freezer" } });
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toBeVisible();
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" }).locator(".inv-shelf-empty")).toHaveText("Drop items here");
 
@@ -218,11 +218,8 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.keyboard.press("ArrowLeft");
   await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section"]);
 
-  // A new shelf renames too.
-  await page.getByRole("button", { name: "+ Add shelf" }).click();
-  await page.getByLabel("Section name").fill("Garage freezer");
-  await page.keyboard.press("Enter");
-  await expect(page.locator(".inv-shelf", { hasText: "Garage freezer" })).toBeVisible();
+  // A shelf made earlier is added after the others.
+  await page.request.post("/api/pantry-locations", { data: { name: "Garage freezer" } });
 
   // Everything survives a reload, and the new names show in the add form.
   const fridgeWidth = (await fridge.boundingBox()).width;
@@ -307,7 +304,7 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  await expect(page.getByText("6 items · 1 to use soon · 1 expired")).toBeVisible();
+  await expect(page.locator(".riso-inv-summary")).toHaveText("6 items1 to use soon1 expired"); // three parts, the dots between them are drawn by CSS
   const card = (name) => page.locator(".inv-card").filter({ hasText: name });
   // Expired: pink-tinted card and the quiet tag - no line.
   await expect(card("Bbq sauce")).toHaveClass(/expired/);

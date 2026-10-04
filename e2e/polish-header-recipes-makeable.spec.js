@@ -48,19 +48,36 @@ test.describe("header", () => {
     }
   });
 
-  test("a wide English window shows the name, Help and Log out inline; French moves them into the menu", async ({ page }) => {
+  test("stays on one row even with a much wider font than the app's own", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await signUp(page, "Matthieu Gagnon");
+    // The app's web fonts load from the network and differ between machines;
+    // a wide system font stands in for the worst of them.
+    await page.addStyleTag({ content: '.app-header *, .wordmark { font-family: "DejaVu Sans", Verdana, sans-serif !important; }' });
+    for (const lang of ["English", "Français"]) {
+      await langSwitch(page).getByRole("button", { name: lang }).click();
+      for (const width of [1024, 1100, 1200, 1280, 1440]) {
+        await page.setViewportSize({ width, height: 800 });
+        await oneRow(page);
+      }
+    }
+  });
+
+  test("the name, Help and Log out are always in the avatar menu, in both languages; FR | EN stays out", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });
     await signUp(page, "Matt");
-    await expect(page.getByRole("button", { name: "Help", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Log out", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Account" })).toBeHidden();
+    await expect(langSwitch(page)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Help", exact: true })).toHaveCount(0); // not inline, even with room
+    await expect(page.getByRole("button", { name: "Log out", exact: true })).toHaveCount(0);
 
-    await langSwitch(page).getByRole("button", { name: "Français" }).click();
-    await expect(page.getByRole("button", { name: "Se déconnecter", exact: true })).toBeHidden();
-    await expect(langSwitch(page)).toBeVisible(); // the language switch stays in the open
-    await page.getByRole("button", { name: "Compte" }).click();
+    await page.getByRole("button", { name: "Account" }).click();
     const menu = page.locator(".app-header-avatar-menu");
     await expect(menu).toContainText("Matt");
+    await expect(menu.getByRole("button", { name: "Help", exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await langSwitch(page).getByRole("button", { name: "Français" }).click();
+    await page.getByRole("button", { name: "Compte" }).click();
     await expect(menu.getByRole("button", { name: "Aide", exact: true })).toBeVisible();
     await (await accountButton(page, "Se déconnecter")).click();
     await expect(page.getByRole("button", { name: "S'inscrire" })).toBeVisible();

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { confirmAdd } from "./inventory-confirm.js";
 
 // Cook mode (design handoff v3): one step at a time with step segments,
 // per-step timers that keep running across step changes, tap-to-check
@@ -150,6 +151,7 @@ test("finishing shows Dinner's ready; leftovers go to Inventory and the Planner"
   await expect(page.locator(".cm-leftovers-line")).toContainText('show up as "leftover" in the Planner');
 
   await page.getByRole("button", { name: "Save leftovers" }).click();
+  await confirmAdd(page); // nothing goes into Inventory until it is confirmed
   await expect(page.getByRole("button", { name: "✓ Saved to Fridge" })).toBeDisabled();
 
   await page.getByRole("button", { name: "Exit cook mode" }).click();

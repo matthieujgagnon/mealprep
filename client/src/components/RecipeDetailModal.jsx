@@ -226,7 +226,7 @@ function IngredientRow({
   isOpen,
   onToggle,
   onAddOneToGroceryList,
-  onAddPantryItem,
+  onRequestInventoryAdd,
   onRemoveFromInventory,
   onNavigate,
   pantryInventory,
@@ -288,7 +288,7 @@ function IngredientRow({
                 >
                   {added ? t("recipeCard.onList") : adding ? t("recipeCard.adding") : t("recipeCard.addOne")}
                 </button>
-                <button type="button" className="riso-rc-ing-action" onClick={() => onAddPantryItem({ name: ing.name })}>
+                <button type="button" className="riso-rc-ing-action" onClick={() => onRequestInventoryAdd([{ ref: ing.name, name: ing.name }], { title: t("inventoryConfirm.haveItTitle") })}>
                   {t("recipeCard.haveIt")}
                 </button>
               </>
@@ -322,7 +322,7 @@ export function RecipeDetailModal({
   onEdit,
   onDelete,
   onPlanAround,
-  onAddPantryItem,
+  onRequestInventoryAdd,
   onDeletePantryItem,
   onAddToGroceryList,
   onConsumePantryItems,
@@ -715,7 +715,7 @@ export function RecipeDetailModal({
                           isOpen={openIngredientKey === key}
                           onToggle={() => setOpenIngredientKey((prev) => (prev === key ? null : key))}
                           onAddOneToGroceryList={handleAddOneToGroceryList}
-                          onAddPantryItem={onAddPantryItem}
+                          onRequestInventoryAdd={onRequestInventoryAdd}
                           onRemoveFromInventory={handleRemoveFromInventory}
                           onNavigate={onNavigate}
                           pantryInventory={pantryInventory}
@@ -835,7 +835,7 @@ export function RecipeDetailModal({
           recipe={recipe}
           servings={servings}
           onExit={() => setCookModeOn(false)}
-          onAddPantryItem={onAddPantryItem}
+          onRequestInventoryAdd={onRequestInventoryAdd}
           pantryInventory={pantryInventory}
           onConsumePantryItems={onConsumePantryItems}
           onPlanLeftovers={onPlanLeftovers}
