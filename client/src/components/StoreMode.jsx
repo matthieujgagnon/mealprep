@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useJustChecked } from "../hooks/useJustChecked.js";
+import { RecipesLine } from "./RecipesLine.jsx";
 import { amountLabel } from "../lib/groceryChecks.js";
 import { splitBilingual } from "../lib/bilingual.js";
 import { getLang, t } from "../i18n/index.js";
@@ -41,14 +42,12 @@ function writeStored(key, value) {
   }
 }
 
-// The muted line under a row's name: the flyer product it's on sale as
-// (in the app's language), else the recipes it's for.
+// The muted line under a row's name: the flyer product it's on sale as, in the
+// app's language. (The recipes an item is for are the line under that.)
 function detailLine(item, deal) {
-  if (deal?.item) {
-    const { en, fr } = splitBilingual(deal.item);
-    return ((getLang() === "fr" && fr) || en).split(/[,(]/)[0].trim();
-  }
-  return (item.usedIn || []).join(" · ");
+  if (!deal?.item) return "";
+  const { en, fr } = splitBilingual(deal.item);
+  return ((getLang() === "fr" && fr) || en).split(/[,(]/)[0].trim();
 }
 
 export function StoreMode({
@@ -183,6 +182,7 @@ export function StoreMode({
                   <span className="store-mode-info">
                     <span className="store-mode-name">{item.name.charAt(0).toUpperCase() + item.name.slice(1)}</span>
                     {detail && <span className="store-mode-brand">{detail}</span>}
+                    <RecipesLine usedIn={item.usedIn} className="store-mode-recipes" />
                   </span>
                   {(qty || deal?.price) && (
                     <span className="store-mode-right">

@@ -1,4 +1,5 @@
 import { useJustChecked } from "../hooks/useJustChecked.js";
+import { RecipesLine } from "./RecipesLine.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -283,7 +284,8 @@ function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onTo
         <span className="riso-row-brand" title={brand ? t("grocery.brand", { brand }) : undefined}>
           {brand}
         </span>
-        <span className="riso-row-sub">{sub}</span>
+        <RecipesLine usedIn={item.usedIn} className="riso-row-recipes" />
+        {sub !== null && <span className="riso-row-sub">{sub}</span>}
       </span>
       <span className="riso-row-slot">
         {checked ? (
@@ -1049,14 +1051,12 @@ export function GroceryList({
       });
   }
 
+  // The mono line under a row, the aisle. (The recipes an item is for have
+  // their own line, see RecipesLine.) In the aisle view the group heading is
+  // already the aisle, so there is no line at all.
   function subLineFor(row) {
-    const category = row.category ? aisleLabel(row.category) : "";
-    if (view === "aisle") return row.item.usedIn.join(" · ").toUpperCase();
-    if (view === "store") {
-      const first = row.item.usedIn[0] || "";
-      return category ? `${category}${first ? " · " + first : ""}`.toUpperCase() : first.toUpperCase();
-    }
-    return category.toUpperCase();
+    if (view === "aisle") return null;
+    return (row.category ? aisleLabel(row.category) : "").toUpperCase();
   }
 
   const groups = buildGroups();

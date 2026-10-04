@@ -9848,6 +9848,34 @@ button.riso-protein-bar {
   text-decoration: line-through;
 }
 
+/* The recipes an item is for ("Tacos, Chili +1"). Its height is always reserved,
+   like the brand line's, so a row with no recipes (an item you added yourself)
+   is the same size as the rest. The names end in an ellipsis; the "+1" stays. */
+.riso-row-recipes {
+  min-height: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  font-family: var(--riso-font-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--riso-soft);
+}
+
+.riso-row-recipes-names {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-row-recipes-more {
+  flex: none;
+  white-space: nowrap;
+}
+
 .riso-row-sub {
   min-height: 14px;
   font-family: var(--riso-font-mono);
@@ -11498,7 +11526,7 @@ button.riso-row-qty:focus-visible {
    the amount and price stack on the right. */
 .store-mode-row {
   width: 100%;
-  height: 62px;
+  height: 64px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -11559,6 +11587,33 @@ button.riso-row-qty:focus-visible {
   color: var(--sm-muted);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The recipes this item is for, one line under the product: cut off with an
+   ellipsis, so a long list never makes a row taller. Nothing for an item you
+   added yourself. */
+.store-mode-recipes {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  font: 500 11px/1.25 var(--riso-font-body);
+  color: var(--sm-muted);
+}
+
+.store-mode-recipes:empty {
+  display: none;
+}
+
+.store-mode-recipes-names {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-mode-recipes-more {
+  flex: none;
   white-space: nowrap;
 }
 

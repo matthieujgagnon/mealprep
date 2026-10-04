@@ -25,16 +25,18 @@ function savingText(deal) {
   return s ? savingWords(s) : null;
 }
 
-// Home's "Proteins on sale": one row for every kind of protein, always. A
-// kind with a real deal shows its best buy: the store, saving and price per
-// lb (the cheapest per lb is the "Best deal", the others say how good a buy
-// they are). A kind on a flyer with nothing to compare it to shows the item
-// with "Can't tell yet"; a kind with nothing says "No deal this week".
-// Tapping a row selects that kind (tap it again, or another kind, to
-// change); a bar slides up at the bottom of the screen with how many of your
-// recipes use it and a link to them in Recipes. A selected row with a deal
-// has a "See the deal" button for its deal card, with the kind's other items
-// under "Also on sale".
+// Home's "Proteins on sale": one row for every general protein, always (chicken,
+// beef, pork, fish, seafood, turkey, lamb & veal, tofu), whatever specific cuts
+// the flyers have under it. A protein with a real deal shows its general name
+// with its best buy under it (the product, store and saving) and the price per
+// lb; the cheapest per lb is the "Best deal", the others say how good a buy
+// they are. One on a flyer with nothing to compare its price to says "Can't
+// tell yet"; one with nothing says "No deal this week". Tapping a row selects
+// that protein (tap it again, or another, to change); a bar slides up at the
+// bottom of the screen with how many of your recipes use any kind of it and a
+// link to those same recipes in Recipes. A selected row with a deal has a "See
+// the deal" button for its deal card, with the protein's other items under
+// "Also on sale".
 export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindRecipes }) {
   const [open, setOpen] = useState(null); // { deal, others }
   const [selectedId, setSelectedId] = useState(null);
@@ -119,9 +121,9 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindRecipes 
                     {protein.emoji}
                   </span>
                   <span className="riso-protein-item">
-                    <span className="riso-protein-name">{proteinName(best)}</span>
+                    <span className="riso-protein-name">{protein.label}</span>
                     <span className="riso-protein-meta">
-                      {best.store}
+                      {proteinName(best)} · {best.store}
                       {saving ? ` · ${saving}` : ""}
                       {onSale.length > 1 ? t("proteins.more", { count: onSale.length - 1 }) : ""}
                     </span>

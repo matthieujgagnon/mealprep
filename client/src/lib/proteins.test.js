@@ -109,3 +109,110 @@ describe("Home's protein rows", () => {
     expect(PROTEINS.every((p) => p.emoji)).toBe(true);
   });
 });
+
+describe("one general protein for every specific item", () => {
+  const kindOf = (item, aisle = "meat") => proteinOf(deal(item, aisle))?.id ?? null;
+
+  it("puts every kind of chicken under Chicken", () => {
+    for (const name of ["Boneless chicken breasts", "Chicken thighs", "Chicken drumsticks", "Drumsticks", "Whole chicken", "Poitrines de poulet", "Pilons de poulet", "Hauts de cuisse de poulet", "Cornish hens"]) {
+      expect(kindOf(name), name).toBe("chicken");
+    }
+  });
+
+  it("puts every kind of fish under Fish and shellfish under Seafood", () => {
+    for (const name of ["Atlantic salmon fillet", "Cod fillets", "Tilapia", "Rainbow trout", "Haddock", "Pavé de saumon", "Fresh tuna steak", "Swordfish steak"]) {
+      expect(kindOf(name, "seafood"), name).toBe("fish");
+    }
+    for (const name of ["Large shrimp", "Sea scallops", "Lobster tails", "Moules", "Snow crab legs"]) {
+      expect(kindOf(name, "seafood"), name).toBe("seafood");
+    }
+  });
+
+  it("puts ground beef, steaks and roasts under Beef; pork, turkey and lamb under their own", () => {
+    for (const name of ["Lean ground beef", "Bœuf haché maigre", "Striploin steak", "Rib eye steaks", "Beef brisket", "Eye of round roast", "Stewing beef"]) {
+      expect(kindOf(name), name).toBe("beef");
+    }
+    expect(kindOf("Pork loin chops")).toBe("pork");
+    expect(kindOf("Whole turkey")).toBe("turkey");
+    expect(kindOf("Lamb leg")).toBe("lamb-veal");
+    expect(kindOf("Veal cutlets")).toBe("lamb-veal");
+  });
+
+  it("shows each general protein once, however many specific items it has, best deal first", () => {
+    const rows = proteinRows([
+      deal("Boneless chicken breasts", "meat", { id: "a", regularPrice: 8.99, unitPrice: 4.99, unitBasis: "lb" }),
+      deal("Chicken thighs", "meat", { id: "b", regularPrice: 6.99, unitPrice: 2.49, unitBasis: "lb" }),
+      deal("Whole chicken", "meat", { id: "c", unitPrice: 2.99, unitBasis: "lb" }),
+      deal("Atlantic salmon", "seafood", { id: "d", regularPrice: 14.99, unitPrice: 9.99, unitBasis: "lb" }),
+      deal("Cod fillets", "seafood", { id: "e", regularPrice: 12.99, unitPrice: 8.99, unitBasis: "lb" }),
+    ]);
+    expect(rows.filter((r) => r.protein.id === "chicken")).toHaveLength(1);
+    expect(rows.filter((r) => r.protein.id === "fish")).toHaveLength(1);
+    expect(rows).toHaveLength(PROTEINS.length);
+    const chicken = rows.find((r) => r.protein.id === "chicken");
+    expect(chicken.best.item).toBe("Chicken thighs"); // the biggest saving
+    expect(chicken.all).toHaveLength(3); // the others are "Also on sale"
+  });
+
+  it("names the general protein in both languages", async () => {
+    const { setLang } = await import("../i18n/index.js");
+    const names = (lang) => {
+      setLang(lang);
+      return PROTEINS.map((p) => p.label);
+    };
+    try {
+      expect(names("en")).toEqual(["Chicken", "Beef", "Pork", "Fish", "Seafood", "Turkey", "Lamb & veal", "Tofu"]);
+      expect(names("fr")).toEqual(["Poulet", "Bœuf", "Porc", "Poisson", "Fruits de mer", "Dinde", "Agneau et veau", "Tofu"]);
+    } finally {
+      setLang("en");
+    }
+  });
+});
+
+describe("the recipe count covers every kind of that protein", () => {
+  const recipe = (title, ingredients = [], extra = {}) => ({ title, tags: [], ingredients: ingredients.map((name) => ({ name })), ...extra });
+  const kind = (id) => PROTEINS.find((p) => p.id === id);
+  const titles = (id, recipes) => recipesUsingProtein(recipes, kind(id)).map((r) => r.title);
+
+  it("counts a recipe that uses any cut, in English or French", () => {
+    const recipes = [
+      recipe("Thigh bake", ["bone-in chicken thighs"]),
+      recipe("BBQ legs", ["chicken drumsticks"]),
+      recipe("Poulet au beurre", ["poitrines de poulet"]),
+      recipe("Pilons rôtis", ["pilons"]),
+      recipe("Whole roast", ["whole chicken"]),
+      recipe("Rice", ["rice"]),
+    ];
+    expect(titles("chicken", recipes)).toEqual(["Thigh bake", "BBQ legs", "Poulet au beurre", "Pilons rôtis", "Whole roast"]);
+  });
+
+  it("counts fish by any fish, beef by any cut, seafood by any shellfish", () => {
+    const recipes = [
+      recipe("Baked cod", ["cod fillets"]),
+      recipe("Salmon bowl", ["salmon"]),
+      recipe("Fish tacos", ["tilapia"]),
+      recipe("Chili", ["lean ground beef"]),
+      recipe("Steak frites", ["striploin steak"]),
+      recipe("Brisket", ["beef brisket"]),
+      recipe("Paella", ["shrimp", "mussels"]),
+      recipe("Pasta", ["pasta"]),
+    ];
+    expect(titles("fish", recipes)).toEqual(["Baked cod", "Salmon bowl", "Fish tacos"]);
+    expect(titles("beef", recipes)).toEqual(["Chili", "Steak frites", "Brisket"]);
+    expect(titles("seafood", recipes)).toEqual(["Paella"]);
+  });
+
+  it("counts a recipe by its title or tags too, as Recipes' search does", () => {
+    const recipes = [recipe("Chicken soup"), recipe("Soup", [], { tags: ["poulet"] })];
+    expect(titles("chicken", recipes)).toHaveLength(2);
+  });
+
+  it("is exactly what \"See them\" shows: the same words, the same search", async () => {
+    const { matchesSearch } = await import("./recipeSearch.js");
+    const recipes = [recipe("A", ["chicken thighs"]), recipe("B", ["cod"]), recipe("C", ["beef brisket"]), recipe("D", ["rice"]), recipe("E", ["tofu", "pork belly"])];
+    for (const p of PROTEINS) {
+      const shown = recipes.filter((r) => matchesSearch(r, proteinSearchQuery(p)));
+      expect(recipesUsingProtein(recipes, p)).toEqual(shown);
+    }
+  });
+});

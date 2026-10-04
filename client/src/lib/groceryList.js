@@ -93,6 +93,15 @@ function groceryUnit(unit) {
 // list is guaranteed to already be in its canonical form.
 export const UNIT_OPTIONS = UNIT_GROUPS.flatMap((g) => g.units);
 
+// The recipes an item is for, as the small line under it: "Tacos" or "Tacos,
+// Chili"; with more than two, the first two and how many more ("Tacos, Chili
+// +1"). `all` is every one, for a tooltip. A hand-added item is for no recipe,
+// so every part is empty.
+export function recipesLine(usedIn, max = 2) {
+  const titles = [...new Set((usedIn || []).filter(Boolean))];
+  return { names: titles.slice(0, max).join(", "), more: Math.max(0, titles.length - max), all: titles.join(", ") };
+}
+
 export function capitalize(str) {
   if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1);
