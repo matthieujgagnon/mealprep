@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { formatFractionQuantity, parseQuantityInput, pickFraction, unitLabel } from "../lib/units.js";
+import { parseQuantityInput, unitLabel } from "../lib/units.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
-import { categoryLabel, daysUntil } from "../lib/pantryInventory.js";
-import { foodEmoji } from "../lib/dealEmoji.js";
-import { genericPhotoUrl } from "../lib/ingredientPhoto.js";
-import { isImageFile, uploadPhoto } from "../lib/photoUpload.js";
-import { BottomSheet, HintStrip } from "./RisoControls.jsx";
+import { daysUntil } from "../lib/pantryInventory.js";
+import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
+import { ItemPhoto } from "./ItemPhoto.jsx";
+import { InventoryItemForm, InventoryToast } from "./InventoryItemForm.jsx";
+import { HintStrip } from "./RisoControls.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { t } from "../i18n/index.js";
-import { formatDate, formatDayRange } from "../i18n/format.js";
+// Home shows the same card photo.
+export { ItemPhoto };
 
 // Fridge and Freezer sit side by side, Pantry after - see the design
 // handoff. "Counter" is a fourth USDA location the bundled data supports
@@ -82,112 +83,6 @@ function layoutPayload(sections) {
     size: `c12:${s.span}`,
     height: s.height,
   }));
-}
-
-// The add form fetches a suggested expiration date and category from the
-// bundled USDA FoodKeeper data as soon as there's enough to look up (a name
-// and a location) - both always shown as editable, never locked in, since
-// the suggestion is a starting point, not an authority.
-function AddInventoryItemForm({ onAdd, onDone, sections, defaultLocation = "fridge" }) {
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
-  const [location, setLocation] = useState(defaultLocation);
-  const [category, setCategory] = useState("Other");
-  const [categoryTouched, setCategoryTouched] = useState(false);
-  const [expiresAt, setExpiresAt] = useState("");
-  const [suggesting, setSuggesting] = useState(false);
-  const [adding, setAdding] = useState(false);
-
-  // Re-fetch the suggestion whenever the name or location settles, so
-  // picking a different storage location (e.g. fridge -> freezer) updates
-  // the date without the user having to retype anything. Category isn't
-  // location-dependent but comes back from the same call, so it's applied
-  // here too - unless the user already picked one by hand for this item.
-  useEffect(() => {
-    if (!name.trim()) return;
-    let cancelled = false;
-    setSuggesting(true);
-    const timer = setTimeout(() => {
-      api
-        .suggestPantryExpiration(name.trim(), location)
-        .then(({ expiresAt: suggested, category: suggestedCategory }) => {
-          if (cancelled) return;
-          if (suggested) setExpiresAt(suggested.slice(0, 10));
-          if (suggestedCategory && !categoryTouched) setCategory(suggestedCategory);
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (!cancelled) setSuggesting(false);
-        });
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, location]);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setAdding(true);
-    try {
-      await onAdd({
-        name: name.trim(),
-        quantity: parseQuantityInput(quantity),
-        unit: unit || null,
-        location,
-        category,
-        expiresAt: expiresAt || null,
-      });
-      setName("");
-      setQuantity("");
-      setUnit("");
-      setCategory("Other");
-      setCategoryTouched(false);
-      setExpiresAt("");
-      onDone?.();
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  return (
-    <form className="pantry-add-form" onSubmit={handleSubmit}>
-      <input
-        autoFocus
-        type="text"
-        placeholder={t("inventory.namePlaceholder")}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder={t("inventory.qtyPlaceholder")}
-        value={quantity}
-        onChange={(e) => setQuantity(e.target.value)}
-        style={{ width: 56 }}
-      />
-      <UnitSelect aria-label={t("inventory.unitAria")} value={unit} onChange={setUnit} emptyLabel={t("inventory.unitEmpty")} />
-      <select value={location} onChange={(e) => setLocation(e.target.value)}>
-        {sections.map((l) => (
-          <option key={l.id} value={l.id}>
-            {l.label}
-          </option>
-        ))}
-      </select>
-      <input
-        type="date"
-        value={expiresAt}
-        onChange={(e) => setExpiresAt(e.target.value)}
-        title={suggesting ? t("inventory.lookingUp") : t("inventory.expirationDate")}
-      />
-      <button className="btn primary btn-sm" type="submit" disabled={adding}>
-        {t("inventory.add")}
-      </button>
-    </form>
-  );
 }
 
 // Upload a receipt photo/PDF and let Gemini read it into candidate items.
@@ -267,75 +162,18 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-// The card's storage tip, from the USDA FoodKeeper ranges the server sends
-// (item.locations): in the freezer "Keeps 3-6 months frozen"; elsewhere
-// "Freeze for 3-6 months" when it freezes, else "5-7 days in the fridge".
-function storageTip(item) {
-  const here = item.locations?.[item.location];
-  const freezer = item.locations?.freezer;
-  if (item.location === "freezer") return here ? t("inventory.tipKeepsFrozen", { range: rangeText(here) }) : null;
-  if (freezer) return t("inventory.tipFreezeFor", { range: rangeText(freezer) });
-  if (here && ["fridge", "pantry"].includes(item.location)) return t(`inventory.tipIn.${item.location}`, { range: rangeText(here) });
-  return null;
-}
-
-// "3–6 months" / "3 à 6 mois" from the USDA range the server sends.
-function rangeText(data) {
-  return data.minDays != null && data.maxDays != null ? formatDayRange(data.minDays, data.maxDays) : data.rangeLabel;
-}
-
 // The expiry line down the card's left edge: how close the date is on a
 // 4-week scale, filling up from the bottom as it nears (nearly full the day
 // before, at least 8% so it stays visible), pink within 3 days, yellow
 // within a week, blue after that. No line from 28 days on, with no date,
 // or once expired (the Expired tag says it).
-const LINE_DAYS = 28;
 function expiryLine(item) {
   if (!item.expiresAt) return null;
   const d = daysUntil(item.expiresAt);
-  if (d >= LINE_DAYS) return null;
-  if (d <= 0) return { expired: true, label: t("inventory.expired") };
-  const color = d <= 3 ? "pink" : d <= 7 ? "yellow" : "blue";
-  const label = d === 1 ? t("inventory.useByTomorrow") : t("inventory.daysLeft", { count: d });
-  return { height: `${Math.max(8, Math.round((1 - d / LINE_DAYS) * 100))}%`, color, label };
-}
-
-// What a card shows: the item's own photo, else TheMealDB's generic picture
-// of the ingredient, else nothing (imageUrl "none" turns the generic off).
-function photoFor(item) {
-  if (item.imageUrl === "none") return null;
-  if (item.imageUrl) return { src: item.imageUrl, own: true };
-  const generic = genericPhotoUrl(item.name);
-  return generic ? { src: generic, own: false } : null;
-}
-
-// The photo, else a cream tile with a food emoji (or its first letter) -
-// and the same tile if the photo won't load.
-export function ItemPhoto({ item }) {
-  const photo = photoFor(item);
-  const [failed, setFailed] = useState(null);
-  if (photo && failed !== photo.src) {
-    return (
-      <img
-        className={`inv-card-photo${photo.own ? "" : " generic"}`}
-        src={photo.src}
-        alt=""
-        loading="lazy"
-        onError={() => setFailed(photo.src)}
-      />
-    );
-  }
-  const emoji = foodEmoji(item.name, item.category);
-  return (
-    <span className={`inv-card-photo placeholder${emoji ? "" : " letter"}`} aria-hidden="true">
-      {emoji || (item.name.trim()[0] || "?").toUpperCase()}
-    </span>
-  );
-}
-
-// Grams go 50 at a time, bottles and loaves a quarter at a time.
-function qtyStep(unit) {
-  return unit === "g" || unit === "ml" ? 50 : unit === "bottle" || unit === "loaf" ? 0.25 : 1;
+  const line = lineForDays(d);
+  if (!line) return null;
+  if (line.expired) return { expired: true, label: t("inventory.expired") };
+  return { ...line, label: d === 1 ? t("inventory.useByTomorrow") : t("inventory.daysLeft", { count: d }) };
 }
 
 // The card's amount and its measure: tap it to change them right there
@@ -880,306 +718,6 @@ function AddShelfSegment({ onAdd }) {
   );
 }
 
-function PhotoPicker({ item, onUpdate }) {
-  const fileRef = useRef(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const [link, setLink] = useState(null);
-
-  const photo = photoFor(item);
-  const own = photo?.own;
-  const generic = photo && !photo.own;
-  const hidden = item.imageUrl === "none";
-
-  async function saveLink() {
-    const url = (link || "").trim();
-    if (!url) return setLink(null);
-    if (!/^https?:\/\/\S+$/i.test(url)) return setError(t("inventory.linkHttp"));
-    setError(null);
-    setLink(null);
-    try {
-      await onUpdate(item.id, { imageUrl: url });
-    } catch (err) {
-      setError(err.message || t("inventory.linkFailed"));
-    }
-  }
-
-  async function handleFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!isImageFile(file)) return setError(t("inventory.pickImage"));
-    setBusy(true);
-    setError(null);
-    try {
-      await onUpdate(item.id, { imageUrl: await uploadPhoto(file) });
-    } catch (err) {
-      setError(err.message || t("inventory.uploadFailed"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="inv-panel-photo">
-      <ItemPhoto item={item} />
-      <div className="inv-panel-photo-actions">
-        {link === null ? (
-          <span className="inv-panel-photo-pills">
-            <button type="button" className="inv-pill" onClick={() => fileRef.current?.click()} disabled={busy}>
-              {busy ? t("inventory.uploading") : own ? t("inventory.changePhoto") : t("inventory.addPhoto")}
-            </button>
-            <button type="button" className="inv-pill" onClick={() => setLink("")} disabled={busy}>
-              {t("inventory.pasteLink")}
-            </button>
-          </span>
-        ) : (
-          <span className="inv-panel-photo-link">
-            <input
-              type="url"
-              autoFocus
-              placeholder="https://…"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveLink();
-                if (e.key === "Escape") setLink(null);
-              }}
-              aria-label={t("inventory.photoLink")}
-            />
-            <button type="button" className="link-btn" onClick={saveLink}>
-              {t("inventory.useIt")}
-            </button>
-          </span>
-        )}
-        {own && !busy && (
-          <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
-            {t("inventory.removePhoto")}
-          </button>
-        )}
-        {generic && !busy && (
-          <span className="inv-panel-photo-credit">
-            {t("inventory.stockPhoto")}{" "}
-            <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: "none" })}>
-              {t("inventory.hideIt")}
-            </button>
-          </span>
-        )}
-        {hidden && genericPhotoUrl(item.name) && !busy && (
-          <button type="button" className="link-btn subtle" onClick={() => onUpdate(item.id, { imageUrl: null })}>
-            {t("inventory.showStock")}
-          </button>
-        )}
-        {error && <span className="inv-panel-photo-error">{error}</span>}
-      </div>
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden
-        onChange={handleFile}
-        aria-label={t("inventory.itemPhoto")}
-      />
-    </div>
-  );
-}
-
-function EditPanel({ item, recipes, onUpdate, onDelete, onFindRecipes, isStaple, onToggleStaple, labelFor = {} }) {
-  const [nameDraft, setNameDraft] = useState(item.name);
-
-  // Resync the draft when a different item opens (or this one's name
-  // changes from elsewhere) - without this, switching straight from one
-  // item's edit panel to another's would carry the previous item's typed
-  // text over.
-  useEffect(() => {
-    setNameDraft(item.name);
-  }, [item.id, item.name]);
-
-  function commitName() {
-    const trimmed = nameDraft.trim();
-    if (trimmed && trimmed !== item.name) onUpdate(item.id, { name: trimmed });
-    else setNameDraft(item.name);
-  }
-
-  const step = qtyStep(item.unit);
-  function adjustQty(dir) {
-    const next = Math.max(0, Math.round(((item.quantity ?? 0) + dir * step) * 100) / 100);
-    onUpdate(item.id, { quantity: next });
-  }
-  const dateRef = useRef(null);
-  function pickDate() {
-    const input = dateRef.current;
-    if (!input) return;
-    try {
-      input.showPicker();
-    } catch {
-      input.focus();
-      input.click();
-    }
-  }
-  const tip = storageTip(item);
-
-  // Union of every location with real USDA data for this item, plus its
-  // current location even if that one happens to have none (e.g. an item
-  // whose only guidance is "use the date on the package") - so the panel
-  // never ends up with no pill selected.
-  const pillLocations = SHELF_LOCATIONS.filter(
-    (l) => item.locations?.[l.id] || l.id === item.location
-  );
-
-  const useByText = item.expiresAt
-    ? t("inventory.useBy", {
-        date: formatDate(new Date(item.expiresAt), {
-          month: "short",
-          day: "numeric",
-          year: daysUntil(item.expiresAt) > 300 ? "numeric" : undefined,
-        }),
-      })
-    : t("inventory.noDate");
-
-  const recipeCount = recipes.filter(
-    (r) => !r.isPlaceholder && r.ingredients?.some((i) => i.name?.toLowerCase().includes(item.name.toLowerCase()))
-  ).length;
-
-  return (
-    <aside className="inv-panel">
-      <div className="inv-panel-header">
-        <input
-          type="text"
-          className="inv-panel-name-input"
-          value={nameDraft}
-          onChange={(e) => setNameDraft(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") {
-              setNameDraft(item.name);
-              e.currentTarget.blur();
-            }
-          }}
-          aria-label={t("inventory.itemName")}
-        />
-        <span className="inv-panel-category">{categoryLabel(item.category)}</span>
-      </div>
-
-      <PhotoPicker item={item} onUpdate={onUpdate} />
-
-      <div>
-        <div className="inv-panel-label">{t("inventory.quantity")}</div>
-        <div className="inv-qty-stepper">
-          <button type="button" onClick={() => adjustQty(-1)} aria-label={t("inventory.decrease", { step })}>
-            −
-          </button>
-          <input
-            key={`${item.id}|${item.quantity}`}
-            type="text"
-            inputMode="decimal"
-            className="inv-qty-input"
-            aria-label={t("inventory.quantity")}
-            defaultValue={formatFractionQuantity(item.quantity ?? 0)}
-            onBlur={(e) => {
-              // "0.25", "1/2", "½", "1 1/2" or "1½"; anything else goes back.
-              const v = parseQuantityInput(e.target.value);
-              if (v == null || v < 0) e.target.value = formatFractionQuantity(item.quantity ?? 0);
-              else if (v !== item.quantity) onUpdate(item.id, { quantity: Math.round(v * 1000) / 1000 });
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              if (e.key === "Escape") {
-                e.currentTarget.value = formatFractionQuantity(item.quantity ?? 0);
-                e.currentTarget.blur();
-              }
-            }}
-          />
-          <button type="button" onClick={() => adjustQty(1)} aria-label={t("inventory.increase", { step })}>
-            +
-          </button>
-          <UnitSelect
-            className="inv-panel-unit"
-            value={item.unit || ""}
-            onChange={(u) => onUpdate(item.id, { unit: u || null })}
-            emptyLabel={t("inventory.noMeasure")}
-            aria-label={t("inventory.measure")}
-          />
-        </div>
-        <div className="inv-qty-chips">
-          {[["¼", 1 / 4], ["⅓", 1 / 3], ["½", 1 / 2], ["⅔", 2 / 3], ["¾", 3 / 4], ["1", 1]].map(([label, v]) => (
-            <button
-              key={label}
-              type="button"
-              aria-label={t("inventory.setTo", { value: label })}
-              onClick={() => onUpdate(item.id, { quantity: pickFraction(item.quantity, v) })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <div className="inv-panel-label">{t("inventory.storedIn")}</div>
-        <div className="inv-storage-pills">
-          {pillLocations.map((l) => {
-            const data = item.locations?.[l.id];
-            const active = item.location === l.id;
-            return (
-              <button
-                key={l.id}
-                type="button"
-                className={`inv-storage-pill${active ? " active" : ""}`}
-                disabled={active}
-                onClick={() => onUpdate(item.id, { location: l.id, expiresAt: data ? data.expiresAt : null })}
-              >
-                <span>{labelFor[l.id] || l.label}</span>
-                {data && <span className="inv-storage-pill-range">{rangeText(data)}</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {tip && (
-        <div className="inv-panel-tip">
-          <span>❄ {tip}</span>
-          <span className="inv-panel-tip-source">
-            {t("same.source")}
-            <br />
-            {t("same.usdaFoodkeeper")}
-          </span>
-        </div>
-      )}
-
-      <p className="inv-use-by">
-        {useByText}{" "}
-        <button type="button" className="link-btn" onClick={pickDate}>
-          {t("inventory.pickDate")}
-        </button>
-        <input
-          ref={dateRef}
-          type="date"
-          className="inv-use-by-picker"
-          aria-label={t("inventory.useByDate")}
-          value={item.expiresAt ? item.expiresAt.slice(0, 10) : ""}
-          onChange={(e) => onUpdate(item.id, { expiresAt: e.target.value || null })}
-        />
-      </p>
-
-      <div className="inv-panel-staple">
-        <button type="button" className={`btn subtle btn-sm${isStaple ? " active" : ""}`} onClick={() => onToggleStaple(item)}>
-          {isStaple ? t("inventory.staple") : t("inventory.markStaple")}
-        </button>
-      </div>
-
-      <div className="inv-panel-footer">
-        {t("home.recipesUse", { count: recipeCount, name: item.name })}{" "}
-        <button type="button" className="link-btn" onClick={() => onFindRecipes(item.name)}>
-          {t("home.seeThem")}
-        </button>
-        <br />
-        <button type="button" className="link-btn subtle" onClick={() => onDelete(item.id)}>
-          {t("inventory.removeTypo")}
-        </button>
-      </div>
-    </aside>
-  );
-}
-
 function FloatingActionBar({ count, onFindRecipes, onConsume, onFreeze, onClear }) {
   return (
     <div className="inv-action-bar">
@@ -1232,6 +770,15 @@ export function Inventory({
   const [addLocation, setAddLocation] = useState("fridge");
   const [showScan, setShowScan] = useState(false);
   const isPhone = useIsPhone();
+  // The small yellow message after adding, saving or finishing an item.
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(0);
+  function showToast(message) {
+    setToast(message);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2600);
+  }
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
   // The shelf chips are pinned at the top while you scroll (under the header on
   // a phone): tapping one scrolls to its shelf, and the chip of the shelf you're
   // looking at is the lit one. The same on a phone and on a computer.
@@ -1372,7 +919,6 @@ export function Inventory({
     jumpLock.current = { id, until: Date.now() + 1000 };
     document.querySelector(`.inv-shelves [data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
-  const labelFor = Object.fromEntries(sections.map((sec) => [sec.id, sec.label]));
 
   function moveSectionTo(id, overId, after) {
     if (!overId || overId === id) return;
@@ -1531,50 +1077,23 @@ export function Inventory({
           ))}
       </div>
 
-      {activeItem && isPhone && (
-        <BottomSheet label={t("inventory.editName", { name: activeItem.name })} onClose={() => setActiveItemId(null)}>
-          <EditPanel
-            item={activeItem}
-            recipes={recipes}
-            onUpdate={onUpdate}
-            onDelete={(id) => {
-              setActiveItemId(null);
-              onDelete(id);
-            }}
-            onFindRecipes={onFindRecipes}
-            isStaple={staples.has(activeItem.core)}
-            onToggleStaple={toggleStaple}
-            labelFor={labelFor}
-          />
-        </BottomSheet>
-      )}
-
-      {activeItem && !isPhone && (
-        <div className="riso-inv-edit-overlay" onClick={() => setActiveItemId(null)}>
-          <div className="riso-inv-edit-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="riso-inv-edit-close"
-              onClick={() => setActiveItemId(null)}
-              aria-label={t("common.close")}
-            >
-              ×
-            </button>
-            <EditPanel
-              item={activeItem}
-              recipes={recipes}
-              onUpdate={onUpdate}
-              onDelete={(id) => {
-                setActiveItemId(null);
-                onDelete(id);
-              }}
-              onFindRecipes={onFindRecipes}
-              isStaple={staples.has(activeItem.core)}
-              onToggleStaple={toggleStaple}
-              labelFor={labelFor}
-            />
-          </div>
-        </div>
+      {activeItem && (
+        <InventoryItemForm
+          key={activeItem.id}
+          mode="edit"
+          item={activeItem}
+          sections={sections}
+          recipes={recipes}
+          isStaple={staples.has(activeItem.core)}
+          onToggleStaple={toggleStaple}
+          onSave={onUpdate}
+          onDelete={onDelete}
+          onConsume={onConsume}
+          onFindRecipes={onFindRecipes}
+          onToast={showToast}
+          onClose={() => setActiveItemId(null)}
+          isPhone={isPhone}
+        />
       )}
 
       {selectedIds.size > 0 && (
@@ -1588,10 +1107,21 @@ export function Inventory({
       )}
 
       {showAdd && (
-        <Modal title={t("inventory.addItemTitle")} onClose={() => setShowAdd(false)}>
-          <AddInventoryItemForm key={addLocation} onAdd={onAdd} sections={sections} defaultLocation={addLocation} />
-        </Modal>
+        <InventoryItemForm
+          key={addLocation}
+          mode="add"
+          sections={sections}
+          defaultLocation={addLocation}
+          isStapleFor={(n) => staples.has(String(n).trim().toLowerCase())}
+          onToggleStaple={toggleStaple}
+          onAdd={onAdd}
+          onDelete={onDelete}
+          onToast={showToast}
+          onClose={() => setShowAdd(false)}
+          isPhone={isPhone}
+        />
       )}
+      <InventoryToast message={toast} />
       {showScan && (
         <Modal title={t("inventory.scanReceipt")} onClose={() => setShowScan(false)}>
           <ReceiptScanPanel onRequestInventoryAdd={onRequestInventoryAdd} onDone={() => setShowScan(false)} />

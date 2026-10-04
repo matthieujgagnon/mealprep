@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { addInventoryItem, itemForm } from "./inventory-form.js";
 
 // Regression coverage for a real mobile drag-and-drop bug: every existing
 // drag e2e test (grocery/recipes/inventory) simulates a drag via
@@ -79,12 +80,7 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
   await signUp(page, uniqueEmail("touch-inv"));
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  await page.getByRole("button", { name: "+ Add item" }).click();
-  await page.fill('input[placeholder="e.g. Chicken breast"]', "Touch Drag Item");
-  await page.locator(".modal-content select").nth(1).selectOption("fridge");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.waitForTimeout(150);
-  await page.locator(".modal-close").click();
+  await addInventoryItem(page, "Touch Drag Item", "fridge");
 
   const client = await context.newCDPSession(page);
   await page.evaluate(() => window.scrollTo(0, 0));

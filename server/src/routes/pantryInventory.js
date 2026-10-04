@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { suggestExpiration, suggestAllLocations, suggestCategory, suggestLocation, CATEGORIES } from "../lib/foodkeeper.js";
 import { fail } from "../lib/i18n.js";
+import { mergeRecent } from "../lib/recentItems.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -60,7 +61,20 @@ pantryInventoryRouter.get("/suggest", async (req, res) => {
   // A shelf of your own keeps things like the pantry does.
   const expiresAt = suggestExpiration(name, LOCATIONS.includes(location) ? location : "pantry", purchasedAt);
   const category = suggestCategory(name);
-  res.json({ expiresAt, category, location });
+  // The shelf life for every shelf too (null where there's no data for a shelf), so the
+  // Add item form can show its shelf cards before anything is saved.
+  res.json({ expiresAt, category, location, locations: suggestAllLocations(name, purchasedAt) });
+});
+
+// GET /api/pantry-inventory/recent - the foods the Add item form offers as
+// "Recent" chips: the last few distinct names you added or used up. Registered
+// before /:id so "recent" isn't read as an item id.
+pantryInventoryRouter.get("/recent", async (req, res) => {
+  const [items, logs] = await Promise.all([
+    prisma.pantryInventoryItem.findMany({ where: { userId: req.userId }, orderBy: { createdAt: "desc" }, take: 40 }),
+    prisma.pantryConsumptionLog.findMany({ where: { userId: req.userId }, orderBy: { createdAt: "desc" }, take: 40 }),
+  ]);
+  res.json(mergeRecent(items, logs));
 });
 
 // An item's photo: one uploaded through /api/recipe-images, a web link, or

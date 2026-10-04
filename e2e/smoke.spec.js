@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { addInventoryItem, itemForm } from "./inventory-form.js";
 
 // A handful of end-to-end checks against a real server + real Postgres,
 // covering the critical path across the app's main feature areas. Not
@@ -42,16 +43,17 @@ test("add a pantry inventory item and mark it a staple", async ({ page }) => {
   await signUp(page, uniqueEmail("smoke-inventory"));
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  await page.getByRole("button", { name: "+ Add item" }).click();
-  await page.fill('.pantry-add-form input[type="text"]', "canned tomatoes");
-  await page.locator('.pantry-add-form button[type="submit"]').click();
-  await page.locator(".modal-close").click();
-  await expect(page.getByText("canned tomatoes")).toBeVisible();
+  await addInventoryItem(page, "canned tomatoes");
+  await expect(page.getByText("canned tomatoes", { exact: true })).toBeVisible();
 
   await page.getByText("canned tomatoes", { exact: true }).click();
   const stapleButton = page.getByRole("button", { name: "☆ Mark as pantry staple" });
   await expect(stapleButton).toBeVisible();
   await stapleButton.click();
+  await expect(page.getByRole("button", { name: "★ Pantry staple" })).toBeVisible();
+  // The staple is part of the form: it's kept with Save changes.
+  await itemForm(page).getByRole("button", { name: "Save changes" }).click();
+  await page.getByText("canned tomatoes", { exact: true }).click();
   await expect(page.getByRole("button", { name: "★ Pantry staple" })).toBeVisible();
 });
 

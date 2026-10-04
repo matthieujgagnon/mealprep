@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { addInventoryItem, itemForm } from "./inventory-form.js";
 
 // The Home tab is now the landing page - covers the pieces that pull data
 // from elsewhere in the app (planner, grocery list, inventory) rather than
@@ -65,18 +66,14 @@ test("the grocery summary and inventory cards reflect real data", async ({ page 
 
   // Add an inventory item expiring tomorrow.
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add item" }).click();
-  await page.fill('.pantry-add-form input[type="text"]', "cilantro");
-  await page.locator('.pantry-add-form button[type="submit"]').click();
-  await page.locator(".modal-close").click();
-  await expect(page.getByText("cilantro")).toBeVisible();
+  await addInventoryItem(page, "cilantro");
+  await expect(page.getByText("cilantro", { exact: true })).toBeVisible();
 
   await page.getByText("cilantro", { exact: true }).click();
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-  await page.locator(".inv-use-by-picker").fill(tomorrow);
-  await page.locator(".inv-use-by-picker").blur();
-  await page.waitForTimeout(400);
-  await page.keyboard.press("Escape"); // close the item panel
+  await itemForm(page).getByLabel("Use-by date").fill(tomorrow);
+  await itemForm(page).getByRole("button", { name: "Save changes" }).click();
+  await expect(itemForm(page)).toHaveCount(0);
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   const useUp = page.locator(".riso-useup-row", { hasText: "cilantro" });
