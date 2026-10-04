@@ -16,6 +16,7 @@ This is a map of the project for someone opening it for the first time. For what
 | --- | --- |
 | `client/src/App.jsx` | The shell: header, tabs, shared data, and which screen shows. |
 | `client/src/components/` | One file per screen or big piece (`Home`, `Recipes`, `RecipeDetailModal`, `CookMode`, `PlannerBoard`, `WhatCanIMake`, `GroceryList`, `StoreMode`, `FlyerDeals`, `Inventory`, `Help`). `RisoControls.jsx` holds the shared Riso Poster controls. |
+| `client/src/components/PlannerMobile.jsx` | The Planner on a phone: a seven-day board (three days in view, meal labels stay put), the week pill with its month calendar, and the bottom button to Grocery. Tapping a card or an empty cell opens the suggestions sheet; there is no dragging on a phone. The calendar's dots come from `GET /api/planner/dates`. The desktop Planner is `PlannerBoard`. Design reference: `docs/design/planner-mobile/`. |
 | `client/src/lib/` | Plain logic with unit tests: grocery list building, units, dates, flyer ingredient cards. |
 | `client/src/i18n/` | `en.js`, `fr.js`, the `t()` helper and the guards that check both languages. |
 | `client/src/index.css` | All styles. The Riso Poster colours, fonts and shadows are tokens on `.riso-theme`. |

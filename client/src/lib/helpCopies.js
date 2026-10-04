@@ -80,7 +80,6 @@ export const HELP_COPIES = {
     cls: "riso-segmented",
     items: [{ label: "tray.tabSuggested", active: true }, { label: "tray.tabAround" }, { label: "tray.tabAll" }],
   },
-  addRecipeChip: { kind: "pill", cls: "rpm-chip", label: "planner.addRecipeChip" },
   haveDot: { kind: "icon", cls: "rpm-have", glyph: "" },
 
   // Makeable

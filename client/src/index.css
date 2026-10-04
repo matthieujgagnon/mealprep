@@ -3787,6 +3787,7 @@ input[type="date"].planner-week-picker {
   --riso-dash-strong: #bdb6a6; /* rule (dashed empty slots) */
   --riso-chip-dash: #8a877d; /* dashed outline of the grocery recipe-quantity pill */
   --riso-placeholder: #8a8677; /* placeholder text, an empty preview name */
+  --riso-faint: #a9a394; /* the days outside the month in the Planner calendar */
   --riso-store-checked: #2a2d38; /* a checked row in dark Store mode */
   --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
@@ -8655,19 +8656,6 @@ button.riso-protein-bar {
   opacity: 0.55;
 }
 
-.rpm-slot.past {
-  filter: grayscale(1);
-}
-
-.rpm-slot.past .rpm-meal,
-.rpm-slot.past .rpm-note {
-  opacity: 0.7;
-}
-
-.rpm-day.past:not(.selected) {
-  opacity: 0.55;
-}
-
 .riso-planner-card.dragging,
 .riso-planner-note.dragging {
   opacity: 0.35;
@@ -8813,11 +8801,6 @@ button.riso-protein-bar {
   font-size: 56px;
   line-height: 1.1;
   letter-spacing: 0;
-}
-
-.rpm-note-text.emoji {
-  font-size: 40px;
-  line-height: 1.1;
 }
 
 .riso-planner-note-text {
@@ -10663,36 +10646,79 @@ button.riso-deal-detail-other:focus-visible {
   }
 }
 
-/* ---------- Planner, phone (Riso Mobile.dc.html) ---------- */
+/* ---------- Planner, phone (design/planner-mobile-and-recipes) ---------- */
+
 .rpm {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* room for the bar fixed at the bottom */
+  padding-bottom: calc(86px + env(safe-area-inset-bottom));
 }
 
-.rpm-head {
+.rpm-top {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.rpm-head .riso-planner-title {
-  max-width: 6ch;
-}
-
-.rpm-week-nav {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
 }
 
-.rpm-week-nav .riso-planner-nav-arrow {
-  width: 34px;
-  height: 34px;
+.rpm-range {
+  font: 500 12px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.rpm-week-sticker {
+.rpm-top .riso-planner-title {
+  font-size: 44px;
+}
+
+/* week row: ‹ pill › and the "jeu – dim →" sticker */
+.rpm-weekrow-wrap {
+  position: relative;
+}
+
+.rpm-weekrow {
+  position: relative;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rpm-round {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 18px var(--riso-font-display);
+  padding: 0;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.rpm-weekpill {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 15px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.rpm-weekpill.open {
+  background: var(--riso-yellow);
+  box-shadow: var(--riso-shadow);
+}
+
+.rpm-more {
+  margin-left: auto;
   transform: rotate(-3deg);
   background: var(--riso-yellow);
   border: 2px solid var(--riso-ink);
@@ -10700,178 +10726,476 @@ button.riso-deal-detail-other:focus-visible {
   padding: 3px 10px;
   font: 800 12px var(--riso-font-display);
   white-space: nowrap;
+  color: var(--riso-ink);
 }
 
-.rpm-days {
+/* month calendar under the pill */
+.rpm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  background: rgba(22, 24, 31, 0.45);
+}
+
+.rpm-cal {
+  position: absolute;
+  z-index: 70;
+  left: 0;
+  right: 0;
+  top: calc(100% + 12px);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  box-shadow: 4px 4px 0 var(--riso-ink);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rpm-cal-caret {
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: var(--riso-surface);
+  border-left: 2px solid var(--riso-ink);
+  border-top: 2px solid var(--riso-ink);
+  transform: rotate(45deg);
+}
+
+.rpm-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rpm-cal-title {
+  margin: 0;
+  font: 800 22px/1 var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+.rpm-cal-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.rpm-cal-dows,
+.rpm-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
+  gap: 2px;
 }
 
-.rpm-day {
-  height: 58px;
+.rpm-cal-dows span {
+  text-align: center;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.rpm-cal-day {
+  position: relative;
+  height: 44px;
   border-radius: 12px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  padding: 0;
+  cursor: pointer;
+}
+
+.rpm-cal-day.out {
+  color: var(--riso-faint);
+}
+
+.rpm-cal-day.week {
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+}
+
+.rpm-cal-day.today {
+  background: var(--riso-hot);
+  border-color: var(--riso-ink);
+  color: var(--riso-ink);
+}
+
+.rpm-cal-dot {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--riso-accent);
+}
+
+.rpm-cal-legend {
+  display: flex;
+  gap: 16px;
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.rpm-cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rpm-cal-legend .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--riso-accent);
+}
+
+.rpm-cal-legend .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-hot);
+}
+
+.rpm-cal-go {
+  height: 40px;
+  border-radius: 20px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* the week board: seven columns, about three in view */
+.rpm-boardwrap {
+  position: relative;
+  margin: 0 -18px;
+}
+
+.rpm-board {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 18px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 6px;
+}
+
+.rpm-board::-webkit-scrollbar {
+  display: none;
+}
+
+.rpm-board-inner {
+  width: max-content;
+  padding: 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rpm-heads,
+.rpm-cells {
+  display: grid;
+  grid-template-columns: repeat(7, 104px);
+  gap: 8px;
+}
+
+.rpm-head {
+  height: 50px;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 0;
-  cursor: pointer;
 }
 
-.rpm-day.today {
+.rpm-head.today {
   background: var(--riso-hot);
+  box-shadow: 3px 3px 0 var(--riso-ink);
 }
 
-.rpm-day.selected {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: var(--riso-shadow);
+.rpm-head.past {
+  opacity: 0.6;
+  filter: grayscale(1);
+  border: 1.5px solid var(--riso-dash-strong);
 }
 
-.rpm-day-dow {
-  font: 500 8.5px var(--riso-font-mono);
-  letter-spacing: 0.06em;
-}
-
-.rpm-day-num {
-  font: 800 17px var(--riso-font-display);
-}
-
-.rpm-day-dots {
-  display: flex;
-  gap: 2px;
-}
-
-.rpm-day-dots span {
-  width: 4px;
-  height: 4px;
-  border-radius: 2px;
-  background: currentColor;
-  opacity: 0.2;
-}
-
-.rpm-day-dots span.on {
-  opacity: 1;
-}
-
-.rpm-date {
-  margin: 4px 0 0;
-  font: 800 22px var(--riso-font-display);
-}
-
-.rpm-slot {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rpm-slot-label {
-  font: 500 10.5px var(--riso-font-mono);
+.rpm-head-dow {
+  font: 500 10px var(--riso-font-mono);
   letter-spacing: 0.12em;
 }
 
-.rpm {
-  /* Every slot on the phone is this tall: a meal, a written card, a blank
-     one and an empty slot. */
-  --rpm-card-h: 112px;
+.rpm-head-num {
+  font: 800 20px/1 var(--riso-font-display);
 }
 
-.rpm-empty {
-  height: var(--rpm-card-h);
-  border-radius: 16px;
-  border: 2px dashed var(--riso-dash-strong);
-  background: transparent;
-  color: var(--riso-accent);
-  font: 700 15px var(--riso-font-display);
-  cursor: pointer;
+.rpm-mealrow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.rpm-note {
-  min-height: var(--rpm-card-h);
-  border-radius: 16px;
+.rpm-meallabel {
+  position: sticky;
+  left: 18px;
+  align-self: flex-start;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.rpm-cell {
+  position: relative;
+  width: 104px;
+  height: 108px;
+  box-sizing: border-box;
   border: 2px solid var(--riso-ink);
-  background: var(--riso-canvas);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 10px 0 0;
-}
-
-.rpm-note-body {
-  flex: 1;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 14px;
-  border: none;
-  background: none;
+  border-radius: 14px;
+  background: var(--riso-surface);
   color: var(--riso-ink);
+  padding: 0;
+  overflow: hidden;
   text-align: left;
   cursor: pointer;
-}
-
-.rpm-note-text {
-  font: 700 15px var(--riso-font-display);
-}
-
-.rpm-meal {
-  position: relative;
-  height: var(--rpm-card-h);
-  box-sizing: border-box;
   display: flex;
-  border-radius: 16px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  overflow: visible;
+  flex-direction: column;
 }
 
-.rpm-meal.have {
+.rpm-cell.past {
+  opacity: 0.6;
+  filter: grayscale(1);
+  border: 1.5px solid var(--riso-dash-strong);
+}
+
+.rpm-cell.empty {
+  border: 2px dashed var(--riso-dash-strong);
+  background: transparent;
+  color: var(--riso-muted);
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  align-items: center;
+  justify-content: center;
+}
+
+.rpm-cell.card.have {
   border: 3px solid var(--riso-accent);
-  box-shadow: 4px 4px 0 var(--riso-accent);
 }
 
-.rpm-meal-photo {
+.rpm-cell-photo {
   position: relative;
-  width: 128px;
-  flex: none;
-  padding: 0;
-  border: none;
-  border-right: 2px solid var(--riso-ink);
-  border-radius: 14px 0 0 14px;
+  flex: 1;
+  min-height: 0;
   background: var(--riso-track);
-  cursor: pointer;
+  border-bottom: 2px solid var(--riso-ink);
 }
 
-.rpm-meal-photo img {
+.rpm-cell-photo img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  border-radius: 14px 0 0 14px;
+}
+
+.rpm-cell-have {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--riso-accent);
+  border: 2px solid var(--riso-surface);
+  color: var(--riso-on-accent);
+  font: 800 11px/16px var(--riso-font-display);
+  text-align: center;
 }
 
 .rpm-leftover {
   position: absolute;
-  right: 6px;
-  bottom: -9px;
+  right: 4px;
+  bottom: 4px;
   transform: rotate(-4deg);
   background: var(--riso-yellow);
   border: 1.5px solid var(--riso-ink);
   border-radius: 999px;
-  padding: 1px 8px;
-  font: 800 11px var(--riso-font-display);
+  padding: 0 6px;
+  font: 800 10px/16px var(--riso-font-display);
   color: var(--riso-ink);
   white-space: nowrap;
 }
 
 .rpm-leftover.stale {
   background: var(--riso-hot);
+}
+
+.rpm-cell-body {
+  padding: 4px 7px 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rpm-cell-title {
+  font: 800 11.5px/1.15 var(--riso-font-display);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rpm-cell-time {
+  font: 500 9px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
+}
+
+.rpm-cell.note {
+  padding: 8px 9px;
+  gap: 4px;
+  background: var(--riso-surface);
+}
+
+.rpm-cell.note.blank {
+  border: 2px dashed var(--riso-dash-strong);
+  background: transparent;
+}
+
+.rpm-cell.note.editing {
+  border-color: var(--riso-accent);
+  padding: 6px;
+}
+
+.rpm-cell.note.editing .riso-planner-note-input {
+  text-align: left;
+  min-height: 0;
+  font-size: 12.5px;
+}
+
+.rpm-note-label {
+  font: 500 9px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.rpm-note-text {
+  font: 800 12px/1.2 var(--riso-font-display);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rpm-note-text.emoji {
+  font-size: 40px;
+  line-height: 1.1;
+}
+
+.rpm-boardwrap .rpm-fade {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 26px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--riso-canvas));
+}
+
+.rpm-fill {
+  align-self: center;
+  border: none;
+  background: none;
+  padding: 6px 4px;
+  color: var(--riso-soft);
+  font: 600 13px var(--riso-font-display);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* the bar fixed to the bottom of the screen */
+.rpm-bottombar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  box-sizing: border-box;
+  min-height: 68px;
+  padding: 9px 18px calc(9px + env(safe-area-inset-bottom));
+  background: var(--riso-canvas);
+  border-top: 2px solid var(--riso-ink);
+}
+
+.rpm-makelist {
+  width: 100%;
+  height: 50px;
+  border-radius: 25px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  font: 800 16px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* the sheet that opens when a card or an empty cell is tapped */
+.rpm-sheet-card {
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-canvas);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rpm-sheet-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rpm-sheet-title {
+  font: 800 17px/1.2 var(--riso-font-display);
+}
+
+.rpm-sheet-state {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+  text-transform: uppercase;
+}
+
+.rpm-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rpm-sheet-note {
+  flex: none;
+  height: 40px;
+  border-radius: 20px;
+  border: 2px dashed var(--riso-ink);
+  background: transparent;
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
 }
 
 .rpm-have {
@@ -10894,41 +11218,6 @@ button.riso-deal-detail-other:focus-visible {
   background: var(--riso-accent);
 }
 
-.rpm-meal-info {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.rpm-meal-name {
-  border: none;
-  background: none;
-  padding: 0;
-  text-align: left;
-  color: var(--riso-ink);
-  font: 800 15px/1.2 var(--riso-font-display);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.rpm-meal-meta {
-  font: 500 9.5px var(--riso-font-mono);
-  letter-spacing: 0.06em;
-  color: var(--riso-muted);
-}
-
-.rpm-meal-actions {
-  margin-top: auto;
-  display: flex;
-  gap: 6px;
-}
-
 .rpm-chip {
   height: 32px;
   min-width: 32px;
@@ -10939,28 +11228,6 @@ button.riso-deal-detail-other:focus-visible {
   color: var(--riso-ink);
   font: 700 13px var(--riso-font-display);
   cursor: pointer;
-}
-
-.rpm-chip.round {
-  padding: 0;
-  width: 32px;
-}
-
-.rpm-legend {
-  border-top: 1.5px dashed var(--riso-dash-strong);
-  gap: 12px;
-}
-
-.rpm-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rpm-actions .riso-btn {
-  width: 100%;
-  justify-content: center;
-  height: 48px;
 }
 
 /* The tray inside the phone suggestions sheet: no card chrome, no drag. */
@@ -11651,51 +11918,6 @@ button.riso-deal-detail-other:focus-visible {
   height: 14px;
   border-radius: 5px;
   border: 1.5px dashed var(--riso-dash-strong);
-}
-
-.rpm-empty-row {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-  height: var(--rpm-card-h);
-}
-
-.rpm-empty-row .rpm-empty {
-  flex: 1;
-}
-
-.rpm-empty-row .rpm-chip {
-  align-self: center;
-}
-
-.rpm-note {
-  width: 100%;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  padding: 0 14px;
-  text-align: left;
-  cursor: pointer;
-}
-
-/* A written meal (an emoji or some words instead of a recipe photo), a blank
-   card and an empty slot are the same size as a recipe card with a photo. */
-.rpm-note {
-  height: var(--rpm-card-h);
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.rpm-note-text.emoji {
-  font-size: 56px;
-}
-
-.rpm-note.editing {
-  padding: 8px 12px;
-  border-color: var(--riso-accent);
-}
-
-.rpm-note.editing .riso-planner-note-input {
-  text-align: left;
 }
 
 @media (max-width: 767px) {

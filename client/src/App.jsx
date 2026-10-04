@@ -1068,6 +1068,9 @@ export default function App({ user, onLogout }) {
                     emptyCount={fillPlan.length}
                     onFillEmptySlots={handleFillEmptySlots}
                     trayProps={trayProps}
+                    customStaples={customStaples}
+                    excludedStaples={excludedStaples}
+                    onOpenGrocery={() => goToTab("grocery")}
                   />
                 ) : (
                   <>

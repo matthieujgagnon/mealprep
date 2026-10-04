@@ -221,14 +221,21 @@ test.describe("Planner cards are one size", () => {
     }
   });
 
-  test("on a phone: the same for every slot of a day", async ({ page }) => {
+  test("on a phone: every cell of the week board measures the same", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await seed(page);
-    for (const day of [0, 1, 2, 3, 4]) {
-      await page.locator(".rpm-day").nth(day).click();
-      const heights = await page.locator(".rpm-slot > :not(.rpm-slot-label)").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-      expect(heights).toHaveLength(3);
-      expect(new Set(heights).size, `day ${day}: ${heights}`).toBe(1);
+    await expect(page.locator(".rpm-cell").first()).toBeVisible();
+    const sizes = await page.locator(".rpm-cell").evaluateAll((els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return `${Math.round(r.width)}x${Math.round(r.height)}`;
+      })
+    );
+    expect(sizes).toHaveLength(21);
+    expect(new Set(sizes).size, sizes.join(" ")).toBe(1);
+    // Something of each kind is really on the board.
+    for (const cls of [".rpm-cell.card", ".rpm-cell.note", ".rpm-cell.empty"]) {
+      await expect(page.locator(cls).first()).toBeVisible();
     }
   });
 });

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { fail } from "../lib/i18n.js";
 import { upcomingWhere } from "../lib/upcomingMeals.js";
+import { mondayKey, plannedDates, validKey } from "../lib/plannedDates.js";
 
 export const plannerRouter = Router();
 
@@ -45,6 +46,23 @@ plannerRouter.get("/upcoming", async (req, res) => {
     orderBy: [{ weekStart: "asc" }, { dayOfWeek: "asc" }, { position: "asc" }],
   });
   res.json(entries.map(serializeEntry));
+});
+
+// GET /api/planner/dates?from=YYYY-MM-DD&to=YYYY-MM-DD - the days in that
+// range (at most 400) that have a planned meal or note, as "YYYY-MM-DD" keys.
+// The phone Planner's month calendar puts a dot under each of them.
+plannerRouter.get("/dates", async (req, res) => {
+  const { from, to } = req.query;
+  const first = validKey(from);
+  const last = validKey(to);
+  if (!first || !last || last < first || last - first > 400 * 86400000) {
+    return res.status(400).json(fail(req, "required", { fields: "from, to (YYYY-MM-DD, at most 400 days apart)" }));
+  }
+  const entries = await prisma.plannerEntry.findMany({
+    where: { userId: req.userId, weekStart: { gte: mondayKey(from), lte: to } },
+    select: { weekStart: true, dayOfWeek: true },
+  });
+  res.json(plannedDates(entries, from, to));
 });
 
 // POST /api/planner - place a recipe card onto a day + meal slot
