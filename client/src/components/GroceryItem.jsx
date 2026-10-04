@@ -42,7 +42,7 @@ function QuantityInput({ item, onSave }) {
 
   return (
     <input
-      className="riso-row-qty"
+      className={`riso-row-qty${draft.length > 3 ? " long" : ""}`}
       inputMode="decimal"
       autoComplete="off"
       aria-label={t("grocery.quantityOf", { name: item.name })}
@@ -89,8 +89,9 @@ export function GroceryItem({
   // What the recipes need, with its unit: the only place a unit shows. Not for
   // an item you added yourself.
   const recipeQty = item.isManual ? "" : recipeAmountLabel(item);
-  const showDeal = !checked && !!deal?.price;
-  const hasMeta = !!brand || hasRecipes || !!recipeQty || showDeal;
+  // The sale tag: only in a list (Store mode shows none), and not once it's checked.
+  const showDeal = !store && !checked && !!deal?.price;
+  const hasMeta = !!brand || hasRecipes || !!recipeQty;
 
   const metaLine = hasMeta && (
     <span className={c("meta")}>
@@ -106,29 +107,23 @@ export function GroceryItem({
           {recipeQty}
         </span>
       )}
-      {showDeal &&
-        (store ? (
-          <span className="store-mode-sale" title={t("grocery.onSaleAt", { store: deal.store })}>
-            <span className="store-mode-sale-store">{deal.store}</span>
-            <span className="store-mode-sale-div" aria-hidden="true" />
-            <span className="store-mode-sale-price">{localizePrice(deal.price)}</span>
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="riso-row-deal"
-            title={t("grocery.onSaleAt", { store: deal.store })}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenDeal(deal);
-            }}
-          >
-            <span className="riso-row-deal-store">{deal.store}</span>
-            <span className="riso-row-deal-div" aria-hidden="true" />
-            <span className="riso-row-deal-price">{localizePrice(deal.price)}</span>
-          </button>
-        ))}
     </span>
+  );
+
+  const dealTag = showDeal && (
+    <button
+      type="button"
+      className="riso-row-deal"
+      title={t("grocery.onSaleAt", { store: deal.store })}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenDeal(deal);
+      }}
+    >
+      <span className="riso-row-deal-store">{deal.store}</span>
+      <span className="riso-row-deal-div" aria-hidden="true" />
+      <span className="riso-row-deal-price">{localizePrice(deal.price)}</span>
+    </button>
   );
 
   const text = (
@@ -163,7 +158,7 @@ export function GroceryItem({
     <div
       ref={rowRef}
       data-gi-row
-      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}`}
+      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}${showDeal ? " has-deal" : ""}`}
       {...(flyerDeal
         ? {
             role: "button",
@@ -196,24 +191,29 @@ export function GroceryItem({
       </button>
       {text}
       <span className="riso-row-right">
-        {checked && (
-          <button
-            type="button"
-            className="riso-row-toinv"
-            aria-label={t("grocery.toInventoryAria", { name: item.name })}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToInventory();
-            }}
-          >
-            {t("grocery.toInventory")}
-          </button>
-        )}
-        {recipeQty && (
-          <span className="riso-row-need wide" title={t("grocery.recipeQtyTitle")}>
-            {recipeQty}
-          </span>
-        )}
+        <span className="riso-row-slot">
+          {checked && (
+            <button
+              type="button"
+              className="riso-row-toinv"
+              aria-label={t("grocery.toInventoryAria", { name: item.name })}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToInventory();
+              }}
+            >
+              {t("grocery.toInventory")}
+            </button>
+          )}
+          {dealTag}
+        </span>
+        <span className="riso-row-needcol">
+          {recipeQty && (
+            <span className="riso-row-need wide" title={t("grocery.recipeQtyTitle")}>
+              {recipeQty}
+            </span>
+          )}
+        </span>
         <span className="riso-row-qtycol">
           <QuantityInput item={item} onSave={onSetQuantity} />
         </span>
