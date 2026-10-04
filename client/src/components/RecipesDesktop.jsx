@@ -123,7 +123,18 @@ export function RecipesDesktop({
   onImported,
   onNewRecipe,
 }) {
-  const [tab, setTab] = useState("cookbook");
+  // Opened with a protein or a search already set (Home's "See them"): start on
+  // the tab that has recipes for it, the Cookbook if both do.
+  const [tab, setTab] = useState(() => {
+    const kind = PROTEINS.find((p) => p.id === protein);
+    const q = search.trim();
+    if (!kind && (!q || isUrlLike(q))) return "cookbook";
+    const count = (source) =>
+      recipes.filter(
+        (r) => !r.isPlaceholder && sourceOf(r) === source && (!kind || recipeUsesProtein(r, kind)) && (!q || matchesSearch(r, q))
+      ).length;
+    return count("cookbook") === 0 && count("imported") > 0 ? "imported" : "cookbook";
+  });
   const [time, setTime] = useState("any");
   const [sortIndex, setSortIndex] = useState(0);
   const [menu, setMenu] = useState(null); // null | "protein" | "time" | "sort"

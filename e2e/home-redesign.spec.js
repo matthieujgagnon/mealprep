@@ -93,7 +93,7 @@ test("selecting a protein on sale shows its recipe count, and the bar opens Reci
   await bar.click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
   await expect(page.getByText("Home Redesign Chicken Dish")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Clear the Chicken filter" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^PROTEIN/ })).toContainText("Chicken");
   await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
 });
 
