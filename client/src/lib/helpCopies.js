@@ -91,6 +91,7 @@ export const HELP_COPIES = {
   },
   dealTag: { kind: "deal" },
   grip: { kind: "icon", cls: "riso-group-grip", glyph: "⠿" },
+  rowCheck: { kind: "icon", cls: "riso-row-check", glyph: "" },
   rowRemove: { kind: "icon", cls: "riso-row-delete", glyph: "×" },
   removedChip: { kind: "removed" },
   share: { kind: "pill", cls: "riso-grocery-share", label: "grocery.share" },
@@ -126,6 +127,7 @@ export const HELP_COPIES = {
   tossed: { kind: "pill", cls: "inv-action-btn", label: "inventory.tossed", dark: true },
   freeze: { kind: "pill", cls: "inv-action-btn", label: "inventory.freeze", dark: true },
   addShelfPill: { kind: "icon", cls: "inv-shelf-edit inv-shelf-add", glyph: "+" },
+  addItemHere: { kind: "icon", cls: "inv-shelf-edit inv-shelf-add", glyph: "+" },
   editShelf: { kind: "icon", cls: "inv-shelf-edit", glyph: "✎" },
 
   // Account, in the header

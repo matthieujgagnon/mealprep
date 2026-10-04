@@ -5,20 +5,34 @@
 // (see dealVerdict / dealSavings), then its lowest price per lb.
 import { capitalize } from "./groceryList.js";
 import { dealSavings, dealVerdict, foldText, productText, tilePrice } from "./flyerIngredients.js";
+import { matchesSearch } from "./recipeSearch.js";
 import { t } from "../i18n/index.js";
 
 const TOFU = /\btofu\b/;
 
 export const PROTEINS = [
-  { id: "chicken", get label() { return t("proteins.kinds.chicken"); }, emoji: "🍗", re: /\b(chicken|poulet|cornish hens?)\b/ },
-  { id: "beef", get label() { return t("proteins.kinds.beef"); }, emoji: "🥩", re: /\b(beef|boeuf|bifteck|steaks?|roasts?|roti|sirloin|surlonge|striploin|strip loin|contre-filet|ribeye|faux-filet|brisket|bavette|stewing)\b/ },
-  { id: "pork", get label() { return t("proteins.kinds.pork"); }, emoji: "🐖", re: /\b(pork|porc)\b/ },
-  { id: "fish", get label() { return t("proteins.kinds.fish"); }, emoji: "🐟", re: /\b(salmon|saumon|trout|truite|tilapia|cod|morue|haddock|aiglefin|sole|halibut|fletan|pollock|goberge|tuna|thon|basa|mackerel|maquereau|arctic char|omble|steelhead|fish|poissons?)\b/ },
-  { id: "seafood", get label() { return t("proteins.kinds.seafood"); }, emoji: "🦐", re: /\b(shrimps?|crevettes?|scallops?|petoncles?|mussels?|moules|lobsters?|homards?|crabs?|crabes?|calamari|squid|calmars?|oysters?|huitres?|clams?|palourdes)\b/ },
-  { id: "turkey", get label() { return t("proteins.kinds.turkey"); }, emoji: "🦃", re: /\b(turkey|dinde|dindon)\b/ },
-  { id: "lamb-veal", get label() { return t("proteins.kinds.lamb-veal"); }, emoji: "🐑", re: /\b(lamb|agneau|veal|veau)\b/ },
-  { id: "tofu", get label() { return t("proteins.kinds.tofu"); }, emoji: "🫘", re: TOFU },
+  { id: "chicken", get label() { return t("proteins.kinds.chicken"); }, emoji: "🍗", terms: ["chicken", "poulet"], re: /\b(chicken|poulet|cornish hens?)\b/ },
+  { id: "beef", get label() { return t("proteins.kinds.beef"); }, emoji: "🥩", terms: ["beef", "boeuf", "bœuf", "steak", "brisket", "sirloin"], re: /\b(beef|boeuf|bifteck|steaks?|roasts?|roti|sirloin|surlonge|striploin|strip loin|contre-filet|ribeye|faux-filet|brisket|bavette|stewing)\b/ },
+  { id: "pork", get label() { return t("proteins.kinds.pork"); }, emoji: "🐖", terms: ["pork", "porc"], re: /\b(pork|porc)\b/ },
+  { id: "fish", get label() { return t("proteins.kinds.fish"); }, emoji: "🐟", terms: ["fish", "poisson", "salmon", "saumon", "trout", "truite", "tilapia", "haddock", "halibut", "tuna", "thon"], re: /\b(salmon|saumon|trout|truite|tilapia|cod|morue|haddock|aiglefin|sole|halibut|fletan|pollock|goberge|tuna|thon|basa|mackerel|maquereau|arctic char|omble|steelhead|fish|poissons?)\b/ },
+  { id: "seafood", get label() { return t("proteins.kinds.seafood"); }, emoji: "🦐", terms: ["shrimp", "crevette", "scallop", "mussel", "moule", "lobster", "homard", "crab"], re: /\b(shrimps?|crevettes?|scallops?|petoncles?|mussels?|moules|lobsters?|homards?|crabs?|crabes?|calamari|squid|calmars?|oysters?|huitres?|clams?|palourdes)\b/ },
+  { id: "turkey", get label() { return t("proteins.kinds.turkey"); }, emoji: "🦃", terms: ["turkey", "dinde"], re: /\b(turkey|dinde|dindon)\b/ },
+  { id: "lamb-veal", get label() { return t("proteins.kinds.lamb-veal"); }, emoji: "🐑", terms: ["lamb", "agneau", "veal", "veau"], re: /\b(lamb|agneau|veal|veau)\b/ },
+  { id: "tofu", get label() { return t("proteins.kinds.tofu"); }, emoji: "⬜", terms: ["tofu"], re: TOFU },
 ];
+
+// `terms` are what Recipes' search looks for to find recipes with that kind
+// (title, tags and ingredient names, English and French). Home counts and opens
+// Recipes with exactly these, so the number it shows is the number of cards
+// Recipes then lists.
+export function proteinSearchQuery(protein) {
+  return protein.terms.join(", ");
+}
+
+export function recipesUsingProtein(recipes, protein) {
+  const query = proteinSearchQuery(protein);
+  return (recipes || []).filter((r) => !r.isPlaceholder && matchesSearch(r, query));
+}
 
 // Whether an ingredient or product name is tofu, whatever kind: firm,
 // extra-firm, silken, "tofu ferme".

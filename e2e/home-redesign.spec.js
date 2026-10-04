@@ -69,7 +69,7 @@ test("Makeable now counts what's ready and lists it with a ready tag", async ({ 
   await expect(row.getByRole("button", { name: /\+ List|Add .* to the grocery list/ })).toHaveCount(0);
 });
 
-test("the sale-deal footer link filters Recipes to a matching ingredient", async ({ page }) => {
+test("selecting a protein on sale shows its recipe count, and the bar opens Recipes filtered to it", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await seedRealDeal(page);
 
@@ -86,13 +86,14 @@ test("the sale-deal footer link filters Recipes to a matching ingredient", async
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.waitForTimeout(400);
 
-  // The seeded deal is "Boneless chicken breast" - matches
-  // findMatchingDeal's word-overlap heuristic against "chicken breast".
-  const footerLink = page.getByRole("button", { name: "See them →" });
-  await expect(footerLink).toBeVisible();
-  await expect(page.getByText(/of your recipes use chicken breast/)).toBeVisible();
+  // The seeded deal is "Boneless chicken breast": tapping its row selects
+  // Chicken, and a bar at the bottom says how many recipes use it.
+  await page.getByRole("button", { name: /^Chicken:/ }).click();
+  const bar = page.locator(".riso-protein-bar");
+  await expect(bar).toContainText("1 of your recipes uses chicken.");
+  await expect(bar).toContainText("See them →");
 
-  await footerLink.click();
+  await bar.click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
   await expect(page.getByText("Home Redesign Chicken Dish")).toBeVisible();
 });
@@ -137,7 +138,10 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   await expect(asides).toContainText(/ground beef \$5\.97\/lb · not worth it/i);
   await expect(asides).toContainText(/Pork, Seafood, Turkey, Lamb & veal, Tofu none/i);
 
+  // Tapping a row selects it; "See the deal" on the selected row opens its card.
   await chicken.click();
+  await expect(chicken).toHaveAttribute("aria-pressed", "true");
+  await block.getByRole("button", { name: "See the deal →" }).click();
   const modal = page.locator(".riso-deal-detail, [role=dialog]").first();
   await expect(modal).toContainText(/poitrines de poulet/i);
   await expect(modal.locator(".riso-deal-detail-other", { hasText: "Metro" }).first()).toBeVisible();
@@ -181,6 +185,6 @@ test("Use it up finds recipes for those items; Makeable now puts what's missing 
   await expect(makeable).toContainText("Everything they're missing is on your list ✓");
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Check off Dill", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Check off Pine nuts?$/ })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Check off Dill", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /^Check off Pine nuts?$/ })).toBeVisible();
 });

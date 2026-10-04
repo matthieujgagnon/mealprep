@@ -265,3 +265,26 @@ test("past days are black and white; today and later keep their colour", async (
   const card = page.locator(".riso-planner-cell.past", { has: page.locator(".riso-planner-card") });
   await expect(card).toHaveCSS("filter", "grayscale(1)");
 });
+
+test("on a phone, a meal card with an emoji is the same size as a recipe card with a photo", async ({ page }) => {
+  const [recipe] = await setup(page, [{ title: "Photo stew", photoUrl: "/photo-does-not-matter.jpg" }]);
+  await page.request.post("/api/planner", {
+    data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner" },
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await page.getByRole("button", { name: "Planner", exact: true }).click();
+  await expect(page.locator(".rpm")).toBeVisible();
+
+  // Write only an emoji on today's breakfast.
+  await page.getByRole("button", { name: "Write on breakfast" }).click();
+  await page.getByRole("textbox", { name: "Write on breakfast" }).fill("🥞");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".rpm-note-text.emoji")).toBeVisible();
+
+  const meal = await page.locator(".rpm-meal").boundingBox();
+  const note = await page.locator(".rpm-note:not(.blank)").boundingBox();
+  expect(Math.round(note.height)).toBe(Math.round(meal.height));
+  expect(Math.round(note.width)).toBe(Math.round(meal.width));
+  await page.screenshot({ path: test.info().outputPath("planner-phone-emoji-card.png") });
+});

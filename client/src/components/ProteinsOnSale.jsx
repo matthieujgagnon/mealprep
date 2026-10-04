@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { dealSavings, dealVerdict, savingText as savingWords, tilePrice } from "../lib/flyerIngredients.js";
-import { PROTEINS, compareProteinDeals, proteinName, proteinsOnSale } from "../lib/proteins.js";
+import { PROTEINS, compareProteinDeals, proteinName, proteinSearchQuery, proteinsOnSale, recipesUsingProtein } from "../lib/proteins.js";
 import { DealDetailModal } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
 import { formatMoney, localizePrice, perUnit } from "../i18n/format.js";
@@ -31,9 +31,13 @@ function savingText(deal) {
 // say how good a buy they are. Under them, one line for the kinds not
 // worth buying this week and the ones not on any flyer. Tapping a row
 // opens that deal's card, with the kind's other items under "Also on
-// sale".
-export function ProteinsOnSale({ deals, onNavigate, footer = null }) {
+// sale". Tapping a row selects that kind (tap it again, or another kind, to
+// change); a bar slides up at the bottom of the screen with how many of your
+// recipes use it and a link to them in Recipes. The selected row has a "See
+// the deal" button for its deal card.
+export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindRecipes }) {
   const [open, setOpen] = useState(null); // { deal, others }
+  const [selectedId, setSelectedId] = useState(null);
   const kinds = proteinsOnSale(deals);
   const top = kinds
     .filter((k) => k.best)
@@ -53,6 +57,9 @@ export function ProteinsOnSale({ deals, onNavigate, footer = null }) {
     });
   const missing = PROTEINS.filter((p) => !shown.has(p.id)).map((p) => p.label);
   const asides = [...notWorth, ...(missing.length > 0 ? [t("proteins.none", { kinds: missing.join(", ") })] : [])];
+
+  const selected = top.find((k) => k.protein.id === selectedId)?.protein || null;
+  const using = selected ? recipesUsingProtein(recipes, selected) : [];
 
   function show(deal, others) {
     setOpen({ deal, others });
@@ -88,10 +95,12 @@ export function ProteinsOnSale({ deals, onNavigate, footer = null }) {
                 const saving = savingText(best);
                 return (
                   <li key={protein.id}>
+                    <div className={`riso-protein-card${selectedId === protein.id ? " selected" : ""}`}>
                     <button
                       type="button"
                       className="riso-protein-row"
-                      onClick={() => show(best, others)}
+                      aria-pressed={selectedId === protein.id}
+                      onClick={() => setSelectedId((cur) => (cur === protein.id ? null : protein.id))}
                       aria-label={t("proteins.rowLabel", {
                         kind: protein.label,
                         name: proteinName(best),
@@ -123,6 +132,12 @@ export function ProteinsOnSale({ deals, onNavigate, footer = null }) {
                         )}
                       </span>
                     </button>
+                    {selectedId === protein.id && (
+                      <button type="button" className="riso-protein-deal-link" onClick={() => show(best, others)}>
+                        {t("proteins.seeDeal")}
+                      </button>
+                    )}
+                    </div>
                   </li>
                 );
               })}
@@ -132,7 +147,26 @@ export function ProteinsOnSale({ deals, onNavigate, footer = null }) {
         </>
       )}
       <div className="riso-home-mini-spacer" />
-      {footer}
+      {selected &&
+        createPortal(
+          <div className="riso-theme riso-protein-bar-wrap" data-theme="light">
+            {using.length > 0 ? (
+              <button
+                type="button"
+                className="riso-protein-bar"
+                onClick={() => onFindRecipes?.(proteinSearchQuery(selected))}
+              >
+                <span>{t("proteins.barUse", { count: using.length, name: t(`proteins.useName.${selected.id}`) })}</span>
+                <span className="riso-protein-bar-go">{t("home.seeThem")}</span>
+              </button>
+            ) : (
+              <div className="riso-protein-bar none" role="status">
+                {t("proteins.barNone", { name: t(`proteins.useNameNone.${selected.id}`) })}
+              </div>
+            )}
+          </div>,
+          document.body
+        )}
       {open &&
         createPortal(
           <DealDetailModal

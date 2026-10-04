@@ -96,7 +96,56 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await page.reload();
   const proteins = page.locator(".riso-home-proteins");
   await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ })).toBeVisible();
-  await expect(proteins).toContainText("2 of your recipes use firm tofu");
+  await expect(proteins.locator(".riso-protein-emoji")).toHaveText("⬜"); // its own emoji, not the beans
+
+  // Selecting it shows the bar with the count of recipes Recipes then lists.
+  const row = proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ });
+  const bar = page.locator(".riso-protein-bar");
+  await expect(bar).toHaveCount(0);
+  await row.click();
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  await expect(bar).toContainText("2 of your recipes use tofu.");
+  // The same bar in French, with the right article.
+  await langSwitch(page).getByRole("button", { name: "Français" }).click();
+  await expect(bar).toContainText("2 de vos recettes utilisent du tofu.");
+  await expect(bar).toContainText("Les voir →");
+  await langSwitch(page).getByRole("button", { name: "English" }).click();
+  // Tapping it again deselects and hides the bar.
+  await row.click();
+  await expect(bar).toHaveCount(0);
+
+  await row.click();
+  await bar.click();
+  await expect(page.locator(".tab.active")).toHaveText("Recipes");
+  await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
+  await expect(page.locator(".riso-recipes-searchbar input")).not.toHaveValue("");
+});
+
+test.describe("Proteins on sale bar on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("says none use it when no recipe does, with no arrow, and stays inside the screen", async ({ page }) => {
+    const userId = await signUp(page, "Matt");
+    await prisma.flyerDeal.create({
+      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Tofu ferme", matchName: "tofu ferme", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: new Date() },
+    });
+    await page.reload();
+    await langSwitch(page).getByRole("button", { name: "Français" }).click();
+    const row = page.locator(".riso-home-proteins .riso-protein-row");
+    await row.scrollIntoViewIfNeeded();
+    await row.click();
+    const bar = page.locator(".riso-protein-bar");
+    await expect(bar).toHaveText("Aucune de vos recettes n'utilise de tofu pour l'instant.");
+    await expect(bar).not.toContainText("→");
+    await page.waitForTimeout(400); // the slide-up
+    const box = await bar.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    expect(box.y + box.height).toBeLessThanOrEqual(844);
+    await page.screenshot({ path: test.info().outputPath("proteins-bar-phone-fr.png") });
+    await row.click();
+    await expect(bar).toHaveCount(0);
+  });
 });
 
 test.describe("Recipes", () => {
@@ -128,7 +177,7 @@ test.describe("Recipes", () => {
     await page.reload();
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
-    await expect(page.locator(".riso-recipes-section-title")).toHaveText([/Cookbook/, /Imported/]);
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*1/, /Imported\s*1/]);
     await expect(page.locator(".riso-recipes-section").first()).toContainText("Grandma's lasagna");
     await expect(page.locator(".riso-recipes-section").nth(1)).toContainText("Imported pad thai");
 
@@ -147,6 +196,53 @@ test.describe("Recipes", () => {
     await expect(page.locator(".modal-overlay")).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Cookbook or imported" }).getByRole("button", { name: /^Cookbook/ })).toContainText("2");
     await expect(page.getByRole("group", { name: "Cookbook or imported" }).getByRole("button", { name: /^Imported/ })).toContainText("0");
+  });
+});
+
+test.describe("Recipes sections", () => {
+  test.use({ viewport: { width: 1280, height: 1000 } });
+
+  test("the Cookbook is split by meal type, empty ones are hidden, and every header folds", async ({ page }) => {
+    const userId = await signUp(page);
+    await recipe(page, "Chicken curry", "dinner", ["chicken"]);
+    await recipe(page, "Pasta bake", "dinner", ["pasta"]);
+    await recipe(page, "Pancakes", "breakfast", ["flour"]);
+    await recipe(page, "Garlic rice", "side", ["rice"]);
+    await prisma.recipe.create({
+      data: { userId, title: "Imported pad thai", inCookbook: false, inImported: true, instructions: "[]", ingredients: { create: [{ name: "noodles" }] } },
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "Recipes", exact: true }).click();
+
+    const head = (name) => page.locator(".riso-recipes-head", { hasText: name });
+    const cookbook = page.locator(".riso-recipes-section", { has: head("Cookbook") }).first();
+    const sub = (name) => cookbook.locator(".riso-recipes-subsection", { has: head(name) });
+    await expect(head("Cookbook").first()).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*4/, /Imported\s*1/]);
+    // Breakfast, Dinner and Sides have recipes; Lunch and the others are hidden.
+    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Breakfast\s*1/, /Dinner\s*2/, /Sides\s*1/]);
+    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(2);
+
+    // The header folds its section, and the count stays.
+    await head("Dinner").click();
+    await expect(head("Dinner")).toHaveAttribute("aria-expanded", "false");
+    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(0);
+    await expect(head("Dinner")).toContainText("2");
+    await head("Dinner").click();
+    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(2);
+    await head("Imported").click();
+    await expect(page.locator(".riso-recipes-section", { hasText: "Imported pad thai" })).toHaveCount(0);
+    await head("Imported").click();
+    await expect(page.locator(".riso-recipes-section", { hasText: "Imported pad thai" })).toHaveCount(1);
+
+    // The toggles and filters narrow what's inside the sections, and the counts follow.
+    const chips = page.locator(".riso-recipes-filter-chips").last();
+    await chips.getByRole("button", { name: /^Dinner/ }).click();
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*2/]);
+    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Dinner\s*2/]);
+    await chips.getByRole("button", { name: /^All/ }).click();
+    await page.getByRole("group", { name: "Cookbook or imported" }).getByRole("button", { name: /^Imported/ }).click();
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Imported\s*1/]);
   });
 });
 

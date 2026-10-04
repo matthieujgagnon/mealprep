@@ -127,7 +127,12 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  // A shelf is addable from the round + at the end of the shelf pill, even with zero items.
+  // A shelf is addable from the round + beside the shelf pill (outside it), even with zero items.
+  await expect(page.locator(".riso-inv-shelf-switch").getByRole("button", { name: "Add a shelf" })).toHaveCount(0);
+  const pill = await page.locator(".riso-inv-shelf-switch").boundingBox();
+  const plus = await page.getByRole("button", { name: "Add a shelf" }).boundingBox();
+  expect(plus.x).toBeGreaterThanOrEqual(pill.x + pill.width); // to the right of the pill
+  expect(pill.width).toBeLessThan(800); // as wide as its chips on a computer, not the whole page
   await page.getByRole("button", { name: "Add a shelf" }).click();
   await page.getByLabel("Shelf name").fill("Garage Freezer");
   await page.keyboard.press("Enter");

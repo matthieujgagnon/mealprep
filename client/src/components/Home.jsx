@@ -8,7 +8,6 @@ import { daysUntil } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { mentionsTofu, proteinName, proteinOf, proteinsOnSale } from "../lib/proteins.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
 import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
@@ -33,20 +32,6 @@ const RESTAURANT_TITLE = "🍽️ Restaurant";
 // design's 96% today, 86% tomorrow, 30% at five days).
 function useUpPct(daysLeft) {
   return Math.max(8, Math.min(96, Math.round((1 - daysLeft / 7) * 100)));
-}
-
-function matchRecipesForDeal(deal, recipes) {
-  // Tofu is one thing to cook with: a recipe that wants firm, extra-firm or
-  // silken tofu uses a tofu on sale, whichever the flyer lists. "See them"
-  // then searches "tofu", which finds all of them.
-  if (proteinOf(deal)?.id === "tofu") {
-    return recipes
-      .filter((recipe) => recipe.ingredients?.some((i) => mentionsTofu(i.name)))
-      .map((recipe) => ({ recipe, ingredientName: "tofu" }));
-  }
-  return recipes
-    .map((recipe) => ({ recipe, ingredientName: recipe.ingredients?.find((i) => findBestDeal(i.name, [deal]))?.name }))
-    .filter((m) => m.ingredientName);
 }
 
 function isBlankMarker(entry) {
@@ -282,13 +267,6 @@ export function Home({
     setPlannerEntries(entries);
     api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => {});
   }
-
-  // The proteins on sale that the most recipes use.
-  const proteinDeals = proteinsOnSale(deals)
-    .map((k) => k.best)
-    .filter(Boolean)
-    .map((d) => ({ ...d, matches: matchRecipesForDeal(d, recipes) }));
-  const topDealMatch = proteinDeals.filter((d) => d.matches.length > 0).sort((a, b) => b.matches.length - a.matches.length)[0];
 
   const useSoonItems = pantryInventory
     .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0)
@@ -671,24 +649,7 @@ export function Home({
           )}
         </section>
 
-        <ProteinsOnSale
-          deals={deals}
-          onNavigate={onNavigate}
-          footer={
-            topDealMatch && (
-              <p className="riso-home-mini-footer">
-                {t("home.recipesUse", { count: topDealMatch.matches.length, name: proteinName(topDealMatch).toLowerCase() })}{" "}
-                <button
-                  type="button"
-                  className="riso-home-mini-link"
-                  onClick={() => onFindRecipes?.(topDealMatch.matches[0].ingredientName)}
-                >
-                  {t("home.seeThem")}
-                </button>
-              </p>
-            )
-          }
-        />
+        <ProteinsOnSale deals={deals} recipes={recipes} onNavigate={onNavigate} onFindRecipes={onFindRecipes} />
       </div>
     </div>
   );

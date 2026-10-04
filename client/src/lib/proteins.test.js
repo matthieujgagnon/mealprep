@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PROTEINS, mentionsTofu, proteinOf, proteinsOnSale } from "./proteins.js";
+import { PROTEINS, mentionsTofu, proteinOf, proteinSearchQuery, proteinsOnSale, recipesUsingProtein } from "./proteins.js";
 
 const deal = (item, aisle, extra = {}) => ({ id: item, store: "Metro", item, matchName: item.toLowerCase(), aisle, unitPrice: 2.99, unitBasis: "each", price: "$2.99", ...extra });
 
@@ -30,5 +30,33 @@ describe("tofu as a protein", () => {
       expect(mentionsTofu(name)).toBe(true);
     }
     for (const name of ["tofurky slices", "chicken", ""]) expect(mentionsTofu(name)).toBe(false);
+  });
+});
+
+describe("recipes that use a protein", () => {
+  const recipe = (title, ingredients = [], extra = {}) => ({ title, tags: [], ingredients: ingredients.map((name) => ({ name })), ...extra });
+  const kind = (id) => PROTEINS.find((p) => p.id === id);
+
+  it("counts what Recipes' search finds with the same words", async () => {
+    const { matchesSearch } = await import("./recipeSearch.js");
+    const recipes = [
+      recipe("Curry", ["chicken thighs"]),
+      recipe("Poulet rôti", ["poulet"]),
+      recipe("Tofu bowl", ["firm tofu"]),
+      recipe("Rice", ["rice"]),
+      recipe("Note", [], { isPlaceholder: true, title: "chicken night" }),
+    ];
+    expect(recipesUsingProtein(recipes, kind("chicken")).map((r) => r.title)).toEqual(["Curry", "Poulet rôti"]);
+    expect(recipesUsingProtein(recipes, kind("tofu"))).toHaveLength(1);
+    expect(recipesUsingProtein(recipes, kind("pork"))).toHaveLength(0);
+    for (const p of PROTEINS) {
+      const n = recipes.filter((r) => !r.isPlaceholder && matchesSearch(r, proteinSearchQuery(p))).length;
+      expect(recipesUsingProtein(recipes, p)).toHaveLength(n);
+    }
+  });
+
+  it("gives tofu its own emoji", () => {
+    expect(kind("tofu").emoji).not.toBe("🫘");
+    expect(new Set(PROTEINS.map((p) => p.emoji)).size).toBe(PROTEINS.length);
   });
 });

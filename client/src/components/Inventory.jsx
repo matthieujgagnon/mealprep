@@ -821,8 +821,8 @@ function ShelfColumn({
 
 // "+ Add shelf" at the end of the grid makes a new shelf and opens it
 // ready to rename.
-// The little round + at the end of the shelf pill: it turns into a field for the
-// new shelf's name (Enter adds it, Escape cancels).
+// The little round + beside the shelf pill: it turns into a field for the new
+// shelf's name (Enter adds it, Escape cancels).
 function AddShelfSegment({ onAdd }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -1438,19 +1438,22 @@ export function Inventory({
       {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
       <div className="riso-inv-shelf-pin">
-        <div className="riso-inv-shelf-switch" role={isPhone ? "tablist" : "group"} aria-label={t("inventory.shelfAria")}>
-          {shelfLocations.map((loc) => (
-            <button
-              key={loc.id}
-              type="button"
-              role={isPhone ? "tab" : undefined}
-              aria-selected={isPhone ? phoneShelf === loc.id : undefined}
-              className={isPhone && phoneShelf === loc.id ? "on" : ""}
-              onClick={() => jumpToShelf(loc.id)}
-            >
-              {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
-            </button>
-          ))}
+        <div className="riso-inv-shelf-bar">
+          <div className="riso-inv-shelf-switch" role={isPhone ? "tablist" : "group"} aria-label={t("inventory.shelfAria")}>
+            {shelfLocations.map((loc) => (
+              <button
+                key={loc.id}
+                type="button"
+                role={isPhone ? "tab" : undefined}
+                aria-selected={isPhone ? phoneShelf === loc.id : undefined}
+                className={isPhone && phoneShelf === loc.id ? "on" : ""}
+                onClick={() => jumpToShelf(loc.id)}
+              >
+                {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
+              </button>
+            ))}
+          </div>
+          {/* The round + sits beside the pill, not inside it. */}
           <AddShelfSegment
             onAdd={async (name) => {
               const created = await onAddLocation(name);
@@ -1460,7 +1463,6 @@ export function Inventory({
           />
         </div>
       </div>
-
 
       <div className="inv-shelves">
         {shelfLocations

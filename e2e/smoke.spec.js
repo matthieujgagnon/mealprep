@@ -68,8 +68,12 @@ test("add an extra grocery item and check it off", async ({ page }) => {
   const row = page.locator(".riso-row").filter({ has: page.locator(".riso-row-name", { hasText: "paper towels" }) });
   await expect(row).toBeVisible();
 
+  // Only the checkbox checks it off: tapping the name does nothing.
+  await row.locator(".riso-row-name").click();
+  await expect(row).not.toHaveClass(/checked/);
+
   // Checking it off strikes it through and sinks it to the bottom of its group.
-  await row.click();
+  await row.getByRole("checkbox").click();
   await expect(row).toHaveClass(/checked/);
   await expect(row.locator(".riso-row-name")).toHaveClass(/struck/);
 });

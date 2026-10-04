@@ -28,7 +28,9 @@ const goToGrocery = async (page) => {
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
 };
-const row = (page, name) => page.getByRole("button", { name: `Check off ${name}`, exact: true });
+// A grocery row, and the checkbox in it: only the checkbox checks the item off.
+const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
+const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
 
 test("a checked item's To inventory opens the sheet for that item; cancel adds nothing, confirm adds what was edited", async ({ page }) => {
   await signUp(page);
@@ -37,8 +39,8 @@ test("a checked item's To inventory opens the sheet for that item; cancel adds n
   await goToGrocery(page);
   await expect(page.getByRole("button", { name: /^To inventory$/ })).toHaveCount(0); // only checked rows have it
 
-  await row(page, "Kale").click();
-  await row(page, "Rice").click();
+  await check(page, "Kale").click();
+  await check(page, "Rice").click();
   await page.getByRole("button", { name: "Add Kale to Inventory" }).click();
 
   const sheet = page.locator(".riso-confirm");
@@ -50,7 +52,7 @@ test("a checked item's To inventory opens the sheet for that item; cancel adds n
 
   await cancelAdd(page);
   expect(await inventory(page)).toHaveLength(0); // nothing added
-  await expect(row(page, "Kale")).toHaveAttribute("aria-pressed", "true"); // the list is as it was
+  await expect(check(page, "Kale")).toHaveAttribute("aria-checked", "true"); // the list is as it was
 
   await page.getByRole("button", { name: "Add Kale to Inventory" }).click();
   await sheet.getByLabel("Amount of Kale").fill("3");
@@ -71,8 +73,8 @@ test("Done shopping lists every checked item; a row switched off stays on the li
   await addExtra(page, { name: "Oats" });
   await addExtra(page, { name: "Honey" });
   await goToGrocery(page);
-  await row(page, "Oats").click();
-  await row(page, "Honey").click();
+  await check(page, "Oats").click();
+  await check(page, "Honey").click();
   await page.getByRole("button", { name: "Done shopping · add 2 to inventory" }).click();
 
   const sheet = page.locator(".riso-confirm");
@@ -83,7 +85,7 @@ test("Done shopping lists every checked item; a row switched off stays on the li
   await confirmAdd(page);
 
   expect((await inventory(page)).map((i) => i.name)).toEqual(["Oats"]);
-  await expect(row(page, "Honey")).toHaveAttribute("aria-pressed", "true");
+  await expect(check(page, "Honey")).toHaveAttribute("aria-checked", "true");
 });
 
 test("a receipt goes through the same sheet, and cancelling it adds nothing", async ({ page }) => {
@@ -117,7 +119,7 @@ test.describe("grocery rows", () => {
     await goToGrocery(page);
   }
 
-  test("a flyer item opens its deal when tapped, a hand-added item doesn't", async ({ page }) => {
+  test("a flyer item opens its deal when tapped; a hand-added item does nothing; only the checkbox checks, and it is 44 px", async ({ page }) => {
     await seed(page, await signUp(page));
     await page.getByRole("button", { name: "Open the flyer deal for Bacon" }).click();
     await expect(page.locator(".riso-deal-detail-name")).toContainText("Maple Leaf bacon");
@@ -130,9 +132,21 @@ test.describe("grocery rows", () => {
     await expect(page.locator(".riso-deal-detail-name")).toHaveCount(0);
     await expect(page.getByRole("checkbox", { name: "Check off Bacon" })).toHaveAttribute("aria-checked", "true");
 
-    // A hand-added item checks off and opens nothing.
-    await row(page, "Soap").click();
-    await expect(row(page, "Soap")).toHaveAttribute("aria-pressed", "true");
+    // Tapping anywhere else on a hand-added item's row does nothing: only its checkbox checks it.
+    await page.locator(".riso-row-name", { hasText: /^Soap$/ }).click();
+    await expect(check(page, "Soap")).toHaveAttribute("aria-checked", "false");
+    await expect(page.locator(".riso-deal-detail-name")).toHaveCount(0);
+    // The checkbox is at least 44 by 44 px to tap, on a computer and on a phone.
+    for (const size of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      const box = await check(page, "Soap").boundingBox();
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+
+    // The checkbox checks it off and opens nothing.
+    await check(page, "Soap").click();
+    await expect(check(page, "Soap")).toHaveAttribute("aria-checked", "true");
     await expect(page.locator(".riso-deal-detail-name")).toHaveCount(0);
   });
 
@@ -160,7 +174,7 @@ test.describe("grocery rows", () => {
 
     // The same on a phone, and with one row checked ("To inventory" takes the tag's place).
     await page.setViewportSize({ width: 390, height: 844 });
-    await row(page, "Soap").click();
+    await check(page, "Soap").click();
     await expect(page.getByRole("button", { name: "Add Soap to Inventory" })).toBeVisible();
     const heights = await page.locator(".riso-row").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
     expect(new Set(heights).size).toBe(1);
@@ -204,6 +218,14 @@ test.describe("inventory on a phone", () => {
     const chips = page.locator(".riso-inv-shelf-pin");
     const header = await page.locator(".app-header").boundingBox();
     await expect.poll(async () => Math.round((await chips.boundingBox()).y)).toBe(Math.round(header.y + header.height));
+
+    // The pill is the full width of the screen less the round +, which sits beside it, outside the pill.
+    const pill = await page.locator(".riso-inv-shelf-switch").boundingBox();
+    const plus = await page.getByRole("button", { name: "Add a shelf" }).boundingBox();
+    await expect(page.locator(".riso-inv-shelf-switch").getByRole("button", { name: "Add a shelf" })).toHaveCount(0);
+    expect(plus.x).toBeGreaterThanOrEqual(pill.x + pill.width);
+    expect(pill.x + pill.width + 8 + plus.width).toBeGreaterThanOrEqual(390 - 18 - 1);
+    expect(pill.width).toBeGreaterThan(390 - 36 - 48 - 8 - 2);
 
     await page.getByRole("tab", { name: /^Freezer/ }).click();
     await expect(page.locator('.inv-shelf[data-section-id="freezer"]')).toBeInViewport();

@@ -202,7 +202,7 @@ test("+ List puts the ingredient on the grocery list under that store", async ({
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(
-    page.getByRole("region", { name: "Metro store" }).getByRole("button", { name: "Check off Chicken breast", exact: true })
+    page.getByRole("region", { name: "Metro store" }).getByRole("checkbox", { name: "Check off Chicken breast", exact: true })
   ).toBeVisible();
 
   // Again takes it off.
@@ -390,17 +390,18 @@ test("on the grocery list, a sale item's tag shows where it's cheapest, wherever
 
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  const bacon = page.getByRole("button", { name: "Check off Bacon", exact: true });
+  const groceryRow = (name) => page.locator(".riso-row").filter({ has: page.getByRole("checkbox", { name: `Check off ${name}`, exact: true }) });
+  const bacon = groceryRow("Bacon");
   await expect(bacon.locator(".riso-row-deal")).toHaveText("Super C$3.99");
-  await expect(page.getByRole("button", { name: "Check off Lemon juice", exact: true }).locator(".riso-row-deal")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Check off Red bell pepper", exact: true }).locator(".riso-row-deal")).toHaveCount(0);
+  await expect(groceryRow("Lemon juice").locator(".riso-row-deal")).toHaveCount(0);
+  await expect(groceryRow("Red bell pepper").locator(".riso-row-deal")).toHaveCount(0);
 
   await bacon.locator(".riso-row-deal").click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("Maple Leaf bacon, 375 g");
   await expect(dialog.locator(".riso-deal-detail-others")).toContainText("Metro · $5.99");
   // Opening it didn't check the item off.
-  await expect(bacon).toHaveAttribute("aria-pressed", "false");
+  await expect(bacon.getByRole("checkbox")).toHaveAttribute("aria-checked", "false");
 
   // Aisles: lemon juice is pantry, red bell pepper is produce.
   await page.keyboard.press("Escape");
