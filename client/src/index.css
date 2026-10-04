@@ -9746,8 +9746,8 @@ button.riso-protein-bar {
   }
 
   /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale tag
-     sits just left of the number and looks like it does on a computer: store, a
-     divider, price. (On a narrow phone it stacks, see below.) */
+     (shown when the phone is sideways, see below) sits just left of the number and
+     looks like it does on a computer: store, a divider, price. */
   .riso-row-slot {
     display: contents;
   }
@@ -9783,7 +9783,7 @@ button.riso-protein-bar {
 
 /* ---------- Store mode: the "store" form of the same item ---------- */
 .store-mode-list {
-  --gi-min: 120px;
+  --gi-min: 84px;
 }
 
 .store-mode .store-mode-row {
@@ -9792,7 +9792,7 @@ button.riso-protein-bar {
   align-items: center;
   box-sizing: border-box;
   width: 100%;
-  height: max(var(--gi-min, 120px), var(--gi-h, 0px));
+  height: max(var(--gi-min, 84px), var(--gi-h, 0px));
   padding: 0 12px 0 4px;
   border: 2px solid var(--riso-ink);
   border-radius: 22px;
@@ -9834,54 +9834,6 @@ button.riso-protein-bar {
   overflow-wrap: break-word;
 }
 
-.store-mode-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
-  min-height: 28px;
-}
-
-.store-mode-brand {
-  flex: none;
-  font: 600 14px var(--riso-font-display);
-  color: var(--riso-ink);
-}
-
-.store-mode-dot {
-  flex: none;
-  width: 4px;
-  height: 4px;
-  margin: 0 -4px;
-  border-radius: 2px;
-  background: var(--riso-muted);
-}
-
-.store-mode-recipes {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  min-width: 0;
-  max-width: 100%;
-  font: 500 12.5px/1.4 var(--riso-font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--riso-soft);
-}
-
-.store-mode-recipes-names {
-  flex: 0 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.store-mode-recipes-more {
-  flex: none;
-  white-space: nowrap;
-}
-
 .store-mode-qty {
   flex: none;
   min-width: 32px;
@@ -9898,24 +9850,6 @@ button.riso-protein-bar {
   font: 700 15px var(--riso-font-mono);
 }
 
-.store-mode-need {
-  flex: none;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 9px;
-  border: 1.5px dashed var(--riso-chip-dash);
-  border-radius: 12px;
-  color: var(--riso-soft);
-  font: 500 12px var(--riso-font-mono);
-  white-space: nowrap;
-}
-
-
-
-
-
 /* The dark Store mode is dark all the way through: dark rows, light text, dark
    pills. A checked row goes a shade lighter and its box turns pink. */
 .store-mode[data-sm-theme="dark"] .store-mode-row {
@@ -9927,19 +9861,6 @@ button.riso-protein-bar {
 .store-mode[data-sm-theme="dark"] .store-mode-check {
   background: transparent;
   border-color: var(--sm-text);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-brand {
-  color: var(--sm-text);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-recipes {
-  color: var(--sm-muted);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-need {
-  border-color: var(--sm-muted);
-  color: var(--sm-muted);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-qty {
@@ -9959,9 +9880,6 @@ button.riso-protein-bar {
   color: var(--riso-ink);
 }
 
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-brand,
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-need,
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-recipes,
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-name {
   color: var(--sm-muted);
 }
@@ -9988,8 +9906,6 @@ button.riso-protein-bar {
 .store-mode[data-sm-theme="light"] .store-mode-row.on .store-mode-name {
   color: var(--riso-muted);
 }
-
-
 
 .riso-group-grip {
   flex: none;
@@ -10213,19 +10129,6 @@ button.riso-deal-detail-other:focus-visible {
   font-size: 15px;
   text-align: center;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 .riso-grocery-sale {
   position: relative;
@@ -16640,31 +16543,160 @@ body.no-select {
   pointer-events: none;
 }
 
-/* On a phone the form is the bottom sheet: one column, bigger touch chips. */
+/* On a phone the form is the bottom sheet: one tight column, a taller sheet, and one
+   short row of buttons at the bottom so most of the screen is the form. */
 @media (max-width: 767px) {
+  .riso-sheet:has(.riso-itemform) {
+    max-height: 92vh;
+    max-height: 92dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .riso-itemform,
+  .riso-itemform-main {
+    gap: 14px;
+  }
+
+  .riso-itemform-cols {
+    gap: 14px;
+  }
+
+  .riso-itemform-side {
+    gap: 12px;
+  }
+
+  .riso-itemform-block {
+    gap: 8px;
+  }
+
   .riso-itemform-title,
   .riso-itemform-name {
-    font-size: 32px;
+    font-size: 28px;
+  }
+
+  /* Enter-adds-it is a keyboard tip. */
+  .riso-itemform-hint {
+    display: none;
+  }
+
+  .riso-itemform-nameinput {
+    height: 50px;
+    font-size: 20px;
+  }
+
+  /* Recent foods: one row you slide sideways, not a wall of chips. */
+  .riso-itemform-recent {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -18px;
+    padding: 0 18px 2px;
+  }
+
+  .riso-itemform-recent::-webkit-scrollbar {
+    display: none;
+  }
+
+  .riso-itemform-recent > * {
+    flex: none;
   }
 
   .riso-itemform-chip,
   .riso-itemform-chip.small {
-    height: 40px;
+    height: 36px;
   }
 
   .riso-itemform-chip.big {
-    height: 44px;
+    height: 42px;
   }
 
-  /* The sheet has its own bottom padding: the footer reaches over it, so nothing scrolls
-     through the gap under the buttons. */
+  /* The quick amounts share one row. */
+  .riso-itemform-quick {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .riso-itemform-quick .riso-itemform-chip.small {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .riso-itemform-useby {
+    gap: 6px;
+  }
+
+  .riso-itemform-chip {
+    padding: 0 12px;
+  }
+
+  .riso-itemform-locs,
+  .riso-itemform-locs.wide {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 6px;
+  }
+
+  .riso-itemform-loc {
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .riso-itemform-loc-name {
+    font-size: 14px;
+  }
+
+  .riso-itemform-loc-range {
+    font-size: 10px;
+  }
+
+  .riso-itemform-photo {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .riso-itemform-drop {
+    display: none;
+  }
+
+  .riso-itemform-remove {
+    align-self: flex-start;
+    margin-top: 6px;
+  }
+
+  /* One row of buttons: Cancel as plain text, the rest share the width. */
   .riso-itemform-footer {
-    bottom: calc(-22px - env(safe-area-inset-bottom));
-    padding-bottom: calc(22px + env(safe-area-inset-bottom));
+    flex-wrap: nowrap;
+    gap: 8px;
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .riso-itemform-spacer {
+    display: none;
   }
 
   .riso-itemform-footer .riso-itemform-btn {
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 44px;
+    padding: 0 10px;
+    border-radius: 22px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .riso-itemform-footer .riso-itemform-btn.primary {
+    flex: 1.4 1 0;
+    padding: 0 12px;
+    font-size: 14px;
+    box-shadow: 2px 2px 0 var(--riso-ink);
+  }
+
+  .riso-itemform-footer .riso-itemform-btn.quiet {
+    flex: 0 0 auto;
+    border-color: transparent;
+    background: none;
+    padding: 0 8px;
   }
 }
 
@@ -16686,26 +16718,10 @@ body.no-select {
   color: var(--riso-muted);
 }
 
-/* On a narrow phone the tag has no room in one line: the store over the price, the
-   divider across, the same green tag. */
-@media (max-width: 479px) {
+/* A phone held upright has no room for the sale tag beside the name, so it isn't
+   shown there; turned sideways it is, on one line like on a computer. */
+@media (max-width: 767px) and (orientation: portrait) {
   .riso-row-deal {
-    flex-direction: column;
-    justify-content: center;
-    align-items: stretch;
-    gap: 2px;
-    height: auto;
-    padding: 3px 7px;
-    text-align: center;
-  }
-
-  .riso-row-deal-div {
-    width: auto;
-    height: 1.5px;
-  }
-
-  .riso-row-deal-store,
-  .riso-row-deal-price {
-    line-height: 13px;
+    display: none;
   }
 }

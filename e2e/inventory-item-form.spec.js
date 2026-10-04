@@ -250,22 +250,43 @@ test("the server lists recent foods and shelf life for every shelf", async ({ pa
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("the form is a bottom sheet with the buttons always in reach and touch-size chips", async ({ page }) => {
+  test("the form is a compact bottom sheet: one short row of buttons, one row of recent foods, one row of quick amounts", async ({ page }) => {
     await setup(page);
+    for (const name of ["Maggi seasoning sauce", "Distilled white vinegar", "Vanilla syrup", "Waffle and pancake mix", "Dark baking chocolate squares", "Pitas"]) {
+      await page.request.post("/api/pantry-inventory", { data: { name, location: "pantry", quantity: 1 } });
+    }
+    await page.reload();
+    await page.getByRole("button", { name: "Inventory", exact: true }).click();
     await page.getByRole("button", { name: "+ Add item" }).click();
     const sheet = page.getByRole("dialog", { name: "Add item" });
     await expect(sheet).toBeVisible();
+    await page.waitForTimeout(400); // the sheet slides up
     const box = await sheet.boundingBox();
     expect(box.x).toBe(0);
     expect(box.width).toBe(390);
-    // The footer stays in view without scrolling the sheet.
-    const primary = await itemForm(page).getByRole("button", { name: "Add to inventory" }).boundingBox();
-    expect(primary.y + primary.height).toBeLessThanOrEqual(844);
-    await expect(itemForm(page).getByRole("button", { name: "Add to inventory" })).toBeInViewport();
-    for (const label of ["Set to 1", "Set to ½"]) {
-      const chip = await itemForm(page).getByRole("button", { name: label, exact: true }).boundingBox();
-      expect(chip.height).toBeGreaterThanOrEqual(40);
-    }
+    // The sheet takes most of the screen.
+    expect(box.height).toBeGreaterThan(844 * 0.8);
+
+    // One short row of buttons, always in reach: Cancel as text, the rest 44 px tall.
+    const form = itemForm(page);
+    const buttons = {};
+    for (const name of ["Cancel", "Add and next", "Add to inventory"]) buttons[name] = await form.getByRole("button", { name, exact: true }).boundingBox();
+    expect(new Set(Object.values(buttons).map((b) => Math.round(b.y + b.height / 2))).size).toBe(1); // one row
+    expect(buttons["Add and next"].height).toBe(44);
+    expect(buttons["Add to inventory"].height).toBe(44);
+    expect(buttons["Add to inventory"].y + buttons["Add to inventory"].height).toBeLessThanOrEqual(844);
+    const footer = await form.locator(".riso-itemform-footer").boundingBox();
+    expect(footer.height).toBeLessThanOrEqual(70);
+    await expect(form.getByRole("button", { name: "Add to inventory" })).toBeInViewport();
+
+    // The recent foods slide sideways in one row; the quick amounts share one row.
+    const recent = await form.locator(".riso-itemform-recent").evaluate((e) => ({ wraps: e.scrollWidth > e.clientWidth, height: e.getBoundingClientRect().height }));
+    expect(recent.wraps).toBe(true);
+    expect(recent.height).toBeLessThan(60);
+    const quickTops = await form.locator(".riso-itemform-quick .riso-itemform-chip").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
+    expect(quickTops).toHaveLength(1);
+    // The Enter tip is for keyboards.
+    await expect(form.locator(".riso-itemform-hint")).toBeHidden();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
     await fillAddForm(page, "Bananas");

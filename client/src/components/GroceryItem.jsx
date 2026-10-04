@@ -91,7 +91,8 @@ export function GroceryItem({
   const recipeQty = item.isManual ? "" : recipeAmountLabel(item);
   // The sale tag: only in a list (Store mode shows none), and not once it's checked.
   const showDeal = !store && !checked && !!deal?.price;
-  const hasMeta = !!brand || hasRecipes || !!recipeQty;
+  // Store mode shows the name and the number to buy, nothing else.
+  const hasMeta = !store && (!!brand || hasRecipes || !!recipeQty);
 
   const metaLine = hasMeta && (
     <span className={c("meta")}>
@@ -103,7 +104,7 @@ export function GroceryItem({
       {brand && hasRecipes && <span className={c("dot")} aria-hidden="true" />}
       <RecipesLine usedIn={item.usedIn} className={c("recipes")} />
       {recipeQty && (
-        <span className={store ? "store-mode-need" : "riso-row-need narrow"} title={t("grocery.recipeQtyTitle")}>
+        <span className="riso-row-need narrow" title={t("grocery.recipeQtyTitle")}>
           {recipeQty}
         </span>
       )}

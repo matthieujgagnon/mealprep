@@ -225,36 +225,16 @@ test.describe("on a phone", () => {
     }
   });
 
-  test("on a phone the sale tag is narrow and sits just left of the number, on the same line", async ({ page }) => {
+  test("a phone held upright shows no sale tag, so the name has the room", async ({ page }) => {
     await setup(page);
-    await expect(page.locator(".riso-row-deal")).toHaveCount(2);
-    const spots = await page.locator(".riso-row").evaluateAll((rows) =>
-      rows
-        .filter((r) => r.querySelector(".riso-row-deal"))
-        .map((r) => {
-          const tag = r.querySelector(".riso-row-deal").getBoundingClientRect();
-          const qty = r.querySelector(".riso-row-qty").getBoundingClientRect();
-          const name = r.querySelector(".riso-row-name").getBoundingClientRect();
-          return {
-            leftOfNumber: tag.right <= qty.left && qty.left - tag.right < 16,
-            sameLine: Math.abs(tag.top + tag.height / 2 - (qty.top + qty.height / 2)) < 6,
-            narrow: tag.width <= 100,
-            afterName: tag.left >= name.right,
-            rightEdge: Math.round(tag.right),
-          };
-        })
-    );
-    for (const x of spots) {
-      expect(x.leftOfNumber).toBe(true);
-      expect(x.sameLine).toBe(true);
-      expect(x.narrow).toBe(true);
-      expect(x.afterName).toBe(true);
-    }
-    expect(new Set(spots.map((x) => x.rightEdge)).size).toBe(1); // lined up
+    await expect(page.locator(".riso-row-deal")).toHaveCount(2); // they're there, just not shown
+    for (const tag of await page.locator(".riso-row-deal").all()) await expect(tag).toBeHidden();
+    // Nothing else is lost: the green On sale panel still lists the deals.
+    await expect(page.locator(".riso-row-qty").first()).toBeVisible();
   });
 
-  test("a wider phone shows the sale tag as on a computer: store, a divider, price, on one line", async ({ page }) => {
-    await page.setViewportSize({ width: 520, height: 844 });
+  test("a phone held sideways shows the sale tag as on a computer: store, a divider, price, on one line", async ({ page }) => {
+    await page.setViewportSize({ width: 667, height: 375 });
     await setup(page);
     const looks = await page.locator(".riso-row-deal").evaluateAll((tags) =>
       tags.map((tag) => {
@@ -262,7 +242,14 @@ test.describe("on a phone", () => {
         const div = tag.querySelector(".riso-row-deal-div").getBoundingClientRect();
         const row = tag.closest(".riso-row");
         const qty = row.querySelector(".riso-row-qty").getBoundingClientRect();
-        return { height: Math.round(r.height), dividerIsVertical: div.height < div.width ? false : div.height > 6, leftOfNumber: r.right <= qty.left, bg: getComputedStyle(tag).backgroundColor };
+        const name = row.querySelector(".riso-row-name").getBoundingClientRect();
+        return {
+          height: Math.round(r.height),
+          dividerIsVertical: div.height >= div.width && div.height > 6,
+          leftOfNumber: r.right <= qty.left,
+          afterName: r.left >= name.right,
+          bg: getComputedStyle(tag).backgroundColor,
+        };
       })
     );
     expect(looks).toHaveLength(2);
@@ -270,11 +257,12 @@ test.describe("on a phone", () => {
       expect(l.height).toBe(22); // the same tag as on a computer
       expect(l.dividerIsVertical).toBe(true);
       expect(l.leftOfNumber).toBe(true);
+      expect(l.afterName).toBe(true);
       expect(l.bg).toBe("rgb(16, 201, 92)");
     }
   });
 
-  test("Store mode draws the same item at 120 px, and the whole row checks it", async ({ page }) => {
+  test("Store mode rows show only the name and the number, all one height, and the whole row checks it", async ({ page }) => {
     await setup(page);
     await page.getByRole("button", { name: /I'm at the store/ }).click();
     const mode = page.getByRole("dialog", { name: "Store mode" });
@@ -283,11 +271,14 @@ test.describe("on a phone", () => {
     const h = await heights(rows);
     expect(h.length).toBeGreaterThanOrEqual(5);
     expect(new Set(h).size, h.join(" ")).toBe(1);
-    expect(h[0]).toBeGreaterThanOrEqual(120);
+    expect(h[0]).toBeGreaterThanOrEqual(84);
+    expect(h[0]).toBeLessThan(120); // only a name and a number: no tall rows
     const beef = rows.filter({ has: page.locator(".store-mode-name", { hasText: /^Ground beef$/ }) });
-    await expect(beef.locator(".store-mode-recipes")).toContainText("Tacos");
-    await expect(beef.locator(".store-mode-need")).toHaveText("750 g");
     await expect(beef.locator(".store-mode-qty")).toHaveText("1");
+    // Nothing under the name: no recipes, brand, recipe quantity or sale tag.
+    await expect(beef.locator(".store-mode-main > *")).toHaveCount(1);
+    await expect(beef).not.toContainText("Tacos");
+    await expect(beef).not.toContainText("750 g");
     await expect(beef.locator(".riso-row-delete, .riso-row-toinv")).toHaveCount(0); // no × and no inventory button here
     // No sale tag here, and a checked row's box is pink in the dark theme.
     await expect(mode.locator(".store-mode-sale, .riso-row-deal")).toHaveCount(0);
