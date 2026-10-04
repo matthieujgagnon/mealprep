@@ -94,11 +94,11 @@ test("the timer block starts, adds a minute, resets, and keeps running on anothe
 
   await page.getByRole("button", { name: "+1 min" }).click();
   await expect(page.locator(".cm-timer-time")).toHaveText("21:00");
-  await page.getByRole("button", { name: "Reset" }).click();
+  await page.locator(".cm-timer").getByRole("button", { name: "Reset" }).click();
   await expect(page.locator(".cm-timer-time")).toHaveText("20:00");
 
   await page.keyboard.press(" ");
-  await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+  await expect(page.locator(".cm-timer").getByRole("button", { name: "Pause" })).toBeVisible();
   await expect(page.locator(".cm-timer-label")).toHaveText("ROASTING…");
 
   await page.getByRole("button", { name: "← Previous" }).click();
@@ -131,7 +131,7 @@ test("For this step pills show scaled quantities and check off when tapped", asy
   await expect(page.locator(".cm-uses-qty")).toHaveText("4");
 });
 
-test("finishing shows Dinner's ready; leftovers go to Inventory and the Planner", async ({ page }) => {
+test("finishing shows Supper's ready; leftovers go to Inventory and the Planner", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await addRecipeAndStartCooking(page, {
     title: "Cook Mode Finish Test",
@@ -142,7 +142,7 @@ test("finishing shows Dinner's ready; leftovers go to Inventory and the Planner"
 
   await page.getByRole("button", { name: "Next step →" }).click();
   await page.getByRole("button", { name: "Finish ✓" }).click();
-  await expect(page.getByRole("heading", { name: "Dinner's ready." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Supper's ready." })).toBeVisible();
 
   const portions = page.locator(".cm-stepper span");
   await expect(portions).toHaveText("3"); // serves 4, minus tonight's

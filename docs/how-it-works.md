@@ -86,6 +86,8 @@ While working, run only what your change touches. For example, `npx vitest run c
 
 Screens use the Riso Poster look: paper background, ink outlines, hard shadows, and blue, pink, yellow and green accents. Colours come from the `--riso-*` tokens in `index.css`. Reuse the existing classes (`riso-chip`, `riso-btn`, `riso-eyebrow`...) before adding new ones, and add no new colours.
 
+Buttons press in for a moment (under 150 ms) through one shared rule in `index.css`, next to `.riso-btn`: `riso-btn`, `riso-chip`, `riso-filter-chip`, the Grocery and Store mode buttons, and anything with `riso-press`. A new kind of button joins by using one of those classes or by being added to that list. The global reduced-motion rule turns the animation off. Step timers (the recipe card and Cook mode) share `hooks/useStepTimers.js`.
+
 ## Weekly flyer import
 
 The server checks hourly while awake and imports on Thursdays. A GitHub Action (`.github/workflows/flyer-import.yml`) wakes a sleeping free-tier server on Thursday and Friday. The details, including the secrets the action needs, are in the README and in [How the Flyers work](flyers-how-it-works.md).

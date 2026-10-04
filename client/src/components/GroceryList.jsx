@@ -1,3 +1,4 @@
+import { useJustChecked } from "../hooks/useJustChecked.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -233,6 +234,7 @@ function ToInventoryButton({ item, onClick }) {
 // a flyer deal, which opens that deal. Store mode is the other way round: the
 // whole row checks there.
 function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onToInventory, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
+  const justChecked = useJustChecked(checked);
   const brand = brandOf(deal || flyerDeal);
   const label = item.name + (item.varieties.length > 0 ? ` (${item.varieties.join(", ")})` : "");
   return (
@@ -272,7 +274,7 @@ function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onTo
           onToggle();
         }}
       >
-        <span className={`riso-row-check${checked ? " on" : ""}`}>{checked ? "✓" : ""}</span>
+        <span className={`riso-row-check${checked ? " on" : ""}${justChecked ? " pop" : ""}`}>{checked ? "✓" : ""}</span>
       </button>
       <span className="riso-row-main">
         <span className={`riso-row-name${checked ? " struck" : ""}`} title={label}>

@@ -4207,7 +4207,6 @@ input[type="date"].planner-week-picker {
 .riso-watch-badge,
 .riso-rc-why-sticker,
 .riso-rc-legend-sticker,
-.riso-rc-timer-chip,
 .riso-rc-tag-chip,
 .tag-chip,
 .inv-storage-pill {
@@ -4511,6 +4510,71 @@ input[type="date"].planner-week-picker {
   height: 28px;
   padding: 0 12px;
   font-size: 11.5px;
+}
+
+/* Press feedback, shared by every Riso button: a small press-down on touch or
+   click (80 ms in, 120 ms back). Grocery and Store mode are in the list from
+   the start; any other button joins it by being a .riso-btn, a chip or a
+   .riso-press. The transform is !important only so it still wins over the
+   buttons' own hover lift. The reduced-motion rule near the top of this file
+   turns every transition off, so nothing moves for people who ask for that. */
+.riso-btn,
+.riso-chip,
+.riso-filter-chip,
+.riso-press,
+.riso-grocery-add-btn,
+.riso-grocery-cart-btn,
+.riso-grocery-store-btn,
+.riso-grocery-add-store,
+.riso-grocery-add-store-cancel,
+.riso-grocery-removed-clear,
+.riso-group-remove,
+.riso-row-toinv,
+.riso-row-delete,
+.riso-row-check-hit,
+.store-mode-row,
+.store-mode-back {
+  transition: transform 120ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.riso-btn:active:not(:disabled),
+.riso-chip:active:not(:disabled),
+.riso-filter-chip:active:not(:disabled),
+.riso-press:active:not(:disabled),
+.riso-grocery-add-btn:active:not(:disabled),
+.riso-grocery-cart-btn:active:not(:disabled),
+.riso-grocery-store-btn:active:not(:disabled),
+.riso-grocery-add-store:active:not(:disabled),
+.riso-grocery-add-store-cancel:active:not(:disabled),
+.riso-grocery-removed-clear:active:not(:disabled),
+.riso-group-remove:active:not(:disabled),
+.riso-row-toinv:active:not(:disabled),
+.riso-row-delete:active:not(:disabled),
+.riso-row-check-hit:active:not(:disabled),
+.store-mode-row:active:not(:disabled),
+.store-mode-back:active:not(:disabled) {
+  transform: translate(1px, 1px) scale(0.96) !important;
+  transition-duration: 80ms;
+}
+
+/* A grocery item being checked: the box pops and the tick draws in, once,
+   in 160 ms (see useJustChecked). */
+@keyframes riso-check-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.riso-row-check.pop,
+.store-mode-check.pop {
+  animation: riso-check-pop 160ms ease-out;
 }
 
 /* Angled pill "sticker" overlapping a card edge - position (top/right/
@@ -5266,24 +5330,28 @@ button.riso-table-group-head:disabled {
 
 .riso-recipes-sort-label {
   font-family: var(--riso-font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   letter-spacing: 0.1em;
   color: var(--riso-ink);
 }
 
+/* Same size as the chips next to it (and as .riso-chip elsewhere): 32px tall,
+   12.5px, 600. */
 .riso-recipes-sort-btn {
   position: relative;
   gap: 6px;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 18px;
+  height: 32px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 16px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   display: flex;
   align-items: center;
   font-family: var(--riso-font-display);
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: 12.5px;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -5296,6 +5364,9 @@ button.riso-table-group-head:disabled {
   color: var(--riso-ink);
   cursor: pointer;
   padding: 0;
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 .riso-recipes-sort-btn:focus-within {
@@ -5305,7 +5376,8 @@ button.riso-table-group-head:disabled {
 
 .riso-filter-chip {
   height: 32px;
-  padding: 0 10px;
+  box-sizing: border-box;
+  padding: 0 12px;
   border-radius: 16px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
@@ -5331,6 +5403,26 @@ button.riso-table-group-head:disabled {
   font-family: var(--riso-font-mono);
   font-size: 10px;
   opacity: 0.75;
+}
+
+/* Cookbook / Imported on the left, SORT on the right: one line, on a phone too. */
+.riso-recipes-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.riso-recipes-source-row .riso-recipes-filter-chips {
+  flex: none;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.riso-recipes-source-row .riso-recipes-sort-group {
+  margin-left: 0;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 /* Cookbook and Imported: a collapsible section each (the header is the
@@ -5364,8 +5456,43 @@ button.riso-table-group-head:disabled {
   color: var(--riso-muted);
 }
 
+/* The two big sections are a blue band (accent, ink outline, hard shadow);
+   the meal types inside stay a plain smaller header, so the levels read apart. */
+.riso-recipes-head.top {
+  box-sizing: border-box;
+  padding: 10px 16px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-recipes-head.top h2 {
+  font-size: 24px;
+  color: var(--riso-on-accent);
+}
+
+.riso-recipes-head.top.collapsed {
+  box-shadow: none;
+}
+
+.riso-recipes-head.top.collapsed h2 {
+  color: var(--riso-on-accent);
+}
+
+.riso-recipes-head.top .riso-ing-group-rule {
+  background: var(--riso-on-accent);
+  opacity: 0.35;
+}
+
+.riso-recipes-head.top:focus-visible {
+  outline-offset: 3px;
+}
+
 .riso-recipes-head.sub h2 {
-  font-size: 19px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .riso-recipes-head.sub .riso-ing-group-count {
@@ -5979,6 +6106,12 @@ button.riso-table-group-head:disabled {
   color: #16181f;
 }
 
+.riso-rc-move-note {
+  margin: 0;
+  font: 600 13px var(--riso-font-display);
+  color: var(--riso-green-text);
+}
+
 .riso-rc-btn-primary {
   height: 48px;
   padding: 0 26px;
@@ -6551,29 +6684,81 @@ button.riso-table-group-head:disabled {
   line-height: 1.6;
 }
 
-.riso-rc-timer-chip {
+/* A step's timer: the time (tap it to change it), Start / Pause / Resume, and
+   Reset. Same 32px pill size as the chips. */
+.riso-rc-timer {
   align-self: flex-start;
-  transform: rotate(-2deg);
-  background: var(--riso-yellow);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 5px 13px;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   margin-top: 3px;
-  cursor: pointer;
-  color: var(--riso-ink);
 }
 
-.riso-rc-timer-chip.running {
+.riso-rc-timer-time,
+.riso-rc-timer-btn {
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-rc-timer-time {
+  background: var(--riso-yellow);
+  font-variant-numeric: tabular-nums;
+  min-width: 78px;
+  justify-content: center;
+}
+
+.riso-rc-timer-btn.primary {
   background: var(--riso-accent);
   color: var(--riso-on-accent);
 }
 
-.riso-rc-timer-chip.done {
+.riso-rc-timer.running .riso-rc-timer-time {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-rc-timer.running .riso-rc-timer-btn.primary {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-rc-timer.done .riso-rc-timer-time {
   background: var(--riso-green);
   color: var(--riso-green-text);
+}
+
+.riso-rc-timer-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 700 12.5px var(--riso-font-display);
+}
+
+.riso-rc-timer-field input {
+  width: 58px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 16px var(--riso-font-display); /* 16px: no zoom on a phone */
+  text-align: center;
 }
 
 .riso-rc-step-thumb {
@@ -8561,14 +8746,14 @@ button.riso-protein-bar {
   color: #8a0f55;
 }
 
-.riso-protein-asides {
-  margin: 12px 0 0;
-  padding-top: 10px;
-  border-top: 1.5px dashed #bdb6a6;
-  font: 500 10.5px/1.5 var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #5e5b52;
+/* A kind with no deal this week: the same row, quieter. */
+.riso-protein-card.none .riso-protein-emoji {
+  opacity: 0.55;
+}
+
+.riso-protein-card.none .riso-protein-name {
+  font-weight: 600;
+  color: var(--riso-muted);
 }
 
 /* ================================================================
@@ -8765,6 +8950,7 @@ button.riso-protein-bar {
 .riso-planner-cell {
   aspect-ratio: 0.9;
   min-width: 0;
+  min-height: 0; /* what's inside never makes one slot taller than the rest */
   display: flex;
   scroll-snap-align: start;
   border-radius: 16px;
@@ -8981,6 +9167,8 @@ button.riso-protein-bar {
   cursor: grab;
   box-sizing: border-box;
   touch-action: none;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .riso-planner-note-label {
@@ -10761,8 +10949,14 @@ button.riso-row-qty:focus-visible {
   letter-spacing: 0.12em;
 }
 
+.rpm {
+  /* Every slot on the phone is this tall: a meal, a written card, a blank
+     one and an empty slot. */
+  --rpm-card-h: 112px;
+}
+
 .rpm-empty {
-  height: 64px;
+  height: var(--rpm-card-h);
   border-radius: 16px;
   border: 2px dashed var(--riso-dash-strong);
   background: transparent;
@@ -10772,7 +10966,7 @@ button.riso-row-qty:focus-visible {
 }
 
 .rpm-note {
-  min-height: 64px;
+  min-height: var(--rpm-card-h);
   border-radius: 16px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-canvas);
@@ -10802,7 +10996,8 @@ button.riso-row-qty:focus-visible {
 
 .rpm-meal {
   position: relative;
-  height: 112px;
+  height: var(--rpm-card-h);
+  box-sizing: border-box;
   display: flex;
   border-radius: 16px;
   border: 2px solid var(--riso-ink);
@@ -11654,10 +11849,25 @@ button.riso-row-qty:focus-visible {
     display: none;
   }
 
-  /* The chips scroll sideways: SORT leads the row so it's never off-screen. */
+  /* The filter chips scroll sideways. On the Makeable screen SORT leads that
+     row so it's never off-screen; on Recipes it sits beside Cookbook and
+     Imported, with its word hidden to leave room for them. */
   .riso-recipes-sort-group {
     margin-left: 0;
     order: -1;
+  }
+
+  .riso-recipes-source-row .riso-recipes-sort-group {
+    order: 0;
+  }
+
+  .riso-recipes-source-row .riso-recipes-sort-label {
+    display: none;
+  }
+
+  .riso-recipes-source-row .riso-recipes-filter-chips {
+    margin: 0;
+    padding: 0;
   }
 
   .riso-recipes-grid {
@@ -11759,6 +11969,7 @@ button.riso-row-qty:focus-visible {
   display: flex;
   gap: 8px;
   align-items: stretch;
+  height: var(--rpm-card-h);
 }
 
 .rpm-empty-row .rpm-empty {
@@ -11778,11 +11989,12 @@ button.riso-row-qty:focus-visible {
   cursor: pointer;
 }
 
-/* A written meal (an emoji or some words instead of a recipe photo) is the same
-   size as a recipe card with a photo. An empty "blank" card stays small. */
-.rpm-note:not(.blank) {
-  height: 112px;
+/* A written meal (an emoji or some words instead of a recipe photo), a blank
+   card and an empty slot are the same size as a recipe card with a photo. */
+.rpm-note {
+  height: var(--rpm-card-h);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .rpm-note-text.emoji {

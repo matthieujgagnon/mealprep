@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stepIsHeading, stepTitle, stepBody, stepTimer, scaleStepText, stepIngredients } from "./steps.js";
+import { clockParts, secondsFromParts, stepIsHeading, stepTitle, stepBody, stepTimer, scaleStepText, stepIngredients } from "./steps.js";
 
 describe("stepIsHeading / stepTitle", () => {
   it("treats a bare label as a heading, not a title", () => {
@@ -93,5 +93,24 @@ describe("stepIngredients", () => {
 
   it("matches the step's body, not its title prefix", () => {
     expect(stepIngredients("Prep: Toss the chickpeas.", ingredients)).toEqual([{ name: "chickpeas" }]);
+  });
+});
+
+describe("editing a step's time", () => {
+  it("splits a time into minutes and seconds, hours included in the minutes", () => {
+    expect(clockParts(300)).toEqual({ minutes: 5, seconds: 0 });
+    expect(clockParts(95)).toEqual({ minutes: 1, seconds: 35 });
+    expect(clockParts(5400)).toEqual({ minutes: 90, seconds: 0 });
+    expect(clockParts(-4)).toEqual({ minutes: 0, seconds: 0 });
+    expect(clockParts("nope")).toEqual({ minutes: 0, seconds: 0 });
+  });
+
+  it("joins the two fields back into seconds", () => {
+    expect(secondsFromParts(5, 30)).toBe(330);
+    expect(secondsFromParts("12", "")).toBe(720);
+    expect(secondsFromParts(0, 90)).toBe(90);
+    expect(secondsFromParts(-3, -9)).toBe(0);
+    expect(secondsFromParts("x", "y")).toBe(0);
+    expect(secondsFromParts(99999, 0)).toBe(99 * 3600);
   });
 });

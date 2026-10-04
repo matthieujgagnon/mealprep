@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { dealSavings, dealVerdict, savingText as savingWords, tilePrice } from "../lib/flyerIngredients.js";
-import { PROTEINS, compareProteinDeals, proteinName, proteinSearchQuery, proteinsOnSale, recipesUsingProtein } from "../lib/proteins.js";
+import { proteinName, proteinRows, proteinSearchQuery, recipesUsingProtein } from "../lib/proteins.js";
 import { DealDetailModal } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
 import { formatMoney, localizePrice, perUnit } from "../i18n/format.js";
@@ -25,40 +25,29 @@ function savingText(deal) {
   return s ? savingWords(s) : null;
 }
 
-// Home's "Proteins on sale": up to five of the week's best buys, one per
-// kind (a plain cut, not a pie or a sausage), each with its store, saving
-// and price per lb. The cheapest per lb is the "Best deal"; the others
-// say how good a buy they are. Under them, one line for the kinds not
-// worth buying this week and the ones not on any flyer. Tapping a row
-// opens that deal's card, with the kind's other items under "Also on
-// sale". Tapping a row selects that kind (tap it again, or another kind, to
+// Home's "Proteins on sale": one row for every kind of protein, always. A
+// kind with a real deal shows its best buy: the store, saving and price per
+// lb (the cheapest per lb is the "Best deal", the others say how good a buy
+// they are). A kind on a flyer with nothing to compare it to shows the item
+// with "Can't tell yet"; a kind with nothing says "No deal this week".
+// Tapping a row selects that kind (tap it again, or another kind, to
 // change); a bar slides up at the bottom of the screen with how many of your
-// recipes use it and a link to them in Recipes. The selected row has a "See
-// the deal" button for its deal card.
+// recipes use it and a link to them in Recipes. A selected row with a deal
+// has a "See the deal" button for its deal card, with the kind's other items
+// under "Also on sale".
 export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindRecipes }) {
   const [open, setOpen] = useState(null); // { deal, others }
   const [selectedId, setSelectedId] = useState(null);
-  const kinds = proteinsOnSale(deals);
-  const top = kinds
-    .filter((k) => k.best)
-    .sort((a, b) => compareProteinDeals(a.best, b.best))
-    .slice(0, 5);
+  const rows = proteinRows(deals);
   const perLb = (d) => {
     const p = tilePrice(d);
     return p?.basis === "lb" ? p.price : Infinity;
   };
-  const cheapest = top.reduce((best, k) => (best == null || perLb(k.best) < perLb(best.best) ? k : best), null);
-  const shown = new Set(kinds.map((k) => k.protein.id));
-  const notWorth = kinds
-    .filter((k) => !k.best && k.all.length > 0)
-    .map((k) => {
-      const low = [...k.all].sort((a, b) => perLb(a) - perLb(b))[0];
-      return t("proteins.notWorth", { name: proteinName(low), price: perLbText(low) });
-    });
-  const missing = PROTEINS.filter((p) => !shown.has(p.id)).map((p) => p.label);
-  const asides = [...notWorth, ...(missing.length > 0 ? [t("proteins.none", { kinds: missing.join(", ") })] : [])];
+  const cheapest = rows
+    .filter((k) => k.status === "deal")
+    .reduce((best, k) => (best == null || perLb(k.best) < perLb(best.best) ? k : best), null);
 
-  const selected = top.find((k) => k.protein.id === selectedId)?.protein || null;
+  const selected = rows.find((k) => k.protein.id === selectedId)?.protein || null;
   const using = selected ? recipesUsingProtein(recipes, selected) : [];
 
   function show(deal, others) {
@@ -77,75 +66,88 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindRecipes 
           {t("proteins.flyersLink")}
         </button>
       </div>
-      {deals.length === 0 ? (
-        <p className="riso-empty-note">{t("proteins.noDeals")}</p>
-      ) : kinds.length === 0 ? (
-        <p className="riso-empty-note">{t("proteins.noMeat")}</p>
-      ) : (
-        <>
-          {top.length === 0 ? (
-            <p className="riso-empty-note">{t("proteins.nothingOnSale")}</p>
-          ) : (
-            <ul className="riso-home-rows riso-protein-list">
-              {top.map((k) => {
-                const { protein, best, onSale, all } = k;
-                const verdict = dealVerdict(best);
-                const others = all.filter((d) => d.id !== best.id);
-                const { amount, unit } = priceParts(best);
-                const saving = savingText(best);
-                return (
-                  <li key={protein.id}>
-                    <div className={`riso-protein-card${selectedId === protein.id ? " selected" : ""}`}>
-                    <button
-                      type="button"
-                      className="riso-protein-row"
-                      aria-pressed={selectedId === protein.id}
-                      onClick={() => setSelectedId((cur) => (cur === protein.id ? null : protein.id))}
-                      aria-label={t("proteins.rowLabel", {
-                        kind: protein.label,
-                        name: proteinName(best),
-                        store: best.store,
-                        price: perLbText(best),
-                        verdict: verdict?.label || "",
-                      })}
-                    >
-                      <span className="riso-protein-emoji" aria-hidden="true">
-                        {protein.emoji}
-                      </span>
-                      <span className="riso-protein-item">
-                        <span className="riso-protein-name">{proteinName(best)}</span>
-                        <span className="riso-protein-meta">
-                          {best.store}
-                          {saving ? ` · ${saving}` : ""}
-                          {onSale.length > 1 ? t("proteins.more", { count: onSale.length - 1 }) : ""}
-                        </span>
-                      </span>
-                      <span className="riso-protein-right">
-                        <span className="riso-protein-price">
-                          {amount}
-                          {unit && <small>{unit}</small>}
-                        </span>
-                        {k === cheapest ? (
-                          <span className="riso-protein-best">{t("proteins.bestDeal")}</span>
-                        ) : (
-                          verdict && <span className={`riso-protein-verdict ${verdict.key}`}>{verdict.label}</span>
-                        )}
-                      </span>
-                    </button>
-                    {selectedId === protein.id && (
-                      <button type="button" className="riso-protein-deal-link" onClick={() => show(best, others)}>
-                        {t("proteins.seeDeal")}
-                      </button>
+      {deals.length === 0 && <p className="riso-empty-note">{t("proteins.noDeals")}</p>}
+      <ul className="riso-home-rows riso-protein-list">
+        {rows.map((k) => {
+          const { protein, best, onSale, all, status } = k;
+          const isSelected = selectedId === protein.id;
+          const toggle = () => setSelectedId((cur) => (cur === protein.id ? null : protein.id));
+          if (!best) {
+            return (
+              <li key={protein.id}>
+                <div className={`riso-protein-card none${isSelected ? " selected" : ""}`}>
+                  <button
+                    type="button"
+                    className="riso-protein-row"
+                    aria-pressed={isSelected}
+                    onClick={toggle}
+                    aria-label={t("proteins.rowLabelNone", { kind: protein.label })}
+                  >
+                    <span className="riso-protein-emoji" aria-hidden="true">
+                      {protein.emoji}
+                    </span>
+                    <span className="riso-protein-item">
+                      <span className="riso-protein-name">{protein.label}</span>
+                      <span className="riso-protein-meta">{t("proteins.noDeal")}</span>
+                    </span>
+                  </button>
+                </div>
+              </li>
+            );
+          }
+          const verdict = dealVerdict(best);
+          const others = all.filter((d) => d.id !== best.id);
+          const { amount, unit } = priceParts(best);
+          const saving = savingText(best);
+          return (
+            <li key={protein.id}>
+              <div className={`riso-protein-card${isSelected ? " selected" : ""}`}>
+                <button
+                  type="button"
+                  className="riso-protein-row"
+                  aria-pressed={isSelected}
+                  onClick={toggle}
+                  aria-label={t("proteins.rowLabel", {
+                    kind: protein.label,
+                    name: proteinName(best),
+                    store: best.store,
+                    price: perLbText(best),
+                    verdict: verdict?.label || "",
+                  })}
+                >
+                  <span className="riso-protein-emoji" aria-hidden="true">
+                    {protein.emoji}
+                  </span>
+                  <span className="riso-protein-item">
+                    <span className="riso-protein-name">{proteinName(best)}</span>
+                    <span className="riso-protein-meta">
+                      {best.store}
+                      {saving ? ` · ${saving}` : ""}
+                      {onSale.length > 1 ? t("proteins.more", { count: onSale.length - 1 }) : ""}
+                    </span>
+                  </span>
+                  <span className="riso-protein-right">
+                    <span className="riso-protein-price">
+                      {amount}
+                      {unit && <small>{unit}</small>}
+                    </span>
+                    {k === cheapest ? (
+                      <span className="riso-protein-best">{t("proteins.bestDeal")}</span>
+                    ) : (
+                      verdict && <span className={`riso-protein-verdict ${verdict.key}`}>{verdict.label}</span>
                     )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {asides.length > 0 && <p className="riso-protein-asides">{asides.join(" · ")}</p>}
-        </>
-      )}
+                  </span>
+                </button>
+                {isSelected && (
+                  <button type="button" className="riso-protein-deal-link" onClick={() => show(best, others)}>
+                    {t("proteins.seeDeal")}
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
       <div className="riso-home-mini-spacer" />
       {selected &&
         createPortal(

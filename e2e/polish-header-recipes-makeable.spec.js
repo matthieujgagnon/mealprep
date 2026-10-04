@@ -96,7 +96,10 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await page.reload();
   const proteins = page.locator(".riso-home-proteins");
   await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ })).toBeVisible();
-  await expect(proteins.locator(".riso-protein-emoji")).toHaveText("⬜"); // its own emoji, not the beans
+  await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ }).locator(".riso-protein-emoji")).toHaveText("⬜"); // its own emoji, not the beans
+  // Every kind has a row; the ones with nothing this week say so.
+  await expect(proteins.locator(".riso-protein-row")).toHaveCount(8);
+  await expect(proteins.getByRole("button", { name: "Chicken: no deal this week" })).toContainText("No deal this week");
 
   // Selecting it shows the bar with the count of recipes Recipes then lists.
   const row = proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ });
@@ -121,6 +124,23 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await expect(page.locator(".riso-recipes-searchbar input")).not.toHaveValue("");
 });
 
+test("Home shows a tofu deal that has no regular price, and Tofu says so when it has none", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const userId = await signUp(page, "Matt");
+  await page.reload();
+  const proteins = page.locator(".riso-home-proteins");
+  await expect(proteins.getByRole("button", { name: "Tofu: no deal this week" })).toContainText("No deal this week");
+  // Smoked tofu with nothing to compare it with is still this week's tofu.
+  await prisma.flyerDeal.create({
+    data: { userId, store: "IGA", source: "IGA", category: "protein", item: "Smoked tofu, 350 g", matchName: "smoked tofu", price: "$2.99", unitPrice: 2.99, unitBasis: "each", isCurrent: true, createdAt: new Date() },
+  });
+  await page.reload();
+  const tofu = proteins.getByRole("button", { name: /^Tofu: Smoked tofu at IGA/ });
+  await expect(tofu).toBeVisible();
+  await expect(tofu).toContainText("$3.87/lb"); // 350 g at $2.99, per lb like the rest
+  await expect(proteins.locator(".riso-protein-row")).toHaveCount(8);
+});
+
 test.describe("Proteins on sale bar on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -131,7 +151,7 @@ test.describe("Proteins on sale bar on a phone", () => {
     });
     await page.reload();
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
-    const row = page.locator(".riso-home-proteins .riso-protein-row");
+    const row = page.locator(".riso-home-proteins .riso-protein-row", { hasText: "Tofu ferme" });
     await row.scrollIntoViewIfNeeded();
     await row.click();
     const bar = page.locator(".riso-protein-bar");
@@ -151,7 +171,7 @@ test.describe("Proteins on sale bar on a phone", () => {
 test.describe("Recipes", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
-  test("Meals hides breakfast, sides and pantry prep; SORT lives in the chips row", async ({ page }) => {
+  test("Meals hides breakfast, sides and pantry prep; SORT sits beside Cookbook and Imported", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Chicken curry", "dinner", ["chicken"]);
     await recipe(page, "Lunch wrap", "lunch", ["tortilla"]);
@@ -162,7 +182,7 @@ test.describe("Recipes", () => {
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
     await expect(page.locator(".riso-recipes-heading-row").getByLabel("Sort recipes")).toHaveCount(0);
-    await expect(page.locator(".riso-recipes-filter-chips").getByLabel("Sort recipes")).toBeVisible();
+    await expect(page.locator(".riso-recipes-source-row").getByLabel("Sort recipes")).toBeVisible();
 
     await page.getByRole("button", { name: /^Meals/ }).click();
     await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Lunch wrap", "Chicken curry"]);
@@ -219,17 +239,17 @@ test.describe("Recipes sections", () => {
     const sub = (name) => cookbook.locator(".riso-recipes-subsection", { has: head(name) });
     await expect(head("Cookbook").first()).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*4/, /Imported\s*1/]);
-    // Breakfast, Dinner and Sides have recipes; Lunch and the others are hidden.
-    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Breakfast\s*1/, /Dinner\s*2/, /Sides\s*1/]);
-    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(2);
+    // Breakfast, Supper and Sides have recipes; Lunch and the others are hidden.
+    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Breakfast\s*1/, /Supper\s*2/, /Sides\s*1/]);
+    await expect(sub("Supper").locator(".riso-recipe-card")).toHaveCount(2);
 
     // The header folds its section, and the count stays.
-    await head("Dinner").click();
-    await expect(head("Dinner")).toHaveAttribute("aria-expanded", "false");
-    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(0);
-    await expect(head("Dinner")).toContainText("2");
-    await head("Dinner").click();
-    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(2);
+    await head("Supper").click();
+    await expect(head("Supper")).toHaveAttribute("aria-expanded", "false");
+    await expect(sub("Supper").locator(".riso-recipe-card")).toHaveCount(0);
+    await expect(head("Supper")).toContainText("2");
+    await head("Supper").click();
+    await expect(sub("Supper").locator(".riso-recipe-card")).toHaveCount(2);
     await head("Imported").click();
     await expect(page.locator(".riso-recipes-section", { hasText: "Imported pad thai" })).toHaveCount(0);
     await head("Imported").click();
@@ -237,9 +257,9 @@ test.describe("Recipes sections", () => {
 
     // The toggles and filters narrow what's inside the sections, and the counts follow.
     const chips = page.locator(".riso-recipes-filter-chips").last();
-    await chips.getByRole("button", { name: /^Dinner/ }).click();
+    await chips.getByRole("button", { name: /^Supper/ }).click();
     await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*2/]);
-    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Dinner\s*2/]);
+    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Supper\s*2/]);
     await chips.getByRole("button", { name: /^All/ }).click();
     await page.getByRole("group", { name: "Cookbook or imported" }).getByRole("button", { name: /^Imported/ }).click();
     await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Imported\s*1/]);

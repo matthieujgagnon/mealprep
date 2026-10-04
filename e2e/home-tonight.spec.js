@@ -71,7 +71,7 @@ test("a written meal gets its food's emoji, and Pick a recipe instead swaps toni
   await expect(hero.getByRole("button", { name: "Start cooking" })).toBeVisible();
 });
 
-test("past dinners this week are greyed out; today is pink", async ({ page }) => {
+test("past suppers this week are greyed out; today is pink", async ({ page }) => {
   await signUp(page);
   const today = (new Date().getDay() + 6) % 7;
   await expect(page.locator(".riso-home-week-day.past")).toHaveCount(today);

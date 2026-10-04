@@ -100,8 +100,8 @@ test("selecting a protein on sale shows its recipe count, and the bar opens Reci
 
 test("Home shows the proteins on sale this week, each kind's best buy, and opens its card", async ({ page }) => {
   // Rows: emoji, product, store · saving, price per lb; the cheapest is the
-  // "Best deal", the rest say how good a buy they are. One line under them
-  // names the kinds not worth buying and the ones not on any flyer.
+  // "Best deal", the rest say how good a buy they are. Every kind always has
+  // a row: one with nothing this week says so.
   await signUp(page, uniqueEmail());
   const me = await (await page.request.get("/api/auth/me")).json();
   const userId = me.user?.id ?? me.id;
@@ -134,9 +134,17 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   const fish = block.getByRole("button", { name: /^Fish:/ });
   await expect(fish).toContainText("$9.99/lb");
   await expect(fish.locator(".riso-protein-verdict")).toBeVisible();
-  const asides = block.locator(".riso-protein-asides");
-  await expect(asides).toContainText(/ground beef \$5\.97\/lb · not worth it/i);
-  await expect(asides).toContainText(/Pork, Seafood, Turkey, Lamb & veal, Tofu none/i);
+  // Nothing to compare ground beef with: still shown, with its price.
+  const beef = block.getByRole("button", { name: /^Beef:/ });
+  await expect(beef).toContainText("$5.97/lb");
+  await expect(beef.locator(".riso-protein-verdict")).toHaveText("Can't tell yet");
+  // Every other kind has its row, saying there is no deal.
+  for (const [kind, emoji] of [["Pork", "🐖"], ["Seafood", "🦐"], ["Turkey", "🦃"], ["Lamb & veal", "🐑"], ["Tofu", "⬜"]]) {
+    const none = block.getByRole("button", { name: `${kind}: no deal this week` });
+    await expect(none).toContainText("No deal this week");
+    await expect(none).toContainText(emoji);
+  }
+  await expect(block.locator(".riso-protein-row")).toHaveCount(8);
 
   // Tapping a row selects it; "See the deal" on the selected row opens its card.
   await chicken.click();

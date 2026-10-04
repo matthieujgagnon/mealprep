@@ -8,7 +8,6 @@ import {
   stepBody,
   stepTimer,
   scaleStepText,
-  formatClock,
 } from "../lib/steps.js";
 import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, coversIngredient, findSaleDeal, findDealsFor } from "../lib/similarRecipes.js";
 import { useDeals } from "../lib/dealsStore.js";
@@ -16,6 +15,8 @@ import { SaleTag } from "./SaleTag.jsx";
 import { formatQuantity, unitLabel } from "../lib/units.js";
 import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
+import { StepTimer } from "./StepTimer.jsx";
+import { useStepTimers } from "../hooks/useStepTimers.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { formatRecipeTime } from "../lib/mealSlots.js";
@@ -56,11 +57,12 @@ function findMatchedPantryItem(ing, pantryInventory) {
   return pantryInventory.find((item) => coversIngredient(item.name, ing.name) && (!item.expiresAt || daysUntil(item.expiresAt) >= 0)) || null;
 }
 
-// The "⋯" menu — Edit / View original / Leftovers keep… / Delete. A
+// The "⋯" menu — Edit / View original / Add to Cookbook (or Move to
+// Imported) / Leftovers keep… / Delete. A
 // transparent full-screen catcher behind the menu closes it on any
 // outside click, simpler than tracking a ref and a document-level
 // listener for what's only ever open a few seconds at a time.
-function OptionsMenu({ onEdit, onDelete, onEditLeftoverDays, fridgeLifeDays, sourceUrl, onClose }) {
+function OptionsMenu({ onEdit, onDelete, onEditLeftoverDays, onMove, inCookbook, fridgeLifeDays, sourceUrl, onClose }) {
   return (
     <>
       <div className="riso-rc-menu-catcher" onClick={onClose} />
@@ -73,6 +75,9 @@ function OptionsMenu({ onEdit, onDelete, onEditLeftoverDays, fridgeLifeDays, sou
             {t("recipeCard.viewOriginal")}
           </a>
         )}
+        <button type="button" onClick={onMove}>
+          {inCookbook ? t("recipeCard.moveToImported") : t("recipeCard.addToCookbook")}
+        </button>
         <button type="button" onClick={onEditLeftoverDays}>
           {t("recipeCard.leftoversKeep", {
             days: fridgeLifeDays ? t("recipeCard.days", { count: fridgeLifeDays }) : t("recipeCard.notSet"),
@@ -152,49 +157,7 @@ function PhotoLightbox({ photos, index, onIndex, onClose }) {
   );
 }
 
-// A step's own inline countdown, started from its timer chip. Independent
-// per step (this is a scrollable list, not the one-step-at-a-time cook
-// mode, so there's no "keep running across step changes" concept here —
-// that's cook mode's own job).
-function StepTimerChip({ timer }) {
-  const [remaining, setRemaining] = useState(timer.seconds);
-  const [running, setRunning] = useState(false);
-
-  useEffect(() => {
-    if (!running) return;
-    if (remaining <= 0) {
-      setRunning(false);
-      return;
-    }
-    const id = setTimeout(() => setRemaining((r) => r - 1), 1000);
-    return () => clearTimeout(id);
-  }, [running, remaining]);
-
-  const finished = remaining <= 0;
-
-  return (
-    <button
-      type="button"
-      className={`riso-rc-timer-chip${running ? " running" : ""}${finished ? " done" : ""}`}
-      onClick={() => {
-        if (finished) {
-          setRemaining(timer.seconds);
-          setRunning(true);
-        } else {
-          setRunning((r) => !r);
-        }
-      }}
-    >
-      {finished
-        ? t("steps.timerDone")
-        : running
-        ? `⏸ ${formatClock(remaining)}`
-        : t("steps.startTimer", { label: timer.label })}
-    </button>
-  );
-}
-
-function StepRow({ step, number, scale }) {
+function StepRow({ step, number, scale, stepKey, stepTimers }) {
   if (stepIsHeading(step)) {
     return <li className="riso-rc-step-heading">{stepHeadingText(step)}</li>;
   }
@@ -210,7 +173,7 @@ function StepRow({ step, number, scale }) {
       <div className="riso-rc-step-content">
         {title && <div className="riso-rc-step-title">{title}</div>}
         <p className="riso-rc-step-text">{body}</p>
-        {timer && <StepTimerChip timer={timer} />}
+        {timer && <StepTimer timerKey={stepKey} seconds={timer.seconds} stepTimers={stepTimers} />}
       </div>
       {image && <img src={image} alt="" className="riso-rc-step-thumb" />}
     </li>
@@ -343,7 +306,11 @@ export function RecipeDetailModal({
   const [addingMissing, setAddingMissing] = useState(false);
   const [addedMissing, setAddedMissing] = useState(false);
   const [openIngredientKey, setOpenIngredientKey] = useState(null);
+  const [moveNote, setMoveNote] = useState(null); // "cookbook" | "imported" | "error" once a move is done
+  const [moving, setMoving] = useState(false);
   const { deals } = useDeals();
+  // Shared with Cook mode: a time edited or a timer started here carries over.
+  const stepTimers = useStepTimers({ title: recipe.title, recipeId: recipe.id });
 
 
   const scale = servings / (recipe.baseServings || 1);
@@ -434,6 +401,25 @@ export function RecipeDetailModal({
     }
   }
 
+  // Add to Cookbook / Move to Imported: no dragging, the same on phone and
+  // desktop. The recipe keeps everything else; only where it lives changes.
+  async function handleMove() {
+    setMenuOpen(false);
+    if (moving) return;
+    const toCookbook = !recipe.inCookbook;
+    setMoving(true);
+    setMoveNote(null);
+    try {
+      const updated = await api.updateRecipe(recipe.id, { inCookbook: toCookbook });
+      onRecipeUpdated?.(updated);
+      setMoveNote(toCookbook ? "cookbook" : "imported");
+    } catch {
+      setMoveNote("error");
+    } finally {
+      setMoving(false);
+    }
+  }
+
   function handleEditLeftoverDays() {
     setMenuOpen(false);
     const input = window.prompt(t("recipeCard.promptLeftovers"), recipe.fridgeLifeDays ?? "");
@@ -513,6 +499,8 @@ export function RecipeDetailModal({
                     }}
                     onDelete={handleDeleteClick}
                     onEditLeftoverDays={handleEditLeftoverDays}
+                    onMove={handleMove}
+                    inCookbook={!!recipe.inCookbook}
                     fridgeLifeDays={recipe.fridgeLifeDays}
                     sourceUrl={recipe.sourceUrl}
                     onClose={() => setMenuOpen(false)}
@@ -638,6 +626,18 @@ export function RecipeDetailModal({
                 >
                   {t("recipeCard.planAround")}
                 </button>
+              )}
+              {!recipe.isPlaceholder && (
+                <>
+                  <button type="button" className="riso-rc-btn-secondary" disabled={moving} onClick={handleMove}>
+                    {recipe.inCookbook ? t("recipeCard.moveToImported") : t("recipeCard.addToCookbook")}
+                  </button>
+                  {moveNote && (
+                    <p className="riso-rc-move-note" role="status">
+                      {t(`recipeCard.moveNote.${moveNote}`)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -788,7 +788,7 @@ export function RecipeDetailModal({
                       return recipe.instructions.map((step, i) => {
                         if (!stepIsHeading(step)) stepNumber++;
                         return (
-                          <StepRow key={i} step={step} number={stepIsHeading(step) ? null : stepNumber} scale={scale} />
+                          <StepRow key={i} step={step} number={stepIsHeading(step) ? null : stepNumber} scale={scale} stepKey={i} stepTimers={stepTimers} />
                         );
                       });
                     })()}
@@ -839,6 +839,7 @@ export function RecipeDetailModal({
           pantryInventory={pantryInventory}
           onConsumePantryItems={onConsumePantryItems}
           onPlanLeftovers={onPlanLeftovers}
+          stepTimers={stepTimers}
         />
       )}
     </div>

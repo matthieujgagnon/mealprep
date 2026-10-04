@@ -55,13 +55,26 @@ const NOT_RAW = new RegExp(
     ")\\b"
 );
 
+// Tofu is judged on its own: smoked, marinated, pouched or crispy tofu is
+// still tofu you can cook with. Only a made dish with tofu in it (a soup, a
+// salad, dumplings) or a look-alike is left out.
+const TOFU_DISH = new RegExp(
+  "\\b(" +
+    [
+      "soups?", "soupes?", "salads?", "salades?", "sandwich(?:es)?", "wraps?", "dumplings?", "noodles?", "nouilles", "sauces?",
+      "sushi", "spread", "pet", "cat", "dog", "chien", "chat", "treats?", "burgers?", "nuggets?",
+    ].join("|") +
+    ")\\b"
+);
+
 export function proteinOf(deal) {
   if (!deal) return null;
   const text = foldText(`${deal.matchName || ""} ${deal.item || ""}`);
+  if (TOFU.test(text)) return TOFU_DISH.test(text) ? null : PROTEINS.find((p) => p.id === "tofu");
   // Meat and fish are in the meat and seafood aisles; tofu is wherever the
   // store keeps it (produce, dairy, deli), so its aisle doesn't rule it out.
   const meatAisle = !deal.aisle || deal.aisle === "meat" || deal.aisle === "seafood";
-  if (!meatAisle && !TOFU.test(text)) return null;
+  if (!meatAisle) return null;
   if (NOT_RAW.test(text)) return null;
   // The first kind the name says: "pork and beef meatballs" isn't both.
   let best = null;
@@ -116,4 +129,25 @@ export function proteinsOnSale(deals) {
     const onSale = all.filter((d) => dealSavings(d));
     return { protein, best: onSale[0] || null, onSale, all };
   });
+}
+
+// Home's list: every kind, always, in the order shown. `status` says what
+// each has this week:
+//   deal   - something really on sale (`best`, with `onSale` the others)
+//   unsure - on a flyer, but nothing to say if it's a good price (tofu has
+//            no Quebec average and flyers rarely print a regular price)
+//   none   - nothing on the flyers, or only prices not worth it
+// Deals come first (best buy first), then the unsure ones, then the kinds
+// with nothing, in PROTEINS order.
+export function proteinRows(deals) {
+  const found = new Map(proteinsOnSale(deals).map((k) => [k.protein.id, k]));
+  const rows = PROTEINS.map((protein, order) => {
+    const k = found.get(protein.id);
+    if (k?.best) return { protein, order, status: "deal", best: k.best, onSale: k.onSale, all: k.all };
+    const unsure = k?.all.find((d) => dealVerdict(d)?.key === "unknown");
+    if (unsure) return { protein, order, status: "unsure", best: unsure, onSale: [], all: k.all };
+    return { protein, order, status: "none", best: null, onSale: [], all: k?.all || [] };
+  });
+  const group = { deal: 0, unsure: 1, none: 2 };
+  return rows.sort((a, b) => group[a.status] - group[b.status] || (a.best && b.best ? compareProteinDeals(a.best, b.best) : 0) || a.order - b.order);
 }

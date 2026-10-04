@@ -51,7 +51,7 @@ test("the week strip can be switched to show next week", async ({ page }) => {
   await page.getByRole("button", { name: "Next week" }).click();
   await expect(page.getByText("Next week's")).toBeVisible();
 
-  await page.getByRole("button", { name: "This week" }).click();
+  await page.getByRole("button", { name: "This week", exact: true }).click();
   await expect(page.getByText("This week's")).toBeVisible();
 });
 
