@@ -10138,21 +10138,31 @@ button.riso-protein-bar {
     display: flex;
   }
 
-  /* The slot dissolves: "+ Inventory" is a plain part of the cluster, and the
-     sale tag sits in the row's bottom right corner, the same place on every
-     row. Rows with a tag keep room for it under the text. */
+  /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale
+     tag sits just left of the number, narrow, with the store over the price,
+     so the name still gets the room. */
   .riso-row-slot {
     display: contents;
   }
 
   .riso-row-deal {
-    position: absolute;
-    right: 17px;
-    bottom: 12px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    height: auto;
+    min-height: 38px;
+    margin-right: 6px;
+    padding: 3px 7px;
   }
 
-  .riso-row.has-deal .riso-row-main {
-    padding-bottom: 34px;
+  .riso-row-deal-div {
+    display: none;
+  }
+
+  .riso-row-deal-store,
+  .riso-row-deal-price {
+    font-size: 11px;
+    line-height: 14px;
   }
 
   .riso-row-qtycol {
@@ -10317,7 +10327,7 @@ button.riso-protein-bar {
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-check {
   background: var(--riso-accent);
-  border-color: var(--riso-accent);
+  border-color: var(--riso-on-accent);
   color: var(--riso-on-accent);
 }
 
