@@ -172,6 +172,11 @@ export const en = {
     bestDeal: "Best deal",
     notWorth: "{name} {price} · not worth it",
     none: "{kinds} none",
+    seeDeal: "See the deal →",
+    barUse: { one: "{count} of your recipes uses {name}.", other: "{count} of your recipes use {name}." },
+    barNone: "None of your recipes use {name} yet.",
+    useName: { chicken: "chicken", beef: "beef", pork: "pork", fish: "fish", seafood: "seafood", turkey: "turkey", "lamb-veal": "lamb or veal", tofu: "tofu" },
+    useNameNone: { chicken: "chicken", beef: "beef", pork: "pork", fish: "fish", seafood: "seafood", turkey: "turkey", "lamb-veal": "lamb or veal", tofu: "tofu" },
     kinds: {
       chicken: "Chicken",
       beef: "Beef",
@@ -1157,7 +1162,7 @@ export const en = {
           "The grocery card shows how many things are left to buy, how many are in the cart and how many are on sale. [[openList]] takes you to it.",
           "Use it up lists what in your Inventory expires soon and how many recipes use it.",
           "Makeable now shows recipes you can cook today, or that are one or two items away. You can add what's missing to your grocery list.",
-          "Proteins on sale shows the best meat or fish buy of the week for each kind, from your flyers.",
+          "Proteins on sale shows the best buy of the week for each kind of meat, fish or tofu, from your flyers. Tap a kind to select it; tap it again, or another kind, to change the selection. A bar slides up at the bottom of the screen with how many of your recipes use it, and tapping the bar opens Recipes showing just those. If no recipe uses it, the bar says so. On a selected kind, See the deal opens its flyer deal.",
         ],
       },
       recipes: {

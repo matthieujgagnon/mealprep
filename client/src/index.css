@@ -8163,13 +8163,6 @@ button.riso-table-group-head:disabled {
   color: #3f3e37;
 }
 
-.riso-home-mini-footer {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--riso-ink);
-}
-
 .riso-freshness-bar-track {
   height: 8px;
   border-radius: 4px;
@@ -8409,6 +8402,95 @@ button.riso-table-group-head:disabled {
 
 .riso-protein-row:hover .riso-protein-name {
   text-decoration: underline;
+}
+
+/* The selected kind: the Riso "selected" look (blue offset shadow). The border
+   and padding are always there, so selecting never moves the list. */
+.riso-protein-card {
+  margin: -8px -10px;
+  padding: 8px 10px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+}
+
+.riso-protein-card.selected {
+  border-color: var(--riso-ink);
+  background: var(--riso-surface);
+  box-shadow: var(--riso-shadow-selected);
+}
+
+.riso-protein-deal-link {
+  margin: 6px 0 0 38px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--riso-accent);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-protein-deal-link:hover {
+  text-decoration: underline;
+}
+
+/* The bar at the bottom of the screen: how many recipes use the selected kind.
+   It slides up and sits above the phone's home-bar gap; nothing else on the
+   phone is fixed at the bottom of Home, so it covers no navigation. */
+.riso-protein-bar-wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  padding: 0 14px calc(14px + env(safe-area-inset-bottom));
+  pointer-events: none;
+  background: none;
+  animation: riso-protein-bar-up 0.22s ease-out;
+}
+
+.riso-protein-bar {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 560px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+  font: 700 14.5px/1.3 var(--riso-font-display);
+  text-align: left;
+}
+
+button.riso-protein-bar {
+  cursor: pointer;
+}
+
+.riso-protein-bar-go {
+  flex: none;
+  white-space: nowrap;
+}
+
+@keyframes riso-protein-bar-up {
+  from {
+    transform: translateY(110%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .riso-protein-bar-wrap {
+    animation: none;
+  }
 }
 
 .riso-protein-emoji {

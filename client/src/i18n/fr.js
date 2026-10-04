@@ -172,6 +172,11 @@ export const fr = {
     bestDeal: "Meilleure aubaine",
     notWorth: "{name} {price} · pas une aubaine",
     none: "{kinds} : aucun",
+    seeDeal: "Voir l'aubaine →",
+    barUse: { one: "{count} de vos recettes utilise {name}.", other: "{count} de vos recettes utilisent {name}." },
+    barNone: "Aucune de vos recettes n'utilise {name} pour l'instant.",
+    useName: { chicken: "du poulet", beef: "du bœuf", pork: "du porc", fish: "du poisson", seafood: "des fruits de mer", turkey: "de la dinde", "lamb-veal": "de l'agneau ou du veau", tofu: "du tofu" },
+    useNameNone: { chicken: "de poulet", beef: "de bœuf", pork: "de porc", fish: "de poisson", seafood: "de fruits de mer", turkey: "de dinde", "lamb-veal": "d'agneau ni de veau", tofu: "de tofu" },
     kinds: {
       chicken: "Poulet",
       beef: "Bœuf",
@@ -1163,7 +1168,7 @@ export const fr = {
           "La carte d'épicerie montre combien d'articles restent à acheter, combien sont dans le panier et combien sont en rabais. [[openList]] vous y mène.",
           "« À utiliser » liste ce qui expire bientôt dans votre inventaire et combien de recettes l'utilisent.",
           "« Faisable maintenant » montre les recettes que vous pouvez cuisiner aujourd'hui, ou à qui il manque un ou deux articles. Vous pouvez ajouter ce qui manque à votre liste d'épicerie.",
-          "« Protéines en rabais » montre la meilleure aubaine de la semaine en viande ou en poisson pour chaque sorte, d'après vos circulaires.",
+          "« Protéines en rabais » montre la meilleure aubaine de la semaine pour chaque sorte de viande, de poisson ou de tofu, d'après vos circulaires. Touchez une sorte pour la sélectionner; touchez-la de nouveau, ou une autre sorte, pour changer la sélection. Une barre glisse en bas de l'écran avec le nombre de vos recettes qui l'utilisent, et toucher la barre ouvre Recettes avec seulement celles-là. Si aucune recette ne l'utilise, la barre le dit. Sur une sorte sélectionnée, « Voir l'aubaine » ouvre son aubaine de circulaire.",
         ],
       },
       recipes: {

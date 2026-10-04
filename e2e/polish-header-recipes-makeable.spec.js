@@ -96,7 +96,56 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await page.reload();
   const proteins = page.locator(".riso-home-proteins");
   await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ })).toBeVisible();
-  await expect(proteins).toContainText("2 of your recipes use firm tofu");
+  await expect(proteins.locator(".riso-protein-emoji")).toHaveText("⬜"); // its own emoji, not the beans
+
+  // Selecting it shows the bar with the count of recipes Recipes then lists.
+  const row = proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ });
+  const bar = page.locator(".riso-protein-bar");
+  await expect(bar).toHaveCount(0);
+  await row.click();
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  await expect(bar).toContainText("2 of your recipes use tofu.");
+  // The same bar in French, with the right article.
+  await langSwitch(page).getByRole("button", { name: "Français" }).click();
+  await expect(bar).toContainText("2 de vos recettes utilisent du tofu.");
+  await expect(bar).toContainText("Les voir →");
+  await langSwitch(page).getByRole("button", { name: "English" }).click();
+  // Tapping it again deselects and hides the bar.
+  await row.click();
+  await expect(bar).toHaveCount(0);
+
+  await row.click();
+  await bar.click();
+  await expect(page.locator(".tab.active")).toHaveText("Recipes");
+  await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
+  await expect(page.locator(".riso-recipes-searchbar input")).not.toHaveValue("");
+});
+
+test.describe("Proteins on sale bar on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("says none use it when no recipe does, with no arrow, and stays inside the screen", async ({ page }) => {
+    const userId = await signUp(page, "Matt");
+    await prisma.flyerDeal.create({
+      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Tofu ferme", matchName: "tofu ferme", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: new Date() },
+    });
+    await page.reload();
+    await langSwitch(page).getByRole("button", { name: "Français" }).click();
+    const row = page.locator(".riso-home-proteins .riso-protein-row");
+    await row.scrollIntoViewIfNeeded();
+    await row.click();
+    const bar = page.locator(".riso-protein-bar");
+    await expect(bar).toHaveText("Aucune de vos recettes n'utilise de tofu pour l'instant.");
+    await expect(bar).not.toContainText("→");
+    await page.waitForTimeout(400); // the slide-up
+    const box = await bar.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    expect(box.y + box.height).toBeLessThanOrEqual(844);
+    await page.screenshot({ path: test.info().outputPath("proteins-bar-phone-fr.png") });
+    await row.click();
+    await expect(bar).toHaveCount(0);
+  });
 });
 
 test.describe("Recipes", () => {
