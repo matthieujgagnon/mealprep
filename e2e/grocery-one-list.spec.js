@@ -37,7 +37,9 @@ const recipe = async (page, title, ingredients) =>
   (await (await page.request.post("/api/recipes", { data: { title, baseServings: 2, ingredients } })).json());
 const place = async (page, recipeId, weekStart, dayOfWeek) =>
   (await (await page.request.post("/api/planner", { data: { recipeId, weekStart, dayOfWeek, mealType: "dinner" } })).json());
-const row = (page, name) => page.getByRole("button", { name: `Check off ${name}`, exact: true });
+// A grocery row, and the checkbox in it: only the checkbox checks the item off.
+const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
+const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
 const openGrocery = (page) => page.getByRole("button", { name: "Grocery", exact: true }).click();
 
 test("one list for every meal from today on, across weeks, amounts merged; no week controls", async ({ page }) => {
@@ -131,14 +133,14 @@ test("manual items, checks and store moves stay until changed, whichever days pa
 
   await page.fill('input[placeholder="Add an item, e.g. 2 lemons"]', "paper towels");
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await row(page, "paper towels").click();
-  await row(page, "Garlic").click();
-  await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "true");
+  await check(page, "paper towels").click();
+  await check(page, "Garlic").click();
+  await expect(check(page, "Garlic")).toHaveAttribute("aria-checked", "true");
 
   await page.reload();
   await openGrocery(page);
-  await expect(row(page, "paper towels")).toHaveAttribute("aria-pressed", "true");
-  await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "true");
+  await expect(check(page, "paper towels")).toHaveAttribute("aria-checked", "true");
+  await expect(check(page, "Garlic")).toHaveAttribute("aria-checked", "true");
 
   // Deleting a manual item deletes it, and what was saved about it.
   await page.getByRole("button", { name: "Remove paper towels", exact: true }).click();

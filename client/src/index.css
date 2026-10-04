@@ -5333,41 +5333,49 @@ button.riso-table-group-head:disabled {
   opacity: 0.75;
 }
 
-/* Cookbook / Imported: one section each when the grid shows both. */
+/* Cookbook and Imported: a collapsible section each (the header is the
+   Flyers' one: arrow, title, count, rule). The Cookbook has a smaller
+   collapsible header per meal type inside it. */
 .riso-recipes-section {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.riso-recipes-section-title {
+.riso-recipes-section-body {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.riso-recipes-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.riso-recipes-head h2 {
   margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 22px;
+  font: 800 26px var(--riso-font-display);
   letter-spacing: -0.02em;
 }
 
-.riso-recipes-section-title.cookbook {
-  width: fit-content;
-  background: var(--riso-hot);
-  padding: 2px 12px;
-  border-radius: 8px;
-}
-
-.riso-recipes-section-count {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+.riso-recipes-head.collapsed h2 {
   color: var(--riso-muted);
 }
 
-.riso-recipes-section-title.cookbook .riso-recipes-section-count {
-  color: var(--riso-ink);
+.riso-recipes-head.sub h2 {
+  font-size: 19px;
+}
+
+.riso-recipes-head.sub .riso-ing-group-count {
+  min-width: 26px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.riso-recipes-head.sub .riso-ing-group-caret {
+  font-size: 15px;
 }
 
 .riso-recipes-grid {
@@ -9469,14 +9477,18 @@ button.riso-table-group-head:disabled {
   min-height: 78px;
   box-sizing: border-box;
   border-top: 1.5px dashed var(--riso-dash-strong);
-  cursor: pointer;
 }
 
 .riso-row:first-child {
   border-top: none;
 }
 
-.riso-row:hover {
+/* Only a flyer item's row is tappable (it opens the deal). */
+.riso-row.opens-deal {
+  cursor: pointer;
+}
+
+.riso-row.opens-deal:hover {
   background: var(--riso-canvas);
 }
 
@@ -9485,10 +9497,29 @@ button.riso-table-group-head:disabled {
   opacity: 0.5;
 }
 
-button.riso-row-check {
+/* The checkbox is the only thing on a grocery row that checks it off, so its
+   tap area is 44 by 44 px around the small box. The negative margins keep the
+   box where it was in the row. */
+.riso-row-check-hit {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px -10px;
   padding: 0;
-  font-family: inherit;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.riso-row-check-hit:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: -3px;
+  border-radius: 12px;
 }
 
 .riso-row-check {
@@ -10905,6 +10936,10 @@ button.riso-row-qty:focus-visible {
     flex: none;
   }
 
+  .riso-row-check-hit {
+    margin: -9px -9px -9px -9px;
+  }
+
   .riso-row-sub,
   .riso-row-store {
     display: none;
@@ -11296,11 +11331,19 @@ button.riso-row-qty:focus-visible {
   cursor: default;
 }
 
-/* The shelf pill: a chip per shelf that jumps to it, and a round + at the end
-   to add one (a computer and a phone). */
+/* The shelf pill: a chip per shelf that jumps to it. On a computer it is as wide
+   as its chips; on a phone it is the full width (see the phone rules below).
+   The round + that adds a shelf sits beside the pill, outside it. */
+.riso-inv-shelf-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .riso-inv-shelf-switch {
   display: flex;
   width: fit-content;
+  min-width: 0;
   max-width: 100%;
   border: 2px solid var(--riso-ink);
   border-radius: 999px;
@@ -11331,33 +11374,29 @@ button.riso-row-qty:focus-visible {
   color: var(--riso-canvas);
 }
 
-/* The round + at the end of the pill (same button as a shelf's own +). */
-.riso-inv-shelf-switch button.add-shelf {
+/* The round + beside the pill (the same button as a shelf's own +). */
+.riso-inv-shelf-bar button.add-shelf {
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   border: 2px solid var(--riso-ink);
-  border-radius: 16px;
+  border-radius: 24px;
   background: var(--riso-surface);
-  align-self: center;
-  margin: 0 6px 0 2px;
-  /* Stays in view at the end of the pill when the chips scroll sideways. */
-  position: sticky;
-  right: 6px;
-  box-shadow: -8px 0 0 var(--riso-surface);
 }
 
-.riso-inv-shelf-switch button.add-shelf:hover {
+.riso-inv-shelf-bar button.add-shelf:hover {
   background: var(--riso-yellow);
 }
 
-.riso-inv-shelf-switch .add-shelf.form {
+.riso-inv-shelf-bar .add-shelf.form {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  cursor: default;
+  flex: none;
 }
 
-.riso-inv-shelf-switch .add-shelf input {
+.riso-inv-shelf-bar .add-shelf input {
   width: 150px;
   height: 30px;
   padding: 0 10px;
@@ -11368,7 +11407,7 @@ button.riso-row-qty:focus-visible {
   font: 600 13px var(--riso-font-body);
 }
 
-.riso-inv-shelf-switch .add-shelf-error {
+.riso-inv-shelf-bar .add-shelf-error {
   font: 600 12px var(--riso-font-body);
   color: var(--riso-danger);
 }
@@ -11388,6 +11427,12 @@ button.riso-row-qty:focus-visible {
 
   .inv-shelves [data-section-id] {
     scroll-margin-top: calc(var(--inv-sticky-top, 0px) + 66px);
+  }
+
+  /* The pill takes all the width the round + leaves. */
+  .riso-inv-shelf-switch {
+    flex: 1 1 0;
+    width: auto;
   }
 
   .inv-shelves {
@@ -11649,6 +11694,17 @@ button.riso-row-qty:focus-visible {
   padding: 0 14px;
   text-align: left;
   cursor: pointer;
+}
+
+/* A written meal (an emoji or some words instead of a recipe photo) is the same
+   size as a recipe card with a photo. An empty "blank" card stays small. */
+.rpm-note:not(.blank) {
+  height: 112px;
+  box-sizing: border-box;
+}
+
+.rpm-note-text.emoji {
+  font-size: 56px;
 }
 
 .rpm-note.editing {
@@ -15664,6 +15720,13 @@ body.no-select {
   width: 20px;
   height: 20px;
   background: transparent;
+}
+
+.riso-help-copy .riso-help-copy-body.riso-row-check {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  border-radius: 6px;
 }
 
 .riso-help-copy .riso-group-grip,

@@ -181,6 +181,6 @@ test("Use it up finds recipes for those items; Makeable now puts what's missing 
   await expect(makeable).toContainText("Everything they're missing is on your list ✓");
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Check off Dill", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Check off Pine nuts?$/ })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Check off Dill", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /^Check off Pine nuts?$/ })).toBeVisible();
 });

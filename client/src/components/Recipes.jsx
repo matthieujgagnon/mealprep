@@ -32,6 +32,70 @@ const SORTS = ["recent", "fewest", "quickest"];
 const SOURCES = ["cookbook", "imported"];
 const sourceOf = (recipe) => (recipe.inCookbook ? "cookbook" : "imported");
 
+// Inside the Cookbook, recipes sit under a meal type. These come first (the
+// four everyone has); snacks, desserts and pantry prep follow, then recipes
+// with no meal type yet. Empty ones are hidden.
+const MEAL_TYPE_IDS = [...RECIPE_SLOTS.map((slot) => slot.id), "none"];
+const mealTypeOf = (recipe) => {
+  const slot = recipeSlot(recipe);
+  return MEAL_TYPE_IDS.includes(slot) ? slot : "none";
+};
+
+// Which sections are folded stays folded between visits, like the Flyers.
+const COLLAPSED_KEY = "recipes-collapsed";
+function readCollapsed() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COLLAPSED_KEY));
+    return new Set(Array.isArray(raw) ? raw : []);
+  } catch {
+    return new Set();
+  }
+}
+function writeCollapsed(set) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...set]));
+  } catch {
+    // Private mode: the folds just aren't remembered.
+  }
+}
+
+// A section's header, in the Flyers' collapsible style: arrow, title, count
+// and a rule. Folded titles go muted.
+function SectionHead({ id, title, count, collapsed, disabled, sub, onToggle }) {
+  return (
+    <button
+      type="button"
+      className={`riso-ing-group-head riso-recipes-head${sub ? " sub" : ""}${collapsed ? " collapsed" : ""}`}
+      aria-expanded={!collapsed}
+      aria-controls={`recipes-section-${id}`}
+      onClick={() => onToggle(id)}
+      disabled={disabled}
+    >
+      <span className="riso-ing-group-caret" aria-hidden="true">
+        {collapsed ? "▸" : "▾"}
+      </span>
+      <h2>{title}</h2>
+      <span className="riso-ing-group-count">{count}</span>
+      <span className="riso-ing-group-rule" />
+    </button>
+  );
+}
+
+function RecipeGrid({ recipes, haveCores, matchesFilter, onSelect }) {
+  return (
+    <div className="riso-recipes-grid">
+      {recipes.map((r) => (
+        <RecipeCard
+          key={r.id}
+          recipe={r}
+          stats={recipeHaveStats(r, haveCores)}
+          usesExpiring={matchesFilter(r, "expiring")}
+          onClick={onSelect}
+        />
+      ))}
+    </div>
+  );
+}
 
 function isUrlLike(text) {
   const q = text.trim();
@@ -102,6 +166,7 @@ export function Recipes({
   const [source, setSource] = useState(null); // null (both) | "cookbook" | "imported"
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
 
   const allRecipes = recipes.filter((r) => !r.isPlaceholder);
   const query = search.trim();
@@ -158,12 +223,32 @@ export function Recipes({
     visible = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  // With neither Cookbook nor Imported picked, the grid is split under two
-  // headings (the Cookbook first), so the two are told apart at a glance.
-  const sections = source
-    ? [{ id: "all", recipes: visible }]
-    : SOURCES.map((id) => ({ id, recipes: visible.filter((r) => sourceOf(r) === id) })).filter((sec) => sec.recipes.length > 0);
-  const showHeadings = !source && sections.length > 1;
+  // Cookbook and Imported are always their own sections (the Cookbook first),
+  // each with the count of what the toggles, filters and search leave in it.
+  // The Cookbook is split again by meal type; Imported is one grid.
+  const sections = SOURCES.map((id) => {
+    const recipesHere = visible.filter((r) => sourceOf(r) === id);
+    const groups =
+      id === "cookbook"
+        ? MEAL_TYPE_IDS.map((typeId) => ({ id: `cookbook:${typeId}`, typeId, recipes: recipesHere.filter((r) => mealTypeOf(r) === typeId) })).filter(
+            (g) => g.recipes.length > 0
+          )
+        : null;
+    return { id, recipes: recipesHere, groups };
+  }).filter((sec) => sec.recipes.length > 0);
+
+  // While searching, everything stays open so a match is never folded away.
+  const searching = query !== "" && !isUrl;
+  const isFolded = (id) => collapsed.has(id) && !searching;
+  function toggleFold(id) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      writeCollapsed(next);
+      return next;
+    });
+  }
 
   const makeableCount = filterCounts.makeable;
   const expiringCount = filterCounts.expiring;
@@ -272,24 +357,41 @@ export function Recipes({
       </div>
 
       {sections.map((section) => (
-        <section key={section.id} className="riso-recipes-section">
-          {showHeadings && (
-            <h2 className={`riso-recipes-section-title ${section.id}`}>
-              {t(`recipes.sources.${section.id}`)}
-              <span className="riso-recipes-section-count">{section.recipes.length}</span>
-            </h2>
+        <section key={section.id} className="riso-recipes-section" aria-label={t(`recipes.sources.${section.id}`)}>
+          <SectionHead
+            id={section.id}
+            title={t(`recipes.sources.${section.id}`)}
+            count={section.recipes.length}
+            collapsed={isFolded(section.id)}
+            disabled={searching}
+            onToggle={toggleFold}
+          />
+          {!isFolded(section.id) && (
+            <div id={`recipes-section-${section.id}`} className="riso-recipes-section-body">
+              {section.groups ? (
+                section.groups.map((group) => (
+                  <section key={group.id} className="riso-recipes-subsection" aria-label={t(`recipes.mealTypes.${group.typeId}`)}>
+                    <SectionHead
+                      id={group.id}
+                      sub
+                      title={t(`recipes.mealTypes.${group.typeId}`)}
+                      count={group.recipes.length}
+                      collapsed={isFolded(group.id)}
+                      disabled={searching}
+                      onToggle={toggleFold}
+                    />
+                    {!isFolded(group.id) && (
+                      <div id={`recipes-section-${group.id}`}>
+                        <RecipeGrid recipes={group.recipes} haveCores={haveCores} matchesFilter={matchesFilter} onSelect={onSelectRecipe} />
+                      </div>
+                    )}
+                  </section>
+                ))
+              ) : (
+                <RecipeGrid recipes={section.recipes} haveCores={haveCores} matchesFilter={matchesFilter} onSelect={onSelectRecipe} />
+              )}
+            </div>
           )}
-          <div className="riso-recipes-grid">
-            {section.recipes.map((r) => (
-              <RecipeCard
-                key={r.id}
-                recipe={r}
-                stats={recipeHaveStats(r, haveCores)}
-                usesExpiring={matchesFilter(r, "expiring")}
-                onClick={onSelectRecipe}
-              />
-            ))}
-          </div>
         </section>
       ))}
       {visible.length === 0 && !isUrl && (

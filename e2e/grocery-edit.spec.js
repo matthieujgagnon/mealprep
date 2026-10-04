@@ -44,7 +44,9 @@ async function setup(page) {
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
 }
 
-const row = (page, name) => page.getByRole("button", { name: `Check off ${name}`, exact: true });
+// A grocery row, and the checkbox in it: only the checkbox checks the item off.
+const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
+const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
 
 test("recipe amounts read naturally and your own amount shows beside them", async ({ page }) => {
   await setup(page);
@@ -58,7 +60,7 @@ test("recipe amounts read naturally and your own amount shows beside them", asyn
   await expect(row(page, "Garlic")).toContainText("recipe: 4 cloves");
 
   // Editing the amount doesn't check the item off.
-  await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "false");
+  await expect(check(page, "Garlic")).toHaveAttribute("aria-checked", "false");
 
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
@@ -104,7 +106,7 @@ test("Share copies what's left to buy as a text list", async ({ page, context })
     // Desktop browsers without a share sheet fall back to the clipboard.
     delete navigator.share;
   });
-  await row(page, "Lemon").click();
+  await check(page, "Lemon").click();
   await page.getByRole("button", { name: "Share", exact: true }).click();
   await expect(page.getByText("Copied - paste it anywhere")).toBeVisible();
   const text = await page.evaluate(() => navigator.clipboard.readText());
@@ -143,8 +145,8 @@ test("Clear empties the Removed strip and the rows stay off the list", async ({ 
 
 test("checked items never show as unchecked while the list loads", async ({ page }) => {
   await setup(page);
-  await row(page, "Garlic").click();
-  await expect(row(page, "Garlic")).toHaveAttribute("aria-pressed", "true");
+  await check(page, "Garlic").click();
+  await expect(check(page, "Garlic")).toHaveAttribute("aria-checked", "true");
   // Slow the checkmarks down: the rows must wait for them.
   await page.route("**/api/grocery-checked", async (route) => {
     await new Promise((r) => setTimeout(r, 800));
@@ -152,9 +154,9 @@ test("checked items never show as unchecked while the list loads", async ({ page
   });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  const garlic = row(page, "Garlic");
+  const garlic = check(page, "Garlic");
   await garlic.waitFor();
-  expect(await garlic.getAttribute("aria-pressed")).toBe("true");
+  expect(await garlic.getAttribute("aria-checked")).toBe("true");
 });
 
 test("stores: add one and drag an item into it; it stays there", async ({ page }) => {
@@ -173,18 +175,18 @@ test("stores: add one and drag an item into it; it stays there", async ({ page }
   await page.mouse.move(from.x + 25, from.y + 10, { steps: 4 });
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
-  await expect(costco.getByRole("button", { name: "Check off Garlic", exact: true })).toBeVisible();
+  await expect(costco.getByRole("checkbox", { name: "Check off Garlic", exact: true })).toBeVisible();
 
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(
-    page.getByRole("region", { name: "Costco store" }).getByRole("button", { name: "Check off Garlic", exact: true })
+    page.getByRole("region", { name: "Costco store" }).getByRole("checkbox", { name: "Check off Garlic", exact: true })
   ).toBeVisible();
 });
 
 test("Done shopping adds the checked items to Inventory once, takes them off the list, and says the groceries are done", async ({ page }) => {
   await setup(page);
-  for (const name of ["Garlic", "Lemon", "Spaghetti"]) await row(page, name).click();
+  for (const name of ["Garlic", "Lemon", "Spaghetti"]) await check(page, name).click();
   // Everything in the cart: the card goes dark before Done shopping.
   await expect(page.locator(".riso-grocery-cart")).toHaveClass(/done/);
   await page.getByRole("button", { name: "Done shopping · add 3 to inventory" }).click();
@@ -260,12 +262,12 @@ test("the list waits for stores and deals, so items never show in Any store firs
   await expect(page.locator(".riso-grocery-loading")).toBeVisible();
 
   const metro = page.getByRole("region", { name: "Metro store" });
-  await expect(metro.getByRole("button", { name: "Check off Garlic", exact: true })).toBeVisible();
+  await expect(metro.getByRole("checkbox", { name: "Check off Garlic", exact: true })).toBeVisible();
   expect(await storeNames()).not.toContain("Any store");
 
   // Coming back to the tab shows it straight away, already in place.
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(metro.getByRole("button", { name: "Check off Garlic", exact: true })).toBeVisible({ timeout: 500 });
+  await expect(metro.getByRole("checkbox", { name: "Check off Garlic", exact: true })).toBeVisible({ timeout: 500 });
   expect(await storeNames()).not.toContain("Any store");
 });

@@ -101,8 +101,8 @@ test("Store mode groups each store's list by section, sorts A to Z, and remember
   await expect(page.getByRole("dialog", { name: "Store mode" })).toHaveCount(0);
   await expect.poll(async () => (await (await page.request.get("/api/pantry-inventory")).json()).map((i) => i.name.toLowerCase())).toContain("cilantro");
   // What was bought leaves the list (a hand-added item is deleted).
-  await expect(page.getByRole("button", { name: "Check off Cilantro", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Check off limes", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Check off Cilantro", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: "Check off limes", exact: true })).toBeVisible();
 });
 
 test.describe("in French", () => {

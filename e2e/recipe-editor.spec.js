@@ -50,7 +50,7 @@ test("a new recipe with a slot, pasted steps and a pasted ingredient list", asyn
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 
-  await page.getByRole("button", { name: /Pantry \/ Prep/ }).click();
+  await page.locator(".riso-filter-chip", { hasText: /Pantry \/ Prep/ }).click();
   const card = page.locator(".riso-recipe-card", { hasText: "Quick pickled shallots" });
   await expect(card).toBeVisible();
   await expect(card.locator(".riso-recipe-chip.time")).toHaveText("⏱5 min");

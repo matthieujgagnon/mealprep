@@ -128,7 +128,7 @@ test.describe("Recipes", () => {
     await page.reload();
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
-    await expect(page.locator(".riso-recipes-section-title")).toHaveText([/Cookbook/, /Imported/]);
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*1/, /Imported\s*1/]);
     await expect(page.locator(".riso-recipes-section").first()).toContainText("Grandma's lasagna");
     await expect(page.locator(".riso-recipes-section").nth(1)).toContainText("Imported pad thai");
 
@@ -147,6 +147,53 @@ test.describe("Recipes", () => {
     await expect(page.locator(".modal-overlay")).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Cookbook or imported" }).getByRole("button", { name: /^Cookbook/ })).toContainText("2");
     await expect(page.getByRole("group", { name: "Cookbook or imported" }).getByRole("button", { name: /^Imported/ })).toContainText("0");
+  });
+});
+
+test.describe("Recipes sections", () => {
+  test.use({ viewport: { width: 1280, height: 1000 } });
+
+  test("the Cookbook is split by meal type, empty ones are hidden, and every header folds", async ({ page }) => {
+    const userId = await signUp(page);
+    await recipe(page, "Chicken curry", "dinner", ["chicken"]);
+    await recipe(page, "Pasta bake", "dinner", ["pasta"]);
+    await recipe(page, "Pancakes", "breakfast", ["flour"]);
+    await recipe(page, "Garlic rice", "side", ["rice"]);
+    await prisma.recipe.create({
+      data: { userId, title: "Imported pad thai", inCookbook: false, inImported: true, instructions: "[]", ingredients: { create: [{ name: "noodles" }] } },
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "Recipes", exact: true }).click();
+
+    const head = (name) => page.locator(".riso-recipes-head", { hasText: name });
+    const cookbook = page.locator(".riso-recipes-section", { has: head("Cookbook") }).first();
+    const sub = (name) => cookbook.locator(".riso-recipes-subsection", { has: head(name) });
+    await expect(head("Cookbook").first()).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*4/, /Imported\s*1/]);
+    // Breakfast, Dinner and Sides have recipes; Lunch and the others are hidden.
+    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Breakfast\s*1/, /Dinner\s*2/, /Sides\s*1/]);
+    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(2);
+
+    // The header folds its section, and the count stays.
+    await head("Dinner").click();
+    await expect(head("Dinner")).toHaveAttribute("aria-expanded", "false");
+    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(0);
+    await expect(head("Dinner")).toContainText("2");
+    await head("Dinner").click();
+    await expect(sub("Dinner").locator(".riso-recipe-card")).toHaveCount(2);
+    await head("Imported").click();
+    await expect(page.locator(".riso-recipes-section", { hasText: "Imported pad thai" })).toHaveCount(0);
+    await head("Imported").click();
+    await expect(page.locator(".riso-recipes-section", { hasText: "Imported pad thai" })).toHaveCount(1);
+
+    // The toggles and filters narrow what's inside the sections, and the counts follow.
+    const chips = page.locator(".riso-recipes-filter-chips").last();
+    await chips.getByRole("button", { name: /^Dinner/ }).click();
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Cookbook\s*2/]);
+    await expect(cookbook.locator(".riso-recipes-subsection > .riso-recipes-head")).toHaveText([/Dinner\s*2/]);
+    await chips.getByRole("button", { name: /^All/ }).click();
+    await page.getByRole("group", { name: "Cookbook or imported" }).getByRole("button", { name: /^Imported/ }).click();
+    await expect(page.locator(".riso-recipes-section > .riso-recipes-head")).toHaveText([/Imported\s*1/]);
   });
 });
 

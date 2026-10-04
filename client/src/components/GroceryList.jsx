@@ -228,28 +228,32 @@ function ToInventoryButton({ item, onClick }) {
 // Every row is the same size: the name takes one line (long ones end in an
 // ellipsis), the brand line and the tag slot on the right are always there,
 // empty or not, so rows line up whether or not an item has a brand or a sale.
-// An item added from a flyer deal opens that deal when tapped (its check
-// circle still checks it off); every other row checks off when tapped.
+// Only the checkbox checks an item off (it's a 44 px target on its own).
+// Tapping anywhere else on the row does nothing, except on an item added from
+// a flyer deal, which opens that deal. Store mode is the other way round: the
+// whole row checks there.
 function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onToInventory, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
   const brand = brandOf(deal || flyerDeal);
   const label = item.name + (item.varieties.length > 0 ? ` (${item.varieties.join(", ")})` : "");
-  const activate = flyerDeal ? () => onOpenDeal(flyerDeal) : onToggle;
   return (
     <div
       ref={rowRef}
-      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}`}
-      role="button"
-      tabIndex={0}
-      aria-label={flyerDeal ? t("grocery.openDeal", { name: item.name }) : t("grocery.checkOff", { name: item.name })}
-      aria-pressed={flyerDeal ? undefined : checked}
-      onClick={activate}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          activate();
-        }
-      }}
+      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}`}
+      {...(flyerDeal
+        ? {
+            role: "button",
+            tabIndex: 0,
+            "aria-label": t("grocery.openDeal", { name: item.name }),
+            onClick: () => onOpenDeal(flyerDeal),
+            onKeyDown: (e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpenDeal(flyerDeal);
+              }
+            },
+          }
+        : {})}
       {...dragProps}
     >
       {dragProps && (
@@ -257,23 +261,19 @@ function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onTo
           ⠿
         </span>
       )}
-      {flyerDeal ? (
-        <button
-          type="button"
-          className={`riso-row-check${checked ? " on" : ""}`}
-          role="checkbox"
-          aria-checked={checked}
-          aria-label={t("grocery.checkOff", { name: item.name })}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-        >
-          {checked ? "✓" : ""}
-        </button>
-      ) : (
+      <button
+        type="button"
+        className="riso-row-check-hit"
+        role="checkbox"
+        aria-checked={checked}
+        aria-label={t("grocery.checkOff", { name: item.name })}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      >
         <span className={`riso-row-check${checked ? " on" : ""}`}>{checked ? "✓" : ""}</span>
-      )}
+      </button>
       <span className="riso-row-main">
         <span className={`riso-row-name${checked ? " struck" : ""}`} title={label}>
           {label}
