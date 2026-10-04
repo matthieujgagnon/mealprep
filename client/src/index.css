@@ -1497,33 +1497,6 @@ select {
   margin-bottom: 20px;
 }
 
-.pantry-add-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0 12px;
-}
-
-.pantry-add-form input[type="text"] {
-  flex: 1;
-  min-width: 140px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 13px;
-}
-
-.pantry-add-form input[type="date"] {
-  padding: 7px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 13px;
-}
-
 /* Inventory page (shelves + edit panel + select-and-act) - a handful of
    dark-surface tokens the rest of the app's palette doesn't already have a
    name for, scoped to this page rather than added to the global palette
@@ -2084,8 +2057,7 @@ select {
   cursor: pointer;
 }
 
-.inv-card-qty-edit select,
-.inv-panel-unit {
+.inv-card-qty-edit select {
   height: 30px;
   max-width: 96px;
   box-sizing: border-box;
@@ -2096,14 +2068,6 @@ select {
   font: 700 13px var(--riso-font-display);
   padding: 0 4px;
   cursor: pointer;
-}
-
-.inv-panel-unit {
-  height: 40px;
-  max-width: none;
-  border-radius: 20px;
-  padding: 0 12px;
-  font-size: 14px;
 }
 
 .inv-card-qty-edit input {
@@ -2149,47 +2113,6 @@ select {
   background: var(--riso-accent);
 }
 
-.inv-panel-photo {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.inv-panel-photo-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 13.5px;
-}
-
-.inv-panel-photo-link {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.inv-panel-photo-link input {
-  width: 200px;
-  max-width: 100%;
-  height: 30px;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 10px;
-  padding: 0 8px;
-  font: 500 13px var(--riso-font-body, inherit);
-}
-
-.inv-panel-photo-credit {
-  font-size: 12px;
-  color: var(--riso-muted);
-}
-
-.inv-panel-photo-error {
-  color: var(--riso-danger);
-  font-size: 12.5px;
-}
-
 @media (max-width: 1000px) {
   .riso-inv {
     padding: 24px 24px 40px;
@@ -2204,314 +2127,7 @@ select {
   }
 }
 
-/* Fixed, so the panel opens where you are on a long page. */
-.riso-inv-edit-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(22, 24, 31, 0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
-  z-index: 60;
-  overflow-y: auto;
-}
-
-.riso-inv-edit-modal {
-  position: relative;
-  width: 440px;
-  max-width: calc(100% - 40px);
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 26px;
-  box-shadow: var(--riso-shadow-lg);
-  padding: 24px;
-}
-
-.riso-inv-edit-close {
-  position: absolute;
-  top: -16px;
-  right: -16px;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  box-shadow: var(--riso-shadow);
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 22px;
-  line-height: 1;
-  color: var(--riso-ink);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.inv-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.inv-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.inv-panel-header h3 {
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 26px;
-  line-height: 1.1;
-  margin: 0;
-  color: var(--riso-ink);
-  overflow-wrap: anywhere;
-}
-
-.inv-panel-name-input {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 26px;
-  line-height: 1.1;
-  color: var(--riso-ink);
-  background: none;
-  border: none;
-  border-bottom: 1.5px dashed transparent;
-  padding: 0 0 2px;
-  border-radius: 0;
-}
-
-.inv-panel-name-input:hover,
-.inv-panel-name-input:focus {
-  border-bottom-color: var(--riso-dash-strong);
-  outline: none;
-}
-
-.inv-panel-category {
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--riso-muted);
-  white-space: nowrap;
-}
-
-.inv-panel-label {
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--riso-muted);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.inv-qty-stepper {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.inv-qty-stepper button {
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  color: var(--riso-ink);
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.inv-qty-input {
-  width: 84px;
-  height: 40px;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 20px;
-  background: #fff;
-  text-align: center;
-  font: 800 18px var(--riso-font-display);
-  color: var(--riso-ink);
-  padding: 0 6px;
-}
-
-.inv-qty-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.inv-qty-chips button {
-  height: 30px;
-  min-width: 34px;
-  padding: 0 10px;
-  border-radius: 15px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
-  font: 700 13px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.inv-qty-chips button:hover,
-.inv-pill:hover:not(:disabled) {
-  background: var(--riso-yellow);
-}
-
-.inv-panel-photo-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.inv-pill {
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 16px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 13px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.inv-qty-stepper span {
-  min-width: 80px;
-  text-align: center;
-  font-family: var(--riso-font-display);
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--riso-ink);
-}
-
-.inv-storage-pills {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.inv-storage-pill {
-  height: 44px;
-  border-radius: 22px;
-  padding: 0 16px;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 14.5px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  cursor: pointer;
-}
-
-.inv-storage-pill.active {
-  background: var(--riso-accent);
-  color: #fff;
-  box-shadow: var(--riso-shadow);
-  cursor: default;
-}
-
-.inv-storage-pill-range {
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 11.5px;
-  opacity: 0.85;
-}
-
-.inv-use-by {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--riso-soft);
-  margin: 0;
-}
-
-.inv-use-by {
-  position: relative;
-}
-
-/* Opened by the "Pick a date" link; kept in the page (not display:none)
-   so the browser's date picker can open from it. */
-.inv-use-by-picker {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  border: 0;
-  padding: 0;
-}
-
-.inv-panel-tip {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  padding: 10px 14px;
-  font-size: 13.5px;
-  line-height: 1.4;
-}
-
-.inv-panel-tip > span:first-child {
-  flex: 1;
-}
-
-.inv-panel-tip-source {
-  font: 500 10px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
-  text-align: right;
-}
-
-.inv-panel-footer {
-  border-top: 1.5px dashed var(--riso-dash-strong);
-  padding-top: 14px;
-  font-size: 13.5px;
-  color: var(--riso-soft);
-  line-height: 1.5;
-}
-
-.riso-inv-edit-modal .link-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--riso-accent);
-  cursor: pointer;
-  font-size: inherit;
-  font-family: inherit;
-}
-
-.riso-inv-edit-modal .link-btn:hover {
-  text-decoration: underline;
-}
-
-.riso-inv-edit-modal .link-btn.subtle {
-  color: var(--riso-muted);
-  font-size: 12px;
-  margin-top: 6px;
-  display: inline-block;
-}
-
 .riso-inv .btn,
-.riso-inv-edit-modal .btn,
 .riso-inv-form-modal .btn {
   font-family: var(--riso-font-display);
   font-weight: 600;
@@ -2526,7 +2142,6 @@ select {
 }
 
 .riso-inv .btn.primary,
-.riso-inv-edit-modal .btn.primary,
 .riso-inv-form-modal .btn.primary {
   background: var(--riso-accent);
   color: var(--riso-on-accent);
@@ -2534,20 +2149,17 @@ select {
 }
 
 .riso-inv .btn.subtle,
-.riso-inv-edit-modal .btn.subtle,
 .riso-inv-form-modal .btn.subtle {
   background: var(--riso-surface);
   color: var(--riso-ink);
 }
 
-.riso-inv .btn.subtle.active,
-.riso-inv-edit-modal .btn.subtle.active {
+.riso-inv .btn.subtle.active {
   background: var(--riso-ink);
   color: var(--riso-canvas);
 }
 
 .riso-inv .btn-sm,
-.riso-inv-edit-modal .btn-sm,
 .riso-inv-form-modal .btn-sm {
   height: 30px;
   padding: 0 12px;
@@ -2579,8 +2191,6 @@ select {
   font-size: 22px;
 }
 
-.riso-inv-form-modal .pantry-add-form input,
-.riso-inv-form-modal .pantry-add-form select,
 .riso-inv-form-modal .flyer-upload-form input {
   font-family: var(--riso-font-body);
   border: 1.5px solid var(--riso-dash-strong);
@@ -2869,11 +2479,6 @@ select {
   .inv-shelves > .inv-shelf {
     grid-column: auto;
     height: auto !important;
-  }
-
-  .riso-inv-edit-overlay {
-    padding: 24px 12px;
-    align-items: center;
   }
 
   .inv-action-bar {
@@ -4181,6 +3786,7 @@ input[type="date"].planner-week-picker {
   --riso-dash: #d6cfbf; /* rule (dashed dividers) */
   --riso-dash-strong: #bdb6a6; /* rule (dashed empty slots) */
   --riso-chip-dash: #8a877d; /* dashed outline of the grocery recipe-quantity pill */
+  --riso-placeholder: #8a8677; /* placeholder text, an empty preview name */
   --riso-store-checked: #2a2d38; /* a checked row in dark Store mode */
   --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
@@ -4212,8 +3818,7 @@ input[type="date"].planner-week-picker {
 .riso-rc-why-sticker,
 .riso-rc-legend-sticker,
 .riso-rc-tag-chip,
-.tag-chip,
-.inv-storage-pill {
+.tag-chip {
   white-space: nowrap;
 }
 
@@ -10140,31 +9745,22 @@ button.riso-protein-bar {
     display: flex;
   }
 
-  /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale
-     tag sits just left of the number, narrow, with the store over the price,
-     so the name still gets the room. */
+  /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale tag
+     sits just left of the number and looks like it does on a computer: store, a
+     divider, price. (On a narrow phone it stacks, see below.) */
   .riso-row-slot {
     display: contents;
   }
 
   .riso-row-deal {
-    flex-direction: column;
-    justify-content: center;
-    gap: 1px;
-    height: auto;
-    min-height: 38px;
+    gap: 6px;
     margin-right: 6px;
-    padding: 3px 7px;
-  }
-
-  .riso-row-deal-div {
-    display: none;
+    padding: 0 7px;
   }
 
   .riso-row-deal-store,
   .riso-row-deal-price {
     font-size: 11px;
-    line-height: 14px;
   }
 
   .riso-row-qtycol {
@@ -11982,13 +11578,6 @@ button.riso-deal-detail-other:focus-visible {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-  }
-
-  .riso-sheet .inv-panel {
-    border: none;
-    box-shadow: none;
-    padding: 0;
-    background: transparent;
   }
 }
 
@@ -16387,5 +15976,736 @@ body.no-select {
 
   .riso-help-card-title {
     font-size: 24px;
+  }
+}
+
+/* ================================================================
+   The Inventory item form: Add item and Edit item (design handoff:
+   docs/design/inventory-item-form/README.md). One form, two modes.
+   ================================================================ */
+.riso-itemform-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 48px 24px 0;
+  box-sizing: border-box;
+  background: rgba(22, 24, 31, 0.45);
+}
+
+.riso-itemform-modal {
+  position: relative;
+  width: 860px;
+  max-width: 100%;
+  margin: auto 0 24px;
+  padding: 28px 32px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: 8px 8px 0 var(--riso-ink);
+  font-family: var(--riso-font-display);
+}
+
+.riso-itemform-close {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  box-shadow: 3px 3px 0 var(--riso-ink);
+  font: 700 22px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  font-family: var(--riso-font-display);
+}
+
+.riso-itemform button,
+.riso-itemform input,
+.riso-itemform select {
+  font-family: inherit;
+}
+
+.riso-itemform :focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 1px;
+}
+
+.riso-itemform input::placeholder {
+  color: var(--riso-placeholder);
+}
+
+.riso-itemform-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.riso-itemform-title {
+  margin: 0;
+  font: 800 36px/1 var(--riso-font-display);
+  letter-spacing: -0.03em;
+}
+
+.riso-itemform-title .accent {
+  color: var(--riso-accent);
+}
+
+.riso-itemform-hint,
+.riso-itemform-category,
+.riso-itemform-label,
+.riso-itemform-sorted,
+.riso-itemform-recent-label {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-itemform-category {
+  margin-left: auto;
+  text-align: right;
+}
+
+.riso-itemform-name {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin-left: -12px;
+  padding: 0 10px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 800 36px/1.2 var(--riso-font-display);
+  letter-spacing: -0.03em;
+}
+
+.riso-itemform-name:hover {
+  border-color: var(--riso-dash-strong);
+}
+
+.riso-itemform-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.riso-itemform-main {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.riso-itemform-side {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.riso-itemform-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-itemform-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-itemform-step-n {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-yellow);
+  font: 800 11px var(--riso-font-display);
+}
+
+.riso-itemform-nameinput {
+  width: 100%;
+  height: 56px;
+  box-sizing: border-box;
+  padding: 0 18px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--riso-ink);
+  font: 800 24px var(--riso-font-display);
+}
+
+.riso-itemform-recent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Chips: the small ones (a quick amount, a recent food), the use-by ones, and the
+   "Done with it?" ones. */
+.riso-itemform-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 17px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-chip.small {
+  height: 30px;
+  min-width: 36px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: var(--riso-canvas);
+}
+
+.riso-itemform-chip:hover,
+.riso-itemform-round:hover {
+  background: var(--riso-yellow);
+}
+
+.riso-itemform-chip.on {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+.riso-itemform-chip.dashed {
+  border-style: dashed;
+}
+
+.riso-itemform-chip.dashed input {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: 500 13px var(--riso-font-mono);
+}
+
+.riso-itemform-chip.big {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 19px;
+  font-size: 14px;
+}
+
+.riso-itemform-chip.used:hover {
+  background: var(--riso-green);
+}
+
+.riso-itemform-chip.tossed:hover {
+  background: var(--riso-hot);
+}
+
+.riso-itemform-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.riso-itemform-qty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-itemform-round {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font: 700 20px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-qtyinput {
+  flex: none;
+  width: 76px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  background: #fff;
+  color: var(--riso-ink);
+  text-align: center;
+  font: 800 20px var(--riso-font-display);
+}
+
+.riso-itemform-unit {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  background: #fff;
+  color: var(--riso-ink);
+  font: 700 15px var(--riso-font-display);
+}
+
+.riso-itemform-quick,
+.riso-itemform-useby,
+.riso-itemform-done {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-itemform-locs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.riso-itemform-locs.wide {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.riso-itemform-loc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-itemform-loc.on {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 3px 3px 0 var(--riso-ink);
+}
+
+.riso-itemform-loc-name {
+  font: 800 16px var(--riso-font-display);
+}
+
+.riso-itemform-loc-range {
+  font: 500 10.5px var(--riso-font-mono);
+}
+
+.riso-itemform-note {
+  margin: 0;
+  font: 400 13px/1.5 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+/* The preview is the real shelf card. */
+.riso-itemform-card {
+  height: 88px;
+  cursor: default;
+  touch-action: auto;
+}
+
+.inv-card-photo.placeholder.stripes {
+  font: 500 9px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+  background: repeating-linear-gradient(135deg, var(--riso-canvas) 0 8px, var(--riso-track) 8px 16px);
+}
+
+.inv-card-name.empty {
+  color: var(--riso-placeholder);
+}
+
+.riso-itemform-tagrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-itemform-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: #fff;
+  font: 800 13px var(--riso-font-display);
+}
+
+.riso-itemform-tag.none {
+  background: var(--riso-canvas);
+}
+
+.riso-itemform-tag.hot {
+  background: var(--riso-hot);
+}
+
+.riso-itemform-tag.warn {
+  background: var(--riso-yellow);
+}
+
+.riso-itemform-staple {
+  align-self: flex-start;
+  height: 34px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 17px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-staple.on {
+  background: var(--riso-yellow);
+}
+
+.riso-itemform-photo {
+  margin-top: 8px;
+  padding: 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-canvas);
+}
+
+.riso-itemform-drop {
+  font: 800 15px var(--riso-font-display);
+  color: var(--riso-accent);
+}
+
+.riso-itemform-pillbtn {
+  height: 38px;
+  padding: 0 18px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-pillbtn.small {
+  padding: 0 14px;
+}
+
+.riso-itemform-pillbtn:hover,
+.riso-itemform-small:hover {
+  background: var(--riso-yellow);
+}
+
+.riso-itemform-or {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-itemform-linkrow {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+}
+
+.riso-itemform-linkrow input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: #fff;
+  color: var(--riso-ink);
+  font: 500 14px var(--riso-font-body);
+}
+
+.riso-itemform-photo-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.riso-itemform-thumb {
+  width: 64px;
+  height: 64px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.riso-itemform-small {
+  height: 34px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 17px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-stock {
+  margin-top: 6px;
+  font: 500 12.5px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.riso-itemform-recipes {
+  padding-top: 14px;
+  border-top: 2px dashed var(--riso-dash-strong);
+  font: 400 13.5px/1.5 var(--riso-font-body);
+}
+
+.riso-itemform-recipes .link-btn {
+  font-weight: 600;
+}
+
+.riso-itemform-tray {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-canvas);
+}
+
+.riso-itemform-tray-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-itemform-tray-check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-green);
+  font: 800 11px var(--riso-font-display);
+}
+
+.riso-itemform-tray-name {
+  font: 700 14px var(--riso-font-display);
+}
+
+.riso-itemform-tray-meta {
+  flex: 1;
+  min-width: 0;
+  font: 500 11px var(--riso-font-mono);
+  color: var(--riso-muted);
+}
+
+.riso-itemform-error {
+  font: 600 13px var(--riso-font-body);
+  color: var(--riso-danger);
+}
+
+.riso-itemform-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 0 2px;
+  background: var(--riso-surface);
+  border-top: 2px dashed var(--riso-dash-strong);
+}
+
+.riso-itemform-spacer {
+  flex: 1;
+}
+
+.riso-itemform-btn {
+  height: 48px;
+  padding: 0 22px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 15px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-btn:hover:not(:disabled) {
+  background: var(--riso-yellow);
+}
+
+.riso-itemform-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.riso-itemform-btn.primary {
+  padding: 0 28px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 3px 3px 0 var(--riso-ink);
+  font-size: 16px;
+}
+
+.riso-itemform-btn.primary:hover:not(:disabled) {
+  background: var(--riso-accent);
+}
+
+.riso-itemform-btn.primary:disabled {
+  opacity: 1;
+  background: var(--riso-dash-strong);
+  box-shadow: none;
+}
+
+.riso-itemform-remove {
+  height: 30px;
+  padding: 0 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 15px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-remove:hover {
+  background: var(--riso-hot);
+}
+
+.riso-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 120;
+  max-width: calc(100% - 32px);
+  padding: 10px 20px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  box-shadow: 4px 4px 0 var(--riso-ink);
+  font: 800 15px var(--riso-font-display);
+  transform: translateX(-50%) rotate(-2deg);
+  pointer-events: none;
+}
+
+/* On a phone the form is the bottom sheet: one column, bigger touch chips. */
+@media (max-width: 767px) {
+  .riso-itemform-title,
+  .riso-itemform-name {
+    font-size: 32px;
+  }
+
+  .riso-itemform-chip,
+  .riso-itemform-chip.small {
+    height: 40px;
+  }
+
+  .riso-itemform-chip.big {
+    height: 44px;
+  }
+
+  /* The sheet has its own bottom padding: the footer reaches over it, so nothing scrolls
+     through the gap under the buttons. */
+  .riso-itemform-footer {
+    bottom: calc(-22px - env(safe-area-inset-bottom));
+    padding-bottom: calc(22px + env(safe-area-inset-bottom));
+  }
+
+  .riso-itemform-footer .riso-itemform-btn {
+    flex: 1 1 auto;
+  }
+}
+
+.riso-itemform .link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--riso-accent);
+  font: 600 13px var(--riso-font-body);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.riso-itemform .link-btn:hover {
+  color: var(--riso-ink);
+}
+
+.riso-itemform .link-btn.subtle {
+  color: var(--riso-muted);
+}
+
+/* On a narrow phone the tag has no room in one line: the store over the price, the
+   divider across, the same green tag. */
+@media (max-width: 479px) {
+  .riso-row-deal {
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 2px;
+    height: auto;
+    padding: 3px 7px;
+    text-align: center;
+  }
+
+  .riso-row-deal-div {
+    width: auto;
+    height: 1.5px;
+  }
+
+  .riso-row-deal-store,
+  .riso-row-deal-price {
+    line-height: 13px;
   }
 }

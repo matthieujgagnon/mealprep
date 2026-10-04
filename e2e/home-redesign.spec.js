@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { addInventoryItem, itemForm } from "./inventory-form.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -54,11 +55,7 @@ test("Makeable now counts what's ready and lists it with a ready tag", async ({ 
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
-  await page.getByRole("button", { name: "+ Add item" }).click();
-  await page.fill('input[placeholder="e.g. Chicken breast"]', "test ingredient");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.waitForTimeout(300);
-  await page.locator(".modal-close").click();
+  await addInventoryItem(page, "test ingredient");
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   const card = page.locator(".riso-home-makeable");

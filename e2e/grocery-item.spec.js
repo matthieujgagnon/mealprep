@@ -253,6 +253,27 @@ test.describe("on a phone", () => {
     expect(new Set(spots.map((x) => x.rightEdge)).size).toBe(1); // lined up
   });
 
+  test("a wider phone shows the sale tag as on a computer: store, a divider, price, on one line", async ({ page }) => {
+    await page.setViewportSize({ width: 520, height: 844 });
+    await setup(page);
+    const looks = await page.locator(".riso-row-deal").evaluateAll((tags) =>
+      tags.map((tag) => {
+        const r = tag.getBoundingClientRect();
+        const div = tag.querySelector(".riso-row-deal-div").getBoundingClientRect();
+        const row = tag.closest(".riso-row");
+        const qty = row.querySelector(".riso-row-qty").getBoundingClientRect();
+        return { height: Math.round(r.height), dividerIsVertical: div.height < div.width ? false : div.height > 6, leftOfNumber: r.right <= qty.left, bg: getComputedStyle(tag).backgroundColor };
+      })
+    );
+    expect(looks).toHaveLength(2);
+    for (const l of looks) {
+      expect(l.height).toBe(22); // the same tag as on a computer
+      expect(l.dividerIsVertical).toBe(true);
+      expect(l.leftOfNumber).toBe(true);
+      expect(l.bg).toBe("rgb(16, 201, 92)");
+    }
+  });
+
   test("Store mode draws the same item at 120 px, and the whole row checks it", async ({ page }) => {
     await setup(page);
     await page.getByRole("button", { name: /I'm at the store/ }).click();

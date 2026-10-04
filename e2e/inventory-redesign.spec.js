@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
 
 // Covers the shelves + edit panel + select-and-act Inventory redesign:
 // items grouped into Fridge/Freezer/Pantry columns, an edit panel opened by
@@ -17,16 +18,7 @@ async function signUp(page, email) {
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 }
 
-async function addItem(page, name, location) {
-  await page.getByRole("button", { name: "+ Add item" }).click();
-  await page.fill('input[placeholder="e.g. Chicken breast"]', name);
-  if (location) {
-    await page.locator(".modal-content select").nth(1).selectOption(location);
-  }
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.waitForTimeout(200);
-  await page.locator(".modal-close").click();
-}
+const addItem = (page, name, shelf) => addInventoryItem(page, name, shelf);
 
 test("items land on the right shelf and clicking one opens the edit panel", async ({ page }) => {
   await signUp(page, uniqueEmail());
@@ -36,9 +28,9 @@ test("items land on the right shelf and clicking one opens the edit panel", asyn
   await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp")).toBeVisible();
 
   await page.getByText("Shrimp", { exact: true }).click();
-  await expect(page.locator(".inv-panel")).toBeVisible();
-  await expect(page.locator(".inv-panel-header input")).toHaveValue("Shrimp");
-  await expect(page.locator(".inv-storage-pill").first()).toBeVisible();
+  await expect(itemForm(page)).toBeVisible();
+  await expect(itemForm(page).locator(".riso-itemform-name")).toHaveValue("Shrimp");
+  await expect(itemForm(page).locator(".riso-itemform-loc").first()).toBeVisible();
 });
 
 test("a shelf's + adds an item straight to that shelf", async ({ page }) => {
@@ -46,58 +38,72 @@ test("a shelf's + adds an item straight to that shelf", async ({ page }) => {
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
   await page.getByRole("button", { name: "Add an item to Freezer" }).click();
-  await expect(page.locator(".modal-content select").nth(1)).toHaveValue("freezer");
-  await page.fill('input[placeholder="e.g. Chicken breast"]', "Frozen peas");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.waitForTimeout(200);
-  await page.locator(".modal-close").click();
+  await expect(shelfCard(page, "freezer")).toHaveAttribute("aria-pressed", "true");
+  await fillAddForm(page, "Frozen peas");
+  await itemForm(page).getByRole("button", { name: "Add to inventory" }).click();
+  await expect(itemForm(page)).toHaveCount(0);
   await expect(page.locator(".inv-shelf", { hasText: "Freezer" }).getByText("Frozen peas")).toBeVisible();
 
   // The toolbar's + Add item still starts in the fridge.
   await page.getByRole("button", { name: "+ Add item" }).click();
-  await expect(page.locator(".modal-content select").nth(1)).toHaveValue("fridge");
+  await expect(shelfCard(page, "fridge")).toHaveAttribute("aria-pressed", "true");
 });
 
-test("the panel's quantity takes fractions and has quick-pick chips", async ({ page }) => {
+test("the form's amount takes fractions and has quick-pick chips, and nothing saves until Save changes", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await addItem(page, "Olive oil", "pantry");
   await page.getByText("Olive oil", { exact: true }).click();
-  const qty = page.locator(".inv-panel").getByLabel("Quantity", { exact: true });
-  // Each change is saved before the next one, so a chip adds to the saved amount.
-  const saved = () => page.waitForResponse((r) => r.request().method() === "PUT" && r.url().includes("/api/pantry-inventory/"));
+  const form = itemForm(page);
+  const qty = form.getByLabel("Quantity", { exact: true });
 
   await qty.fill("1 1/2");
-  await Promise.all([saved(), qty.press("Enter")]);
+  await qty.press("Enter");
   await expect(qty).toHaveValue("1 ½");
   await qty.fill("¼");
-  await Promise.all([saved(), qty.press("Enter")]);
+  await qty.press("Enter");
   await expect(qty).toHaveValue("¼");
   // Nonsense goes back to the last amount.
   await qty.fill("lots");
   await qty.press("Enter");
   await expect(qty).toHaveValue("¼");
 
-  // A chip on top of a whole amount: 2 then ½ is 2 ½.
-  await qty.fill("2");
-  await Promise.all([saved(), qty.press("Enter")]);
-  await Promise.all([saved(), page.getByRole("button", { name: "Set to ½" }).click()]);
-  await expect(qty).toHaveValue("2 ½");
-  await page.getByRole("button", { name: "Set to 1" }).click();
+  // The quick chips set the amount; the + and − step it.
+  await form.getByRole("button", { name: "Set to ½" }).click();
+  await expect(qty).toHaveValue("½");
+  await form.getByRole("button", { name: "More" }).click();
+  await expect(qty).toHaveValue("1 ½");
+  await form.getByRole("button", { name: "Set to 1" }).click();
   await expect(qty).toHaveValue("1");
+
+  // Nothing has been saved yet: Cancel leaves the item as it was.
+  await form.getByRole("button", { name: "Set to ¾" }).click();
+  await form.getByRole("button", { name: "Cancel" }).click();
+  await expect(itemForm(page)).toHaveCount(0);
+  await expect(page.locator(".inv-card", { hasText: "Olive oil" }).locator(".inv-card-qty")).toHaveText("1");
+
+  // Save changes keeps it.
+  await page.getByText("Olive oil", { exact: true }).click();
+  await itemForm(page).getByRole("button", { name: "Set to ¾" }).click();
+  await itemForm(page).getByRole("button", { name: "Save changes" }).click();
+  await expect(page.locator(".riso-toast")).toHaveText("Changes saved");
+  await expect(page.locator(".inv-card", { hasText: "Olive oil" }).locator(".inv-card-qty")).toHaveText("0.75");
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await expect(page.locator(".inv-card", { hasText: "Olive oil" }).locator(".inv-card-qty")).toHaveText("0.75");
 });
 
-test("the item name in the edit panel can be renamed", async ({ page }) => {
+test("the item name in the form can be renamed, and saves with Save changes", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
   await addItem(page, "Shrimp", "fridge");
   await page.getByText("Shrimp", { exact: true }).click();
-  const nameInput = page.locator(".inv-panel-header input");
+  const nameInput = itemForm(page).locator(".riso-itemform-name");
   await expect(nameInput).toHaveValue("Shrimp");
 
   await nameInput.fill("Shrimp, peeled");
-  await nameInput.press("Enter");
+  await itemForm(page).getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp, peeled")).toBeVisible();
 
   // Persists after a reload, confirming it actually saved server-side.
@@ -142,12 +148,7 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   // The new section shows up as a location option on the add form itself.
   // Custom location ids are server-generated, not a fixed slug - select by
   // visible label instead of guessing the id.
-  await page.getByRole("button", { name: "+ Add item" }).click();
-  await page.fill('input[placeholder="e.g. Chicken breast"]', "Elk");
-  await page.locator(".modal-content select").nth(1).selectOption({ label: "Garage Freezer" });
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.waitForTimeout(200);
-  await page.locator(".modal-close").click();
+  await addItem(page, "Elk", "Garage Freezer");
 
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" }).getByText("Elk")).toBeVisible();
 
@@ -236,12 +237,7 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
     .toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Garage freezer section"]);
   await expect.poll(async () => Math.round((await fridge.boundingBox()).width)).toBe(Math.round(fridgeWidth));
   await page.getByRole("button", { name: "+ Add item" }).click();
-  await expect(page.locator(".modal-content select").nth(1).locator("option")).toHaveText([
-    "Pantry",
-    "Freezer",
-    "Kitchen fridge",
-    "Garage freezer",
-  ]);
+  await expect(itemForm(page).locator(".riso-itemform-loc-name")).toHaveText(["Pantry", "Freezer", "Kitchen fridge", "Garage freezer"]);
 });
 
 
@@ -344,30 +340,37 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   expect(new Set(heights).size).toBe(1);
   expect(heights[0]).toBe(88);
 
-  // A photo added in the detail panel shows on the card.
+  // A photo added in the item form shows in its preview, and on the card once saved.
   await card("Eggs").click();
-  await page.locator(".inv-panel").getByLabel("Item photo").setInputFiles({
+  const form = itemForm(page);
+  const preview = form.locator(".riso-itemform-card");
+  await form.getByLabel("Item photo").setInputFiles({
     name: "eggs.png",
     mimeType: "image/png",
     buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"),
   });
+  await expect(preview.locator("img.inv-card-photo")).toHaveAttribute("src", /\/api\/recipe-images\//);
+  await expect(form.getByRole("button", { name: "Change photo" })).toBeVisible();
+  await form.getByRole("button", { name: "Save changes" }).click();
+  await expect(form).toHaveCount(0);
   await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", /\/api\/recipe-images\//);
-  await expect(page.locator(".inv-panel").getByRole("button", { name: "Change photo" })).toBeVisible();
   // Removing it brings back the stock photo, which can be hidden too.
-  const panel = page.locator(".inv-panel");
-  await panel.getByRole("button", { name: "Remove photo" }).click();
-  await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveAttribute("src", /ingredients\/Egg-Small\.png$/);
-  await expect(panel.getByText("Stock photo ·")).toBeVisible();
-  await panel.getByRole("button", { name: "Hide it" }).click();
-  await expect(card("Eggs").locator(".inv-card-photo.placeholder")).toHaveText("🥚");
-  await panel.getByRole("button", { name: "Show the stock photo" }).click();
-  await expect(card("Eggs").locator("img.inv-card-photo.generic")).toHaveCount(1);
+  await card("Eggs").click();
+  await form.getByRole("button", { name: "Remove photo" }).click();
+  await expect(preview.locator("img.inv-card-photo.generic")).toHaveAttribute("src", /ingredients\/Egg-Small\.png$/);
+  await expect(form.getByText("Stock photo ·")).toBeVisible();
+  await form.getByRole("button", { name: "Hide it" }).click();
+  await expect(preview.locator(".inv-card-photo.placeholder")).toHaveText("🥚");
+  await form.getByRole("button", { name: "Show the stock photo" }).click();
+  await expect(preview.locator("img.inv-card-photo.generic")).toHaveCount(1);
   // Or a link to any picture.
-  await panel.getByRole("button", { name: "Paste link" }).click();
-  await panel.getByLabel("Photo link").fill("https://example.com/eggs.png");
-  await panel.getByLabel("Photo link").press("Enter");
+  await form.getByLabel("Photo link").fill("https://example.com/eggs.png");
+  await form.getByLabel("Photo link").press("Enter");
+  await expect(preview.locator("img.inv-card-photo")).toHaveAttribute("src", "https://example.com/eggs.png");
+  await expect(preview.locator("img.inv-card-photo")).not.toHaveClass(/generic/);
+  await form.getByRole("button", { name: "Save changes" }).click();
+  await expect(form).toHaveCount(0);
   await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", "https://example.com/eggs.png");
-  await expect(card("Eggs").locator("img.inv-card-photo")).not.toHaveClass(/generic/);
 });
 
 test("the amount can be changed right on the card, without opening the item", async ({ page }) => {
@@ -395,7 +398,7 @@ test("the amount can be changed right on the card, without opening the item", as
   await expect(card("Greek yogurt").getByLabel("Amount of Greek yogurt")).toHaveValue("550");
   await card("Greek yogurt").getByLabel("Amount of Greek yogurt").press("Enter");
   await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 g");
-  await expect(page.locator(".inv-panel")).toHaveCount(0);
+  await expect(itemForm(page)).toHaveCount(0);
   await expect.poll(() => saved("Greek yogurt")).toBe(550);
 
   // Typing a fraction and tapping away saves too.
@@ -417,7 +420,7 @@ test("the amount can be changed right on the card, without opening the item", as
   await card("Mystery jam").getByLabel("Measure of Mystery jam").selectOption("jar");
   await card("Mystery jam").getByLabel("Amount of Mystery jam").press("Enter");
   await expect(card("Mystery jam").locator(".inv-card-qty")).toHaveText("2 jars");
-  await expect(page.locator(".inv-panel")).toHaveCount(0);
+  await expect(itemForm(page)).toHaveCount(0);
   const jam = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Mystery jam");
   expect([jam.quantity, jam.unit]).toEqual([2, "jar"]);
 
@@ -428,9 +431,11 @@ test("the amount can be changed right on the card, without opening the item", as
   await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 ml");
   await expect.poll(() => saved("Greek yogurt")).toBe(550);
 
-  // The detail panel has the measure too, next to the amount.
+  // The item form has the measure too, next to the amount, and saves it with Save changes.
   await card("Cilantro").click();
-  await page.locator(".inv-panel").getByLabel("Measure").selectOption("cup");
+  await itemForm(page).getByLabel("Measure").selectOption("cup");
+  await itemForm(page).getByRole("button", { name: "Save changes" }).click();
+  await expect(itemForm(page)).toHaveCount(0);
   await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 cup");
   const cilantro = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Cilantro");
   expect(cilantro.unit).toBe("cup");

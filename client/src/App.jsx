@@ -402,6 +402,7 @@ export default function App({ user, onLogout }) {
   async function handleAddPantryItem(item) {
     const created = await api.addPantryInventoryItem(item);
     setPantryInventory((prev) => [...prev, created]);
+    return created;
   }
 
   // The only way anything but Inventory's own add form reaches Inventory: it

@@ -201,6 +201,8 @@ export const api = {
         (location ? `&location=${encodeURIComponent(location)}` : "") +
         (purchasedAt ? `&purchasedAt=${encodeURIComponent(purchasedAt)}` : "")
     ),
+  // The last few distinct foods you added or used up, for the Add item form's Recent chips.
+  listRecentPantryItems: () => request("/pantry-inventory/recent"),
   addPantryInventoryItem: (item) =>
     request("/pantry-inventory", { method: "POST", body: JSON.stringify(item) }),
   updatePantryInventoryItem: (id, payload) =>

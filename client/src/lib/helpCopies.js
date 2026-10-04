@@ -129,6 +129,9 @@ export const HELP_COPIES = {
   // Inventory
   addItem: { kind: "pill", cls: "riso-inv-btn primary", label: "inventory.addItem", strong: true },
   scanReceipt: { kind: "pill", cls: "riso-inv-btn", label: "inventory.scanReceipt" },
+  addAndNext: { kind: "pill", cls: "riso-itemform-btn", label: "inventory.form.addAndNext" },
+  addToInventory: { kind: "pill", cls: "riso-itemform-btn primary", label: "inventory.form.addToInventory", strong: true },
+  saveChanges: { kind: "pill", cls: "riso-itemform-btn primary", label: "inventory.form.saveChanges", strong: true },
   usedUp: { kind: "pill", cls: "inv-action-btn", label: "inventory.usedUp", dark: true },
   tossed: { kind: "pill", cls: "inv-action-btn", label: "inventory.tossed", dark: true },
   freeze: { kind: "pill", cls: "inv-action-btn", label: "inventory.freeze", dark: true },

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}input::placeholder{color:#8A8677}input:focus,select:focus{outline:3px solid #2323FF;outline-offset:1px}</style></helmet>
+<div style="min-height:100vh;background:#F4F1EA;color:#16181F;position:relative;display:flex;justify-content:center">
+<div style="width:{{ frameW }};max-width:100%;position:relative;min-height:100vh;overflow:hidden;box-sizing:border-box;border-left:{{ frameBd }};border-right:{{ frameBd }}">
+<div style="max-width:1280px;margin:0 auto;padding:28px 28px 40px;box-sizing:border-box;display:flex;flex-direction:column;gap:22px">
+<header style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+<div style="font:800 26px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap">matt mo <span style="background:#FF48B0;padding:0 8px;border-radius:6px">cookbook</span></div>
+</header>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em">21 ITEMS · 3 TO USE SOON · <a href="#" onClick="{{ resetDemo }}" style="font-weight:500;text-decoration:underline">RESET DEMO</a></div>
+<div style="font:800 52px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">What you've <span style="color:#2323FF">got.</span></div>
+</div>
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:26px;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:10px"><div style="font:800 26px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Fridge</div><div style="min-width:28px;height:28px;padding:0 9px;border-radius:14px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ shelfCount }}</div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+<sc-for list="{{ shelf }}" as="i" hint-placeholder-count="4">
+<div onClick="{{ i.open }}" style="height:88px;background:#fff;border:2px solid #16181F;border-radius:16px;overflow:hidden;display:flex;box-sizing:border-box;cursor:{{ i.cur }};box-shadow:{{ i.sh }}">
+<div style="width:12px;flex:none;border-right:2px solid #16181F;background:#F4F1EA;display:flex;align-items:flex-end"><div style="width:100%;height:{{ i.lineH }};background:{{ i.bar }}"></div></div>
+<div style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px"><div style="width:68px;height:68px;border:2px solid #16181F;border-radius:12px;box-sizing:border-box;flex:none;background:{{ i.ph }}"></div><div style="flex:1;min-width:0;font:800 18px/1.15 'Bricolage Grotesque',sans-serif">{{ i.name }}</div><div style="white-space:nowrap;font:800 18px 'Bricolage Grotesque',sans-serif">{{ i.qty }}<span style="font:600 14px 'Bricolage Grotesque',sans-serif;color:#5E5B52"> {{ i.unit }}</span></div></div>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+
+<sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ closeModal }}" style="position:absolute;inset:0;background:rgba(22,24,31,.45);display:flex;justify-content:center;align-items:{{ align }};padding:{{ ovPad }};box-sizing:border-box;z-index:10;overflow:auto">
+<div onClick="{{ stop }}" style="width:{{ modalW }};max-width:100%;background:#FFFDF8;border:2px solid #16181F;border-radius:{{ modalRad }};box-shadow:8px 8px 0 #16181F;padding:{{ modalPad }};display:flex;flex-direction:column;gap:20px;box-sizing:border-box;position:relative;cursor:default;margin:{{ modalMargin }}">
+<div onClick="{{ closeModal }}" title="Close" style="position:absolute;top:-16px;right:-16px;width:42px;height:42px;border-radius:21px;background:#FFFDF8;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;justify-content:center;font:700 22px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;z-index:2">×</div>
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;justify-content:space-between">
+<input value="{{ name }}" onChange="{{ setName }}" title="Rename" style="flex:1 1 280px;min-width:0;margin-left:-12px;height:48px;border:2px solid transparent;border-radius:14px;background:transparent;padding:0 10px;font:800 36px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;color:#16181F;box-sizing:border-box" style-hover="border-color:#BDB6A6">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">{{ cat }}</div>
+</div>
+
+<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+<div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:8px;align-items:center"><span style="width:22px;height:22px;border-radius:11px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 11px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">1</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">HOW MUCH IS LEFT?</span></div>
+<div style="display:flex;align-items:center;gap:8px">
+<div onClick="{{ qDec }}" style="width:44px;height:44px;border-radius:22px;border:2px solid #16181F;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 20px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;user-select:none;flex:none" style-hover="background:#FFE14D">−</div>
+<input value="{{ qtyText }}" onChange="{{ setQty }}" style="width:76px;flex:none;height:44px;text-align:center;border:2px solid #16181F;border-radius:22px;background:#fff;font:800 20px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;padding:0 6px;color:#16181F">
+<div onClick="{{ qInc }}" style="width:44px;height:44px;border-radius:22px;border:2px solid #16181F;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 20px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;user-select:none;flex:none" style-hover="background:#FFE14D">+</div>
+<select value="{{ unit }}" onChange="{{ setUnit }}" style="height:44px;flex:1;min-width:0;border:2px solid #16181F;border-radius:22px;background:#FFFDF8;padding:0 14px;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;color:#16181F;box-sizing:border-box"><sc-for list="{{ units }}" as="u" hint-placeholder-count="6"><option value="{{ u }}">{{ u }}</option></sc-for></select>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ fracs }}" as="f" hint-placeholder-count="5"><div onClick="{{ f.pick }}" style="height:30px;min-width:36px;padding:0 10px;border-radius:15px;border:2px solid #16181F;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">{{ f.l }}</div></sc-for></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:8px;align-items:center"><span style="width:22px;height:22px;border-radius:11px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 11px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">2</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">STORED IN · USDA</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+<sc-for list="{{ locs }}" as="o" hint-placeholder-count="2"><div onClick="{{ o.pick }}" style="padding:10px 12px;border-radius:18px;border:2px solid #16181F;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};display:flex;flex-direction:column;gap:2px;cursor:pointer;box-sizing:border-box;min-width:0"><span style="font:800 16px 'Bricolage Grotesque',sans-serif">{{ o.name }}</span><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.04em;opacity:.85">{{ o.range }}</span></div></sc-for>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:8px;align-items:center"><span style="width:22px;height:22px;border-radius:11px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 11px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">3</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">USE BY</span></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ quick }}" as="q" hint-placeholder-count="6"><div onClick="{{ q.pick }}" style="height:34px;padding:0 13px;border-radius:17px;border:2px solid #16181F;background:{{ q.bg }};color:{{ q.fg }};display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">{{ q.l }}</div></sc-for>
+<label style="height:34px;padding:0 6px 0 12px;border-radius:17px;border:2px dashed #16181F;display:flex;align-items:center;gap:6px;font:700 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">Pick a date<input type="date" value="{{ dateVal }}" onChange="{{ setDate }}" style="border:none;background:transparent;font:500 12px 'DM Mono',monospace;color:#16181F;height:26px;width:118px;padding:0"></label></div>
+<div style="font-size:13px;line-height:1.5;color:#3F3E37">{{ useByNote }}</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">DONE WITH IT?</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<div onClick="{{ usedUp }}" style="height:38px;padding:0 16px;border-radius:19px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#10C95C">Used up</div>
+<div onClick="{{ tossed }}" style="height:38px;padding:0 16px;border-radius:19px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FF48B0">Tossed</div>
+<sc-if value="{{ canFreeze }}" hint-placeholder-val="{{ false }}"><div onClick="{{ freeze }}" style="height:38px;padding:0 16px;border-radius:19px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">Freeze</div></sc-if>
+</div>
+</div>
+
+</div>
+
+<aside style="flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:14px">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">HOW IT LOOKS ON THE {{ locUpper }} SHELF</div>
+<div style="height:88px;background:#fff;border:2px solid #16181F;border-radius:16px;overflow:hidden;display:flex;box-sizing:border-box;box-shadow:4px 4px 0 #2323FF">
+<div style="width:12px;flex:none;border-right:2px solid #16181F;background:#F4F1EA;display:flex;align-items:flex-end"><div style="width:100%;height:{{ pvLine }};background:{{ pvBar }}"></div></div>
+<div style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px">
+<div style="width:68px;height:68px;border:2px solid #16181F;border-radius:12px;box-sizing:border-box;flex:none;background:{{ pvPhotoBg }};display:flex;align-items:center;justify-content:center;font:500 9px 'DM Mono',monospace;letter-spacing:.1em;color:#8A8576">{{ pvPhotoText }}</div>
+<div style="flex:1;min-width:0;font:800 18px/1.15 'Bricolage Grotesque',sans-serif;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ pvName }}</div>
+<div style="white-space:nowrap;font:800 18px 'Bricolage Grotesque',sans-serif">{{ qtyText }}<span style="font:600 14px 'Bricolage Grotesque',sans-serif;color:#5E5B52"> {{ unit }}</span></div>
+</div></div>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<span style="height:28px;padding:0 12px;border-radius:14px;border:2px solid #16181F;background:{{ pvTagBg }};display:flex;align-items:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">{{ pvTag }}</span>
+<span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52">{{ pvSort }}</span></div>
+<div onClick="{{ toggleStaple }}" style="align-self:flex-start;height:34px;padding:0 14px;border-radius:17px;border:2px solid #16181F;background:{{ stapleBg }};display:flex;align-items:center;gap:6px;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">{{ stapleLabel }}</div>
+<div onDragOver="{{ zoneOver }}" onDrop="{{ zoneDrop }}" style="display:flex;flex-direction:column;gap:8px">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">PHOTO</div>
+<div style="border:2px dashed #16181F;border-radius:16px;background:#F4F1EA;padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box">
+<sc-if value="{{ hasPhoto }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:64px;height:64px;border:2px solid #16181F;border-radius:12px;box-sizing:border-box;flex:none;background:{{ photoThumb }}"></div>
+<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start"><label style="height:34px;padding:0 14px;border-radius:17px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">Change photo<input type="file" accept="image/*" onChange="{{ fileChange }}" style="display:none"></label>
+<span onClick="{{ rmPhoto }}" style="font:600 13px 'Bricolage Grotesque',sans-serif;text-decoration:underline;cursor:pointer">Remove photo</span></div></div>
+</sc-if>
+<sc-if value="{{ noPhoto }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center">
+<div style="font:800 15px 'Bricolage Grotesque',sans-serif;color:#2323FF">Drop a picture here</div>
+<label style="height:38px;padding:0 18px;border-radius:19px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">Upload a photo<input type="file" accept="image/*" onChange="{{ fileChange }}" style="display:none"></label>
+<div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">OR</div>
+<div style="display:flex;gap:6px;width:100%"><input value="{{ photoUrl }}" onChange="{{ setPhotoUrl }}" onKeyDown="{{ urlKey }}" placeholder="Paste an image link" style="flex:1;min-width:0;height:38px;border:2px solid #16181F;border-radius:19px;background:#FFFDF8;padding:0 14px;font:500 14px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box"><div onClick="{{ useUrl }}" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap" style-hover="background:#FFE14D">Use</div></div>
+</div>
+</sc-if>
+</div></div>
+<div style="padding-top:14px;border-top:2px dashed #BDB6A6;font-size:13.5px;line-height:1.5">{{ recipeLine }} <a href="#" style="font-weight:600">See them →</a></div>
+</aside>
+</div>
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:16px 0 2px;border-top:2px dashed #BDB6A6;position:sticky;bottom:0;background:#FFFDF8;z-index:1">
+<div onClick="{{ removeItem }}" title="For a typo or duplicate. Use Used up or Tossed otherwise." style="height:30px;padding:0 12px;border-radius:15px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 12px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap" style-hover="background:#FF48B0">Remove (typo or duplicate)</div>
+<div style="flex:1"></div>
+<div onClick="{{ closeModal }}" style="height:48px;padding:0 24px;border-radius:24px;border:2px solid #16181F;display:flex;align-items:center;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#F4F1EA">Cancel</div>
+<div onClick="{{ save }}" style="height:48px;padding:0 28px;border-radius:24px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">Save changes</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;bottom:28px;display:flex;justify-content:center;z-index:20;pointer-events:none"><div style="transform:rotate(-2deg);background:#FFE14D;border:2px solid #16181F;box-shadow:4px 4px 0 #16181F;border-radius:999px;padding:10px 20px;font:800 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ toast }}</div></div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;layout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Desktop modal&quot;,&quot;options&quot;:[&quot;Desktop modal&quot;,&quot;Phone sheet&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Layout&quot;}}">
+class Component extends DCLogic {
+  INIT = { name: 'Bbq sauce', qtyText: '¼', unit: 'cup', loc: 'Fridge', days: 27, custom: false, staple: false, photo: '' };
+  state = { open: true, item: this.INIT, d: this.INIT, gone: false, photoUrl: '', toast: '' };
+  OPTS = { Fridge: ['4 months after opening', 120], Pantry: ['9–12 months unopened', 300] };
+  UN = ['cup', 'tbsp', 'tsp', 'oz', 'lb', 'g', 'kg', 'ml', 'L', 'each', 'pack', 'can', 'bottle', 'bunch', 'loaf', 'bag'];
+  STRIPE = 'repeating-linear-gradient(135deg,#F4F1EA 0 8px,#E9E4D8 8px 16px)';
+  today = new Date(2026, 9, 4);
+  fmtD = d => new Date(this.today.getTime() + d * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  iso = d => { const x = new Date(this.today.getTime() + d * 864e5); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+  parseQ(t) { const U = { '¼': .25, '½': .5, '¾': .75, '⅓': 1 / 3, '⅔': 2 / 3 }; t = String(t).trim(); if (!t) return null; let tot = 0; for (const p of t.replace(/([0-9])([¼½¾⅓⅔])/g, '$1 $2').split(/\s+/)) { let m; if (U[p] != null) tot += U[p]; else if ((m = p.match(/^(\d+)\/(\d+)$/))) { if (+m[2] === 0) return null; tot += m[1] / m[2]; } else if (/^\d*\.?\d+$/.test(p)) tot += +p; else return null; } return tot; }
+  fq(q) { const w = Math.floor(q + 1e-6), f = q - w; const N = { 0.25: '¼', 0.5: '½', 0.75: '¾' }; const k = Object.keys(N).find(k => Math.abs(k - f) < .02); if (f < .02) return String(w); if (Math.abs(f - 1 / 3) < .02) return (w ? w + ' ' : '') + '⅓'; if (Math.abs(f - 2 / 3) < .02) return (w ? w + ' ' : '') + '⅔'; return k ? (w ? w + ' ' : '') + N[k] : String(+q.toFixed(2)); }
+  flash(m) { this.setState({ toast: m }); setTimeout(() => this.setState({ toast: '' }), 2600); }
+  renderVals() {
+    const T = this.state, D = T.d, set = o => this.setState(o), upd = p => set({ d: { ...D, ...p } });
+    const phone = (this.props.layout || 'Desktop modal') === 'Phone sheet';
+    const q = this.parseQ(D.qtyText) ?? 0, step = D.unit === 'g' || D.unit === 'ml' ? 50 : 1;
+    const setQ = v => upd({ qtyText: this.fq(Math.max(0, v)) });
+    const dd = D.days, nm = D.name.trim();
+    const barOf = (d) => d == null ? '#BDB6A6' : d <= 3 ? '#FF48B0' : d <= 7 ? '#FFE14D' : '#2323FF';
+    const lineOf = d => d == null || d >= 28 ? '0%' : Math.max(8, Math.round(d / 28 * 100)) + '%';
+    const bg = p => p ? 'url(' + p + ') center/cover no-repeat' : this.STRIPE;
+    const locs = Object.keys(this.OPTS).map(n => { const on = D.loc === n, o = this.OPTS[n]; return { name: n, range: o[0], bg: on ? '#2323FF' : '#F4F1EA', fg: on ? '#fff' : '#16181F', sh: on ? '3px 3px 0 #16181F' : 'none', pick: () => upd({ loc: n, days: D.custom ? D.days : o[1] }) }; });
+    const quick = [['3 days', 3], ['1 week', 7], ['2 weeks', 14], ['1 month', 30], ['3 months', 90], ['No date', null]].map(([l, v]) => { const m = dd === v; return { l, bg: m ? '#16181F' : '#FFFDF8', fg: m ? '#F4F1EA' : '#16181F', pick: () => upd({ days: v, custom: true }) }; });
+    const est = this.OPTS[D.loc];
+    const note = dd == null ? 'No date. It will sit at the end of the shelf.' : (dd <= 0 ? 'Expired ' + this.fmtD(dd) + '. Toss it or check it before using.' : D.custom ? 'Use by ' + this.fmtD(dd) + '. Your date.' : 'Use by ' + this.fmtD(dd) + '. USDA estimate for ' + D.loc.toLowerCase() + ' (' + est[0] + ').');
+    const tag = dd == null ? 'No date' : dd <= 0 ? 'Expired' : dd <= 1 ? 'Tomorrow' : dd < 60 ? dd + ' days' : Math.round(dd / 30) + ' months';
+    const I = T.item, others = [{ name: 'Shrimp, peeled', qty: '1', unit: 'lb', d: 1 }, { name: 'Cilantro', qty: '1', unit: 'bunch', d: 1 }, { name: 'Baby spinach', qty: '5', unit: 'oz', d: 2 }];
+    const shelf = [...(T.gone ? [] : [{ name: I.name, qty: I.qtyText, unit: I.unit, d: I.days, ph: bg(I.photo), mine: true }]), ...others.map(o => ({ ...o, ph: this.STRIPE }))].map(i => ({ name: i.name, qty: i.qty, unit: i.unit, ph: i.ph, bar: barOf(i.d), lineH: lineOf(i.d), cur: i.mine ? 'pointer' : 'default', sh: i.mine && T.open ? '4px 4px 0 #2323FF' : 'none', open: () => i.mine && set({ open: true, d: T.item }) }));
+    const done = (m) => { set({ open: false, gone: true }); this.flash(m); };
+    return {
+      frameW: phone ? '390px' : '100%', frameBd: phone ? '2px solid #16181F' : 'none', modalMargin: phone ? 'auto 0 0' : 'auto 0 24px',
+      align: phone ? 'flex-end' : 'center', ovPad: phone ? '60px 0 0' : '48px 24px 0', modalW: phone ? '100%' : '860px', modalRad: phone ? '26px 26px 0 0' : '26px', modalPad: phone ? '24px 18px 22px' : '28px 32px 28px',
+      open: T.open, closeModal: () => set({ open: false }), stop: e => e.stopPropagation(), resetDemo: e => { e.preventDefault(); set({ gone: false, item: this.INIT, d: this.INIT, open: true }); },
+      shelf, shelfCount: shelf.length,
+      name: D.name, setName: e => upd({ name: e.target.value }), cat: 'CONDIMENTS, SAUCES & CANNED GOODS',
+      qtyText: D.qtyText, setQty: e => { const v = this.parseQ(e.target.value); if (v != null) setQ(v); else upd({}); }, qDec: () => setQ(q - step), qInc: () => setQ(q + step),
+      unit: D.unit, units: this.UN, setUnit: e => upd({ unit: e.target.value }),
+      fracs: [['¼', .25], ['⅓', 1 / 3], ['½', .5], ['⅔', 2 / 3], ['¾', .75], ['1', 1]].map(([l, v]) => ({ l, pick: () => setQ(v) })),
+      locs, quick, dateVal: dd == null ? '' : this.iso(dd), setDate: e => { const v = e.target.value; if (!v) return; const [y, m, x] = v.split('-').map(Number); upd({ days: Math.round((new Date(y, m - 1, x) - this.today) / 864e5), custom: true }); },
+      useByNote: note, canFreeze: false, freeze: () => {},
+      usedUp: () => done(D.name + ' marked as used up'), tossed: () => done(D.name + ' tossed'), removeItem: () => done(D.name + ' removed'),
+      save: () => { set({ item: D, open: false }); this.flash('Changes saved'); },
+      locUpper: D.loc.toUpperCase(), pvName: nm || 'Item name', pvLine: lineOf(dd), pvBar: barOf(dd), pvTag: tag, pvTagBg: dd == null ? '#F4F1EA' : dd <= 2 ? '#FF48B0' : dd <= 7 ? '#FFE14D' : '#fff', pvSort: dd == null ? 'LAST ON THE SHELF' : 'SORTED BY EXPIRY',
+      pvPhotoBg: bg(D.photo), pvPhotoText: D.photo ? '' : 'PHOTO',
+      staple: D.staple, toggleStaple: () => upd({ staple: !D.staple }), stapleBg: D.staple ? '#FFE14D' : '#FFFDF8', stapleLabel: D.staple ? '★ Pantry staple' : '☆ Mark as pantry staple',
+      hasPhoto: !!D.photo, noPhoto: !D.photo, photoThumb: D.photo ? bg(D.photo) : 'none', photoUrl: T.photoUrl,
+      fileChange: e => { const f = e.target.files && e.target.files[0]; if (f) upd({ photo: URL.createObjectURL(f) }); e.target.value = ''; },
+      setPhotoUrl: e => set({ photoUrl: e.target.value }), rmPhoto: () => upd({ photo: '' }),
+      useUrl: () => { const u = T.photoUrl.trim(); if (/^https?:/.test(u)) { upd({ photo: u }); set({ photoUrl: '' }); } },
+      urlKey: e => { if (e.key === 'Enter') { const u = T.photoUrl.trim(); if (/^https?:/.test(u)) { upd({ photo: u }); set({ photoUrl: '' }); } } },
+      zoneOver: e => e.preventDefault(),
+      zoneDrop: e => { e.preventDefault(); const dt = e.dataTransfer; const f = dt.files && [...dt.files].find(x => x.type.startsWith('image/')); if (f) return upd({ photo: URL.createObjectURL(f) }); const t = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').trim(); if (/^https?:/.test(t)) upd({ photo: t }); },
+      recipeLine: '1 of your recipes use ' + (nm || 'this item').toLowerCase() + '.',
+      toast: T.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>
