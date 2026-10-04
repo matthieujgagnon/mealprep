@@ -268,12 +268,18 @@ test.describe("on a phone", () => {
     await expect(beef.locator(".store-mode-need")).toHaveText("750 g");
     await expect(beef.locator(".store-mode-qty")).toHaveText("1");
     await expect(beef.locator(".riso-row-delete, .riso-row-toinv")).toHaveCount(0); // no × and no inventory button here
-    // No sale tag here, and a checked row's box is blue in the dark theme.
+    // No sale tag here, and a checked row's box is pink in the dark theme.
     await expect(mode.locator(".store-mode-sale, .riso-row-deal")).toHaveCount(0);
+    // The dark theme is dark all the way through: a dark row, light text, a dark number pill.
+    const look = await beef.evaluate((e) => {
+      const c = (sel) => getComputedStyle(e.querySelector(sel));
+      return { row: getComputedStyle(e).backgroundColor, name: c(".store-mode-name").color, qty: c(".store-mode-qty").backgroundColor };
+    });
+    expect(look).toEqual({ row: "rgb(17, 17, 21)", name: "rgb(244, 241, 234)", qty: "rgb(21, 21, 27)" });
     await beef.click();
     await expect(beef).toHaveClass(/\bon\b/);
     const box = await beef.locator(".store-mode-check").evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).borderTopColor]);
-    expect(box).toEqual(["rgb(35, 35, 255)", "rgb(255, 255, 255)"]); // blue, with a white border
+    expect(box).toEqual(["rgb(255, 72, 176)", "rgb(255, 255, 255)"]); // pink, with a white border
     const cut = await mode.locator(".store-mode-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
     expect(cut).toBe(false);
   });

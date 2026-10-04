@@ -10318,29 +10318,60 @@ button.riso-protein-bar {
 
 
 
-/* Checked, in the dark Store mode: the row goes dark, the box green with an ink tick. */
+/* The dark Store mode is dark all the way through: dark rows, light text, dark
+   pills. A checked row goes a shade lighter and its box turns pink. */
+.store-mode[data-sm-theme="dark"] .store-mode-row {
+  background: var(--sm-card);
+  border-color: var(--sm-card-border);
+  color: var(--sm-text);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-check {
+  background: transparent;
+  border-color: var(--sm-text);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-brand {
+  color: var(--sm-text);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-recipes {
+  color: var(--sm-muted);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-need {
+  border-color: var(--sm-muted);
+  color: var(--sm-muted);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-qty {
+  background: var(--sm-track);
+  border-color: var(--sm-text);
+  color: var(--sm-text);
+}
+
 .store-mode[data-sm-theme="dark"] .store-mode-row.on {
   background: var(--riso-store-checked);
   border-color: var(--riso-store-checked);
-  color: var(--riso-canvas);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-check {
-  background: var(--riso-accent);
+  background: var(--riso-hot);
   border-color: var(--riso-on-accent);
-  color: var(--riso-on-accent);
+  color: var(--riso-ink);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-brand,
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-need,
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-recipes {
-  color: var(--riso-canvas);
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-recipes,
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-name {
+  color: var(--sm-muted);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-qty {
   background: transparent;
-  border-color: var(--riso-dash-strong);
-  color: var(--riso-canvas);
+  border-color: var(--sm-muted);
+  color: var(--sm-muted);
 }
 
 /* Checked, in the light Store mode: the row greys, the box is blue. */
