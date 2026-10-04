@@ -244,12 +244,14 @@ test.describe("Button feedback", () => {
     await page.getByRole("button", { name: "Grocery", exact: true }).first().click();
   }
 
-  test("a button presses in for a moment, in under 150 ms", async ({ page }) => {
+  test("a button presses in softly, over about 220 ms", async ({ page }) => {
     await groceryWithItem(page);
     const box = page.getByRole("checkbox", { name: "Check off Chicken", exact: true });
     const duration = await box.evaluate((e) => parseFloat(getComputedStyle(e).transitionDuration) * 1000);
-    expect(duration).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(150);
+    // Slow and soft: about 200 to 250 ms, easing out.
+    expect(duration).toBeGreaterThanOrEqual(200);
+    expect(duration).toBeLessThanOrEqual(250);
+    expect(await box.evaluate((e) => getComputedStyle(e).transitionTimingFunction)).toMatch(/cubic-bezier/);
     const before = await box.evaluate((e) => getComputedStyle(e).transform);
     const b = await box.boundingBox();
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
@@ -261,6 +263,18 @@ test.describe("Button feedback", () => {
     expect(pressed).not.toBe("none");
     // Not a 0.96 shrink you'd call a jump: a matrix with a scale under 1.
     expect(Number(pressed.match(/matrix\(([-\d.]+)/)[1])).toBeLessThan(1);
+  });
+
+  test("on a computer the whole grocery row lights up under the pointer", async ({ page }) => {
+    await groceryWithItem(page);
+    const row = page.locator(".riso-row").first();
+    const before = await row.evaluate((e) => getComputedStyle(e).backgroundColor);
+    // Point at the row's empty middle: not the checkbox, not a button.
+    const b = await row.locator(".riso-row-main").boundingBox();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(400);
+    const after = await row.evaluate((e) => getComputedStyle(e).backgroundColor);
+    expect(after).not.toBe(before);
   });
 
   test("checking a grocery item pops the box once", async ({ page }) => {

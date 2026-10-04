@@ -87,7 +87,7 @@ test.describe("Proteins on sale, by general protein", () => {
     await expect(block.getByRole("button", { name: "Pork: no deal this week" })).toContainText("No deal this week");
   });
 
-  test("the bar counts every recipe that uses any kind of it, and See them opens those same recipes", async ({ page }) => {
+  test("the bar counts every recipe that uses any kind of it, and See them opens a filter chip with those same recipes", async ({ page }) => {
     await seed(page);
     const block = page.locator(".riso-home-proteins");
     const bar = page.locator(".riso-protein-bar");
@@ -101,9 +101,11 @@ test.describe("Proteins on sale, by general protein", () => {
       await expect(bar).toContainText(count === 1 ? `1 of your recipes uses ${word}.` : `${count} of your recipes use ${word}.`);
       await bar.click();
       await expect(page.locator(".tab.active")).toHaveText("Recipes");
+      // A chip with the protein's name, not a long search.
+      await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
+      await expect(page.locator(".riso-recipes-protein-chip")).toContainText(kind);
       // The same recipes, no more and no fewer.
-      expect(await page.locator(".riso-recipe-card-name").allInnerTexts()).toEqual(expect.arrayContaining(titles));
-      await expect(page.locator(".riso-recipe-card-name")).toHaveCount(titles.length);
+      expect((await page.locator(".riso-recipe-card-name").allInnerTexts()).sort()).toEqual([...titles].sort());
       await page.getByRole("button", { name: "Home", exact: true }).click();
     }
   });
@@ -155,6 +157,39 @@ test.describe("The recipes an item is for, in Grocery", () => {
       await expect(rowFor(page, "Carrot").locator(".riso-row-recipes-more")).toHaveCount(0);
       // A hand-added item shows nothing.
       await expect(rowFor(page, "Paper towels").locator(".riso-row-recipes")).toHaveText("");
+      // The recipes sit to the right of the item's name, on the same line, in a
+      // different (monospace) font and a lighter gray than the name.
+      const rowOnion = rowFor(page, "Onion");
+      const look = await rowOnion.evaluate((e) => {
+        const name = e.querySelector(".riso-row-name");
+        const rec = e.querySelector(".riso-row-recipes");
+        const nb = name.getBoundingClientRect();
+        const rb = rec.getBoundingClientRect();
+        const lum = (c) => c.match(/\d+/g).slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
+        return {
+          rightOfName: rb.left >= nb.right - 1,
+          sameLine: Math.abs(rb.top + rb.height / 2 - (nb.top + nb.height / 2)) < 8,
+          recipesFont: getComputedStyle(rec).fontFamily,
+          recipesStyle: ((c) => [c.fontFamily, c.fontSize, c.letterSpacing, c.color].join("|"))(getComputedStyle(rec)),
+          aisleStyle: ((c) => [c.fontFamily, c.fontSize, c.letterSpacing, c.color].join("|"))(getComputedStyle(e.querySelector(".riso-row-sub"))),
+          nameFont: getComputedStyle(name).fontFamily,
+          recipesSize: parseFloat(getComputedStyle(rec).fontSize),
+          nameSize: parseFloat(getComputedStyle(name).fontSize),
+          recipesLum: lum(getComputedStyle(rec).color),
+          nameLum: lum(getComputedStyle(name).color),
+        };
+      });
+      expect(look.rightOfName).toBe(true);
+      // The item's own name is never cut off because of the recipes.
+      for (const n of ["Onion", "Carrot", "Tomato"]) {
+        const nm = rowFor(page, n).locator(".riso-row-name");
+        expect(await nm.evaluate((e) => e.scrollWidth <= e.clientWidth + 2), n).toBe(true);
+      }
+      expect(look.sameLine).toBe(true);
+      expect(look.recipesFont).not.toBe(look.nameFont);
+      expect(look.recipesStyle).toBe(look.aisleStyle); // the same font, size, spacing and gray as the aisle line in By store (both in capitals)
+      expect(look.recipesSize).toBeLessThan(look.nameSize);
+      expect(look.recipesLum).toBeGreaterThan(look.nameLum); // grayer (lighter) than the name
       // The tooltip lists them all.
       await expect(onion).toHaveAttribute("title", /Tacos, Chili with a really long name that goes on and on, Soup/);
     });
@@ -170,9 +205,10 @@ test.describe("The recipes an item is for, in Grocery", () => {
       );
       expect(sizes.length).toBeGreaterThanOrEqual(4);
       expect(new Set(sizes).size, sizes.join(" ")).toBe(1);
-      // The long name ends in an ellipsis and the "+1" is still fully there.
+      // The "+1" is always fully there, and the names end in an ellipsis when short of room.
       const names = rowFor(page, "Onion").locator(".riso-row-recipes-names");
-      expect(await names.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(false); // fits at 1280...
+      expect(await names.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
+      await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toBeVisible();
     });
 
     test("the recipes line is in the aisle and recipe views too", async ({ page }) => {
@@ -194,6 +230,10 @@ test.describe("The recipes an item is for, in Grocery", () => {
       const heights = await page.locator(".riso-row").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       expect(new Set(heights).size, heights.join(" ")).toBe(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      for (const n of ["Onion", "Carrot", "Tomato"]) {
+        const nm = rowFor(page, n).locator(".riso-row-name");
+        expect(await nm.evaluate((e) => e.scrollWidth <= e.clientWidth + 2), n).toBe(true);
+      }
       // The long recipe name is cut off, the "+1" is not.
       const names = rowFor(page, "Onion").locator(".riso-row-recipes-names");
       expect(await names.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
@@ -208,13 +248,100 @@ test.describe("The recipes an item is for, in Grocery", () => {
       expect(rowHeights.length).toBeGreaterThanOrEqual(4);
       expect(new Set(rowHeights).size, rowHeights.join(" ")).toBe(1);
       const onionRow = mode.locator(".store-mode-row", { has: page.locator(".store-mode-name", { hasText: /^Onion$/ }) });
+      expect(await onionRow.locator(".store-mode-name").evaluate((e) => e.scrollWidth <= e.clientWidth + 2)).toBe(true);
       const cut = onionRow.locator(".store-mode-recipes-names");
       expect(await cut.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true); // "…"
       expect(await cut.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
+      // ...to the right of the name here too, on the same line.
+      const right = await onionRow.evaluate((e) => {
+        const r = e.querySelector(".store-mode-recipes").getBoundingClientRect();
+        const n = e.querySelector(".store-mode-name").getBoundingClientRect();
+        return r.left >= n.right - 1 && Math.abs(r.top + r.height / 2 - (n.top + n.height / 2)) < 8;
+      });
+      expect(right).toBe(true);
       await expect(onionRow.locator(".store-mode-recipes-more")).toHaveText("+1");
       // An item you added shows no recipes line, and is still the same height.
       await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" }).locator(".store-mode-recipes")).toHaveCount(1);
       await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" }).locator(".store-mode-recipes")).toBeHidden();
+    });
+  });
+});
+
+test.describe("Recipes protein filter: a sauce or stock is not the protein", () => {
+  test.use({ viewport: { width: 1280, height: 1000 } });
+
+  async function seed(page) {
+    await signUp(page);
+    await recipe(page, "Pad thai", ["rice noodles", "fish sauce", "lime"]); // fish sauce only
+    await recipe(page, "Fish curry", ["fish sauce", "cod fillets"]);
+    await recipe(page, "Rice", ["rice", "chicken stock"]); // stock only
+    await recipe(page, "Soupe", ["bouillon de poulet", "carottes"]);
+    await recipe(page, "Roast chicken", ["whole chicken"]);
+    await recipe(page, "Stir fry", ["oyster sauce", "broccoli"]);
+    await recipe(page, "Bœuf et bouillon", ["bouillon de bœuf", "bœuf haché"]);
+    await recipe(page, "Salad", ["lettuce"]);
+    await page.reload();
+    await page.getByRole("button", { name: "Recipes", exact: true }).click();
+    await expect(page.locator(".riso-recipe-card").first()).toBeVisible();
+  }
+  const names = async (page) => (await page.locator(".riso-recipe-card-name").allInnerTexts()).sort();
+
+  test("filtering by Fish leaves out a recipe whose only fish is fish sauce", async ({ page }) => {
+    await seed(page);
+    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Fish (1)" });
+    await expect(page.locator(".riso-recipes-protein-chip")).toContainText("Fish");
+    expect(await names(page)).toEqual(["Fish curry"]);
+  });
+
+  test("Chicken and Beef leave out stock, broth and bouillon", async ({ page }) => {
+    await seed(page);
+    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Chicken (1)" });
+    expect(await names(page)).toEqual(["Roast chicken"]);
+    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Beef (1)" });
+    expect(await names(page)).toEqual(["Bœuf et bouillon"]); // the real bœuf haché counts, the bouillon doesn't add to it
+    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Seafood (0)" });
+    expect(await names(page)).toEqual([]); // oyster sauce isn't seafood
+  });
+
+  test("the chip clears the filter, and the filter works with the other filters", async ({ page }) => {
+    await seed(page);
+    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Chicken (1)" });
+    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(1);
+    await page.getByRole("button", { name: "Clear the Chicken filter" }).click();
+    await expect(page.locator(".riso-recipes-protein-chip")).toHaveCount(0);
+    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(8);
+    // With a search too: both apply.
+    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Fish (1)" });
+    await page.locator(".riso-recipes-searchbar input").fill("pad");
+    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(0);
+  });
+
+  test("Home and the filter always agree on the count", async ({ page }) => {
+    await seed(page);
+    for (const [label, kind] of [["Chicken (1)", "Chicken"], ["Fish (1)", "Fish"], ["Beef (1)", "Beef"]]) {
+      await page.getByLabel("Filter recipes by protein").selectOption({ label });
+      const shown = await page.locator(".riso-recipe-card-name").count();
+      await page.getByRole("button", { name: "Home", exact: true }).click();
+      await page.getByRole("button", { name: new RegExp(`^${kind}:`) }).click();
+      await expect(page.locator(".riso-protein-bar")).toContainText(shown === 1 ? "1 of your recipes uses" : `${shown} of your recipes use`);
+      await page.getByRole("button", { name: "Recipes", exact: true }).click();
+    }
+  });
+
+  test.describe("on a phone, in French", () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test("the protein menu and chip fit, and the chip clears it", async ({ page }) => {
+      await seed(page);
+      await langSwitch(page).getByRole("button", { name: "Français" }).click();
+      await page.getByLabel("Filtrer les recettes par protéine").selectOption({ label: "Poisson (1)" });
+      const chip = page.locator(".riso-recipes-protein-chip");
+      await expect(chip).toContainText("Poisson");
+      const box = await chip.boundingBox();
+      expect(box.x + box.width).toBeLessThanOrEqual(390);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      await chip.click();
+      await expect(chip).toHaveCount(0);
     });
   });
 });

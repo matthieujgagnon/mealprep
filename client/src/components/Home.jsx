@@ -146,6 +146,7 @@ export function Home({
   onNavigate,
   onSelectRecipe,
   onFindRecipes,
+  onFindProtein,
   onPickRecipeFor,
   isOnGroceryList = () => false,
   onAddToGroceryList,
@@ -649,7 +650,7 @@ export function Home({
           )}
         </section>
 
-        <ProteinsOnSale deals={deals} recipes={recipes} onNavigate={onNavigate} onFindRecipes={onFindRecipes} />
+        <ProteinsOnSale deals={deals} recipes={recipes} onNavigate={onNavigate} onFindProtein={onFindProtein} />
       </div>
     </div>
   );

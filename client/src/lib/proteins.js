@@ -5,7 +5,6 @@
 // (see dealVerdict / dealSavings), then its lowest price per lb.
 import { capitalize } from "./groceryList.js";
 import { dealSavings, dealVerdict, foldText, productText, tilePrice } from "./flyerIngredients.js";
-import { matchesSearch } from "./recipeSearch.js";
 import { t } from "../i18n/index.js";
 
 const TOFU = /\btofu\b/;
@@ -14,9 +13,8 @@ const TOFU = /\btofu\b/;
 // have under it. Each has two word lists:
 //   re    what a flyer item's name says (whole words, English and French): any
 //         of these puts that item under the general protein
-//   terms what Recipes' search looks for in a recipe's title, tags and
-//         ingredient names (a part of a word counts), so the recipe count on
-//         Home and the recipes "See them" opens are the same recipes
+//   terms what a recipe's ingredient names are checked for (a part of a word
+//         counts; accents don't matter), see recipeUsesProtein below
 export const PROTEINS = [
   {
     id: "chicken", get label() { return t("proteins.kinds.chicken"); }, emoji: "🍗",
@@ -67,17 +65,59 @@ export const PROTEINS = [
   { id: "tofu", get label() { return t("proteins.kinds.tofu"); }, emoji: "⬜", terms: ["tofu"], re: TOFU },
 ];
 
-// `terms` are what Recipes' search looks for to find recipes with that kind
-// (title, tags and ingredient names, English and French). Home counts and opens
-// Recipes with exactly these, so the number it shows is the number of cards
-// Recipes then lists.
-export function proteinSearchQuery(protein) {
-  return protein.terms.join(", ");
+// Which of your recipes use a protein. One function, used by Home (the count in
+// the bar) and by Recipes (the protein filter that "See them" opens), so the two
+// always agree.
+//
+// It looks at each ingredient on its own, not at the recipe's text as a whole,
+// and skips ingredients that only carry the protein's name as a flavour:
+// "fish sauce" isn't fish, "chicken stock" isn't chicken. A recipe with no
+// ingredients listed yet falls back to its title and tags.
+const foldName = (text) =>
+  foldText(text)
+    .replace(/œ/g, "oe")
+    .replace(/[’‘]/g, "'");
+
+// Condiments, seasonings and stocks: the protein's name is in them, the protein
+// isn't. Whole words or phrases, English and French, accents folded.
+const SEASONING_RE = new RegExp(
+  "(?:^|[^a-z])(?:" +
+    [
+      // sauces and pastes
+      "fish sauce", "sauce (?:de |au |aux )?poissons?", "oyster sauce", "sauce (?:aux? |d')?huitres?", "anchov(?:y|ies) paste",
+      "pate d'anchois", "shrimp paste", "pate de crevettes?", "clam juice", "jus de palourdes?", "clamato", "sauce", "salsa",
+      // stocks, broths and the cubes and powders made from them
+      "stocks?", "broths?", "bouillons?", "consomme", "fond", "fumet", "gravy", "demi-glace", "(?:chicken|poulet|beef|boeuf|fish|poisson|seafood) base",
+      "(?:chicken|poulet|beef|boeuf|pork|porc|fish|poisson) (?:powder|poudre)", "(?:poudre|cubes?) (?:de |d')?(?:poulet|boeuf|poisson)", "oxo", "knorr",
+      // seasonings and soups
+      "seasonings?", "assaisonnements?", "spice mix", "rubs?", "(?:cream|creme) (?:of|de) (?:chicken|poulet)", "soups?", "soupes?",
+      // not an animal at all
+      "oyster mushrooms?", "pleurotes?",
+    ].join("|") +
+    ")(?![a-z])"
+);
+
+export function isSeasoningIngredient(name) {
+  return SEASONING_RE.test(foldName(name));
+}
+
+// Whether one ingredient (or title, or tag) is that protein.
+export function ingredientIsProtein(name, protein) {
+  if (!name) return false;
+  const text = foldName(name);
+  if (SEASONING_RE.test(text)) return false;
+  return protein.terms.some((term) => text.includes(foldName(term)));
+}
+
+export function recipeUsesProtein(recipe, protein) {
+  if (!recipe || recipe.isPlaceholder) return false;
+  const names = (recipe.ingredients || []).map((i) => i?.name).filter(Boolean);
+  const texts = names.length > 0 ? names : [recipe.title, ...(recipe.tags || [])].filter(Boolean);
+  return texts.some((text) => ingredientIsProtein(text, protein));
 }
 
 export function recipesUsingProtein(recipes, protein) {
-  const query = proteinSearchQuery(protein);
-  return (recipes || []).filter((r) => !r.isPlaceholder && matchesSearch(r, query));
+  return (recipes || []).filter((r) => recipeUsesProtein(r, protein));
 }
 
 // Whether an ingredient or product name is tofu, whatever kind: firm,
