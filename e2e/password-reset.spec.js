@@ -21,7 +21,7 @@ test("reset link sets a new password and signs out other sessions", async ({ pag
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', oldPassword);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 
   // Stands in for "the link mailed by /api/auth/forgot-password" - same
   // token shape (a PasswordResetToken row's id), just created directly
@@ -56,7 +56,7 @@ test("reset link sets a new password and signs out other sessions", async ({ pag
   // New password does.
   await page.fill('input[type="password"]', newPassword);
   await submitButton.click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 });
 
 test("a used reset link can't be replayed", async ({ page }) => {
@@ -66,7 +66,7 @@ test("a used reset link can't be replayed", async ({ page }) => {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "originalpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   const resetToken = await prisma.passwordResetToken.create({

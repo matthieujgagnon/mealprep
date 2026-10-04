@@ -11,7 +11,7 @@ async function signUp(page) {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
 }
 

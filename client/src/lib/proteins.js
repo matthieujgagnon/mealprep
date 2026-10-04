@@ -1,11 +1,13 @@
 // "What proteins are on sale this week": the Home dashboard's answer, one
 // row per kind of meat or fish. Only plain, raw cuts count - a chicken pie,
 // breaded fish sticks, sausages or deli meats aren't what you mean by
-// "chicken's on sale". Each kind's best buy is its biggest real saving
+// "chicken's on sale". Tofu counts as a kind too. Each kind's best buy is its biggest real saving
 // (see dealVerdict / dealSavings), then its lowest price per lb.
 import { capitalize } from "./groceryList.js";
 import { dealSavings, dealVerdict, foldText, productText, tilePrice } from "./flyerIngredients.js";
 import { t } from "../i18n/index.js";
+
+const TOFU = /\btofu\b/;
 
 export const PROTEINS = [
   { id: "chicken", get label() { return t("proteins.kinds.chicken"); }, emoji: "🍗", re: /\b(chicken|poulet|cornish hens?)\b/ },
@@ -15,7 +17,14 @@ export const PROTEINS = [
   { id: "seafood", get label() { return t("proteins.kinds.seafood"); }, emoji: "🦐", re: /\b(shrimps?|crevettes?|scallops?|petoncles?|mussels?|moules|lobsters?|homards?|crabs?|crabes?|calamari|squid|calmars?|oysters?|huitres?|clams?|palourdes)\b/ },
   { id: "turkey", get label() { return t("proteins.kinds.turkey"); }, emoji: "🦃", re: /\b(turkey|dinde|dindon)\b/ },
   { id: "lamb-veal", get label() { return t("proteins.kinds.lamb-veal"); }, emoji: "🐑", re: /\b(lamb|agneau|veal|veau)\b/ },
+  { id: "tofu", get label() { return t("proteins.kinds.tofu"); }, emoji: "🫘", re: TOFU },
 ];
+
+// Whether an ingredient or product name is tofu, whatever kind: firm,
+// extra-firm, silken, "tofu ferme".
+export function mentionsTofu(name) {
+  return TOFU.test(foldText(name || ""));
+}
 
 // Prepared or processed: not a plain cut of meat or fish.
 const NOT_RAW = new RegExp(
@@ -33,8 +42,12 @@ const NOT_RAW = new RegExp(
 );
 
 export function proteinOf(deal) {
-  if (!deal || (deal.aisle && deal.aisle !== "meat" && deal.aisle !== "seafood")) return null;
+  if (!deal) return null;
   const text = foldText(`${deal.matchName || ""} ${deal.item || ""}`);
+  // Meat and fish are in the meat and seafood aisles; tofu is wherever the
+  // store keeps it (produce, dairy, deli), so its aisle doesn't rule it out.
+  const meatAisle = !deal.aisle || deal.aisle === "meat" || deal.aisle === "seafood";
+  if (!meatAisle && !TOFU.test(text)) return null;
   if (NOT_RAW.test(text)) return null;
   // The first kind the name says: "pork and beef meatballs" isn't both.
   let best = null;

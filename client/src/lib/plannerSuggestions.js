@@ -25,6 +25,11 @@ export function isSideRecipe(recipe) {
   return recipeSlot(recipe) === "side";
 }
 
+// Desserts, like sides, never fill a meal slot on their own.
+export function isDessertRecipe(recipe) {
+  return recipeSlot(recipe) === "dessert";
+}
+
 export function formatTrayTime(minutes) {
   if (!minutes) return null;
   return minutes >= 60 ? `${Math.floor(minutes / 60)} H` : `${minutes} MIN`;

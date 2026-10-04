@@ -4,12 +4,13 @@ import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
-import { RECIPE_SLOTS, formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { matchesSearch } from "../lib/recipeSearch.js";
+import { RECIPE_SLOTS, formatRecipeTime, inMealGroup, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { t } from "../i18n/index.js";
 
 // Filter ids stay the same in both languages; labels follow the language.
 const FILTERS = [
-  ...["all", "makeable", "expiring"].map((id) => ({
+  ...["all", "makeable", "expiring", "meals"].map((id) => ({
     id,
     get label() {
       return t(`recipes.filters.${id}`);
@@ -25,25 +26,12 @@ const FILTERS = [
 ];
 const SORTS = ["recent", "fewest", "quickest"];
 
+// Where a recipe lives: the Cookbook is the core recipes Matt cooks again and
+// again (written by hand, or moved there from an import); Imported is the
+// rest, saved from a link. Recipe.inCookbook says which.
+const SOURCES = ["cookbook", "imported"];
+const sourceOf = (recipe) => (recipe.inCookbook ? "cookbook" : "imported");
 
-// Matches on title, tags, and ingredient names — same fields App.jsx's own
-// planner-grid search checks, kept as a separate copy since this one never
-// needs to run against a URL (the search box doubles as the import field).
-// Commas mean "any of": "parsley, spinach" (Home's Cook with these) finds
-// recipes using either.
-function matchesSearch(recipe, query) {
-  const terms = query
-    .split(",")
-    .map((t) => t.trim().toLowerCase())
-    .filter(Boolean);
-  if (terms.length === 0) return true;
-  return terms.some(
-    (q) =>
-      recipe.title?.toLowerCase().includes(q) ||
-      recipe.tags?.some((t) => t.toLowerCase().includes(q)) ||
-      recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))
-  );
-}
 
 function isUrlLike(text) {
   const q = text.trim();
@@ -111,6 +99,7 @@ export function Recipes({
   onNewRecipe,
 }) {
   const [sortIndex, setSortIndex] = useState(0);
+  const [source, setSource] = useState(null); // null (both) | "cookbook" | "imported"
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
 
@@ -131,6 +120,8 @@ export function Recipes({
       }
       case "expiring":
         return findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes, 3).size > 0;
+      case "meals":
+        return inMealGroup(recipe, "meals");
       default:
         return filterId.startsWith("slot:") ? recipeSlot(recipe) === filterId.slice(5) : true;
     }
@@ -140,7 +131,9 @@ export function Recipes({
     FILTERS.map((f) => [f.id, allRecipes.filter((r) => matchesFilter(r, f.id)).length])
   );
 
-  let visible = allRecipes.filter((r) => matchesFilter(r, filter));
+  const sourceCounts = Object.fromEntries(SOURCES.map((id) => [id, allRecipes.filter((r) => sourceOf(r) === id).length]));
+
+  let visible = allRecipes.filter((r) => matchesFilter(r, filter) && (!source || sourceOf(r) === source));
   if (query && !isUrl) visible = visible.filter((r) => matchesSearch(r, query));
 
   if (sortIndex === 1) {
@@ -164,6 +157,13 @@ export function Recipes({
   } else {
     visible = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
+
+  // With neither Cookbook nor Imported picked, the grid is split under two
+  // headings (the Cookbook first), so the two are told apart at a glance.
+  const sections = source
+    ? [{ id: "all", recipes: visible }]
+    : SOURCES.map((id) => ({ id, recipes: visible.filter((r) => sourceOf(r) === id) })).filter((sec) => sec.recipes.length > 0);
+  const showHeadings = !source && sections.length > 1;
 
   const makeableCount = filterCounts.makeable;
   const expiringCount = filterCounts.expiring;
@@ -194,19 +194,6 @@ export function Recipes({
           <h1 className="riso-recipes-title">
             {t("recipes.titleStart")} <span className="accent">{t("recipes.titleAccent")}</span>
           </h1>
-        </div>
-        <div className="riso-recipes-sort-group">
-          <span className="riso-recipes-sort-label">{t("recipes.sort")}</span>
-          <label className="riso-recipes-sort-btn">
-            <select aria-label={t("recipes.sortLabel")} value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
-              {SORTS.map((id, i) => (
-                <option key={id} value={i}>
-                  {t(`recipes.sorts.${id}`)}
-                </option>
-              ))}
-            </select>
-            <span aria-hidden="true">▾</span>
-          </label>
         </div>
       </div>
 
@@ -242,6 +229,21 @@ export function Recipes({
         {t("recipes.hint")}
       </HintStrip>
 
+      <div className="riso-recipes-filter-chips riso-recipes-source-chips" role="group" aria-label={t("recipes.sourceLabel")}>
+        {SOURCES.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={`riso-filter-chip${source === id ? " active" : ""}`}
+            aria-pressed={source === id}
+            onClick={() => setSource((cur) => (cur === id ? null : id))}
+          >
+            {t(`recipes.sources.${id}`)}
+            <span className="riso-filter-chip-count">{sourceCounts[id]}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="riso-recipes-filter-chips">
         {FILTERS.map((f) => (
           <button
@@ -254,19 +256,42 @@ export function Recipes({
             <span className="riso-filter-chip-count">{filterCounts[f.id]}</span>
           </button>
         ))}
+        <div className="riso-recipes-sort-group">
+          <span className="riso-recipes-sort-label">{t("recipes.sort")}</span>
+          <label className="riso-recipes-sort-btn">
+            <select aria-label={t("recipes.sortLabel")} value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
+              {SORTS.map((id, i) => (
+                <option key={id} value={i}>
+                  {t(`recipes.sorts.${id}`)}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden="true">▾</span>
+          </label>
+        </div>
       </div>
 
-      <div className="riso-recipes-grid">
-        {visible.map((r) => (
-          <RecipeCard
-            key={r.id}
-            recipe={r}
-            stats={recipeHaveStats(r, haveCores)}
-            usesExpiring={matchesFilter(r, "expiring")}
-            onClick={onSelectRecipe}
-          />
-        ))}
-      </div>
+      {sections.map((section) => (
+        <section key={section.id} className="riso-recipes-section">
+          {showHeadings && (
+            <h2 className={`riso-recipes-section-title ${section.id}`}>
+              {t(`recipes.sources.${section.id}`)}
+              <span className="riso-recipes-section-count">{section.recipes.length}</span>
+            </h2>
+          )}
+          <div className="riso-recipes-grid">
+            {section.recipes.map((r) => (
+              <RecipeCard
+                key={r.id}
+                recipe={r}
+                stats={recipeHaveStats(r, haveCores)}
+                usesExpiring={matchesFilter(r, "expiring")}
+                onClick={onSelectRecipe}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
       {visible.length === 0 && !isUrl && (
         <p className="riso-recipes-empty">
           {allRecipes.length === 0 ? t("recipes.emptyNone") : t("recipes.emptyNoMatch")}

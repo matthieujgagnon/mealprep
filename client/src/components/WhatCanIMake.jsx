@@ -7,6 +7,9 @@ import { Switch, HintStrip } from "./RisoControls.jsx";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, findNextEmptySlot, todayIndex } from "../lib/plannerSlots.js";
 import { formatDayLabel, isCurrentWeek } from "../lib/dates.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
+import { MEAL_GROUPS, inMealGroup } from "../lib/mealSlots.js";
+import { MAKEABLE_SORTS, sortMakeable } from "../lib/makeableOrder.js";
+import { matchesSearch } from "../lib/recipeSearch.js";
 import { t, tx } from "../i18n/index.js";
 
 const ALSO_HAVE_STORAGE_KEY = "mealprep-makeable-also-have";
@@ -264,7 +267,10 @@ export function WhatCanIMake({
     onRemove: onRemoveFromGroceryList,
   };
   const [useInventory, setUseInventory] = useState(true);
-  const [expiringFirst, setExpiringFirst] = useState(true);
+  // The order is the Sort control and nothing else (see makeableOrder.js).
+  const [sort, setSort] = useState("useItUp");
+  const [mealType, setMealType] = useState("all"); // "all" or a key of MEAL_GROUPS
+  const [query, setQuery] = useState("");
   const [alsoHave, setAlsoHave] = useState(loadAlsoHave);
   // The "Super C $3.99" sale tags on each card, on by default; remembered
   // on this device.
@@ -326,26 +332,27 @@ export function WhatCanIMake({
       .filter(Boolean)
   );
 
-  const matches = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes) : [];
+  // No cap: a search or a meal-type chip has to be able to reach every recipe.
+  const matches = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes, Infinity) : [];
   const withAtRisk = matches.map((m) => ({
     ...m,
     atRiskUsed: m.matchedIngredients.filter((n) => expiringCores.has(core(n))),
   }));
 
-  function sortGroup(items) {
-    if (!expiringFirst) return items;
-    return [...items].sort((a, b) => {
-      const aHas = a.atRiskUsed.length > 0 ? 0 : 1;
-      const bHas = b.atRiskUsed.length > 0 ? 0 : 1;
-      return aHas - bHas;
-    });
-  }
-
-  const readyNow = sortGroup(withAtRisk.filter((m) => m.missingIngredients.length === 0));
-  const oneOrTwoShort = sortGroup(
-    withAtRisk.filter((m) => m.missingIngredients.length >= 1 && m.missingIngredients.length <= 2)
+  const mealTypeCounts = Object.fromEntries(
+    Object.keys(MEAL_GROUPS).map((id) => [id, withAtRisk.filter((m) => inMealGroup(m.recipe, id)).length])
   );
-  const needsAShop = sortGroup(withAtRisk.filter((m) => m.missingIngredients.length >= 3));
+  const searched = query.trim();
+  const shown = withAtRisk.filter(
+    (m) => (mealType === "all" || inMealGroup(m.recipe, mealType)) && (!searched || matchesSearch(m.recipe, searched))
+  );
+
+  const readyNow = sortMakeable(shown.filter((m) => m.missingIngredients.length === 0), sort);
+  const oneOrTwoShort = sortMakeable(
+    shown.filter((m) => m.missingIngredients.length >= 1 && m.missingIngredients.length <= 2),
+    sort
+  );
+  const needsAShop = sortMakeable(shown.filter((m) => m.missingIngredients.length >= 3), sort);
 
   const nextSlot = findNextEmptySlot(plannerEntries, weekStart);
 
@@ -400,11 +407,6 @@ export function WhatCanIMake({
           </div>
           <div className="riso-makeable-toggle-divider" />
           <div className="riso-makeable-toggle">
-            <Switch on={expiringFirst} onToggle={() => setExpiringFirst((v) => !v)} label={t("makeable.expiringFirst")} />
-            <span className="riso-makeable-toggle-label">{t("makeable.expiringFirst")}</span>
-          </div>
-          <div className="riso-makeable-toggle-divider" />
-          <div className="riso-makeable-toggle">
             <Switch on={showSales} onToggle={toggleShowSales} label={t("makeable.showSales")} />
             <span className="riso-makeable-toggle-label">{t("makeable.showSales")}</span>
           </div>
@@ -436,10 +438,52 @@ export function WhatCanIMake({
         </form>
       </section>
 
+      {combinedHave.length > 0 && (
+        <div className="riso-makeable-find">
+          <div className="riso-recipes-searchbar">
+            <div className="riso-recipes-searchbar-label">{t("recipes.search")}</div>
+            <input
+              type="text"
+              aria-label={t("makeable.searchLabel")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("makeable.searchPlaceholder")}
+            />
+          </div>
+          <div className="riso-recipes-filter-chips">
+            {["all", ...Object.keys(MEAL_GROUPS)].map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`riso-filter-chip${mealType === id ? " active" : ""}`}
+                aria-pressed={mealType === id}
+                onClick={() => setMealType(id)}
+              >
+                {t(`makeable.types.${id}`)}
+                <span className="riso-filter-chip-count">{id === "all" ? withAtRisk.length : mealTypeCounts[id]}</span>
+              </button>
+            ))}
+            <div className="riso-recipes-sort-group">
+              <span className="riso-recipes-sort-label">{t("recipes.sort")}</span>
+              <label className="riso-recipes-sort-btn">
+                <select aria-label={t("makeable.sortLabel")} value={sort} onChange={(e) => setSort(e.target.value)}>
+                  {MAKEABLE_SORTS.map((id) => (
+                    <option key={id} value={id}>
+                      {id === "az" ? t("same.az") : t(`makeable.sorts.${id}`)}
+                    </option>
+                  ))}
+                </select>
+                <span aria-hidden="true">▾</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       {combinedHave.length === 0 ? (
         <p className="riso-makeable-empty">{t("makeable.emptyNone")}</p>
       ) : groups.length === 0 ? (
-        <p className="riso-makeable-empty">{t("makeable.noMatch")}</p>
+        <p className="riso-makeable-empty">{withAtRisk.length > 0 ? t("makeable.noMatchFilters") : t("makeable.noMatch")}</p>
       ) : (
         groups.map((group) => (
           <section key={group.key} className="riso-makeable-group">
@@ -454,7 +498,7 @@ export function WhatCanIMake({
                   key={recipe.id}
                   recipe={recipe}
                   missingIngredients={missingIngredients}
-                  atRiskUsed={expiringFirst ? atRiskUsed : []}
+                  atRiskUsed={atRiskUsed}
                   onOpen={() => onSelectRecipe(recipe)}
                   onCookTonight={() => onSelectRecipe(recipe, null, true)}
                   planFor={planState}

@@ -74,6 +74,13 @@
   gap: 16px;
 }
 
+/* Makeable's search, meal-type chips and SORT: reuses Recipes' search bar and chips. */
+.riso-makeable-find {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .riso-makeable-toggles {
   display: flex;
   align-items: center;
@@ -5068,8 +5075,6 @@ button.riso-table-group-head:disabled {
   cursor: default;
 }
 
-/* The page title on the left, SORT on the right, like the Planner's
-   title and its Fill button: the filter chips below get the whole row. */
 .riso-recipes-heading-row {
   display: flex;
   gap: 16px;
@@ -5085,7 +5090,8 @@ button.riso-table-group-head:disabled {
   align-items: center;
 }
 
-/* SORT and its pill wrap as one unit, never splitting or squashing. */
+/* SORT is the last thing in the chips row (Recipes and Makeable), pushed to
+   the right; it and its pill wrap as one unit, never splitting or squashing. */
 .riso-recipes-sort-group {
   display: flex;
   gap: 8px;
@@ -5161,6 +5167,43 @@ button.riso-table-group-head:disabled {
   font-family: var(--riso-font-mono);
   font-size: 10px;
   opacity: 0.75;
+}
+
+/* Cookbook / Imported: one section each when the grid shows both. */
+.riso-recipes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.riso-recipes-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.riso-recipes-section-title.cookbook {
+  width: fit-content;
+  background: var(--riso-hot);
+  padding: 2px 12px;
+  border-radius: 8px;
+}
+
+.riso-recipes-section-count {
+  font-family: var(--riso-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+}
+
+.riso-recipes-section-title.cookbook .riso-recipes-section-count {
+  color: var(--riso-ink);
 }
 
 .riso-recipes-grid {
@@ -7768,11 +7811,12 @@ button.riso-table-group-head:disabled {
   padding: 0;
   min-height: 128px;
   color: var(--riso-ink);
+  /* The Planner's pink, so Home's days and the Planner's day headers match. */
+  box-shadow: var(--riso-shadow-today);
 }
 
 .riso-home-week-day.today {
   background: var(--riso-hot);
-  box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
 /* Days gone by: greyscale photo, muted, no shadow. */
@@ -7800,6 +7844,7 @@ button.riso-table-group-head:disabled {
 .riso-home-week-col.past {
   filter: grayscale(1);
   opacity: 0.7;
+  box-shadow: none;
 }
 
 .riso-home-week-day-photo {
@@ -9749,13 +9794,97 @@ button.riso-row-qty:focus-visible {
   display: none;
 }
 
-/* Too narrow for logo + 7 tabs + account on one row: tabs take a full
-   second row, so the account stays top-right rather than wrapping alone
-   onto a third. */
-@media (max-width: 900px) {
+/* The account menu: the avatar button and what opens under it. Phones always
+   use it; a computer does too when the name, Help and Log out don't fit on
+   the header's one row (.is-compact, set by useHeaderCollapse). */
+.app-header-avatar {
+  position: relative;
+}
+
+.app-header-avatar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  color: var(--riso-ink);
+  font: 800 14px var(--riso-font-display);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.app-header-avatar-menu {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  z-index: 60;
+  min-width: 180px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  box-shadow: var(--riso-shadow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-header-avatar-name {
+  font: 500 14px var(--riso-font-body);
+  color: var(--riso-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header.is-compact .app-header-account {
+  display: none;
+}
+
+.app-header.is-compact .app-header-phone-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  /* After the tabs (the tablet layout below puts the tabs at 3). */
+  order: 2;
+}
+
+/* Too narrow for logo + 7 tabs on one row: tabs take a full second row, so
+   the account stays top-right rather than wrapping alone onto a third. From
+   1024px up the header is always one row (see the next block). */
+@media (max-width: 1023px) {
   .tabs {
     order: 3;
     flex-basis: 100%;
+  }
+}
+
+/* From 1024px the header is one row, even in French, where the labels are
+   longer: logo + 7 tabs + FR | EN + the avatar need about 1150px at full
+   size, so between 1024 and 1280 the logo, gaps and tab padding give up to
+   ~150px as the window narrows (--squeeze is how many px short of full size
+   the window is, 0 to 141). The name, Help and Log out move into the
+   avatar menu when they don't fit (useHeaderCollapse). */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .app-header {
+    --squeeze: clamp(0px, calc(1165px - 100vw), 141px);
+    gap: calc(20px - var(--squeeze) * 0.0567);
+  }
+
+  .wordmark {
+    font-size: calc(28px - var(--squeeze) * 0.0284);
+  }
+
+  .tabs {
+    gap: calc(4px - var(--squeeze) * 0.0142);
+  }
+
+  .tab {
+    padding: 0 calc(14px - var(--squeeze) * 0.0426);
   }
 }
 
@@ -9817,49 +9946,6 @@ button.riso-row-qty:focus-visible {
     .app-header-phone-tools .riso-lang-switch button {
       padding: 0 8px;
     }
-  }
-
-  .app-header-avatar {
-    position: relative;
-  }
-
-  .app-header-avatar-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 18px;
-    background: var(--riso-yellow);
-    border: 2px solid var(--riso-ink);
-    color: var(--riso-ink);
-    font: 800 14px var(--riso-font-display);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .app-header-avatar-menu {
-    position: absolute;
-    right: 0;
-    top: 44px;
-    z-index: 60;
-    min-width: 180px;
-    background: var(--riso-surface);
-    border: 2px solid var(--riso-ink);
-    border-radius: 16px;
-    box-shadow: var(--riso-shadow);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .app-header-avatar-name {
-    font: 500 14px var(--riso-font-body);
-    color: var(--riso-soft);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .tabs {
@@ -11100,8 +11186,10 @@ button.riso-row-qty:focus-visible {
     display: none;
   }
 
+  /* The chips scroll sideways: SORT leads the row so it's never off-screen. */
   .riso-recipes-sort-group {
     margin-left: 0;
+    order: -1;
   }
 
   .riso-recipes-grid {
@@ -11539,11 +11627,11 @@ body.no-select {
   flex-direction: column;
   gap: 5px;
   min-width: 0;
+  box-shadow: var(--riso-shadow-today);
 }
 
 .riso-home-week-col.today {
   background: var(--riso-hot);
-  box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
 .riso-home-week-meal {
@@ -15267,8 +15355,9 @@ body.no-select {
   font-size: 8.5px;
 }
 
-/* The app styles these two on phones only (they don't exist on a computer),
-   so Help repeats the phone look. Mirrors .riso-grocery-store-btn and
+/* The app styles .riso-grocery-store-btn on phones only (it doesn't exist on
+   a computer), so Help repeats the phone look; the avatar button's look is
+   repeated here too. Mirrors .riso-grocery-store-btn and
    .app-header-avatar-btn. */
 .riso-help-copy .riso-help-copy-body.riso-grocery-store-btn {
   display: inline-flex;

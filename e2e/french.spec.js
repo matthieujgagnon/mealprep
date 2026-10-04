@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
+import { langSwitch } from "./account-menu.js";
 
 const prisma = new PrismaClient();
 
@@ -214,7 +215,7 @@ test("the language follows the account, and the server answers in it", async ({ 
   expect((await (await page.request.get("/api/auth/me")).json()).locale).toBe("fr");
 
   // Switching to English changes the app straight away and is saved.
-  await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "English" }).click();
+  await langSwitch(page).getByRole("button", { name: "English" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   await expect(page.locator("html")).toHaveAttribute("lang", "en-CA");
   await expect.poll(async () => (await (await page.request.get("/api/auth/me")).json()).locale).toBe("en");
@@ -226,7 +227,7 @@ test("the language follows the account, and the server answers in it", async ({ 
   await expect(page.locator(".tab.active")).toHaveText("Home");
 
   // And back to French.
-  await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "Français" }).click();
+  await langSwitch(page).getByRole("button", { name: "Français" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Accueil");
   await expect.poll(async () => (await (await page.request.get("/api/auth/me")).json()).locale).toBe("fr");
 });

@@ -14,7 +14,7 @@ async function signUp(page, email) {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 }
 
 async function addItem(page, name, location) {
@@ -286,7 +286,7 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
   const day = 86400000;
   const add = (data) => page.request.post("/api/pantry-inventory", { data });
   await add({ name: "Bbq sauce", location: "fridge", quantity: 0.25, unit: "cup", expiresAt: new Date(Date.now() - 3 * day).toISOString() });
@@ -374,7 +374,7 @@ test("the amount can be changed right on the card, without opening the item", as
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
   const add = (data) => page.request.post("/api/pantry-inventory", { data: { location: "fridge", ...data } });
   await add({ name: "Greek yogurt", quantity: 500, unit: "g" });
   await add({ name: "Cilantro", quantity: 1, unit: "bunch" });

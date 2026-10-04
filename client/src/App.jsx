@@ -28,8 +28,9 @@ import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
 import { PlannerTray } from "./components/PlannerTray.jsx";
 import { PlannerMobile } from "./components/PlannerMobile.jsx";
 import { useIsPhone } from "./hooks/useIsPhone.js";
+import { useHeaderCollapse } from "./hooks/useHeaderCollapse.js";
 import { emptyUpcomingSlots, findNextEmptySlot, isCustomNote, todayIndex } from "./lib/plannerSlots.js";
-import { isBreakfastRecipe, isPrepRecipe, isSideRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
+import { isBreakfastRecipe, isDessertRecipe, isPrepRecipe, isSideRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
@@ -117,6 +118,14 @@ export default function App({ user, onLogout }) {
   const isPhone = useIsPhone();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
+  const headerRef = useRef(null);
+  // On a computer the account area collapses into the avatar menu when it
+  // wouldn't fit on one row with the logo and the tabs. The key is what
+  // changes how wide the inline version is.
+  const headerCompact = useHeaderCollapse(headerRef, {
+    enabled: !isPhone,
+    resetKey: `${t("app.logOut")}|${user.name || user.email}`,
+  });
   useEffect(() => {
     if (!avatarMenuOpen) return undefined;
     const close = (event) => {
@@ -327,6 +336,15 @@ export default function App({ user, onLogout }) {
     clearGroceryShared();
     onLogout();
   }
+
+  // What the account area offers besides the language switch and the name.
+  // Shown inline on a wide computer, and in the avatar menu on a phone or
+  // when the inline version wouldn't fit. A new entry (the Admin link)
+  // shows up in both places by being added here.
+  const accountActions = [
+    { id: "help", label: t("app.help"), current: tab === "help", onSelect: () => goToTab("help") },
+    { id: "logout", label: t("app.logOut"), onSelect: handleLogout },
+  ];
 
   async function handleMarkStaple(core) {
     if (customStaples.includes(core)) return; // already a staple
@@ -672,7 +690,9 @@ export default function App({ user, onLogout }) {
       haveCores: pantryHaveCores,
     });
     const breakfast = ranked.filter((x) => isBreakfastRecipe(x.recipe));
-    const other = ranked.filter((x) => !isBreakfastRecipe(x.recipe) && !isPrepRecipe(x.recipe) && !isSideRecipe(x.recipe));
+    const other = ranked.filter(
+      (x) => !isBreakfastRecipe(x.recipe) && !isPrepRecipe(x.recipe) && !isSideRecipe(x.recipe) && !isDessertRecipe(x.recipe)
+    );
     const mains = other.length > 0 ? other : ranked.filter((x) => !isPrepRecipe(x.recipe) && !isSideRecipe(x.recipe));
     let b = 0;
     let o = 0;
@@ -745,11 +765,12 @@ export default function App({ user, onLogout }) {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
       <div className={`app${isDragActive ? " dnd-active" : ""}`}>
-        <header className="app-header riso-theme">
+        <header ref={headerRef} className={`app-header riso-theme${headerCompact ? " is-compact" : ""}`}>
           <h1 className="wordmark">
             matt mo <span>cookbook</span>
           </h1>
-          {/* On a phone: FR | EN right in the header, next to the avatar. */}
+          {/* On a phone, or when the account area doesn't fit on a computer:
+              FR | EN right in the header, next to the avatar. */}
           <div className="app-header-phone-tools">
             <LanguageSwitch />
             <div className="app-header-avatar" ref={avatarRef}>
@@ -765,20 +786,20 @@ export default function App({ user, onLogout }) {
               {avatarMenuOpen && (
                 <div className="app-header-avatar-menu">
                   <span className="app-header-avatar-name">{user.name || user.email}</span>
-                  <button
-                    type="button"
-                    className="btn subtle btn-sm"
-                    aria-current={tab === "help" ? "page" : undefined}
-                    onClick={() => {
-                      setAvatarMenuOpen(false);
-                      goToTab("help");
-                    }}
-                  >
-                    {t("app.help")}
-                  </button>
-                  <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
-                    {t("app.logOut")}
-                  </button>
+                  {accountActions.map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      className="btn subtle btn-sm"
+                      aria-current={action.current ? "page" : undefined}
+                      onClick={() => {
+                        setAvatarMenuOpen(false);
+                        action.onSelect();
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -830,17 +851,17 @@ export default function App({ user, onLogout }) {
           <div className="app-header-account">
             <LanguageSwitch />
             <span className="app-header-account-name">{user.name || user.email}</span>
-            <button
-              type="button"
-              className="btn subtle btn-sm"
-              aria-current={tab === "help" ? "page" : undefined}
-              onClick={() => goToTab("help")}
-            >
-              {t("app.help")}
-            </button>
-            <button type="button" className="btn subtle btn-sm" onClick={handleLogout}>
-              {t("app.logOut")}
-            </button>
+            {accountActions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                className="btn subtle btn-sm"
+                aria-current={action.current ? "page" : undefined}
+                onClick={action.onSelect}
+              >
+                {action.label}
+              </button>
+            ))}
           </div>
         </header>
 
