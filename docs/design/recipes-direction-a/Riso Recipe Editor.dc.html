@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}input::placeholder,textarea::placeholder{color:#8A8677}input:focus,textarea:focus,select:focus{outline:3px solid #2323FF;outline-offset:1px}</style></helmet>
+<div style="min-height:100vh;background:#F4F1EA;color:#16181F;padding-bottom:110px">
+<div style="max-width:1280px;margin:0 auto;padding:28px 40px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+<div style="font:800 28px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap">matt mo <span style="background:#FF48B0;padding:0 8px;border-radius:6px">cookbook</span></div>
+<nav style="flex:1;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;font:500 14px 'Bricolage Grotesque',sans-serif">
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Home</div>
+<div style="height:36px;padding:0 14px;border-radius:18px;background:#2323FF;color:#fff;display:flex;align-items:center;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F">Recipes</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Planner</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Makeable</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Grocery</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Flyers</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Inventory</div>
+</nav>
+<div style="font-size:14px">Matthieu</div>
+</header>
+
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em">← RECIPES · EDITING</div>
+<div style="font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">Edit <span style="color:#2323FF">recipe.</span></div>
+</div>
+
+<div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap">
+<div style="flex:1 1 640px;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">1</span><div style="font:800 22px 'Bricolage Grotesque',sans-serif">The basics</div></div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">TITLE</span>
+<input value="{{ title }}" onChange="{{ setTitle }}" placeholder="Grandma's lasagna" style="height:52px;border:2px solid #16181F;border-radius:14px;background:#FFFDF8;padding:0 16px;font:800 22px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box;width:100%"></label>
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">RECIPE LINK</span>
+<div style="display:flex;gap:8px"><input value="{{ link }}" onChange="{{ setLink }}" placeholder="https://…" style="flex:1;min-width:0;height:44px;border:2px solid #16181F;border-radius:22px;background:#FFFDF8;padding:0 16px;font:500 14.5px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box">
+<div onClick="{{ reimport }}" style="height:44px;padding:0 18px;border-radius:22px;border:2px solid #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">↻ Re-import</div></div>
+<div style="font-size:12.5px;color:#5E5B52;line-height:1.5">Shown as “Open original recipe” on the recipe card. Re-import refills any empty fields; it won't overwrite what you've edited.</div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">PLANNER SLOT · WHERE DOES IT SIT ON THE CALENDAR? PICK ONE</span>
+<div style="display:flex;gap:10px;flex-wrap:wrap;padding:0 6px 5px 0"><sc-for list="{{ tags }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.flip }}" style="height:40px;padding:0 20px;justify-content:center;border-radius:20px;border:2px solid #16181F;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.sh }};display:flex;align-items:center;font:700 14.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box;white-space:nowrap">{{ t.text }}</div></sc-for></div>
+<div style="font-size:12.5px;color:#5E5B52;line-height:1.5">{{ catHint }}</div></div>
+</section>
+
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">2</span><div style="font:800 22px 'Bricolage Grotesque',sans-serif">Photos</div></div><div style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em">{{ photoCount }}</div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px">
+<sc-for list="{{ photos }}" as="p" hint-placeholder-count="3">
+<div draggable="true" onDragStart="{{ p.dragStart }}" onDragOver="{{ p.over }}" onDrop="{{ p.drop }}" onClick="{{ p.main }}" style="position:relative;aspect-ratio:1.1;border:{{ p.bd }};border-radius:18px;overflow:hidden;box-shadow:{{ p.sh }};box-sizing:border-box;cursor:grab"><div style="width:100%;height:100%;background:#E9E4D8 center/cover no-repeat;background-image:{{ p.bg }};pointer-events:none"></div>
+<sc-if value="{{ p.isMain }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:8px;top:8px;transform:rotate(-4deg);height:24px;padding:0 10px;border-radius:12px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">Cover</div></sc-if>
+<div onClick="{{ p.remove }}" title="Remove photo" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:12px;background:#FFFDF8;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 12px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">×</div></div>
+</sc-for>
+<div onDragOver="{{ zoneOver }}" onDrop="{{ zoneDrop }}" style="grid-column:span 2;min-height:136px;border:2px dashed #16181F;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px;box-sizing:border-box;background:#F4F1EA;text-align:center">
+<div style="font:800 16px 'Bricolage Grotesque',sans-serif"><span style="color:#2323FF">Drop a picture here</span></div>
+<div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">OR</div>
+<input placeholder="Paste a photo URL and press Enter" onKeyDown="{{ urlKey }}" style="width:100%;max-width:300px;height:38px;border:2px solid #16181F;border-radius:19px;background:#FFFDF8;padding:0 14px;font:500 14px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box;text-align:center">
+</div>
+</div>
+<div style="font-size:12.5px;color:#5E5B52">Drag photos to reorder them. Click one to make it the cover.</div>
+</section>
+
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div style="display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">3</span><div style="font:800 22px 'Bricolage Grotesque',sans-serif">Time and servings</div></div>
+<div style="display:flex;align-items:baseline;gap:8px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;border-radius:999px;padding:6px 18px"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em">TOTAL</span><span style="font:800 26px/1 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ totalLabel }}</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
+<sc-for list="{{ steppers }}" as="s" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">{{ s.label }}</span>
+<div style="display:flex;align-items:center;justify-content:space-between;border:2px solid #16181F;border-radius:26px;padding:4px;background:#FFFDF8;height:52px;box-sizing:border-box">
+<div onClick="{{ s.dec }}" style="width:40px;height:40px;border-radius:20px;background:#F4F1EA;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;user-select:none">−</div>
+<div style="text-align:center;line-height:1"><span style="font:800 22px 'Bricolage Grotesque',sans-serif;color:{{ s.color }}">{{ s.val }}</span><span style="font:500 10px 'DM Mono',monospace;margin-left:4px">{{ s.unit }}</span></div>
+<div onClick="{{ s.inc }}" style="width:40px;height:40px;border-radius:20px;background:#F4F1EA;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;user-select:none">+</div></div>
+<span style="font-size:12px;color:#5E5B52;line-height:1.4">{{ s.help }}</span></div>
+</sc-for>
+</div>
+</section>
+
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">4</span><div style="font:800 22px 'Bricolage Grotesque',sans-serif">Ingredients</div></div><div style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em">{{ ingCount }} · DRAG ⠿ TO REORDER</div></div>
+<div style="display:grid;grid-template-columns:22px 70px 96px minmax(0,1fr) minmax(0,.8fr) 32px;gap:8px;font:500 10px 'DM Mono',monospace;letter-spacing:.12em;padding:0 2px"><span></span><span>QTY</span><span>UNIT</span><span>INGREDIENT</span><span>NOTE</span><span></span></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ ings }}" as="g" hint-placeholder-count="4">
+<div onDragOver="{{ g.over }}" onDrop="{{ g.drop }}" style="display:grid;grid-template-columns:22px 70px 96px minmax(0,1fr) minmax(0,1.1fr) 32px;gap:8px;align-items:start">
+<span draggable="true" onDragStart="{{ g.dragStart }}" title="Drag to reorder" style="font-size:16px;color:#8A8677;cursor:grab;text-align:center;user-select:none;height:42px;line-height:42px">⠿</span>
+<input value="{{ g.qty }}" onChange="{{ g.setQty }}" placeholder="1½" style="height:42px;border:2px solid #16181F;border-radius:12px;background:#FFFDF8;padding:0 10px;font:500 14.5px 'DM Mono',monospace;color:#16181F;box-sizing:border-box;width:100%;min-width:0">
+<select onChange="{{ g.setUnit }}" value="{{ g.unit }}" style="height:42px;border:2px solid #16181F;border-radius:12px;background:#FFFDF8;padding:0 6px;font:600 14px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box;width:100%;min-width:0"><option value="">—</option><option value="cups">cups</option><option value="tbsp">tbsp</option><option value="tsp">tsp</option><option value="g">g</option><option value="kg">kg</option><option value="oz">oz</option><option value="lb">lb</option><option value="ml">ml</option><option value="can">can</option></select>
+<input value="{{ g.name }}" onChange="{{ g.setName }}" placeholder="Ingredient" style="height:42px;border:2px solid #16181F;border-radius:12px;background:#FFFDF8;padding:0 12px;font:700 15px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box;width:100%;min-width:0">
+<textarea rows="{{ g.rows }}" value="{{ g.note }}" onChange="{{ g.setNote }}" onInput="{{ grow }}" placeholder="e.g. melted" style="min-height:42px;border:2px dashed #BDB6A6;border-radius:12px;background:transparent;padding:9px 12px;font:500 14px/1.35 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box;width:100%;min-width:0;resize:none;overflow:hidden;display:block"></textarea>
+<div onClick="{{ g.remove }}" style="width:32px;height:32px;margin-top:5px;border-radius:16px;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FF48B0">×</div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<div onClick="{{ addIng }}" style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #16181F;background:#F4F1EA;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">+ Add ingredient</div>
+<div style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">+ Add section</div>
+<div style="height:40px;padding:0 18px;border-radius:20px;border:2px dashed #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">Paste a whole list</div>
+</div>
+</section>
+
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">5</span><div style="font:800 22px 'Bricolage Grotesque',sans-serif">Instructions</div></div><div style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em">{{ stepCount }} · DRAG ⠿ TO REORDER</div></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+<div onDragOver="{{ s.over }}" onDrop="{{ s.drop }}" style="margin-top:{{ s.mt }};display:flex;gap:10px;align-items:flex-start;background:{{ s.bg }};border:2px solid #16181F;border-radius:16px;padding:10px 10px 10px 8px">
+<span draggable="true" onDragStart="{{ s.dragStart }}" title="Drag to reorder" style="font-size:16px;color:#8A8677;cursor:grab;user-select:none;width:18px;text-align:center;height:34px;line-height:34px;flex:none">⠿</span>
+<span style="display:{{ s.badgeDisp }};min-width:{{ s.badgeW }};height:{{ s.badgeH }};border-radius:17px;background:{{ s.badgeBg }};color:{{ s.badgeFg }};border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:{{ s.badgeFont }};letter-spacing:{{ s.badgeLs }};flex:none;box-sizing:border-box;padding:0 10px;margin-top:{{ s.badgeMt }}">{{ s.n }}</span>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+<sc-if value="{{ s.editing }}" hint-placeholder-val="{{ false }}"><textarea rows="{{ s.rows }}" value="{{ s.text }}" onChange="{{ s.setText }}" onInput="{{ grow }}" placeholder="{{ s.ph }}" style="min-height:{{ s.taH }};border:{{ s.taBd }};outline:none;border-radius:{{ s.taRad }};background:{{ s.taBg }};padding:{{ s.taPad }};font:{{ s.font }};color:#16181F;box-sizing:border-box;width:{{ s.taW }};max-width:100%;resize:none;overflow:hidden;display:block"></textarea></sc-if>
+<sc-if value="{{ s.viewing }}" hint-placeholder-val="{{ true }}"><div style="padding:6px 0 0;font:{{ s.font }};color:#16181F;text-wrap:pretty">{{ s.text }}</div></sc-if>
+<sc-if value="{{ s.isStep }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<sc-if value="{{ s.timer }}" hint-placeholder-val="{{ false }}"><span style="background:#FFE14D;border:2px solid #16181F;border-radius:999px;white-space:nowrap;padding:0 10px;height:26px;display:flex;align-items:center;font:800 12px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">⏱ {{ s.timer }}</span></sc-if>
+<sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ false }}"><div style="position:relative;width:64px;height:48px;border-radius:10px;overflow:hidden;border:2px solid #16181F;box-sizing:border-box"><div style="width:100%;height:100%;background:#E9E4D8 center/cover no-repeat;background-image:{{ s.photoBg }}"></div><div onClick="{{ s.rmPhoto }}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:9px;background:#FFFDF8;border:1.5px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 10px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">×</div></div></sc-if>
+<sc-if value="{{ s.noPhoto }}" hint-placeholder-val="{{ true }}"><span onClick="{{ s.addPhoto }}" style="height:26px;padding:0 10px;border:2px dashed #16181F;border-radius:999px;display:flex;align-items:center;font:700 12px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box" style-hover="background:#FFE14D">+ photo</span></sc-if>
+</div>
+</sc-if>
+</div>
+<div style="display:flex;gap:6px;flex:none;align-items:center">
+
+<div onClick="{{ s.remove }}" title="Delete step" style="width:32px;height:32px;border-radius:16px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FF48B0">×</div></div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px;padding-top:16px;border-top:2px dashed #BDB6A6">
+<div onClick="{{ addStep }}" style="height:44px;padding:0 22px;border-radius:22px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:800 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">+ Add step</div>
+<div onClick="{{ addHead }}" style="height:44px;padding:0 20px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap" style-hover="background:#FFE14D">+ Add section heading</div>
+<span style="font-size:12.5px;color:#5E5B52;flex:1;min-width:200px;line-height:1.4">Headings split a long recipe into parts, like “Make the sauce”.</span>
+</div>
+<div style="font-size:12.5px;color:#5E5B52;line-height:1.5">Times like “20 minutes” in a step become timers in cook mode. Importing a link fills these in for you.</div>
+</section>
+
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:14px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">6</span><div style="font:800 22px 'Bricolage Grotesque',sans-serif">Your notes</div><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">OPTIONAL</span></div>
+<textarea value="{{ notes }}" onChange="{{ setNotes }}" placeholder="Used less salt than called for. Great with rice." style="min-height:84px;border:2px dashed #16181F;border-radius:14px;background:#FFFDF8;padding:12px 14px;font:500 15px/1.5 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box;width:100%;resize:vertical"></textarea>
+</section>
+</div>
+
+<aside style="flex:0 1 340px;min-width:290px;position:sticky;top:20px;display:flex;flex-direction:column;gap:16px">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">HOW IT LOOKS IN YOUR COOKBOOK</div>
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;overflow:hidden;position:relative;display:flex;flex-direction:column">
+<div style="height:170px;border-bottom:2px solid #16181F;background:#E9E4D8;position:relative"><div style="width:100%;height:100%;background:#E9E4D8 center/cover no-repeat;background-image:{{ coverBg }}"></div>
+<div style="position:absolute;left:12px;bottom:12px;display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:17px;background:{{ timeBg }};color:{{ timeFg }};border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;font:800 17px 'Bricolage Grotesque',sans-serif;white-space:nowrap"><span style="font-size:14px">⏱</span>{{ timeLabel }}</div></div>
+<div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px">
+<div style="font:800 18px/1.2 'Bricolage Grotesque',sans-serif;text-wrap:pretty">{{ title }}</div>
+<div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52">{{ metaLine }}</div>
+<div style="height:12px;border-radius:6px;background:#E9E4D8;border:2px solid #16181F;overflow:hidden"><div style="height:100%;width:{{ havePct }};background:#2323FF"></div></div>
+<div style="font:600 13px 'Bricolage Grotesque',sans-serif;color:#3F3E37">{{ haveLabel }}</div></div>
+</div>
+<div style="background:#FFFDF8;border:2px dashed #16181F;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="font:800 16px 'Bricolage Grotesque',sans-serif">Ready to plan?</div><div style="font:500 11px 'DM Mono',monospace">{{ checkDone }}</div></div>
+<sc-for list="{{ checks }}" as="c" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;border-radius:11px;border:2px solid #16181F;background:{{ c.bg }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none;box-sizing:border-box">{{ c.mark }}</span><span style="font:600 14px 'Bricolage Grotesque',sans-serif;color:{{ c.color }}">{{ c.label }}</span></div>
+</sc-for>
+</div>
+<div style="font-size:12.5px;line-height:1.55;color:#3F3E37">The card sorts by total time. Set prep and cook time so this recipe shows up under “Quickest”.</div>
+</aside>
+</div>
+</div>
+
+<div style="position:fixed;left:0;right:0;bottom:0;background:#FFFDF8;border-top:2px solid #16181F;padding:12px 40px;display:flex;align-items:center;gap:14px;box-sizing:border-box;z-index:10">
+<div style="max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;gap:12px">
+<span style="width:10px;height:10px;border-radius:5px;background:#FF48B0;border:2px solid #16181F;box-sizing:border-box"></span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em">UNSAVED CHANGES</span>
+<div style="flex:1"></div>
+<div style="height:48px;padding:0 24px;border-radius:24px;border:2px solid #16181F;display:flex;align-items:center;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#F4F1EA">Cancel</div>
+<div style="height:48px;padding:0 28px;border-radius:24px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">Save changes</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    title: 'Quick Pickled Shallots', link: 'https://twocloveskitchen.com/quick-pickled-shallots-recipe/',
+    tags: { 'Breakfast': false, 'Lunch': false, 'Dinner': false, 'Snack / Any': false, 'Pantry / Prep': true }, servings: 8, prep: 5, cook: 5, fridge: 5, main: 0, photos: [0, 1, 2, 3],
+    ings: [{ qty: '3', unit: '', name: 'Shallots', note: 'or enough to fill about three-quarters of a 12- to 16-ounce glass Mason jar' }, { qty: '1', unit: 'cups', name: 'Unseasoned rice vinegar', note: '' }, { qty: '2', unit: 'tbsp', name: 'Sugar', note: 'see note 1' }, { qty: '3', unit: 'tsp', name: 'Kosher salt', note: 'see note 2' }],
+    steps: [
+      { text: 'Peel the shallots and thinly slice them. Add to a glass jar or other nonreactive container.' },
+      { text: 'Measure out the vinegar, salt, and sugar and add to a small saucepan. Bring up to a boil, then down to a simmer, stirring until the sugar and salt have dissolved.' },
+      { text: 'Pour the brine over the shallots.' },
+      { text: 'Let cool for 20 minutes, then serve or store in the fridge for later use.' },
+    ],
+    notes: 'Used less salt than called for. Great with rice.',
+  };
+  grow = e => { const t = e.target; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+  move(arr, from, to) { const a = arr.slice(); const [x] = a.splice(from, 1); a.splice(to, 0, x); return a; }
+  renderVals() {
+    const S = this.state, set = o => this.setState(o);
+    const IMG = ['1600628421055-4d30de868b8f', '1606923829579-0cb981a83e2e', '1512621776951-a57141f2eefd', '1546069901-ba9599a7e63c', '1473093295043-cdd812d0e601'];
+    const u = i => typeof i === 'string' ? i : 'https://images.unsplash.com/photo-' + IMG[i % IMG.length] + '?w=400&q=70&auto=format&fit=crop';
+    const total = (+S.prep || 0) + (+S.cook || 0);
+    const fmt = m => m >= 60 ? Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min';
+    const drag = (key, i) => ({ dragStart: () => { this._d = { key, i }; }, over: ev => ev.preventDefault() });
+    const dropOn = (key, to, fn) => ev => { ev.preventDefault(); const d = this._d; this._d = null; if (d && d.key === key && d.i !== to) fn(d.i, to); };
+    const tagList = ['Breakfast', 'Lunch', 'Dinner', 'Snack / Any', 'Pantry / Prep'].map(t => { const on = S.tags[t]; return { label: t, text: (on ? '✓ ' : '') + t, bg: on ? '#16181F' : '#FFFDF8', fg: on ? '#F4F1EA' : '#16181F', sh: on ? '3px 3px 0 #2323FF' : 'none', flip: () => set({ tags: { 'Breakfast': false, 'Lunch': false, 'Dinner': false, 'Snack / Any': false, 'Pantry / Prep': false, [t]: !on } }) }; });
+    const stp = (label, key, unit, help, step, min, color) => ({ label, val: S[key] || 0, unit, help, color: color || '#16181F', dec: () => set({ [key]: Math.max(min, (S[key] || 0) - step) }), inc: () => set({ [key]: (S[key] || 0) + step }) });
+    const steppers = [stp('SERVINGS', 'servings', '', 'Scales the grocery list.', 1, 1), stp('PREP', 'prep', 'MIN', 'Chopping, measuring, marinating.', 5, 0, '#2323FF'), stp('COOK', 'cook', 'MIN', 'Time on the stove or in the oven.', 5, 0, '#2323FF'), stp('FRIDGE LIFE', 'fridge', 'DAYS', 'Used for leftovers in Inventory.', 1, 0)];
+    const upd = (i, k) => e => set({ ings: S.ings.map((g, j) => j === i ? { ...g, [k]: e.target.value } : g) });
+    const ings = S.ings.map((g, i) => ({ ...g, rows: Math.max(1, Math.ceil((g.note || '').length / 26)), ...drag('ing', i), drop: dropOn('ing', i, (f, t) => set({ ings: this.move(S.ings, f, t) })), setQty: upd(i, 'qty'), setUnit: upd(i, 'unit'), setName: upd(i, 'name'), setNote: upd(i, 'note'), remove: () => set({ ings: S.ings.filter((_, j) => j !== i) }) }));
+    const photos = S.photos.map((p, i) => { const m = i === S.main; return { bg: 'url(' + u(p) + ')', isMain: m, bd: m ? '3px solid #2323FF' : '2px solid #16181F', sh: m ? '5px 5px 0 #2323FF' : 'none', main: () => set({ main: i }), ...drag('photo', i),
+      drop: dropOn('photo', i, (f, t) => { const mm = S.main; set({ photos: this.move(S.photos, f, t), main: mm === f ? t : (f < mm && t >= mm ? mm - 1 : (f > mm && t <= mm ? mm + 1 : mm)) }); }),
+      remove: ev => { ev.stopPropagation(); set({ photos: S.photos.filter((_, j) => j !== i), main: 0 }); } }; });
+    const addUrl = url => set({ photos: [...S.photos, url] });
+    let n = 0;
+    const steps = S.steps.map((s, i) => { const head = !!s.head, ed = !!s.edit; const m = (s.text || '').match(/(\d+)\s*(minutes?|mins?|hours?|hrs?)/i); const mins = !head && m ? (/^h/i.test(m[2]) ? +m[1] * 60 : +m[1]) : 0; const num = head ? '' : ++n;
+      return { n: head ? ((!ed && (s.text || '').trim()) ? s.text : 'SECTION') : num, badgeW: head ? 'auto' : '34px', badgeH: '34px', badgeFont: head ? ((!ed && (s.text || '').trim()) ? "800 16px 'Bricolage Grotesque',sans-serif" : "700 11px 'DM Mono',monospace") : "800 14px 'Bricolage Grotesque',sans-serif", badgeLs: head && (ed || !(s.text || '').trim()) ? '.1em' : '0', badgeMt: '0', mt: head && i > 0 ? '18px' : '0', editing: true, viewing: false, badgeDisp: head ? 'none' : 'flex', taH: '34px', taBd: head ? '2px solid #16181F' : 'none', taRad: head ? '17px' : '0', taBg: head ? '#FFE14D' : 'transparent', taPad: head ? '3px 14px' : '6px 0 0', taW: head ? Math.max(14, (s.text || '').length + 4) + 'ch' : '100%', editLabel: ed ? 'Done' : 'Edit', editBg: ed ? '#2323FF' : '#FFFDF8', editFg: ed ? '#fff' : '#16181F', toggleEdit: () => set({ steps: S.steps.map((x, j) => j === i ? { ...x, edit: !x.edit } : x) }), isStep: !head, text: s.text, rows: head ? 1 : Math.max(1, Math.ceil((s.text || '').length / 70)), ph: head ? 'Section title, e.g. Sauce' : 'Describe this step', font: head ? "800 16px/1.5 'Bricolage Grotesque',sans-serif" : "500 15px/1.5 'Bricolage Grotesque',sans-serif",
+        bg: head ? '#F4F1EA' : '#FFFDF8', badgeBg: head ? '#FFE14D' : '#2323FF', badgeFg: head ? '#16181F' : '#fff', timer: mins ? fmt(mins) : '',
+        hasPhoto: s.photo != null, noPhoto: s.photo == null, photoBg: s.photo != null ? 'url(' + u(s.photo) + ')' : 'none',
+        addPhoto: () => set({ steps: S.steps.map((x, j) => j === i ? { ...x, photo: (i + 2) % 5 } : x) }), rmPhoto: () => set({ steps: S.steps.map((x, j) => j === i ? { ...x, photo: null } : x) }),
+        setText: ev => set({ steps: S.steps.map((x, j) => j === i ? { ...x, text: ev.target.value } : x) }), remove: () => set({ steps: S.steps.filter((_, j) => j !== i) }),
+        ...drag('step', i), drop: dropOn('step', i, (f, t) => set({ steps: this.move(S.steps, f, t) })) }; });
+    const stepN = S.steps.filter(s => !s.head && (s.text || '').trim()).length;
+    const cover = photos.length ? u(S.photos[S.main] ?? S.photos[0]) : '';
+    const ingN = S.ings.filter(g => g.name.trim()).length;
+    const anyTag = Object.values(S.tags).some(Boolean);
+    const checks = [['Title', !!S.title.trim(), ''], ['Prep or cook time', total > 0, 'Add a time so it can be sorted'], ['Category', anyTag, 'Pick a category'], ['At least one photo', S.photos.length > 0, ''], ['Ingredients and steps', ingN > 0 && stepN > 0, '']].map(([label, ok, why]) => ({ label: ok ? label : (why || label), bg: ok ? '#10C95C' : 'transparent', mark: ok ? '✓' : '', color: ok ? '#16181F' : '#5E5B52' }));
+    return {
+      title: S.title, link: S.link, setTitle: e => set({ title: e.target.value }), setLink: e => set({ link: e.target.value }), reimport: () => {},
+      catHint: S.tags['Pantry / Prep'] ? "Doesn't take a meal slot on the calendar. It shows up on your prep and grocery lists." : S.tags['Snack / Any'] ? 'Can go in any slot on the calendar.' : Object.values(S.tags).some(Boolean) ? 'Goes in the ' + Object.keys(S.tags).find(k => S.tags[k]).toLowerCase() + ' row of the Planner.' : 'Pick where this belongs in the Planner.',
+      tags: tagList, photos, photoCount: S.photos.length + (S.photos.length === 1 ? ' PHOTO' : ' PHOTOS'),
+      zoneOver: ev => ev.preventDefault(),
+      zoneDrop: ev => { ev.preventDefault(); const dt = ev.dataTransfer; const add = []; if (dt.files && dt.files.length) [...dt.files].filter(f => f.type.startsWith('image/')).forEach(f => add.push(URL.createObjectURL(f))); else { const t = dt.getData('text/uri-list') || dt.getData('text/plain'); if (/^https?:/.test(t)) add.push(t.trim()); } if (add.length) set({ photos: [...S.photos, ...add] }); },
+      urlKey: ev => { if (ev.key === 'Enter' && /^https?:/.test(ev.target.value.trim())) { addUrl(ev.target.value.trim()); ev.target.value = ''; } },
+      grow: this.grow,
+      steppers, totalLabel: total ? fmt(total) : 'not set',
+      ings, ingCount: ingN + ' INGREDIENTS', addIng: () => set({ ings: [...S.ings, { qty: '', unit: '', name: '', note: '' }] }),
+      steps, stepCount: stepN + (stepN === 1 ? ' STEP' : ' STEPS'), addStep: () => set({ steps: [...S.steps, { text: '' }] }), addHead: () => set({ steps: [...S.steps, { text: '', head: true }] }),
+      notes: S.notes, setNotes: e => set({ notes: e.target.value }),
+      coverBg: cover ? 'url(' + cover + ')' : 'none', timeLabel: total ? fmt(total) : 'add time', timeBg: total ? '#16181F' : '#FFFDF8', timeFg: total ? '#F4F1EA' : '#16181F',
+      metaLine: ingN + ' INGREDIENTS · SERVES ' + S.servings, havePct: '0%', haveLabel: ingN + ' to buy · 0 on hand',
+      checks, checkDone: checks.filter(c => c.mark).length + ' OF ' + checks.length,
+    };
+  }
+}
+</script>
+</body>
+</html>

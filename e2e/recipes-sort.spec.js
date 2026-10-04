@@ -25,7 +25,8 @@ test("Fewest missing sorts by items to buy, with unknown recipes last", async ({
 
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByLabel("Sort recipes").selectOption({ label: "Fewest missing" });
+  await page.getByRole("button", { name: /^SORT/ }).click();
+  await page.getByRole("option", { name: "Fewest missing" }).click();
 
   const names = page.locator(".riso-recipe-card-name");
   await expect(names).toHaveText(["Needs nothing", "Needs one", "Needs three", "No ingredients yet"]);
@@ -49,7 +50,8 @@ test("cards show the total time, and Quickest puts recipes without a time last",
   }
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByLabel("Sort recipes").selectOption({ label: "Quickest" });
+  await page.getByRole("button", { name: /^SORT/ }).click();
+  await page.getByRole("option", { name: "Quickest" }).click();
 
   await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Quick salad", "Slow braise", "No time given"]);
   await expect(page.locator(".riso-recipe-card", { hasText: "Slow braise" }).locator(".riso-recipe-chip.time")).toHaveText("⏱3 h");
@@ -119,11 +121,11 @@ test("the Side filter shows side dishes", async ({ page }) => {
 
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: /^Side\s*\d+$/ }).click();
+  await page.getByRole("button", { name: /^Sides\s*\d+$/ }).click();
   await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Garlic asparagus"]);
 });
 
-test("SORT sits beside Cookbook and Imported, with the filter chips on one line", async ({ page }) => {
+test("SORT sits in the toolbar beside the tabs, and the meal chips keep their counts", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -135,10 +137,10 @@ test("SORT sits beside Cookbook and Imported, with the filter chips on one line"
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
-  await expect(page.locator(".riso-recipes-heading-row").getByLabel("Sort recipes")).toHaveCount(0);
-  await expect(page.locator(".riso-recipes-source-row").getByLabel("Sort recipes")).toBeVisible();
-  const chips = page.locator(".riso-recipes-filter-chips:not(.riso-recipes-source-chips) .riso-filter-chip");
-  await expect(chips.filter({ hasText: /^Snack\s*1$/ })).toHaveCount(1);
-  const tops = await chips.evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
-  expect(tops).toBe(1);
+  // Protein, Time and Sort share the row with the tabs.
+  const row = page.locator(".rv2-tabrow");
+  await expect(row.getByRole("tab", { name: /^Cookbook\s*1$/ })).toBeVisible();
+  for (const label of [/^PROTEIN/, /^TIME/, /^SORT/]) await expect(row.getByRole("button", { name: label })).toBeVisible();
+  await expect(page.locator(".rv2-chips").getByRole("button", { name: /^Snacks\s*1$/ })).toBeVisible();
+  await expect(page.locator(".rv2-chips").getByRole("button", { name: /^Supper\s*0$/ })).toBeVisible();
 });

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}input::placeholder{color:#5E5B52}input:focus{outline:none}</style></helmet>
+<div style="width:{{ width }};max-width:100%;background:#F4F1EA;color:#16181F;position:relative;box-sizing:border-box">
+<div style="padding:28px 40px 56px;box-sizing:border-box;display:flex;flex-direction:column;gap:22px">
+<header style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+<div style="font:800 28px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap">matt mo <span style="background:#FF48B0;padding:0 8px;border-radius:6px">cookbook</span></div>
+<nav style="flex:1;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;font:500 14px 'Bricolage Grotesque',sans-serif">
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Home</div>
+<div style="height:36px;padding:0 14px;border-radius:18px;background:#2323FF;color:#fff;display:flex;align-items:center;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F">Recipes</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Planner</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Makeable</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Grocery</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Flyers</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Inventory</div>
+</nav>
+<div style="font-size:14px">Matthieu</div>
+</header>
+
+<div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+<div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:6px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em">{{ summary }}</div>
+<div style="font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">Your <span style="color:#2323FF">recipes.</span></div>
+</div>
+<a href="Riso Recipe Editor.dc.html" style="height:48px;padding:0 24px;border-radius:24px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:800 16px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">+ New recipe</a>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:12px;align-items:center;background:#FFFDF8;border:2px solid #16181F;border-radius:999px;padding:6px 6px 6px 10px;box-shadow:5px 5px 0 #16181F">
+<div style="height:34px;padding:0 14px;border-radius:17px;background:{{ fieldBg }};border:2px solid #16181F;display:flex;align-items:center;font:500 11px 'DM Mono',monospace;letter-spacing:.1em;white-space:nowrap;box-sizing:border-box">{{ fieldLabel }}</div>
+<input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search by name, tag or ingredient" style="flex:1;min-width:0;height:44px;border:none;background:transparent;color:#16181F;font:500 16px 'Bricolage Grotesque',sans-serif">
+<sc-if value="{{ isUrl }}" hint-placeholder-val="{{ false }}"><div onClick="{{ doImport }}" style="height:44px;padding:0 24px;border-radius:22px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box">Import recipe</div></sc-if>
+<sc-if value="{{ notUrl }}" hint-placeholder-val="{{ true }}"><div style="height:34px;padding:0 14px;border-radius:17px;border:2px dashed #16181F;display:flex;align-items:center;font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;white-space:nowrap;margin-right:6px;box-sizing:border-box">PASTE A LINK TO IMPORT</div></sc-if>
+</div>
+<sc-if value="{{ isUrl }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:10px;align-items:center;padding:0 18px;font-size:13.5px;color:#3F3E37"><span style="width:10px;height:10px;border-radius:5px;background:#FFE14D;border:2px solid #16181F;box-sizing:border-box;flex:none"></span>Link found. Importing fills in the title, photos, ingredients and steps. It lands in Imported.</div></sc-if>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;transform:rotate(-1.5deg);background:#FFE14D;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;border-radius:999px;padding:8px 18px;font:800 14px 'Bricolage Grotesque',sans-serif">{{ toast }}</div></sc-if>
+
+<sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;border-bottom:2px solid #16181F">
+<div style="display:flex;gap:6px;margin-bottom:-2px">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><div onClick="{{ t.pick }}" style="height:52px;padding:0 24px;border:2px solid #16181F;border-bottom:{{ t.bb }};border-radius:20px 20px 0 0;background:{{ t.bg }};color:{{ t.fg }};display:flex;align-items:center;gap:10px;font:800 20px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;user-select:none">{{ t.label }}<span style="min-width:26px;height:24px;padding:0 8px;border-radius:12px;background:{{ t.chipBg }};color:#16181F;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 12px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ t.count }}</span></div></sc-for>
+</div>
+<div style="flex:1"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:10px">
+<sc-for list="{{ menus }}" as="m" hint-placeholder-count="3">
+<div style="position:relative"><div onClick="{{ m.toggle }}" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid #16181F;background:{{ m.bg }};display:flex;align-items:center;gap:8px;font:700 13.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">{{ m.title }}</span>{{ m.value }}<span style="font-size:9px">▾</span></div>
+<sc-if value="{{ m.open }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:0;top:calc(100% + 8px);z-index:30;min-width:200px;background:#FFFDF8;border:2px solid #16181F;border-radius:16px;box-shadow:4px 4px 0 #16181F;padding:6px;display:flex;flex-direction:column;gap:2px"><sc-for list="{{ m.opts }}" as="o" hint-placeholder-count="4"><div onClick="{{ o.pick }}" style="height:38px;padding:0 10px;border-radius:12px;background:{{ o.bg }};display:flex;align-items:center;justify-content:space-between;gap:10px;font:600 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap">{{ o.label }}<span>{{ o.tick }}</span></div></sc-for></div></sc-if></div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+<sc-for list="{{ meals }}" as="f" hint-placeholder-count="8"><div onClick="{{ f.pick }}" style="height:38px;padding:0 16px;border-radius:19px;border:2px solid #16181F;background:{{ f.bg }};color:{{ f.fg }};box-shadow:{{ f.sh }};display:flex;align-items:center;gap:7px;font:700 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;user-select:none;box-sizing:border-box">{{ f.label }}<span style="font:500 10.5px 'DM Mono',monospace;opacity:.75">{{ f.count }}</span></div></sc-for>
+</div>
+<div style="display:flex;gap:12px;align-items:center;font:500 11px 'DM Mono',monospace;letter-spacing:.12em;min-height:20px">{{ countLine }}<sc-if value="{{ filtered }}" hint-placeholder-val="{{ false }}"><span onClick="{{ clear }}" style="font:600 13px 'Bricolage Grotesque',sans-serif;letter-spacing:0;text-decoration:underline;cursor:pointer">Clear filters</span></sc-if></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:24px">
+<sc-for list="{{ recipes }}" as="r" hint-placeholder-count="6">
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:{{ r.shadow }};cursor:pointer">
+<div style="height:250px;border-bottom:2px solid #16181F;background:#E9E4D8;position:relative"><img src="{{ r.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
+</div>
+<div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;flex:1">
+<div style="font:800 20px/1.2 'Bricolage Grotesque',sans-serif;text-wrap:pretty">{{ r.name }}</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="display:flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:5px;background:{{ r.timeBgA }};border:1.5px {{ r.timeBd }} #16181F;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box;flex:none"><span style="font-size:10px">⏱</span>{{ r.time }}</span><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52">{{ r.meta }}</span><sc-for list="{{ r.chips }}" as="c" hint-placeholder-count="1"><span style="height:22px;padding:0 9px;border-radius:11px;background:{{ c.bg }};border:1.5px solid #16181F;display:flex;align-items:center;font:800 11px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">{{ c.label }}</span></sc-for></div>
+<div style="flex:1"></div>
+<div style="height:12px;border-radius:6px;background:#E9E4D8;border:2px solid #16181F;overflow:hidden"><div style="height:100%;width:{{ r.pct }};background:#2323FF"></div></div>
+<div style="font:600 13.5px 'Bricolage Grotesque',sans-serif;color:{{ r.haveColor }}">{{ r.haveLabel }}</div>
+</div></div>
+</sc-for>
+</div>
+<sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}"><div style="border:2px dashed #16181F;border-radius:22px;padding:40px;text-align:center;font:600 15px 'Bricolage Grotesque',sans-serif">No recipes match these filters.</div></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isB }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
+<aside style="flex:0 0 232px;display:flex;flex-direction:column;gap:22px;position:sticky;top:20px">
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em;padding:0 4px 4px">{{ g.title }}</div>
+<sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="4"><div onClick="{{ o.pick }}" style="height:38px;padding:0 12px;border-radius:19px;border:2px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box"><span>{{ o.label }}</span><span style="font:500 10.5px 'DM Mono',monospace;opacity:.75">{{ o.count }}</span></div></sc-for>
+</div>
+</sc-for>
+</aside>
+<div style="flex:1 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+<div style="font:800 26px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">{{ countBig }}</div>
+<sc-for list="{{ activeChips }}" as="c" hint-placeholder-count="2"><div onClick="{{ c.remove }}" style="height:30px;padding:0 6px 0 12px;border-radius:15px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;gap:6px;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">{{ c.label }}<span style="width:18px;height:18px;border-radius:9px;background:#FFFDF8;border:1.5px solid #16181F;display:flex;align-items:center;justify-content:center;font-size:11px;box-sizing:border-box">×</span></div></sc-for>
+<div style="flex:1"></div>
+<div style="position:relative"><div onClick="{{ sortToggle }}" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;gap:8px;font:700 13.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">SORT</span>{{ sortValue }}<span style="font-size:9px">▾</span></div>
+<sc-if value="{{ sortOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:0;top:calc(100% + 8px);z-index:30;min-width:200px;background:#FFFDF8;border:2px solid #16181F;border-radius:16px;box-shadow:4px 4px 0 #16181F;padding:6px;display:flex;flex-direction:column;gap:2px"><sc-for list="{{ sortOpts }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.pick }}" style="height:38px;padding:0 10px;border-radius:12px;background:{{ o.bg }};display:flex;align-items:center;justify-content:space-between;gap:10px;font:600 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap">{{ o.label }}<span>{{ o.tick }}</span></div></sc-for></div></sc-if></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px">
+<sc-for list="{{ recipes }}" as="r" hint-placeholder-count="6">
+<div style="display:flex;flex-direction:column;gap:10px;cursor:pointer">
+<div style="position:relative;aspect-ratio:4/5;border:2px solid #16181F;border-radius:24px;overflow:hidden;background:#E9E4D8;box-shadow:{{ r.shadow }}"><img src="{{ r.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
+
+<div style="position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:5px;align-items:flex-end"><sc-for list="{{ r.chips }}" as="c" hint-placeholder-count="1"><span style="height:24px;padding:0 10px;border-radius:12px;background:{{ c.bg }};border:2px solid #16181F;display:flex;align-items:center;font:800 11.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">{{ c.label }}</span></sc-for></div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#16181F;color:#F4F1EA;padding:12px 16px 14px;display:flex;flex-direction:column;gap:4px"><div style="font:800 19px/1.2 'Bricolage Grotesque',sans-serif;text-wrap:pretty">{{ r.name }}</div><div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;opacity:.8">{{ r.meta }}</div></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:0 4px"><span style="display:flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:5px;background:{{ r.timeBgA }};border:1.5px {{ r.timeBd }} #16181F;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box;flex:none"><span style="font-size:10px">⏱</span>{{ r.time }}</span><div style="flex:1;height:10px;border-radius:5px;background:#E9E4D8;border:2px solid #16181F;overflow:hidden;box-sizing:border-box"><div style="height:100%;width:{{ r.pct }};background:#2323FF"></div></div><div style="font:600 13px 'Bricolage Grotesque',sans-serif;color:{{ r.haveColor }};white-space:nowrap">{{ r.haveShort }}</div></div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}"><div style="border:2px dashed #16181F;border-radius:22px;padding:40px;text-align:center;font:600 15px 'Bricolage Grotesque',sans-serif">No recipes match these filters.</div></sc-if>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;direction&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;A&quot;,&quot;options&quot;:[&quot;A&quot;,&quot;B&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;width&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;1240px&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Layout&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'Cookbook', meal: 'All', protein: 0, time: 0, sort: 0, q: '', menu: null, toast: '' };
+  PROT = ['Any protein', 'Chicken', 'Beef', 'Pork', 'Fish & seafood', 'Vegetarian'];
+  TIME = ['Any time', 'Under 20 min', 'Under 45 min', 'Under 1 hour', '1 hour or more'];
+  SORT = ['Recently added', 'Fewest missing', 'Quickest'];
+  MEALS = ['All', 'Breakfast', 'Lunch', 'Supper', 'Side', 'Snack', 'Dessert', 'Pantry / Prep'];
+  renderVals() {
+    const S = this.state, set = o => this.setState(o), dir = this.props.direction || 'A';
+    const u = id => 'https://images.unsplash.com/photo-' + id + '?w=600&q=70&auto=format&fit=crop';
+    // name, img, mins, ingredients, onhand, meal, source, protein idx, flags
+    const all = [
+      ['Chocolatine', '1509440159596-0249088772ff', 10, 1, 0, 'Breakfast', 'Cookbook', 5, ''],
+      ['Roasted Chickpea Gyros', '1561651823-34feb02250e4', 30, 6, 1, 'Supper', 'Cookbook', 5, ''],
+      ['Crispy Chicken Salad with Sriracha Honey BBQ Dressing', '1512621776951-a57141f2eefd', 40, 12, 6, 'Supper', 'Cookbook', 1, 'soon'],
+      ['Buttermilk Pancakes', '1567620905732-2d1ec7ab7445', 25, 8, 8, 'Breakfast', 'Cookbook', 5, ''],
+      ['Garlic Roasted Asparagus', '1540189549336-e6e99c3679fe', 20, 5, 4, 'Side', 'Cookbook', 5, ''],
+      ['Slow-Cooker Pork Tacos with Hoisin and Ginger', '1551504734-5ee1c4a1479b', 240, 17, 12, 'Supper', 'Cookbook', 3, 'sale'],
+      ['Spiced Roasted Chickpeas', '1546069901-ba9599a7e63c', 35, 4, 4, 'Snack', 'Cookbook', 5, ''],
+      ['Pressure Cooker Beef Pho', '1569718212165-3a8278d5f624', 75, 14, 11, 'Supper', 'Imported', 2, 'soon'],
+      ['Tzatziki Chickpea Salad', '1512621776951-a57141f2eefd', 25, 9, 9, 'Lunch', 'Imported', 5, ''],
+      ['Slow-Cooker Black Bean Soup', '1547592180-85f173990554', 360, 7, 6, 'Supper', 'Imported', 5, ''],
+      ['Chicken Shawarma Bowls', '1546069901-ba9599a7e63c', 40, 13, 10, 'Supper', 'Imported', 1, 'soon,sale'],
+      ['Lemon Chicken Orzo', '1473093295043-cdd812d0e601', 35, 10, 8, 'Supper', 'Imported', 1, ''],
+      ['Green Goddess Bowl', '1540189549336-e6e99c3679fe', 20, 11, 11, 'Lunch', 'Imported', 5, 'soon'],
+      ['Mushroom Risotto', '1476124369491-e7addf5db371', 0, 9, 5, 'Supper', 'Imported', 5, ''],
+      ['Shakshuka', '1525351484163-7529414344d8', 30, 10, 9, 'Breakfast', 'Imported', 5, 'soon'],
+      ['Weeknight Margherita Pizza', '1565299624946-b28f40a0ae38', 30, 6, 4, 'Supper', 'Imported', 5, ''],
+      ['Sunday Roast Chicken', '1504674900247-0877df9cc836', 90, 8, 7, 'Supper', 'Imported', 1, ''],
+      ['Miso Salmon', '1467003909585-2f8a72700288', 25, 7, 5, 'Supper', 'Imported', 4, ''],
+      ['Quick Pickled Shallots', '1512621776951-a57141f2eefd', 10, 4, 4, 'Pantry / Prep', 'Imported', 5, ''],
+      ['Flourless Chocolate Cake', '1578985545062-69928b1d9587', 55, 6, 3, 'Dessert', 'Imported', 5, ''],
+    ];
+    const tmOK = (m, i) => i === 0 || (i === 4 ? m >= 60 : m > 0 && (i === 1 ? m <= 20 : i === 2 ? m <= 45 : m < 60));
+    const q = S.q.trim(), isUrl = /^https?:\/\//i.test(q) || /\.\w{2,}\//.test(q);
+    const pass = (r, skip) => (skip === 'tab' || r[6] === S.tab) && (skip === 'meal' || S.meal === 'All' || r[5] === S.meal) && (skip === 'protein' || S.protein === 0 || r[7] === S.protein) && (skip === 'time' || tmOK(r[2], S.time)) && (!q || isUrl || (r[0] + ' ' + r[5]).toLowerCase().includes(q.toLowerCase()));
+    let list = all.filter(r => pass(r));
+    if (S.sort === 1) list = [...list].sort((a, b) => (a[3] - a[4]) - (b[3] - b[4]));
+    if (S.sort === 2) list = [...list].sort((a, b) => (a[2] || 999) - (b[2] || 999));
+    const fmt = m => m ? (m >= 60 ? Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min') : 'add time';
+    const recipes = list.map(r => { const miss = r[3] - r[4], soon = r[8].includes('soon'), sale = r[8].includes('sale');
+      return { name: r[0], img: u(r[1]), time: fmt(r[2]), timeBg: r[2] ? '#16181F' : '#FFFDF8', timeFg: r[2] ? '#F4F1EA' : '#16181F', timeBgA: r[2] ? '#FFE14D' : 'transparent', timeBd: r[2] ? 'solid' : 'dashed', pct: Math.round(r[4] / r[3] * 100) + '%',
+        meta: (r[5] + ' · ' + this.PROT[r[7]]).toUpperCase(),
+        haveLabel: miss ? r[4] + ' of ' + r[3] + ' on hand · ' + miss + ' to buy' : 'all ' + r[3] + ' on hand · nothing to buy!', haveShort: miss ? miss + ' to buy' : 'nothing to buy', haveColor: miss ? '#3F3E37' : '#00753F',
+        chips: [...(soon ? [{ label: 'uses expiring', bg: '#FF48B0' }] : []), ...(sale ? [{ label: 'on sale', bg: '#10C95C' }] : [])], shadow: miss ? 'none' : '5px 5px 0 #16181F' }; });
+    const mealCount = m => all.filter(r => pass(r, 'meal') && (m === 'All' || r[5] === m)).length;
+    const meals = this.MEALS.map(label => { const on = S.meal === label; return { label, count: mealCount(label), bg: on ? '#16181F' : '#FFFDF8', fg: on ? '#F4F1EA' : '#16181F', sh: on ? '3px 3px 0 #2323FF' : 'none', pick: () => set({ meal: label }) }; });
+    const tabs = ['Cookbook', 'Imported'].map(label => { const on = S.tab === label; return { label, count: all.filter(r => r[6] === label).length, bg: on ? '#2323FF' : '#FFFDF8', fg: on ? '#fff' : '#16181F', chipBg: on ? '#FFE14D' : '#F4F1EA', bb: on ? '2px solid #2323FF' : '2px solid #16181F', pick: () => set({ tab: label, meal: 'All' }) }; });
+    const optsOf = (key, arr, cur) => arr.map((label, i) => ({ label, tick: cur === i ? '✓' : '', bg: cur === i ? '#F4F1EA' : 'transparent', pick: () => set({ [key]: i, menu: null }) }));
+    const mk = (key, title, arr, cur) => ({ title, value: arr[cur], bg: cur ? '#FFE14D' : '#FFFDF8', open: S.menu === key, toggle: () => set({ menu: S.menu === key ? null : key }), opts: optsOf(key, arr, cur) });
+    const filtered = S.meal !== 'All' || S.protein || S.time || !!(q && !isUrl);
+    const clear = () => set({ meal: 'All', protein: 0, time: 0, q: '' });
+    const grp = (title, labels, cur, key, counter) => ({ title, opts: labels.map((label, i) => { const on = (key === 'meal' ? S.meal === label : cur === i); return { label, count: counter(label, i), bg: on ? '#16181F' : 'transparent', fg: on ? '#F4F1EA' : '#16181F', bd: on ? '#16181F' : 'transparent', sh: on ? '3px 3px 0 #2323FF' : 'none', pick: () => set(key === 'meal' ? { meal: label } : { [key]: i }) }; }) });
+    const groups = [
+      { title: 'SOURCE', opts: tabs.map(t => ({ label: t.label, count: t.count, bg: S.tab === t.label ? '#2323FF' : 'transparent', fg: S.tab === t.label ? '#fff' : '#16181F', bd: S.tab === t.label ? '#16181F' : 'transparent', sh: S.tab === t.label ? '3px 3px 0 #16181F' : 'none', pick: t.pick })) },
+      grp('MEAL TYPE', this.MEALS, 0, 'meal', m => mealCount(m)),
+      grp('PROTEIN', this.PROT, S.protein, 'protein', (l, i) => all.filter(r => pass(r, 'protein') && (i === 0 || r[7] === i)).length),
+      grp('TIME', this.TIME, S.time, 'time', (l, i) => all.filter(r => pass(r, 'time') && tmOK(r[2], i)).length),
+    ];
+    const activeChips = [S.meal !== 'All' && { label: S.meal, remove: () => set({ meal: 'All' }) }, S.protein && { label: this.PROT[S.protein], remove: () => set({ protein: 0 }) }, S.time && { label: this.TIME[S.time], remove: () => set({ time: 0 }) }].filter(Boolean);
+    const flash = m => { set({ toast: m }); setTimeout(() => set({ toast: '' }), 2600); };
+    return {
+      width: this.props.width || '1240px', isA: dir === 'A', isB: dir === 'B', q: S.q, isUrl, notUrl: !isUrl, fieldLabel: isUrl ? 'IMPORT' : 'SEARCH', fieldBg: isUrl ? '#FFE14D' : '#F4F1EA',
+      onQ: e => set({ q: e.target.value }), doImport: () => { set({ tab: 'Imported', q: '' }); flash('Imported. Find it under Imported, sorted by recently added.'); }, toast: S.toast,
+      summary: all.length + ' RECIPES · ' + all.filter(r => r[3] === r[4]).length + ' MAKEABLE NOW · ' + all.filter(r => r[8].includes('soon')).length + ' USE EXPIRING ITEMS',
+      tabs, meals, recipes, empty: !recipes.length, filtered, clear,
+      menus: [mk('protein', 'PROTEIN', this.PROT, S.protein), mk('time', 'TIME', this.TIME, S.time), mk('sort', 'SORT', this.SORT, S.sort)],
+      countLine: recipes.length + (recipes.length === 1 ? ' RECIPE' : ' RECIPES') + (filtered ? ' MATCH' : ''),
+      groups, activeChips, countBig: recipes.length + (recipes.length === 1 ? ' recipe' : ' recipes'),
+      sortValue: this.SORT[S.sort], sortOpen: S.menu === 'sort', sortToggle: () => set({ menu: S.menu === 'sort' ? null : 'sort' }), sortOpts: optsOf('sort', this.SORT, S.sort),
+    };
+  }
+}
+</script>
+</body>
+</html>

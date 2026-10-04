@@ -90,7 +90,8 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     const made = await recipe(page, "Pad thai");
     await api(page, "PUT", `/api/recipes/${made.id}`, { inCookbook: false });
     await goRecipes(page);
-    await expect(page.locator(".riso-recipes-section", { hasText: "Imported" })).toContainText("Pad thai");
+    await page.getByRole("tab", { name: /^Imported/ }).click();
+    await expect(page.locator(".rv2-grid")).toContainText("Pad thai");
 
     await page.locator(".riso-recipe-card", { hasText: "Pad thai" }).click();
     // On the recipe page.
@@ -105,7 +106,7 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     await expect(page.getByRole("status").filter({ hasText: "Moved to Imported." })).toBeVisible();
     expect((await api(page, "GET", `/api/recipes`)).find((r) => r.id === made.id).inCookbook).toBe(false);
     await page.keyboard.press("Escape");
-    await expect(page.locator(".riso-recipes-section", { hasText: "Imported" })).toContainText("Pad thai");
+    await expect(page.locator(".rv2-grid")).toContainText("Pad thai");
   });
 
   test("on a phone, in French", async ({ page }) => {

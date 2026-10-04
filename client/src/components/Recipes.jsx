@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { RecipesDesktop } from "./RecipesDesktop.jsx";
+import { useIsPhone } from "../hooks/useIsPhone.js";
 import { api } from "../api.js";
 import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
@@ -7,6 +9,7 @@ import { hideBrokenPhoto } from "../lib/photos.js";
 import { matchesSearch } from "../lib/recipeSearch.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
 import { RECIPE_SLOTS, formatRecipeTime, inMealGroup, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { isUrlLike, sortRecipes } from "../lib/recipesView.js";
 import { t } from "../i18n/index.js";
 
 // Filter ids stay the same in both languages; labels follow the language.
@@ -99,11 +102,6 @@ function RecipeGrid({ recipes, haveCores, matchesFilter, onSelect }) {
   );
 }
 
-function isUrlLike(text) {
-  const q = text.trim();
-  return /^https?:\/\//i.test(q) || /\.\w{2,}\//.test(q);
-}
-
 // Photo on top (nothing printed over it), then the title and a column of
 // chips: total time (yellow, dashed "add time" when unset), then pink
 // "uses expiring". Sales show on the ingredients inside the recipe card,
@@ -150,7 +148,9 @@ function RecipeCard({ recipe, stats, usesExpiring, onClick }) {
   );
 }
 
-export function Recipes({
+// Below 768px: Cookbook and Imported as folding sections, with the meal types
+// inside the Cookbook. From 768px up the page is RecipesDesktop.
+function RecipesPhone({
   user,
   recipes,
   pantryInventory,
@@ -212,27 +212,7 @@ export function Recipes({
   );
   if (query && !isUrl) visible = visible.filter((r) => matchesSearch(r, query));
 
-  if (sortIndex === 1) {
-    // Fewest to buy first; recipes without any ingredient list can't be
-    // judged, so they go last. Ties: more of it on hand, then by name.
-    const stats = new Map(visible.map((r) => [r.id, recipeHaveStats(r, haveCores)]));
-    visible = [...visible].sort((a, b) => {
-      const sa = stats.get(a.id);
-      const sb = stats.get(b.id);
-      if ((sa.totalCount === 0) !== (sb.totalCount === 0)) return sa.totalCount === 0 ? 1 : -1;
-      if (sa.missingCount !== sb.missingCount) return sa.missingCount - sb.missingCount;
-      const fa = sa.totalCount ? sa.matchedCount / sa.totalCount : 0;
-      const fb = sb.totalCount ? sb.matchedCount / sb.totalCount : 0;
-      if (fa !== fb) return fb - fa;
-      return a.title.localeCompare(b.title);
-    });
-  } else if (sortIndex === 2) {
-    // Quickest first; recipes with no time set can't be ranked, so they go last.
-    const minutes = (r) => recipeTotalMinutes(r) || Infinity;
-    visible = [...visible].sort((a, b) => minutes(a) - minutes(b) || a.title.localeCompare(b.title));
-  } else {
-    visible = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
+  visible = sortRecipes(visible, sortIndex, haveCores);
 
   // Cookbook and Imported are always their own sections (the Cookbook first),
   // each with the count of what the toggles, filters and search leave in it.
@@ -443,4 +423,9 @@ export function Recipes({
       )}
     </div>
   );
+}
+
+export function Recipes(props) {
+  const isPhone = useIsPhone();
+  return isPhone ? <RecipesPhone {...props} /> : <RecipesDesktop {...props} />;
 }

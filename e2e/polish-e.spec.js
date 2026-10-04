@@ -103,7 +103,7 @@ test.describe("Proteins on sale, by general protein", () => {
       await expect(page.locator(".tab.active")).toHaveText("Recipes");
       // A chip with the protein's name, not a long search.
       await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
-      await expect(page.locator(".riso-recipes-protein-chip")).toContainText(kind);
+      await expect(page.getByRole("button", { name: /^PROTEIN/ })).toContainText(kind);
       // The same recipes, no more and no fewer.
       expect((await page.locator(".riso-recipe-card-name").allInnerTexts()).sort()).toEqual([...titles].sort());
       await page.getByRole("button", { name: "Home", exact: true }).click();
@@ -276,41 +276,49 @@ test.describe("Recipes protein filter: a sauce or stock is not the protein", () 
     await expect(page.locator(".riso-recipe-card").first()).toBeVisible();
   }
   const names = async (page) => (await page.locator(".riso-recipe-card-name").allInnerTexts()).sort();
+  // The Protein menu in the toolbar.
+  const chooseProtein = async (page, name) => {
+    await page.getByRole("button", { name: /^PROTEIN/ }).click();
+    await page.getByRole("option", { name, exact: true }).click();
+  };
 
   test("filtering by Fish leaves out a recipe whose only fish is fish sauce", async ({ page }) => {
     await seed(page);
-    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Fish (1)" });
-    await expect(page.locator(".riso-recipes-protein-chip")).toContainText("Fish");
+    await chooseProtein(page, "Fish");
+    await expect(page.getByRole("button", { name: /^PROTEIN/ })).toContainText("Fish");
     expect(await names(page)).toEqual(["Fish curry"]);
   });
 
   test("Chicken and Beef leave out stock, broth and bouillon", async ({ page }) => {
     await seed(page);
-    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Chicken (1)" });
+    await chooseProtein(page, "Chicken");
     expect(await names(page)).toEqual(["Roast chicken"]);
-    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Beef (1)" });
+    await chooseProtein(page, "Beef");
     expect(await names(page)).toEqual(["Bœuf et bouillon"]); // the real bœuf haché counts, the bouillon doesn't add to it
-    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Seafood (0)" });
+    await chooseProtein(page, "Seafood");
     expect(await names(page)).toEqual([]); // oyster sauce isn't seafood
   });
 
   test("the chip clears the filter, and the filter works with the other filters", async ({ page }) => {
     await seed(page);
-    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Chicken (1)" });
+    await chooseProtein(page, "Chicken");
     await expect(page.locator(".riso-recipe-card-name")).toHaveCount(1);
-    await page.getByRole("button", { name: "Clear the Chicken filter" }).click();
-    await expect(page.locator(".riso-recipes-protein-chip")).toHaveCount(0);
+    // "Any protein" in the menu, or Clear filters, takes it off.
+    await chooseProtein(page, "Any protein");
+    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(8);
+    await chooseProtein(page, "Chicken");
+    await page.getByRole("button", { name: "Clear filters" }).click();
     await expect(page.locator(".riso-recipe-card-name")).toHaveCount(8);
     // With a search too: both apply.
-    await page.getByLabel("Filter recipes by protein").selectOption({ label: "Fish (1)" });
+    await chooseProtein(page, "Fish");
     await page.locator(".riso-recipes-searchbar input").fill("pad");
     await expect(page.locator(".riso-recipe-card-name")).toHaveCount(0);
   });
 
   test("Home and the filter always agree on the count", async ({ page }) => {
     await seed(page);
-    for (const [label, kind] of [["Chicken (1)", "Chicken"], ["Fish (1)", "Fish"], ["Beef (1)", "Beef"]]) {
-      await page.getByLabel("Filter recipes by protein").selectOption({ label });
+    for (const kind of ["Chicken", "Fish", "Beef"]) {
+      await chooseProtein(page, kind);
       const shown = await page.locator(".riso-recipe-card-name").count();
       await page.getByRole("button", { name: "Home", exact: true }).click();
       await page.getByRole("button", { name: new RegExp(`^${kind}:`) }).click();
