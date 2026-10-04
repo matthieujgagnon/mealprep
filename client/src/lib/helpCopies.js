@@ -28,6 +28,9 @@ export const HELP_COPIES = {
   filterAll: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.all" },
   filterMakeable: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.makeable" },
   filterExpiring: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.expiring" },
+  filterMeals: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.meals" },
+  sourceCookbook: { kind: "pill", cls: "riso-filter-chip", label: "recipes.sources.cookbook" },
+  sourceImported: { kind: "pill", cls: "riso-filter-chip", label: "recipes.sources.imported" },
   importRecipe: { kind: "pill", cls: "riso-recipes-searchbar-btn primary", label: "recipes.importRecipe", strong: true },
   newRecipe: { kind: "pill", cls: "riso-recipes-searchbar-btn", label: "recipes.newRecipe" },
 
@@ -76,7 +79,7 @@ export const HELP_COPIES = {
 
   // Makeable
   useInventory: { kind: "group", cls: "riso-help-copy-toggle", switch: true, items: [{ label: "makeable.useInventory" }] },
-  expiringFirst: { kind: "group", cls: "riso-help-copy-toggle", switch: true, items: [{ label: "makeable.expiringFirst" }] },
+  makeableMeals: { kind: "pill", cls: "riso-filter-chip", label: "makeable.types.meals" },
   showSales: { kind: "group", cls: "riso-help-copy-toggle", switch: true, items: [{ label: "makeable.showSales" }] },
   cookTonight: { kind: "pill", cls: "riso-makeable-action cook", label: "makeable.cookTonight", strong: true },
 

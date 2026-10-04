@@ -68,7 +68,7 @@ describe("translations", () => {
       ("note notes total minimum maximum portions portion info options option photo photos message service section " +
         "sections menu date instructions description pause stop ok max min h g kg lb ml oz l flipp gemini metro maxi " +
         "iga provigo super c adonis walmart costco statcan le rabais fr en points simple restaurant collation " +
-        "minute minutes nature type format application ingrédients ingredients suggestions suggestion volume carton cartons auto").split(" ")
+        "minute minutes nature type format application ingrédients ingredients suggestions suggestion volume carton cartons auto tofu dessert desserts").split(" ")
     );
     const same = Object.entries(FLAT_EN)
       .filter(([k]) => !k.startsWith("same."))

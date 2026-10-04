@@ -167,6 +167,7 @@ function initialState(recipe) {
     title: recipe?.title || "",
     sourceUrl: recipe?.sourceUrl || "",
     mealSlot: recipe?.mealSlot || null,
+    inCookbook: recipe ? !!recipe.inCookbook : true,
     photos,
     coverId: photos[Math.max(0, coverIdx)]?.id || null,
     servings: String(recipe?.baseServings || 4),
@@ -187,6 +188,7 @@ function toPayload(s) {
     title: s.title.trim(),
     sourceUrl: s.sourceUrl.trim() || null,
     mealSlot: s.mealSlot,
+    inCookbook: s.inCookbook,
     photoUrl: cover,
     photos,
     baseServings: Number(s.servings) || 4,
@@ -589,6 +591,30 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
               </div>
               <span className="re-help">{slotHint(state.mealSlot)}</span>
             </div>
+            {!isNew && (
+              <div className="re-field">
+                <span className="re-label">{t("editor.homeLabel")}</span>
+                <div className="re-slots" role="radiogroup" aria-label={t("editor.homeAria")}>
+                  {[true, false].map((inCookbook) => {
+                    const on = state.inCookbook === inCookbook;
+                    return (
+                      <button
+                        key={String(inCookbook)}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        className={`re-slot${on ? " on" : ""}`}
+                        onClick={() => set({ inCookbook })}
+                      >
+                        {on ? "✓ " : ""}
+                        {t(`recipes.sources.${inCookbook ? "cookbook" : "imported"}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="re-help">{t("editor.homeHelp")}</span>
+              </div>
+            )}
           </section>
 
           {/* 2. Photos */}

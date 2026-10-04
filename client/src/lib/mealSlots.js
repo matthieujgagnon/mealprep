@@ -1,10 +1,10 @@
 // Where a recipe sits on the Planner (Recipe.mealSlot on the server). One
-// per recipe. "Side" (garlic asparagus, rice) and "Snack" fit any
+// per recipe. "Side" (garlic asparagus, rice), "Snack" and "Dessert" fit any
 // meal; "Pantry / Prep" (pickles, roasted veg, sauces) never takes a meal
 // on the calendar.
 import { t } from "../i18n/index.js";
 
-const SLOT_IDS = ["breakfast", "lunch", "dinner", "side", "snack", "prep"];
+const SLOT_IDS = ["breakfast", "lunch", "dinner", "side", "snack", "dessert", "prep"];
 
 // Labels are read when used, so they're always in the current language.
 export const RECIPE_SLOTS = SLOT_IDS.map((id) => ({
@@ -26,6 +26,8 @@ const TAG_SLOTS = [
   ["lunch", "lunch"],
   ["breakfast", "breakfast"],
   ["snack", "snack"],
+  ["dessert", "dessert"],
+  ["desserts", "dessert"],
   ["side", "side"],
   ["sides", "side"],
   ["side dish", "side"],
@@ -37,9 +39,25 @@ export function recipeSlot(recipe) {
   return TAG_SLOTS.find(([tag]) => tags.includes(tag))?.[1] || null;
 }
 
+// The groups the Recipes "Meals" chip and Makeable's meal-type chips filter
+// by: Meals is lunch and dinner, so it leaves out breakfast, sides, snacks,
+// desserts and pantry prep. A recipe with no slot yet is in none of them.
+export const MEAL_GROUPS = {
+  meals: ["lunch", "dinner"],
+  breakfast: ["breakfast"],
+  desserts: ["dessert"],
+  snacks: ["snack"],
+  sides: ["side"],
+};
+
+export function inMealGroup(recipe, groupId) {
+  return MEAL_GROUPS[groupId]?.includes(recipeSlot(recipe)) ?? false;
+}
+
 export function slotHint(slotId) {
   if (slotId === "prep") return t("recipeSlots.hintPrep");
   if (slotId === "snack") return t("recipeSlots.hintSnack");
+  if (slotId === "dessert") return t("recipeSlots.hintDessert");
   if (slotId === "side") return t("recipeSlots.hintSide");
   if (slotId) return t("recipeSlots.hintMeal", { meal: RECIPE_SLOT_LABEL[slotId].toLowerCase() });
   return t("recipeSlots.hintNone");

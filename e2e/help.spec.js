@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { accountButton, langSwitch, openHelp } from "./account-menu.js";
 
 // The Help screen: reachable from the header on a computer and from the
 // account button on a phone, in English and in Quebec French. Its FAQ opens
@@ -82,7 +83,7 @@ test.describe("desktop, English", () => {
 
   test("Help opens from the header; every section, the FAQ and the credits are there", async ({ page }) => {
     await signUp(page, "en");
-    await page.getByRole("button", { name: "Help", exact: true }).click();
+    await openHelp(page);
     await expect(page.locator(".riso-help h1")).toContainText("How this works.");
     for (const title of SECTIONS.en) {
       await expect(page.getByRole("heading", { level: 2, name: title, exact: true })).toBeVisible();
@@ -102,7 +103,7 @@ test.describe("desktop, English", () => {
 
   test("buttons named in the text are drawn in the sentence, as pictures that do nothing", async ({ page }) => {
     await signUp(page, "en");
-    await page.getByRole("button", { name: "Help", exact: true }).click();
+    await openHelp(page);
     await expectCopiesAreOnlyPictures(page);
 
     // The Grocery and Store mode lines show the real labels inside the sentences.
@@ -133,7 +134,7 @@ test.describe("desktop, English", () => {
 
   test("a FAQ question opens and closes with the keyboard", async ({ page }) => {
     await signUp(page, "en");
-    await page.getByRole("button", { name: "Help", exact: true }).click();
+    await openHelp(page);
     const question = page.getByRole("button", { name: /Where do flyer deals come from/ });
     const answer = page.locator("#" + (await question.getAttribute("aria-controls")));
     await expect(question).toHaveAttribute("aria-expanded", "false");
@@ -152,8 +153,8 @@ test.describe("desktop, English", () => {
 
   test("a menu pill jumps to its section, and the Help button shows it's the current page", async ({ page }) => {
     await signUp(page, "en");
-    const help = page.getByRole("button", { name: "Help", exact: true });
-    await help.click();
+    await openHelp(page);
+    const help = await accountButton(page, "Help");
     await expect(help).toHaveAttribute("aria-current", "page");
     await page.getByRole("navigation", { name: "Help sections" }).getByRole("button", { name: "Sources and credits" }).click();
     await expect(page.locator("#help-credits")).toBeInViewport();
@@ -252,7 +253,7 @@ test.describe("desktop, switching language on the Help page", () => {
 
   test("the Statistics Canada links follow the language without a reload", async ({ page }) => {
     await signUp(page, "en");
-    await page.getByRole("button", { name: "Help", exact: true }).click();
+    await openHelp(page);
     const credits = page.locator("#help-credits");
     const links = credits.locator(".riso-help-source", { hasText: /Statistics Canada|Statistique Canada/ }).locator("a");
     await expect(links).toHaveCount(2);
@@ -262,12 +263,12 @@ test.describe("desktop, switching language on the Help page", () => {
     await page.evaluate(() => {
       window.__noReload = true;
     });
-    await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "Français" }).click();
+    await langSwitch(page).getByRole("button", { name: "Français" }).click();
     await expect(links.nth(0)).toHaveAttribute("href", STATCAN.fr.table);
     await expect(links.nth(1)).toHaveAttribute("href", STATCAN.fr.licence);
     await expect(credits.locator(".riso-help-licence")).toContainText("« Prix de détail moyens mensuels pour certains produits » (tableau 18-10-0245-01)");
 
-    await page.locator(".app-header-account .riso-lang-switch").getByRole("button", { name: "English" }).click();
+    await langSwitch(page).getByRole("button", { name: "English" }).click();
     await expect(links.nth(0)).toHaveAttribute("href", STATCAN.en.table);
     await expect(links.nth(1)).toHaveAttribute("href", STATCAN.en.licence);
     expect(await page.evaluate(() => window.__noReload)).toBe(true); // same page load throughout

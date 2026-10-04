@@ -37,7 +37,7 @@ async function signUp(page, email) {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 }
 
 test("Makeable now counts what's ready and lists it with a ready tag", async ({ page }) => {
@@ -135,7 +135,7 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   await expect(fish.locator(".riso-protein-verdict")).toBeVisible();
   const asides = block.locator(".riso-protein-asides");
   await expect(asides).toContainText(/ground beef \$5\.97\/lb · not worth it/i);
-  await expect(asides).toContainText(/Pork, Seafood, Turkey, Lamb & veal none/i);
+  await expect(asides).toContainText(/Pork, Seafood, Turkey, Lamb & veal, Tofu none/i);
 
   await chicken.click();
   const modal = page.locator(".riso-deal-detail, [role=dialog]").first();

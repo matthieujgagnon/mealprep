@@ -8,7 +8,7 @@ import { daysUntil } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { proteinName, proteinsOnSale } from "../lib/proteins.js";
+import { mentionsTofu, proteinName, proteinOf, proteinsOnSale } from "../lib/proteins.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
 import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
@@ -36,6 +36,14 @@ function useUpPct(daysLeft) {
 }
 
 function matchRecipesForDeal(deal, recipes) {
+  // Tofu is one thing to cook with: a recipe that wants firm, extra-firm or
+  // silken tofu uses a tofu on sale, whichever the flyer lists. "See them"
+  // then searches "tofu", which finds all of them.
+  if (proteinOf(deal)?.id === "tofu") {
+    return recipes
+      .filter((recipe) => recipe.ingredients?.some((i) => mentionsTofu(i.name)))
+      .map((recipe) => ({ recipe, ingredientName: "tofu" }));
+  }
   return recipes
     .map((recipe) => ({ recipe, ingredientName: recipe.ingredients?.find((i) => findBestDeal(i.name, [deal]))?.name }))
     .filter((m) => m.ingredientName);
