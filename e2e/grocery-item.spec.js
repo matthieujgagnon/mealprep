@@ -225,26 +225,32 @@ test.describe("on a phone", () => {
     }
   });
 
-  test("on a phone the sale tag sits in the bottom right corner of its row, lined up with the ×", async ({ page }) => {
+  test("on a phone the sale tag is narrow and sits just left of the number, on the same line", async ({ page }) => {
     await setup(page);
-    const tags = page.locator(".riso-row-deal");
-    await expect(tags).toHaveCount(2);
+    await expect(page.locator(".riso-row-deal")).toHaveCount(2);
     const spots = await page.locator(".riso-row").evaluateAll((rows) =>
       rows
         .filter((r) => r.querySelector(".riso-row-deal"))
         .map((r) => {
           const tag = r.querySelector(".riso-row-deal").getBoundingClientRect();
-          const del = r.querySelector(".riso-row-delete").getBoundingClientRect();
           const qty = r.querySelector(".riso-row-qty").getBoundingClientRect();
-          const row = r.getBoundingClientRect();
-          return { gap: Math.abs(tag.right - (del.right - 7)), underNumber: tag.top >= qty.bottom - 1, inRow: tag.bottom <= row.bottom && tag.left >= row.left };
+          const name = r.querySelector(".riso-row-name").getBoundingClientRect();
+          return {
+            leftOfNumber: tag.right <= qty.left && qty.left - tag.right < 16,
+            sameLine: Math.abs(tag.top + tag.height / 2 - (qty.top + qty.height / 2)) < 6,
+            narrow: tag.width <= 100,
+            afterName: tag.left >= name.right,
+            rightEdge: Math.round(tag.right),
+          };
         })
     );
     for (const x of spots) {
-      expect(x.gap).toBeLessThanOrEqual(2);
-      expect(x.underNumber).toBe(true);
-      expect(x.inRow).toBe(true);
+      expect(x.leftOfNumber).toBe(true);
+      expect(x.sameLine).toBe(true);
+      expect(x.narrow).toBe(true);
+      expect(x.afterName).toBe(true);
     }
+    expect(new Set(spots.map((x) => x.rightEdge)).size).toBe(1); // lined up
   });
 
   test("Store mode draws the same item at 120 px, and the whole row checks it", async ({ page }) => {
@@ -262,11 +268,18 @@ test.describe("on a phone", () => {
     await expect(beef.locator(".store-mode-need")).toHaveText("750 g");
     await expect(beef.locator(".store-mode-qty")).toHaveText("1");
     await expect(beef.locator(".riso-row-delete, .riso-row-toinv")).toHaveCount(0); // no × and no inventory button here
-    // No sale tag here, and a checked row's box is blue in the dark theme.
+    // No sale tag here, and a checked row's box is pink in the dark theme.
     await expect(mode.locator(".store-mode-sale, .riso-row-deal")).toHaveCount(0);
+    // The dark theme is dark all the way through: a dark row, light text, a dark number pill.
+    const look = await beef.evaluate((e) => {
+      const c = (sel) => getComputedStyle(e.querySelector(sel));
+      return { row: getComputedStyle(e).backgroundColor, name: c(".store-mode-name").color, qty: c(".store-mode-qty").backgroundColor };
+    });
+    expect(look).toEqual({ row: "rgb(17, 17, 21)", name: "rgb(244, 241, 234)", qty: "rgb(21, 21, 27)" });
     await beef.click();
     await expect(beef).toHaveClass(/\bon\b/);
-    expect(await beef.locator(".store-mode-check").evaluate((e) => getComputedStyle(e).backgroundColor)).toBe("rgb(35, 35, 255)");
+    const box = await beef.locator(".store-mode-check").evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).borderTopColor]);
+    expect(box).toEqual(["rgb(255, 72, 176)", "rgb(255, 255, 255)"]); // pink, with a white border
     const cut = await mode.locator(".store-mode-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
     expect(cut).toBe(false);
   });

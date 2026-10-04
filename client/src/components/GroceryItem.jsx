@@ -158,7 +158,7 @@ export function GroceryItem({
     <div
       ref={rowRef}
       data-gi-row
-      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}${showDeal ? " has-deal" : ""}`}
+      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}`}
       {...(flyerDeal
         ? {
             role: "button",

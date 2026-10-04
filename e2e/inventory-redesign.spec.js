@@ -132,7 +132,7 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   const pill = await page.locator(".riso-inv-shelf-switch").boundingBox();
   const plus = await page.getByRole("button", { name: "Add a shelf" }).boundingBox();
   expect(plus.x).toBeGreaterThanOrEqual(pill.x + pill.width); // to the right of the pill
-  expect(pill.width).toBeLessThan(800); // as wide as its chips on a computer, not the whole page
+  expect(pill.width).toBeGreaterThan(1000); // the full width less the round +, on a computer too
   await page.getByRole("button", { name: "Add a shelf" }).click();
   await page.getByLabel("Shelf name").fill("Garage Freezer");
   await page.keyboard.press("Enter");

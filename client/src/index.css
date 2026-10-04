@@ -1780,8 +1780,10 @@ select {
   padding: 0;
 }
 
-.inv-shelf-add {
-  font: 800 18px/1 var(--riso-font-display);
+/* The + that adds an item to a shelf, and the + beside the shelf pill that adds a
+   shelf: the same glyph size on a computer and on a phone. */
+.inv-shelf-edit.inv-shelf-add {
+  font: 800 22px/1 var(--riso-font-display);
 }
 
 .inv-shelf-add:hover,
@@ -10138,21 +10140,31 @@ button.riso-protein-bar {
     display: flex;
   }
 
-  /* The slot dissolves: "+ Inventory" is a plain part of the cluster, and the
-     sale tag sits in the row's bottom right corner, the same place on every
-     row. Rows with a tag keep room for it under the text. */
+  /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale
+     tag sits just left of the number, narrow, with the store over the price,
+     so the name still gets the room. */
   .riso-row-slot {
     display: contents;
   }
 
   .riso-row-deal {
-    position: absolute;
-    right: 17px;
-    bottom: 12px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    height: auto;
+    min-height: 38px;
+    margin-right: 6px;
+    padding: 3px 7px;
   }
 
-  .riso-row.has-deal .riso-row-main {
-    padding-bottom: 34px;
+  .riso-row-deal-div {
+    display: none;
+  }
+
+  .riso-row-deal-store,
+  .riso-row-deal-price {
+    font-size: 11px;
+    line-height: 14px;
   }
 
   .riso-row-qtycol {
@@ -10308,29 +10320,60 @@ button.riso-protein-bar {
 
 
 
-/* Checked, in the dark Store mode: the row goes dark, the box green with an ink tick. */
+/* The dark Store mode is dark all the way through: dark rows, light text, dark
+   pills. A checked row goes a shade lighter and its box turns pink. */
+.store-mode[data-sm-theme="dark"] .store-mode-row {
+  background: var(--sm-card);
+  border-color: var(--sm-card-border);
+  color: var(--sm-text);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-check {
+  background: transparent;
+  border-color: var(--sm-text);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-brand {
+  color: var(--sm-text);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-recipes {
+  color: var(--sm-muted);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-need {
+  border-color: var(--sm-muted);
+  color: var(--sm-muted);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-qty {
+  background: var(--sm-track);
+  border-color: var(--sm-text);
+  color: var(--sm-text);
+}
+
 .store-mode[data-sm-theme="dark"] .store-mode-row.on {
   background: var(--riso-store-checked);
   border-color: var(--riso-store-checked);
-  color: var(--riso-canvas);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-check {
-  background: var(--riso-accent);
-  border-color: var(--riso-accent);
-  color: var(--riso-on-accent);
+  background: var(--riso-hot);
+  border-color: var(--riso-on-accent);
+  color: var(--riso-ink);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-brand,
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-need,
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-recipes {
-  color: var(--riso-canvas);
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-recipes,
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-name {
+  color: var(--sm-muted);
 }
 
 .store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-qty {
   background: transparent;
-  border-color: var(--riso-dash-strong);
-  color: var(--riso-canvas);
+  border-color: var(--sm-muted);
+  color: var(--sm-muted);
 }
 
 /* Checked, in the light Store mode: the row greys, the box is blue. */
@@ -11758,9 +11801,24 @@ button.riso-deal-detail-other:focus-visible {
   cursor: default;
 }
 
-/* The shelf pill: a chip per shelf that jumps to it. On a computer it is as wide
-   as its chips; on a phone it is the full width (see the phone rules below).
-   The round + that adds a shelf sits beside the pill, outside it. */
+/* The shelf pill: a chip per shelf that jumps to it, the same on a computer and
+   on a phone. It takes all the width the round + leaves, stays pinned at the top
+   while you scroll (under the app header on a phone), and the chip of the shelf
+   you're looking at is lit. The round + that adds a shelf sits beside the pill,
+   outside it. */
+.riso-inv-shelf-pin {
+  position: sticky;
+  top: var(--inv-sticky-top, 0px);
+  z-index: 40;
+  margin: -6px -40px 0;
+  padding: 6px 40px 8px;
+  background: var(--riso-canvas);
+}
+
+.inv-shelves [data-section-id] {
+  scroll-margin-top: calc(var(--inv-sticky-top, 0px) + 66px);
+}
+
 .riso-inv-shelf-bar {
   display: flex;
   align-items: center;
@@ -11769,7 +11827,8 @@ button.riso-deal-detail-other:focus-visible {
 
 .riso-inv-shelf-switch {
   display: flex;
-  width: fit-content;
+  flex: 1 1 0;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   border: 2px solid var(--riso-ink);
@@ -11810,6 +11869,7 @@ button.riso-deal-detail-other:focus-visible {
   border: 2px solid var(--riso-ink);
   border-radius: 24px;
   background: var(--riso-surface);
+  font: 800 22px/1 var(--riso-font-display);
 }
 
 .riso-inv-shelf-bar button.add-shelf:hover {
@@ -11844,22 +11904,8 @@ button.riso-deal-detail-other:focus-visible {
   /* One continuous page of shelves; the chips stay pinned under the app
      header and jump to a shelf. */
   .riso-inv-shelf-pin {
-    position: sticky;
-    top: var(--inv-sticky-top, 0px);
-    z-index: 40;
     margin: -6px -18px 0;
     padding: 6px 18px 8px;
-    background: var(--riso-canvas);
-  }
-
-  .inv-shelves [data-section-id] {
-    scroll-margin-top: calc(var(--inv-sticky-top, 0px) + 66px);
-  }
-
-  /* The pill takes all the width the round + leaves. */
-  .riso-inv-shelf-switch {
-    flex: 1 1 0;
-    width: auto;
   }
 
   .inv-shelves {
