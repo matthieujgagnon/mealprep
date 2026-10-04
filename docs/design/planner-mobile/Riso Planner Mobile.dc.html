@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#1A1A1F;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}.nos::-webkit-scrollbar{display:none}</style></helmet>
+<div style="min-height:100vh;background:#1A1A1F;color:#F3F3F6;padding:56px;box-sizing:border-box;display:flex;gap:72px;align-items:flex-start;width:max-content;min-width:100%">
+<sc-for list="{{ phones }}" as="p" hint-placeholder-count="2">
+<section id="{{ p.id }}" style="display:flex;flex-direction:column;gap:22px;flex:none">
+<div style="display:flex;align-items:center;gap:12px"><span style="height:28px;padding:0 12px;border-radius:14px;background:{{ p.tagBg }};color:#16181F;display:flex;align-items:center;font:500 12px 'DM Mono',monospace;letter-spacing:.1em">{{ p.id }}</span><span style="font:800 20px 'Bricolage Grotesque',sans-serif;letter-spacing:-.01em">{{ p.title }}</span></div>
+
+<div data-screen-label="{{ p.title }}" style="width:390px;height:844px;border-radius:48px;border:2px solid #16181F;box-shadow:0 0 0 10px #0E0E12,10px 10px 0 10px #FF48B0;background:#F4F1EA;color:#16181F;position:relative;overflow:hidden;flex:none">
+<div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font:600 14px Inter,sans-serif;background:#F4F1EA"><span>9:41</span><span style="width:110px;height:30px;border-radius:15px;background:#0E0E12;margin-top:6px"></span><span style="font:500 11px 'DM Mono',monospace">5G ▮▮▮</span></div>
+
+<div style="position:absolute;top:44px;left:0;right:0;z-index:5;background:#F4F1EA;border-bottom:2px solid #16181F">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 18px 8px">
+<div style="font:800 21px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap">matt mo <span style="background:#FF48B0;padding:0 6px;border-radius:5px">cookbook</span></div>
+<div style="width:36px;height:36px;border-radius:18px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 14px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">M</div>
+</div>
+<div class="nos" style="display:flex;gap:6px;overflow-x:auto;padding:0 18px 12px;scrollbar-width:none">
+<sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+<div style="flex:none;height:40px;padding:0 16px;border-radius:20px;background:{{ n.bg }};color:{{ n.fg }};border:2px solid {{ n.bd }};box-shadow:{{ n.sh }};display:flex;align-items:center;font:700 14.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">{{ n.label }}</div>
+</sc-for>
+</div>
+</div>
+
+<div style="position:absolute;top:150px;left:0;right:0;bottom:0;overflow:hidden">
+<div style="padding:14px 14px 0;display:flex;flex-direction:column;gap:8px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em">5 – 11 OCTOBRE</div>
+<div style="font:800 38px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">La semaine <span style="color:#2323FF">à venir.</span></div>
+<div style="position:relative;z-index:20;display:flex;align-items:center;gap:8px;margin-top:2px">
+<div style="width:44px;height:44px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 20px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">‹</div>
+<div style="transform:rotate(-3deg);height:44px;padding:0 16px;background:#FFE14D;border:2px solid #16181F;border-radius:22px;box-shadow:{{ p.pillSh }};display:flex;align-items:center;gap:7px;white-space:nowrap;font:800 15px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">cette semaine <span style="font-size:11px">{{ p.arrow }}</span></div>
+<div style="width:44px;height:44px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 20px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">›</div>
+<div style="margin-left:auto;transform:rotate(3deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:2px 9px;white-space:nowrap;font:800 12px 'Bricolage Grotesque',sans-serif">jeu – dim →</div>
+
+<sc-if value="{{ p.cal }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:calc(100% + 14px);left:0;right:0;background:#FFFDF8;border:2px solid #16181F;border-radius:24px;box-shadow:6px 6px 0 #16181F;padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box">
+<div style="position:absolute;top:-9px;left:112px;width:16px;height:16px;background:#FFFDF8;border-top:2px solid #16181F;border-left:2px solid #16181F;transform:rotate(45deg)"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+<div style="font:800 26px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">octobre <span style="color:#2323FF">2026</span></div>
+<div style="display:flex;gap:8px">
+<div style="width:44px;height:44px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 20px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">‹</div>
+<div style="width:44px;height:44px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 20px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">›</div>
+</div></div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;font:500 11px 'DM Mono',monospace;letter-spacing:.06em;color:#5E5B52"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+<sc-for list="{{ calCells }}" as="c" hint-placeholder-count="35">
+<div style="height:44px;border-radius:13px;background:{{ c.bg }};color:{{ c.fg }};border:{{ c.bd }};box-shadow:{{ c.sh }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 15px/1 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ c.n }}<span style="width:5px;height:5px;border-radius:3px;background:{{ c.dot }}"></span></div>
+</sc-for>
+</div>
+<div style="display:flex;align-items:center;gap:16px;font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;margin-top:2px">
+<span style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:3px;background:#16181F"></span>REPAS PRÉVUS</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:5px;background:#FF48B0;border:1.5px solid #16181F;box-sizing:border-box"></span>AUJOURD'HUI</span>
+</div>
+<div style="height:48px;border-radius:24px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;justify-content:center;font:800 15px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">Aller à cette semaine</div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div class="nos" style="margin-top:10px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:x mandatory;scroll-padding-left:14px;padding:4px 0 0">
+<div style="width:max-content;padding:0 14px;display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;gap:8px">
+<sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+<div style="scroll-snap-align:start;flex:none;width:104px;height:50px;border-radius:14px;background:{{ d.bg }};border:2px solid {{ d.bd }};box-shadow:{{ d.sh }};color:{{ d.fg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-sizing:border-box">
+<div style="font:500 10px 'DM Mono',monospace;letter-spacing:.12em">{{ d.dow }}</div>
+<div style="font:800 19px/1 'Bricolage Grotesque',sans-serif">{{ d.date }}</div>
+</div>
+</sc-for>
+</div>
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:5px">
+<div style="position:sticky;left:14px;align-self:flex-start;font:800 15px/1 'Bricolage Grotesque',sans-serif;padding:6px 0 0">{{ row.meal }}</div>
+<div style="display:flex;gap:8px">
+<sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="7">
+<div style="scroll-snap-align:start;flex:none;width:104px;height:108px;display:flex;position:relative">
+<sc-if value="{{ c.filled }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;border-radius:14px;background:#FFFDF8;border:{{ c.bd }};box-shadow:{{ c.sh }};opacity:{{ c.op }};overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;position:relative">
+<div style="height:54px;flex:none;border-bottom:2px solid #16181F;background:#E9E4D8"><img src="{{ c.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;filter:{{ c.imgF }}"></div>
+<sc-if value="{{ c.have }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:5px;top:5px;width:22px;height:22px;border-radius:11px;background:#2323FF;color:#fff;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 11px sans-serif;box-sizing:border-box">✓</div></sc-if>
+<div style="padding:5px 7px 5px;display:flex;flex-direction:column;justify-content:space-between;flex:1;min-height:0">
+<div style="font:800 12px/1.15 'Bricolage Grotesque',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ c.name }}</div>
+<div style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.08em;color:#3F3E37">{{ c.stat }}</div>
+</div>
+</div>
+<sc-if value="{{ c.left }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:5px;top:44px;transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;white-space:nowrap;font:800 10.5px 'Bricolage Grotesque',sans-serif;z-index:1">restes</div></sc-if>
+</sc-if>
+<sc-if value="{{ c.note }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;border-radius:14px;background:#F4F1EA;border:2px solid #16181F;opacity:{{ c.op }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;text-align:center;box-sizing:border-box">
+<div style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">✎ NOTE</div>
+<div style="font:700 13px/1.15 'Bricolage Grotesque',sans-serif">{{ c.label }}</div>
+</div>
+</sc-if>
+<sc-if value="{{ c.empty }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;border-radius:14px;border:2px dashed #BDB6A6;display:flex;align-items:center;justify-content:center;color:#2323FF;font:700 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">+ ajouter</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="position:absolute;top:150px;right:0;bottom:80px;width:26px;background:linear-gradient(90deg,rgba(244,241,234,0),#F4F1EA);pointer-events:none;z-index:1;top:0"></div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;height:68px;z-index:8;background:#F4F1EA;border-top:2px solid #16181F;padding:8px 14px;box-sizing:border-box">
+<div style="height:50px;border-radius:25px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">Créer la liste d'épicerie · 7</div>
+</div>
+
+<sc-if value="{{ p.cal }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:44px;left:0;right:0;bottom:0;z-index:10;background:rgba(22,24,31,.45)"></div></sc-if>
+</div>
+</section>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const u = id => 'https://images.unsplash.com/photo-' + id + '?w=300&q=70&auto=format&fit=crop';
+    const R = {
+      burrito: ['Burritos déjeuner', '1525351484163-7529414344d8', '20 MIN'],
+      crepes: ['Crêpes au babeurre', '1567620905732-2d1ec7ab7445', '25 MIN'],
+      shak: ['Shakshuka', '1525351484163-7529414344d8', '30 MIN'],
+      shaw: ['Bols shawarma poulet', '1546069901-ba9599a7e63c', '40 MIN'],
+      tzat: ['Salade pois chiches', '1512621776951-a57141f2eefd', '25 MIN'],
+      tacos: ['Tacos aux crevettes', '1551504734-5ee1c4a1479b', '30 MIN'],
+      pate: ['Pâté chinois', '1476124369491-e7addf5db371', '1 H'],
+      orzo: ['Orzo poulet citron', '1473093295043-cdd812d0e601', '35 MIN'],
+      pizza: ['Pizza du vendredi', '1565299624946-b28f40a0ae38', '30 MIN'],
+      bol: ['Bol vert déesse', '1540189549336-e6e99c3679fe', '20 MIN'],
+      roti: ['Poulet rôti', '1504674900247-0877df9cc836', '1 H 30'],
+    };
+    const c = (k, st) => ({ k, st }), n = t => ({ note: t });
+    const plan = [
+      ['Déjeuner', [c('burrito'), c('crepes', 'have'), null, null, null, c('shak'), n('Brunch au resto')]],
+      ['Dîner', [c('shaw', 'left'), c('shaw', 'left'), n('Dîner au bureau'), c('tzat'), n('Dîner au bureau'), null, null]],
+      ['Souper', [c('shaw'), c('tacos'), c('pate'), c('orzo'), c('pizza'), c('bol', 'have'), c('roti')]],
+    ];
+    plan[1][1][0] = c('tzat');
+    const rows = plan.map(([meal, cells]) => ({
+      meal,
+      cells: cells.map((x, i) => {
+        const past = i === 0, op = past ? .6 : 1;
+        if (!x) return { empty: true };
+        if (x.note) return { note: true, label: x.note, op };
+        const r = R[x.k], have = x.st === 'have';
+        return { filled: true, name: r[0], img: u(r[1]), stat: r[2], have, left: x.st === 'left', op, imgF: past ? 'grayscale(1)' : 'none', bd: have ? '3px solid #2323FF' : (past ? '1.5px solid #BDB6A6' : '2px solid #16181F'), sh: have ? '3px 3px 0 #2323FF' : 'none' };
+      }),
+    }));
+    const dow = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
+    const days = dow.map((d, i) => {
+      const today = i === 1, past = i === 0;
+      return { dow: today ? 'AUJ.' : d, date: 5 + i, bg: today ? '#FF48B0' : 'transparent', bd: today ? '#16181F' : 'transparent', sh: today ? '3px 3px 0 #16181F' : 'none', fg: past ? '#8A8677' : '#16181F' };
+    });
+    const planned = new Set([1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 20, 22, 23, 26, 27]);
+    const cells = [[28, 1], [29, 1], [30, 1]].concat(Array.from({ length: 31 }, (_, i) => [i + 1, 0]), [[1, 1]]);
+    const calCells = cells.map(([d, out]) => {
+      if (out) return { n: d, bg: 'transparent', fg: '#A9A394', bd: '2px solid transparent', sh: 'none', dot: 'transparent' };
+      const today = d === 6, wk = d >= 5 && d <= 11;
+      return { n: d, bg: today ? '#FF48B0' : wk ? '#FFE14D' : 'transparent', fg: '#16181F', bd: '2px solid ' + (today || wk ? '#16181F' : 'transparent'), sh: today ? '2px 2px 0 #16181F' : 'none', dot: planned.has(d) ? '#16181F' : 'transparent' };
+    });
+    const nav = ['Accueil', 'Recettes', 'Planificateur', 'Faisable', 'Épicerie', 'Circulaires', 'Inventaire'].map(l => { const on = l === 'Planificateur'; return { label: l, bg: on ? '#2323FF' : 'transparent', fg: on ? '#fff' : '#16181F', bd: on ? '#16181F' : 'transparent', sh: on ? '3px 3px 0 #16181F' : 'none' }; });
+    const phones = [
+      { id: 'A', title: 'Planificateur · trois jours', cal: false, arrow: '▾', pillSh: 'none', tagBg: '#FF48B0' },
+      { id: 'B', title: 'Pastille de semaine ouverte', cal: true, arrow: '▴', pillSh: '3px 3px 0 #16181F', tagBg: '#FFE14D' },
+    ];
+    return { phones, rows, days, calCells, nav };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,67 +1,184 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { api } from "../api.js";
 import { BottomSheet } from "./RisoControls.jsx";
 import { PlannerTray } from "./PlannerTray.jsx";
 import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
+import { useGroceryToBuyCount } from "../hooks/useGroceryToBuyCount.js";
 import {
-  addDays,
   formatDayLabel,
   formatWeekRangeLabel,
-  formatWeekdayMonthDay,
   isCurrentWeek,
   isPastDay,
   parseDateKey,
   shiftWeek,
+  toDateKey,
 } from "../lib/dates.js";
+import { centerScroll, firstHiddenDay, gridRange, inWeek, monthGrid, monthOf, shiftMonth, weekOf } from "../lib/plannerCalendar.js";
 import { MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
-import { recipeHaveStats } from "../lib/onHand.js";
-import { formatTrayTime } from "../lib/plannerSuggestions.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { dict, t } from "../i18n/index.js";
 
-function MealRow({ entry, haveCores, isStale, onOpen, onSwap, onRemove, onCycleState }) {
-  const { recipe } = entry;
-  const stats = recipeHaveStats(recipe, haveCores);
-  const time = formatTrayTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
-  const buy =
-    entry.isLeftover || entry.alreadyHave
-      ? t("planner.nothingToBuyCaps")
-      : stats.missingCount > 0
-        ? t("planner.toBuyCaps", { count: stats.missingCount })
-        : t("planner.nothingToBuyCaps");
-  return (
-    <div className={`rpm-meal${entry.alreadyHave ? " have" : ""}`}>
-      <button type="button" className="rpm-meal-photo" onClick={onOpen} aria-label={t("planner.open", { title: recipe.title })}>
-        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
-        {entry.isLeftover && <span className={`rpm-leftover${isStale ? " stale" : ""}`}>{isStale ? t("planner.pastFridge") : t("planner.leftover")}</span>}
-      </button>
+// The Planner on a phone (design handoff:
+// docs/design/planner-mobile-and-recipes/README.md): the whole week as a board
+// of seven day columns, three in view, scrolling sideways with the meal labels
+// staying put; a week pill that opens a month calendar; and a button at the
+// bottom that goes to the grocery list. No drag and drop on a phone: tapping a
+// card or an empty cell opens the suggestions sheet.
+
+const COL = 104;
+const GAP = 8;
+const PAD = 18; // the page's side gutter on a phone
+
+// "25 MIN", "1 H", "1 H 30".
+function cellTime(minutes) {
+  if (!minutes) return "";
+  if (minutes < 60) return `${minutes} MIN`;
+  const rest = minutes % 60;
+  return `${Math.floor(minutes / 60)} H${rest ? ` ${rest}` : ""}`;
+}
+
+// "jeu." -> "JEU"
+const shortDay = (i) => dict().days.short[i].replace(/\.$/, "").toUpperCase();
+
+function Cell({ entry, slot, meal, dayName, past, stale, editing, onTap, onEditNote, onSaveNote, onRemove }) {
+  if (!entry) {
+    return (
       <button
         type="button"
-        className={`rpm-have${entry.alreadyHave ? " on" : ""}`}
-        onClick={onCycleState}
-        aria-label={
-          entry.alreadyHave
-            ? t("planner.mobileHave")
-            : entry.isLeftover
-            ? t("planner.mobileLeftover")
-            : t("planner.mobileNone")
-        }
+        className={`rpm-cell empty${past ? " past" : ""}`}
+        aria-label={t("planner.emptyAria", { meal: meal.label.toLowerCase(), day: dayName })}
+        onClick={() => onTap(slot)}
       >
-        {entry.alreadyHave ? "✓" : ""}
+        {t("planner.addCell")}
       </button>
-      <div className="rpm-meal-info">
-        <button type="button" className="rpm-meal-name" onClick={onOpen}>
-          {recipe.title}
-        </button>
-        <span className="rpm-meal-meta">{time ? `${time} · ${buy}` : buy}</span>
-        <div className="rpm-meal-actions">
-          <button type="button" className="rpm-chip" onClick={onSwap}>
-            {t("planner.swap")}
+    );
+  }
+  if (isNoteEntry(entry)) {
+    const custom = isCustomNote(entry);
+    if (editing) {
+      return (
+        <div className={`rpm-cell note editing${past ? " past" : ""}`}>
+          <NoteTextarea
+            initial={custom ? entry.recipe.title : ""}
+            label={t("planner.writeOnMeal", { meal: meal.label.toLowerCase() })}
+            onSave={(text) => onSaveNote(entry.id, text)}
+            className="riso-planner-note-input"
+          />
+        </div>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className={`rpm-cell note${custom ? "" : " blank"}${past ? " past" : ""}`}
+        onClick={() => (custom ? onEditNote(entry.id) : onRemove(entry.id))}
+        aria-label={custom ? t("planner.tapEditAria", { title: entry.recipe.title }) : t("planner.blankTapAria")}
+      >
+        {custom && <span className="rpm-note-label">{t("same.noteCaps")}</span>}
+        {custom && <span className={`rpm-note-text${isEmojiOnly(entry.recipe.title) ? " emoji" : ""}`}>{entry.recipe.title}</span>}
+      </button>
+    );
+  }
+  const { recipe } = entry;
+  const time = cellTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
+  return (
+    <button
+      type="button"
+      className={`rpm-cell card${entry.alreadyHave ? " have" : ""}${past ? " past" : ""}`}
+      aria-label={t("planner.cellAria", { title: recipe.title, meal: meal.label.toLowerCase(), day: dayName })}
+      onClick={() => onTap(slot)}
+    >
+      <span className="rpm-cell-photo">
+        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
+        {entry.alreadyHave && <span className="rpm-cell-have" aria-hidden="true">✓</span>}
+        {entry.isLeftover && <span className={`rpm-leftover${stale ? " stale" : ""}`}>{stale ? t("planner.pastFridge") : t("planner.leftover")}</span>}
+      </span>
+      <span className="rpm-cell-body">
+        <span className="rpm-cell-title">{recipe.title}</span>
+        {time && <span className="rpm-cell-time">{time}</span>}
+      </span>
+    </button>
+  );
+}
+
+// The month calendar under the week pill: a dot under each day with a meal,
+// the shown week in yellow, today in pink. Tapping a day goes to its week.
+function PlannerCalendar({ weekStart, onPick, onThisWeek, onClose }) {
+  const [month, setMonth] = useState(() => monthOf(weekStart));
+  const [planned, setPlanned] = useState(() => new Set());
+  const today = toDateKey(new Date());
+
+  useEffect(() => {
+    const { from, to } = gridRange(month);
+    let cancelled = false;
+    api
+      .listPlannedDates(from, to)
+      .then((days) => !cancelled && setPlanned(new Set(days)))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [month]);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="rpm-cal" role="dialog" aria-label={t("planner.calendarAria")}>
+      <span className="rpm-cal-caret" aria-hidden="true" />
+      <div className="rpm-cal-head">
+        <h2 className="rpm-cal-title">
+          {dict().months.long[month.month].toLowerCase()} <span className="accent">{month.year}</span>
+        </h2>
+        <div className="rpm-cal-nav">
+          <button type="button" className="rpm-round" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("planner.calPrevMonth")}>
+            ‹
           </button>
-          <button type="button" className="rpm-chip round" onClick={onRemove} aria-label={t("planner.removeTitle", { title: recipe.title })}>
-            ×
+          <button type="button" className="rpm-round" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("planner.calNextMonth")}>
+            ›
           </button>
         </div>
       </div>
+      <div className="rpm-cal-dows" aria-hidden="true">
+        {dict().days.long.map((name, i) => (
+          <span key={i}>{name.charAt(0).toUpperCase()}</span>
+        ))}
+      </div>
+      <div className="rpm-cal-grid">
+        {monthGrid(month).flat().map((key) => {
+          const date = parseDateKey(key);
+          const inMonth = date.getMonth() === month.month;
+          const cls = [
+            "rpm-cal-day",
+            inMonth ? "" : "out",
+            key === today ? "today" : inWeek(key, weekStart) ? "week" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <button key={key} type="button" className={cls} onClick={() => onPick(key)} aria-label={`${key}${planned.has(key) ? " •" : ""}`}>
+              {date.getDate()}
+              {planned.has(key) && <span className="rpm-cal-dot" aria-hidden="true" />}
+            </button>
+          );
+        })}
+      </div>
+      <div className="rpm-cal-legend">
+        <span>
+          <i className="dot" />
+          {t("planner.legendPlanned")}
+        </span>
+        <span>
+          <i className="swatch" />
+          {t("planner.legendToday")}
+        </span>
+      </div>
+      <button type="button" className="rpm-cal-go" onClick={onThisWeek}>
+        {t("planner.goThisWeek")}
+      </button>
     </div>
   );
 }
@@ -70,7 +187,6 @@ export function PlannerMobile({
   entries,
   weekStart,
   onChangeWeek,
-  haveCores,
   target,
   onSelectSlot,
   onCardClick,
@@ -83,139 +199,193 @@ export function PlannerMobile({
   emptyCount,
   onFillEmptySlots,
   trayProps,
+  customStaples,
+  excludedStaples,
+  onOpenGrocery,
 }) {
   const currentWeek = isCurrentWeek(weekStart);
-  const [day, setDay] = useState(currentWeek ? todayIndex() : 0);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [hiddenFrom, setHiddenFrom] = useState(null);
+  const boardRef = useRef(null);
+  const buyCount = useGroceryToBuyCount({ customStaples, excludedStaples, refreshKey: entries });
+
   const grouped = {};
   for (const e of entries) (grouped[slotKey(e.dayOfWeek, e.mealType)] ||= []).push(e);
   const staleIds = computeStaleLeftoverIds(entries);
-  const date = parseDateKey(addDays(weekStart, day));
 
-  function changeWeek(w) {
-    onChangeWeek(w);
-    setDay(w === weekStart ? day : 0);
+  function updateHint() {
+    const board = boardRef.current;
+    if (!board) return;
+    setHiddenFrom(firstHiddenDay({ scrollLeft: board.scrollLeft, viewWidth: board.clientWidth, col: COL, gap: GAP, pad: PAD }));
+  }
+
+  // The week's board opens with today's column in the middle (the first day for
+  // another week), the same as the desktop planner.
+  useLayoutEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    board.scrollLeft = currentWeek ? centerScroll({ day: todayIndex(), viewWidth: board.clientWidth, col: COL, gap: GAP, pad: PAD }) : 0;
+    updateHint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStart]);
+
+  const targetEntry = target ? (grouped[slotKey(target.dayOfWeek, target.mealType)] || [])[0] : null;
+  const targetRecipeEntry = targetEntry && !isNoteEntry(targetEntry) ? targetEntry : null;
+  const sheetState = targetRecipeEntry ? (targetRecipeEntry.alreadyHave ? "have" : targetRecipeEntry.isLeftover ? "leftover" : "none") : null;
+  const nextMark = { none: "sheetMarkLeftover", leftover: "sheetMarkHave", have: "sheetClear" };
+
+  function goToWeek(key) {
+    setCalendarOpen(false);
+    onChangeWeek(weekOf(key));
   }
 
   return (
     <div className="rpm">
-      <div className="rpm-head">
+      <div className="rpm-top">
+        <span className="rpm-range">{formatWeekRangeLabel(weekStart, { year: false })}</span>
         <h1 className="riso-planner-title">
           {t("planner.title")} <span className="accent">{t("planner.titleAccent")}</span>
         </h1>
-        <div className="rpm-week-nav">
-          <button type="button" className="riso-planner-nav-arrow" onClick={() => changeWeek(shiftWeek(weekStart, -1))} aria-label={t("planner.prevWeek")}>
+      </div>
+
+      <div className="rpm-weekrow-wrap">
+        {calendarOpen && <div className="rpm-backdrop" onClick={() => setCalendarOpen(false)} />}
+        <div className="rpm-weekrow">
+          <button type="button" className="rpm-round" onClick={() => onChangeWeek(shiftWeek(weekStart, -1))} aria-label={t("planner.prevWeek")}>
             ‹
           </button>
-          <span className="rpm-week-sticker">{formatWeekRangeLabel(weekStart, { year: false }).toLowerCase()}</span>
-          <button type="button" className="riso-planner-nav-arrow" onClick={() => changeWeek(shiftWeek(weekStart, 1))} aria-label={t("planner.nextWeek")}>
+          <button
+            type="button"
+            className={`rpm-weekpill${calendarOpen ? " open" : ""}`}
+            aria-expanded={calendarOpen}
+            onClick={() => setCalendarOpen((open) => !open)}
+          >
+            {currentWeek ? t("planner.thisWeek").toLowerCase() : formatWeekRangeLabel(weekStart, { year: false }).toLowerCase()}{" "}
+            <span aria-hidden="true">{calendarOpen ? "▴" : "▾"}</span>
+          </button>
+          <button type="button" className="rpm-round" onClick={() => onChangeWeek(shiftWeek(weekStart, 1))} aria-label={t("planner.nextWeek")}>
             ›
           </button>
+          {hiddenFrom !== null && (
+            <span className="rpm-more" aria-hidden="true">
+              {shortDay(hiddenFrom).toLowerCase()} – {shortDay(6).toLowerCase()} →
+            </span>
+          )}
         </div>
-      </div>
-
-      <div className="rpm-days" role="tablist" aria-label={t("planner.dayAria")}>
-        {dict().days.long.map((name, i) => {
-          const { weekday, dayNum, isToday } = formatDayLabel(weekStart, i);
-          const filled = MEAL_TYPES.filter((m) => grouped[slotKey(i, m.id)]?.length).length;
-          return (
-            <button
-              key={name}
-              type="button"
-              role="tab"
-              aria-selected={i === day}
-              aria-label={`${name} ${dayNum}`}
-              className={`rpm-day${i === day ? " selected" : ""}${isToday ? " today" : ""}${isPastDay(weekStart, i) ? " past" : ""}`}
-              onClick={() => setDay(i)}
-            >
-              <span className="rpm-day-dow">{(isToday ? t("days.today") : weekday).toUpperCase()}</span>
-              <span className="rpm-day-num">{dayNum}</span>
-              <span className="rpm-day-dots" aria-hidden="true">
-                {[0, 1, 2].map((k) => (
-                  <span key={k} className={k < filled ? "on" : ""} />
-                ))}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <h2 className="rpm-date">{formatWeekdayMonthDay(date)}</h2>
-
-      {MEAL_TYPES.map((meal) => {
-        const entry = (grouped[slotKey(day, meal.id)] || [])[0];
-        const slot = { dayOfWeek: day, mealType: meal.id };
-        return (
-          <section key={meal.id} className={`rpm-slot${isPastDay(weekStart, day) ? " past" : ""}`}>
-            <span className="rpm-slot-label">{meal.label.toUpperCase()}</span>
-            {!entry ? (
-              <div className="rpm-empty-row">
-                <button
-                  type="button"
-                  className="rpm-empty"
-                  aria-label={t("planner.writeOnMeal", { meal: meal.label.toLowerCase() })}
-                  onClick={() => onWriteInSlot(slot)}
-                />
-                <button type="button" className="rpm-chip" onClick={() => onSelectSlot(slot)}>
-                  {t("planner.addRecipeChip")}
-                </button>
-              </div>
-            ) : isNoteEntry(entry) ? (
-              editingNoteId === entry.id ? (
-                <div className="rpm-note editing">
-                  <NoteTextarea
-                    initial={isCustomNote(entry) ? entry.recipe.title : ""}
-                    label={t("planner.writeOnMeal", { meal: meal.label.toLowerCase() })}
-                    onSave={(text) => onSaveNote(entry.id, text)}
-                    className="riso-planner-note-input"
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className={`rpm-note${isCustomNote(entry) ? "" : " blank"}`}
-                  onClick={() => (isCustomNote(entry) ? onEditNote(entry.id) : onRemove(entry.id))}
-                  aria-label={isCustomNote(entry) ? t("planner.tapEditAria", { title: entry.recipe.title }) : t("planner.blankTapAria")}
-                >
-                  {isCustomNote(entry) && <span className={`rpm-note-text${isEmojiOnly(entry.recipe.title) ? " emoji" : ""}`}>{entry.recipe.title}</span>}
-                </button>
-              )
-            ) : (
-              <MealRow
-                entry={entry}
-                haveCores={haveCores}
-                isStale={staleIds.has(entry.id)}
-                onOpen={() => onCardClick(entry.recipe)}
-                onSwap={() => onSelectSlot(slot)}
-                onRemove={() => onRemove(entry.id)}
-                onCycleState={() => onCycleState(entry.id)}
-              />
-            )}
-          </section>
-        );
-      })}
-
-      <div className="riso-planner-legend rpm-legend">
-        <span className="riso-planner-legend-item">
-          <span className="riso-planner-legend-have" />
-          {t("planner.alreadyHaveIt")}
-        </span>
-        <span className="riso-planner-legend-item">
-          <span className="riso-planner-legend-leftover">{t("planner.leftover")}</span>
-          {t("planner.legendLeftover")}
-        </span>
-      </div>
-
-      <div className="rpm-actions">
-        {emptyCount > 0 && (
-          <button type="button" className="riso-btn" onClick={onFillEmptySlots}>
-            {t("planner.fillEmpty", { count: emptyCount })}
-          </button>
+        {calendarOpen && (
+          <PlannerCalendar
+            weekStart={weekStart}
+            onPick={goToWeek}
+            onThisWeek={() => goToWeek(toDateKey(new Date()))}
+            onClose={() => setCalendarOpen(false)}
+          />
         )}
+      </div>
 
+      <div className="rpm-boardwrap">
+        <div className="rpm-board" ref={boardRef} onScroll={updateHint} role="group" aria-label={t("planner.boardAria")}>
+          <div className="rpm-board-inner">
+            <div className="rpm-heads">
+              {dict().days.long.map((name, i) => {
+                const { dayNum, isToday } = formatDayLabel(weekStart, i);
+                return (
+                  <div key={name} className={`rpm-head${isToday ? " today" : ""}${isPastDay(weekStart, i) ? " past" : ""}`} aria-label={`${name} ${dayNum}`}>
+                    <span className="rpm-head-dow">{isToday ? t("planner.todayShort") : shortDay(i)}</span>
+                    <span className="rpm-head-num">{dayNum}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {MEAL_TYPES.map((meal) => (
+              <div key={meal.id} className="rpm-mealrow">
+                <span className="rpm-meallabel">{meal.label}</span>
+                <div className="rpm-cells">
+                  {dict().days.long.map((dayName, i) => {
+                    const entry = (grouped[slotKey(i, meal.id)] || [])[0];
+                    return (
+                      <Cell
+                        key={i}
+                        entry={entry}
+                        slot={{ dayOfWeek: i, mealType: meal.id }}
+                        meal={meal}
+                        dayName={dayName}
+                        past={isPastDay(weekStart, i)}
+                        stale={!!entry && staleIds.has(entry.id)}
+                        editing={!!entry && editingNoteId === entry.id}
+                        onTap={onSelectSlot}
+                        onEditNote={onEditNote}
+                        onSaveNote={onSaveNote}
+                        onRemove={onRemove}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <span className="rpm-fade" aria-hidden="true" />
+      </div>
+
+      {emptyCount > 0 && (
+        <button type="button" className="rpm-fill" onClick={onFillEmptySlots}>
+          {t("planner.fillEmpty", { count: emptyCount })}
+        </button>
+      )}
+
+      <div className="rpm-bottombar">
+        <button type="button" className="rpm-makelist" onClick={onOpenGrocery}>
+          {t("planner.makeList", { count: buyCount })}
+        </button>
       </div>
 
       {target && (
         <BottomSheet label={t("planner.suggestions")} onClose={() => onSelectSlot(null)}>
+          {targetRecipeEntry && (
+            <div className="rpm-sheet-card">
+              <div className="rpm-sheet-head">
+                <strong className="rpm-sheet-title">{targetRecipeEntry.recipe.title}</strong>
+                <span className="rpm-sheet-state">{t(`planner.sheetState.${sheetState}`)}</span>
+              </div>
+              <div className="rpm-sheet-actions">
+                <button
+                  type="button"
+                  className="rpm-chip"
+                  onClick={() => {
+                    onSelectSlot(null);
+                    onCardClick(targetRecipeEntry.recipe);
+                  }}
+                >
+                  {t("planner.sheetOpen")}
+                </button>
+                <button type="button" className="rpm-chip" onClick={() => onCycleState(targetRecipeEntry.id)}>
+                  {t(`planner.${nextMark[sheetState]}`)}
+                </button>
+                <button
+                  type="button"
+                  className="rpm-chip"
+                  onClick={() => {
+                    onRemove(targetRecipeEntry.id);
+                    onSelectSlot(null);
+                  }}
+                >
+                  {t("planner.sheetRemove")}
+                </button>
+              </div>
+            </div>
+          )}
+          {!targetEntry && (
+            <button
+              type="button"
+              className="rpm-sheet-note"
+              onClick={() => {
+                onSelectSlot(null);
+                onWriteInSlot(target);
+              }}
+            >
+              {t("planner.sheetNote")}
+            </button>
+          )}
           <PlannerTray {...trayProps} target={target} inSheet />
         </BottomSheet>
       )}

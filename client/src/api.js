@@ -59,6 +59,8 @@ export const api = {
   listPlanner: (weekStart) => request(`/planner?week=${encodeURIComponent(weekStart)}`),
   // Every planned meal from `from` (a "YYYY-MM-DD" day) onward, across weeks:
   // what the grocery list is built from.
+  // The days in a range that have a planned meal (the phone Planner's calendar dots).
+  listPlannedDates: (from, to) => request(`/planner/dates?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   listPlannerUpcoming: (from) => request(`/planner/upcoming?from=${encodeURIComponent(from)}`),
   placeOnPlanner: (payload) =>
     request("/planner", { method: "POST", body: JSON.stringify(payload) }),

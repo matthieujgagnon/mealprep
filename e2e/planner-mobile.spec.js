@@ -1,0 +1,146 @@
+import { expect, test } from "@playwright/test";
+
+// The Planner on a phone: the whole week as a board, three days in view, a
+// week pill with a month calendar, and a button to the grocery list.
+
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+const todayIndex = () => (new Date().getDay() + 6) % 7;
+
+function mondayOf(d) {
+  const x = new Date(d);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+
+function nextMonday() {
+  const x = new Date();
+  x.setDate(x.getDate() + 7);
+  return mondayOf(x);
+}
+
+async function setup(page) {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.fill('input[type="email"]', `pm+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+  const res = await page.request.post("/api/recipes", {
+    data: { title: "Roast chicken", baseServings: 2, ingredients: [{ name: "chicken", quantity: 500, unit: "g" }] },
+  });
+  return res.json();
+}
+
+async function plan(page, recipe, weekStart, dayOfWeek, mealType) {
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek, mealType } });
+}
+
+async function openPlanner(page) {
+  await page.reload();
+  await page.getByRole("button", { name: "Planner", exact: true }).first().click();
+  await expect(page.locator(".rpm-board")).toBeVisible();
+}
+
+test("the week is one board: seven days, three meal rows, and the meal labels stay put while it scrolls", async ({ page }) => {
+  await setup(page);
+  await openPlanner(page);
+
+  await expect(page.locator(".rpm-head")).toHaveCount(7);
+  await expect(page.locator(".rpm-mealrow")).toHaveCount(3);
+  await expect(page.locator(".rpm-cell")).toHaveCount(21);
+  await expect(page.locator(".rpm-head.today .rpm-head-dow")).toHaveText("TODAY");
+
+  // About three days fit; the board is wider than the screen.
+  const board = page.locator(".rpm-board");
+  const { scrollWidth, clientWidth } = await board.evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
+  expect(scrollWidth).toBeGreaterThan(clientWidth * 1.8);
+
+  // Scroll all the way to Sunday: the labels are still at the left edge.
+  await board.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  await page.waitForTimeout(400);
+  const label = await page.locator(".rpm-meallabel").first().boundingBox();
+  expect(label.x).toBeGreaterThanOrEqual(0);
+  expect(label.x).toBeLessThan(30);
+});
+
+test("a card opens a sheet with its buttons: leftovers, already have it, then clear, and remove", async ({ page }) => {
+  const recipe = await setup(page);
+  await plan(page, recipe, nextMonday(), 0, "dinner");
+  await openPlanner(page);
+  await page.getByRole("button", { name: "Next week" }).click();
+
+  await page.locator(".rpm-cell.card").click();
+  const sheet = page.locator(".riso-sheet");
+  await expect(sheet.getByText("Roast chicken").first()).toBeVisible();
+  await expect(sheet.locator(".rpm-sheet-state")).toHaveText("Planned");
+  await expect(sheet.getByRole("button", { name: "Open the recipe" })).toBeVisible();
+
+  await sheet.getByRole("button", { name: "Mark as leftovers" }).click();
+  await expect(sheet.locator(".rpm-sheet-state")).toHaveText("Leftovers");
+  await sheet.getByRole("button", { name: "Mark as already have it" }).click();
+  await expect(sheet.locator(".rpm-sheet-state")).toHaveText("Already have it");
+  await sheet.getByRole("button", { name: "Clear the mark" }).click();
+  await expect(sheet.locator(".rpm-sheet-state")).toHaveText("Planned");
+
+  await sheet.getByRole("button", { name: "Remove from the plan" }).click();
+  await expect(page.locator(".riso-sheet")).toHaveCount(0);
+  await expect(page.locator(".rpm-cell.card")).toHaveCount(0);
+  await expect(page.locator(".rpm-cell.empty")).toHaveCount(21);
+});
+
+test("an empty cell: the sheet offers recipes or a note instead", async ({ page }) => {
+  await setup(page);
+  await openPlanner(page);
+  await page.getByRole("button", { name: "Next week" }).click();
+
+  await page.getByRole("button", { name: "Add to lunch, Wednesday" }).click();
+  await page.getByRole("button", { name: "✎ Add a note instead" }).click();
+  await expect(page.locator(".riso-sheet")).toHaveCount(0);
+  await page.getByRole("textbox", { name: "Write on lunch" }).fill("Eating out");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".rpm-cell.note .rpm-note-text")).toHaveText("Eating out");
+});
+
+test("the week pill opens a month calendar with dots on planned days, and goes back to this week", async ({ page }) => {
+  const recipe = await setup(page);
+  await plan(page, recipe, mondayOf(new Date()), todayIndex(), "dinner");
+  await openPlanner(page);
+
+  await expect(page.locator(".rpm-weekpill")).toContainText("this week");
+  await page.locator(".rpm-weekpill").click();
+  const calendar = page.getByRole("dialog", { name: "Choose a week" });
+  await expect(calendar).toBeVisible();
+  await expect(calendar.locator(".rpm-cal-day.today")).toHaveCount(1);
+  await expect(calendar.locator(".rpm-cal-day.week")).not.toHaveCount(0);
+  await expect(calendar.locator(".rpm-cal-dot")).toHaveCount(1);
+
+  // Escape closes it.
+  await page.keyboard.press("Escape");
+  await expect(calendar).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Next week" }).click();
+  await expect(page.locator(".rpm-weekpill")).not.toContainText("this week");
+  await page.locator(".rpm-weekpill").click();
+  await page.getByRole("button", { name: "Go to this week" }).click();
+  await expect(calendar).toHaveCount(0);
+  await expect(page.locator(".rpm-weekpill")).toContainText("this week");
+
+  // Tapping a day in the calendar opens that day's week.
+  await page.locator(".rpm-weekpill").click();
+  await page.getByRole("button", { name: "Next month" }).click();
+  await page.locator(".rpm-cal-day:not(.out)").nth(14).click();
+  await expect(calendar).toHaveCount(0);
+  await expect(page.locator(".rpm-weekpill")).not.toContainText("this week");
+});
+
+test("the bottom button shows what's left to buy and opens Grocery", async ({ page }) => {
+  const recipe = await setup(page);
+  await plan(page, recipe, mondayOf(new Date()), todayIndex(), "dinner");
+  await openPlanner(page);
+
+  const button = page.getByRole("button", { name: /^Make the grocery list/ });
+  await expect(button).toHaveText("Make the grocery list · 1");
+  await button.click();
+  await expect(page.locator(".tab.active")).toHaveText("Grocery");
+});

@@ -276,14 +276,16 @@ test("on a phone, a meal card with an emoji is the same size as a recipe card wi
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await expect(page.locator(".rpm")).toBeVisible();
 
-  // Write only an emoji on today's breakfast.
-  await page.getByRole("button", { name: "Write on breakfast" }).click();
+  // Tap today's empty breakfast, choose "Add a note instead", and write only an emoji.
+  const day = (await page.locator(".rpm-head.today").getAttribute("aria-label")).split(" ")[0];
+  await page.getByRole("button", { name: `Add to breakfast, ${day}` }).click();
+  await page.getByRole("button", { name: "✎ Add a note instead" }).click();
   await page.getByRole("textbox", { name: "Write on breakfast" }).fill("🥞");
   await page.keyboard.press("Enter");
   await expect(page.locator(".rpm-note-text.emoji")).toBeVisible();
 
-  const meal = await page.locator(".rpm-meal").boundingBox();
-  const note = await page.locator(".rpm-note:not(.blank)").boundingBox();
+  const meal = await page.locator(".rpm-cell.card").boundingBox();
+  const note = await page.locator(".rpm-cell.note:not(.blank)").boundingBox();
   expect(Math.round(note.height)).toBe(Math.round(meal.height));
   expect(Math.round(note.width)).toBe(Math.round(meal.width));
   await page.screenshot({ path: test.info().outputPath("planner-phone-emoji-card.png") });
