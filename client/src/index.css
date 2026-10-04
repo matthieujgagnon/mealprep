@@ -1780,8 +1780,10 @@ select {
   padding: 0;
 }
 
-.inv-shelf-add {
-  font: 800 18px/1 var(--riso-font-display);
+/* The + that adds an item to a shelf, and the + beside the shelf pill that adds a
+   shelf: the same glyph size on a computer and on a phone. */
+.inv-shelf-edit.inv-shelf-add {
+  font: 800 22px/1 var(--riso-font-display);
 }
 
 .inv-shelf-add:hover,
@@ -11867,7 +11869,7 @@ button.riso-deal-detail-other:focus-visible {
   border: 2px solid var(--riso-ink);
   border-radius: 24px;
   background: var(--riso-surface);
-  font: 700 12.5px var(--riso-font-display);
+  font: 800 22px/1 var(--riso-font-display);
 }
 
 .riso-inv-shelf-bar button.add-shelf:hover {
