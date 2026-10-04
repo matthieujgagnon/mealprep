@@ -278,13 +278,13 @@ function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onTo
         <span className={`riso-row-check${checked ? " on" : ""}${justChecked ? " pop" : ""}`}>{checked ? "✓" : ""}</span>
       </button>
       <span className="riso-row-main">
+        <RecipesLine usedIn={item.usedIn} className="riso-row-recipes" />
         <span className={`riso-row-name${checked ? " struck" : ""}`} title={label}>
           {label}
         </span>
         <span className="riso-row-brand" title={brand ? t("grocery.brand", { brand }) : undefined}>
           {brand}
         </span>
-        <RecipesLine usedIn={item.usedIn} className="riso-row-recipes" />
         {sub !== null && <span className="riso-row-sub">{sub}</span>}
       </span>
       <span className="riso-row-slot">

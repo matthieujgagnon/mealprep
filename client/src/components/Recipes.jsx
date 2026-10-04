@@ -5,6 +5,7 @@ import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { HintStrip } from "./RisoControls.jsx";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { matchesSearch } from "../lib/recipeSearch.js";
+import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
 import { RECIPE_SLOTS, formatRecipeTime, inMealGroup, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { t } from "../i18n/index.js";
 
@@ -159,6 +160,8 @@ export function Recipes({
   onSearchChange,
   filter,
   onFilterChange,
+  protein,
+  onProteinChange,
   onSelectRecipe,
   onImported,
   onNewRecipe,
@@ -197,9 +200,16 @@ export function Recipes({
     FILTERS.map((f) => [f.id, allRecipes.filter((r) => matchesFilter(r, f.id)).length])
   );
 
+  // The protein filter (Home's "See them" opens it). It uses the same match as
+  // Home's count, recipeUsesProtein, so the two always agree.
+  const proteinKind = PROTEINS.find((p) => p.id === protein) || null;
+  const proteinCounts = Object.fromEntries(PROTEINS.map((p) => [p.id, allRecipes.filter((r) => recipeUsesProtein(r, p)).length]));
+
   const sourceCounts = Object.fromEntries(SOURCES.map((id) => [id, allRecipes.filter((r) => sourceOf(r) === id).length]));
 
-  let visible = allRecipes.filter((r) => matchesFilter(r, filter) && (!source || sourceOf(r) === source));
+  let visible = allRecipes.filter(
+    (r) => matchesFilter(r, filter) && (!source || sourceOf(r) === source) && (!proteinKind || recipeUsesProtein(r, proteinKind))
+  );
   if (query && !isUrl) visible = visible.filter((r) => matchesSearch(r, query));
 
   if (sortIndex === 1) {
@@ -343,6 +353,35 @@ export function Recipes({
             <span aria-hidden="true">▾</span>
           </label>
         </div>
+      </div>
+
+      <div className="riso-recipes-protein-row">
+        <div className="riso-recipes-sort-group">
+          <span className="riso-recipes-sort-label">{t("recipes.protein.label")}</span>
+          <label className="riso-recipes-sort-btn">
+            <select aria-label={t("recipes.protein.aria")} value={protein || ""} onChange={(e) => onProteinChange(e.target.value || null)}>
+              <option value="">{t("recipes.protein.all")}</option>
+              {PROTEINS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {t("recipes.protein.option", { name: p.label, count: proteinCounts[p.id] })}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden="true">▾</span>
+          </label>
+        </div>
+        {proteinKind && (
+          <button
+            type="button"
+            className="riso-filter-chip active riso-recipes-protein-chip"
+            aria-label={t("recipes.protein.clear", { name: proteinKind.label })}
+            title={t("recipes.protein.clear", { name: proteinKind.label })}
+            onClick={() => onProteinChange(null)}
+          >
+            <span aria-hidden="true">{proteinKind.emoji}</span> {proteinKind.label}
+            <span className="riso-recipes-protein-x" aria-hidden="true">×</span>
+          </button>
+        )}
       </div>
 
       <div className="riso-recipes-filter-chips">

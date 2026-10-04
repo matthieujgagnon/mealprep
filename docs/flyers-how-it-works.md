@@ -168,6 +168,8 @@ Home's old "On sale" box showed the first three flyer rows, whatever they were (
 
 **Which items count.** Only plain cuts from the meat and fish aisles. Pies, burgers, nuggets, sausages, ham, bacon, deli meats, cooked or breaded items, soups and pet food are left out.
 
+**Which recipes count.** `recipeUsesProtein` in `proteins.js` is the one rule for Home's count and for Recipes' protein filter (the Chicken chip that "See them" opens). It checks each ingredient on its own, and skips ingredients where the protein's name is only a flavour: fish sauce, oyster sauce, anchovy and shrimp paste, clam juice, stocks, broths, bouillon cubes and powders, bases, seasonings, rubs, sauces, salsas and soups (English and French, see `SEASONING_RE`). A recipe with no ingredients listed yet falls back to its title and tags.
+
 **Each row shows** the kind's best buy:
 
 - the biggest verdict first, then the biggest saving, then the lowest price per lb;

@@ -179,10 +179,10 @@ export function StoreMode({
                   onClick={() => onToggle(item.key)}
                 >
                   <StoreCheck on={on} />
+                  <RecipesLine usedIn={item.usedIn} className="store-mode-recipes" />
                   <span className="store-mode-info">
                     <span className="store-mode-name">{item.name.charAt(0).toUpperCase() + item.name.slice(1)}</span>
                     {detail && <span className="store-mode-brand">{detail}</span>}
-                    <RecipesLine usedIn={item.usedIn} className="store-mode-recipes" />
                   </span>
                   {(qty || deal?.price) && (
                     <span className="store-mode-right">

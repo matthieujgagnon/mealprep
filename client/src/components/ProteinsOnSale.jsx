@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { dealSavings, dealVerdict, savingText as savingWords, tilePrice } from "../lib/flyerIngredients.js";
-import { proteinName, proteinRows, proteinSearchQuery, recipesUsingProtein } from "../lib/proteins.js";
+import { proteinName, proteinRows, recipesUsingProtein } from "../lib/proteins.js";
 import { DealDetailModal } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
 import { formatMoney, localizePrice, perUnit } from "../i18n/format.js";
@@ -34,10 +34,11 @@ function savingText(deal) {
 // tell yet"; one with nothing says "No deal this week". Tapping a row selects
 // that protein (tap it again, or another, to change); a bar slides up at the
 // bottom of the screen with how many of your recipes use any kind of it and a
-// link to those same recipes in Recipes. A selected row with a deal has a "See
+// link that opens Recipes with that protein's filter on (the same match counts
+// and filters, see recipeUsesProtein). A selected row with a deal has a "See
 // the deal" button for its deal card, with the protein's other items under
 // "Also on sale".
-export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindRecipes }) {
+export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein }) {
   const [open, setOpen] = useState(null); // { deal, others }
   const [selectedId, setSelectedId] = useState(null);
   const rows = proteinRows(deals);
@@ -158,7 +159,7 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindRecipes 
               <button
                 type="button"
                 className="riso-protein-bar"
-                onClick={() => onFindRecipes?.(proteinSearchQuery(selected))}
+                onClick={() => onFindProtein?.(selected.id)}
               >
                 <span>{t("proteins.barUse", { count: using.length, name: t(`proteins.useName.${selected.id}`) })}</span>
                 <span className="riso-protein-bar-go">{t("home.seeThem")}</span>
