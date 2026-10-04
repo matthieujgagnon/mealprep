@@ -1267,8 +1267,7 @@ export const en = {
       account: {
         title: "Account",
         lines: [
-          "On a computer, the FR and EN switch [[langSwitch]] is always at the top right of the header. When there's room, your name, [[helpButton]] and [[logOutButton]] sit next to it. When the window is too narrow (French needs more room than English), they move into a round button with your initial [[avatar]]. Click it to see them.",
-          "On a phone, the FR and EN switch [[langSwitch]] sits next to a round button with your initial [[avatar]]. Tap the button to see your name, [[helpButton]] and [[logOutButton]].",
+          "On a computer and on a phone, the FR and EN switch [[langSwitch]] is at the top right of the header, next to a round button with your initial [[avatar]]. Click or tap the button to see your name, [[helpButton]] and [[logOutButton]].",
           "The language you pick is saved to your account, so it follows you to other devices. The app's emails come in it too.",
           "Forgot your password? On the log-in screen, ask for a reset link by email.",
         ],

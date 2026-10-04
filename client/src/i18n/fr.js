@@ -1273,8 +1273,7 @@ export const fr = {
       account: {
         title: "Compte",
         lines: [
-          "Sur un ordinateur, le commutateur FR et EN [[langSwitch]] est toujours en haut à droite de l'en-tête. Quand il y a de la place, votre nom, [[helpButton]] et [[logOutButton]] sont à côté. Quand la fenêtre est trop étroite (le français demande plus de place que l'anglais), ils passent dans un bouton rond avec votre initiale [[avatar]]. Cliquez dessus pour les voir.",
-          "Sur un téléphone, le commutateur FR et EN [[langSwitch]] est à côté d'un bouton rond avec votre initiale [[avatar]]. Touchez le bouton pour voir votre nom, [[helpButton]] et [[logOutButton]].",
+          "Sur un ordinateur comme sur un téléphone, le commutateur FR et EN [[langSwitch]] est en haut à droite de l'en-tête, à côté d'un bouton rond avec votre initiale [[avatar]]. Cliquez ou touchez le bouton pour voir votre nom, [[helpButton]] et [[logOutButton]].",
           "La langue que vous choisissez est enregistrée dans votre compte et vous suit sur vos autres appareils. Les courriels de l'application arrivent aussi dans cette langue.",
           "Mot de passe oublié? Sur l'écran de connexion, demandez un lien de réinitialisation par courriel.",
         ],

@@ -28,7 +28,7 @@ import { PlannerBoard, PlannerHeader } from "./components/PlannerBoard.jsx";
 import { PlannerTray } from "./components/PlannerTray.jsx";
 import { PlannerMobile } from "./components/PlannerMobile.jsx";
 import { useIsPhone } from "./hooks/useIsPhone.js";
-import { useHeaderCollapse } from "./hooks/useHeaderCollapse.js";
+import { useHeaderTightness } from "./hooks/useHeaderTightness.js";
 import { emptyUpcomingSlots, findNextEmptySlot, isCustomNote, todayIndex } from "./lib/plannerSlots.js";
 import { isBreakfastRecipe, isDessertRecipe, isPrepRecipe, isSideRecipe, rankRecipesForTray } from "./lib/plannerSuggestions.js";
 import { haveCoresFor } from "./lib/onHand.js";
@@ -120,20 +120,25 @@ export default function App({ user, onLogout }) {
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
   const headerRef = useRef(null);
-  // On a computer the account area collapses into the avatar menu, and then
-  // the header tightens, as far as it takes to stay on one row with the logo
-  // and the tabs. The key is what changes how wide the inline version is.
-  const headerLevel = useHeaderCollapse(headerRef, {
+  // On a computer the header tightens, as far as it takes, to stay on one row
+  // with the logo, the tabs, FR | EN and the avatar. The key is what changes
+  // how wide the tabs are.
+  const headerLevel = useHeaderTightness(headerRef, {
     enabled: !isPhone,
-    resetKey: `${t("app.logOut")}|${user.name || user.email}`,
+    resetKey: t("app.nav.planner"),
   });
   useEffect(() => {
     if (!avatarMenuOpen) return undefined;
     const close = (event) => {
       if (!avatarRef.current?.contains(event.target)) setAvatarMenuOpen(false);
     };
+    const onKey = (event) => event.key === "Escape" && setAvatarMenuOpen(false);
     document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [avatarMenuOpen]);
   // The phone nav is a horizontally scrolling pill row - keep the active pill
   // on screen when the tab changes from elsewhere (e.g. Home's "Open list →").
@@ -339,9 +344,8 @@ export default function App({ user, onLogout }) {
   }
 
   // What the account area offers besides the language switch and the name.
-  // Shown inline on a wide computer, and in the avatar menu on a phone or
-  // when the inline version wouldn't fit. A new entry (the Admin link)
-  // shows up in both places by being added here.
+  // Shown in the avatar menu. A new entry (the Admin link) shows up there by
+  // being added here.
   const accountActions = [
     { id: "help", label: t("app.help"), current: tab === "help", onSelect: () => goToTab("help") },
     { id: "logout", label: t("app.logOut"), onSelect: handleLogout },
@@ -797,12 +801,12 @@ export default function App({ user, onLogout }) {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
       <div className={`app${isDragActive ? " dnd-active" : ""}`}>
-        <header ref={headerRef} className={`app-header riso-theme${headerLevel >= 1 ? " is-compact" : ""}${headerLevel >= 2 ? " is-tight" : ""}${headerLevel >= 3 ? " is-tighter" : ""}`}>
+        <header ref={headerRef} className={`app-header riso-theme${headerLevel >= 1 ? " is-tight" : ""}${headerLevel >= 2 ? " is-tighter" : ""}`}>
           <h1 className="wordmark">
             matt mo <span>cookbook</span>
           </h1>
-          {/* On a phone, or when the account area doesn't fit on a computer:
-              FR | EN right in the header, next to the avatar. */}
+          {/* FR | EN right in the header, next to the avatar. The name, Help and
+              Log out are in the avatar's menu, on a phone and on a computer. */}
           <div className="app-header-phone-tools">
             <LanguageSwitch />
             <div className="app-header-avatar" ref={avatarRef}>
@@ -880,21 +884,6 @@ export default function App({ user, onLogout }) {
               {t("app.nav.inventory")}
             </button>
           </nav>
-          <div className="app-header-account">
-            <LanguageSwitch />
-            <span className="app-header-account-name">{user.name || user.email}</span>
-            {accountActions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                className="btn subtle btn-sm"
-                aria-current={action.current ? "page" : undefined}
-                onClick={action.onSelect}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
         </header>
 
         {loadError && (

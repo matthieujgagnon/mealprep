@@ -810,35 +810,9 @@ select {
   box-shadow: var(--riso-shadow);
 }
 
-.app-header-account {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  /* flex: 0 1 auto (shrinkable), not flex: none - a long email is real
-     content this can't just refuse to yield width for. Paired with the
-     name's own min-width:0 + ellipsis below, so a long email truncates
-     instead of forcing the row (and on a narrow viewport, the page) wider
-     than expected - see .tabs's own min-width:0 comment for what that
-     causes on a real mobile viewport. */
-  flex: 0 1 auto;
-  min-width: 0;
-  margin-left: auto;
-}
-
-.app-header-account-name {
-  font-family: var(--riso-font-body);
-  font-size: 14px;
-  color: var(--riso-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
 /* .btn.subtle is styled for a dark page (light card, dark text on a dark
    backdrop) - the header is now its own paper-colored bar, so it needs the
    inverse: an ink-outlined card-colored button instead. */
-.app-header-account .btn.subtle,
 .app-header-avatar-menu .btn.subtle,
 .riso-help-copy .btn.subtle {
   background: var(--riso-surface);
@@ -846,7 +820,6 @@ select {
   border: 2px solid var(--riso-ink);
 }
 
-.app-header-account .btn.subtle:hover,
 .app-header-avatar-menu .btn.subtle:hover {
   background: var(--riso-track);
 }
@@ -10058,13 +10031,8 @@ button.riso-row-qty:focus-visible {
    then a horizontally scrolling row of 40px pills. The pill row is the one
    place the tabs scroll, so it carries vertical padding for the active
    pill's 3px shadow - a scroll container clips on both axes. */
-.app-header-phone-tools {
-  display: none;
-}
-
-/* The account menu: the avatar button and what opens under it. Phones always
-   use it; a computer does too when the name, Help and Log out don't fit on
-   the header's one row (.is-compact, set by useHeaderCollapse). */
+/* The account menu: the avatar button and what opens under it (the name, Help
+   and Log out), on a computer and on a phone. */
 .app-header-avatar {
   position: relative;
 }
@@ -10108,11 +10076,8 @@ button.riso-row-qty:focus-visible {
   white-space: nowrap;
 }
 
-.app-header.is-compact .app-header-account {
-  display: none;
-}
-
-.app-header.is-compact .app-header-phone-tools {
+/* FR | EN and the avatar, at the right of the header on a computer too. */
+.app-header-phone-tools {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -10135,10 +10100,10 @@ button.riso-row-qty:focus-visible {
    longer: logo + 7 tabs + FR | EN + the avatar need about 1150px at full
    size, so between 1024 and 1280 the logo, gaps and tab padding give up to
    ~150px as the window narrows (--squeeze is how many px short of full size
-   the window is, 0 to 141). The name, Help and Log out move into the
-   avatar menu when they don't fit (useHeaderCollapse). */
-/* When the header still wraps (a wide font, a long name), it tightens one
-   more step: a smaller logo, tabs and gaps (useHeaderCollapse level 2). */
+   the window is, 0 to 141). */
+
+/* When the header still wraps (a wide font), it tightens a step at a time: a
+   smaller logo, tabs and gaps (useHeaderTightness, .is-tight then .is-tighter). */
 @media (min-width: 1024px) {
   .app-header.is-tight {
     gap: 10px;
@@ -10218,10 +10183,6 @@ button.riso-row-qty:focus-visible {
   .wordmark span {
     padding: 0 6px;
     border-radius: 5px;
-  }
-
-  .app-header-account {
-    display: none;
   }
 
   .app-header-phone-tools {
@@ -15829,7 +15790,6 @@ body.no-select {
 }
 
 /* The header's Help button, while the Help page is open. */
-.app-header-account .btn.subtle[aria-current="page"],
 .app-header-avatar-menu .btn.subtle[aria-current="page"] {
   background: var(--riso-ink);
   color: var(--riso-canvas);

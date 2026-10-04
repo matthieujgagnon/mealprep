@@ -1,26 +1,24 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-// How much the desktop header has to give so everything stays on one row:
-//   0  everything inline: the language switch, name, Help and Log out
-//   1  the name, Help and Log out move into the avatar menu (the one phones
-//      use); the language switch stays in the open
-//   2  as 1, and the logo, tabs and gaps tighten as well
-//   3  tighter still (for the widest fonts)
+// How tight the desktop header has to get to stay on one row beside the
+// language switch and the avatar button:
+//   0  normal
+//   1  the logo, tabs and gaps tighten
+//   2  tighter still (for the widest fonts)
 //
 // It measures instead of guessing a breakpoint, because what fits depends on
-// the language ("Se déconnecter" is longer than "Log out"), on the person's
-// name, on whether there's an Admin link, and on the fonts that actually
-// loaded. A level is only moved up when something has wrapped onto a second
-// row. The width a level failed at is remembered, and the roomier level is
-// tried again only once the header is wider than that. `resetKey` forgets
-// those widths (a new language or name changes what each level needs).
+// the language ("Planificateur" is longer than "Planner") and on the fonts that
+// actually loaded. A level is only moved up when something has wrapped onto a
+// second row. The width a level failed at is remembered, and the roomier level
+// is tried again only once the header is wider than that. `resetKey` forgets
+// those widths (a new language changes what each level needs).
 //
 // Re-measures before paint, so there's no flash of the wrapped header.
-const MAX_LEVEL = 3;
+const MAX_LEVEL = 2;
 
-export function useHeaderCollapse(headerRef, { enabled, resetKey }) {
+export function useHeaderTightness(headerRef, { enabled, resetKey }) {
   const [level, setLevel] = useState(0);
-  const failedAt = useRef([0, 0, 0]);
+  const failedAt = useRef([0, 0]);
   const lastKey = useRef(resetKey);
 
   useLayoutEffect(() => {
@@ -28,7 +26,7 @@ export function useHeaderCollapse(headerRef, { enabled, resetKey }) {
     if (!header || !enabled) return undefined;
     if (lastKey.current !== resetKey) {
       lastKey.current = resetKey;
-      failedAt.current = [0, 0, 0];
+      failedAt.current = [0, 0];
       if (level !== 0) {
         setLevel(0);
         return undefined;
@@ -43,7 +41,7 @@ export function useHeaderCollapse(headerRef, { enabled, resetKey }) {
       const bottom = logo.offsetTop + logo.offsetHeight;
       // From 1024px the tabs belong beside the logo (below that they take a
       // row of their own by design).
-      const watched = [header.querySelector(level === 0 ? ".app-header-account" : ".app-header-phone-tools")];
+      const watched = [header.querySelector(".app-header-phone-tools")];
       if (window.matchMedia("(min-width: 1024px)").matches) watched.push(header.querySelector(".tabs"));
       return watched.some((el) => el && el.offsetParent !== null && el.offsetTop >= bottom);
     };
