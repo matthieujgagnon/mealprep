@@ -168,6 +168,26 @@ test.describe("grocery rows", () => {
   });
 });
 
+test("Store mode rows are all the same height, with or without a detail line, amount or price", async ({ page }) => {
+  const userId = await signUp(page);
+  const deal = await prisma.flyerDeal.create({
+    data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Maple Leaf bacon, 375 g", matchName: "bacon", price: "$3.99", unitPrice: 3.99, unitBasis: "each", regularPrice: 6.99, isCurrent: true, createdAt: new Date() },
+  });
+  await addExtra(page, { name: "Bacon", dealId: deal.id, quantity: 2 }); // detail line, amount and price
+  await addExtra(page, { name: "Soap" }); // none of them
+  await addExtra(page, { name: "Milk", quantity: 2 }); // an amount only
+  await addExtra(page, { name: "A very long item name that goes on and on and would otherwise make this row taller than all the others" });
+  await goToGrocery(page);
+
+  // Store mode is the phone's shopping view.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: /I'm at the store/ }).click();
+  const rows = page.locator(".store-mode-row");
+  await expect(rows).toHaveCount(4);
+  const heights = await rows.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  expect(new Set(heights).size).toBe(1);
+});
+
 test.describe("inventory on a phone", () => {
   test.use({ viewport: { width: 390, height: 700 } });
 
