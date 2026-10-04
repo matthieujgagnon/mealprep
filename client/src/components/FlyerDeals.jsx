@@ -6,6 +6,7 @@ import { groceryCore } from "../lib/groceryDedupe.js";
 import { invalidateGroceryShared } from "../lib/groceryCache.js";
 import { refreshDeals } from "../lib/dealsStore.js";
 import {
+  brandOf,
   buildIngredients,
   foldText,
   RANKS,
@@ -365,6 +366,7 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
               {deal.store.toUpperCase()} · {aisleLabel(deal.aisle).toUpperCase()}
             </span>
             <h3 className="riso-deal-detail-name">{deal.item}</h3>
+            {brandOf(deal) && <span className="riso-deal-detail-brand">{t("grocery.brand", { brand: brandOf(deal) })}</span>}
             {deal.endsInDays != null && <span className="riso-deal-detail-ends">{endsLabel(deal.endsInDays)}</span>}
           </div>
           <div className="riso-deal-detail-price">
@@ -1198,6 +1200,7 @@ function IngredientCard({ g, open, onToggle, isListedAt, onList, onOpenDeal }) {
                 <span className="riso-ing-variant-store">{d.store.toUpperCase()}</span>
                 <button type="button" className="riso-ing-variant-names" aria-label={t("flyers.detailsAria", { item: d.item })} onClick={() => onOpenDeal(d)}>
                   <span className="riso-ing-variant-name">{en}</span>
+                  {brandOf(d) && <span className="riso-ing-variant-brand">{brandOf(d)}</span>}
                   {(fr || regularLabel(d)) && <span className="riso-ing-variant-fr">{fr || regularLabel(d)}</span>}
                 </button>
                 <span className="riso-ing-variant-price">
@@ -1350,7 +1353,7 @@ export function FlyerDeals({
     }
     const name = listedName(g) || ingredientNames(g).name;
     const core = groceryCore(name);
-    if (!isOnGroceryList(name)) await onAddToGroceryList([name]);
+    if (!isOnGroceryList(name)) await onAddToGroceryList([name], { dealId: deal.id });
     try {
       let section = sections.find((s) => sameStore(s.name, deal.store));
       if (!section) {

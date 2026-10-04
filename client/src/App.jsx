@@ -35,7 +35,8 @@ import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
-import { Inventory, InventoryDragPreview } from "./components/Inventory.jsx";
+import { Inventory, InventoryDragPreview, shelfOptions } from "./components/Inventory.jsx";
+import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 
 // Rendered inside <DragOverlay> — a floating copy that actually follows the
 // cursor, independent of wherever the real (now-dimmed) source element sits.
@@ -249,7 +250,7 @@ export default function App({ user, onLogout }) {
   // Adds only what isn't already on the list (from a planned recipe
   // or added earlier), so tapping "+ Add all" twice, or adding an item a
   // planned recipe already needs, never makes a duplicate row.
-  async function addToGroceryList(names) {
+  async function addToGroceryList(names, { dealId = null } = {}) {
     const seen = new Set(groceryCores);
     const removedRows = removedRecipeRows(upcomingEntries, groceryOverrides);
     const created = [];
@@ -263,7 +264,7 @@ export default function App({ user, onLogout }) {
         await setGroceryOverride(removedRows.get(c), { removed: false });
         continue;
       }
-      created.push(await api.addGroceryExtra({ name, quantity: null, unit: null }));
+      created.push(await api.addGroceryExtra({ name, quantity: null, unit: null, ...(dealId && { dealId }) }));
     }
     if (created.length > 0) setPlannerExtraItems((prev) => [...prev, ...created]);
   }
@@ -398,6 +399,43 @@ export default function App({ user, onLogout }) {
     setPantryInventory((prev) => [...prev, created]);
   }
 
+  // The only way anything but Inventory's own add form reaches Inventory: it
+  // opens the confirmation sheet and resolves with the `ref`s of the rows that
+  // were added (an empty list when nothing was), or null if it was cancelled
+  // before anything was. Nothing is added until the sheet is confirmed.
+  const [inventoryAsk, setInventoryAsk] = useState(null);
+  function requestInventoryAdd(drafts, { title, intro } = {}) {
+    return new Promise((resolve) => {
+      setInventoryAsk({ drafts, title, intro, added: [], resolve });
+    });
+  }
+
+  async function confirmInventoryAdd(rows) {
+    const ask = inventoryAsk;
+    const failed = [];
+    for (const { ref, ...item } of rows) {
+      try {
+        await handleAddPantryItem(item);
+        ask.added.push(ref);
+      } catch {
+        failed.push(ref);
+      }
+    }
+    if (failed.length > 0) {
+      // Keep what went in out of the sheet, so a retry doesn't add it twice.
+      const error = new Error(t("inventoryConfirm.failed"));
+      error.added = rows.map((r) => r.ref).filter((r) => !failed.includes(r));
+      throw error;
+    }
+    ask.resolve(ask.added);
+    setInventoryAsk(null);
+  }
+
+  function cancelInventoryAdd() {
+    inventoryAsk.resolve(inventoryAsk.added.length > 0 ? inventoryAsk.added : null);
+    setInventoryAsk(null);
+  }
+
   async function handleUpdatePantryItem(id, payload) {
     const updated = await api.updatePantryInventoryItem(id, payload);
     setPantryInventory((prev) => prev.map((i) => (i.id === id ? updated : i)));
@@ -415,12 +453,6 @@ export default function App({ user, onLogout }) {
     const idSet = new Set(ids);
     setPantryInventory((prev) => prev.filter((i) => !idSet.has(i.id)));
     await api.consumePantryInventoryItems(ids, action);
-  }
-
-  async function handleAddPantryLocation(name) {
-    const created = await api.addPantryLocation(name);
-    setPantryLocations((prev) => [...prev, created]);
-    return created;
   }
 
   // Items still in a deleted section move back to Pantry server-side (see
@@ -876,6 +908,17 @@ export default function App({ user, onLogout }) {
 
         {tab === "help" && <Help />}
 
+        {inventoryAsk && (
+          <InventoryConfirmSheet
+            drafts={inventoryAsk.drafts}
+            sections={shelfOptions(pantryLocations, inventoryLayout)}
+            title={inventoryAsk.title}
+            intro={inventoryAsk.intro}
+            onConfirm={confirmInventoryAdd}
+            onCancel={cancelInventoryAdd}
+          />
+        )}
+
         {tab === "flyers" && (
           <FlyerDeals
             user={user}
@@ -908,6 +951,7 @@ export default function App({ user, onLogout }) {
             user={user}
             items={pantryInventory}
             onAdd={handleAddPantryItem}
+            onRequestInventoryAdd={requestInventoryAdd}
             onUpdate={handleUpdatePantryItem}
             onDelete={handleDeletePantryItem}
             onConsume={handleConsumePantryItems}
@@ -924,7 +968,6 @@ export default function App({ user, onLogout }) {
             locations={pantryLocations}
             layout={inventoryLayout}
             onSaveLayout={handleSaveInventoryLayout}
-            onAddLocation={handleAddPantryLocation}
             onRenameLocation={handleRenamePantryLocation}
             onDeleteLocation={handleDeletePantryLocation}
           />
@@ -1058,7 +1101,7 @@ export default function App({ user, onLogout }) {
             customStaples={customStaples}
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
-            onAddPantryItem={handleAddPantryItem}
+            onRequestInventoryAdd={requestInventoryAdd}
           />
         )}
 
@@ -1098,7 +1141,7 @@ export default function App({ user, onLogout }) {
               setWeekStart(currentWeekStart());
               setTab("planner");
             }}
-            onAddPantryItem={handleAddPantryItem}
+            onRequestInventoryAdd={requestInventoryAdd}
             onDeletePantryItem={handleDeletePantryItem}
             onAddToGroceryList={addToGroceryList}
             onConsumePantryItems={handleConsumePantryItems}

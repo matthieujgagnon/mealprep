@@ -193,11 +193,12 @@ export const api = {
     if (!res.ok) throw new Error(data?.error || t("common.requestFailed", { status: res.status }));
     return data;
   },
-  // Returns { expiresAt, category } - both suggested from the same bundled
-  // USDA FoodKeeper product match.
+  // Returns { expiresAt, category, location } - suggested from the same
+  // bundled USDA FoodKeeper product match (the shelf too, when none is given).
   suggestPantryExpiration: (name, location, purchasedAt) =>
     request(
-      `/pantry-inventory/suggest?name=${encodeURIComponent(name)}&location=${encodeURIComponent(location)}` +
+      `/pantry-inventory/suggest?name=${encodeURIComponent(name)}` +
+        (location ? `&location=${encodeURIComponent(location)}` : "") +
         (purchasedAt ? `&purchasedAt=${encodeURIComponent(purchasedAt)}` : "")
     ),
   addPantryInventoryItem: (item) =>

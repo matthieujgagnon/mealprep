@@ -84,6 +84,32 @@ export function frenchProductName(text) {
   return name ? name[0].toUpperCase() + name.slice(1) : null;
 }
 
+// The brand a flyer product carries, as the flyer writes it ("Maple Leaf
+// bacon, 375 g" -> "Maple Leaf"), or null. Flyer rows have no brand field of
+// their own, so it's read from the name against the known brands above. A
+// brand in capitals or all lower case is written in the usual capitals.
+export function brandOf(deal) {
+  // Punctuation becomes a space (same length), so "Maple Leaf, 500 g" reads
+  // as a brand followed by a space.
+  const raw = String(deal?.item || "").normalize("NFC").replace(/[®™*,()[\]]/g, " ");
+  if (!raw.trim()) return null;
+  const folded = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const m = folded.matchAll(BRAND_RE).next().value;
+  if (!m) return null;
+  const start = m.index + m[1].length;
+  // Folding keeps one letter per precomposed letter, so the brand sits at the
+  // same place in the real text (and keeps its accents).
+  let brand = folded.length === raw.length ? raw.slice(start, start + m[2].length) : m[2];
+  if (brand === brand.toUpperCase() || brand === brand.toLowerCase()) {
+    brand = brand
+      .toLowerCase()
+      .split(" ")
+      .map((w) => (w.length <= 2 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
+      .join(" ");
+  }
+  return brand.trim() || null;
+}
+
 // The words that name the product: "Maple Leaf bacon, 375 g" -> "bacon".
 export function productText(deal) {
   const { en } = splitBilingual(deal.matchName || deal.item);

@@ -59,7 +59,8 @@ export function StoreMode({
   const [sort, setSort] = useState(() => readStored(SORT_KEY, "section", ["section", "az"]));
 
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    // Escape closes the Inventory confirmation first, not Store mode under it.
+    const onKey = (e) => e.key === "Escape" && !document.querySelector(".riso-confirm") && onClose();
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -195,8 +196,8 @@ export function StoreMode({
           onClick={async () => {
             setBusy(true);
             try {
-              await onDone();
-              onClose();
+              // Cancelling the Inventory confirmation keeps you in Store mode.
+              if (await onDone()) onClose();
             } finally {
               setBusy(false);
             }

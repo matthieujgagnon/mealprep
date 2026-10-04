@@ -47,7 +47,7 @@ function spanOf(size, id) {
 // Built-in shelves plus custom sections, in the user's saved order (anything
 // not in the saved layout yet - a brand-new section - goes at the end), with
 // their names, widths (in grid columns) and heights.
-function orderedSections(locations, layout) {
+export function orderedSections(locations, layout) {
   const all = [
     ...SHELF_LOCATIONS.map((l) => ({ id: l.id, defaultLabel: l.label, custom: false })),
     ...(locations || []).map((l) => ({ id: l.id, defaultLabel: l.name, custom: true })),
@@ -68,6 +68,11 @@ function orderedSections(locations, layout) {
         height: row?.height ? Math.max(MIN_HEIGHT, row.height) : null,
       };
     });
+}
+
+// The shelves as plain { id, label } choices, in the saved order.
+export function shelfOptions(locations, layout) {
+  return orderedSections(locations, layout).map(({ id, label }) => ({ id, label }));
 }
 
 function layoutPayload(sections) {
@@ -185,17 +190,24 @@ function AddInventoryItemForm({ onAdd, onDone, sections, defaultLocation = "frid
   );
 }
 
-// Upload a receipt photo/PDF, let Gemini read it into candidate item names,
-// then let the user review/edit/deselect before anything actually hits the
-// database - OCR'd receipt text is noisy enough (coupons, loyalty lines,
-// misread brand names) that a blind bulk-add would just make a mess to
-// clean up later. Each accepted row goes through the same onAdd as the
-// manual form above, so it gets the same suggested category/expiration.
-function ReceiptScanPanel({ onAdd, onDone, sections }) {
+// Upload a receipt photo/PDF and let Gemini read it into candidate items.
+// What it read goes to the same Inventory confirmation sheet as every other
+// way of adding: OCR'd receipt text is noisy enough (coupons, loyalty lines,
+// misread brand names) that nothing is added until each row has been checked,
+// edited or switched off there. Cancelling the sheet adds nothing, and the
+// items stay here to review again without reading the receipt twice.
+function ReceiptScanPanel({ onRequestInventoryAdd, onDone }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
-  const [pending, setPending] = useState(null); // [{ name, quantity, location, selected }] once parsed
-  const [saving, setSaving] = useState(false);
+  const [found, setFound] = useState(null); // the items Gemini read, once parsed
+
+  async function review(items) {
+    const added = await onRequestInventoryAdd(
+      items.map((it, i) => ({ ref: i, name: it.name, quantity: it.quantity ?? null })),
+      { title: t("inventoryConfirm.receiptTitle"), intro: t("inventoryConfirm.receiptIntro") }
+    );
+    if (added?.length) onDone?.();
+  }
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -205,9 +217,8 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
     setError(null);
     try {
       const { items } = await api.parseReceipt(file);
-      setPending(
-        items.map((it) => ({ name: it.name, quantity: it.quantity, location: "fridge", selected: true }))
-      );
+      setFound(items);
+      if (items.length > 0) review(items);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -215,75 +226,11 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
     }
   }
 
-  function updateRow(i, patch) {
-    setPending((prev) => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
-  }
-
-  async function handleAddSelected() {
-    const selected = pending.filter((row) => row.selected && row.name.trim());
-    if (selected.length === 0) return;
-    setSaving(true);
-    try {
-      for (const row of selected) {
-        await onAdd({ name: row.name.trim(), quantity: row.quantity ?? null, location: row.location });
-      }
-      setPending(null);
-      onDone?.();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (pending) {
-    const selectedCount = pending.filter((row) => row.selected).length;
-    return (
-      <div className="receipt-review">
-        <p className="receipt-review-intro">{t("inventory.found", { count: pending.length })}</p>
-        <ul className="receipt-review-list">
-          {pending.map((row, i) => (
-            <li key={i} className="receipt-review-row">
-              <input
-                type="checkbox"
-                checked={row.selected}
-                onChange={(e) => updateRow(i, { selected: e.target.checked })}
-                aria-label={t("inventory.include", { name: row.name })}
-              />
-              <input
-                type="text"
-                value={row.name}
-                onChange={(e) => updateRow(i, { name: e.target.value })}
-                disabled={!row.selected}
-              />
-              <select
-                value={row.location}
-                onChange={(e) => updateRow(i, { location: e.target.value })}
-                disabled={!row.selected}
-              >
-                {sections.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </li>
-          ))}
-        </ul>
-        {error && <p className="flyer-upload-error">{error}</p>}
-        <div className="receipt-review-actions">
-          <button type="button" className="btn primary" onClick={handleAddSelected} disabled={saving || selectedCount === 0}>
-            {saving ? t("inventory.adding") : t("inventory.addSelected", { count: selectedCount })}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flyer-upload-form">
-      <label className="form-label">
-        {t("inventory.receiptLabel")}
+    <div className="riso-receipt">
+      <label className={`riso-receipt-drop${uploading ? " busy" : ""}`}>
+        <span className="riso-receipt-drop-title">{t("inventory.receiptLabel")}</span>
+        <span className="riso-receipt-drop-hint">{uploading ? t("inventory.reading") : t("inventory.receiptHint")}</span>
         <input
           type="file"
           accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -291,8 +238,17 @@ function ReceiptScanPanel({ onAdd, onDone, sections }) {
           disabled={uploading}
         />
       </label>
-      {uploading && <p className="receipt-review-intro">{t("inventory.reading")}</p>}
-      {error && <p className="flyer-upload-error">{error}</p>}
+      {found && !uploading && (
+        <div className="riso-receipt-found">
+          <p>{found.length > 0 ? t("inventory.found", { count: found.length }) : t("inventory.foundNone")}</p>
+          {found.length > 0 && (
+            <button type="button" className="btn primary" onClick={() => review(found)}>
+              {t("inventory.reviewFound", { count: found.length })}
+            </button>
+          )}
+        </div>
+      )}
+      {error && <p className="riso-confirm-error">{error}</p>}
     </div>
   );
 }
@@ -865,29 +821,6 @@ function ShelfColumn({
 
 // "+ Add shelf" at the end of the grid makes a new shelf and opens it
 // ready to rename.
-function AddSectionTile({ onAdd }) {
-  const [adding, setAdding] = useState(false);
-  return (
-    <button
-      type="button"
-      className="inv-add-section-tile"
-      disabled={adding}
-      onClick={async () => {
-        setAdding(true);
-        try {
-          await onAdd();
-        } finally {
-          setAdding(false);
-        }
-      }}
-    >
-      {adding ? t("inventory.adding") : t("inventory.addShelf")}
-    </button>
-  );
-}
-
-// The card's photo, in the detail panel: upload one from the phone or
-// computer, or take it off to go back to the emoji tile.
 function PhotoPicker({ item, onUpdate }) {
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -1215,6 +1148,7 @@ export function Inventory({
   user,
   items,
   onAdd,
+  onRequestInventoryAdd,
   onUpdate,
   onDelete,
   onConsume,
@@ -1227,7 +1161,6 @@ export function Inventory({
   locations,
   layout,
   onSaveLayout,
-  onAddLocation,
   onRenameLocation,
   onDeleteLocation,
 }) {
@@ -1239,6 +1172,9 @@ export function Inventory({
   const [addLocation, setAddLocation] = useState("fridge");
   const [showScan, setShowScan] = useState(false);
   const isPhone = useIsPhone();
+  // On a phone every shelf is on one continuous page, and the shelf chips are
+  // pinned under the header: tapping one scrolls to its shelf, and the chip
+  // of the shelf you're looking at is the lit one.
   const [phoneShelf, setPhoneShelf] = useState("fridge");
   const [editingId, setEditingId] = useState(null);
   const staples = new Set(customStaples || []);
@@ -1296,6 +1232,53 @@ export function Inventory({
   // custom sections, in the user's order, with their names and sizes.
   const sections = orderedSections(locations, layout);
   const shelfLocations = sections;
+
+  // The height of the sticky app header, so the chips pin right under it and a
+  // jump lands the shelf just below the chips.
+  const rootRef = useRef(null);
+  useEffect(() => {
+    if (!isPhone) return undefined;
+    const header = document.querySelector(".app-header");
+    const root = rootRef.current;
+    if (!header || !root) return undefined;
+    const measure = () => root.style.setProperty("--inv-sticky-top", `${header.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [isPhone]);
+
+  // Light the chip of the shelf whose top has passed the line under the chips.
+  const shelfIds = shelfLocations.map((loc) => loc.id).join("|");
+  useEffect(() => {
+    if (!isPhone) return undefined;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const pin = document.querySelector(".riso-inv-shelf-pin");
+      const line = (pin ? pin.getBoundingClientRect().bottom : 0) + 12;
+      let current = null;
+      for (const id of shelfIds.split("|")) {
+        const el = document.querySelector(`.inv-shelves [data-section-id="${id}"]`);
+        if (el && (current === null || el.getBoundingClientRect().top <= line)) current = id;
+      }
+      if (current) setPhoneShelf(current);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    update();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [isPhone, shelfIds, items.length]);
+
+  function jumpToShelf(id) {
+    setPhoneShelf(id);
+    document.querySelector(`.inv-shelves [data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const labelFor = Object.fromEntries(sections.map((sec) => [sec.id, sec.label]));
 
   function moveSectionTo(id, overId, after) {
@@ -1353,34 +1336,19 @@ export function Inventory({
     onSaveLayout(layoutPayload(sections.map((sec) => (sec.id === id ? { ...sec, ...patch } : sec))));
   }
 
-  // A new shelf is named "New shelf" (or "New shelf 2"...) and opens in
-  // rename mode.
-  async function addShelf() {
-    const taken = new Set(sections.map((sec) => sec.label.toLowerCase()));
-    let name = t("inventory.newShelf");
-    for (let n = 2; taken.has(name.toLowerCase()); n++) name = t("inventory.newShelfN", { n });
-    const created = await onAddLocation(name);
-    if (created?.id) {
-      setEditingId(created.id);
-      if (isPhone) setPhoneShelf(created.id);
-    }
-  }
-
   async function renameSection(sec, name) {
     if (sec.custom) await onRenameLocation(sec.id, name);
     else updateSection(sec.id, { label: name });
   }
 
   return (
-    <div className="riso-theme riso-inv inv-page" data-theme="light">
+    <div ref={rootRef} className="riso-theme riso-inv inv-page" data-theme="light">
       <div className="riso-inv-header">
         <div className="riso-inv-title-block">
-          <p className="riso-eyebrow">
-            {[
-              t("inventory.itemCount", { count: items.length }),
-              t("inventory.soonCount", { count: soonCount }),
-              ...(expiredCount > 0 ? [t("inventory.expiredCount", { count: expiredCount })] : []),
-            ].join(" · ")}
+          <p className="riso-inv-summary">
+            <span>{t("inventory.itemCount", { count: items.length })}</span>
+            <span>{t("inventory.soonCount", { count: soonCount })}</span>
+            {expiredCount > 0 && <span className="expired">{t("inventory.expiredCount", { count: expiredCount })}</span>}
           </p>
           <h1 className="riso-inv-title">
             {t("inventory.title")} <span className="accent">{t("inventory.titleAccent")}</span>
@@ -1410,25 +1378,26 @@ export function Inventory({
       {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
       {isPhone && (
-        <div className="riso-inv-shelf-switch" role="tablist" aria-label={t("inventory.shelfAria")}>
-          {shelfLocations.map((loc) => (
-            <button
-              key={loc.id}
-              type="button"
-              role="tab"
-              aria-selected={phoneShelf === loc.id}
-              className={phoneShelf === loc.id ? "on" : ""}
-              onClick={() => setPhoneShelf(loc.id)}
-            >
-              {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
-            </button>
-          ))}
+        <div className="riso-inv-shelf-pin">
+          <div className="riso-inv-shelf-switch" role="tablist" aria-label={t("inventory.shelfAria")}>
+            {shelfLocations.map((loc) => (
+              <button
+                key={loc.id}
+                type="button"
+                role="tab"
+                aria-selected={phoneShelf === loc.id}
+                className={phoneShelf === loc.id ? "on" : ""}
+                onClick={() => jumpToShelf(loc.id)}
+              >
+                {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       <div className="inv-shelves">
         {shelfLocations
-          .filter((loc) => !isPhone || loc.id === phoneShelf)
           .map((loc) => (
             <ShelfColumn
               key={loc.id}
@@ -1459,7 +1428,6 @@ export function Inventory({
               moveState={moveState}
             />
           ))}
-        <AddSectionTile onAdd={addShelf} />
       </div>
 
       {activeItem && isPhone && (
@@ -1525,7 +1493,7 @@ export function Inventory({
       )}
       {showScan && (
         <Modal title={t("inventory.scanReceipt")} onClose={() => setShowScan(false)}>
-          <ReceiptScanPanel onAdd={onAdd} onDone={() => setShowScan(false)} sections={sections} />
+          <ReceiptScanPanel onRequestInventoryAdd={onRequestInventoryAdd} onDone={() => setShowScan(false)} />
         </Modal>
       )}
     </div>

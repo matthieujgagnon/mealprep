@@ -43,19 +43,24 @@ pantryInventoryRouter.get("/", async (req, res) => {
 });
 
 // GET /api/pantry-inventory/suggest?name=...&location=...&purchasedAt=... - a
-// live preview of the suggested expiration date and category, so the Add
-// form can show them before the item is actually saved (and so it can
-// re-suggest if the user changes the location after typing a name).
+// live preview of the suggested expiration date, category and (when no
+// location is given) shelf, so the Add form and the confirmation sheet can
+// show them before the item is actually saved (and re-suggest if the user
+// changes the location after typing a name).
 pantryInventoryRouter.get("/suggest", async (req, res) => {
-  const { name, location } = req.query;
+  const { name } = req.query;
   if (!name || !name.trim()) return res.status(400).json(fail(req, "required", { fields: "name" }));
-  if (!LOCATIONS.includes(location)) {
+  // No location given: suggest one too (the confirmation sheet asks for a
+  // shelf for every item it's about to add).
+  const location = req.query.location ? await resolveLocation(req.userId, req.query.location) : suggestLocation(name);
+  if (!location) {
     return res.status(400).json(fail(req, "mustBeOneOf", { field: "location", options: LOCATIONS.join(", ") }));
   }
   const purchasedAt = req.query.purchasedAt ? new Date(req.query.purchasedAt) : new Date();
-  const expiresAt = suggestExpiration(name, location, purchasedAt);
+  // A shelf of your own keeps things like the pantry does.
+  const expiresAt = suggestExpiration(name, LOCATIONS.includes(location) ? location : "pantry", purchasedAt);
   const category = suggestCategory(name);
-  res.json({ expiresAt, category });
+  res.json({ expiresAt, category, location });
 });
 
 // An item's photo: one uploaded through /api/recipe-images, a web link, or

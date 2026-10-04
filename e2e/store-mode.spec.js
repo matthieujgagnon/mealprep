@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { confirmAdd } from "./inventory-confirm.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -96,6 +97,7 @@ test("Store mode groups each store's list by section, sorts A to Z, and remember
 
   // Done adds the checked item to Inventory and closes.
   await page.getByRole("button", { name: "Done · add 1 to inventory" }).click();
+  await confirmAdd(page);
   await expect(page.getByRole("dialog", { name: "Store mode" })).toHaveCount(0);
   await expect.poll(async () => (await (await page.request.get("/api/pantry-inventory")).json()).map((i) => i.name.toLowerCase())).toContain("cilantro");
   // What was bought leaves the list (a hand-added item is deleted).

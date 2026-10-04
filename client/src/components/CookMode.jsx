@@ -125,7 +125,7 @@ export function CookMode({
   recipe,
   servings,
   onExit,
-  onAddPantryItem,
+  onRequestInventoryAdd,
   pantryInventory = [],
   onConsumePantryItems,
   onPlanLeftovers,
@@ -320,16 +320,25 @@ export function CookMode({
     const option = LEFTOVER_STORAGE.find((o) => o.id === storage);
     setSaving(true);
     try {
-      await onAddPantryItem?.({
-        name: t("cookMode.leftoversName", { title: recipe.title }),
-        quantity: portions,
-        unit: "portion",
-        location: storage,
-        category: "Deli & Prepared Foods",
-        expiresAt: new Date(
-          Date.now() + (storage === "fridge" ? recipe.fridgeLifeDays || option.days : option.days) * 86400000
-        ).toISOString(),
-      });
+      // Opens the Inventory confirmation: nothing is saved (or planned)
+      // unless it's confirmed.
+      const added = await onRequestInventoryAdd?.(
+        [
+          {
+            ref: "leftovers",
+            name: t("cookMode.leftoversName", { title: recipe.title }),
+            quantity: portions,
+            unit: "portion",
+            location: storage,
+            category: "Deli & Prepared Foods",
+            expiresAt: new Date(
+              Date.now() + (storage === "fridge" ? recipe.fridgeLifeDays || option.days : option.days) * 86400000
+            ).toISOString(),
+          },
+        ],
+        { title: t("inventoryConfirm.leftoversTitle") }
+      );
+      if (!added?.length) return;
       if (storage === "fridge") await onPlanLeftovers?.(recipe, portions);
       setSavedTo(option.label);
     } finally {
