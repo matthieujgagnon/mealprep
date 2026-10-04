@@ -17150,6 +17150,25 @@ body.no-select {
 
 .rv2-chips {
   display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+/* A thin rule between All and the rest, as long as the first row of chips */
+.rv2-chips-rule {
+  flex: none;
+  align-self: flex-start;
+  width: 2px;
+  height: 38px;
+  border-radius: 1px;
+  background: var(--riso-dash);
+}
+
+/* The meal types and the extra chips wrap in their own block beside All */
+.rv2-chips-cats {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
