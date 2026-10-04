@@ -1,21 +1,26 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-// True while the header's inline account area (language switch, name, Help,
-// Log out) doesn't fit beside the logo and has dropped to a second row. The
-// header then moves the name, Help and Log out into the avatar menu (the one
-// phones use) and keeps the language switch out in the open.
+// How much the desktop header has to give so everything stays on one row:
+//   0  everything inline: the language switch, name, Help and Log out
+//   1  the name, Help and Log out move into the avatar menu (the one phones
+//      use); the language switch stays in the open
+//   2  as 1, and the logo, tabs and gaps tighten as well
+//   3  tighter still (for the widest fonts)
 //
 // It measures instead of guessing a breakpoint, because what fits depends on
-// the language ("Se déconnecter" is longer than "Log out"), on how long the
-// person's name is, and on whether there is an Admin link. When the inline
-// version wraps, the width it failed at is remembered; the header tries the
-// inline version again only once it is wider than that. `resetKey` forgets
-// that width (a new language or name changes what the inline version needs).
+// the language ("Se déconnecter" is longer than "Log out"), on the person's
+// name, on whether there's an Admin link, and on the fonts that actually
+// loaded. A level is only moved up when something has wrapped onto a second
+// row. The width a level failed at is remembered, and the roomier level is
+// tried again only once the header is wider than that. `resetKey` forgets
+// those widths (a new language or name changes what each level needs).
 //
 // Re-measures before paint, so there's no flash of the wrapped header.
+const MAX_LEVEL = 3;
+
 export function useHeaderCollapse(headerRef, { enabled, resetKey }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const failedAt = useRef(0);
+  const [level, setLevel] = useState(0);
+  const failedAt = useRef([0, 0, 0]);
   const lastKey = useRef(resetKey);
 
   useLayoutEffect(() => {
@@ -23,28 +28,35 @@ export function useHeaderCollapse(headerRef, { enabled, resetKey }) {
     if (!header || !enabled) return undefined;
     if (lastKey.current !== resetKey) {
       lastKey.current = resetKey;
-      failedAt.current = 0;
-      if (collapsed) {
-        setCollapsed(false);
+      failedAt.current = [0, 0, 0];
+      if (level !== 0) {
+        setLevel(0);
         return undefined;
       }
     }
 
     let stale = false;
+    // Something is on a second row when its top is below the logo's bottom.
+    const wrapped = () => {
+      const logo = header.querySelector(".wordmark");
+      if (!logo) return false;
+      const bottom = logo.offsetTop + logo.offsetHeight;
+      // From 1024px the tabs belong beside the logo (below that they take a
+      // row of their own by design).
+      const watched = [header.querySelector(level === 0 ? ".app-header-account" : ".app-header-phone-tools")];
+      if (window.matchMedia("(min-width: 1024px)").matches) watched.push(header.querySelector(".tabs"));
+      return watched.some((el) => el && el.offsetParent !== null && el.offsetTop >= bottom);
+    };
     const update = () => {
       if (stale) return;
       const width = header.clientWidth;
-      if (collapsed) {
-        if (width > failedAt.current) setCollapsed(false);
+      if (level > 0 && width > failedAt.current[level - 1]) {
+        setLevel(level - 1); // try the roomier layout again
         return;
       }
-      const logo = header.querySelector(".wordmark");
-      const account = header.querySelector(".app-header-account");
-      if (!logo || !account) return;
-      // On a second row: its top is below the logo's bottom.
-      if (account.offsetTop >= logo.offsetTop + logo.offsetHeight) {
-        failedAt.current = width;
-        setCollapsed(true);
+      if (level < MAX_LEVEL && wrapped()) {
+        failedAt.current[level] = width;
+        setLevel(level + 1);
       }
     };
 
@@ -57,7 +69,7 @@ export function useHeaderCollapse(headerRef, { enabled, resetKey }) {
       stale = true;
       observer.disconnect();
     };
-  }, [headerRef, enabled, collapsed, resetKey]);
+  }, [headerRef, enabled, level, resetKey]);
 
-  return collapsed;
+  return level;
 }

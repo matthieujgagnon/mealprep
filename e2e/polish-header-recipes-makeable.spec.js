@@ -48,6 +48,21 @@ test.describe("header", () => {
     }
   });
 
+  test("stays on one row even with a much wider font than the app's own", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await signUp(page, "Matthieu Gagnon");
+    // The app's web fonts load from the network and differ between machines;
+    // a wide system font stands in for the worst of them.
+    await page.addStyleTag({ content: '.app-header *, .wordmark { font-family: "DejaVu Sans", Verdana, sans-serif !important; }' });
+    for (const lang of ["English", "Français"]) {
+      await langSwitch(page).getByRole("button", { name: lang }).click();
+      for (const width of [1024, 1100, 1200, 1280, 1440]) {
+        await page.setViewportSize({ width, height: 800 });
+        await oneRow(page);
+      }
+    }
+  });
+
   test("a wide English window shows the name, Help and Log out inline; French moves them into the menu", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });
     await signUp(page, "Matt");

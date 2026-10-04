@@ -10137,6 +10137,43 @@ button.riso-row-qty:focus-visible {
    ~150px as the window narrows (--squeeze is how many px short of full size
    the window is, 0 to 141). The name, Help and Log out move into the
    avatar menu when they don't fit (useHeaderCollapse). */
+/* When the header still wraps (a wide font, a long name), it tightens one
+   more step: a smaller logo, tabs and gaps (useHeaderCollapse level 2). */
+@media (min-width: 1024px) {
+  .app-header.is-tight {
+    gap: 10px;
+  }
+
+  .app-header.is-tight .wordmark {
+    font-size: 22px;
+  }
+
+  .app-header.is-tight .tabs {
+    gap: 0;
+  }
+
+  .app-header.is-tight .tab {
+    padding: 0 7px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-header.is-tighter {
+    gap: 8px;
+  }
+
+  .app-header.is-tighter .wordmark {
+    font-size: 20px;
+  }
+
+  .app-header.is-tighter .tab {
+    padding: 0 5px;
+    font-size: 12.5px;
+    letter-spacing: -0.01em;
+  }
+}
+
 @media (min-width: 1024px) and (max-width: 1279px) {
   .app-header {
     --squeeze: clamp(0px, calc(1165px - 100vw), 141px);

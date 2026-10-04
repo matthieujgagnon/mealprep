@@ -120,10 +120,10 @@ export default function App({ user, onLogout }) {
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
   const headerRef = useRef(null);
-  // On a computer the account area collapses into the avatar menu when it
-  // wouldn't fit on one row with the logo and the tabs. The key is what
-  // changes how wide the inline version is.
-  const headerCompact = useHeaderCollapse(headerRef, {
+  // On a computer the account area collapses into the avatar menu, and then
+  // the header tightens, as far as it takes to stay on one row with the logo
+  // and the tabs. The key is what changes how wide the inline version is.
+  const headerLevel = useHeaderCollapse(headerRef, {
     enabled: !isPhone,
     resetKey: `${t("app.logOut")}|${user.name || user.email}`,
   });
@@ -797,7 +797,7 @@ export default function App({ user, onLogout }) {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
       <div className={`app${isDragActive ? " dnd-active" : ""}`}>
-        <header ref={headerRef} className={`app-header riso-theme${headerCompact ? " is-compact" : ""}`}>
+        <header ref={headerRef} className={`app-header riso-theme${headerLevel >= 1 ? " is-compact" : ""}${headerLevel >= 2 ? " is-tight" : ""}${headerLevel >= 3 ? " is-tighter" : ""}`}>
           <h1 className="wordmark">
             matt mo <span>cookbook</span>
           </h1>
