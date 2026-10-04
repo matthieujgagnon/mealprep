@@ -121,7 +121,9 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await bar.click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
   await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
-  await expect(page.locator(".riso-recipes-searchbar input")).not.toHaveValue("");
+  // A Tofu chip you can clear, not a long search.
+  await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Clear the Tofu filter" })).toBeVisible();
 });
 
 test("Home shows a tofu deal that has no regular price, and Tofu says so when it has none", async ({ page }) => {

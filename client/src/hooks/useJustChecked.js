@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 // on screen (so a list that opens with checked items doesn't pop them all).
 // Used for the grocery check animation; the CSS does nothing under "reduce
 // motion".
-export function useJustChecked(checked, ms = 200) {
+export function useJustChecked(checked, ms = 300) {
   const before = useRef(checked);
   const [pop, setPop] = useState(false);
   useEffect(() => {

@@ -176,6 +176,7 @@ export default function App({ user, onLogout }) {
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("all");
+  const [recipeProtein, setRecipeProtein] = useState(null); // a protein id (see lib/proteins.js) or null
   // The full-page recipe editor on the Recipes tab: { recipe } to edit one,
   // { recipe: null } for a new one, null when closed.
   const [recipeEditor, setRecipeEditor] = useState(null);
@@ -957,6 +958,7 @@ export default function App({ user, onLogout }) {
             onFindRecipes={(query) => {
               setRecipeSearch(query);
               setRecipeFilter("all");
+              setRecipeProtein(null);
               setTab("collection");
             }}
             onFindRecipesForSelection={() => setTab("makeable")}
@@ -981,6 +983,14 @@ export default function App({ user, onLogout }) {
             onFindRecipes={(query) => {
               setRecipeSearch(query);
               setRecipeFilter("all");
+              setRecipeProtein(null);
+              setTab("collection");
+            }}
+            // "See them" on Proteins on sale: Recipes with that protein's filter on.
+            onFindProtein={(proteinId) => {
+              setRecipeSearch("");
+              setRecipeFilter("all");
+              setRecipeProtein(proteinId);
               setTab("collection");
             }}
             onPickRecipeFor={(slot) => {
@@ -1019,6 +1029,8 @@ export default function App({ user, onLogout }) {
             onSearchChange={setRecipeSearch}
             filter={recipeFilter}
             onFilterChange={setRecipeFilter}
+            protein={recipeProtein}
+            onProteinChange={setRecipeProtein}
             onSelectRecipe={openRecipe}
             onImported={handleImported}
             onNewRecipe={() => openRecipeEditor(null)}

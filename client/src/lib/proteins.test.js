@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { PROTEINS, mentionsTofu, proteinOf, proteinRows, proteinSearchQuery, proteinsOnSale, recipesUsingProtein } from "./proteins.js";
+import {
+  PROTEINS,
+  ingredientIsProtein,
+  isSeasoningIngredient,
+  mentionsTofu,
+  proteinOf,
+  proteinRows,
+  proteinsOnSale,
+  recipeUsesProtein,
+  recipesUsingProtein,
+} from "./proteins.js";
 
 const deal = (item, aisle, extra = {}) => ({ id: item, store: "Metro", item, matchName: item.toLowerCase(), aisle, unitPrice: 2.99, unitBasis: "each", price: "$2.99", ...extra });
 
@@ -49,8 +59,7 @@ describe("recipes that use a protein", () => {
   const recipe = (title, ingredients = [], extra = {}) => ({ title, tags: [], ingredients: ingredients.map((name) => ({ name })), ...extra });
   const kind = (id) => PROTEINS.find((p) => p.id === id);
 
-  it("counts what Recipes' search finds with the same words", async () => {
-    const { matchesSearch } = await import("./recipeSearch.js");
+  it("counts the recipes that have that protein as an ingredient", () => {
     const recipes = [
       recipe("Curry", ["chicken thighs"]),
       recipe("Poulet rôti", ["poulet"]),
@@ -61,10 +70,6 @@ describe("recipes that use a protein", () => {
     expect(recipesUsingProtein(recipes, kind("chicken")).map((r) => r.title)).toEqual(["Curry", "Poulet rôti"]);
     expect(recipesUsingProtein(recipes, kind("tofu"))).toHaveLength(1);
     expect(recipesUsingProtein(recipes, kind("pork"))).toHaveLength(0);
-    for (const p of PROTEINS) {
-      const n = recipes.filter((r) => !r.isPlaceholder && matchesSearch(r, proteinSearchQuery(p))).length;
-      expect(recipesUsingProtein(recipes, p)).toHaveLength(n);
-    }
   });
 
   it("gives tofu its own emoji", () => {
@@ -202,17 +207,67 @@ describe("the recipe count covers every kind of that protein", () => {
     expect(titles("seafood", recipes)).toEqual(["Paella"]);
   });
 
-  it("counts a recipe by its title or tags too, as Recipes' search does", () => {
-    const recipes = [recipe("Chicken soup"), recipe("Soup", [], { tags: ["poulet"] })];
-    expect(titles("chicken", recipes)).toHaveLength(2);
+  it("looks at the title and tags only when a recipe lists no ingredients yet", () => {
+    expect(recipeUsesProtein(recipe("Chicken soup", []), kind("chicken"))).toBe(false); // soup: a dish, not the ingredient
+    expect(recipeUsesProtein(recipe("Poulet rôti", []), kind("chicken"))).toBe(true);
+    expect(recipeUsesProtein(recipe("Weeknight", [], { tags: ["fish"] }), kind("fish"))).toBe(true);
+    // With ingredients listed, the title no longer counts: "Fish tacos" made with tofu.
+    expect(recipeUsesProtein(recipe("Fish tacos", ["tofu", "tortillas"]), kind("fish"))).toBe(false);
   });
 
-  it("is exactly what \"See them\" shows: the same words, the same search", async () => {
-    const { matchesSearch } = await import("./recipeSearch.js");
+  it("is one function for Home's count and Recipes' filter", () => {
     const recipes = [recipe("A", ["chicken thighs"]), recipe("B", ["cod"]), recipe("C", ["beef brisket"]), recipe("D", ["rice"]), recipe("E", ["tofu", "pork belly"])];
     for (const p of PROTEINS) {
-      const shown = recipes.filter((r) => matchesSearch(r, proteinSearchQuery(p)));
-      expect(recipesUsingProtein(recipes, p)).toEqual(shown);
+      expect(recipesUsingProtein(recipes, p)).toEqual(recipes.filter((r) => recipeUsesProtein(r, p)));
     }
+  });
+});
+
+describe("a sauce, stock or seasoning is not the protein", () => {
+  const recipe = (title, ingredients = []) => ({ title, tags: [], ingredients: ingredients.map((name) => ({ name })) });
+  const kind = (id) => PROTEINS.find((p) => p.id === id);
+
+  it("a recipe whose only fish is fish sauce doesn't count as Fish", () => {
+    expect(recipeUsesProtein(recipe("Pad thai", ["rice noodles", "fish sauce", "lime"]), kind("fish"))).toBe(false);
+    expect(recipeUsesProtein(recipe("Pad thaï", ["sauce de poisson"]), kind("fish"))).toBe(false);
+    // ...but with real fish too, it does.
+    expect(recipeUsesProtein(recipe("Fish curry", ["fish sauce", "cod fillets"]), kind("fish"))).toBe(true);
+  });
+
+  it("chicken or beef stock, broth and bouillon don't count as Chicken or Beef", () => {
+    for (const name of ["chicken stock", "low-sodium chicken broth", "chicken bouillon cubes", "chicken bouillon powder", "bouillon de poulet", "fond de poulet", "poulet (bouillon)"]) {
+      expect(ingredientIsProtein(name, kind("chicken")), name).toBe(false);
+    }
+    for (const name of ["beef stock", "beef broth", "beef bouillon cubes", "beef bouillon powder", "bouillon de bœuf", "bouillon de boeuf", "fond de boeuf"]) {
+      expect(ingredientIsProtein(name, kind("beef")), name).toBe(false);
+    }
+    expect(recipeUsesProtein(recipe("Rice", ["rice", "chicken stock"]), kind("chicken"))).toBe(false);
+  });
+
+  it("oyster sauce, anchovy paste and the like don't count", () => {
+    expect(ingredientIsProtein("oyster sauce", kind("seafood"))).toBe(false);
+    expect(ingredientIsProtein("sauce aux huîtres", kind("seafood"))).toBe(false);
+    expect(ingredientIsProtein("oyster mushrooms", kind("seafood"))).toBe(false);
+    expect(ingredientIsProtein("anchovy paste", kind("fish"))).toBe(false);
+    expect(ingredientIsProtein("shrimp paste", kind("seafood"))).toBe(false);
+    expect(ingredientIsProtein("clam juice", kind("seafood"))).toBe(false);
+    expect(ingredientIsProtein("chicken seasoning", kind("chicken"))).toBe(false);
+    expect(ingredientIsProtein("cream of chicken soup", kind("chicken"))).toBe(false);
+  });
+
+  it("the real thing still counts", () => {
+    expect(ingredientIsProtein("boneless chicken breasts", kind("chicken"))).toBe(true);
+    expect(ingredientIsProtein("fresh oysters", kind("seafood"))).toBe(true);
+    expect(ingredientIsProtein("lean ground beef", kind("beef"))).toBe(true);
+    expect(ingredientIsProtein("beef stew cubes", kind("beef"))).toBe(true); // meat, not bouillon
+    expect(ingredientIsProtein("filets de poisson blanc", kind("fish"))).toBe(true);
+    expect(ingredientIsProtein("Bœuf haché", kind("beef"))).toBe(true);
+  });
+
+  it("names every kind of seasoning it skips", () => {
+    for (const name of ["fish sauce", "oyster sauce", "chicken stock", "beef broth", "bouillon cube", "sauce de poisson", "pate d'anchois", "chicken base"]) {
+      expect(isSeasoningIngredient(name), name).toBe(true);
+    }
+    for (const name of ["chicken thighs", "salmon", "tofu"]) expect(isSeasoningIngredient(name), name).toBe(false);
   });
 });

@@ -4512,9 +4512,9 @@ input[type="date"].planner-week-picker {
   font-size: 11.5px;
 }
 
-/* Press feedback, shared by every Riso button: a small press-down on touch or
-   click (80 ms in, 120 ms back). Grocery and Store mode are in the list from
-   the start; any other button joins it by being a .riso-btn, a chip or a
+/* Press feedback, shared by every Riso button: a soft press-down on touch or
+   click, easing out over 220 ms (in and back). Grocery and Store mode are in the
+   list from the start; any other button joins it by being a .riso-btn, a chip or a
    .riso-press. The transform is !important only so it still wins over the
    buttons' own hover lift. The reduced-motion rule near the top of this file
    turns every transition off, so nothing moves for people who ask for that. */
@@ -4534,7 +4534,7 @@ input[type="date"].planner-week-picker {
 .riso-row-check-hit,
 .store-mode-row,
 .store-mode-back {
-  transition: transform 120ms ease-out;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -4554,18 +4554,17 @@ input[type="date"].planner-week-picker {
 .riso-row-check-hit:active:not(:disabled),
 .store-mode-row:active:not(:disabled),
 .store-mode-back:active:not(:disabled) {
-  transform: translate(1px, 1px) scale(0.96) !important;
-  transition-duration: 80ms;
+  transform: translate(1px, 1px) scale(0.97) !important;
 }
 
-/* A grocery item being checked: the box pops and the tick draws in, once,
-   in 160 ms (see useJustChecked). */
+/* A grocery item being checked: the box pops once, softly, in 240 ms (see
+   useJustChecked). */
 @keyframes riso-check-pop {
   0% {
-    transform: scale(0.7);
+    transform: scale(0.78);
   }
   60% {
-    transform: scale(1.18);
+    transform: scale(1.12);
   }
   100% {
     transform: scale(1);
@@ -4574,7 +4573,7 @@ input[type="date"].planner-week-picker {
 
 .riso-row-check.pop,
 .store-mode-check.pop {
-  animation: riso-check-pop 160ms ease-out;
+  animation: riso-check-pop 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Angled pill "sticker" overlapping a card edge - position (top/right/
@@ -5403,6 +5402,29 @@ button.riso-table-group-head:disabled {
   font-family: var(--riso-font-mono);
   font-size: 10px;
   opacity: 0.75;
+}
+
+/* The protein filter: a select like SORT, and, once a protein is picked (or Home's
+   "See them" picked it), a chip you can press to clear it. */
+.riso-recipes-protein-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-recipes-protein-row .riso-recipes-sort-group {
+  margin-left: 0;
+}
+
+.riso-recipes-protein-chip {
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-recipes-protein-x {
+  margin-left: 2px;
+  font-size: 15px;
+  line-height: 1;
 }
 
 /* Cookbook / Imported on the left, SORT on the right: one line, on a phone too. */
@@ -9758,8 +9780,17 @@ button.riso-protein-bar {
   cursor: pointer;
 }
 
-.riso-row.opens-deal:hover {
-  background: var(--riso-canvas);
+/* On a computer the whole row highlights under the pointer, not just the box or
+   a button in it. (The reduced-motion rule at the top of the file stops the
+   fade.) */
+.riso-row {
+  transition: background-color 200ms ease-out;
+}
+
+@media (hover: hover) and (min-width: 768px) {
+  .riso-row:hover {
+    background: var(--riso-canvas);
+  }
 }
 
 /* A checked row fades, except "To inventory": that's the thing to press. */
@@ -9815,9 +9846,21 @@ button.riso-protein-bar {
 .riso-row-main {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  /* the recipes column, then the name with the brand and the aisle under it */
+  grid-template-columns: 150px minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+}
+
+.riso-row-main > :not(.riso-row-recipes) {
+  grid-column: 2;
+}
+
+.riso-row-main > .riso-row-recipes {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .riso-row-name {
@@ -9848,20 +9891,22 @@ button.riso-protein-bar {
   text-decoration: line-through;
 }
 
-/* The recipes an item is for ("Tacos, Chili +1"). Its height is always reserved,
-   like the brand line's, so a row with no recipes (an item you added yourself)
-   is the same size as the rest. The names end in an ellipsis; the "+1" stays. */
+/* The recipes an item is for ("TACOS, CHILI +1"): a column to the left of the
+   item's name, in the small monospace font the app uses for labels. Its width is
+   fixed, so the names line up and a row with no recipes (an item you added
+   yourself) is the same size as the rest. The names end in an ellipsis; the "+1"
+   stays. */
 .riso-row-recipes {
-  min-height: 16px;
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
-  font-family: var(--riso-font-body);
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--riso-soft);
+  font-family: var(--riso-font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
 }
 
 .riso-row-recipes-names {
@@ -11231,6 +11276,17 @@ button.riso-row-qty:focus-visible {
     max-width: 118px;
   }
 
+  /* The recipes column is narrower on a phone. */
+  .riso-row-main {
+    grid-template-columns: 68px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+
+  .riso-row-recipes {
+    font-size: 9px;
+    gap: 3px;
+  }
+
   .riso-row-qty {
     width: auto;
   }
@@ -11526,7 +11582,7 @@ button.riso-row-qty:focus-visible {
    the amount and price stack on the right. */
 .store-mode-row {
   width: 100%;
-  height: 64px;
+  height: 62px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -11590,19 +11646,21 @@ button.riso-row-qty:focus-visible {
   white-space: nowrap;
 }
 
-/* The recipes this item is for, one line under the product: cut off with an
-   ellipsis, so a long list never makes a row taller. Nothing for an item you
-   added yourself. */
+/* The recipes this item is for: a column to the left of the name, in the small
+   monospace font, one line cut off with an ellipsis, so a long list never makes
+   a row taller. Empty for an item you added yourself, but the column stays, so
+   the names line up. */
 .store-mode-recipes {
+  flex: none;
+  width: 84px;
   display: flex;
+  align-items: baseline;
   gap: 4px;
   min-width: 0;
-  font: 500 11px/1.25 var(--riso-font-body);
+  font: 500 9.5px/1.3 var(--riso-font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--sm-muted);
-}
-
-.store-mode-recipes:empty {
-  display: none;
 }
 
 .store-mode-recipes-names {
