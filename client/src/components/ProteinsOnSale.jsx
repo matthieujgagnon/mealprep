@@ -26,7 +26,7 @@ function savingText(deal) {
 }
 
 // Home's "Proteins on sale": one row for every general protein, always (chicken,
-// beef, pork, fish, seafood, turkey, lamb & veal, tofu), whatever specific cuts
+// beef, pork, fish, seafood, turkey, lamb, tofu), whatever specific cuts
 // the flyers have under it. A protein with a real deal shows its general name
 // with its best buy under it (the product, store and saving) and the price per
 // lb; the cheapest per lb is the "Best deal", the others say how good a buy

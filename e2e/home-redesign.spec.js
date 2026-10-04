@@ -139,7 +139,7 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   await expect(beef).toContainText("$5.97/lb");
   await expect(beef.locator(".riso-protein-verdict")).toHaveText("Can't tell yet");
   // Every other kind has its row, saying there is no deal.
-  for (const [kind, emoji] of [["Pork", "🐖"], ["Seafood", "🦐"], ["Turkey", "🦃"], ["Lamb & veal", "🐑"], ["Tofu", "⬜"]]) {
+  for (const [kind, emoji] of [["Pork", "🐖"], ["Seafood", "🦐"], ["Turkey", "🦃"], ["Lamb", "🐑"], ["Tofu", "⬜"]]) {
     const none = block.getByRole("button", { name: `${kind}: no deal this week` });
     await expect(none).toContainText("No deal this week");
     await expect(none).toContainText(emoji);

@@ -173,8 +173,8 @@ export const fr = {
     seeDeal: "Voir l'aubaine →",
     barUse: { one: "{count} de vos recettes utilise {name}.", other: "{count} de vos recettes utilisent {name}." },
     barNone: "Aucune de vos recettes n'utilise {name} pour l'instant.",
-    useName: { chicken: "du poulet", beef: "du bœuf", pork: "du porc", fish: "du poisson", seafood: "des fruits de mer", turkey: "de la dinde", "lamb-veal": "de l'agneau ou du veau", tofu: "du tofu" },
-    useNameNone: { chicken: "de poulet", beef: "de bœuf", pork: "de porc", fish: "de poisson", seafood: "de fruits de mer", turkey: "de dinde", "lamb-veal": "d'agneau ni de veau", tofu: "de tofu" },
+    useName: { chicken: "du poulet", beef: "du bœuf", pork: "du porc", fish: "du poisson", seafood: "des fruits de mer", turkey: "de la dinde", "lamb-veal": "de l'agneau", tofu: "du tofu" },
+    useNameNone: { chicken: "de poulet", beef: "de bœuf", pork: "de porc", fish: "de poisson", seafood: "de fruits de mer", turkey: "de dinde", "lamb-veal": "d'agneau", tofu: "de tofu" },
     kinds: {
       chicken: "Poulet",
       beef: "Bœuf",
@@ -182,7 +182,7 @@ export const fr = {
       fish: "Poisson",
       seafood: "Fruits de mer",
       turkey: "Dinde",
-      "lamb-veal": "Agneau et veau",
+      "lamb-veal": "Agneau",
       tofu: "Tofu",
     },
   },
@@ -1180,7 +1180,7 @@ export const fr = {
           "La carte d'épicerie montre combien d'articles restent à acheter, combien sont dans le panier et combien sont en rabais. [[openList]] vous y mène.",
           "« À utiliser » liste ce qui expire bientôt dans votre inventaire et combien de recettes l'utilisent.",
           "« Faisable maintenant » montre les recettes que vous pouvez cuisiner aujourd'hui, ou à qui il manque un ou deux articles. Vous pouvez ajouter ce qui manque à votre liste d'épicerie.",
-          "« Protéines en rabais » a toujours une carte par protéine générale : Poulet, Bœuf, Porc, Poisson, Fruits de mer, Dinde, Agneau et veau, et Tofu. Chaque article précis compte sous son nom général : les poitrines, les cuisses et les pilons de poulet sont du Poulet, le saumon, la morue et le tilapia sont du Poisson, et le bœuf haché, le steak et le rôti sont du Bœuf. Une protéine en aubaine montre sa meilleure aubaine de la semaine, d'après vos circulaires, avec l'article, le magasin et l'économie sous son nom. Une protéine en circulaire dont le prix n'a rien à quoi se comparer indique « Difficile à dire », et une protéine absente des circulaires indique « Pas d'aubaine cette semaine ». Touchez une protéine pour la sélectionner; touchez-la de nouveau, ou une autre, pour changer la sélection. Une barre glisse en bas de l'écran avec le nombre de vos recettes qui utilisent n'importe quelle sorte de cette protéine, par exemple « 8 de vos recettes utilisent du poulet », et toucher la barre ouvre Recettes avec ces mêmes recettes. Si aucune recette ne l'utilise, la barre le dit. Sur une protéine sélectionnée qui a une aubaine, « Voir l'aubaine » ouvre son aubaine de circulaire.",
+          "« Protéines en rabais » a toujours une carte par protéine générale : Poulet, Bœuf, Porc, Poisson, Fruits de mer, Dinde, Agneau et Tofu. Chaque article précis compte sous son nom général : les poitrines, les cuisses et les pilons de poulet sont du Poulet, le saumon, la morue et le tilapia sont du Poisson, et le bœuf haché, le steak et le rôti sont du Bœuf. Une protéine en aubaine montre sa meilleure aubaine de la semaine, d'après vos circulaires, avec l'article, le magasin et l'économie sous son nom. Une protéine en circulaire dont le prix n'a rien à quoi se comparer indique « Difficile à dire », et une protéine absente des circulaires indique « Pas d'aubaine cette semaine ». Touchez une protéine pour la sélectionner; touchez-la de nouveau, ou une autre, pour changer la sélection. Une barre glisse en bas de l'écran avec le nombre de vos recettes qui utilisent n'importe quelle sorte de cette protéine, par exemple « 8 de vos recettes utilisent du poulet », et toucher la barre ouvre Recettes avec ces mêmes recettes. Si aucune recette ne l'utilise, la barre le dit. Sur une protéine sélectionnée qui a une aubaine, « Voir l'aubaine » ouvre son aubaine de circulaire.",
         ],
       },
       recipes: {

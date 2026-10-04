@@ -73,7 +73,7 @@ test.describe("Proteins on sale, by general protein", () => {
     const block = page.locator(".riso-home-proteins");
     await expect(block.locator(".riso-protein-row")).toHaveCount(8);
     const names = await block.locator(".riso-protein-name").allInnerTexts();
-    expect(names.sort()).toEqual(["Beef", "Chicken", "Fish", "Lamb & veal", "Pork", "Seafood", "Tofu", "Turkey"].sort());
+    expect(names.sort()).toEqual(["Beef", "Chicken", "Fish", "Lamb", "Pork", "Seafood", "Tofu", "Turkey"].sort());
 
     // Chicken: the general name as the title, its best buy (the thighs, the
     // biggest saving) under it, and the other two kinds as "+2 more".
@@ -113,7 +113,7 @@ test.describe("Proteins on sale, by general protein", () => {
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     const block = page.locator(".riso-home-proteins");
     const names = await block.locator(".riso-protein-name").allInnerTexts();
-    expect(names.sort()).toEqual(["Agneau et veau", "Bœuf", "Dinde", "Fruits de mer", "Poisson", "Porc", "Poulet", "Tofu"].sort());
+    expect(names.sort()).toEqual(["Agneau", "Bœuf", "Dinde", "Fruits de mer", "Poisson", "Porc", "Poulet", "Tofu"].sort());
     await block.getByRole("button", { name: /^Poulet :/ }).click();
     await expect(page.locator(".riso-protein-bar")).toContainText("4 de vos recettes utilisent du poulet.");
     await expect(page.locator(".riso-protein-bar")).toContainText("Les voir →");

@@ -104,7 +104,7 @@ describe("Home's protein rows", () => {
     expect(rows[0].status).toBe("deal");
   });
 
-  it("lamb and veal has its own emoji, and so does every other kind", () => {
+  it("lamb has its own emoji, and so does every other kind", () => {
     expect(PROTEINS.find((p) => p.id === "lamb-veal").emoji).toBe("🐑");
     expect(PROTEINS.every((p) => p.emoji)).toBe(true);
   });
@@ -161,8 +161,8 @@ describe("one general protein for every specific item", () => {
       return PROTEINS.map((p) => p.label);
     };
     try {
-      expect(names("en")).toEqual(["Chicken", "Beef", "Pork", "Fish", "Seafood", "Turkey", "Lamb & veal", "Tofu"]);
-      expect(names("fr")).toEqual(["Poulet", "Bœuf", "Porc", "Poisson", "Fruits de mer", "Dinde", "Agneau et veau", "Tofu"]);
+      expect(names("en")).toEqual(["Chicken", "Beef", "Pork", "Fish", "Seafood", "Turkey", "Lamb", "Tofu"]);
+      expect(names("fr")).toEqual(["Poulet", "Bœuf", "Porc", "Poisson", "Fruits de mer", "Dinde", "Agneau", "Tofu"]);
     } finally {
       setLang("en");
     }

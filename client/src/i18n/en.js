@@ -173,8 +173,8 @@ export const en = {
     seeDeal: "See the deal →",
     barUse: { one: "{count} of your recipes uses {name}.", other: "{count} of your recipes use {name}." },
     barNone: "None of your recipes use {name} yet.",
-    useName: { chicken: "chicken", beef: "beef", pork: "pork", fish: "fish", seafood: "seafood", turkey: "turkey", "lamb-veal": "lamb or veal", tofu: "tofu" },
-    useNameNone: { chicken: "chicken", beef: "beef", pork: "pork", fish: "fish", seafood: "seafood", turkey: "turkey", "lamb-veal": "lamb or veal", tofu: "tofu" },
+    useName: { chicken: "chicken", beef: "beef", pork: "pork", fish: "fish", seafood: "seafood", turkey: "turkey", "lamb-veal": "lamb", tofu: "tofu" },
+    useNameNone: { chicken: "chicken", beef: "beef", pork: "pork", fish: "fish", seafood: "seafood", turkey: "turkey", "lamb-veal": "lamb", tofu: "tofu" },
     kinds: {
       chicken: "Chicken",
       beef: "Beef",
@@ -182,7 +182,7 @@ export const en = {
       fish: "Fish",
       seafood: "Seafood",
       turkey: "Turkey",
-      "lamb-veal": "Lamb & veal",
+      "lamb-veal": "Lamb",
       tofu: "Tofu",
     },
   },
@@ -1174,7 +1174,7 @@ export const en = {
           "The grocery card shows how many things are left to buy, how many are in the cart and how many are on sale. [[openList]] takes you to it.",
           "Use it up lists what in your Inventory expires soon and how many recipes use it.",
           "Makeable now shows recipes you can cook today, or that are one or two items away. You can add what's missing to your grocery list.",
-          "Proteins on sale has one card for each general protein, always: Chicken, Beef, Pork, Fish, Seafood, Turkey, Lamb & veal and Tofu. Every specific item counts under its general name, so chicken breasts, thighs and drumsticks are Chicken, salmon, cod and tilapia are Fish, and ground beef, steak and roast are Beef. A protein with a deal shows its best buy of the week from your flyers, with the item, store and saving under its name. One on a flyer with nothing to compare its price with says Can't tell yet, and one with nothing on the flyers says No deal this week. Tap a protein to select it; tap it again, or another, to change the selection. A bar slides up at the bottom of the screen with how many of your recipes use any kind of it, like \"8 of your recipes use chicken\", and tapping the bar opens Recipes showing those same recipes. If no recipe uses it, the bar says so. On a selected protein with a deal, See the deal opens its flyer deal.",
+          "Proteins on sale has one card for each general protein, always: Chicken, Beef, Pork, Fish, Seafood, Turkey, Lamb and Tofu. Every specific item counts under its general name, so chicken breasts, thighs and drumsticks are Chicken, salmon, cod and tilapia are Fish, and ground beef, steak and roast are Beef. A protein with a deal shows its best buy of the week from your flyers, with the item, store and saving under its name. One on a flyer with nothing to compare its price with says Can't tell yet, and one with nothing on the flyers says No deal this week. Tap a protein to select it; tap it again, or another, to change the selection. A bar slides up at the bottom of the screen with how many of your recipes use any kind of it, like \"8 of your recipes use chicken\", and tapping the bar opens Recipes showing those same recipes. If no recipe uses it, the bar says so. On a selected protein with a deal, See the deal opens its flyer deal.",
         ],
       },
       recipes: {
