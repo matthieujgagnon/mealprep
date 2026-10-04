@@ -223,7 +223,7 @@ test.describe("The recipes an item is for, in Grocery", () => {
   test.describe("on a phone, in French", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test("rows keep one height, and Store mode rows too, the long recipe list cut off with an ellipsis", async ({ page }) => {
+    test("rows keep one height, and Store mode rows too (name and number only)", async ({ page }) => {
       await seed(page);
       await langSwitch(page).getByRole("button", { name: "Français" }).click();
       await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toHaveText("+1");
@@ -249,19 +249,11 @@ test.describe("The recipes an item is for, in Grocery", () => {
       expect(new Set(rowHeights).size, rowHeights.join(" ")).toBe(1);
       const onionRow = mode.locator(".store-mode-row", { has: page.locator(".store-mode-name", { hasText: /^Onion$/ }) });
       expect(await onionRow.locator(".store-mode-name").evaluate((e) => e.scrollWidth <= e.clientWidth + 2)).toBe(true);
-      const cut = onionRow.locator(".store-mode-recipes-names");
-      expect(await cut.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true); // "…"
-      expect(await cut.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
-      // ...under the name here too.
-      const under = await onionRow.evaluate((e) => {
-        const r = e.querySelector(".store-mode-recipes").getBoundingClientRect();
-        const n = e.querySelector(".store-mode-name").getBoundingClientRect();
-        return r.top >= n.bottom - 1 && Math.abs(r.left - n.left) < 2;
-      });
-      expect(under).toBe(true);
-      await expect(onionRow.locator(".store-mode-recipes-more")).toHaveText("+1");
-      // An item you added shows no recipes line, and is still the same height.
-      await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" }).locator(".store-mode-recipes")).toHaveCount(0);
+      // Only the name and the number: no recipes line, in Store mode.
+      await expect(onionRow.locator(".store-mode-recipes")).toHaveCount(0);
+      await expect(onionRow.locator(".store-mode-main > *")).toHaveCount(1);
+      // An item you added is the same height as the rest.
+      await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" })).toHaveCount(1);
     });
   });
 });

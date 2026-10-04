@@ -564,7 +564,7 @@ export function InventoryItemForm({
                   onClick={() => chooseLocation(s.id)}
                 >
                   <span className="riso-itemform-loc-name">{s.label}</span>
-                  <span className="riso-itemform-loc-range">{opts[s.id] ? rangeText(opts[s.id]) : " "}</span>
+                  {opts[s.id] && <span className="riso-itemform-loc-range">{rangeText(opts[s.id])}</span>}
                 </button>
               ))}
             </div>
@@ -621,6 +621,11 @@ export function InventoryItemForm({
                   </button>
                 )}
               </div>
+              {isPhone && (
+                <button type="button" className="riso-itemform-remove" onClick={() => finish("remove")} disabled={busy}>
+                  {t("inventory.form.remove")}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -712,18 +717,20 @@ export function InventoryItemForm({
 
       <div className="riso-itemform-footer">
         {edit ? (
-          <button type="button" className="riso-itemform-remove" onClick={() => finish("remove")} disabled={busy}>
-            {t("inventory.form.remove")}
-          </button>
+          !isPhone && (
+            <button type="button" className="riso-itemform-remove" onClick={() => finish("remove")} disabled={busy}>
+              {t("inventory.form.remove")}
+            </button>
+          )
         ) : (
-          <button type="button" className="riso-itemform-btn" onClick={onClose}>
+          <button type="button" className="riso-itemform-btn quiet" onClick={onClose}>
             {added.length > 0 ? t("inventory.done") : t("common.cancel")}
           </button>
         )}
         <span className="riso-itemform-spacer" />
         {edit ? (
           <>
-            <button type="button" className="riso-itemform-btn" onClick={onClose}>
+            <button type="button" className="riso-itemform-btn quiet" onClick={onClose}>
               {t("common.cancel")}
             </button>
             <button type="button" className="riso-itemform-btn primary" onClick={save} disabled={busy || !trimmed}>

@@ -225,8 +225,7 @@ test.describe("on a phone", () => {
     await page.getByRole("button", { name: /I'm at the store/ }).click();
     const extra = modeRow(page, "Chicken");
     await expect(extra).not.toHaveClass(/\bon\b/);
-    await expect(extra.locator(".store-mode-need")).toHaveText("+200 g"); // the recipe quantity is the extra
-    await expect(extra.locator(".store-mode-qty")).toHaveText("1");
+    await expect(extra.locator(".store-mode-qty")).toHaveText("1"); // just the name and the number here
     // The page itself doesn't scroll sideways.
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
