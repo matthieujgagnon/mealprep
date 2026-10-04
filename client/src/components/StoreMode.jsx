@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useJustChecked } from "../hooks/useJustChecked.js";
+import { RecipesLine } from "./RecipesLine.jsx";
 import { amountLabel } from "../lib/groceryChecks.js";
 import { splitBilingual } from "../lib/bilingual.js";
 import { getLang, t } from "../i18n/index.js";
@@ -8,6 +10,16 @@ import { localizePrice } from "../i18n/format.js";
 // time, what's left there grouped by section in walking order (or A to Z),
 // a big count and a progress bar, light or dark. Tapping a row checks it
 // off; checked rows fade and sink to the bottom of their section.
+
+// The box that fills when a row is checked off; it pops once as it does.
+function StoreCheck({ on }) {
+  const pop = useJustChecked(on);
+  return (
+    <span className={`store-mode-check${pop ? " pop" : ""}`} aria-hidden="true">
+      {on ? "✓" : ""}
+    </span>
+  );
+}
 
 const THEME_KEY = "mealprep-store-mode-theme";
 const SORT_KEY = "mealprep-store-mode-sort";
@@ -30,14 +42,12 @@ function writeStored(key, value) {
   }
 }
 
-// The muted line under a row's name: the flyer product it's on sale as
-// (in the app's language), else the recipes it's for.
+// The muted line under a row's name: the flyer product it's on sale as, in the
+// app's language. (The recipes an item is for are the line under that.)
 function detailLine(item, deal) {
-  if (deal?.item) {
-    const { en, fr } = splitBilingual(deal.item);
-    return ((getLang() === "fr" && fr) || en).split(/[,(]/)[0].trim();
-  }
-  return (item.usedIn || []).join(" · ");
+  if (!deal?.item) return "";
+  const { en, fr } = splitBilingual(deal.item);
+  return ((getLang() === "fr" && fr) || en).split(/[,(]/)[0].trim();
 }
 
 export function StoreMode({
@@ -168,12 +178,11 @@ export function StoreMode({
                   aria-pressed={on}
                   onClick={() => onToggle(item.key)}
                 >
-                  <span className="store-mode-check" aria-hidden="true">
-                    {on ? "✓" : ""}
-                  </span>
+                  <StoreCheck on={on} />
                   <span className="store-mode-info">
                     <span className="store-mode-name">{item.name.charAt(0).toUpperCase() + item.name.slice(1)}</span>
                     {detail && <span className="store-mode-brand">{detail}</span>}
+                    <RecipesLine usedIn={item.usedIn} className="store-mode-recipes" />
                   </span>
                   {(qty || deal?.price) && (
                     <span className="store-mode-right">

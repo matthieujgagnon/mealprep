@@ -68,6 +68,23 @@ export function formatClock(seconds) {
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
+// A time split for editing, minutes and seconds ("1:30:00" is 90 minutes):
+// 5400 -> { minutes: 90, seconds: 0 }. Hours aren't a field of their own, so
+// a long timer can still be typed in minutes.
+export function clockParts(totalSeconds) {
+  const total = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  return { minutes: Math.floor(total / 60), seconds: total % 60 };
+}
+
+// The other way: what two fields hold, in seconds. Empty or junk reads as 0,
+// seconds past 59 roll into minutes ("0 min 90 s" is 1:30), and nothing goes
+// below zero or above 99 hours.
+export function secondsFromParts(minutes, seconds) {
+  const m = Math.max(0, Math.floor(Number(minutes) || 0));
+  const s = Math.max(0, Math.floor(Number(seconds) || 0));
+  return Math.min(m * 60 + s, 99 * 3600);
+}
+
 // "3-minute", "20-minute", "1-hour", "1 h 30 min": the timer chip reads
 // "Start 20-minute timer" (never MIN or HR in capitals). In French "20
 // minutes", "1 heure": "Minuterie de 20 minutes".

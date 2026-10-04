@@ -60,12 +60,13 @@ function writeCollapsed(set) {
 }
 
 // A section's header, in the Flyers' collapsible style: arrow, title, count
-// and a rule. Folded titles go muted.
+// and a rule. Cookbook and Imported are a blue band; the meal types inside
+// the Cookbook are plain, smaller headers. Folded titles go muted.
 function SectionHead({ id, title, count, collapsed, disabled, sub, onToggle }) {
   return (
     <button
       type="button"
-      className={`riso-ing-group-head riso-recipes-head${sub ? " sub" : ""}${collapsed ? " collapsed" : ""}`}
+      className={`riso-ing-group-head riso-recipes-head${sub ? " sub" : " top"}${collapsed ? " collapsed" : ""}`}
       aria-expanded={!collapsed}
       aria-controls={`recipes-section-${id}`}
       onClick={() => onToggle(id)}
@@ -314,19 +315,34 @@ export function Recipes({
         {t("recipes.hint")}
       </HintStrip>
 
-      <div className="riso-recipes-filter-chips riso-recipes-source-chips" role="group" aria-label={t("recipes.sourceLabel")}>
-        {SOURCES.map((id) => (
-          <button
-            key={id}
-            type="button"
-            className={`riso-filter-chip${source === id ? " active" : ""}`}
-            aria-pressed={source === id}
-            onClick={() => setSource((cur) => (cur === id ? null : id))}
-          >
-            {t(`recipes.sources.${id}`)}
-            <span className="riso-filter-chip-count">{sourceCounts[id]}</span>
-          </button>
-        ))}
+      <div className="riso-recipes-source-row">
+        <div className="riso-recipes-filter-chips riso-recipes-source-chips" role="group" aria-label={t("recipes.sourceLabel")}>
+          {SOURCES.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={`riso-filter-chip${source === id ? " active" : ""}`}
+              aria-pressed={source === id}
+              onClick={() => setSource((cur) => (cur === id ? null : id))}
+            >
+              {t(`recipes.sources.${id}`)}
+              <span className="riso-filter-chip-count">{sourceCounts[id]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="riso-recipes-sort-group">
+          <span className="riso-recipes-sort-label">{t("recipes.sort")}</span>
+          <label className="riso-recipes-sort-btn">
+            <select aria-label={t("recipes.sortLabel")} value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
+              {SORTS.map((id, i) => (
+                <option key={id} value={i}>
+                  {t(`recipes.sorts.${id}`)}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden="true">▾</span>
+          </label>
+        </div>
       </div>
 
       <div className="riso-recipes-filter-chips">
@@ -341,19 +357,6 @@ export function Recipes({
             <span className="riso-filter-chip-count">{filterCounts[f.id]}</span>
           </button>
         ))}
-        <div className="riso-recipes-sort-group">
-          <span className="riso-recipes-sort-label">{t("recipes.sort")}</span>
-          <label className="riso-recipes-sort-btn">
-            <select aria-label={t("recipes.sortLabel")} value={sortIndex} onChange={(e) => setSortIndex(Number(e.target.value))}>
-              {SORTS.map((id, i) => (
-                <option key={id} value={i}>
-                  {t(`recipes.sorts.${id}`)}
-                </option>
-              ))}
-            </select>
-            <span aria-hidden="true">▾</span>
-          </label>
-        </div>
       </div>
 
       {sections.map((section) => (

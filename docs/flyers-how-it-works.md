@@ -164,7 +164,7 @@ Home's old "On sale" box showed the first three flyer rows, whatever they were (
 - Fish
 - Seafood
 - Turkey
-- Lamb & veal
+- Lamb
 
 **Which items count.** Only plain cuts from the meat and fish aisles. Pies, burgers, nuggets, sausages, ham, bacon, deli meats, cooked or breaded items, soups and pet food are left out.
 

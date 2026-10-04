@@ -70,28 +70,6 @@ const LEFTOVER_STORAGE = [
   },
 ];
 
-// A short beep on timer completion - synthesized so there's no audio asset
-// to ship. Silently no-ops if Web Audio is unavailable or blocked.
-function playBeep() {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.4);
-    osc.onended = () => ctx.close();
-  } catch {
-    // Audio unavailable - the TIME'S UP label is the fallback signal.
-  }
-}
-
 function useWakeLock(enabled) {
   const lockRef = useRef(null);
   useEffect(() => {
@@ -129,13 +107,13 @@ export function CookMode({
   pantryInventory = [],
   onConsumePantryItems,
   onPlanLeftovers,
+  stepTimers,
   startStep = 1,
 }) {
   // Section headings ("Make the sauce:") aren't steps to walk through.
   const steps = (recipe.instructions || []).filter((s) => !stepIsHeading(s));
   const [stepIndex, setStepIndex] = useState(Math.min(Math.max(startStep - 1, 0), Math.max(steps.length - 1, 0)));
   const [finished, setFinished] = useState(false);
-  const [timers, setTimers] = useState({}); // stepIndex -> { remaining, total, running, justFinished }
   const [checked, setChecked] = useState({}); // `${stepIndex}:${name}` -> true
   const [keepAwake, setKeepAwake] = useState(true);
   const [cooked, setCooked] = useState(false);
@@ -151,50 +129,15 @@ export function CookMode({
   const isLast = stepIndex === steps.length - 1;
   const scale = serves / (recipe.baseServings || 1);
 
-  // One interval ticks every running timer, so a step's timer keeps going
-  // after you move to another step.
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTimers((prev) => {
-        let changed = false;
-        const next = {};
-        for (const [key, t] of Object.entries(prev)) {
-          if (t.running && t.remaining > 0) {
-            changed = true;
-            const remaining = t.remaining - 1;
-            next[key] = remaining <= 0 ? { ...t, remaining: 0, running: false, justFinished: true } : { ...t, remaining };
-          } else {
-            next[key] = t;
-          }
-        }
-        return changed ? next : prev;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const done = Object.entries(timers).filter(([, t]) => t.justFinished);
-    if (done.length === 0) return;
-    playBeep();
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      try {
-        new Notification(t("cookMode.timeUp"), { body: recipe.title });
-      } catch {
-        // Some contexts need a service worker; the beep already fired.
-      }
-    }
-    setTimers((prev) => {
-      const next = { ...prev };
-      for (const [key] of done) next[key] = { ...next[key], justFinished: false };
-      return next;
-    });
-  }, [timers, recipe.title]);
-
-  const anyTimerRunning = Object.values(timers).some((t) => t.running);
+  // The timers are the recipe card's too (they're kept by the step's place in
+  // the whole recipe, headings counted), so a time edited there shows here and
+  // a timer started there keeps running here.
+  const stepKeys = (recipe.instructions || []).flatMap((s, i) => (stepIsHeading(s) ? [] : [i]));
+  const timerKey = stepKeys[stepIndex];
+  const anyTimerRunning = stepTimers.anyRunning;
   const currentStep = steps[stepIndex];
   const timerSpec = currentStep ? stepTimer(currentStep) : null;
-  const timer = timers[stepIndex];
+  const timer = timerSpec ? stepTimers.stateFor(timerKey, timerSpec.seconds) : null;
 
   function goToStep(i) {
     setFinished(false);
@@ -212,33 +155,15 @@ export function CookMode({
   }
 
   function toggleTimer() {
-    if (!timerSpec) return;
-    // Ask once, on the first timer start, so "time's up" can notify.
-    if (typeof Notification !== "undefined" && Notification.permission === "default") {
-      Notification.requestPermission().catch(() => {});
-    }
-    setTimers((prev) => {
-      const t = prev[stepIndex];
-      if (!t || t.remaining <= 0) {
-        return { ...prev, [stepIndex]: { remaining: timerSpec.seconds, total: timerSpec.seconds, running: true } };
-      }
-      return { ...prev, [stepIndex]: { ...t, running: !t.running } };
-    });
+    if (timerSpec) stepTimers.toggle(timerKey, timerSpec.seconds);
   }
 
   function addMinute() {
-    setTimers((prev) => {
-      const t = prev[stepIndex] || { remaining: timerSpec.seconds, total: timerSpec.seconds, running: false };
-      return { ...prev, [stepIndex]: { ...t, remaining: t.remaining + 60 } };
-    });
+    if (timerSpec) stepTimers.addSeconds(timerKey, timerSpec.seconds, 60);
   }
 
   function resetTimer() {
-    setTimers((prev) => {
-      const nextTimers = { ...prev };
-      delete nextTimers[stepIndex];
-      return nextTimers;
-    });
+    stepTimers.reset(timerKey);
   }
 
   useEffect(() => {
@@ -348,7 +273,7 @@ export function CookMode({
 
   const totalTime = formatTotalTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
   const meta = [t("cookMode.meta"), t("cookMode.serves", { count: serves }), totalTime].filter(Boolean).join(" · ");
-  const otherRunning = Object.entries(timers).filter(([key, t]) => t.running && Number(key) !== stepIndex);
+  const otherRunning = stepTimers.running.filter((r) => r.key !== timerKey && stepKeys.includes(r.key));
 
   const header = (
     <header className="cm-topbar">
@@ -382,9 +307,9 @@ export function CookMode({
           type="button"
           className="cm-running-chip"
           title={t("cookMode.otherRunning")}
-          onClick={() => goToStep(Number(otherRunning[0][0]))}
+          onClick={() => goToStep(stepKeys.indexOf(otherRunning[0].key))}
         >
-          ⏱ {formatClock(otherRunning[0][1].remaining)}
+          ⏱ {formatClock(otherRunning[0].remaining)}
         </button>
       )}
       <button
@@ -503,18 +428,17 @@ export function CookMode({
   const image = stepImage(currentStep) || recipe.photoUrl;
   const used = stepIngredients(currentStep, recipe.ingredients || []);
   const nextStep = !isLast ? steps[stepIndex + 1] : null;
-  const remaining = timer ? timer.remaining : timerSpec?.seconds;
-  const timerLabel =
-    timer && timer.remaining === 0
-      ? t("cookMode.timeUpLabel")
-      : timer?.running
-      ? runningLabel(`${title} ${text}`)
-      : t("cookMode.timer");
+  const remaining = timer?.remaining;
+  const timerLabel = timer?.finished
+    ? t("cookMode.timeUpLabel")
+    : timer?.running
+    ? runningLabel(`${title} ${text}`)
+    : t("cookMode.timer");
   const timerButton = timer?.running
     ? t("cookMode.pause")
-    : timer && timer.remaining === 0
+    : timer?.finished
     ? t("cookMode.startAgain")
-    : timer && timer.remaining < timer.total
+    : timer?.paused
     ? t("cookMode.resume")
     : t("cookMode.startTimer");
 

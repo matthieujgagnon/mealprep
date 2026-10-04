@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGroceryList, formatAmount } from "./groceryList.js";
+import { buildGroceryList, formatAmount, recipesLine } from "./groceryList.js";
 import { staleOverrideKeys } from "./groceryDedupe.js";
 
 const entry = (ingredients, extra = {}) => ({
@@ -83,5 +83,26 @@ describe("staleOverrideKeys", () => {
   it("ignores leftovers and already-have meals, which add nothing to the list", () => {
     const leftover = [entry([{ name: "lemon", quantity: 1 }], { isLeftover: true })];
     expect(staleOverrideKeys(leftover, [{ key: "lemon", removed: true }])).toEqual(["lemon"]);
+  });
+});
+
+describe("recipesLine: the recipes an item is for", () => {
+  it("lists one or two recipes by name", () => {
+    expect(recipesLine(["Tacos"])).toEqual({ names: "Tacos", more: 0, all: "Tacos" });
+    expect(recipesLine(["Tacos", "Chili"])).toMatchObject({ names: "Tacos, Chili", more: 0 });
+  });
+
+  it("with more than two, shows the first two and how many more", () => {
+    expect(recipesLine(["Tacos", "Chili", "Soup"])).toMatchObject({ names: "Tacos, Chili", more: 1 });
+    expect(recipesLine(["A", "B", "C", "D", "E"])).toMatchObject({ names: "A, B", more: 3, all: "A, B, C, D, E" });
+  });
+
+  it("shows nothing for an item you added yourself", () => {
+    expect(recipesLine([])).toEqual({ names: "", more: 0, all: "" });
+    expect(recipesLine(undefined)).toEqual({ names: "", more: 0, all: "" });
+  });
+
+  it("counts a recipe once, however many times the item came from it", () => {
+    expect(recipesLine(["Tacos", "Tacos", "Chili"])).toMatchObject({ names: "Tacos, Chili", more: 0 });
   });
 });

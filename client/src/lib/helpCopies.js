@@ -51,6 +51,12 @@ export const HELP_COPIES = {
   cardStartCooking: { kind: "pill", cls: "riso-rc-btn-primary", label: "recipeCard.startCooking", strong: true },
   planAround: { kind: "pill", cls: "riso-rc-btn-secondary", label: "recipeCard.planAround" },
   moreButton: { kind: "icon", cls: "riso-rc-round-btn", glyph: "⋯" },
+  addToCookbook: { kind: "pill", cls: "riso-rc-btn-secondary", label: "recipeCard.addToCookbook" },
+  moveToImported: { kind: "pill", cls: "riso-rc-btn-secondary", label: "recipeCard.moveToImported" },
+  timerStart: { kind: "pill", cls: "riso-rc-timer-btn primary", label: "steps.start" },
+  timerPause: { kind: "pill", cls: "riso-rc-timer-btn primary", label: "steps.pause" },
+  timerResume: { kind: "pill", cls: "riso-rc-timer-btn primary", label: "steps.resume" },
+  timerReset: { kind: "pill", cls: "riso-rc-timer-btn", label: "steps.reset" },
   editRecipe: { kind: "pill", cls: "riso-help-copy-menu", label: "recipeCard.editRecipe" },
   deleteRecipe: { kind: "pill", cls: "riso-help-copy-menu danger", label: "recipeCard.deleteRecipe" },
 

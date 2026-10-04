@@ -10,14 +10,60 @@ import { t } from "../i18n/index.js";
 
 const TOFU = /\btofu\b/;
 
+// One general protein per row on Home, however many specific items the flyers
+// have under it. Each has two word lists:
+//   re    what a flyer item's name says (whole words, English and French): any
+//         of these puts that item under the general protein
+//   terms what Recipes' search looks for in a recipe's title, tags and
+//         ingredient names (a part of a word counts), so the recipe count on
+//         Home and the recipes "See them" opens are the same recipes
 export const PROTEINS = [
-  { id: "chicken", get label() { return t("proteins.kinds.chicken"); }, emoji: "🍗", terms: ["chicken", "poulet"], re: /\b(chicken|poulet|cornish hens?)\b/ },
-  { id: "beef", get label() { return t("proteins.kinds.beef"); }, emoji: "🥩", terms: ["beef", "boeuf", "bœuf", "steak", "brisket", "sirloin"], re: /\b(beef|boeuf|bifteck|steaks?|roasts?|roti|sirloin|surlonge|striploin|strip loin|contre-filet|ribeye|faux-filet|brisket|bavette|stewing)\b/ },
-  { id: "pork", get label() { return t("proteins.kinds.pork"); }, emoji: "🐖", terms: ["pork", "porc"], re: /\b(pork|porc)\b/ },
-  { id: "fish", get label() { return t("proteins.kinds.fish"); }, emoji: "🐟", terms: ["fish", "poisson", "salmon", "saumon", "trout", "truite", "tilapia", "haddock", "halibut", "tuna", "thon"], re: /\b(salmon|saumon|trout|truite|tilapia|cod|morue|haddock|aiglefin|sole|halibut|fletan|pollock|goberge|tuna|thon|basa|mackerel|maquereau|arctic char|omble|steelhead|fish|poissons?)\b/ },
-  { id: "seafood", get label() { return t("proteins.kinds.seafood"); }, emoji: "🦐", terms: ["shrimp", "crevette", "scallop", "mussel", "moule", "lobster", "homard", "crab"], re: /\b(shrimps?|crevettes?|scallops?|petoncles?|mussels?|moules|lobsters?|homards?|crabs?|crabes?|calamari|squid|calmars?|oysters?|huitres?|clams?|palourdes)\b/ },
-  { id: "turkey", get label() { return t("proteins.kinds.turkey"); }, emoji: "🦃", terms: ["turkey", "dinde"], re: /\b(turkey|dinde|dindon)\b/ },
-  { id: "lamb-veal", get label() { return t("proteins.kinds.lamb-veal"); }, emoji: "🐑", terms: ["lamb", "agneau", "veal", "veau"], re: /\b(lamb|agneau|veal|veau)\b/ },
+  {
+    id: "chicken", get label() { return t("proteins.kinds.chicken"); }, emoji: "🍗",
+    // breasts, thighs, drumsticks, wings, whole chicken, cornish hen...
+    terms: ["chicken", "poulet", "drumstick", "pilon", "cornish hen"],
+    re: /\b(chicken|poulet|cornish hens?|drumsticks?|pilons?|hauts? de cuisses?)\b/,
+  },
+  {
+    id: "beef", get label() { return t("proteins.kinds.beef"); }, emoji: "🥩",
+    // ground beef, steaks, roasts, brisket, stewing beef...
+    terms: ["beef", "boeuf", "bœuf", "steak", "bifteck", "brisket", "sirloin", "ribeye", "striploin", "contre-filet", "faux-filet"],
+    re: /\b(beef|boeuf|bifteck|steaks?|roasts?|roti|sirloin|surlonge|striploin|strip loin|contre-filet|ribeye|faux-filet|brisket|bavette|stewing)\b/,
+  },
+  {
+    id: "pork", get label() { return t("proteins.kinds.pork"); }, emoji: "🐖",
+    // pork chops, tenderloin, ground pork, ribs; bacon and ham count in recipes
+    terms: ["pork", "porc", "bacon", "jambon", "pancetta", "prosciutto"],
+    re: /\b(pork|porc)\b/,
+  },
+  {
+    id: "fish", get label() { return t("proteins.kinds.fish"); }, emoji: "🐟",
+    // salmon, cod, tilapia, trout, tuna, haddock, halibut...
+    terms: [
+      "fish", "poisson", "salmon", "saumon", "trout", "truite", "tilapia", "haddock", "halibut", "fletan", "flétan", "tuna", "thon",
+      "cod", "morue", "pollock", "goberge", "mackerel", "maquereau", "sardine", "arctic char", "omble", "swordfish", "espadon", "snapper", "vivaneau",
+    ],
+    re: /\b(salmon|saumon|trout|truite|tilapia|cod|morue|haddock|aiglefin|sole|halibut|fletan|pollock|goberge|tuna|thon|basa|mackerel|maquereau|sardines?|arctic char|omble|steelhead|swordfish|espadon|snapper|vivaneau|fish|poissons?)\b/,
+  },
+  {
+    id: "seafood", get label() { return t("proteins.kinds.seafood"); }, emoji: "🦐",
+    // shrimp, scallops, mussels, lobster, crab, squid, oysters, clams...
+    terms: [
+      "shrimp", "prawn", "crevette", "scallop", "petoncle", "pétoncle", "mussel", "moule", "lobster", "homard", "crab", "crabe",
+      "squid", "calmar", "calamari", "oyster", "huitre", "huître", "clam", "palourde",
+    ],
+    re: /\b(shrimps?|prawns?|crevettes?|scallops?|petoncles?|mussels?|moules|lobsters?|homards?|crabs?|crabes?|calamari|squid|calmars?|oysters?|huitres?|clams?|palourdes)\b/,
+  },
+  {
+    id: "turkey", get label() { return t("proteins.kinds.turkey"); }, emoji: "🦃",
+    terms: ["turkey", "dinde", "dindon"],
+    re: /\b(turkey|dinde|dindon)\b/,
+  },
+  {
+    id: "lamb-veal", get label() { return t("proteins.kinds.lamb-veal"); }, emoji: "🐑",
+    terms: ["lamb", "agneau", "veal", "veau"],
+    re: /\b(lamb|agneau|veal|veau)\b/,
+  },
   { id: "tofu", get label() { return t("proteins.kinds.tofu"); }, emoji: "⬜", terms: ["tofu"], re: TOFU },
 ];
 
@@ -55,13 +101,27 @@ const NOT_RAW = new RegExp(
     ")\\b"
 );
 
+// Tofu is judged on its own: smoked, marinated, pouched or crispy tofu is
+// still tofu you can cook with. Only a made dish with tofu in it (a soup, a
+// salad, dumplings) or a look-alike is left out.
+const TOFU_DISH = new RegExp(
+  "\\b(" +
+    [
+      "soups?", "soupes?", "salads?", "salades?", "sandwich(?:es)?", "wraps?", "dumplings?", "noodles?", "nouilles", "sauces?",
+      "sushi", "spread", "pet", "cat", "dog", "chien", "chat", "treats?", "burgers?", "nuggets?",
+    ].join("|") +
+    ")\\b"
+);
+
 export function proteinOf(deal) {
   if (!deal) return null;
-  const text = foldText(`${deal.matchName || ""} ${deal.item || ""}`);
+  // "bœuf" is "boeuf" here: the ligature isn't an accent, so folding keeps it.
+  const text = foldText(`${deal.matchName || ""} ${deal.item || ""}`).replace(/œ/g, "oe");
+  if (TOFU.test(text)) return TOFU_DISH.test(text) ? null : PROTEINS.find((p) => p.id === "tofu");
   // Meat and fish are in the meat and seafood aisles; tofu is wherever the
   // store keeps it (produce, dairy, deli), so its aisle doesn't rule it out.
   const meatAisle = !deal.aisle || deal.aisle === "meat" || deal.aisle === "seafood";
-  if (!meatAisle && !TOFU.test(text)) return null;
+  if (!meatAisle) return null;
   if (NOT_RAW.test(text)) return null;
   // The first kind the name says: "pork and beef meatballs" isn't both.
   let best = null;
@@ -116,4 +176,25 @@ export function proteinsOnSale(deals) {
     const onSale = all.filter((d) => dealSavings(d));
     return { protein, best: onSale[0] || null, onSale, all };
   });
+}
+
+// Home's list: every kind, always, in the order shown. `status` says what
+// each has this week:
+//   deal   - something really on sale (`best`, with `onSale` the others)
+//   unsure - on a flyer, but nothing to say if it's a good price (tofu has
+//            no Quebec average and flyers rarely print a regular price)
+//   none   - nothing on the flyers, or only prices not worth it
+// Deals come first (best buy first), then the unsure ones, then the kinds
+// with nothing, in PROTEINS order.
+export function proteinRows(deals) {
+  const found = new Map(proteinsOnSale(deals).map((k) => [k.protein.id, k]));
+  const rows = PROTEINS.map((protein, order) => {
+    const k = found.get(protein.id);
+    if (k?.best) return { protein, order, status: "deal", best: k.best, onSale: k.onSale, all: k.all };
+    const unsure = k?.all.find((d) => dealVerdict(d)?.key === "unknown");
+    if (unsure) return { protein, order, status: "unsure", best: unsure, onSale: [], all: k.all };
+    return { protein, order, status: "none", best: null, onSale: [], all: k?.all || [] };
+  });
+  const group = { deal: 0, unsure: 1, none: 2 };
+  return rows.sort((a, b) => group[a.status] - group[b.status] || (a.best && b.best ? compareProteinDeals(a.best, b.best) : 0) || a.order - b.order);
 }

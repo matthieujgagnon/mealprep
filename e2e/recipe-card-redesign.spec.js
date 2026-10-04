@@ -55,7 +55,7 @@ test("servings scaling updates ingredient and step quantities, but not durations
   await expect(page.locator(".riso-rc-step-row").nth(1).locator(".riso-rc-step-text")).toContainText("Roast for 20 minutes");
 });
 
-test("step timer chip starts a countdown", async ({ page }) => {
+test("step timer starts a countdown", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await addRecipe(page, {
     title: "Redesign Timer Test",
@@ -63,14 +63,14 @@ test("step timer chip starts a countdown", async ({ page }) => {
     steps: "Simmer for 5 minutes, then serve.",
   });
 
-  const timerChip = page.locator(".riso-rc-timer-chip");
-  await expect(timerChip).toHaveCount(1);
-  await expect(timerChip).toHaveText("▶ Start 5-minute timer");
+  const timer = page.locator(".riso-rc-timer");
+  await expect(timer).toHaveCount(1);
+  await expect(timer.locator(".riso-rc-timer-time")).toHaveText("⏱ 5:00");
   // The details line is sentence case too.
   await expect(page.locator(".riso-rc-meta-line")).toContainText(/Serves \d/);
-  await timerChip.click();
+  await timer.getByRole("button", { name: "▶ Start" }).click();
   await page.waitForTimeout(1100);
-  await expect(timerChip).toContainText("⏸ 4:5");
+  await expect(timer.locator(".riso-rc-timer-time")).toContainText("4:5");
 });
 
 test("options menu opens and closes on outside click", async ({ page }) => {
