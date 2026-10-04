@@ -80,6 +80,12 @@ and bookmark it (or "Add to Home Screen" for an app-like icon).
 20–50 seconds to wake back up on the next visit. Upgrading to a paid instance (~$7/month)
 removes this delay if it ever becomes annoying.
 
+### Weekly database backup
+A GitHub Action (`.github/workflows/db-backup.yml`) copies the Neon database every Sunday at
+3 a.m. Montreal time, encrypts it, and keeps the encrypted file for 30 days. It needs two
+repository secrets, `BACKUP_DATABASE_URL` and `BACKUP_PASSPHRASE`; how to add them, and how to
+download, decrypt and restore a backup, is in [docs/backup-and-restore.md](docs/backup-and-restore.md).
+
 ### Weekly flyer import
 The Flyers tab imports this week's flyers on its own every Thursday: every priced item from
 the stores picked under **Flyers → Settings** (Metro, IGA, Maxi, Super C and Provigo by default),

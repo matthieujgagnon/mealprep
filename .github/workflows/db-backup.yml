@@ -1,0 +1,170 @@
+name: Weekly database backup
+
+# Every Sunday at 3 a.m. Montreal time, copy the whole Neon database with
+# pg_dump, encrypt the copy, and keep only the encrypted file for 30 days as a
+# workflow artifact. How to download, decrypt and restore it:
+# docs/backup-and-restore.md
+#
+# Needs two repository secrets (Settings -> Secrets and variables -> Actions):
+#   BACKUP_DATABASE_URL  Neon's direct (not pooled) connection string
+#   BACKUP_PASSPHRASE    a long random passphrase; keep a copy somewhere safe
+#                        (a password manager) - without it a backup can't be
+#                        opened.
+#
+# Nothing here prints the connection string, the passphrase or any data: the
+# secrets only ever reach the commands through environment variables, the
+# connection details are masked in the logs as well, and the only things
+# printed are version numbers, a file size and an object count.
+on:
+  schedule:
+    # GitHub schedules run in UTC, and Montreal's UTC offset changes twice a
+    # year. Both lines fire every Sunday; the "Is it 3 a.m. in Montreal?" step
+    # lets only the right one through (7:00 UTC in summer, 8:00 in winter).
+    - cron: "0 7 * * 0"
+    - cron: "0 8 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Is it 3 a.m. in Montreal?
+        id: gate
+        run: |
+          # A hand-started run always goes ahead. A scheduled run goes ahead
+          # only if it is the cron line that matches Montreal's current UTC
+          # offset (-0400 in summer time, -0500 in winter).
+          offset="$(TZ=America/Montreal date +%z)"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "0 7 * * 0" ] && [ "$offset" = "-0400" ]; then run=true
+            elif [ "${{ github.event.schedule }}" = "0 8 * * 0" ] && [ "$offset" = "-0500" ]; then run=true
+            else run=false; fi
+          else
+            run=true
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          [ "$run" = true ] || echo "Not 3 a.m. in Montreal for this schedule line - skipping."
+
+      - name: Check the two secrets are set and hide the connection details
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          if [ -z "$BACKUP_DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::BACKUP_DATABASE_URL and BACKUP_PASSPHRASE must both be added as repository secrets (see the comment at the top of this file)."
+            exit 1
+          fi
+          # GitHub already hides the full secrets. Also hide the password and
+          # the host on their own, so an error message that quotes only one
+          # of them still shows ***.
+          rest="${BACKUP_DATABASE_URL#*://}"
+          userinfo="${rest%%@*}"
+          hostpart="${rest#*@}"
+          host="${hostpart%%[:/?]*}"
+          password="${userinfo#*:}"
+          [ -n "$password" ] && echo "::add-mask::$password"
+          [ -n "$host" ] && echo "::add-mask::$host"
+          echo "::add-mask::$BACKUP_PASSPHRASE"
+          exit 0
+
+      - name: Find the Postgres version Neon is running
+        if: steps.gate.outputs.run == 'true'
+        id: version
+        run: |
+          # The runner's built-in psql is only used for this one question.
+          num="$(psql "$BACKUP_DATABASE_URL" --no-psqlrc -Atc 'show server_version_num' 2>/dev/null)" || {
+            echo "::error::Could not connect to the database with BACKUP_DATABASE_URL. Check the secret (use Neon's direct connection string, not the pooled one)."
+            exit 1
+          }
+          major=$((num / 10000))
+          echo "Neon runs Postgres $major"
+          echo "major=$major" >> "$GITHUB_OUTPUT"
+
+      - name: Install a pg_dump that matches that version
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          major="${{ steps.version.outputs.major }}"
+          sudo apt-get install -y --no-install-recommends postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y --no-install-recommends "postgresql-client-$major" >/dev/null
+          "/usr/lib/postgresql/$major/bin/pg_dump" --version
+
+      - name: Dump the database
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          major="${{ steps.version.outputs.major }}"
+          out="$RUNNER_TEMP/backup"
+          mkdir -p "$out"
+          # Custom format is already compressed and restores with pg_restore.
+          # --no-owner/--no-privileges: Neon's roles don't exist elsewhere.
+          # Errors go to a file so a failure can be reported without risking
+          # a surprise in the log; pg_dump's messages name objects, not rows.
+          if ! "/usr/lib/postgresql/$major/bin/pg_dump" \
+              --format=custom --no-owner --no-privileges \
+              --dbname="$BACKUP_DATABASE_URL" \
+              --file="$out/mealprep.dump" 2>"$out/pg_dump.err"; then
+            echo "::error::pg_dump failed. Message from pg_dump (connection details are masked):"
+            head -n 20 "$out/pg_dump.err"
+            exit 1
+          fi
+          rm -f "$out/pg_dump.err"
+          echo "Dump written: $(stat -c %s "$out/mealprep.dump") bytes"
+
+      - name: Encrypt the dump and delete the plain copy
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          out="$RUNNER_TEMP/backup"
+          name="mealprep-$(date -u +%Y-%m-%d).dump.gpg"
+          # Symmetric (passphrase) encryption, AES-256. The passphrase goes in
+          # on stdin, never on the command line.
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --quiet \
+            --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 \
+            --s2k-mode 3 --s2k-digest-algo SHA512 --s2k-count 65011712 \
+            --compress-algo none \
+            --output "$out/$name" "$out/mealprep.dump"
+          rm -f "$out/mealprep.dump"
+          # Prove the encrypted file opens with the passphrase and that
+          # pg_restore can read it, before it is trusted as a backup. Only an
+          # object count is printed.
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --quiet \
+            --pinentry-mode loopback --passphrase-fd 0 \
+            --output "$out/check.dump" --decrypt "$out/$name"
+          objects="$("/usr/lib/postgresql/${{ steps.version.outputs.major }}/bin/pg_restore" --list "$out/check.dump" | grep -c '^[0-9]' || true)"
+          rm -f "$out/check.dump"
+          [ "$objects" -gt 0 ] || { echo "::error::The encrypted backup could not be read back."; exit 1; }
+          echo "Encrypted file readable: $objects objects in the archive"
+          echo "BACKUP_FILE=$name" >> "$GITHUB_ENV"
+          bytes="$(stat -c %s "$out/$name")"
+          mb=$(( (bytes + 1048575) / 1048576 ))
+          echo "Encrypted size: $bytes bytes (about $mb MB)"
+          {
+            echo "### Database backup"
+            echo "- File: \`$name\`"
+            echo "- Size: about **$mb MB** (kept 30 days; up to 5 weekly copies can exist at once)"
+            echo "- Postgres version: ${{ steps.version.outputs.major }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # GitHub's free plan gives 500 MB of artifact storage; 5 live copies
+          # must fit in it.
+          if [ "$mb" -gt 100 ]; then
+            echo "::warning::This backup is $mb MB. Five weekly copies would go over GitHub's free 500 MB artifact storage - lower the artifact retention or keep fewer backups."
+          fi
+
+      - name: Upload only the encrypted file
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_FILE }}
+          path: ${{ runner.temp }}/backup/${{ env.BACKUP_FILE }}
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 0
