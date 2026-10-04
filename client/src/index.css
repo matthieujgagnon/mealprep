@@ -11296,7 +11296,7 @@ button.riso-row-qty:focus-visible {
   cursor: default;
 }
 
-/* The shelf pill: a chip per shelf that jumps to it, and "+ Shelf" at the end
+/* The shelf pill: a chip per shelf that jumps to it, and a round + at the end
    to add one (a computer and a phone). */
 .riso-inv-shelf-switch {
   display: flex;
@@ -11331,19 +11331,25 @@ button.riso-row-qty:focus-visible {
   color: var(--riso-canvas);
 }
 
-.riso-inv-shelf-switch .add-shelf {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  height: 44px;
-  padding: 0 14px;
-  border: none;
-  border-left: 2px dashed var(--riso-ink);
-  background: transparent;
-  color: var(--riso-accent);
-  font: 700 14px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
+/* The round + at the end of the pill (same button as a shelf's own +). */
+.riso-inv-shelf-switch button.add-shelf {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  align-self: center;
+  margin: 0 6px 0 2px;
+  /* Stays in view at the end of the pill when the chips scroll sideways. */
+  position: sticky;
+  right: 6px;
+  box-shadow: -8px 0 0 var(--riso-surface);
+}
+
+.riso-inv-shelf-switch button.add-shelf:hover {
+  background: var(--riso-yellow);
 }
 
 .riso-inv-shelf-switch .add-shelf.form {
@@ -15784,18 +15790,6 @@ body.no-select {
 .riso-help-copy .riso-lang-switch .riso-lang-seg {
   padding: 4px 7px;
   font-size: 10px;
-}
-
-.riso-help-copy-shelf-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 10px;
-  border: 2px dashed var(--riso-ink);
-  border-radius: 999px;
-  background: var(--riso-surface);
-  color: var(--riso-accent);
-  font: 700 12px var(--riso-font-display);
-  white-space: nowrap;
 }
 
 .riso-help-copy-awake,
