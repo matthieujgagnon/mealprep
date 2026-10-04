@@ -127,8 +127,8 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  // A shelf is addable from the end of the shelf pill, even with zero items.
-  await page.getByRole("button", { name: "+ Shelf" }).click();
+  // A shelf is addable from the round + at the end of the shelf pill, even with zero items.
+  await page.getByRole("button", { name: "Add a shelf" }).click();
   await page.getByLabel("Shelf name").fill("Garage Freezer");
   await page.keyboard.press("Enter");
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toBeVisible();
@@ -217,7 +217,7 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section"]);
 
   // A new shelf is added after the others.
-  await page.getByRole("button", { name: "+ Shelf" }).click();
+  await page.getByRole("button", { name: "Add a shelf" }).click();
   await page.getByLabel("Shelf name").fill("Garage freezer");
   await page.keyboard.press("Enter");
   await expect(page.locator(".inv-shelf", { hasText: "Garage freezer" })).toBeVisible();

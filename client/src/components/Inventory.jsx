@@ -821,8 +821,8 @@ function ShelfColumn({
 
 // "+ Add shelf" at the end of the grid makes a new shelf and opens it
 // ready to rename.
-// The last segment of the shelf pill: "+ Shelf" turns into a field for the new
-// shelf's name (Enter adds it, Escape cancels).
+// The little round + at the end of the shelf pill: it turns into a field for the
+// new shelf's name (Enter adds it, Escape cancels).
 function AddShelfSegment({ onAdd }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -846,8 +846,14 @@ function AddShelfSegment({ onAdd }) {
 
   if (!open) {
     return (
-      <button type="button" className="add-shelf" onClick={() => setOpen(true)} title={t("inventory.addShelf")}>
-        {t("inventory.shelfPill")}
+      <button
+        type="button"
+        className="inv-shelf-edit inv-shelf-add add-shelf"
+        aria-label={t("inventory.addShelf")}
+        title={t("inventory.addShelf")}
+        onClick={() => setOpen(true)}
+      >
+        +
       </button>
     );
   }
