@@ -1,7 +1,10 @@
 node_modules/
 server/dev.db
 server/dev.db-journal
-server/.env
+# Secrets: any .env file, in any folder - only the empty template is committed.
+.env
+.env.*
+!.env.example
 client/dist/
 .DS_Store
 test-results/
