@@ -1,5 +1,3 @@
-import { useJustChecked } from "../hooks/useJustChecked.js";
-import { RecipesLine } from "./RecipesLine.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -20,7 +18,6 @@ import { groceryShared } from "../lib/groceryCache.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { buildGroceryList } from "../lib/groceryList.js";
 import {
-  amountLabel,
   applyChecks,
   boughtSnapshot,
   checkSnapshot,
@@ -35,6 +32,9 @@ import { parseDateKey, toDateKey } from "../lib/dates.js";
 import { brandOf, dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
+import { GroceryItem } from "./GroceryItem.jsx";
+import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
+import { displayQuantity, inventoryAmount } from "../lib/groceryQuantity.js";
 import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
 import { formatWeekday, localizePrice } from "../i18n/format.js";
@@ -113,206 +113,10 @@ const VIEWS = [
   { id: "recipe", get label() { return t("grocery.viewRecipe"); } },
 ];
 
-// The amount cell: your own amount when you've set one (with what the
-// recipes call for underneath), otherwise the recipe amount. Tap to edit;
-// clearing it goes back to the recipe amount.
-function QuantityCell({ item, onSave }) {
-  const [editing, setEditing] = useState(false);
-  const recipeAmount = recipeAmountLabel(item);
-  const [draft, setDraft] = useState("");
-
-  function start(e) {
-    e.stopPropagation();
-    setDraft(item.customQuantity || recipeAmount);
-    setEditing(true);
-  }
-
-  function commit() {
-    setEditing(false);
-    const next = draft.trim();
-    // Typing the recipe amount back in is the same as "no override".
-    const value = !next || next === recipeAmount ? null : next;
-    if (value !== (item.customQuantity || null)) onSave(value);
-  }
-
-  if (editing) {
-    return (
-      <span className="riso-row-qty editing" onClick={(e) => e.stopPropagation()}>
-        <input
-          autoFocus
-          aria-label={t("grocery.amountOf", { name: item.name })}
-          value={draft}
-          placeholder={t("grocery.amountPlaceholder")}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") setEditing(false);
-          }}
-        />
-        {item.customQuantity && recipeAmount && (
-          <button
-            type="button"
-            className="riso-row-qty-reset"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditing(false);
-              onSave(null);
-            }}
-          >
-            {t("grocery.useRecipeAmount")}
-          </button>
-        )}
-      </span>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className={`riso-row-qty${item.customQuantity ? " custom" : ""}${!item.customQuantity && !recipeAmount ? " empty" : ""}`}
-      title={t("grocery.setOwnAmount")}
-      aria-label={t("grocery.editAmountOf", { name: item.name })}
-      onClick={start}
-    >
-      {item.customQuantity ? (
-        <>
-          <span className="riso-row-qty-mine">{item.customQuantity}</span>
-          {recipeAmount && !item.isManual && <span className="riso-row-qty-recipe">{t("grocery.recipeAmount", { amount: recipeAmount })}</span>}
-        </>
-      ) : (
-        <span className="riso-row-qty-mine">{recipeAmount || t("grocery.addAmount")}</span>
-      )}
-    </button>
-  );
-}
-
-// The deal tag: where this item is cheapest this week and at what price,
-// whichever store's list it's on. Tapping it opens the flyer item.
-function DealTag({ deal, onOpen }) {
-  if (!deal) return null;
-  return (
-    <button
-      type="button"
-      className="riso-row-deal"
-      title={t("grocery.onSaleAt", { store: deal.store })}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpen();
-      }}
-    >
-      <span className="riso-row-deal-store">{deal.store}</span>
-      <span className="riso-row-deal-price">{localizePrice(deal.price)}</span>
-    </button>
-  );
-}
-
-// The "To inventory" button on a checked row: opens the Inventory
-// confirmation for just this item.
-function ToInventoryButton({ item, onClick }) {
-  return (
-    <button
-      type="button"
-      className="riso-row-toinv"
-      aria-label={t("grocery.toInventoryAria", { name: item.name })}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-    >
-      {t("grocery.toInventory")}
-    </button>
-  );
-}
-
-// Every row is the same size: the name takes one line (long ones end in an
-// ellipsis), the brand line and the tag slot on the right are always there,
-// empty or not, so rows line up whether or not an item has a brand or a sale.
-// Only the checkbox checks an item off (it's a 44 px target on its own).
-// Tapping anywhere else on the row does nothing, except on an item added from
-// a flyer deal, which opens that deal. Store mode is the other way round: the
-// whole row checks there.
-function GroceryRow({ item, checked, onToggle, deal, flyerDeal, onOpenDeal, onToInventory, store, showStore, sub, onDelete, onSetQuantity, dragging, rowRef, dragProps }) {
-  const justChecked = useJustChecked(checked);
-  const brand = brandOf(deal || flyerDeal);
-  const label = item.name + (item.varieties.length > 0 ? ` (${item.varieties.join(", ")})` : "");
-  return (
-    <div
-      ref={rowRef}
-      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}`}
-      {...(flyerDeal
-        ? {
-            role: "button",
-            tabIndex: 0,
-            "aria-label": t("grocery.openDeal", { name: item.name }),
-            onClick: () => onOpenDeal(flyerDeal),
-            onKeyDown: (e) => {
-              if (e.target !== e.currentTarget) return;
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpenDeal(flyerDeal);
-              }
-            },
-          }
-        : {})}
-      {...dragProps}
-    >
-      {dragProps && (
-        <span className="riso-row-grip" aria-hidden="true" title={t("grocery.dragToStore")}>
-          ⠿
-        </span>
-      )}
-      <button
-        type="button"
-        className="riso-row-check-hit"
-        role="checkbox"
-        aria-checked={checked}
-        aria-label={t("grocery.checkOff", { name: item.name })}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
-      >
-        <span className={`riso-row-check${checked ? " on" : ""}${justChecked ? " pop" : ""}`}>{checked ? "✓" : ""}</span>
-      </button>
-      <span className="riso-row-main">
-        <span className="riso-row-namerow">
-          <span className={`riso-row-name${checked ? " struck" : ""}`} title={label}>
-            {label}
-          </span>
-          <RecipesLine usedIn={item.usedIn} className="riso-row-recipes" />
-        </span>
-        <span className="riso-row-brand" title={brand ? t("grocery.brand", { brand }) : undefined}>
-          {brand}
-        </span>
-        {sub !== null && <span className="riso-row-sub">{sub}</span>}
-      </span>
-      <span className="riso-row-slot">
-        {checked ? (
-          <ToInventoryButton item={item} onClick={onToInventory} />
-        ) : deal ? (
-          <DealTag deal={deal} onOpen={() => onOpenDeal(deal)} />
-        ) : (
-          showStore && <span className="riso-row-store static">{storeLabel(store)}</span>
-        )}
-      </span>
-      <QuantityCell item={item} onSave={onSetQuantity} />
-      <button
-        type="button"
-        className="riso-row-delete"
-        aria-label={t("grocery.removeAria", { name: item.name })}
-        title={item.isManual ? t("grocery.deleteItem") : t("grocery.removeFromList")}
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-      >
-        ×
-      </button>
-    </div>
-  );
+// One item in a list: the shared GroceryItem, with the brand worked out from
+// the flyer product it's on sale as (or was added from).
+function GroceryRow({ deal, flyerDeal, ...props }) {
+  return <GroceryItem {...props} deal={deal} flyerDeal={flyerDeal} brand={brandOf(deal || flyerDeal)} />;
 }
 
 // In "By store", the whole row drags into another store (a press-and-hold
@@ -391,7 +195,9 @@ function StoreGroupHead({ group, section, onRename, onRemove, handleRef, handleP
       {section && (
         <button type="button" className="riso-group-remove" aria-label={t("grocery.removeStoreAria", { store: group.label })}
           title={t("grocery.removeStore")}
-          onClick={onRemove}
+          onClick={() => {
+            if (window.confirm(t("grocery.confirmRemoveStore", { store: group.label }))) onRemove();
+          }}
         >
           ×
         </button>
@@ -854,16 +660,12 @@ export function GroceryList({
     }
   }
 
-  // What goes to the confirmation sheet for one grocery item: your own amount
-  // wins ("2 packs" -> 2 packs), else the recipe amount.
+  // What goes to the confirmation sheet for one grocery item (see
+  // inventoryAmount: the recipe quantity, with its unit, unless you set a
+  // number that counts things).
   function inventoryDraft(item) {
-    const own = item.customQuantity?.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s*(.*)$/);
-    return {
-      ref: item.key,
-      name: item.name,
-      quantity: own ? parseQuantityInput(own[1]) : item.customQuantity ? null : item.parts?.[0]?.quantity ?? null,
-      unit: own ? own[2].trim() || null : item.customQuantity ? null : item.parts?.[0]?.unit ?? null,
-    };
+    const { quantity, unit } = inventoryAmount(item);
+    return { ref: item.key, name: item.name, quantity, unit };
   }
 
   // Everything that sends grocery items to Inventory comes here ("Done
@@ -910,8 +712,9 @@ export function GroceryList({
       if (open.length === 0) continue;
       lines.push("", group.label);
       for (const { item } of open) {
-        const amount = amountLabel(item);
-        lines.push(`- ${item.name}${amount ? ` (${amount})` : ""}`);
+        // How many to buy, and what the recipes need with its unit.
+        const need = item.isManual ? "" : recipeAmountLabel(item);
+        lines.push(`- ${item.name} × ${displayQuantity(item)}${need ? ` (${need})` : ""}`);
       }
     }
     return lines.join("\n");
@@ -1042,29 +845,24 @@ export function GroceryList({
               : key === MANUAL_GROUP_LABEL
                 ? t("grocery.addedByYou")
                 : key;
-        const left = t("grocery.groupLeft", { count: remaining });
+        const left = t("grocery.groupToBuy", { count: remaining });
         return {
           key,
           name: key,
           label,
           sorted,
-          count: view === "store" && sales ? `${left} · ${t("grocery.groupOnSale", { count: sales })}` : left,
+          count: sales ? `${left} · ${t("grocery.groupOnSale", { count: sales })}` : left,
         };
       });
   }
 
-  // The mono line under a row, the aisle. (The recipes an item is for have
-  // their own line, see RecipesLine.) In the aisle view the group heading is
-  // already the aisle, so there is no line at all.
-  function subLineFor(row) {
-    if (view === "aisle") return null;
-    return (row.category ? aisleLabel(row.category) : "").toUpperCase();
-  }
-
   const groups = buildGroups();
+  // Every item in the view is as tall as the one with the longest name.
+  const listRef = useRef(null);
+  useEqualRowHeight(listRef);
   const storeRows = shoppingItems.map((item) => {
     const deal = bestDeal(item);
-    return { item, deal, store: storeForItem(item, deal), category: categoryCache[item.core] || null };
+    return { item, deal, flyerDeal: flyerDealFor(item), store: storeForItem(item, deal), category: categoryCache[item.core] || null };
   });
   const storesWithItems = storeOrder.filter((st) => storeRows.some((r) => r.store === st));
 
@@ -1089,7 +887,7 @@ export function GroceryList({
     .map((r) => ({ ...r, saving: dealSavings(r.deal), ends: r.deal.validUntil || null }))
     .sort((a, b) => (a.ends || "9999").localeCompare(b.ends || "9999") || (b.saving?.pct ?? 0) - (a.saving?.pct ?? 0));
 
-  const subLabel = t("grocery.subLabel", { count: totalCount - doneCount });
+  const subLabel = t("grocery.subLabel", { count: totalCount - doneCount, sales: onSaleRows.length });
 
   const hintText = view === "store" ? t("grocery.hintStore") : t("grocery.hintOther");
 
@@ -1122,7 +920,7 @@ export function GroceryList({
       </div>
 
       <div className="riso-grocery-body">
-        <div className="riso-grocery-main">
+        <div className="riso-grocery-main" ref={listRef}>
           <HintStrip userId={user.id} screenKey="grocery">
             {hintText}
           </HintStrip>
@@ -1183,8 +981,6 @@ export function GroceryList({
                               flyerDeal={flyerDealFor(row.item)}
                               onOpenDeal={(d) => openDealDetail(d, row.item.name)}
                               onToInventory={() => sendToInventory([row.item])}
-                              store={row.store}
-                              sub={subLineFor(row)}
                               onDelete={() => removeItem(row.item)}
                               onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
                             />
@@ -1217,9 +1013,6 @@ export function GroceryList({
                     flyerDeal={flyerDealFor(row.item)}
                     onOpenDeal={(d) => openDealDetail(d, row.item.name)}
                     onToInventory={() => sendToInventory([row.item])}
-                    store={row.store}
-                    showStore
-                    sub={subLineFor(row)}
                     onDelete={() => removeItem(row.item)}
                     onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
                   />
@@ -1260,7 +1053,7 @@ export function GroceryList({
             <div className="riso-eyebrow on-pink">{t("grocery.inCart")}</div>
             <div className="riso-grocery-cart-count">
               <span className="riso-grocery-cart-num">{cartDone}</span>
-              <span className="riso-grocery-cart-label">{t("grocery.ofItems", { count: cartTotal })}</span>
+              <span className="riso-grocery-cart-label">{t("grocery.itemsChecked", { count: cartDone })}</span>
             </div>
             <div className="riso-grocery-cart-track">
               <div className="riso-grocery-cart-fill" style={{ width: `${pct}%` }} />

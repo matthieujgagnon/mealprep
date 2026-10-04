@@ -48,38 +48,47 @@ async function setup(page) {
 const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
 const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
 
-test("recipe amounts read naturally and your own amount shows beside them", async ({ page }) => {
+test("the recipe quantity is read-only with its unit, and how many to buy is a plain number you can change", async ({ page }) => {
   await setup(page);
-  await expect(row(page, "Garlic")).toContainText("4 cloves");
-  await expect(row(page, "Spaghetti")).toContainText("1 1/2 kg");
+  // The recipe quantity pill carries the unit; the number box next to it never does.
+  await expect(row(page, "Garlic").locator(".riso-row-need.wide")).toHaveText("4 cloves");
+  await expect(row(page, "Spaghetti").locator(".riso-row-need.wide")).toHaveText("1 1/2 kg");
+  const garlic = row(page, "Garlic").getByLabel("Quantity of Garlic");
+  const spaghetti = row(page, "Spaghetti").getByLabel("Quantity of Spaghetti");
+  await expect(garlic).toHaveValue("4"); // a count: the recipe's number
+  await expect(spaghetti).toHaveValue("1"); // a weight: one package
 
-  await page.getByRole("button", { name: "Edit amount of Garlic", exact: true }).click();
-  await page.getByLabel("Amount of Garlic").fill("1 head");
+  // Only digits, a point, a comma and a slash can be typed.
+  await garlic.fill("");
+  await garlic.pressSequentially("2 heads");
+  await expect(garlic).toHaveValue("2");
   await page.keyboard.press("Enter");
-  await expect(row(page, "Garlic")).toContainText("1 head");
-  await expect(row(page, "Garlic")).toContainText("recipe: 4 cloves");
+  await expect(garlic).toHaveValue("2");
+  await expect(row(page, "Garlic").locator(".riso-row-need.wide")).toHaveText("4 cloves");
 
-  // Editing the amount doesn't check the item off.
+  // Editing the number doesn't check the item off.
   await expect(check(page, "Garlic")).toHaveAttribute("aria-checked", "false");
 
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(row(page, "Garlic")).toContainText("1 head");
+  await expect(row(page, "Garlic").getByLabel("Quantity of Garlic")).toHaveValue("2");
 
-  // Back to the recipe amount.
-  await page.getByRole("button", { name: "Edit amount of Garlic", exact: true }).click();
-  await page.getByRole("button", { name: "use recipe amount" }).click();
-  await expect(row(page, "Garlic")).not.toContainText("1 head");
-  await expect(row(page, "Garlic")).toContainText("4 cloves");
+  // Not a number: it goes back to what it was. Empty: back to the starting number.
+  await garlic.fill("0");
+  await page.keyboard.press("Enter");
+  await expect(garlic).toHaveValue("2");
+  await garlic.fill("");
+  await page.keyboard.press("Enter");
+  await expect(garlic).toHaveValue("4");
 });
 
 test("any row can be removed, and a removed recipe row can be put back", async ({ page }) => {
   await setup(page);
-  await expect(page.getByText(/3 TO BUY/)).toBeVisible();
+  await expect(page.locator(".riso-grocery-header .riso-eyebrow")).toContainText("3 TO BUY");
 
   await page.getByRole("button", { name: "Remove Lemon", exact: true }).click();
   await expect(row(page, "Lemon")).toHaveCount(0);
-  await expect(page.getByText(/2 TO BUY/)).toBeVisible();
+  await expect(page.locator(".riso-grocery-header .riso-eyebrow")).toContainText("2 TO BUY");
   await expect(page.locator(".riso-grocery-removed")).toContainText("Lemon");
 
   // Hand-added rows delete outright.
@@ -111,7 +120,7 @@ test("Share copies what's left to buy as a text list", async ({ page, context })
   await expect(page.getByText("Copied - paste it anywhere")).toBeVisible();
   const text = await page.evaluate(() => navigator.clipboard.readText());
   expect(text).toContain("Grocery list");
-  expect(text).toContain("- Garlic (4 cloves)");
+  expect(text).toContain("- Garlic × 4 (4 cloves)");
   expect(text).not.toContain("Lemon"); // already in the cart
 });
 

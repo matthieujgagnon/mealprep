@@ -110,7 +110,7 @@ test.describe("desktop, English", () => {
     const grocery = page.locator("#help-grocery");
     await expect(grocery.locator("li", { hasText: "Choose a view" }).locator(".riso-segmented")).toHaveText("By storeBy aisleBy recipe");
     await expect(grocery.locator("li", { hasText: "Press" }).locator(".riso-grocery-store-btn")).toContainText("I'm at the store");
-    await expect(grocery.locator("li", { hasText: "A checked item shows" }).locator(".riso-row-toinv")).toHaveText("To inventory");
+    await expect(grocery.locator("li", { hasText: "A checked item shows" }).locator(".riso-row-toinv")).toHaveText("+ Inventory");
     await expect(grocery.locator("li", { hasText: "Press Done shopping" })).toContainText("Done shopping · add 3 to inventory to send every checked item");
     // An icon is hidden from screen readers; a labelled copy is just words.
     await expect(page.locator("#help-planner .riso-planner-nav-arrow").first()).toHaveAttribute("aria-hidden", "true");
@@ -197,7 +197,7 @@ test.describe("phone, Quebec French", () => {
 
     const grocery = page.locator("#help-grocery");
     await expect(grocery.locator("li", { hasText: "Choisissez une vue" }).locator(".riso-segmented")).toHaveText("Par magasinPar rayonPar recette");
-    await expect(grocery.locator("li", { hasText: "Appuyez sur" }).locator(".riso-grocery-store-btn")).toContainText("Je suis au magasin");
+    await expect(grocery.locator("li", { hasText: "Appuyez sur" }).locator(".riso-grocery-store-btn")).toContainText("Je suis à l'épicerie");
     await expect(page.locator("#help-flyers")).toContainText("Faites des réserves");
 
     // Nothing pokes out of its card or the screen, and no copy is cut off.

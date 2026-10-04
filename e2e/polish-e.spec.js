@@ -155,9 +155,9 @@ test.describe("The recipes an item is for, in Grocery", () => {
       // One recipe: just its name; no "+".
       await expect(rowFor(page, "Tomato").locator(".riso-row-recipes")).toHaveText("Tacos");
       await expect(rowFor(page, "Carrot").locator(".riso-row-recipes-more")).toHaveCount(0);
-      // A hand-added item shows nothing.
-      await expect(rowFor(page, "Paper towels").locator(".riso-row-recipes")).toHaveText("");
-      // The recipes sit to the right of the item's name, on the same line, in a
+      // A hand-added item shows nothing: no meta line at all.
+      await expect(rowFor(page, "Paper towels").locator(".riso-row-recipes")).toHaveCount(0);
+      // The recipes sit on the meta line under the item's name, left-aligned with it, in a
       // different (monospace) font and a lighter gray than the name.
       const rowOnion = rowFor(page, "Onion");
       const look = await rowOnion.evaluate((e) => {
@@ -167,11 +167,10 @@ test.describe("The recipes an item is for, in Grocery", () => {
         const rb = rec.getBoundingClientRect();
         const lum = (c) => c.match(/\d+/g).slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
         return {
-          rightOfName: rb.left >= nb.right - 1,
-          sameLine: Math.abs(rb.top + rb.height / 2 - (nb.top + nb.height / 2)) < 8,
+          underName: rb.top >= nb.bottom - 1,
+          alignedLeft: Math.abs(rb.left - nb.left) < 2,
           recipesFont: getComputedStyle(rec).fontFamily,
           recipesStyle: ((c) => [c.fontFamily, c.fontSize, c.letterSpacing, c.color].join("|"))(getComputedStyle(rec)),
-          aisleStyle: ((c) => [c.fontFamily, c.fontSize, c.letterSpacing, c.color].join("|"))(getComputedStyle(e.querySelector(".riso-row-sub"))),
           nameFont: getComputedStyle(name).fontFamily,
           recipesSize: parseFloat(getComputedStyle(rec).fontSize),
           nameSize: parseFloat(getComputedStyle(name).fontSize),
@@ -179,32 +178,33 @@ test.describe("The recipes an item is for, in Grocery", () => {
           nameLum: lum(getComputedStyle(name).color),
         };
       });
-      expect(look.rightOfName).toBe(true);
+      expect(look.underName).toBe(true);
+      expect(look.alignedLeft).toBe(true);
       // The item's own name is never cut off because of the recipes.
       for (const n of ["Onion", "Carrot", "Tomato"]) {
         const nm = rowFor(page, n).locator(".riso-row-name");
         expect(await nm.evaluate((e) => e.scrollWidth <= e.clientWidth + 2), n).toBe(true);
       }
-      expect(look.sameLine).toBe(true);
       expect(look.recipesFont).not.toBe(look.nameFont);
-      expect(look.recipesStyle).toBe(look.aisleStyle); // the same font, size, spacing and gray as the aisle line in By store (both in capitals)
+      expect(look.recipesStyle).toContain("DM Mono"); // small monospace capitals
       expect(look.recipesSize).toBeLessThan(look.nameSize);
       expect(look.recipesLum).toBeGreaterThan(look.nameLum); // grayer (lighter) than the name
       // The tooltip lists them all.
       await expect(onion).toHaveAttribute("title", /Tacos, Chili with a really long name that goes on and on, Soup/);
     });
 
-    test("every row, tag and amount is the same size, with or without recipes", async ({ page }) => {
+    test("every row and the number to buy are the same size, with or without recipes", async ({ page }) => {
       await seed(page);
       const sizes = await page.locator(".riso-row").evaluateAll((els) =>
         els.map((e) => {
           const r = e.getBoundingClientRect();
-          const slot = e.querySelector(".riso-row-slot").getBoundingClientRect();
-          return `${Math.round(r.height)}x${Math.round(slot.width)}x${Math.round(slot.height)}`;
+          const qty = e.querySelector(".riso-row-qty").getBoundingClientRect();
+          return `${Math.round(r.height)}x${Math.round(qty.width)}x${Math.round(qty.height)}`;
         })
       );
       expect(sizes.length).toBeGreaterThanOrEqual(4);
       expect(new Set(sizes).size, sizes.join(" ")).toBe(1);
+      expect(sizes[0].startsWith("68x")).toBe(true); // the desktop row height of the design
       // The "+1" is always fully there, and the names end in an ellipsis when short of room.
       const names = rowFor(page, "Onion").locator(".riso-row-recipes-names");
       expect(await names.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
@@ -223,7 +223,7 @@ test.describe("The recipes an item is for, in Grocery", () => {
   test.describe("on a phone, in French", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test("rows keep one size, and Store mode rows too, the long list cut off with an ellipsis", async ({ page }) => {
+    test("rows keep one height, and Store mode rows too, the long recipe list cut off with an ellipsis", async ({ page }) => {
       await seed(page);
       await langSwitch(page).getByRole("button", { name: "Français" }).click();
       await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toHaveText("+1");
@@ -239,7 +239,7 @@ test.describe("The recipes an item is for, in Grocery", () => {
       expect(await names.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
       await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toBeVisible();
 
-      await page.getByRole("button", { name: /Je suis au magasin/ }).click();
+      await page.getByRole("button", { name: /Je suis à l.épicerie/ }).click();
       const mode = page.getByRole("dialog", { name: "Mode magasin" });
       await expect(mode).toBeVisible();
       const rows = mode.locator(".store-mode-row");
@@ -252,17 +252,16 @@ test.describe("The recipes an item is for, in Grocery", () => {
       const cut = onionRow.locator(".store-mode-recipes-names");
       expect(await cut.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true); // "…"
       expect(await cut.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
-      // ...to the right of the name here too, on the same line.
-      const right = await onionRow.evaluate((e) => {
+      // ...under the name here too.
+      const under = await onionRow.evaluate((e) => {
         const r = e.querySelector(".store-mode-recipes").getBoundingClientRect();
         const n = e.querySelector(".store-mode-name").getBoundingClientRect();
-        return r.left >= n.right - 1 && Math.abs(r.top + r.height / 2 - (n.top + n.height / 2)) < 8;
+        return r.top >= n.bottom - 1 && Math.abs(r.left - n.left) < 2;
       });
-      expect(right).toBe(true);
+      expect(under).toBe(true);
       await expect(onionRow.locator(".store-mode-recipes-more")).toHaveText("+1");
       // An item you added shows no recipes line, and is still the same height.
-      await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" }).locator(".store-mode-recipes")).toHaveCount(1);
-      await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" }).locator(".store-mode-recipes")).toBeHidden();
+      await expect(mode.locator(".store-mode-row", { hasText: "Paper towels" }).locator(".store-mode-recipes")).toHaveCount(0);
     });
   });
 });

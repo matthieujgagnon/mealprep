@@ -12,12 +12,12 @@ test.use({ locale: "fr-CA", viewport: { width: 1280, height: 900 } });
 
 // English words that would mean a screen still talks English. Everything
 // this test adds is in French, so any of these on screen is the app's own
-// text. (Words that are French too - "photo", "minutes", "plan", "date" -
+// text. (Words that are French too - "photo", "minutes", "plan", "date", and "item" (Quebec French says "un item") -
 // can't tell, and store names and the flyers' own English product names
 // are fine.)
 // (Word edges are letters in any alphabet: "import" isn't in "importées".)
 const ENGLISH =
-  /(?<!\p{L})(the|and|with|your|you|add|remove|delete|edit|save|cancel|close|open|recipes?|planner|grocery|groceries|inventory|flyers?|home|week|today|tomorrow|items?|ingredients?|search|shelf|shelves|fridge|freezer|pantry|deals?|sale|price|buy|days?|months?|show|hide|drag|click|tap|pick|back|next|previous|loading|nothing|yet|none|stores?|left|leftovers?|dinner|lunch|breakfast|snack|cook|servings?|already|make|import|settings)(?!\p{L})/iu;
+  /(?<!\p{L})(the|and|with|your|you|add|remove|delete|edit|save|cancel|close|open|recipes?|planner|grocery|groceries|inventory|flyers?|home|week|today|tomorrow|ingredients?|search|shelf|shelves|fridge|freezer|pantry|deals?|sale|price|buy|days?|months?|show|hide|drag|click|tap|pick|back|next|previous|loading|nothing|yet|none|stores?|left|leftovers?|dinner|lunch|breakfast|snack|cook|servings?|already|make|import|settings)(?!\p{L})/iu;
 
 // Visible text, and the labels, tooltips and placeholders of everything
 // on the page, that read English.
@@ -197,7 +197,7 @@ test("on a phone too", async ({ page }) => {
 
   // Store mode, on the grocery list.
   await page.getByRole("button", { name: "Épicerie", exact: true }).first().click();
-  await page.getByRole("button", { name: /Je suis au magasin/ }).click();
+  await page.getByRole("button", { name: /Je suis à l.épicerie/ }).click();
   await expect(page.getByRole("dialog", { name: "Mode magasin" })).toBeVisible();
   await expectAllFrench(page, "tel-mode-magasin");
   await page.getByRole("button", { name: "← Liste" }).click();
