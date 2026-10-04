@@ -59,8 +59,8 @@ test("Store mode groups each store's list by section, sorts A to Z, and remember
   await expect(mode.locator(".store-mode-num")).toHaveText("5");
   await expect(mode.locator(".store-mode-section-pill")).toHaveText(["Fruits & vegetables", "Meat & poultry", "Frozen", "Pantry"]);
   const beef = mode.locator(".store-mode-row", { hasText: "Ground beef" });
-  await expect(beef.locator(".store-mode-sale")).toHaveText("$5.44/lb");
-  await expect(beef.locator(".store-mode-brand")).toHaveText("Irresistibles medium ground beef");
+  await expect(beef.locator(".store-mode-sale")).toHaveText("Metro$5.44/lb");
+  await expect(beef.locator(".store-mode-brand")).toHaveText("Irresistibles");
   await page.screenshot({ path: test.info().outputPath("dark-section.png") });
 
   // Checking a row fades it, counts down and sinks it to the bottom of its
@@ -119,15 +119,15 @@ test.describe("in French", () => {
 
     await page.getByRole("button", { name: "Épicerie", exact: true }).first().click();
     await expect(page.locator(".riso-row").first()).toBeVisible();
-    await page.getByRole("button", { name: /Je suis au magasin/ }).click();
+    await page.getByRole("button", { name: /Je suis à l.épicerie/ }).click();
     const mode = page.getByRole("dialog", { name: "Mode magasin" });
     await mode.getByRole("tab", { name: "Metro" }).click();
     await expect(mode.locator(".store-mode-at")).toHaveText("restants chez Metro");
     await expect(mode.locator(".store-mode-section-pill").first()).toHaveText("Fruits et légumes");
     await expect(mode.locator(".store-mode-section-left").first()).toHaveText("2 RESTANTS");
     const beef = mode.locator(".store-mode-row", { hasText: "Ground beef" });
-    await expect(beef.locator(".store-mode-brand")).toHaveText("Bœuf haché mi-maigre Irresistibles");
-    await expect(beef.locator(".store-mode-sale")).toHaveText(/^5,44\s\$\/lb$/);
+    await expect(beef.locator(".store-mode-brand")).toHaveText("Irresistibles");
+    await expect(beef.locator(".store-mode-sale")).toHaveText(/^Metro5,44\s\$\/lb$/);
     await expect(mode.getByRole("button", { name: "Rayon" })).toHaveAttribute("aria-pressed", "true");
     await expect(mode.getByRole("button", { name: "Terminé · ajouter 0 à l'inventaire" })).toBeDisabled();
     await page.screenshot({ path: test.info().outputPath("fr-dark.png") });

@@ -1,25 +1,13 @@
-import { useEffect, useState } from "react";
-import { useJustChecked } from "../hooks/useJustChecked.js";
-import { RecipesLine } from "./RecipesLine.jsx";
-import { amountLabel } from "../lib/groceryChecks.js";
-import { splitBilingual } from "../lib/bilingual.js";
+import { useEffect, useRef, useState } from "react";
+import { GroceryItem } from "./GroceryItem.jsx";
+import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
+import { brandOf } from "../lib/flyerIngredients.js";
 import { getLang, t } from "../i18n/index.js";
-import { localizePrice } from "../i18n/format.js";
 
 // The list while you shop (Design4 "Riso Store Mode"): one store at a
 // time, what's left there grouped by section in walking order (or A to Z),
 // a big count and a progress bar, light or dark. Tapping a row checks it
 // off; checked rows fade and sink to the bottom of their section.
-
-// The box that fills when a row is checked off; it pops once as it does.
-function StoreCheck({ on }) {
-  const pop = useJustChecked(on);
-  return (
-    <span className={`store-mode-check${pop ? " pop" : ""}`} aria-hidden="true">
-      {on ? "✓" : ""}
-    </span>
-  );
-}
 
 const THEME_KEY = "mealprep-store-mode-theme";
 const SORT_KEY = "mealprep-store-mode-sort";
@@ -40,14 +28,6 @@ function writeStored(key, value) {
   } catch {
     // Private mode: the choice just isn't remembered.
   }
-}
-
-// The muted line under a row's name: the flyer product it's on sale as, in the
-// app's language. (The recipes an item is for are the line under that.)
-function detailLine(item, deal) {
-  if (!deal?.item) return "";
-  const { en, fr } = splitBilingual(deal.item);
-  return ((getLang() === "fr" && fr) || en).split(/[,(]/)[0].trim();
 }
 
 export function StoreMode({
@@ -88,6 +68,10 @@ export function StoreMode({
     setSort(next);
     writeStored(SORT_KEY, next);
   }
+
+  // Every row is as tall as the one with the longest name (names are never cut).
+  const listRef = useRef(null);
+  useEqualRowHeight(listRef, { pad: 14 });
 
   const here = rows.filter((r) => r.store === store);
   const left = here.filter((r) => !checked[r.item.key]).length;
@@ -151,7 +135,7 @@ export function StoreMode({
         </div>
       </header>
 
-      <div className="store-mode-list">
+      <div className="store-mode-list" ref={listRef}>
         {here.length === 0 && <p className="store-mode-empty">{t("storeMode.nothingFor", { store: storeLabel(store) })}</p>}
         {groups.map((group) => (
           <section key={group.id} className="store-mode-group" aria-label={sort === "section" ? aisleLabel(group.id) : undefined}>
@@ -164,37 +148,17 @@ export function StoreMode({
                 </span>
               </div>
             )}
-            {group.rows.map(({ item, deal }) => {
-              const on = !!checked[item.key];
-              const qty = amountLabel(item);
-              const line = detailLine(item, deal);
-              // Not the name again ("Limes" on sale as "Limes").
-              const detail = line && line.toLowerCase() !== item.name.toLowerCase() ? line : "";
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`store-mode-row${on ? " on" : ""}`}
-                  aria-pressed={on}
-                  onClick={() => onToggle(item.key)}
-                >
-                  <StoreCheck on={on} />
-                  <span className="store-mode-info">
-                    <span className="store-mode-nameline">
-                      <span className="store-mode-name">{item.name.charAt(0).toUpperCase() + item.name.slice(1)}</span>
-                      <RecipesLine usedIn={item.usedIn} className="store-mode-recipes" />
-                    </span>
-                    {detail && <span className="store-mode-brand">{detail}</span>}
-                  </span>
-                  {(qty || deal?.price) && (
-                    <span className="store-mode-right">
-                      {qty && <span className="store-mode-qty">{qty}</span>}
-                      {deal?.price && <span className="store-mode-sale">{localizePrice(deal.price)}</span>}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            {group.rows.map(({ item, deal, flyerDeal }) => (
+              <GroceryItem
+                key={item.key}
+                variant="store"
+                item={item}
+                checked={!!checked[item.key]}
+                deal={deal}
+                brand={brandOf(deal || flyerDeal)}
+                onToggle={() => onToggle(item.key)}
+              />
+            ))}
           </section>
         ))}
       </div>

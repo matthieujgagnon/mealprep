@@ -5,7 +5,7 @@ import { cancelAdd, confirmAdd } from "./inventory-confirm.js";
 const prisma = new PrismaClient();
 
 // Nothing reaches Inventory without Matt confirming it first: Done shopping
-// and a row's "To inventory" (Grocery), a receipt, and what the sheet shows.
+// and a row's "+ Inventory" (Grocery), a receipt, and what the sheet shows.
 // Plus the grocery rows: a flyer item opens its deal, a brand shows under the
 // name, and every row is the same size.
 
@@ -32,12 +32,12 @@ const goToGrocery = async (page) => {
 const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
 const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
 
-test("a checked item's To inventory opens the sheet for that item; cancel adds nothing, confirm adds what was edited", async ({ page }) => {
+test("a checked item's + Inventory opens the sheet for that item; cancel adds nothing, confirm adds what was edited", async ({ page }) => {
   await signUp(page);
   await addExtra(page, { name: "Kale", quantity: 2 });
   await addExtra(page, { name: "Rice" });
   await goToGrocery(page);
-  await expect(page.getByRole("button", { name: /^To inventory$/ })).toHaveCount(0); // only checked rows have it
+  await expect(page.getByRole("button", { name: /^\+ Inventory$/ })).toHaveCount(0); // only checked rows have it
 
   await check(page, "Kale").click();
   await check(page, "Rice").click();
@@ -150,34 +150,34 @@ test.describe("grocery rows", () => {
     await expect(page.locator(".riso-deal-detail-name")).toHaveCount(0);
   });
 
-  test("the brand shows under the name, and every row is the same size", async ({ page }) => {
+  test("the brand shows under the name, and every row is the same height with no name cut", async ({ page }) => {
     await seed(page, await signUp(page));
     const bacon = page.locator(".riso-row", { hasText: "Bacon" });
     await expect(bacon.locator(".riso-row-brand")).toHaveText("Maple Leaf");
-    await expect(page.locator(".riso-row", { hasText: "Soap" }).locator(".riso-row-brand")).toHaveText("");
+    // An item with no brand has no brand line at all.
+    await expect(page.locator(".riso-row", { hasText: "Soap" }).locator(".riso-row-brand")).toHaveCount(0);
 
     const sizes = async () => {
       const boxes = await page.locator(".riso-row").evaluateAll((els) =>
         els.map((e) => {
           const b = e.getBoundingClientRect();
-          const slot = e.querySelector(".riso-row-slot").getBoundingClientRect();
-          return { h: Math.round(b.height), w: Math.round(b.width), slot: Math.round(slot.width), name: e.querySelector(".riso-row-name").scrollWidth > e.querySelector(".riso-row-name").clientWidth };
+          const name = e.querySelector(".riso-row-name");
+          return { h: Math.round(b.height), w: Math.round(b.width), cut: name.scrollWidth > name.clientWidth || name.scrollHeight > name.clientHeight + 1 };
         })
       );
       expect(boxes.length).toBeGreaterThanOrEqual(3);
       expect(new Set(boxes.map((b) => b.h)).size).toBe(1);
       expect(new Set(boxes.map((b) => b.w)).size).toBe(1);
-      expect(new Set(boxes.map((b) => b.slot)).size).toBe(1);
-      expect(boxes.some((b) => b.name)).toBe(true); // the long name is cut off with an ellipsis, not grown
+      expect(boxes.some((b) => b.cut)).toBe(false); // the long name wraps; nothing is cut off
     };
     await sizes();
 
-    // The same on a phone, and with one row checked ("To inventory" takes the tag's place).
+    // The same on a phone, and with one row checked ("+ Inventory" joins the row).
     await page.setViewportSize({ width: 390, height: 844 });
+    await sizes();
     await check(page, "Soap").click();
     await expect(page.getByRole("button", { name: "Add Soap to Inventory" })).toBeVisible();
-    const heights = await page.locator(".riso-row").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-    expect(new Set(heights).size).toBe(1);
+    await sizes();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 });

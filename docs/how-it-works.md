@@ -86,6 +86,8 @@ While working, run only what your change touches. For example, `npx vitest run c
 
 Screens use the Riso Poster look: paper background, ink outlines, hard shadows, and blue, pink, yellow and green accents. Colours come from the `--riso-*` tokens in `index.css`. Reuse the existing classes (`riso-chip`, `riso-btn`, `riso-eyebrow`...) before adding new ones, and add no new colours.
 
+The grocery item is one component, `components/GroceryItem.jsx`, used by By store, By aisle, By recipe (`variant="line"`) and Store mode (`variant="store"`). Do not draw an item anywhere else. Its design is in `docs/design/grocery-item/README.md` (the handoff, with the `.dc.html` references). How many to buy is a plain number (`lib/groceryQuantity.js`); the unit only shows in the read-only recipe quantity. Every item in a view is one height: CSS sets `max(--gi-min, --gi-h)`, and `hooks/useEqualRowHeight.js` sets `--gi-h` from the view's longest name, so no name is cut.
+
 Buttons press in for a moment (under 150 ms) through one shared rule in `index.css`, next to `.riso-btn`: `riso-btn`, `riso-chip`, `riso-filter-chip`, the Grocery and Store mode buttons, and anything with `riso-press`. A new kind of button joins by using one of those classes or by being added to that list. The global reduced-motion rule turns the animation off. Step timers (the recipe card and Cook mode) share `hooks/useStepTimers.js`.
 
 ## Weekly flyer import

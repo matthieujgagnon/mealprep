@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#D6CFBF;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}input::placeholder{color:#5E5B52}.nos::-webkit-scrollbar{display:none}</style></helmet>
+<div style="padding:56px;display:flex;gap:56px;align-items:flex-start;width:max-content;color:#16181F">
+
+<section id="1a" style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><div style="height:30px;padding:0 13px;border-radius:15px;background:#FF48B0;border:2px solid #16181F;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif">1a · Bureau</div><div style="font:500 12px 'DM Mono',monospace;letter-spacing:.1em">1280 PX · RANGÉES 68</div></div>
+<div style="width:1280px;box-sizing:border-box;background:#F4F1EA;border:2px solid #16181F;border-radius:24px;padding:28px 40px 56px;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;align-items:center;gap:20px">
+<div style="font:800 28px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap">matt mo <span style="background:#FF48B0;padding:0 8px;border-radius:6px">cookbook</span></div>
+<nav style="flex:1;display:flex;justify-content:center;gap:4px;font:500 14px 'Bricolage Grotesque',sans-serif">
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Accueil</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Recettes</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Planificateur</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Faisable</div>
+<div style="height:36px;padding:0 14px;border-radius:18px;background:#2323FF;color:#fff;display:flex;align-items:center;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F">Épicerie</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Circulaires</div>
+<div style="height:36px;padding:0 14px;display:flex;align-items:center">Inventaire</div>
+</nav>
+<div style="display:flex;align-items:center;gap:12px">
+<div style="display:flex;border:2px solid #16181F;border-radius:999px;overflow:hidden;font:800 12px 'Bricolage Grotesque',sans-serif"><div style="height:30px;padding:0 11px;display:flex;align-items:center;background:#16181F;color:#F4F1EA">FR</div><div style="height:30px;padding:0 11px;display:flex;align-items:center;background:#FFFDF8">EN</div></div>
+<div style="width:44px;height:44px;border-radius:22px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif">M</div>
+</div>
+</header>
+<div style="display:flex;align-items:flex-end;gap:16px">
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em">{{ subLabel }}</div>
+<div style="font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">Liste d'<span style="color:#2323FF">épicerie.</span></div>
+</div>
+<div style="display:flex;border:2px solid #16181F;border-radius:999px;overflow:hidden;background:#FFFDF8">
+<div style="height:40px;padding:0 18px;background:#16181F;color:#F4F1EA;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap">Par magasin</div>
+<div style="height:40px;padding:0 18px;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap">Par rayon</div>
+<div style="height:40px;padding:0 18px;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap">Par recette</div>
+</div>
+<div style="height:44px;padding:0 20px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:600 14.5px 'Bricolage Grotesque',sans-serif">Partager</div>
+</div>
+<div style="display:flex;gap:22px;align-items:flex-start">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;gap:10px;align-items:center;background:#FFFDF8;border:2px solid #16181F;border-radius:999px;padding:6px 6px 6px 22px">
+<div style="flex:1;min-width:0;height:40px;display:flex;align-items:center;font:500 15.5px 'Bricolage Grotesque',sans-serif;color:#5E5B52">Ajouter un item, p. ex. 2 citrons</div>
+<div style="height:40px;padding:0 20px;border-radius:20px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:2px 2px 0 #16181F;display:flex;align-items:center;font:700 14.5px 'Bricolage Grotesque',sans-serif">Ajouter</div>
+</div>
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:24px;overflow:hidden;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:14px;padding:10px 14px 10px 18px;background:#E9E4D8;border-bottom:2px solid #16181F">
+<div style="flex:none;display:grid;grid-template-columns:repeat(2,3px);gap:3px"><i style="width:3px;height:3px;border-radius:2px;background:#5E5B52"></i><i style="width:3px;height:3px;border-radius:2px;background:#5E5B52"></i><i style="width:3px;height:3px;border-radius:2px;background:#5E5B52"></i><i style="width:3px;height:3px;border-radius:2px;background:#5E5B52"></i><i style="width:3px;height:3px;border-radius:2px;background:#5E5B52"></i><i style="width:3px;height:3px;border-radius:2px;background:#5E5B52"></i></div>
+<div style="flex:1;font:800 22px 'Bricolage Grotesque',sans-serif">Metro</div>
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.08em;white-space:nowrap">{{ subLabel }}</div>
+<div style="flex:none;width:40px;height:40px;border-radius:20px;box-sizing:border-box;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:600 18px/1 'Bricolage Grotesque',sans-serif">×</div>
+</div>
+<sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+<div style="border-top:1.5px dashed #D6CFBF"><dc-import name="GroceryItem" item="{{ it }}" variant="line" flip="{{ it.flip }}" hint-size="100%,68px"></dc-import></div>
+</sc-for>
+</section>
+</div>
+<aside style="flex:none;width:300px;position:sticky;top:20px">
+<section style="background:#FF48B0;border:2px solid #16181F;border-radius:24px;box-shadow:6px 6px 0 #16181F;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em">DANS LE PANIER</div>
+<div style="display:flex;align-items:baseline;gap:10px"><div style="font:800 84px/.9 'Bricolage Grotesque',sans-serif;letter-spacing:-.04em">{{ done }}</div><div style="font:700 16px 'Bricolage Grotesque',sans-serif">{{ cartLabel }}</div></div>
+<div style="height:14px;border-radius:7px;background:#F4F1EA;border:2px solid #16181F;overflow:hidden"><div style="height:100%;width:{{ pct }};background:#16181F;transition:width .25s"></div></div>
+<div style="min-height:44px;border-radius:22px;background:#16181F;color:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 14.5px 'Bricolage Grotesque',sans-serif;text-align:center;padding:0 12px">{{ finishLabel }}</div>
+<div style="font-size:13.5px;line-height:1.45">Vous confirmez chaque item coché, avec son rayon et une date limite USDA, avant son envoi à l'inventaire.</div>
+</section>
+</aside>
+</div>
+</div>
+</section>
+
+<section id="1b" style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><div style="height:30px;padding:0 13px;border-radius:15px;background:#FF48B0;border:2px solid #16181F;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif">1b · Téléphone</div><div style="font:500 12px 'DM Mono',monospace;letter-spacing:.1em">390 PX · RANGÉES 108</div></div>
+<div style="position:relative;width:390px;height:844px;box-sizing:border-box;background:#F4F1EA;border:2px solid #16181F;border-radius:36px;box-shadow:6px 6px 0 #16181F;overflow:hidden;display:flex;flex-direction:column">
+<div style="flex:none;padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:2px solid #16181F">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="font:800 21px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap">matt mo <span style="background:#FF48B0;padding:0 6px;border-radius:5px">cookbook</span></div>
+<div style="display:flex;align-items:center;gap:8px">
+<div style="display:flex;border:2px solid #16181F;border-radius:999px;overflow:hidden;font:800 11px 'Bricolage Grotesque',sans-serif"><div style="height:26px;padding:0 9px;display:flex;align-items:center;background:#16181F;color:#F4F1EA">FR</div><div style="height:26px;padding:0 9px;display:flex;align-items:center;background:#FFFDF8">EN</div></div>
+<div style="width:36px;height:36px;border-radius:18px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 15px 'Bricolage Grotesque',sans-serif">M</div>
+</div>
+</div>
+<div class="nos" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px 4px">
+<div style="flex:none;height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif">Accueil</div>
+<div style="flex:none;height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif">Recettes</div>
+<div style="flex:none;height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif">Planificateur</div>
+<div style="flex:none;height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif">Faisable</div>
+<div style="flex:none;height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181F;background:#2323FF;color:#fff;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif">Épicerie</div>
+<div style="flex:none;height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif">Circulaires</div>
+</div>
+</div>
+<div class="nos" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:18px 16px 110px;display:flex;flex-direction:column;gap:16px">
+<div style="flex:none;display:flex;flex-direction:column;gap:6px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em">{{ subLabel }}</div>
+<div style="font:800 38px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">Liste d'<span style="color:#2323FF">épicerie.</span></div>
+</div>
+<div style="flex:none;display:flex;border:2px solid #16181F;border-radius:999px;overflow:hidden;background:#FFFDF8">
+<div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;background:#16181F;color:#F4F1EA;font:700 14px 'Bricolage Grotesque',sans-serif">Magasin</div>
+<div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font:700 14px 'Bricolage Grotesque',sans-serif">Rayon</div>
+<div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font:700 14px 'Bricolage Grotesque',sans-serif">Recette</div>
+</div>
+<div style="flex:none;display:flex;gap:8px;align-items:center;background:#FFFDF8;border:2px solid #16181F;border-radius:999px;padding:5px 5px 5px 18px">
+<div style="flex:1;min-width:0;height:40px;display:flex;align-items:center;font:500 14.5px 'Bricolage Grotesque',sans-serif;color:#5E5B52;white-space:nowrap;overflow:hidden">Ajouter un item, p. ex. 2 citrons</div>
+<div style="height:40px;padding:0 16px;border-radius:20px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:2px 2px 0 #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif">Ajouter</div>
+</div>
+<section style="flex:none;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;overflow:hidden;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;background:#E9E4D8;border-bottom:2px solid #16181F">
+<div style="flex:1;font:800 20px 'Bricolage Grotesque',sans-serif">Metro</div>
+<div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.06em;white-space:nowrap">{{ subLabel }}</div>
+<div style="flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><div style="width:32px;height:32px;border-radius:16px;box-sizing:border-box;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:600 18px/1 'Bricolage Grotesque',sans-serif">×</div></div>
+</div>
+<sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+<div style="border-top:1.5px dashed #D6CFBF"><dc-import name="GroceryItem" item="{{ it }}" variant="line" height="108" flip="{{ it.flip }}" hint-size="100%,108px"></dc-import></div>
+</sc-for>
+</section>
+</div>
+<div style="position:absolute;left:16px;right:16px;bottom:18px;height:56px;border-radius:28px;background:#FF48B0;border:2px solid #16181F;box-shadow:4px 4px 0 #16181F;display:flex;align-items:center;justify-content:center;gap:10px;font:800 17px 'Bricolage Grotesque',sans-serif">Je suis à l'épicerie <span style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em">MODE GRAND</span></div>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { checked: { lait: true } };
+  base = [
+    { id: 'tomates', need: '3 boîtes', name: 'Tomates en dés', amt: '3', rec: 'TACOS, CHILI', brand: 'Unico', dealStore: 'Metro', dealPrice: '2,49 $' },
+    { id: 'fromage', need: '350 g', name: 'Fromage cheddar fort vieilli, tranché mince', amt: '1', rec: 'SANDWICH +2', brand: '', dealStore: '', dealPrice: '' },
+    { id: 'papier', name: "Papier d'aluminium", amt: '1', rec: '', brand: '', dealStore: '', dealPrice: '' },
+    { id: 'lait', need: '750 mL', name: 'Lait 2 %', amt: '1', rec: 'CRÊPES', brand: '', dealStore: '', dealPrice: '' }
+  ];
+  renderVals() {
+    const ch = this.state.checked, n = this.base.length;
+    const items = this.base.map(b => Object.assign({}, b, {
+      checked: !!ch[b.id],
+      flip: () => this.setState(s => ({ checked: Object.assign({}, s.checked, { [b.id]: !s.checked[b.id] }) }))
+    }));
+    const done = items.filter(i => i.checked).length;
+    const sale = items.filter(i => i.dealPrice && !i.checked).length;
+    return {
+      items, done,
+      subLabel: (n - done) + ' À ACHETER · ' + sale + ' EN RABAIS',
+      cartLabel: done === 1 ? 'item coché' : 'items cochés',
+      pct: Math.round(done / n * 100) + '%',
+      finishLabel: 'Terminé · ajouter ' + done + ' à l\u2019inventaire'
+    };
+  }
+}
+</script>
+</body>
+</html>

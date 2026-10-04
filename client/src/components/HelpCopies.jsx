@@ -56,6 +56,7 @@ function Deal() {
   return (
     <span className="riso-row-deal riso-help-copy-body">
       <span className="riso-row-deal-store">{t("same.sampleStore")}</span>
+      <span className="riso-row-deal-div" aria-hidden="true" />
       <span className="riso-row-deal-price">{t("help.sample.price")}</span>
     </span>
   );

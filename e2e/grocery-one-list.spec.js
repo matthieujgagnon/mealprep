@@ -69,7 +69,7 @@ test("one list for every meal from today on, across weeks, amounts merged; no we
   await expect(row(page, "Spaghetti")).toBeVisible();
   // A meal from before today is off the list.
   await expect(row(page, "Leek")).toHaveCount(0);
-  await expect(page.getByText(/4 TO BUY/)).toBeVisible();
+  await expect(page.locator(".riso-grocery-header .riso-eyebrow")).toContainText("4 TO BUY");
 
   // No week arrows, week dates or push to next week.
   await expect(page.locator(".riso-grocery-header .riso-planner-nav-row")).toHaveCount(0);
@@ -175,7 +175,7 @@ test("On sale lists what to buy first, soonest-ending first", async ({ page }) =
   await expect(sale.locator(".riso-grocery-sale-row").first()).toContainText("Lemon");
   await expect(sale.locator(".riso-grocery-sale-row").first()).toContainText("ends today");
   await expect(sale.locator(".riso-grocery-sale-row").nth(1)).toContainText("43% off");
-  // Both tags are one solid green pill, evenly spaced, with a normal price.
+  // Both tags are one solid green pill: store, a divider, then the price.
   const tag = row(page, "Lemon").locator(".riso-row-deal");
   await expect(tag).toHaveText("Maxi$0.50");
   const look = await tag.evaluate((el) => {
@@ -193,6 +193,6 @@ test("On sale lists what to buy first, soonest-ending first", async ({ page }) =
   expect(look.storeBg).toBe("rgba(0, 0, 0, 0)");
   expect(look.priceBg).toBe("rgba(0, 0, 0, 0)");
   expect(look.pill).not.toBe("rgba(0, 0, 0, 0)");
-  expect(look.priceFont).not.toMatch(/mono/i);
+  expect(look.priceFont).toMatch(/mono/i); // the design sets the price in DM Mono
   expect(look.spacing).toBe("normal");
 });

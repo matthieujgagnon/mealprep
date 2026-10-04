@@ -4178,6 +4178,8 @@ input[type="date"].planner-week-picker {
   --riso-muted: #5e5b52; /* ink-muted */
   --riso-dash: #d6cfbf; /* rule (dashed dividers) */
   --riso-dash-strong: #bdb6a6; /* rule (dashed empty slots) */
+  --riso-chip-dash: #8a877d; /* dashed outline of the grocery recipe-quantity pill */
+  --riso-store-checked: #2a2d38; /* a checked row in dark Store mode */
   --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
   --riso-hot: #ff48b0; /* pink */
@@ -9757,22 +9759,43 @@ button.riso-protein-bar {
   white-space: nowrap;
 }
 
-/* Every row is the same size: one line for the name (an ellipsis when it's
-   long), a line reserved for the brand and one for the aisle/recipes, and a
-   fixed slot on the right for the sale or store tag (or "To inventory" once
-   it's checked) - so rows line up whether or not an item has a brand or a sale. */
-.riso-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
-  min-height: 78px;
-  box-sizing: border-box;
-  border-top: 1.5px dashed var(--riso-dash-strong);
+/* ================================================================
+   The grocery item (design handoff: docs/design/grocery-item/README.md)
+
+   One item, drawn by GroceryItem.jsx in every grocery view and in Store mode.
+   Left to right: the checkbox, the text column (the name alone on its line,
+   then a meta line: brand, recipes, the recipe quantity on a phone, the sale
+   tag), and in a list the right cluster: "+ Inventory" once checked, the
+   recipe quantity (desktop), how many to buy, and the remove ×.
+
+   Every item in a view is one height: max(--gi-min, --gi-h). --gi-min is the
+   form's height (68 desktop, 108 phone, 120 Store mode); --gi-h is set by
+   useEqualRowHeight for the view's longest name, so a name is never cut.
+   ================================================================ */
+.riso-grocery {
+  --gi-min: 68px;
 }
 
-.riso-row:first-child {
+/* A row in a list (the "line" form). */
+.riso-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: max(var(--gi-min, 68px), var(--gi-h, 0px));
+  padding: 0 10px 0 14px;
+  border-top: 1.5px dashed var(--riso-dash);
+  background: transparent;
+  transition: background-color 200ms ease-out;
+}
+
+.riso-group-head + .riso-row {
   border-top: none;
+}
+
+.riso-row.checked {
+  background: var(--riso-canvas);
 }
 
 /* Only a flyer item's row is tappable (it opens the deal). */
@@ -9781,31 +9804,29 @@ button.riso-protein-bar {
 }
 
 /* On a computer the whole row highlights under the pointer, not just the box or
-   a button in it. (The reduced-motion rule at the top of the file stops the
-   fade.) */
-.riso-row {
-  transition: background-color 200ms ease-out;
-}
-
+   a button in it. (The reduced-motion rule near the top of this file turns the
+   fade off.) */
 @media (hover: hover) and (min-width: 768px) {
   .riso-row:hover {
     background: var(--riso-canvas);
   }
 }
 
-/* A checked row fades, except "To inventory": that's the thing to press. */
-.riso-row.checked > :not(.riso-row-slot) {
-  opacity: 0.5;
+.riso-row.draggable {
+  cursor: grab;
+  touch-action: manipulation;
 }
 
-/* The checkbox is the only thing on a grocery row that checks it off, so its
-   tap area is 44 by 44 px around the small box. The negative margins keep the
-   box where it was in the row. */
+.riso-row.dragging {
+  opacity: 0.4;
+}
+
+/* The checkbox: a 30 px box in a 44 x 44 tap area. The only thing that checks a
+   listed item. */
 .riso-row-check-hit {
   flex: none;
   width: 44px;
   height: 44px;
-  margin: -10px -10px -10px -10px;
   padding: 0;
   border: none;
   background: transparent;
@@ -9824,92 +9845,88 @@ button.riso-protein-bar {
 }
 
 .riso-row-check {
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
+  width: 30px;
+  height: 30px;
   flex: none;
   box-sizing: border-box;
+  border-radius: 9px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
-  color: #fff;
+  color: var(--riso-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
+  font: 800 17px/1 var(--riso-font-display);
 }
 
 .riso-row-check.on {
   background: var(--riso-accent);
 }
 
+/* The text column: the name, then the meta line. */
 .riso-row-main {
   flex: 1;
   min-width: 0;
+  padding: 0 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-/* The item's name, with the recipes it's for to the right of it on the same line. */
-.riso-row-namerow {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-  height: 22px; /* the same with or without recipes, whatever the fonts' metrics */
-}
-
-.riso-row-namerow > .riso-row-name {
-  flex: 0 0 auto; /* the name keeps its room... */
-  max-width: 65%; /* ...up to most of the line, then it ends in an ellipsis */
+  gap: 4px;
 }
 
 .riso-row-name {
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 15.5px;
-  line-height: 22px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* The flyer product's brand, when it has one: a small subtitle under the
-   name. The line is there (empty) on every row. */
-.riso-row-brand {
-  min-height: 16px;
-  font-family: var(--riso-font-body);
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--riso-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font: 800 15.5px/19px var(--riso-font-display);
+  letter-spacing: -0.01em;
+  overflow-wrap: break-word;
 }
 
 .riso-row-name.struck {
+  color: var(--riso-muted);
   text-decoration: line-through;
 }
 
-/* The recipes an item is for ("TACOS, CHILI +1"), to the right of its name, in
-   the same style as the aisle line under the name in By store (.riso-row-sub):
-   the app's monospace, small, in capitals and gray, so it doesn't take the eye. It gives way first: when the line is short
-   the names end in an ellipsis (the "+1" stays) and the item's name keeps its
-   room. Nothing for an item you added yourself, and the line is the same height
-   either way, so every row stays one size. */
+.riso-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 24px;
+}
+
+.riso-row-brand {
+  flex: none;
+  font: 600 12.5px var(--riso-font-display);
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.riso-row.checked .riso-row-brand {
+  color: var(--riso-muted);
+}
+
+.riso-row-dot {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  margin: 0 -4px;
+  border-radius: 2px;
+  background: var(--riso-muted);
+}
+
+/* The recipes it's for ("TACOS, CHILI", "SANDWICH +2"): small monospace
+   capitals. Long names end in an ellipsis; the "+2" stays. */
 .riso-row-recipes {
-  flex: 1 1 0; /* ...and the recipes take what is left */
   display: flex;
   align-items: baseline;
   gap: 5px;
   min-width: 0;
-  font-family: var(--riso-font-mono);
-  font-size: 10px;
-  line-height: 22px;
+  max-width: 100%;
+  font: 500 11px/1.4 var(--riso-font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--riso-soft);
+}
+
+.riso-row.checked .riso-row-recipes {
   color: var(--riso-muted);
 }
 
@@ -9926,135 +9943,404 @@ button.riso-protein-bar {
   white-space: nowrap;
 }
 
-.riso-row-sub {
-  min-height: 14px;
-  font-family: var(--riso-font-mono);
-  font-size: 10px;
-  line-height: 14px;
-  letter-spacing: 0.06em;
-  color: var(--riso-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* The tag column: the sale tag, the store tag, or "To inventory" on a
-   checked row. Always the same width, so the amounts line up too. */
-.riso-row-slot {
+/* What the recipes need in total, with its unit: a dashed pill. On desktop it's in
+   the right cluster ("wide"); on a phone it's in the meta line ("narrow"). */
+.riso-row-need {
   flex: none;
-  width: 172px;
-  min-height: 28px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-}
-
-.riso-row-slot > * {
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.riso-row-slot .riso-row-deal-store {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.riso-row-toinv {
-  flex: none;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 14px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: 2px 2px 0 var(--riso-ink);
-  font: 700 12px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.riso-row-toinv:hover {
-  background: var(--riso-ink);
-}
-
-.riso-row-sale {
-  flex: none;
-  background: var(--riso-green);
-  color: var(--riso-ink);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 4px 10px 10px 4px;
-  padding: 2px 9px 2px 12px;
-  font-family: var(--riso-font-mono);
-  font-weight: 700;
-  font-size: 11.5px;
+  border: 1.5px dashed var(--riso-chip-dash);
+  color: var(--riso-soft);
+  font: 500 12px var(--riso-font-mono);
   white-space: nowrap;
 }
 
-.riso-row-store {
-  flex: none;
-  height: 28px;
-  padding: 0 11px;
-  border-radius: 14px;
-  background: var(--riso-surface);
-  border: 1.5px solid var(--riso-ink);
-  color: var(--riso-ink);
-  display: flex;
-  align-items: center;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 12.5px;
-  white-space: nowrap;
-  cursor: pointer;
+.riso-row-need.wide {
+  height: 26px;
+  margin: 0 6px;
+  padding: 0 10px;
+  border-radius: 13px;
 }
 
-/* Nothing to cycle to yet (only one store known from uploaded flyers) - a
-   plain, dashed, non-pill tag instead of a button that would visibly do
-   nothing when tapped. */
-.riso-row-store.static {
-  border: 1.5px dashed var(--riso-dash-strong);
-  background: none;
-  color: var(--riso-muted);
-  cursor: default;
-  font-weight: 500;
+.riso-row-need.narrow {
+  display: none;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  font-size: 10.5px;
 }
 
-/* Where it's cheapest and the price - opens the flyer item. One solid green
-   pill: the store name and the price sit side by side, evenly spaced, in the
-   same lettering (a monospace price spread "$2.49" out as "$2 . 49"). */
+/* The sale tag: green, store | price. Opens the flyer item. */
 .riso-row-deal {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 12px;
+  gap: 7px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
   border: 1.5px solid var(--riso-ink);
-  border-radius: 14px;
+  border-radius: 6px;
   background: var(--riso-green);
-  color: #16181f;
-  font: 700 12px var(--riso-font-display);
-  letter-spacing: normal;
+  color: var(--riso-ink);
   white-space: nowrap;
   cursor: pointer;
 }
 
-.riso-row-deal-store,
+.riso-row-deal-store {
+  font: 600 11.5px var(--riso-font-display);
+}
+
 .riso-row-deal-price {
-  letter-spacing: normal;
+  font: 700 11.5px var(--riso-font-mono);
 }
 
-.riso-row-deal:hover .riso-row-deal-price {
-  text-decoration: underline;
+.riso-row-deal-div,
+.store-mode-sale-div {
+  flex: none;
+  width: 1.5px;
+  height: 11px;
+  background: var(--riso-ink);
 }
 
-.riso-row.draggable {
-  touch-action: pan-y;
-  cursor: grab;
+/* The right cluster. */
+.riso-row-right {
+  flex: none;
+  display: flex;
+  align-items: center;
 }
 
-.riso-row.draggable:active {
-  cursor: grabbing;
+.riso-row-toinv {
+  position: relative;
+  flex: none;
+  height: 30px;
+  margin-right: 6px;
+  padding: 0 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 15px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
 }
+
+/* The button is 30 px tall; its tap area is 44. */
+.riso-row-toinv::after {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
+}
+
+/* How many to buy: a plain number, a pill. The column is fixed so the numbers and
+   the × line up from row to row. */
+.riso-row-qtycol {
+  flex: none;
+  width: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.riso-row-qty {
+  width: 78px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 13px;
+  background: var(--riso-track);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-mono);
+  text-align: center;
+}
+
+.riso-row.checked .riso-row-qty {
+  background: transparent;
+}
+
+.riso-row-qty:focus {
+  outline: none;
+  border-color: var(--riso-accent);
+  box-shadow: 2px 2px 0 var(--riso-accent);
+}
+
+/* The remove ×: a 30 px circle in a 44 x 44 tap area. */
+.riso-row-delete {
+  position: relative;
+  z-index: 0;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--riso-muted);
+  font: 600 18px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-row-delete::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  border-radius: 15px;
+  border: 2px solid var(--riso-muted);
+}
+
+.riso-row-delete:hover {
+  color: var(--riso-canvas);
+}
+
+.riso-row-delete:hover::before {
+  background: var(--riso-ink);
+  border-color: var(--riso-ink);
+}
+
+@media (max-width: 767px) {
+  .riso-grocery {
+    --gi-min: 108px;
+  }
+
+  .riso-row-need.wide {
+    display: none;
+  }
+
+  .riso-row-need.narrow {
+    display: flex;
+  }
+
+  .riso-row-qtycol {
+    width: 64px;
+  }
+
+  .riso-row-qty {
+    width: 60px;
+  }
+
+  /* A checked row's "+ Inventory" drops under the number and the ×, so the
+     name keeps its room. */
+  .riso-row.checked .riso-row-right {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 112px;
+  }
+
+  .riso-row-toinv {
+    order: 3;
+    margin: 0 4px 0 0;
+  }
+}
+
+/* ---------- Store mode: the "store" form of the same item ---------- */
+.store-mode-list {
+  --gi-min: 120px;
+}
+
+.store-mode .store-mode-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: max(var(--gi-min, 120px), var(--gi-h, 0px));
+  padding: 0 12px 0 4px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The whole row checks it; the box is a picture of the state, 40 px in a 56 px area. */
+.store-mode-check {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin: 0 8px 0 8px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 22px/1 var(--riso-font-display);
+}
+
+.store-mode-main {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.store-mode-name {
+  font: 800 19px/23px var(--riso-font-display);
+  letter-spacing: -0.01em;
+  overflow-wrap: break-word;
+}
+
+.store-mode-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 28px;
+}
+
+.store-mode-brand {
+  flex: none;
+  font: 600 14px var(--riso-font-display);
+  color: var(--riso-ink);
+}
+
+.store-mode-dot {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  margin: 0 -4px;
+  border-radius: 2px;
+  background: var(--riso-muted);
+}
+
+.store-mode-recipes {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  font: 500 12.5px/1.4 var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--riso-soft);
+}
+
+.store-mode-recipes-names {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-mode-recipes-more {
+  flex: none;
+  white-space: nowrap;
+}
+
+.store-mode-qty {
+  flex: none;
+  min-width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-track);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 15px var(--riso-font-mono);
+}
+
+.store-mode-need {
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border: 1.5px dashed var(--riso-chip-dash);
+  border-radius: 12px;
+  color: var(--riso-soft);
+  font: 500 12px var(--riso-font-mono);
+  white-space: nowrap;
+}
+
+.store-mode-sale {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 6px;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  white-space: nowrap;
+}
+
+.store-mode-sale-store {
+  font: 600 13px var(--riso-font-display);
+}
+
+.store-mode-sale-price {
+  font: 700 13px var(--riso-font-mono);
+}
+
+.store-mode-sale-div {
+  height: 14px;
+}
+
+/* Checked, in the dark Store mode: the row goes dark, the box green with an ink tick. */
+.store-mode[data-sm-theme="dark"] .store-mode-row.on {
+  background: var(--riso-store-checked);
+  border-color: var(--riso-store-checked);
+  color: var(--riso-canvas);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-check {
+  background: var(--riso-green);
+  border-color: var(--riso-green);
+  color: var(--riso-ink);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-brand,
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-need,
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-recipes {
+  color: var(--riso-canvas);
+}
+
+.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-qty {
+  background: transparent;
+  border-color: var(--riso-dash-strong);
+  color: var(--riso-canvas);
+}
+
+/* Checked, in the light Store mode: the row greys, the box is blue. */
+.store-mode[data-sm-theme="light"] .store-mode-row.on {
+  background: var(--riso-track);
+}
+
+.store-mode[data-sm-theme="light"] .store-mode-row.on .store-mode-check {
+  background: var(--riso-accent);
+}
+
+.store-mode-row.on .store-mode-name {
+  text-decoration: line-through;
+}
+
+.store-mode[data-sm-theme="light"] .store-mode-row.on .store-mode-name {
+  color: var(--riso-muted);
+}
+
+
 
 .riso-group-grip {
   flex: none;
@@ -10144,74 +10430,9 @@ button.riso-deal-detail-other:focus-visible {
   background: var(--riso-yellow);
 }
 
-.riso-row-qty {
-  flex: none;
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 12px;
-  white-space: nowrap;
-  width: 96px;
-  box-sizing: border-box;
-  min-width: 64px;
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  padding: 4px 8px;
-  margin: -4px 0;
-  border: 1.5px dashed transparent;
-  border-radius: 10px;
-  background: none;
-  color: var(--riso-ink);
-  cursor: text;
-}
-
 button.riso-row-qty:hover,
 button.riso-row-qty:focus-visible {
   border-color: var(--riso-dash-strong);
-}
-
-.riso-row-qty.custom .riso-row-qty-mine {
-  font-weight: 700;
-  color: var(--riso-accent);
-}
-
-.riso-row-qty.empty .riso-row-qty-mine {
-  color: var(--riso-muted);
-}
-
-.riso-row-qty-recipe {
-  font-size: 10px;
-  color: var(--riso-muted);
-}
-
-.riso-row-qty.editing {
-  cursor: default;
-}
-
-.riso-row-qty.editing input {
-  width: 120px;
-  height: 30px;
-  padding: 0 10px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 10px;
-  background: var(--riso-surface);
-  font: inherit;
-  font-weight: 700;
-  color: var(--riso-ink);
-  text-align: right;
-}
-
-.riso-row-qty-reset {
-  border: 0;
-  background: none;
-  padding: 0;
-  font: inherit;
-  font-size: 10px;
-  color: var(--riso-accent);
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 .riso-grocery-removed {
@@ -10251,22 +10472,6 @@ button.riso-row-qty:focus-visible {
   display: inline-block;
   text-decoration: none;
   margin-left: 4px;
-}
-
-.riso-row-delete {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 11px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
 }
 
 .riso-grocery-aside {
@@ -10832,10 +11037,6 @@ button.riso-row-qty:focus-visible {
   .riso-grocery-aside {
     position: static;
   }
-
-  .riso-row-slot {
-    width: 140px;
-  }
 }
 
 /* ================================================================
@@ -11267,57 +11468,6 @@ button.riso-row-qty:focus-visible {
     display: none;
   }
 
-  .riso-row {
-    min-height: 62px;
-    gap: 10px;
-    padding: 8px 14px;
-    flex-wrap: nowrap;
-  }
-
-  /* The tag column shrinks to its tag on a phone, and an item's amount sits
-     in a column of its own width. */
-  .riso-row-slot {
-    width: auto;
-    max-width: 118px;
-  }
-
-  /* The recipes column is narrower on a phone. */
-  .riso-row-namerow {
-    gap: 7px;
-  }
-
-  .riso-row-recipes {
-    gap: 3px;
-  }
-
-  .riso-row-qty {
-    width: auto;
-  }
-
-  .riso-row-check {
-    width: 26px;
-    height: 26px;
-    flex: none;
-  }
-
-  .riso-row-check-hit {
-    margin: -9px -9px -9px -9px;
-  }
-
-  .riso-row-sub,
-  .riso-row-store {
-    display: none;
-  }
-
-  .riso-row-name {
-    font-size: 15px;
-  }
-
-  .riso-row-qty {
-    flex: none;
-    white-space: nowrap;
-  }
-
   .riso-grocery-store-btn {
     position: sticky;
     bottom: 12px;
@@ -11578,139 +11728,6 @@ button.riso-row-qty:focus-visible {
   letter-spacing: 0.08em;
   white-space: nowrap;
   color: var(--sm-muted);
-}
-
-/* Every row is the same height, with or without a detail line, an amount or a
-   price: the name and detail are one line each (an ellipsis when long), and
-   the amount and price stack on the right. */
-.store-mode-row {
-  width: 100%;
-  height: 62px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  background: var(--sm-card);
-  border: 1.5px solid var(--sm-card-border);
-  border-radius: 14px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.store-mode-row.on {
-  opacity: 0.5;
-}
-
-.store-mode-check {
-  width: 22px;
-  height: 22px;
-  flex: none;
-  box-sizing: border-box;
-  border-radius: 7px;
-  border: 2px solid var(--sm-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font: 800 12px var(--riso-font-display);
-}
-
-.store-mode-row.on .store-mode-check {
-  background: var(--sm-accent);
-}
-
-.store-mode-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.store-mode-name {
-  font: 700 14.5px/1.2 var(--riso-font-display);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.store-mode-row.on .store-mode-name {
-  text-decoration: line-through;
-}
-
-.store-mode-brand {
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--sm-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* The name, with the recipes it's for to the right of it on the same line: the
-   monospace font, smaller and a little grayer than the name. They end in an
-   ellipsis (the "+1" stays) so a long list never makes a row taller. */
-.store-mode-nameline {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-  height: 18px;
-}
-
-.store-mode-nameline > .store-mode-name {
-  flex: 0 0 auto;
-  max-width: 65%;
-}
-
-.store-mode-recipes {
-  flex: 1 1 0;
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: 0;
-  font: 500 10px/1.2 var(--riso-font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--sm-muted);
-}
-
-.store-mode-recipes-names {
-  flex: 0 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.store-mode-recipes-more {
-  flex: none;
-  white-space: nowrap;
-}
-
-.store-mode-right {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
-
-.store-mode-qty {
-  font: 700 13px var(--riso-font-mono);
-  white-space: nowrap;
-}
-
-.store-mode-sale {
-  background: var(--sm-sale);
-  color: #16181f;
-  border: 1.5px solid #16181f;
-  border-radius: 3px 8px 8px 3px;
-  padding: 0 7px 0 9px;
-  font: 700 10.5px/1.5 var(--riso-font-mono);
-  white-space: nowrap;
 }
 
 .store-mode-foot {
@@ -12223,27 +12240,6 @@ body.no-select {
   outline-offset: 3px;
 }
 
-.riso-row-grip {
-  flex: none;
-  width: 18px;
-  margin-left: -6px;
-  color: var(--riso-muted);
-  font-size: 16px;
-  line-height: 1;
-  text-align: center;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-
-.riso-row-grip:hover {
-  color: var(--riso-ink);
-}
-
-.riso-row.dragging {
-  opacity: 0.4;
-}
-
 .riso-grocery-drag-chip {
   display: inline-block;
   padding: 8px 16px;
@@ -12367,17 +12363,6 @@ body.no-select {
   color: var(--riso-ink);
   text-decoration: underline;
   cursor: pointer;
-}
-
-
-
-
-
-
-@media (max-width: 767px) {
-  .riso-row-grip {
-    display: none;
-  }
 }
 
 .inv-shelf-size-badge {

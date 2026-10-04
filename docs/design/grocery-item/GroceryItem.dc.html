@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA}</style></helmet>
+<div onClick="{{ rootClick }}" style="position:relative;box-sizing:border-box;width:100%;height:{{ h }}px;padding:0 {{ padR }}px 0 {{ padL }}px;display:flex;align-items:center;background:{{ bg }};border:2px solid {{ border }};border-radius:{{ radius }}px;color:{{ text }};box-shadow:{{ shadow }};transform:{{ transform }};transition:transform .12s,box-shadow .12s;cursor:pointer" style-hover="{{ hoverStyle }}">
+<div onClick="{{ boxClick }}" style="flex:none;width:{{ hit }}px;height:{{ hit }}px;display:flex;align-items:center;justify-content:center">
+<div style="width:{{ box }}px;height:{{ box }}px;border-radius:9px;box-sizing:border-box;border:2px solid {{ boxBorder }};background:{{ boxBg }};color:{{ tickColor }};display:flex;align-items:center;justify-content:center;font:800 {{ tickSize }}px 'Bricolage Grotesque',sans-serif">{{ tick }}</div>
+</div>
+<div style="flex:1;min-width:0;padding:0 8px;display:flex;flex-direction:column;gap:{{ gap }}px">
+<div style="display:-webkit-box;-webkit-line-clamp:{{ clamp }};-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font:800 {{ nameFs }}px/{{ nameLh }}px 'Bricolage Grotesque',sans-serif;letter-spacing:-.01em;color:{{ nameColor }}"><span style="text-decoration:{{ strike }}">{{ item.name }}</span></div>
+<sc-if value="{{ hasMeta }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:{{ metaH }}px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px">
+<sc-if value="{{ hasBrand }}" hint-placeholder-val="{{ false }}"><div style="flex:none;font:600 {{ brandFs }}px 'Bricolage Grotesque',sans-serif;color:{{ brandColor }};white-space:nowrap">{{ item.brand }}</div></sc-if>
+<sc-if value="{{ brandDot }}" hint-placeholder-val="{{ false }}"><div style="flex:none;width:4px;height:4px;border-radius:2px;background:{{ muted }};margin-left:-4px;margin-right:-4px"></div></sc-if>
+<sc-if value="{{ hasRec }}" hint-placeholder-val="{{ false }}"><div style="flex:none;font:500 {{ metaFs }}px 'DM Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:{{ soft }};white-space:nowrap">{{ item.rec }}</div></sc-if>
+<sc-if value="{{ narrowNeed }}" hint-placeholder-val="{{ false }}"><div title="Quantité des recettes" style="flex:none;height:20px;padding:0 7px;box-sizing:border-box;border:1.5px dashed #8A877D;border-radius:10px;color:{{ soft }};display:flex;align-items:center;font:500 10.5px 'DM Mono',monospace;white-space:nowrap">{{ item.need }}</div></sc-if>
+<sc-if value="{{ showDeal }}" hint-placeholder-val="{{ false }}">
+<div style="flex:none;height:{{ dealH }}px;padding:0 8px;box-sizing:border-box;background:#10C95C;color:#16181F;border:1.5px solid #16181F;border-radius:6px;display:flex;align-items:center;gap:7px;white-space:nowrap">
+<span style="font:600 {{ dealFs }}px 'Bricolage Grotesque',sans-serif">{{ item.dealStore }}</span>
+<span style="width:1.5px;height:{{ dealDiv }}px;background:#16181F"></span>
+<span style="font:700 {{ dealFs }}px 'DM Mono',monospace">{{ item.dealPrice }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ showInv }}" hint-placeholder-val="{{ false }}">
+<div style="flex:none;height:44px;margin:-9px 0;display:flex;align-items:center">
+<div style="height:28px;padding:0 12px;border-radius:14px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:2px 2px 0 #16181F;box-sizing:border-box;display:flex;align-items:center;font:700 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap">→ Inventaire</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+<sc-if value="{{ showInvBtn }}" hint-placeholder-val="{{ false }}">
+<div title="Envoyer à l'inventaire" style="flex:none;height:44px;margin-right:6px;display:flex;align-items:center">
+<div style="height:30px;padding:0 {{ invPad }}px;border-radius:15px;box-sizing:border-box;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:2px 2px 0 #16181F;display:flex;align-items:center;font:700 12.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ invLabel }}</div>
+</div>
+</sc-if>
+<sc-if value="{{ wideNeed }}" hint-placeholder-val="{{ false }}">
+<div title="Quantité des recettes" style="flex:none;height:{{ pillH }}px;padding:0 10px;margin:0 6px;border-radius:{{ pillR }}px;box-sizing:border-box;border:1.5px dashed #8A877D;color:{{ soft }};display:flex;align-items:center;font:500 12px 'DM Mono',monospace;white-space:nowrap">{{ item.need }}</div>
+</sc-if>
+<div style="flex:none;width:{{ rightW }}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+
+<sc-if value="{{ editQty }}" hint-placeholder-val="{{ true }}">
+<input defaultValue="{{ item.amt }}" aria-label="Quantité" style="width:{{ qtyW }}px;height:{{ pillH }}px;padding:0 6px;border-radius:{{ pillR }}px;box-sizing:border-box;border:1.5px solid {{ pillBorder }};background:{{ pillBg }};color:{{ text }};text-align:center;outline:none;font:700 {{ pillFs }}px 'DM Mono',monospace" style-focus="border-color:#2323FF;box-shadow:2px 2px 0 #2323FF">
+</sc-if>
+<sc-if value="{{ staticQty }}" hint-placeholder-val="{{ false }}">
+<div style="height:{{ pillH }}px;padding:0 10px;border-radius:{{ pillR }}px;box-sizing:border-box;border:1.5px solid {{ pillBorder }};background:{{ pillBg }};color:{{ text }};display:flex;align-items:center;font:700 {{ pillFs }}px 'DM Mono',monospace;white-space:nowrap">{{ item.amt }}</div>
+</sc-if>
+</div>
+<sc-if value="{{ showRemove }}" hint-placeholder-val="{{ true }}">
+<div title="Retirer" style="flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center">
+<div style="width:30px;height:30px;border-radius:15px;box-sizing:border-box;border:2px solid {{ xBorder }};background:{{ xBg }};color:{{ xColor }};display:flex;align-items:center;justify-content:center;font:600 18px/1 'Bricolage Grotesque',sans-serif" style-hover="background:#16181F;color:#F4F1EA;border-color:#16181F">×</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:96},&quot;item&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{id,name,amt,rec,brand,dealStore,dealPrice,checked}&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;tag&quot;,&quot;row&quot;,&quot;store&quot;],&quot;default&quot;:&quot;tag&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;hover&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;flip&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props, it = p.item || {}, v = p.variant || 'tag', S = v === 'store', tag = v === 'tag';
+    const c = !!it.checked, hov = !!p.hover;
+    const flip = p.flip || (() => {});
+    const lt = {
+      bg: c ? '#E9E4D8' : '#FFFDF8', border: '#16181F', text: '#16181F', soft: c ? '#5E5B52' : '#3F3E37', muted: '#5E5B52',
+      nameColor: c ? '#5E5B52' : '#16181F', boxBg: c ? '#2323FF' : '#FFFDF8', boxBorder: '#16181F', tickColor: '#fff',
+      pillBg: c ? 'transparent' : '#E9E4D8', pillBorder: '#16181F'
+    };
+    const dk = {
+      bg: c ? '#2A2D38' : '#FFFDF8', border: c ? '#2A2D38' : '#16181F', text: c ? '#F4F1EA' : '#16181F', soft: c ? '#D0D0D8' : '#3F3E37', muted: c ? '#B5B3AA' : '#5E5B52',
+      nameColor: c ? '#F4F1EA' : '#16181F', boxBg: c ? '#10C95C' : '#FFFDF8', boxBorder: c ? '#10C95C' : '#16181F', tickColor: '#16181F',
+      pillBg: c ? 'transparent' : '#E9E4D8', pillBorder: c ? '#B5B3AA' : '#16181F'
+    };
+    const L = v === 'line';
+    const k = Object.assign({}, S ? dk : lt, L ? { bg: c ? '#F4F1EA' : 'transparent', border: 'transparent' } : {});
+    const showDeal = !c && !!it.dealPrice, showInv = false, hasBrand = !!it.brand, hasRec = !!it.rec;
+    return Object.assign({}, k, {
+      item: it,
+      h: p.height ? +p.height : S ? 120 : L ? 68 : tag ? 84 : 96, clamp: p.height ? 4 : S || v === 'row' ? 3 : 2, padL: L ? 14 : 4, rightW: S ? 70 : L ? (p.height ? 64 : 82) : 56, padR: S ? 12 : L ? 10 : 0, gap: S ? 6 : 4, radius: S ? 22 : L ? 0 : 18,
+      hit: S ? 56 : 44, box: S ? 40 : 30, tickSize: S ? 22 : 17,
+      nameFs: S ? 19 : 15.5, nameLh: S ? 23 : 19, strike: c ? 'line-through' : 'none',
+      pillH: S ? 32 : 26, pillR: S ? 16 : 13, pillFs: S ? 15 : 13, metaFs: S ? 12.5 : 11, metaH: S ? 28 : 24,
+      dealH: S ? 28 : 22, dealFs: S ? 13 : 11.5, dealDiv: S ? 14 : 11,
+      tick: c ? '✓' : '',
+      shadow: hov && tag ? '4px 4px 0 #2323FF' : 'none', transform: hov && tag ? 'translate(-2px,-2px)' : 'none',
+      hoverStyle: tag ? 'transform:translate(-2px,-2px);box-shadow:4px 4px 0 #2323FF' : L ? 'background:#F4F1EA' : '',
+      xBg: hov ? '#16181F' : 'transparent', xColor: hov ? '#F4F1EA' : '#5E5B52', xBorder: hov ? '#16181F' : '#5E5B52',
+      brandFs: S ? 14 : 12.5, brandColor: c ? (S ? '#D0D0D8' : '#5E5B52') : '#16181F', brandDot: hasBrand && hasRec, showInvBtn: L && c, invLabel: '+ Inventaire', invPad: 12, invStyle: c ? 'solid' : 'dashed', invBg: c ? '#2323FF' : 'transparent', invColor: c ? '#fff' : '#BDB6A6', invBorder: c ? '#16181F' : '#BDB6A6', wideNeed: L && !p.height && !!it.need, narrowNeed: L && !!p.height && !!it.need, editQty: L, staticQty: !L, qtyW: p.height ? 60 : 78, showRemove: !S, showDeal, showInv, hasBrand, hasRec, hasMeta: hasBrand || hasRec || showDeal || showInv || (L && !!p.height && !!it.need),
+      rootClick: S ? flip : undefined, boxClick: S ? undefined : flip
+    });
+  }
+}
+</script>
+</body>
+</html>
