@@ -16947,3 +16947,292 @@ body.no-select {
     display: none;
   }
 }
+
+/* ---------- Recipes, desktop (design/recipes-direction-a) ---------- */
+.rv2 {
+  gap: 22px;
+}
+
+.rv2-new {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 24px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  font: 800 16px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* "paste a link to import" in the search pill (not a button: typing a link
+   turns the pill into an Import button) */
+.rv2-paste {
+  flex: none;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  border: 2px dashed var(--riso-ink);
+  display: flex;
+  align-items: center;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+.rv2-linkfound {
+  margin: -10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--riso-soft);
+}
+
+.rv2-linkfound-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--riso-yellow);
+  border: 1.5px solid var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.rv2-toast {
+  align-self: flex-start;
+  transform: rotate(-1.5deg);
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  box-shadow: var(--riso-shadow);
+  padding: 8px 18px;
+  font: 800 14px var(--riso-font-display);
+}
+
+/* Cookbook / Imported: big tabs sitting on a rule, the toolbar at the right */
+.rv2-tabrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  border-bottom: 2px solid var(--riso-ink);
+}
+
+.rv2-tabs {
+  display: flex;
+  gap: 16px;
+}
+
+.rv2-tab {
+  height: 52px;
+  margin-bottom: -2px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px 20px 0 0;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 20px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.rv2-tab.active {
+  background: var(--riso-accent);
+  border-bottom-color: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.rv2-tab-count {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 12px var(--riso-font-display);
+}
+
+.rv2-tab.active .rv2-tab-count {
+  background: var(--riso-yellow);
+}
+
+.rv2-toolbar {
+  margin-left: auto;
+  padding-bottom: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.rv2-menu-wrap {
+  position: relative;
+}
+
+.rv2-drop {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 13.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rv2-drop.set {
+  background: var(--riso-yellow);
+}
+
+.rv2-drop-label {
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.rv2-drop.set .rv2-drop-label {
+  color: var(--riso-ink);
+}
+
+.rv2-drop-caret {
+  font-size: 9px;
+}
+
+.rv2-menu {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 200px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.rv2-menu-item {
+  height: 38px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 600 14px var(--riso-font-display);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rv2-menu-item.selected {
+  background: var(--riso-canvas);
+}
+
+.rv2-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rv2-chip {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 19px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.rv2-chip .riso-filter-chip-count {
+  font-size: 10.5px;
+}
+
+.rv2-chips-gap {
+  width: 12px;
+}
+
+.rv2-countline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 20px;
+}
+
+.rv2-count {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.rv2-clear {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--riso-ink);
+  font: 600 13px var(--riso-font-display);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rv2-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 24px;
+}
+
+.rv2-grid .riso-recipe-card {
+  border-radius: 24px;
+}
+
+.rv2-grid .riso-recipe-card-photo {
+  height: 250px;
+}
+
+.rv2-grid .riso-recipe-card-body {
+  padding: 16px 18px 18px;
+  gap: 10px;
+}
+
+.rv2-grid .riso-recipe-card-name {
+  font-size: 20px;
+  text-wrap: pretty;
+}
+
+.rv2-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.rv2-grid .riso-recipe-chip {
+  padding: 0 9px;
+}
+
+.rv2-grid .riso-recipe-chip.time {
+  padding: 0 8px;
+  border-radius: 5px;
+}
+
+.rv2-grid .riso-recipe-card-havelabel {
+  font-size: 13.5px;
+}
