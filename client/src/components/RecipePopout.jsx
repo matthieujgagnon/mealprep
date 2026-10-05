@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { InStockPill, MealChip, Pill, PlannedPill, SalePill, TimePill } from "./RisoPills.jsx";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { haveAndBuy, plannedDayOf, saleFor } from "../lib/finder.js";
 import { stepIsHeading, stepHeadingText, stepText } from "../lib/steps.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { t } from "../i18n/index.js";
@@ -9,22 +10,28 @@ import { t } from "../i18n/index.js";
 // A recipe's pop-out (design: docs/design/riso-v2, Finder): time and servings,
 // the meal, the day it is planned, what you have (green ✓), what to buy
 // (yellow; tap to put it on, or take it off, the grocery list), the steps, and
-// three buttons: Plan, Similar recipes and Open the full recipe. Shared by the
-// Planner's finder and, next, Makeable.
+// four buttons: Plan (first: it opens the slot picker), Cook, Similar recipes
+// and Open the full recipe (Cook and the full recipe both open the recipe's card
+// on the Recipes page, through App's openRecipeCard).
 //
-//   recipe        the recipe
-//   plannedDay    0 = Monday when it is planned this week or later, else null
-//   have, buy     [{ core, name }] from lib/finder.js haveAndBuy
-//   isOnList(name)  whether that ingredient is on the grocery list
-//   onToggleList(name)  puts it on the list, or takes it off
-//   saleOf(name)  optional: the real flyer deal for an ingredient (lib/finder.js
-//                 saleFor), shown as a green pill next to it
-//   plan          optional: { label, onClick } for the blue Plan button
-//   onSimilar, onOpenFull, onClose
+// This file holds the two halves of the one pop-out:
+//   RecipePopout      the look. Props:
+//     recipe        the recipe
+//     plannedDay    0 = Monday when it is planned this week or later, else null
+//     have, buy     [{ core, name }] from lib/finder.js haveAndBuy
+//     isOnList(name)  whether that ingredient is on the grocery list
+//     onToggleList(name)  puts it on the list, or takes it off
+//     saleOf(name)  optional: the real flyer deal for an ingredient (lib/finder.js
+//                   saleFor), shown as a green pill next to it
+//     onPlan, onCook, onSimilar, onOpenFull   the four buttons (each optional)
+//     onClose, from (the box of the card it grows out of)
+//   RecipePopoutHost  works the lists out from the data every page already has
+//     (haveCores, plannedEntries, the grocery functions) and renders RecipePopout.
+//     App.jsx renders the one host, so Planner, Recipes and Home open the same pop-out.
 
 const CLOSE_MS = 300;
 
-export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggleList, saleOf, plan, onSimilar, onOpenFull, onClose: close, from }) {
+export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggleList, saleOf, onPlan, onCook, onSimilar, onOpenFull, onClose: close, from }) {
   const closeRef = useRef(null);
   const popRef = useRef(null);
   const [closing, setClosing] = useState(false);
@@ -179,9 +186,14 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
         </div>
 
         <footer className="fnd-pop-actions">
-          {plan && (
-            <button type="button" className="fnd-pop-btn primary" onClick={plan.onClick}>
-              {plan.label}
+          {onPlan && (
+            <button type="button" className="fnd-pop-btn primary" onClick={onPlan}>
+              {t("finder.plan")}
+            </button>
+          )}
+          {onCook && (
+            <button type="button" className="fnd-pop-btn" onClick={onCook}>
+              {t("planner.cook")}
             </button>
           )}
           {onSimilar && (
@@ -198,5 +210,28 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
       </div>
     </div>,
     document.body
+  );
+}
+
+// The pop-out with its lists worked out. `recipe` may be null (then nothing shows).
+//   haveCores      what is on hand (lib/onHand.js haveCoresFor)
+//   plannedEntries this week's and the upcoming entries, for the "Planned Wednesday" pill
+//   grocery        { isOnList, add, remove }
+//   deals, showSales  optional: green sale pills next to the things to buy
+export function RecipePopoutHost({ recipe, from, haveCores, plannedEntries, grocery, deals, showSales = false, ...actions }) {
+  const lists = useMemo(() => (recipe ? haveAndBuy(recipe, haveCores) : { have: [], buy: [] }), [recipe, haveCores]);
+  if (!recipe) return null;
+  return (
+    <RecipePopout
+      recipe={recipe}
+      from={from}
+      plannedDay={plannedDayOf(recipe.id, plannedEntries || [])}
+      have={lists.have}
+      buy={lists.buy}
+      isOnList={grocery.isOnList}
+      onToggleList={(name) => (grocery.isOnList(name) ? grocery.remove(name) : grocery.add([name]))}
+      saleOf={showSales ? (name) => saleFor(name, deals) : undefined}
+      {...actions}
+    />
   );
 }

@@ -3,13 +3,14 @@ import { api } from "../api.js";
 import { core, findExpiringSoonInRecipe, findSaleDeal } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { HintStrip, PillMenu } from "./RisoControls.jsx";
+import { HintStrip, IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
 import { Pill, TimePill } from "./RisoPills.jsx";
+import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { matchesSearch } from "../lib/recipeSearch.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
-import { RECIPE_SLOTS, inMealGroup, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, inMealGroup, isMakeableMeal, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { TIME_FILTERS, isUrlLike, matchesTime, proteinOfRecipe, sortRecipes } from "../lib/recipesView.js";
 import { t } from "../i18n/index.js";
 
@@ -44,7 +45,7 @@ function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
   const meta = [slot ? t(`recipes.mealTypes.${slot}`) : null, protein?.label].filter(Boolean).join(" · ");
 
   return (
-    <button type="button" className={`riso-recipe-card${nothingToBuy ? " ready" : ""}`} onClick={() => onClick(recipe)}>
+    <button type="button" className={`riso-recipe-card${nothingToBuy ? " ready" : ""}`} onClick={(e) => onClick(recipe, e.currentTarget.getBoundingClientRect())}>
       <div className="riso-recipe-card-photo">
         {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}
       </div>
@@ -100,6 +101,7 @@ export function Recipes({
   onSelectRecipe,
   onImported,
   onNewRecipe,
+  onToast,
 }) {
   const phone = useIsPhone();
   // Start on the tab that has recipes for what is already set (Home's "See
@@ -120,9 +122,9 @@ export function Recipes({
   const [menu, setMenu] = useState(null); // null | "meal" | "protein" | "time" | "sort"
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
-  const [toast, setToast] = useState(false);
   const menusRef = useRef(null);
   const { deals } = useDeals();
+  const [includeSides, setIncludeSides] = useIncludeSides();
 
   const allRecipes = useMemo(() => recipes.filter((r) => !r.isPlaceholder), [recipes]);
   const query = search.trim();
@@ -138,7 +140,7 @@ export function Recipes({
       const stats = recipeHaveStats(r, haveCores);
       map.set(r.id, {
         stats,
-        makeable: stats.totalCount > 0 && stats.missingCount === 0,
+        ready: stats.totalCount > 0 && stats.missingCount === 0,
         expiring: findExpiringSoonInRecipe(r, pantryInventory, plannerEntries, allRecipes, 3).size > 0,
         onSale: (r.ingredients || []).some((i) => i?.name && findSaleDeal(i.name, deals)),
       });
@@ -151,7 +153,7 @@ export function Recipes({
       case "all":
         return true;
       case "makeable":
-        return info.get(recipe.id).makeable;
+        return info.get(recipe.id).ready && isMakeableMeal(recipe, includeSides);
       case "expiring":
         return info.get(recipe.id).expiring;
       case "meals":
@@ -177,7 +179,7 @@ export function Recipes({
   const visible = sortRecipes(beforeChip.filter((r) => matchesChip(r, filter)), sortIndex, haveCores);
 
   const tabCounts = Object.fromEntries(SOURCES.map((id) => [id, allRecipes.filter((r) => sourceOf(r) === id).length]));
-  const makeableCount = allRecipes.filter((r) => info.get(r.id).makeable).length;
+  const makeableCount = allRecipes.filter((r) => info.get(r.id).ready && isMakeableMeal(r, includeSides)).length;
   const expiringCount = allRecipes.filter((r) => info.get(r.id).expiring).length;
 
   const filtered = filter !== "all" || !!proteinKind || time !== "any" || searching;
@@ -213,12 +215,6 @@ export function Recipes({
     if (!phone) setMenu((cur) => (cur === "meal" ? null : cur));
   }, [phone]);
 
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = setTimeout(() => setToast(false), 2600);
-    return () => clearTimeout(timer);
-  }, [toast]);
-
   async function handleImportSubmit(e) {
     e.preventDefault();
     if (!isUrl || importing) return;
@@ -234,7 +230,7 @@ export function Recipes({
       setTime("any");
       setTab("imported");
       setSortIndex(0);
-      setToast(true);
+      onToast(t("recipes.d.importedToast"));
     } catch (err) {
       setImportError(err);
     } finally {
@@ -365,11 +361,6 @@ export function Recipes({
           {importError.needsManualEntry && (importError.reason === "noData" ? t("recipes.noData") : t("recipes.blocked"))}
         </p>
       )}
-      {toast && (
-        <div className="rv2-toast" role="status">
-          {t("recipes.d.importedToast")}
-        </div>
-      )}
 
       <HintStrip
         userId={user.id}
@@ -426,6 +417,7 @@ export function Recipes({
             {t("recipes.d.clearFilters")}
           </button>
         )}
+        {filter === "makeable" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
       </div>
 
       {visible.length > 0 ? (

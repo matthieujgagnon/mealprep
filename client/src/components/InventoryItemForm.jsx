@@ -40,16 +40,6 @@ function Step({ n, children }) {
   );
 }
 
-// "Item added" / "Changes saved": the small yellow message at the bottom of the page.
-export function InventoryToast({ message }) {
-  if (!message) return null;
-  return (
-    <div className="riso-toast" role="status">
-      {message}
-    </div>
-  );
-}
-
 // The photo box: drop a picture, upload one, or paste a link. Only http(s) links.
 function PhotoPanel({ item, photo, onChange, optional }) {
   const fileRef = useRef(null);

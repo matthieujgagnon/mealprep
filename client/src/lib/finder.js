@@ -3,7 +3,7 @@ import { daysUntil } from "./pantryInventory.js";
 import { capitalize } from "./groceryList.js";
 import { dealSavings } from "./flyerIngredients.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
-import { inMealGroup, recipeSlot, recipeTotalMinutes } from "./mealSlots.js";
+import { inMealGroup, isMakeableMeal, makeableRuleOn, recipeSlot, recipeTotalMinutes } from "./mealSlots.js";
 import { matchesSearch } from "./recipeSearch.js";
 
 // The logic behind the shared recipe finder (components/Finder.jsx): the
@@ -176,12 +176,16 @@ function usesAny(x, cores) {
 // Narrows the ranked recipes by everything the finder can filter on and sorts
 // them. `filters`: query, meal ("all", "meals" or a recipe slot id), protein (a
 // protein id or ""), quick, expiring, picks (a Set of ingredient cores to cook
-// with), base (the Main meal's cores still switched on, or null), baseId.
+// with), base (the Main meal's cores still switched on, or null), baseId,
+// includeSides (the Makeable now rule, see isMakeableMeal: "ready" leaves out
+// sides, desserts and pantry prep unless it is on).
 // Returns { tiles, counts }: counts is how many the three availability choices
 // would show with every other filter kept. Each tile is the ranked entry plus
 // `shared` (cores shared with the Main meal) and `picked` (cores from Cook with).
 export function findRecipes(ranked, filters, expiringCores) {
-  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = new Set(), base = null, baseId = null } = filters;
+  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = new Set(), base = null, baseId = null, includeSides = false } = filters;
+  const ruleOn = makeableRuleOn(includeSides, meal);
+  const isReady = (x) => availabilityOf(x.stats) === "ready" && (!ruleOn || isMakeableMeal(x.recipe));
   const kind = PROTEINS.find((p) => p.id === protein) || null;
   const searching = query.trim() !== "";
 
@@ -203,13 +207,13 @@ export function findRecipes(ranked, filters, expiringCores) {
   const counts = { all: beforeAvailability.length, ready: 0, few: 0 };
   for (const x of beforeAvailability) {
     const a = availabilityOf(x.stats);
-    if (a === "ready") counts.ready += 1;
+    if (isReady(x)) counts.ready += 1;
     if (a === "few") counts.few += 1;
   }
 
   const wanted = (x) => {
     const a = availabilityOf(x.stats);
-    return filters.avail === "ready" ? a === "ready" : filters.avail === "few" ? a === "few" : true;
+    return filters.avail === "ready" ? isReady(x) : filters.avail === "few" ? a === "few" : true;
   };
   const tiles = beforeAvailability.filter(wanted);
 

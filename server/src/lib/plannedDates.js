@@ -1,5 +1,5 @@
-// Which calendar days have a planned meal, for the phone Planner's month
-// calendar (a dot under each such day). An entry is a week (its Monday,
+// Which calendar days have a planned meal, for the Planner's month calendar
+// (three bars under each day, one per meal, and a tooltip with the meals). An entry is a week (its Monday,
 // "YYYY-MM-DD") and a day in it (0 = Monday). Pure calendar-date math on the
 // dates the browser sent, like upcomingMeals.js.
 
@@ -25,15 +25,26 @@ export function mondayKey(key) {
   return dateKey(new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() - back)));
 }
 
-// The days between `from` and `to` (both included) that have at least one
-// entry, sorted, each once.
-export function plannedDates(entries, from, to) {
-  const found = new Set();
-  for (const { weekStart, dayOfWeek } of entries) {
+const MEAL_ORDER = { breakfast: 0, lunch: 1, dinner: 2 };
+
+// The same days, with what is planned on each: { date, meals: [{ mealType,
+// title, placeholder }] }, days sorted, meals in the day's order (breakfast,
+// lunch, supper). A slot holds one thing, so a second entry in the same
+// slot is left out.
+export function plannedDays(entries, from, to) {
+  const byDay = new Map();
+  for (const { weekStart, dayOfWeek, mealType, recipe } of entries) {
     const monday = validKey(weekStart);
     if (!monday) continue;
     const key = dateKey(new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + dayOfWeek)));
-    if (key >= from && key <= to) found.add(key);
+    if (key < from || key > to) continue;
+    const meals = byDay.get(key) || [];
+    if (!meals.some((m) => m.mealType === mealType)) {
+      meals.push({ mealType, title: recipe?.title || "", placeholder: !!recipe?.isPlaceholder });
+    }
+    byDay.set(key, meals);
   }
-  return [...found].sort();
+  return [...byDay.keys()]
+    .sort()
+    .map((date) => ({ date, meals: byDay.get(date).sort((a, b) => (MEAL_ORDER[a.mealType] ?? 9) - (MEAL_ORDER[b.mealType] ?? 9)) }));
 }

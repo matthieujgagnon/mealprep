@@ -76,6 +76,8 @@ test("an ingredient can be a count of units", async ({ page }) => {
   await page.getByRole("button", { name: "Save recipe" }).click();
 
   await page.locator(".riso-recipe-card", { hasText: "Stuffed peppers" }).click();
+
+  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await expect(page.locator(".riso-rc-ingredient-qty").first()).toHaveText("3 units");
 });
 

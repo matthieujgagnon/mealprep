@@ -10721,15 +10721,62 @@ button.riso-deal-detail-other:focus-visible {
   color: var(--riso-ink);
 }
 
-.rpm-cal-dot {
+/* Three bars under a day, one for each meal, filled when that meal is planned. */
+.rpm-cal-bars {
   position: absolute;
   left: 50%;
-  bottom: 5px;
-  width: 5px;
-  height: 5px;
-  margin-left: -2.5px;
-  border-radius: 50%;
+  bottom: 3px;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+
+.rpm-cal-bars span {
+  width: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--riso-ink);
+  opacity: 0.16;
+}
+
+.rpm-cal-bars span.on {
   background: var(--riso-accent);
+  opacity: 1;
+}
+
+.rpm-cal-day.today .rpm-cal-bars span.on,
+.rpm-cal-day.week .rpm-cal-bars span.on {
+  background: var(--riso-ink);
+}
+
+/* Hovering a day with meals: a small tooltip listing them. */
+.rpm-cal-tip {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: 220px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  font: 600 11.5px/1.3 var(--riso-font-display);
+  text-align: left;
+  pointer-events: none;
+}
+
+.rpm-cal-tip b {
+  font-weight: 800;
+}
+
+.rpm-cal-day:hover .rpm-cal-tip,
+.rpm-cal-day:focus-visible .rpm-cal-tip {
+  display: flex;
 }
 
 .rpm-cal-legend {
@@ -10746,10 +10793,17 @@ button.riso-deal-detail-other:focus-visible {
   gap: 6px;
 }
 
-.rpm-cal-legend .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.rpm-cal-legend .bars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.rpm-cal-legend .bars::before,
+.rpm-cal-legend .bars::after {
+  content: "";
+  width: 7px;
+  height: 4px;
+  border-radius: 2px;
   background: var(--riso-accent);
 }
 
@@ -16609,23 +16663,6 @@ body.no-select {
   background: var(--riso-hot);
 }
 
-.riso-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 28px;
-  z-index: 120;
-  max-width: calc(100% - 32px);
-  padding: 10px 20px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  box-shadow: 4px 4px 0 var(--riso-ink);
-  font: 800 15px var(--riso-font-display);
-  transform: translateX(-50%) rotate(-2deg);
-  pointer-events: none;
-}
-
 /* On a phone the form is the bottom sheet: one tight column, a taller sheet, and one
    short row of buttons at the bottom so most of the screen is the form. */
 @media (max-width: 767px) {
@@ -16889,18 +16926,6 @@ body.no-select {
   background: var(--riso-yellow);
   border: 1.5px solid var(--riso-ink);
   box-sizing: border-box;
-}
-
-.rv2-toast {
-  align-self: flex-start;
-  transform: rotate(-1.5deg);
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  box-shadow: var(--riso-shadow);
-  padding: 8px 18px;
-  font: 800 14px var(--riso-font-display);
 }
 
 /* Cookbook / Imported: big tabs sitting on a rule, the toolbar at the right */
@@ -18453,9 +18478,10 @@ body.no-select {
 }
 
 .fnd-pop-btn {
-  flex: 1 1 140px;
+  flex: 1 1 auto;
   min-height: 46px;
-  padding: 6px 14px;
+  padding: 6px 16px;
+  white-space: nowrap;
   border: 2px solid var(--riso-ink);
   border-radius: 23px;
   background: var(--riso-surface);
@@ -19090,9 +19116,10 @@ body.no-select {
 }
 
 /* ---------- Toast with Undo ---------- */
-.riso-planner-toast {
+/* The one toast (components/Toast.jsx): a dark pill at the bottom with Undo. */
+.riso-toast {
   position: fixed;
-  z-index: 90;
+  z-index: 200;
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
@@ -19109,7 +19136,11 @@ body.no-select {
   font: 700 14px var(--riso-font-display);
 }
 
-.riso-planner-toast-undo {
+.riso-toast > span:only-child {
+  padding-right: 8px;
+}
+
+.riso-toast-undo {
   height: 28px;
   padding: 0 12px;
   border: none;
@@ -19121,7 +19152,7 @@ body.no-select {
 }
 
 @media (max-width: 767px) {
-  .riso-planner-toast {
+  .riso-toast {
     bottom: calc(96px + env(safe-area-inset-bottom));
   }
 }
@@ -19649,4 +19680,128 @@ body.no-select {
   font: 500 10.5px/18px var(--riso-font-mono);
   letter-spacing: 0.12em;
   white-space: nowrap;
+}
+
+/* "Include pantry and sides" (IncludeSidesToggle): the Makeable now rule's switch, next to the filters it changes. */
+.includesides-toggle {
+  margin-left: auto;
+  flex: none;
+}
+
+.rv2-countline .includesides-toggle {
+  margin-left: auto;
+}
+
+/* ---------- Planner fixes (Matt's review): header, Copy last week, drag, slot picker weeks, Remove note ---------- */
+
+/* The week picker is at the left of the header, the title after it at the right. */
+.riso-planner-header {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.riso-planner-header-actions {
+  flex: 0 1 auto;
+}
+
+.riso-planner-calpop {
+  left: 0;
+  right: auto;
+}
+
+.riso-planner-calpop .rpm-cal-caret {
+  left: 150px;
+  right: auto;
+}
+
+.riso-planner-weekpill {
+  min-width: 128px;
+}
+
+.riso-pill.riso-planner-copy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.riso-planner-copy-note {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+/* While a recipe is dragged, only the slot under it changes: its border turns
+   pink, with its +. No fill, no outline, and no other slot or card changes. */
+.riso-planner-cell.drop-active {
+  outline: none;
+}
+
+.riso-planner-cell.drop-active .riso-planner-cell-empty {
+  border-style: solid;
+  border-color: var(--riso-hot);
+  background: transparent;
+}
+
+.riso-planner-cell.drop-active .riso-planner-cell-empty .riso-planner-cell-plus {
+  display: inline;
+  color: var(--riso-hot);
+}
+
+.riso-planner-cell.drop-active .riso-planner-card,
+.riso-planner-cell.drop-active .riso-planner-note {
+  border-color: var(--riso-hot);
+}
+
+/* The slot picker's week arrows. */
+.riso-picker-weeknav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riso-picker-weekctl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-picker-weeklabel {
+  min-width: 96px;
+  text-align: center;
+  font: 800 14px var(--riso-font-display);
+}
+
+.riso-planner-nav-arrow.small {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  font-size: 15px;
+}
+
+.riso-picker-confirm:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* "Remove note" in a note's editor. */
+.riso-slotcard-remove {
+  height: 40px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-slotcard-remove:hover {
+  background: var(--riso-hot);
+}
+
+/* Similar recipes scrolls the Main meal banner to just under the app header. */
+.fnd-main {
+  scroll-margin-top: 96px;
 }

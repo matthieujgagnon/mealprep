@@ -102,7 +102,7 @@ test("an empty cell: the sheet offers recipes or a note instead", async ({ page 
   await expect(page.locator(".rpm-cell.note .rpm-note-text")).toHaveText("Eating out");
 });
 
-test("the week pill opens a month calendar with dots on planned days, and goes back to this week", async ({ page }) => {
+test("the week pill opens a month calendar with a meal bar on planned days, and goes back to this week", async ({ page }) => {
   const recipe = await setup(page);
   await plan(page, recipe, mondayOf(new Date()), todayIndex(), "dinner");
   await openPlanner(page);
@@ -113,7 +113,9 @@ test("the week pill opens a month calendar with dots on planned days, and goes b
   await expect(calendar).toBeVisible();
   await expect(calendar.locator(".rpm-cal-day.today")).toHaveCount(1);
   await expect(calendar.locator(".rpm-cal-day.week")).not.toHaveCount(0);
-  await expect(calendar.locator(".rpm-cal-dot")).toHaveCount(1);
+  // Three bars a day, one for each meal; the planned supper is the only one filled.
+  await expect(calendar.locator(".rpm-cal-bars span.on")).toHaveCount(1);
+  await expect(calendar.locator(".rpm-cal-day.today .rpm-cal-bars span")).toHaveCount(3);
 
   // Escape closes it.
   await page.keyboard.press("Escape");

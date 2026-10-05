@@ -15,16 +15,18 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
 import { t } from "./i18n/index.js";
 import { LanguageSwitch } from "./components/RisoControls.jsx";
-import { currentWeekStart, shiftWeek, toDateKey } from "./lib/dates.js";
+import { currentWeekStart, isPastDay, shiftWeek, toDateKey } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
-import { coresOnGroceryList, groceryCore, removedRecipeRows } from "./lib/groceryDedupe.js";
+import { coresOnGroceryList, groceryCore, newGroceryItemCount, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { Help } from "./components/Help.jsx";
 import { Home } from "./components/Home.jsx";
 import { RecipeEditor } from "./components/RecipeEditor.jsx";
 import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { Planner } from "./components/Planner.jsx";
-import { PlannerToast } from "./components/PlannerExtras.jsx";
+import { Toast } from "./components/Toast.jsx";
+import { RecipePopoutHost } from "./components/RecipePopout.jsx";
+import { SlotPicker } from "./components/SlotPicker.jsx";
 import { weekendFrom } from "./lib/weekend.js";
 import { useIsPhone } from "./hooks/useIsPhone.js";
 import { useHeaderTightness } from "./hooks/useHeaderTightness.js";
@@ -151,16 +153,17 @@ export default function App({ user, onLogout }) {
   // recipe was opened from a "good next addition" suggestion — null the
   // rest of the time. Set alongside activeRecipe by openRecipe() below.
   const [activeRecipeSharedWith, setActiveRecipeSharedWith] = useState(null);
-  // true when the currently-open recipe should skip straight to cook mode —
-  // set by Makeable's "Cook tonight" action, cleared on every other open.
-  const [activeRecipeStartCooking, setActiveRecipeStartCooking] = useState(false);
+  // The shared recipe pop-out (one for every page): { recipeId, from } or null.
+  const [popout, setPopout] = useState(null);
+  // The shared slot picker: { recipe } while it is open.
+  const [pickerFor, setPickerFor] = useState(null);
   const [plannerMainId, setPlannerMainId] = useState(null); // a recipe to open the Planner's finder on as its Main meal ("Plan around this")
   const [plannerTarget, setPlannerTarget] = useState(null); // the slot the finder is adding to { dayOfWeek, mealType }
   const [editingNoteId, setEditingNoteId] = useState(null); // blank/written card being typed on
   // The Planner's weekend ({ on, days, eve }; days 0 = Monday), saved with the
   // account so every device shows the same.
   const [weekend, setWeekend] = useState(() => weekendFrom(user));
-  const [plannerToast, setPlannerToast] = useState(null); // { id, message, undo? } the little message with Undo at the bottom of the Planner
+  const [toast, setToast] = useState(null); // { id, message, undo? } the one toast (with Undo) at the bottom of every page
   const [customStaples, setCustomStaples] = useState([]);
   const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
@@ -179,6 +182,7 @@ export default function App({ user, onLogout }) {
   // when closed.
   const [recipeEditor, setRecipeEditor] = useState(null);
   const editorDirty = useRef(false);
+  const [upcomingTick, setUpcomingTick] = useState(0); // bumped when the plan changes in a week that is not on screen
   const [upcomingEntries, setUpcomingEntries] = useState([]); // every planned meal from today onward, across weeks: what the grocery list is built from
   const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items
   const [groceryOverrides, setGroceryOverrides] = useState([]); // removed rows / own quantities (GroceryItemOverride)
@@ -243,7 +247,7 @@ export default function App({ user, onLogout }) {
     api.listPlannerUpcoming(today).then(setUpcomingEntries).catch(() => setUpcomingEntries([]));
     api.listGroceryExtras().then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
     api.listGroceryOverrides().then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
-  }, [tab, plannerEntries]);
+  }, [tab, plannerEntries, upcomingTick]);
 
   const groceryCores = coresOnGroceryList(upcomingEntries, plannerExtraItems, groceryOverrides);
 
@@ -383,10 +387,35 @@ export default function App({ user, onLogout }) {
   // only ever passed by the "good next addition" suggestion click — every
   // other caller passes just the recipe, which naturally clears any
   // leftover context from a previous suggestion-opened recipe.
-  function openRecipe(recipe, sharedWith, startCooking) {
+  function openRecipe(recipe, sharedWith) {
     setActiveRecipe(recipe);
     setActiveRecipeSharedWith(sharedWith || null);
-    setActiveRecipeStartCooking(!!startCooking);
+  }
+
+  // Every "Cook" and "Open the full recipe" goes through here, so they all land
+  // on the same thing: the recipe's card on the Recipes page. The pop-out and
+  // anything open on top of the page closes first.
+  function openRecipeCard(recipeOrId) {
+    const recipe = typeof recipeOrId === "string" ? recipes.find((r) => r.id === recipeOrId) : recipeOrId;
+    if (!recipe) return;
+    setPopout(null);
+    setPickerFor(null);
+    if (tab !== "collection") goToTab("collection");
+    openRecipe(recipe);
+  }
+
+  // The one recipe pop-out (Plan, Cook, Similar recipes, the to-buy toggles).
+  // `from` is the box of the card it grows out of.
+  function openPopout(recipeOrId, from = null) {
+    const recipeId = typeof recipeOrId === "string" ? recipeOrId : recipeOrId?.id;
+    setPopout(recipeId ? { recipeId, from } : null);
+  }
+
+  // The one slot picker: "Plan" in the pop-out and the finder's + (when no slot
+  // is chosen) open it. It starts on the chosen target slot, else the next empty one.
+  function requestPlan(recipe) {
+    setPopout(null);
+    setPickerFor({ recipe });
   }
 
   // Keeps the recipes list AND the currently-open modal in sync after an
@@ -555,7 +584,10 @@ export default function App({ user, onLogout }) {
 
     // A recipe dragged in from the tray replaces whatever was in the slot.
     const recipeId = active.data.current?.recipe?.id;
-    if (recipeId) announcePlacement(await handlePlaceRecipe(recipeId, slot), slot);
+    if (recipeId) {
+      const added = itemsAddedBy(recipeId, weekStart, slot);
+      announcePlacement(await handlePlaceRecipe(recipeId, slot), slot, added);
+    }
   }
 
   function entriesInSlot(slot) {
@@ -564,12 +596,26 @@ export default function App({ user, onLogout }) {
 
   // One thing per slot: placing a recipe replaces whatever was there.
   // Resolves with the new entry and what it replaced (or null), for the toast's Undo.
-  async function handlePlaceRecipe(recipeId, slot) {
-    const existing = entriesInSlot(slot);
+  // `week` is the week to place in (the one on screen unless the slot picker
+  // was moved to another).
+  async function handlePlaceRecipe(recipeId, slot, week = weekStart) {
+    const inView = week === weekStart;
+    const weekEntries = inView ? plannerEntries : await api.listPlanner(week);
+    const existing = weekEntries.filter((e) => e.dayOfWeek === slot.dayOfWeek && e.mealType === slot.mealType);
     await Promise.all(existing.map((e) => api.removeFromPlanner(e.id)));
-    const entry = await api.placeOnPlanner({ recipeId, weekStart, ...slot });
-    setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), entry]);
+    const entry = await api.placeOnPlanner({ recipeId, weekStart: week, ...slot });
+    if (inView) setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), entry]);
+    else setUpcomingTick((n) => n + 1);
     return { entry, replaced: existing[0] || null };
+  }
+
+  // How many things putting this recipe in that slot adds to the grocery list
+  // (the list follows the plan by itself; this is only for the toast). Nothing
+  // for a day that has passed: the list is built from today on.
+  function itemsAddedBy(recipeId, week, slot) {
+    const recipe = recipes.find((r) => r.id === recipeId);
+    if (!recipe || isPastDay(week, slot.dayOfWeek)) return 0;
+    return newGroceryItemCount({ recipe }, groceryCores, customStaples, excludedStaples);
   }
 
   async function handleMoveEntry(entryId, slot) {
@@ -586,9 +632,9 @@ export default function App({ user, onLogout }) {
     );
   }
 
-  // ---- The little message with Undo at the bottom of the Planner ----
-  function showPlannerToast(message, undo) {
-    setPlannerToast({ id: Date.now() + Math.random(), message, undo });
+  // ---- The one toast, with Undo, at the bottom of every page ----
+  function showToast(message, undo) {
+    setToast({ id: Date.now() + Math.random(), message, undo });
   }
 
   // A meal put back as it was (a removed one, or the one a new meal replaced):
@@ -610,19 +656,23 @@ export default function App({ user, onLogout }) {
       });
     }
     if (entry.weekStart === weekStart) setPlannerEntries((prev) => [...prev.filter((e) => e.id !== entry.id), entry]);
+    else setUpcomingTick((n) => n + 1);
     return entry;
   }
 
   async function dropEntry(id) {
     setPlannerEntries((prev) => prev.filter((e) => e.id !== id));
     await api.removeFromPlanner(id);
+    setUpcomingTick((n) => n + 1);
   }
 
   // After something is put in a slot: "Added to Tue · Supper" or "<old meal>
   // replaced", with Undo (take it out again and put back what it replaced).
-  function announcePlacement({ entry, replaced }, slot) {
-    showPlannerToast(
-      replaced ? t("planner.toastReplaced", { title: replaced.recipe.title }) : t("planner.toastAdded", { slot: slotLabel(slot) }),
+  // `added` is how many grocery items it put on the list (nothing is said for 0).
+  function announcePlacement({ entry, replaced }, slot, added = 0) {
+    const key = `planner.${replaced ? "toastReplaced" : "toastAdded"}${added > 0 ? "List" : ""}`;
+    showToast(
+      t(key, { title: replaced?.recipe.title, slot: slotLabel(slot), count: added }),
       async () => {
         await dropEntry(entry.id);
         if (replaced) await restoreEntry(replaced);
@@ -630,17 +680,19 @@ export default function App({ user, onLogout }) {
     );
   }
 
-  // The finder's "+" and "Plan": the slot it is adding to if there is one (or
-  // `slotOverride`, from the slot picker), otherwise the next empty upcoming
-  // slot (supper first). Resolves with the slot it used, or null when the
-  // week has no free slot.
-  async function handlePlanRecipe(recipe, slotOverride) {
+  // The finder's + and the slot picker's confirm: the slot it is adding to
+  // (`slotOverride`, from the picker, in `weekOverride`), else the chosen
+  // target, otherwise the next empty upcoming slot (supper first). Resolves
+  // with the slot it used, or null when the week has no free slot.
+  async function handlePlanRecipe(recipe, slotOverride, weekOverride) {
+    const week = weekOverride || weekStart;
     const slot = slotOverride || plannerTarget || findNextEmptySlot(plannerEntries, weekStart);
     if (!slot) return null;
     const { dayOfWeek, mealType } = slot;
-    const placed = await handlePlaceRecipe(recipe.id, { dayOfWeek, mealType });
+    const added = itemsAddedBy(recipe.id, week, { dayOfWeek, mealType });
+    const placed = await handlePlaceRecipe(recipe.id, { dayOfWeek, mealType }, week);
     setPlannerTarget(null);
-    announcePlacement(placed, { dayOfWeek, mealType });
+    announcePlacement(placed, { dayOfWeek, mealType }, added);
     return { dayOfWeek, mealType };
   }
 
@@ -676,7 +728,7 @@ export default function App({ user, onLogout }) {
     if (entriesInSlot(slot).length > 0) return;
     const entry = await api.placeOnPlanner({ recipeId: recipe.id, weekStart, ...slot, isLeftover: true });
     setPlannerEntries((prev) => [...prev, entry]);
-    showPlannerToast(t("planner.leftoversAdded", { title: recipe.title, slot: slotLabel(slot) }), () => dropEntry(entry.id));
+    showToast(t("planner.leftoversAdded", { title: recipe.title, slot: slotLabel(slot) }), () => dropEntry(entry.id));
   }
 
   // The × on a card (or a blank card clicked again): off the plan, with Undo.
@@ -685,7 +737,7 @@ export default function App({ user, onLogout }) {
     await handleRemoveFromPlanner(entryId);
     if (snap && !String(snap.id).startsWith("pending-")) {
       const name = snap.recipe?.isPlaceholder ? (isCustomNote(snap) ? snap.recipe.title : t("planner.blankName")) : snap.recipe?.title;
-      showPlannerToast(t("planner.toastRemoved", { title: name, slot: slotLabel(snap) }), () => restoreEntry(snap));
+      showToast(t("planner.toastRemoved", { title: name, slot: slotLabel(snap) }), () => restoreEntry(snap));
     }
   }
 
@@ -791,10 +843,19 @@ export default function App({ user, onLogout }) {
     if (week === weekStart) setPlannerEntries((prev) => [...prev, ...created]);
   }
 
+  // "Copy last week": last week's meals into this week's EMPTY slots only (the
+  // server never replaces anything). The toast says how many, with Undo.
   async function handleCopyLastWeek() {
-    const fromWeekStart = shiftWeek(weekStart, -1);
-    const copied = await api.copyPlannerWeek(fromWeekStart, weekStart);
-    setPlannerEntries(copied);
+    const { entries, createdIds } = await api.copyPlannerWeek(shiftWeek(weekStart, -1), weekStart);
+    setPlannerEntries(entries);
+    if (createdIds.length === 0) {
+      showToast(t("planner.toastCopiedNone"));
+      return;
+    }
+    showToast(t("planner.toastCopied", { count: createdIds.length }), async () => {
+      await Promise.all(createdIds.map((id) => api.removeFromPlanner(id)));
+      setPlannerEntries((prev) => prev.filter((e) => !createdIds.includes(e.id)));
+    });
   }
 
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
@@ -957,6 +1018,7 @@ export default function App({ user, onLogout }) {
             recipes={recipes}
             plannerEntries={plannerEntries}
             onSelectRecipe={openRecipe}
+            onOpenRecipeCard={openRecipeCard}
             pantryInventory={pantryInventory}
             customStaples={customStaples}
             weekStart={weekStart}
@@ -993,6 +1055,7 @@ export default function App({ user, onLogout }) {
             onRenameLocation={handleRenamePantryLocation}
             onAddLocation={handleAddPantryLocation}
             onDeleteLocation={handleDeletePantryLocation}
+            onToast={showToast}
           />
         )}
 
@@ -1004,7 +1067,8 @@ export default function App({ user, onLogout }) {
             excludedStaples={excludedStaples}
             pantryInventory={pantryInventory}
             onNavigate={setTab}
-            onSelectRecipe={openRecipe}
+            onSelectRecipe={openPopout}
+            onOpenRecipeCard={openRecipeCard}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
               setRecipeFilter("all");
@@ -1062,9 +1126,10 @@ export default function App({ user, onLogout }) {
             onFilterChange={setRecipeFilter}
             protein={recipeProtein}
             onProteinChange={setRecipeProtein}
-            onSelectRecipe={openRecipe}
+            onSelectRecipe={openPopout}
             onImported={handleImported}
             onNewRecipe={() => openRecipeEditor(null)}
+            onToast={showToast}
           />
         )}
 
@@ -1077,7 +1142,6 @@ export default function App({ user, onLogout }) {
                 user={user}
                 recipes={plannableRecipes}
                 entries={plannerEntries}
-                upcomingEntries={upcomingEntries}
                 weekStart={weekStart}
                 onChangeWeek={setWeekStart}
                 weekend={weekend}
@@ -1099,19 +1163,21 @@ export default function App({ user, onLogout }) {
                   writeInSlot: handleWriteInSlot,
                   removeEntry: handleRemoveWithUndo,
                   saveSlotNote: handleSaveSlotNote,
-                  toast: showPlannerToast,
+                  toast: showToast,
                   cycleState: handleCycleMealState,
                   editNote: setEditingNoteId,
                   saveNote: handleSaveNote,
                   copyLastWeek: handleCopyLastWeek,
                 }}
-                onOpenRecipe={openRecipe}
+                onOpenPopout={openPopout}
+                popoutId={popout?.recipeId}
+                onRequestPlan={requestPlan}
+                onOpenRecipeCard={openRecipeCard}
                 onOpenGrocery={() => goToTab("grocery")}
                 customStaples={customStaples}
                 excludedStaples={excludedStaples}
               />
             )}
-            <PlannerToast toast={plannerToast} onClose={() => setPlannerToast(null)} />
           </div>
         )}
 
@@ -1129,7 +1195,6 @@ export default function App({ user, onLogout }) {
           <RecipeDetailModal
             recipe={activeRecipe}
             sharedWithWeek={activeRecipeSharedWith}
-            startInCookMode={activeRecipeStartCooking}
             onClose={() => openRecipe(null)}
             allRecipes={recipes}
             plannerEntries={plannerEntries}
@@ -1162,6 +1227,43 @@ export default function App({ user, onLogout }) {
             }}
           />
         )}
+        {popout && (
+          <RecipePopoutHost
+            recipe={recipes.find((r) => r.id === popout.recipeId) || null}
+            from={popout.from}
+            haveCores={pantryHaveCores}
+            plannedEntries={[...plannerEntries, ...upcomingEntries]}
+            grocery={{ isOnList: isOnGroceryList, add: addToGroceryList, remove: removeFromGroceryList }}
+            onPlan={() => requestPlan(recipes.find((r) => r.id === popout.recipeId))}
+            onCook={() => openRecipeCard(popout.recipeId)}
+            onSimilar={() => {
+              setPopout(null);
+              setPlannerMainId(popout.recipeId);
+              if (tab !== "planner") {
+                setWeekStart(currentWeekStart());
+                goToTab("planner");
+              }
+            }}
+            onOpenFull={() => openRecipeCard(popout.recipeId)}
+            onClose={() => setPopout(null)}
+          />
+        )}
+        {pickerFor && (
+          <SlotPicker
+            recipe={pickerFor.recipe}
+            weekStart={weekStart}
+            entries={plannerEntries}
+            weekend={weekend}
+            initialSlot={plannerTarget}
+            onConfirm={async (slot, week) => {
+              const { recipe } = pickerFor;
+              setPickerFor(null);
+              if (!(await handlePlanRecipe(recipe, slot, week))) showToast(t("app.slotsFull"));
+            }}
+            onClose={() => setPickerFor(null)}
+          />
+        )}
+        <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
       <DragOverlay dropAnimation={null}>
         {activeDragItem && <DragPreview active={activeDragItem} />}

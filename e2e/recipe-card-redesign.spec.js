@@ -29,6 +29,7 @@ async function addRecipe(page, { title, servings, steps }) {
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
   await page.getByText(title, { exact: true }).click();
+  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.waitForTimeout(300);
 }
 
@@ -104,6 +105,7 @@ test("recipe notes render legibly on the light card", async ({ page }) => {
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
   await page.getByText("Redesign Notes Test", { exact: true }).click();
+  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.waitForTimeout(300);
 
   await expect(page.locator(".rc-notes-label")).toHaveText("Notes");
@@ -141,6 +143,7 @@ test("the photo gallery flips with the arrow keys and has a clear × to close", 
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByText("Gallery Test", { exact: true }).click();
+  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
 
   // On the card, ← → flip the cover photo.
   const count = page.locator(".riso-rc-photo-count");

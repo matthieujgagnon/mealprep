@@ -2,7 +2,8 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { fail } from "../lib/i18n.js";
 import { upcomingWhere } from "../lib/upcomingMeals.js";
-import { mondayKey, plannedDates, validKey } from "../lib/plannedDates.js";
+import { mondayKey, plannedDays, validKey } from "../lib/plannedDates.js";
+import { entriesToCopy } from "../lib/copyWeek.js";
 
 export const plannerRouter = Router();
 
@@ -49,8 +50,10 @@ plannerRouter.get("/upcoming", async (req, res) => {
 });
 
 // GET /api/planner/dates?from=YYYY-MM-DD&to=YYYY-MM-DD - the days in that
-// range (at most 400) that have a planned meal or note, as "YYYY-MM-DD" keys.
-// The phone Planner's month calendar puts a dot under each of them.
+// range (at most 400) that have a planned meal or note, each as
+// { date: "YYYY-MM-DD", meals: [{ mealType, title, placeholder }] }. The
+// Planner's month calendar (desktop and phone) draws three bars under each
+// day and lists the meals in a tooltip.
 plannerRouter.get("/dates", async (req, res) => {
   const { from, to } = req.query;
   const first = validKey(from);
@@ -60,9 +63,9 @@ plannerRouter.get("/dates", async (req, res) => {
   }
   const entries = await prisma.plannerEntry.findMany({
     where: { userId: req.userId, weekStart: { gte: mondayKey(from), lte: to } },
-    select: { weekStart: true, dayOfWeek: true },
+    select: { weekStart: true, dayOfWeek: true, mealType: true, recipe: { select: { title: true, isPlaceholder: true } } },
   });
-  res.json(plannedDates(entries, from, to));
+  res.json(plannedDays(entries, from, to));
 });
 
 // POST /api/planner - place a recipe card onto a day + meal slot
@@ -143,13 +146,13 @@ plannerRouter.post("/blank", async (req, res) => {
   res.status(201).json(serializeEntry(entry));
 });
 
-// POST /api/planner/copy-week { fromWeekStart, toWeekStart } - duplicate
-// every placement from one week onto another, so planning a new week can
-// start from last week's shape instead of a blank board. Leftover/
-// already-have flags reset to false on the copy — both describe that
-// specific week's fridge/pantry state, not the recipe itself. Skips (rather
-// than duplicating) any day+meal+recipe slot the target week already has,
-// so re-running it after making a few manual tweaks is safe.
+// POST /api/planner/copy-week { fromWeekStart, toWeekStart } - copy last
+// week's placements onto a week, into its EMPTY slots only (see
+// lib/copyWeek.js): a slot that already has anything is left alone, so it is
+// safe to press again. Leftover/already-have flags reset to false on the copy
+// - both describe that specific week's fridge/pantry state, not the recipe
+// itself. Responds { entries, createdIds }: the whole target week, and which
+// of those entries this call made (what the toast's Undo removes).
 plannerRouter.post("/copy-week", async (req, res) => {
   const { fromWeekStart, toWeekStart } = req.body;
   if (!fromWeekStart || !toWeekStart) {
@@ -159,12 +162,7 @@ plannerRouter.post("/copy-week", async (req, res) => {
     prisma.plannerEntry.findMany({ where: { weekStart: fromWeekStart, userId: req.userId } }),
     prisma.plannerEntry.findMany({ where: { weekStart: toWeekStart, userId: req.userId } }),
   ]);
-  const existingKeys = new Set(
-    existingTarget.map((e) => `${e.dayOfWeek}-${e.mealType}-${e.recipeId}`)
-  );
-  const toCreate = source.filter(
-    (e) => !existingKeys.has(`${e.dayOfWeek}-${e.mealType}-${e.recipeId}`)
-  );
+  const toCreate = entriesToCopy(source, existingTarget);
   if (toCreate.length > 0) {
     await prisma.plannerEntry.createMany({
       data: toCreate.map((e) => ({
@@ -185,7 +183,11 @@ plannerRouter.post("/copy-week", async (req, res) => {
     include: { recipe: { include: { ingredients: true } } },
     orderBy: [{ dayOfWeek: "asc" }, { position: "asc" }],
   });
-  res.status(201).json(entries.map(serializeEntry));
+  const before = new Set(existingTarget.map((e) => e.id));
+  res.status(201).json({
+    entries: entries.map(serializeEntry),
+    createdIds: entries.filter((e) => !before.has(e.id)).map((e) => e.id),
+  });
 });
 
 // PUT /api/planner/:id/note { note? } - change what text a blank/custom

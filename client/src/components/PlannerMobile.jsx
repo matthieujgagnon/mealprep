@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { BottomSheet } from "./RisoControls.jsx";
 import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
-import { PlannerCalendar } from "./PlannerCalendar.jsx";
+import { WeekCalendar } from "./WeekCalendar.jsx";
 import { useGroceryToBuyCount } from "../hooks/useGroceryToBuyCount.js";
 import {
   formatDayLabel,
@@ -185,7 +185,7 @@ export function PlannerMobile({
           </button>
         </div>
         {calendarOpen && (
-          <PlannerCalendar
+          <WeekCalendar
             weekStart={weekStart}
             onPick={goToWeek}
             onThisWeek={() => goToWeek(toDateKey(new Date()))}

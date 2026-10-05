@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { isHintDismissed, dismissHint } from "../lib/hints.js";
 import { api } from "../api.js";
+import { Pill } from "./RisoPills.jsx";
 import { LANGS, setLang, t, useLang } from "../i18n/index.js";
 
 // 48x28 track switch - design_handoff_riso's shared "Switch" component.
@@ -16,6 +17,17 @@ export function Switch({ on, onToggle, label }) {
     >
       <span className="riso-switch-knob" />
     </button>
+  );
+}
+
+// "Include pantry and sides": the switch for the Makeable now rule, in the
+// Riso chip style. `on` and `onChange` come from useIncludeSides(), so every
+// page that shows it is showing the same setting.
+export function IncludeSidesToggle({ on, onChange }) {
+  return (
+    <Pill size="chip" selected={on} onClick={() => onChange(!on)} className="includesides-toggle">
+      {t("makeable.includeSides")}
+    </Pill>
   );
 }
 

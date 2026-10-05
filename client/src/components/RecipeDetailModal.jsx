@@ -292,11 +292,10 @@ export function RecipeDetailModal({
   onPlanLeftovers,
   onNavigate,
   sharedWithWeek, // ingredient names reused from this week's plan — only set when opened from a "good next addition" suggestion
-  startInCookMode, // true when opened via Makeable's "Cook tonight" - skips straight to cook mode instead of the detail view
 }) {
   const defaultServings = recipe.baseServings || 4;
   const [servings, setServings] = useState(defaultServings);
-  const [cookModeOn, setCookModeOn] = useState(!!startInCookMode);
+  const [cookModeOn, setCookModeOn] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);

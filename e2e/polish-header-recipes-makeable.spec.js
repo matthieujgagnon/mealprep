@@ -215,6 +215,7 @@ test.describe("Recipes", () => {
 
     // An import can be moved to the Cookbook from its editor.
     await page.locator(".riso-recipe-card", { hasText: "Imported pad thai" }).click();
+    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("button", { name: "Edit recipe" }).click();
     await page.getByRole("radio", { name: "Cookbook" }).click();
@@ -295,6 +296,9 @@ test.describe("Makeable", () => {
     await page.reload();
     await page.getByRole("button", { name: "Makeable", exact: true }).click();
     const names = page.locator(".riso-makeable-card-name");
+    // Makeable now counts meals only: the dessert and the side come with the switch.
+    await expect(names).toHaveCount(2);
+    await page.getByRole("button", { name: "Include pantry and sides" }).click();
     await expect(names).toHaveCount(4);
 
     const chips = page.locator(".riso-makeable .riso-recipes-filter-chips");

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { PillMenu } from "./RisoControls.jsx";
+import { IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
+import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { Pill, TimePill } from "./RisoPills.jsx";
 import { FinderPicker } from "./FinderPicker.jsx";
-import { RecipePopout } from "./RecipePopout.jsx";
 import { PROTEINS } from "../lib/proteins.js";
 import { RECIPE_SLOTS, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
@@ -12,9 +12,6 @@ import {
   expiringItems,
   findRecipes,
   groupIngredients,
-  haveAndBuy,
-  plannedDayOf,
-  saleFor,
   sharedWords,
   shelvesWithItems,
 } from "../lib/finder.js";
@@ -31,8 +28,8 @@ import { t } from "../i18n/index.js";
 //
 // What it shows is kept by `finder`, from useFinder(), so the screen around it
 // can steer it. The data comes in as props: the recipes, the inventory, what is
-// on hand, the planned meals, the grocery list (isOnList, add, remove) and the
-// real flyer deals. What happens on "Plan" is the caller's (`onPlan`).
+// on hand and the planned meals. Opening a recipe asks the caller (`onOpenPopout`,
+// App.jsx's one recipe pop-out) and what the + does is the caller's (`onAdd`).
 
 const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 
@@ -103,9 +100,9 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
 // The yellow banner for the Main meal: the recipe, its ingredients grouped and
 // switchable (tap one to leave it out of the search), "View recipe" and Cancel,
 // and, on the Planner, "Place leftovers".
-function MainMealBanner({ recipe, groups, off, onToggle, onView, onCancel, leftovers }) {
+function MainMealBanner({ bannerRef, recipe, groups, off, onToggle, onView, onCancel, leftovers }) {
   return (
-    <section className="fnd-main" aria-label={t("finder.mainMeal")}>
+    <section ref={bannerRef} className="fnd-main" aria-label={t("finder.mainMeal")}>
       <div className="fnd-main-photo">{recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}</div>
       <div className="fnd-main-body">
         <span className="fnd-caps">{t("finder.mainMeal")}</span>
@@ -172,24 +169,20 @@ export function Finder({
   inventoryLayout,
   haveCores,
   upcomingEntries,
-  plannedEntries,
-  grocery,
-  deals,
-  showSales = false,
   layout = "panel",
   draggable = false,
   target = null,
   targetLabel = "",
   targetNotice = null,
   onClearTarget,
-  planLabel,
-  onPlan,
-  onAdd = onPlan,
-  onOpenFull,
+  onAdd,
+  onOpenPopout,
+  openId = null,
   leftovers,
 }) {
   const sheet = layout === "sheet";
   const [menu, setMenu] = useState(null); // null | "meal" | "protein"
+  const [includeSides, setIncludeSides] = useIncludeSides();
   const menusRef = useRef(null);
 
   const { ranked, expiringCores, nameOf } = useMemo(
@@ -222,13 +215,14 @@ export function Finder({
           protein: finder.protein,
           quick: finder.quick,
           expiring: finder.expiring,
+          includeSides,
           picks: pickedKeys,
           base,
           baseId: mainRecipe?.id || null,
         },
         expiringSet
       ),
-    [ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, pickedKeys, base, mainRecipe, expiringSet]
+    [ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, includeSides, pickedKeys, base, mainRecipe, expiringSet]
   );
 
   // A menu closes on a click outside it, or Escape.
@@ -266,11 +260,16 @@ export function Finder({
     return null;
   }
 
-  const openRecipe = (recipe, from) => finder.setPopoutId(recipe.id, from);
+  const openRecipe = (recipe, from) => onOpenPopout(recipe, from);
 
-  const popRecipe = finder.popoutId ? recipes.find((r) => r.id === finder.popoutId) : null;
-  const popLists = popRecipe ? haveAndBuy(popRecipe, haveCores) : null;
-  const popPlannedDay = popRecipe ? plannedDayOf(popRecipe.id, plannedEntries || []) : null;
+  // Choosing Similar recipes scrolls the page so the Main meal banner is fully
+  // in view, right under the board (its top below the app header).
+  const bannerRef = useRef(null);
+  useEffect(() => {
+    if (!finder.mainId) return undefined;
+    const frame = requestAnimationFrame(() => bannerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
+    return () => cancelAnimationFrame(frame);
+  }, [finder.mainId]);
 
   const mealOptions = [
     { id: "all", label: t("recipes.filters.all") },
@@ -392,6 +391,7 @@ export function Finder({
             </button>
           ))}
         </div>
+        {finder.avail === "ready" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
         <Pill size="chip" selected={finder.expiring} onClick={() => finder.setExpiring(!finder.expiring)}>
           <span className="fnd-dot hot" aria-hidden="true" />
           {t("finder.expiring")}
@@ -429,11 +429,12 @@ export function Finder({
 
       {mainRecipe && (
         <MainMealBanner
+          bannerRef={bannerRef}
           recipe={mainRecipe}
           groups={mainGroups}
           off={finder.off}
           onToggle={finder.toggleIngredient}
-          onView={() => finder.setPopoutId(mainRecipe.id)}
+          onView={() => onOpenPopout(mainRecipe)}
           onCancel={() => finder.setMainMeal(null)}
           leftovers={leftovers}
         />
@@ -469,7 +470,7 @@ export function Finder({
                   tile={tile}
                   reason={reasonFor(tile)}
                   draggable={draggable}
-                  isOpen={finder.popoutId === tile.recipe.id}
+                  isOpen={openId === tile.recipe.id}
                   onOpen={openRecipe}
                   onAdd={onAdd}
                 />
@@ -479,23 +480,6 @@ export function Finder({
             <p className="fnd-empty">{t("recipes.d.emptyFilters")}</p>
           )}
         </>
-      )}
-
-      {popRecipe && (
-        <RecipePopout
-          recipe={popRecipe}
-          plannedDay={popPlannedDay}
-          have={popLists.have}
-          buy={popLists.buy}
-          isOnList={grocery.isOnList}
-          onToggleList={(name) => (grocery.isOnList(name) ? grocery.remove(name) : grocery.add([name]))}
-          saleOf={showSales ? (name) => saleFor(name, deals) : undefined}
-          plan={onPlan ? { label: planLabel || t("finder.plan"), onClick: () => { onPlan(popRecipe); finder.setPopoutId(null); } } : undefined}
-          onSimilar={() => finder.setMainMeal(popRecipe.id)}
-          onOpenFull={onOpenFull ? () => { finder.setPopoutId(null); onOpenFull(popRecipe); } : undefined}
-          onClose={() => finder.setPopoutId(null)}
-          from={finder.popoutFrom}
-        />
       )}
     </div>
   );

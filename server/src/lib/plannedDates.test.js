@@ -1,25 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { mondayKey, plannedDates, validKey } from "./plannedDates.js";
+import { mondayKey, plannedDays, validKey } from "./plannedDates.js";
 
-describe("plannedDates", () => {
-  const entries = [
-    { weekStart: "2026-09-28", dayOfWeek: 0 }, // Sep 28
-    { weekStart: "2026-09-28", dayOfWeek: 0 }, // a second meal the same day
-    { weekStart: "2026-09-28", dayOfWeek: 6 }, // Oct 4
-    { weekStart: "2026-10-05", dayOfWeek: 1 }, // Oct 6
-    { weekStart: "2026-11-02", dayOfWeek: 0 }, // Nov 2
-  ];
+describe("plannedDays", () => {
+  const meal = (weekStart, dayOfWeek, mealType, title, isPlaceholder = false) => ({ weekStart, dayOfWeek, mealType, recipe: { title, isPlaceholder } });
 
-  it("lists each planned day once, sorted, inside the range", () => {
-    expect(plannedDates(entries, "2026-09-28", "2026-10-31")).toEqual(["2026-09-28", "2026-10-04", "2026-10-06"]);
+  it("lists each planned day with its meals in breakfast, lunch, supper order", () => {
+    const entries = [
+      meal("2026-10-05", 1, "dinner", "Soup"),
+      meal("2026-10-05", 1, "breakfast", "Oats"),
+      meal("2026-10-05", 0, "lunch", "No meal planned", true),
+      meal("2026-11-02", 0, "lunch", "Outside"),
+    ];
+    expect(plannedDays(entries, "2026-10-05", "2026-10-31")).toEqual([
+      { date: "2026-10-05", meals: [{ mealType: "lunch", title: "No meal planned", placeholder: true }] },
+      {
+        date: "2026-10-06",
+        meals: [
+          { mealType: "breakfast", title: "Oats", placeholder: false },
+          { mealType: "dinner", title: "Soup", placeholder: false },
+        ],
+      },
+    ]);
   });
 
-  it("works across a month and a year", () => {
-    expect(plannedDates([{ weekStart: "2026-12-28", dayOfWeek: 6 }], "2026-12-01", "2027-01-31")).toEqual(["2027-01-03"]);
-  });
-
-  it("leaves out days outside the range", () => {
-    expect(plannedDates(entries, "2026-10-05", "2026-10-31")).toEqual(["2026-10-06"]);
+  it("shows one thing per slot", () => {
+    const entries = [meal("2026-10-05", 0, "lunch", "A"), meal("2026-10-05", 0, "lunch", "B")];
+    expect(plannedDays(entries, "2026-10-05", "2026-10-11")[0].meals).toHaveLength(1);
   });
 });
 

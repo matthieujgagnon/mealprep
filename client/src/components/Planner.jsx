@@ -5,13 +5,12 @@ import { PlannerBoard, PlannerHeader } from "./PlannerBoard.jsx";
 import { PlannerMobile } from "./PlannerMobile.jsx";
 import { WeekendMenu } from "./PlannerExtras.jsx";
 import { PlannedCard, SlotCard } from "./PlannerCards.jsx";
-import { SlotPicker } from "./SlotPicker.jsx";
 import { useFinder } from "../hooks/useFinder.js";
-import { useGroceryToBuyCount } from "../hooks/useGroceryToBuyCount.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
-import { currentWeekStart } from "../lib/dates.js";
-import { findNextEmptySlot, isCustomNote, slotLabel, todayIndex, upcomingSlots } from "../lib/plannerSlots.js";
-import { weekendLayout, weekendSummary } from "../lib/weekend.js";
+import { api } from "../api.js";
+import { currentWeekStart, shiftWeek } from "../lib/dates.js";
+import { isCustomNote, slotLabel, todayIndex } from "../lib/plannerSlots.js";
+import { weekendSummary } from "../lib/weekend.js";
 import { t } from "../i18n/index.js";
 
 // The Planner tab (design: docs/design/riso-v2-planner-desktop): the week
@@ -20,39 +19,31 @@ import { t } from "../i18n/index.js";
 // the bottom card that opens when a slot is tapped.
 //
 // App.jsx owns the planner's data and what changes it (so the board and every
-// other tab stay in step); this component owns what is on screen: the finder,
-// the cards that open beside a slot, the slot picker, the weekend menu and the
+// other tab stay in step), and the pieces every page shares: the recipe pop-out,
+// the slot picker and the toast. This component owns what is on screen here:
+// the finder, the cards that open beside a slot, the weekend menu and the
 // leftovers mode. Only one overlay is open at a time: `overlay` is
-//   { type: "slot", slot, el, mealIndex, note }   an empty slot's card (or a note's, to edit)
-//   { type: "planned", entry, slot, el, mealIndex }  a planned meal's card
-//   { type: "picker", recipe }                      the slot picker
-//   { type: "weekend" }                             the weekend menu
-// and the recipe pop-out (finder.popoutId) is the fifth.
+//   { type: "slot", slot, el, mealIndex, note, entryId }  an empty slot's card (or a note's, to edit)
+//   { type: "planned", entry, slot, el, mealIndex }       a planned meal's card
+//   { type: "weekend" }                                   the weekend menu
+// and the shared recipe pop-out and slot picker (App.jsx) are above them.
 //
 //   actions.placeRecipe(recipe, slot?)  puts a recipe in `slot`, else the target
 //                                       slot, else the next empty one; resolves
 //                                       with the slot, or null when the week is
 //                                       full (App shows the toast and its Undo)
 //   actions.placeLeftover(recipe, slot), markBlank(slot), saveSlotNote(slot, text),
-//   actions.removeEntry(id), cycleState(id), toast(message),
+//   actions.removeEntry(id), cycleState(id), toast(message, undo?),
 //   actions.writeInSlot(slot), editNote(id), saveNote(id, text)  (a phone writes on the slot),
-//   actions.copyLastWeek()
-
-// "Make the grocery list · 12": the grocery list's count, in the legend row.
-function GroceryButton({ entries, customStaples, excludedStaples, onOpenGrocery }) {
-  const count = useGroceryToBuyCount({ customStaples, excludedStaples, refreshKey: entries });
-  return (
-    <button type="button" className="riso-planner-grocery" onClick={onOpenGrocery}>
-      {t("planner.makeList", { count })}
-    </button>
-  );
-}
+//   actions.copyLastWeek()  fills the empty slots from last week
+//   onOpenPopout(recipe, from?)  opens the shared recipe pop-out
+//   onRequestPlan(recipe)        opens the shared slot picker
+//   onOpenRecipeCard(recipeId)   "Cook": the recipe's card on the Recipes page
 
 export function Planner({
   user,
   recipes,
   entries,
-  upcomingEntries,
   weekStart,
   onChangeWeek,
   weekend,
@@ -68,7 +59,10 @@ export function Planner({
   onInitialMainConsumed,
   editingNoteId,
   actions,
-  onOpenRecipe,
+  onOpenPopout,
+  popoutId,
+  onRequestPlan,
+  onOpenRecipeCard,
   onOpenGrocery,
   customStaples,
   excludedStaples,
@@ -80,18 +74,35 @@ export function Planner({
   const boardRef = useRef(null);
 
   const mainRecipe = finder.mainId ? recipes.find((r) => r.id === finder.mainId) || null : null;
-  const layout = useMemo(() => weekendLayout(weekend), [weekend]);
 
-  // "Plan around this" on a recipe card, and Home's "Add a recipe", arrive here
-  // with a Main meal or a target slot already chosen.
+  // Home's "Add a recipe" arrives here with a target slot already chosen.
+  useEffect(() => {
+    if (target && !phone) finder.focusSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "Similar recipes" (from any pop-out) and "Plan around this" on a recipe card
+  // arrive with a Main meal to open the finder on.
   useEffect(() => {
     if (initialMainId) {
       finder.setMainMeal(initialMainId);
       onInitialMainConsumed?.();
     }
-    if (target && !phone) finder.focusSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialMainId]);
+
+  // How many meals last week has: "Copy last week" is off when it is empty.
+  const [lastWeekCount, setLastWeekCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .listPlanner(shiftWeek(weekStart, -1))
+      .then((rows) => !cancelled && setLastWeekCount(rows.length))
+      .catch(() => !cancelled && setLastWeekCount(0));
+    return () => {
+      cancelled = true;
+    };
+  }, [weekStart, entries]);
 
   // Leftovers only make sense while there is a Main meal.
   useEffect(() => {
@@ -100,18 +111,16 @@ export function Planner({
 
   // One overlay at a time: the recipe pop-out opening closes the others.
   useEffect(() => {
-    if (finder.popoutId) setOverlay(null);
-  }, [finder.popoutId]);
+    if (popoutId) setOverlay(null);
+  }, [popoutId]);
 
   // The meals from today on: what the finder's ranking counts as already planned.
   const upcomingPlanner = useMemo(
     () => entries.filter((e) => weekStart !== currentWeekStart() || e.dayOfWeek >= todayIndex()),
     [entries, weekStart]
   );
-  const plannedEntries = useMemo(() => [...entries, ...upcomingEntries], [entries, upcomingEntries]);
 
   function open(next) {
-    finder.setPopoutId(null);
     setOverlay(next);
   }
   const close = () => setOverlay(null);
@@ -124,17 +133,17 @@ export function Planner({
     return isCustomNote(entry) ? entry.recipe.title : t("planner.blankName");
   }
 
-  // The finder's "Plan" (in the pop-out): the target slot, else the next empty one.
+  // Puts a recipe in the target slot, else the next empty one (a phone's + works this way).
   async function plan(recipe) {
     const slot = await actions.placeRecipe(recipe);
     if (!slot) actions.toast(t("app.slotsFull"));
   }
 
-  // The finder's "+": into the target slot when there is one, else the slot
+  // A computer's +: into the target slot when there is one, else the shared slot
   // picker, to choose where.
   function add(recipe) {
     if (target) plan(recipe);
-    else open({ type: "picker", recipe });
+    else onRequestPlan(recipe);
   }
 
   async function placeLeftover(slot) {
@@ -150,7 +159,7 @@ export function Planner({
   }
 
   function handleNoteClick(entry, el, mealIndex) {
-    open({ type: "slot", slot: { dayOfWeek: entry.dayOfWeek, mealType: entry.mealType }, el, mealIndex, note: entry.recipe.title });
+    open({ type: "slot", slot: { dayOfWeek: entry.dayOfWeek, mealType: entry.mealType }, el, mealIndex, note: entry.recipe.title, entryId: entry.id });
   }
 
   function handleCardClick(entry, el, mealIndex) {
@@ -178,18 +187,15 @@ export function Planner({
       inventoryLayout={inventoryLayout}
       haveCores={haveCores}
       upcomingEntries={upcomingPlanner}
-      plannedEntries={plannedEntries}
-      grocery={grocery}
       layout={layoutName}
       draggable={layoutName === "panel"}
       target={target}
       targetLabel={target ? slotLabel(target) : ""}
       targetNotice={replacing ? t("finder.replaces", { title: replacing }) : null}
       onClearTarget={() => onTargetChange(null)}
-      planLabel={target ? t("tray.addTo", { slot: slotLabel(target) }) : t("finder.addNext")}
-      onPlan={plan}
       onAdd={layoutName === "panel" ? add : plan}
-      onOpenFull={onOpenRecipe}
+      onOpenPopout={onOpenPopout}
+      openId={popoutId}
       leftovers={leftovers}
     />
   );
@@ -206,7 +212,7 @@ export function Planner({
         weekend={weekend}
         target={target}
         onSelectSlot={onTargetChange}
-        onOpenRecipe={(recipe) => finder.setPopoutId(recipe.id)}
+        onOpenRecipe={(recipe) => onOpenPopout(recipe)}
         onRemove={actions.removeEntry}
         onCycleState={actions.cycleState}
         editingNoteId={editingNoteId}
@@ -244,7 +250,7 @@ export function Planner({
           onTargetChange(null);
           close();
         }}
-        hasEntries={entries.length > 0}
+        lastWeekCount={lastWeekCount}
         onCopyLastWeek={actions.copyLastWeek}
       />
       <PlannerBoard
@@ -261,9 +267,6 @@ export function Planner({
         onEmptyClick={handleEmptyClick}
         onWeekendMenu={() => open(overlay?.type === "weekend" ? null : { type: "weekend" })}
         overlay={overlay?.type === "weekend" ? <WeekendMenu weekend={weekend} onChange={onWeekendChange} onClose={close} /> : null}
-        legendExtra={
-          <GroceryButton entries={entries} customStaples={customStaples} excludedStaples={excludedStaples} onOpenGrocery={onOpenGrocery} />
-        }
       />
       <HintStrip userId={user.id} screenKey="planner-v6" items={hintLines} />
       <section className="riso-planner-finder" aria-label={t("finder.panelAria")}>
@@ -294,6 +297,11 @@ export function Planner({
             close();
             await actions.markBlank(slot);
           }}
+          onRemoveNote={async () => {
+            const { entryId } = overlay;
+            close();
+            await actions.removeEntry(entryId);
+          }}
           onClose={close}
         />
       )}
@@ -309,7 +317,7 @@ export function Planner({
           onCook={() => {
             const { recipe } = overlay.entry;
             close();
-            onOpenRecipe(recipe, null, true);
+            onOpenRecipeCard(recipe.id);
           }}
           onBase={() => {
             const { recipe } = overlay.entry;
@@ -322,21 +330,6 @@ export function Planner({
             close();
             onTargetChange(slot);
             finder.focusSearch();
-          }}
-          onClose={close}
-        />
-      )}
-      {overlay?.type === "picker" && (
-        <SlotPicker
-          recipe={overlay.recipe}
-          entries={entries}
-          weekStart={weekStart}
-          layout={layout}
-          initialSlot={findNextEmptySlot(entries, weekStart) || upcomingSlots(weekStart)[0]}
-          onConfirm={async (slot) => {
-            const { recipe } = overlay;
-            close();
-            await actions.placeRecipe(recipe, slot);
           }}
           onClose={close}
         />
