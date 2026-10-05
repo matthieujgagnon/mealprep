@@ -71,6 +71,13 @@ export function formatWeekRangeLabel(weekStart, { year = true } = {}) {
   return t(sameMonth ? "dates.rangeSameMonth" : "dates.rangeTwoMonths", vars);
 }
 
+// The week the way the Planner says it everywhere (the week pill, the week
+// calendar, the slot picker): "Oct 5 – 11", "Sep 28 – Oct 4" / "5 – 11 oct.",
+// "28 sept. – 4 oct.". Always this one helper, so the dates read the same.
+export function formatWeekLabel(weekStart) {
+  return formatWeekRangeLabel(weekStart, { year: false });
+}
+
 // "Monday, Sep 28" / "Lundi 28 sept."
 export function formatWeekdayMonthDay(date) {
   const d = dict();

@@ -3,38 +3,6 @@ import { Switch } from "./RisoControls.jsx";
 import { WEEKEND_PRESETS, presetIsOn } from "../lib/weekend.js";
 import { dict, t } from "../i18n/index.js";
 
-// The little message at the bottom of the Planner after something is put on the
-// plan, taken off, or placed as leftovers: a dark pill that goes by itself
-// after five seconds, with Undo when the change can be taken back.
-export function PlannerToast({ toast, onClose }) {
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = setTimeout(onClose, 5000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast?.id]);
-
-  if (!toast) return null;
-  return (
-    <div className="riso-planner-toast" role="status">
-      <span>{toast.message}</span>
-      {toast.undo && (
-        <button
-          type="button"
-          className="riso-planner-toast-undo"
-          onClick={() => {
-            const undo = toast.undo;
-            onClose();
-            undo();
-          }}
-        >
-          {t("common.undo")}
-        </button>
-      )}
-    </div>
-  );
-}
-
 // The weekend menu under the "WEEKEND ▾" tag: a switch to show the weekend, any
 // days in any order, a switch for the evening before, and three presets. Every
 // change is saved at once (for the account). A click outside, or Escape,

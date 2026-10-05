@@ -4,6 +4,8 @@ import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek, toDateKey } fro
 import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
 import { applyChecks } from "../lib/groceryChecks.js";
 import { findRecipesByIngredients, findSaleDeal } from "../lib/similarRecipes.js";
+import { isMakeableMeal } from "../lib/mealSlots.js";
+import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
@@ -104,6 +106,7 @@ export function Home({
   pantryInventory,
   onNavigate,
   onSelectRecipe,
+  onOpenRecipeCard,
   onFindRecipes,
   onFindProtein,
   onOpenFlyerDeal,
@@ -188,8 +191,11 @@ export function Home({
 
   const combinedHave = buildCombinedHave(pantryInventory, customStaples);
   const makeableResults = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes, recipes.length) : [];
-  const readyNow = makeableResults.filter((m) => m.missingIngredients.length === 0);
-  const nearly = makeableResults.filter((m) => m.missingIngredients.length > 0 && m.missingIngredients.length <= 2);
+  // The same Makeable now rule and setting as Recipes and Makeable: meals only.
+  const [includeSides] = useIncludeSides();
+  const countable = makeableResults.filter((m) => isMakeableMeal(m.recipe, includeSides));
+  const readyNow = countable.filter((m) => m.missingIngredients.length === 0);
+  const nearly = countable.filter((m) => m.missingIngredients.length > 0 && m.missingIngredients.length <= 2);
   // Makeable now is optional: with nothing ready and nothing one or two
   // items away it steps aside, and Proteins on sale takes its place.
   const showMakeable = readyNow.length > 0 || nearly.length > 0;
@@ -337,7 +343,7 @@ export function Home({
                   <button
                     type="button"
                     className="riso-btn hot"
-                    onClick={() => onSelectRecipe(tonightEntry.recipe, null, true)}
+                    onClick={() => onOpenRecipeCard(tonightEntry.recipe.id)}
                   >
                     {t("home.startCooking")}
                   </button>
@@ -457,7 +463,7 @@ export function Home({
                         type="button"
                         className={`riso-home-week-meal${current}`}
                         title={`${m.label}: ${title}`}
-                        onClick={() => onSelectRecipe(entry.recipe)}
+                        onClick={(e) => onSelectRecipe(entry.recipe, e.currentTarget.getBoundingClientRect())}
                       >
                         <i>{m.short}</i>
                         <span>{title}</span>
@@ -515,7 +521,7 @@ export function Home({
                   key={d}
                   type="button"
                   className={`riso-home-week-day${state}`}
-                  onClick={() => onSelectRecipe(entry.recipe)}
+                  onClick={(e) => onSelectRecipe(entry.recipe, e.currentTarget.getBoundingClientRect())}
                 >
                   {entry.recipe.photoUrl ? (
                     <img src={entry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-home-week-day-photo" />

@@ -6,7 +6,7 @@ import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
-import { InventoryItemForm, InventoryToast } from "./InventoryItemForm.jsx";
+import { InventoryItemForm } from "./InventoryItemForm.jsx";
 import { HintStrip } from "./RisoControls.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { t } from "../i18n/index.js";
@@ -761,6 +761,7 @@ export function Inventory({
   onAddLocation,
   onRenameLocation,
   onDeleteLocation,
+  onToast,
 }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [activeItemId, setActiveItemId] = useState(null);
@@ -770,15 +771,7 @@ export function Inventory({
   const [addLocation, setAddLocation] = useState("fridge");
   const [showScan, setShowScan] = useState(false);
   const isPhone = useIsPhone();
-  // The small yellow message after adding, saving or finishing an item.
-  const [toast, setToast] = useState(null);
-  const toastTimer = useRef(0);
-  function showToast(message) {
-    setToast(message);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
-  }
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  const showToast = onToast;
   // The shelf chips are pinned at the top while you scroll (under the header on
   // a phone): tapping one scrolls to its shelf, and the chip of the shelf you're
   // looking at is the lit one. The same on a phone and on a computer.
@@ -1121,7 +1114,6 @@ export function Inventory({
           isPhone={isPhone}
         />
       )}
-      <InventoryToast message={toast} />
       {showScan && (
         <Modal title={t("inventory.scanReceipt")} onClose={() => setShowScan(false)}>
           <ReceiptScanPanel onRequestInventoryAdd={onRequestInventoryAdd} onDone={() => setShowScan(false)} />

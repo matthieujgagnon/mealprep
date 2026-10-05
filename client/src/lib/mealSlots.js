@@ -54,6 +54,23 @@ export function inMealGroup(recipe, groupId) {
   return MEAL_GROUPS[groupId]?.includes(recipeSlot(recipe)) ?? false;
 }
 
+// "Makeable now" counts meals only. A recipe typed as a side, snack, dessert
+// or pantry / prep (sauces live there) is left out, unless "Include pantry and
+// sides" is on. A recipe with no type yet counts like a meal. This is the one
+// rule every count and filter uses (Recipes, Home, Makeable, the finder).
+export const NON_MEAL_SLOTS = ["side", "snack", "dessert", "prep"];
+
+export function isMakeableMeal(recipe, includeSides = false) {
+  return includeSides || !NON_MEAL_SLOTS.includes(recipeSlot(recipe));
+}
+
+// Whether the rule applies at all: not when "Include pantry and sides" is on,
+// and not when the person has narrowed to one of the left-out types themselves
+// (the Sides chip, the Meal menu on Dessert): that choice is explicit.
+export function makeableRuleOn(includeSides, narrowedToSlot = null) {
+  return !includeSides && !NON_MEAL_SLOTS.includes(narrowedToSlot);
+}
+
 export function slotHint(slotId) {
   if (slotId === "prep") return t("recipeSlots.hintPrep");
   if (slotId === "snack") return t("recipeSlots.hintSnack");

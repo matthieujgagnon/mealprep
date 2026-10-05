@@ -30,6 +30,7 @@ async function addRecipeAndStartCooking(page, { title, servings, ingredientName,
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
   await page.getByText(title, { exact: true }).click();
+  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Start cooking" }).click();
   await page.waitForTimeout(300);
@@ -239,6 +240,7 @@ test("an hour-long timer reads in hours, and a long step with all its ingredient
     await page.goto("/");
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
     await page.getByText("Long Braise", { exact: true }).click();
+    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "Start cooking" }).click();
 
     await expect(page.locator(".cm-timer-time")).toHaveText("1:30:00");

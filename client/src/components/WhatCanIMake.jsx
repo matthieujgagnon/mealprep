@@ -3,11 +3,12 @@ import { core, findDealsFor, findRecipesByIngredients, findSaleDeal } from "../l
 import { useDeals } from "../lib/dealsStore.js";
 import { SaleTag } from "./SaleTag.jsx";
 import { daysUntil } from "../lib/pantryInventory.js";
-import { Switch, HintStrip } from "./RisoControls.jsx";
+import { Switch, HintStrip, IncludeSidesToggle } from "./RisoControls.jsx";
+import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, findNextEmptySlot, todayIndex } from "../lib/plannerSlots.js";
 import { formatDayLabel, isCurrentWeek } from "../lib/dates.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
-import { MEAL_GROUPS, inMealGroup } from "../lib/mealSlots.js";
+import { MEAL_GROUPS, inMealGroup, isMakeableMeal, makeableRuleOn } from "../lib/mealSlots.js";
 import { MAKEABLE_SORTS, sortMakeable } from "../lib/makeableOrder.js";
 import { matchesSearch } from "../lib/recipeSearch.js";
 import { t, tx } from "../i18n/index.js";
@@ -253,6 +254,7 @@ export function WhatCanIMake({
   recipes,
   plannerEntries,
   onSelectRecipe,
+  onOpenRecipeCard,
   pantryInventory,
   customStaples,
   weekStart,
@@ -267,6 +269,7 @@ export function WhatCanIMake({
     onRemove: onRemoveFromGroceryList,
   };
   const [useInventory, setUseInventory] = useState(true);
+  const [includeSides, setIncludeSides] = useIncludeSides();
   // The order is the Sort control and nothing else (see makeableOrder.js).
   const [sort, setSort] = useState("useItUp");
   const [mealType, setMealType] = useState("all"); // "all" or a key of MEAL_GROUPS
@@ -339,12 +342,20 @@ export function WhatCanIMake({
     atRiskUsed: m.matchedIngredients.filter((n) => expiringCores.has(core(n))),
   }));
 
+  // Makeable now counts meals only (isMakeableMeal) unless pantry and sides are
+  // included; picking the Sides, Desserts or Snacks chip is asking for them.
+  const NON_MEAL_CHIP_SLOT = { sides: "side", desserts: "dessert", snacks: "snack" };
+  const ruleOn = makeableRuleOn(includeSides, NON_MEAL_CHIP_SLOT[mealType]);
+  const mealsOnly = withAtRisk.filter((m) => isMakeableMeal(m.recipe, includeSides));
   const mealTypeCounts = Object.fromEntries(
     Object.keys(MEAL_GROUPS).map((id) => [id, withAtRisk.filter((m) => inMealGroup(m.recipe, id)).length])
   );
   const searched = query.trim();
   const shown = withAtRisk.filter(
-    (m) => (mealType === "all" || inMealGroup(m.recipe, mealType)) && (!searched || matchesSearch(m.recipe, searched))
+    (m) =>
+      (!ruleOn || isMakeableMeal(m.recipe)) &&
+      (mealType === "all" || inMealGroup(m.recipe, mealType)) &&
+      (!searched || matchesSearch(m.recipe, searched))
   );
 
   const readyNow = sortMakeable(shown.filter((m) => m.missingIngredients.length === 0), sort);
@@ -460,9 +471,10 @@ export function WhatCanIMake({
                 onClick={() => setMealType(id)}
               >
                 {t(`makeable.types.${id}`)}
-                <span className="riso-filter-chip-count">{id === "all" ? withAtRisk.length : mealTypeCounts[id]}</span>
+                <span className="riso-filter-chip-count">{id === "all" ? mealsOnly.length : mealTypeCounts[id]}</span>
               </button>
             ))}
+            <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />
             <div className="riso-recipes-sort-group">
               <span className="riso-recipes-sort-label">{t("recipes.sort")}</span>
               <label className="riso-recipes-sort-btn">
@@ -500,7 +512,7 @@ export function WhatCanIMake({
                   missingIngredients={missingIngredients}
                   atRiskUsed={atRiskUsed}
                   onOpen={() => onSelectRecipe(recipe)}
-                  onCookTonight={() => onSelectRecipe(recipe, null, true)}
+                  onCookTonight={() => onOpenRecipeCard(recipe.id)}
                   planFor={planState}
                   pickerProps={pickerProps}
                   groceryProps={groceryProps}

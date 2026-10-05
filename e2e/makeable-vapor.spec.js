@@ -64,7 +64,7 @@ test("a fully-matched recipe lands in Ready now, and a partially-matched one in 
   await expect(shortCard.locator(".riso-makeable-need-list")).toContainText("Celery");
 });
 
-test("Cook tonight opens the recipe straight into cook mode", async ({ page }) => {
+test("Cook tonight opens the recipe's card on the Recipes page", async ({ page }) => {
   await signUp(page, uniqueEmail("makeable-cook"));
   await addRecipe(page, "Riso Cook Tonight Dish", ["salmon"]);
 
@@ -77,7 +77,9 @@ test("Cook tonight opens the recipe straight into cook mode", async ({ page }) =
     .locator(".riso-makeable-card", { hasText: "Riso Cook Tonight Dish" })
     .getByRole("button", { name: "Cook tonight", exact: true })
     .click();
-  await expect(page.locator(".cm-overlay, .cm-screen").first()).toBeVisible();
+  await expect(page.locator(".tab.active")).toHaveText("Recipes");
+  await expect(page.locator(".riso-rc-actions")).toBeVisible();
+  await expect(page.locator(".cm-overlay, .cm-screen")).toHaveCount(0);
 });
 
 test("the You need box adds one item or all of them, once each", async ({ page }) => {

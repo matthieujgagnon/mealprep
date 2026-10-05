@@ -80,7 +80,7 @@ const QUICK = ["q1", "q2", "q3", "q4"];
 
 // The empty slot's card. `note` is the existing note's text when a note slot
 // was clicked (the card opens on the Note tile with it filled in).
-export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSaveNote, onBlank, onClose }) {
+export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSaveNote, onBlank, onRemoveNote, onClose }) {
   const [mode, setMode] = useState(note != null ? "note" : null); // null | "note" | "blank"
   const [text, setText] = useState(note || "");
   const { ref, style } = useBesideSlot({ anchor, board, mealIndex }, [mode]);
@@ -152,6 +152,11 @@ export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSav
           <button type="button" className={`riso-slotcard-save${canSave ? " ready" : ""}`} disabled={!canSave} onClick={save}>
             {t("planner.saveNote")}
           </button>
+          {note != null && (
+            <button type="button" className="riso-slotcard-remove" onClick={onRemoveNote}>
+              {t("planner.removeNote")}
+            </button>
+          )}
         </div>
       )}
 

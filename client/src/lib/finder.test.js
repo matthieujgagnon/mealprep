@@ -129,6 +129,17 @@ describe("findRecipes", () => {
     expect(few.counts).toEqual(all.counts);
   });
 
+  it("Ready follows the Makeable now rule: meals only, until pantry and sides are included", () => {
+    const side = (id, slot) => ({ recipe: { id, mealSlot: slot, ingredients: [] }, stats: { totalCount: 2, missingCount: 0, matchedCount: 2 }, cores: [] });
+    const ranked = [side("soup", "dinner"), side("untyped", null), side("rice", "side"), side("cake", "dessert")];
+    const ready = (filters) => findRecipes(ranked, { avail: "ready", ...filters }, new Set());
+    expect(ready({}).tiles.map((x) => x.recipe.id).sort()).toEqual(["soup", "untyped"]);
+    expect(ready({}).counts.ready).toBe(2);
+    expect(ready({ includeSides: true }).counts.ready).toBe(4);
+    // Narrowing to Dessert yourself is asking for them.
+    expect(ready({ meal: "dessert" }).tiles.map((x) => x.recipe.id)).toEqual(["cake"]);
+  });
+
   it("Expiring soon keeps the recipes that use food going off", () => {
     const { ranked, expiringCores } = rank();
     const { tiles } = findRecipes(ranked, { avail: "all", expiring: true }, new Set(expiringCores));

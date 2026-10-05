@@ -610,6 +610,7 @@ test("a recipe's sale pill is only for a real sale and opens the deal; on hand n
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByText("Mango chicken", { exact: true }).click();
+  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   const row = (name) => page.locator(".riso-rc-ingredient").filter({ hasText: name });
   // Chicken breasts in the fridge aren't chicken thighs.
   await expect(row("chicken thighs").locator(".riso-rc-ingredient-dot")).not.toHaveClass(/have/);

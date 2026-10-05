@@ -38,3 +38,10 @@ export function staleOverrideKeys(plannerEntries, overrides = []) {
   const planned = new Set(buildGroceryList(plannerEntries, [], {}, [], [], []).map((item) => item.key));
   return overrides.filter((o) => !o.key.startsWith("extra-") && !planned.has(o.key)).map((o) => o.key);
 }
+
+// How many things placing this meal adds to the grocery list: its ingredients
+// that are not pantry staples and not already on the list (`onList`, from
+// coresOnGroceryList). A leftover or an "already have" meal adds nothing.
+export function newGroceryItemCount(entry, onList, customStaples = [], excludedStaples = []) {
+  return buildGroceryList([entry], customStaples, {}, excludedStaples).filter((item) => !item.isStaple && !onList.has(item.core)).length;
+}

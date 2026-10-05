@@ -30,6 +30,10 @@ When you add or change a way of adding to Inventory, update the Help text for Gr
 Inventory in both languages (`client/src/i18n/en.js` and `fr.js`, and the button copies in
 `client/src/lib/helpCopies.js`).
 
+## Reuse what exists
+
+Before building any new piece of UI, check [docs/components.md](docs/components.md) and reuse or extend what is there. Never build a second version of something that exists: one recipe pop-out, one slot picker, one toast, one week calendar, one "Makeable now" rule, one `openRecipeCard`, one set of Riso pills. If a shared piece almost fits, extend it and update its entry in `docs/components.md` in the same change.
+
 ## Language
 
 All user-facing text goes in both `client/src/i18n/en.js` and `fr.js` (Quebec French). A test

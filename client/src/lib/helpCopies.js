@@ -75,7 +75,7 @@ export const HELP_COPIES = {
   // Planner
   weekPrev: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "‹" },
   weekNext: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "›" },
-  copyLastWeek: { kind: "pill", cls: "riso-chip small", label: "planner.copyLastWeek" },
+  copyLastWeek: { kind: "pill", cls: "riso-pill size-chip", label: "planner.copyLastWeek" },
   weekPill: { kind: "pill", cls: "riso-planner-weekpill", label: "planner.thisWeek" },
   makeList: { kind: "pill", cls: "riso-planner-grocery", label: "planner.makeList", vars: { count: 3 }, strong: true },
   weekendTag: { kind: "pill", cls: "riso-help-copy-weekend", label: "planner.weekendTag" },
@@ -89,6 +89,8 @@ export const HELP_COPIES = {
   finderQuick: { kind: "pill", cls: "riso-pill size-chip", label: "finder.quick" },
   finderAddIngredient: { kind: "pill", cls: "fnd-add-ing", label: "finder.addIngredient" },
   popPlan: { kind: "pill", cls: "fnd-pop-btn primary", label: "finder.plan", strong: true },
+  popCook: { kind: "pill", cls: "fnd-pop-btn", label: "planner.cook" },
+  removeNote: { kind: "pill", cls: "riso-slotcard-remove", label: "planner.removeNote" },
   popSimilar: { kind: "pill", cls: "fnd-pop-btn", label: "finder.similar" },
   popOpenFull: { kind: "pill", cls: "fnd-pop-btn soft", label: "finder.openFull" },
   leftoversBtn: { kind: "pill", cls: "fnd-main-btn", label: "finder.placeLeftovers" },

@@ -113,6 +113,8 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     await expect(page.locator(".rv2-grid")).toContainText("Pad thai");
 
     await page.locator(".riso-recipe-card", { hasText: "Pad thai" }).click();
+
+    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     // On the recipe page.
     await page.getByRole("button", { name: "Add to my Cookbook" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Added to your Cookbook." })).toBeVisible();
@@ -137,6 +139,7 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     await page.getByRole("button", { name: "Recettes", exact: true }).click();
     await page.locator(".riso-recipe-card", { hasText: "Pad thai" }).click();
+    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "Plus d'actions" }).click();
     await page.locator(".riso-rc-menu").getByRole("button", { name: "Ajouter à mon livre de recettes" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Ajoutée à votre livre de recettes." })).toBeVisible();
@@ -152,6 +155,7 @@ test.describe("Step timers", () => {
     await recipe(page, "Boiled eggs", { instructions: ["Boil the eggs for 5 minutes.", "Serve."] });
     await goRecipes(page);
     await page.locator(".riso-recipe-card", { hasText: "Boiled eggs" }).click();
+    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
 
     const timer = page.locator(".riso-rc-timer");
     await expect(timer.locator(".riso-rc-timer-time")).toHaveText("⏱ 5:00");
@@ -195,6 +199,7 @@ test.describe("Step timers", () => {
     await recipe(page, "Boiled eggs", { instructions: ["Boil the eggs for 5 minutes."] });
     await goRecipes(page);
     await page.locator(".riso-recipe-card", { hasText: "Boiled eggs" }).click();
+    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.locator(".riso-rc-timer").getByRole("button", { name: "▶ Start" }).click();
     await page.getByRole("button", { name: "Start cooking" }).click();
     await expect(page.locator(".cm-timer-time")).toHaveText(/4:5\d/, { timeout: 4000 });

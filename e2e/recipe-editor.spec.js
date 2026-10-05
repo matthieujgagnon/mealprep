@@ -79,6 +79,7 @@ test("editing from the recipe card: uploaded photo, save returns to the card", a
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.locator(".riso-recipe-card", { hasText: "Weeknight dal" }).click();
+  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Edit recipe" }).click();
   await expect(page.getByRole("heading", { name: "Edit recipe." })).toBeVisible();

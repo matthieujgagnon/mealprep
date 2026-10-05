@@ -134,12 +134,15 @@ test("the card's Recipe makes the slot the search panel's target, and + puts the
   expect([entries[0].dayOfWeek, entries[0].mealType]).toEqual([day, "breakfast"]);
 });
 
-test("with no slot chosen, the pop-out's Plan fills the next empty upcoming slot, supper first", async ({ page }) => {
+test("the pop-out's Plan comes first and opens the slot picker, on the next empty slot, supper first", async ({ page }) => {
   await setup(page, [{ title: "Next Slot Stew" }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
   await page.locator(".fnd-card-open", { hasText: "Next Slot Stew" }).click();
-  await page.getByRole("button", { name: "Add to the next empty slot" }).click();
+  const buttons = page.getByRole("dialog", { name: "Next Slot Stew" }).locator(".fnd-pop-actions button");
+  await expect(buttons.first()).toHaveText("Plan");
+  await buttons.first().click();
+  await page.getByRole("dialog", { name: "Pick a slot" }).getByRole("button", { name: /^Add to / }).click();
   await expect(page.locator(".riso-planner-card-name", { hasText: "Next Slot Stew" })).toBeVisible();
 
   const entries = await weekEntries(page);
@@ -178,7 +181,7 @@ test("with no slot chosen, + opens the slot picker; a free slot is confirmed the
   expect(entries.find((e) => e.recipe.title === "Picker Pie")).toMatchObject({ dayOfWeek: day, mealType: "breakfast" });
 });
 
-test("the card's Note tab saves typed text; a note is edited in the same card and removed with its ×", async ({ page }) => {
+test("the card's Note tab saves typed text; a note is edited in the same card and removed with Remove note", async ({ page }) => {
   await setup(page, [{ title: "Unused" }]);
   await openPlanner(page);
 
@@ -209,8 +212,10 @@ test("the card's Note tab saves typed text; a note is edited in the same card an
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await expect(target.locator(".riso-planner-note-text")).toHaveText("Work breakfast");
 
-  // The note's × takes it off the plan.
-  await target.getByRole("button", { name: /^Remove/ }).click();
+  // A note has no ×; its card has Remove note, and the toast has Undo.
+  await expect(target.getByRole("button", { name: /^Remove/ })).toHaveCount(0);
+  await target.locator(".riso-planner-note").click();
+  await page.getByRole("button", { name: "Remove note" }).click();
   await expect(target.locator(".riso-planner-cell-empty")).toBeVisible();
   await expect.poll(async () => (await weekEntries(page)).length).toBe(0);
 });
@@ -423,15 +428,16 @@ test("clicking a filled slot opens its planned-meal card; only the × removes th
   expect(await weekEntries(page)).toHaveLength(1);
 });
 
-test("the planned-meal card's Cook opens the recipe in Cook mode", async ({ page }) => {
+test("the planned-meal card's Cook opens the recipe's card on the Recipes page", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Cook Me", instructions: ["Step one.", "Step two."] }]);
   const day = visibleDay();
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
   await openPlanner(page);
   await cell(page, day, "dinner").locator(".riso-planner-card").click();
   await page.getByRole("dialog", { name: "Cook Me" }).getByRole("button", { name: "Cook", exact: true }).click();
-  await expect(page.locator(".cm-topbar")).toBeVisible();
-  await expect(page.locator(".cm-recipe-title")).toHaveText("Cook Me");
+  await expect(page.locator(".tab.active")).toHaveText("Recipes");
+  await expect(page.locator(".riso-rc-actions")).toBeVisible();
+  await expect(page.locator(".cm-topbar")).toHaveCount(0);
 });
 
 test("Replace this recipe targets that slot with a Replaces notice; the new meal replaces it, and Undo puts the old one back", async ({ page }) => {
@@ -687,35 +693,55 @@ test("on a phone, a meal card with an emoji is the same size as a recipe card wi
   await page.screenshot({ path: test.info().outputPath("planner-phone-emoji-card.png") });
 });
 
-test("the week arrows, the week pill with its month calendar, Copy last week and Make the grocery list are all there", async ({ page }) => {
-  const [recipe] = await setup(page, [{ title: "Copy Me", ingredients: [{ name: "zucchini" }] }]);
+test("the week picker is at the left; Copy last week fills only empty slots, with Undo; there is no grocery button", async ({ page }) => {
+  const [recipe, other] = await setup(page, [{ title: "Copy Me", ingredients: [{ name: "zucchini" }] }, { title: "Already There" }]);
   const lastWeek = mondayOf(new Date(Date.now() - 7 * 86400000));
+  const thisWeek = mondayOf(new Date());
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 0, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 1, mealType: "dinner" } });
+  // This week already has something in Tuesday's supper: it must not be replaced.
+  await page.request.post("/api/planner", { data: { recipeId: other.id, weekStart: thisWeek, dayOfWeek: 1, mealType: "dinner" } });
   await openPlanner(page);
 
-  // The week pill opens a month calendar; picking a day in it goes to that week.
-  await expect(page.getByRole("button", { name: /^this week/ })).toBeVisible();
-  await page.getByRole("button", { name: /^this week/ }).click();
+  // The picker sits at the left of the header, before the title, with the dates on the pill.
+  const header = page.locator(".riso-planner-header");
+  const pill = header.locator(".riso-planner-weekpill");
+  const pillBox = await pill.boundingBox();
+  const titleBox = await header.locator(".riso-planner-title").boundingBox();
+  expect(pillBox.x).toBeLessThan(titleBox.x);
+  await expect(pill).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – (?:[A-Z][a-z]{2} )?\d{1,2}/);
+
+  // The pill opens the week calendar: three meal bars a day, today pink, and a tooltip with the meals.
+  await pill.click();
   const calendar = page.getByRole("dialog", { name: "Choose a week" });
   await expect(calendar).toBeVisible();
   await expect(calendar.locator(".rpm-cal-day.today")).toHaveCount(1);
+  await expect(calendar.locator(".rpm-cal-day.today .rpm-cal-bars span")).toHaveCount(3);
+  await calendar.locator(".rpm-cal-day", { has: page.locator(".rpm-cal-tip") }).first().hover();
+  await expect(calendar.locator(".rpm-cal-tip").first()).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(calendar).toHaveCount(0);
 
+  // Copy last week is always there; it fills the empty slot only, and says how many.
+  await page.getByRole("button", { name: "Copy last week" }).click();
+  const toast = page.getByRole("status").filter({ hasText: "Copied 1 meal from last week" });
+  await expect(toast).toBeVisible();
+  await expect(cell(page, 0, "dinner").locator(".riso-planner-card-name")).toHaveText("Copy Me");
+  await expect(cell(page, 1, "dinner").locator(".riso-planner-card-name")).toHaveText("Already There");
+  expect(await weekEntries(page)).toHaveLength(2);
+  await toast.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(async () => (await weekEntries(page)).length).toBe(1);
+  await expect(cell(page, 1, "dinner").locator(".riso-planner-card-name")).toHaveText("Already There");
+
+  // With nothing to copy from, it is off and says why.
   await page.getByRole("button", { name: "Previous week" }).click();
-  await expect(page.locator(".riso-planner-card-name", { hasText: "Copy Me" })).toBeVisible();
-  await page.getByRole("button", { name: "This week", exact: true }).click();
+  await page.getByRole("button", { name: "Previous week" }).click();
+  const copy = page.getByRole("button", { name: "Copy last week" });
+  await expect(copy).toBeDisabled();
+  await expect(page.locator(".riso-planner-copy-note")).toHaveText("Last week is empty");
 
-  // An empty week offers last week's plan.
-  await page.getByRole("button", { name: "Copy last week's plan" }).click();
-  await expect(page.locator(".riso-planner-card-name", { hasText: "Copy Me" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copy last week's plan" })).toHaveCount(0);
-
-  // Make the grocery list shows what is left to buy and opens Grocery.
-  const button = page.getByRole("button", { name: /^Make the grocery list/ });
-  await expect(button).toHaveText("Make the grocery list · 1");
-  await button.click();
-  await expect(page.locator(".tab.active")).toHaveText("Grocery");
+  // The desktop board has no "Make the grocery list" button.
+  await expect(page.getByRole("button", { name: /^Make the grocery list/ })).toHaveCount(0);
 });
 
 test("the Meal and Protein menus open like the Recipes page menus and filter the results", async ({ page }) => {

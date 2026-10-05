@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildGroceryList, formatAmount, recipesLine } from "./groceryList.js";
-import { staleOverrideKeys } from "./groceryDedupe.js";
+import { coresOnGroceryList, newGroceryItemCount, staleOverrideKeys } from "./groceryDedupe.js";
 
 const entry = (ingredients, extra = {}) => ({
   recipe: { title: "Test dish", baseServings: 4, ingredients },
@@ -104,5 +104,20 @@ describe("recipesLine: the recipes an item is for", () => {
 
   it("counts a recipe once, however many times the item came from it", () => {
     expect(recipesLine(["Tacos", "Tacos", "Chili"])).toMatchObject({ names: "Tacos, Chili", more: 0 });
+  });
+});
+
+describe("newGroceryItemCount", () => {
+  const dish = entry([{ name: "lemon", quantity: 1 }, { name: "chicken thighs", quantity: 500, unit: "g" }, { name: "salt" }]);
+
+  it("counts what a meal adds, leaving out staples and what is already listed", () => {
+    expect(newGroceryItemCount(dish, new Set())).toBe(2);
+    const onList = coresOnGroceryList([entry([{ name: "lemon", quantity: 2 }])], []);
+    expect(newGroceryItemCount(dish, onList)).toBe(1);
+  });
+
+  it("adds nothing for leftovers or food you already have", () => {
+    expect(newGroceryItemCount({ ...dish, isLeftover: true }, new Set())).toBe(0);
+    expect(newGroceryItemCount({ ...dish, alreadyHave: true }, new Set())).toBe(0);
   });
 });
