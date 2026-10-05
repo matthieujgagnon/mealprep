@@ -149,6 +149,12 @@ test("this week's suppers: only today has the pink shadow, other planned days a 
     expect(sh).not.toContain("rgb(255, 72, 176)");
     expect(sh).not.toBe("none");
   }
+  // Today's card is filled like the other planned days; only its day label is off-white.
+  const fill = (loc) => loc.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await fill(todayCell)).toBe(await fill(others.first()));
+  const tag = (loc) => loc.locator(".riso-home-week-day-label").evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await tag(todayCell)).toBe("rgb(255, 253, 248)");
+  expect(await tag(others.first())).toBe("rgba(0, 0, 0, 0)");
   const none = strip.locator(".riso-home-week-day.past, .riso-home-week-day.empty:not(.today)");
   for (let i = 0; i < (await none.count()); i++) expect(await shadow(none.nth(i))).toBe("none");
 });

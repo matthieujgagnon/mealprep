@@ -180,8 +180,9 @@ export default function App({ user, onLogout }) {
   // Home's Proteins on sale); Flyers clears it once it has taken it.
   const [flyerDealId, setFlyerDealId] = useState(null);
   const [recipeProtein, setRecipeProtein] = useState(null); // a protein id (see lib/proteins.js) or null
-  // The full-page recipe editor on the Recipes tab: { recipe } to edit one,
-  // { recipe: null } for a new one, null when closed.
+  // The recipe editor on the Recipes tab: { recipe } to edit one (full page),
+  // { recipe: null } for a new one (a pop-up over the Recipes page), null
+  // when closed.
   const [recipeEditor, setRecipeEditor] = useState(null);
   const editorDirty = useRef(false);
   const [upcomingEntries, setUpcomingEntries] = useState([]); // every planned meal from today onward, across weeks: what the grocery list is built from
@@ -1019,6 +1020,7 @@ export default function App({ user, onLogout }) {
         {tab === "collection" && recipeEditor && (
           <RecipeEditor
             key={recipeEditor.recipe?.id || "new"}
+            popup={!recipeEditor.recipe}
             recipe={recipeEditor.recipe}
             pantryInventory={pantryInventory}
             customStaples={customStaples}
@@ -1030,7 +1032,7 @@ export default function App({ user, onLogout }) {
           />
         )}
 
-        {tab === "collection" && !recipeEditor && (
+        {tab === "collection" && !recipeEditor?.recipe && (
           <Recipes
             user={user}
             recipes={recipes}

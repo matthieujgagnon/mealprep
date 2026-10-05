@@ -7889,10 +7889,6 @@ button.riso-table-group-head:disabled {
   box-shadow: var(--riso-shadow-today);
 }
 
-.riso-home-week-day.today {
-  background: var(--riso-hot);
-}
-
 /* Days gone by: greyscale photo, muted, no shadow. */
 .riso-home-week-day.past {
   background: #e9e4d8;
@@ -7947,8 +7943,29 @@ button.riso-table-group-head:disabled {
   color: var(--riso-muted);
 }
 
+/* Today's card is filled like the other days; only its day label gets the
+   off-white tag (and the pink shadow above). */
 .riso-home-week-day.today .riso-home-week-day-label {
+  align-self: flex-start;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--riso-surface);
   color: var(--riso-ink);
+}
+
+.riso-home-week-day.empty.today .riso-home-week-day-label {
+  align-self: center;
+}
+
+/* Narrow cards (a phone): a tighter tag so "AUJOURD'HUI 5" stays on one line. */
+@media (max-width: 767px) {
+  .riso-home-week-day.today .riso-home-week-day-label {
+    margin: 0 -4px;
+    padding: 2px 4px;
+    font-size: 9.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
 }
 
 .riso-home-week-day-title {
@@ -13725,6 +13742,125 @@ body.no-select {
 
   .re-savebar-spacer {
     display: none;
+  }
+}
+
+/* The recipe form as a pop-up (new recipe): a centred panel over the dimmed,
+   blurred Recipes page on a computer; a full-height sheet sliding up from
+   the bottom on a phone. Only the form scrolls; Save sits pinned inside it. */
+.re-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  box-sizing: border-box;
+  background: rgba(22, 24, 31, 0.5);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+.re-popup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 1080px;
+  max-width: 100%;
+  max-height: 100%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: 8px 8px 0 var(--riso-ink);
+}
+
+.re-popup-close {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  box-shadow: 3px 3px 0 var(--riso-ink);
+  font: 700 22px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.re-popup-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px 32px 0;
+  border-radius: 24px;
+}
+
+.re-popup-page .re-title {
+  font-size: 40px;
+}
+
+.re-popup .re-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 -32px;
+  padding: 12px 32px;
+}
+
+.re-popup .re-savebar-inner {
+  max-width: none;
+}
+
+@keyframes re-popup-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .re-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .re-popup {
+    width: 100%;
+    height: calc(100% - 12px);
+    max-height: none;
+    border-bottom: none;
+    border-radius: 28px 28px 0 0;
+    box-shadow: none;
+    animation: re-popup-up 0.25s ease-out;
+  }
+
+  .re-popup-close {
+    top: 12px;
+    right: 14px;
+  }
+
+  .re-popup-page {
+    padding: 18px 18px 0;
+    border-radius: 26px 26px 0 0;
+  }
+
+  .re-popup-page .re-title {
+    font-size: 32px;
+    padding-right: 48px;
+  }
+
+  .re-popup .re-savebar {
+    margin: 0 -18px;
+    padding: 10px 18px calc(10px + env(safe-area-inset-bottom));
   }
 }
 

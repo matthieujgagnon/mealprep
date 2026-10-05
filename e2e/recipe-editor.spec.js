@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-// The full-page recipe editor (design handoff: Riso Recipe Editor.dc.html):
-// planner slot, pasted steps and ingredient lists, uploaded photos,
+// The recipe editor (design handoff: Riso Recipe Editor.dc.html). A new recipe
+// opens as a pop-up over the Recipes page; editing one is the full page.
+// Covers planner slot, pasted steps and ingredient lists, uploaded photos,
 // re-import that only fills empty fields, and the unsaved-changes guard.
 
 async function signUp(page) {
@@ -157,4 +158,80 @@ test("photos drag to reorder, and the cover moves with its photo", async ({ page
     "https://example.com/1.jpg",
   ]);
   await expect(page.locator(".re-photo.cover")).toHaveAttribute("data-url", "https://example.com/1.jpg");
+});
+
+test("+ New recipe is a pop-up over Recipes; x, Escape and the dimmed area close it, asking first when something is typed", async ({ page }) => {
+  await signUp(page);
+  const dialog = page.getByRole("dialog", { name: "New recipe." });
+  const title = page.locator('input[placeholder="Grandma\'s lasagna"]');
+  const asked = [];
+  page.on("dialog", (d) => {
+    asked.push(d.type());
+    return keep ? d.dismiss() : d.accept();
+  });
+  let keep = true;
+
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await expect(dialog).toBeVisible();
+  // The Recipes page is still there behind it, dimmed and blurred.
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeAttached();
+  const overlay = page.locator(".re-overlay");
+  expect(await overlay.evaluate((el) => getComputedStyle(el).backdropFilter)).toContain("blur");
+
+  // Nothing typed: closes without asking, by x, Escape or the dimmed area.
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await overlay.click({ position: { x: 4, y: 4 } });
+  await expect(dialog).toHaveCount(0);
+  expect(asked).toEqual([]);
+
+  // Something typed: each way asks; keeping it loses nothing.
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await title.fill("Lost-if-careless chili");
+  await page.keyboard.press("Escape");
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await overlay.click({ position: { x: 4, y: 4 } });
+  await expect.poll(() => asked.length).toBe(3);
+  await expect(dialog).toBeVisible();
+  await expect(title).toHaveValue("Lost-if-careless chili");
+
+  // Agreeing throws it away and goes back to Recipes.
+  keep = false;
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+});
+
+test("a recipe typed in the pop-up saves and lands first in the list", async ({ page }) => {
+  await signUp(page);
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Popup pancakes");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".riso-recipe-card", { hasText: "Popup pancakes" })).toBeVisible();
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("+ New recipe is a sheet that fills the screen from the bottom, Save pinned", async ({ page }) => {
+    await signUp(page);
+    await page.getByRole("button", { name: "+ New recipe" }).click();
+    const sheet = page.getByRole("dialog", { name: "New recipe." });
+    await expect(sheet).toBeVisible();
+    await page.waitForTimeout(400); // the slide up
+    const box = await sheet.boundingBox();
+    expect(box.x).toBeLessThanOrEqual(1);
+    expect(box.width).toBeGreaterThanOrEqual(388);
+    expect(box.y + box.height).toBeGreaterThanOrEqual(843);
+    expect(box.height).toBeGreaterThan(800);
+    await expect(page.getByRole("button", { name: "Save recipe" })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(sheet).toHaveCount(0);
+  });
 });
