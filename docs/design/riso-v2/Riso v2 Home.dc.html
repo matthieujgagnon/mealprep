@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}.nos::-webkit-scrollbar{display:none}</style></helmet>
+<div ref="{{ setRoot }}" style="min-height:100vh;background:#F4F1EA;color:#16181F;font-family:Inter,system-ui,sans-serif">
+<div style="max-width:1280px;margin:0 auto;box-sizing:border-box">
+<sc-if value="{{ showHeader }}" hint-placeholder-val="{{ true }}"><dc-import name="Riso v2 Header" active="home" hint-size="100%,96px"></dc-import></sc-if>
+<div style="padding:{{ pad }};display:flex;flex-direction:column;gap:24px;box-sizing:border-box;min-width:0;max-width:100%">
+<h1 style="margin:0;font:800 {{ greetFs }}/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;overflow-wrap:anywhere">{{ greeting }}<br><span style="color:#2323FF">{{ userName }}.</span></h1>
+<div style="display:grid;grid-template-columns:{{ topCols }};gap:20px;min-width:0">
+<section style="position:relative;background:#2323FF;color:#fff;border:2px solid #16181F;border-radius:24px;box-shadow:8px 8px 0 #16181F;padding:24px;box-sizing:border-box">
+<sc-if value="{{ stickerOn }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:-14px;right:26px;transform:rotate(6deg);background:#FFE14D;color:#16181F;border:2px solid #16181F;border-radius:999px;padding:2px 12px;font:800 13px 'Bricolage Grotesque',sans-serif">{{ nothingToBuy }}</span></sc-if>
+<sc-if value="{{ isRecipe }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:20px;flex-wrap:wrap">
+<div style="width:{{ photoW }};height:{{ photoH }};border-radius:18px;border:2px solid #16181F;flex:none;box-sizing:border-box;background:repeating-linear-gradient(135deg,#E9E4D8 0 10px,#DDD6C6 10px 20px)"></div>
+<div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase">{{ tonight }}</div>
+<h2 style="margin:0;font:800 38px/1.05 'Bricolage Grotesque',sans-serif">Crispy Chicken Salad with Sriracha Honey BBQ Dressing</h2>
+<p style="margin:0;font-size:14px;line-height:1.5;color:#fff">{{ recipeBlurb }}</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+<div style="height:42px;padding:0 20px;border-radius:21px;background:#FF48B0;color:#16181F;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ startCooking }}</div>
+<div style="height:42px;padding:0 18px;border-radius:21px;border:2px solid #fff;display:flex;align-items:center;font:600 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ swap }}</div>
+<div style="height:42px;padding:0 18px;border-radius:21px;border:2px solid #fff;display:flex;align-items:center;font:600 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ eatingOut }}</div>
+</div></div></div></sc-if>
+<sc-if value="{{ isNote }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:{{ noteDir }};gap:{{ noteGap }};align-items:stretch">
+<div style="width:{{ emojiW }};min-height:{{ emojiH }};box-sizing:border-box;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid #16181F;border-radius:18px;background:#FFE14D;box-shadow:4px 4px 0 #16181F;transform:rotate(-3deg);font-size:{{ emojiFs }};line-height:1">🍟</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase">{{ tonight }}</div>
+<h2 style="margin:0;font:800 {{ noteFs }}/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Fries night</h2>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#F4F1EA;color:#16181F;border:2px solid #16181F;border-radius:999px;padding:3px 12px;white-space:nowrap;font:700 13px 'Bricolage Grotesque',sans-serif">{{ notFromRecipe }}</span><span style="border:2px solid #fff;border-radius:999px;padding:3px 12px;white-space:nowrap;font:500 13px 'Bricolage Grotesque',sans-serif">{{ nothingToPrep }}</span></div>
+<p style="margin:0;font-size:14.5px;line-height:1.5;color:#fff">{{ noteBlurb }}</p>
+<div style="flex:1"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:6px">
+<div style="height:42px;padding:0 20px;border-radius:21px;background:#FF48B0;color:#16181F;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ pickRecipe }}</div>
+<div style="height:42px;padding:0 18px;border-radius:21px;border:2px solid #fff;display:flex;align-items:center;font:600 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ changeInPlanner }}</div>
+</div></div></div></sc-if>
+<sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:10px">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase">{{ tonight }}</div>
+<p style="margin:0;font-size:15px;color:#fff">{{ emptyText }}</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+<div style="height:42px;padding:0 20px;border-radius:21px;background:#FF48B0;color:#16181F;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ addRecipe }}</div>
+<sc-if value="{{ showOut }}" hint-placeholder-val="{{ false }}"><div style="height:42px;padding:0 18px;border-radius:21px;border:2px solid #fff;display:flex;align-items:center;font:600 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ eatingOut }}</div></sc-if>
+</div></div></sc-if>
+</section>
+<section style="background:#FF48B0;border:2px solid #16181F;border-radius:24px;box-shadow:8px 8px 0 #16181F;padding:22px;display:flex;flex-direction:column;box-sizing:border-box">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase">{{ groceryList }}</div>
+<div style="display:flex;align-items:baseline;gap:8px;margin:10px 0 12px"><span style="font:800 72px/1 'Bricolage Grotesque',sans-serif">21</span><span style="font:700 15px/1.15 'Bricolage Grotesque',sans-serif;max-width:90px">{{ leftLabel }}</span></div>
+<div style="height:14px;border-radius:7px;background:#F4F1EA;border:1.5px solid #16181F;overflow:hidden;margin-bottom:8px"><div style="width:0%;height:100%;background:#16181F"></div></div>
+<p style="margin:0 0 14px;font:500 11.5px 'DM Mono',monospace">{{ cartLine }}</p>
+<div style="height:44px;border-radius:22px;background:#16181F;color:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ openList }}</div>
+</section>
+</div>
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:22px;box-sizing:border-box;min-width:0;max-width:100%">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+<h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ weekTitle }} <span style="font:400 13px Inter,sans-serif;color:#5E5B52">· {{ plannedOf }}</span></h3>
+<div style="display:flex;align-items:center;gap:8px">
+<sc-for list="{{ weekChips }}" as="c" hint-placeholder-count="2"><div onClick="{{ c.pick }}" style="padding:4px 14px;border-radius:999px;border:2px solid #16181F;background:{{ c.bg }};color:{{ c.fg }};box-shadow:{{ c.sh }};font:700 12px Inter,sans-serif;cursor:pointer;white-space:nowrap">{{ c.label }}</div></sc-for>
+<div onClick="{{ toggleAll }}" style="padding:4px 6px;font:500 12px Inter,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap">{{ allToggle }}</div>
+</div></div>
+<sc-if value="{{ showSupperStrip }}" hint-placeholder-val="{{ true }}"><div class="nos" style="display:grid;{{ stripCols }};gap:10px;min-width:0;max-width:100%;overflow-x:{{ stripOx }};padding:0 6px 6px 0;scrollbar-width:none">
+<sc-for list="{{ days }}" as="d" hint-placeholder-count="7"><div style="border:2px {{ d.bs }} #16181F;border-radius:16px;background:{{ d.bg }};color:{{ d.fg }};overflow:hidden;display:flex;flex-direction:column;align-items:{{ d.ai }};justify-content:{{ d.jc }};gap:{{ d.gap }};min-height:128px;box-sizing:border-box;box-shadow:{{ d.sh }};padding:{{ d.pad }};cursor:{{ d.cur }}">
+<sc-if value="{{ d.photo }}" hint-placeholder-val="{{ false }}"><div style="width:100%;height:74px;flex:none;border-bottom:2px solid #16181F;background:repeating-linear-gradient(135deg,#CFC8B8 0 10px,#C4BCAA 10px 20px);filter:{{ d.filter }}"></div></sc-if>
+<div style="padding:{{ d.bodyPad }};display:flex;flex-direction:column;gap:3px;align-items:{{ d.ai }}">
+<span style="font:500 10px 'DM Mono',monospace;letter-spacing:.08em;color:{{ d.lab }}">{{ d.label }}</span>
+<span style="font:{{ d.tw }} {{ d.tfs }}/1.3 'Bricolage Grotesque',sans-serif;color:{{ d.tcol }};text-align:{{ d.ta }}">{{ d.title }}</span>
+</div></div></sc-for>
+</div></sc-if>
+<sc-if value="{{ showAllStrip }}" hint-placeholder-val="{{ false }}"><div class="nos" style="display:grid;{{ stripCols }};gap:10px;min-width:0;max-width:100%;overflow-x:{{ stripOx }};padding:0 6px 6px 0;scrollbar-width:none">
+<sc-for list="{{ cols }}" as="c" hint-placeholder-count="7"><div style="border:2px solid #16181F;border-radius:16px;background:{{ c.bg }};padding:8px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;filter:{{ c.filter }};opacity:{{ c.op }};box-shadow:{{ c.sh }}">
+<span style="font:500 10px 'DM Mono',monospace;letter-spacing:.08em;color:{{ c.lab }}">{{ c.label }}</span>
+<sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="3"><div style="display:flex;gap:6px;align-items:baseline;min-height:30px;padding:5px 6px;border-radius:8px;background:{{ r.bg }};border:1.5px {{ r.bs }} {{ r.bd }};box-shadow:{{ r.rsh }};box-sizing:border-box"><i style="font:500 10px 'DM Mono',monospace;font-style:normal;color:#5E5B52;flex:none">{{ r.short }}</i><span style="font:700 11.5px/1.25 'Bricolage Grotesque',sans-serif;overflow-wrap:anywhere">{{ r.title }}</span></div></sc-for>
+</div></sc-for>
+</div></sc-if>
+</section>
+<div style="display:grid;grid-template-columns:{{ botCols }};gap:20px;min-width:0;align-items:stretch">
+<sc-if value="{{ protOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeProt }}" style="position:fixed;inset:0;z-index:20"></div></sc-if>
+<section style="position:relative;z-index:{{ secZ }};background:{{ protBg }};border:2px solid #16181F;border-radius:22px;padding:22px;display:flex;flex-direction:column;box-sizing:border-box;min-width:0" aria-label="{{ proteinsTitle }}">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px"><h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ proteinsTitle }}</h3><span style="color:#2323FF;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ flyersLink }}</span></div>
+<div style="display:grid;grid-template-columns:{{ protCols }};column-gap:{{ protGapX }};row-gap:{{ protGapY }}">
+<sc-for list="{{ proteins }}" as="p" hint-placeholder-count="8"><div style="margin-top:{{ p.mt }};padding-top:{{ p.mt }};border-top:{{ p.bt }};position:relative;z-index:{{ p.z }}">
+<div onClick="{{ p.pick }}" style="padding:10px 12px;border:2px solid {{ p.cardBd }};border-radius:{{ p.rad }};box-sizing:border-box;width:{{ p.hdrW }};margin-left:{{ p.hdrMl }};position:relative;height:78px;display:flex;flex-direction:column;justify-content:center;filter:{{ p.blur }};opacity:{{ p.dim }};transition:filter .15s,opacity .15s;background:{{ p.cardBg }};box-shadow:{{ p.cardSh }};cursor:pointer;{{ p.mTop }}">
+<div style="display:grid;grid-template-columns:30px minmax(0,1fr) auto 38px;column-gap:18px;align-items:center">
+<span style="font-size:22px;width:28px;text-align:center;flex:none;opacity:{{ p.eo }}">{{ p.emoji }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:{{ p.nw }} 14.5px/1.15 'Bricolage Grotesque',sans-serif;color:{{ p.nc }};white-space:nowrap">{{ p.name }}</span><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;color:#5E5B52;margin-top:3px">{{ p.count }}</span><span style="font-size:12px;color:#5E5B52;display:{{ p.metaDisp }}">{{ p.meta }}</span></span>
+<span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none">
+<span style="font:800 18px/1 'Bricolage Grotesque',sans-serif;white-space:nowrap;color:{{ p.pc }}">{{ p.price }}<small style="font:500 11px 'DM Mono',monospace">{{ p.unit }}</small></span>
+<sc-if value="{{ p.best }}" hint-placeholder-val="{{ false }}"><span style="background:#10C95C;border:1.5px solid #16181F;border-radius:999px;padding:0 8px;font:800 11px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ bestLabel }}</span></sc-if>
+<span style="font:500 10px 'DM Mono',monospace;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-align:right;color:{{ p.vc }}">{{ p.verdict }}</span>
+</span><span style="width:38px;height:38px;border-radius:19px;border:2px solid #16181F;background:{{ p.chevBg }};color:{{ p.chevFg }};display:flex;align-items:center;justify-content:center;font:800 17px/1 'Bricolage Grotesque',sans-serif;flex:none;box-sizing:border-box">{{ p.chev }}</span></div>
+
+<sc-if value="{{ p.sel }}" hint-placeholder-val="{{ false }}"><div onClick="{{ p.stop }}" style="position:absolute;z-index:30;left:-2px;width:calc(100% + 4px);cursor:default;max-height:60vh;overflow-y:auto;top:100%;background:#FFFDF8;border:2px solid #16181F;border-radius:{{ p.panelRad }};box-shadow:4px 4px 0 #2323FF;padding:8px 14px 10px;box-sizing:border-box;display:flex;flex-direction:column;box-sizing:border-box">
+<sc-for list="{{ p.deals }}" as="dl" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;border-top:{{ dl.bt }}">
+<div onClick="{{ dl.pick }}" style="display:flex;align-items:center;gap:10px;padding:8px 6px;cursor:pointer;background:{{ dl.bg }};border-radius:10px">
+<span style="width:36px;height:36px;border-radius:9px;border:2px solid #16181F;flex:none;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:17px;background:repeating-linear-gradient(135deg,#E9E4D8 0 6px,#DDD6C6 6px 12px)">{{ p.emoji }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span style="font:600 13px/1.2 Inter,sans-serif">{{ dl.name }}</span><span style="font:500 11px/1.2 Inter,sans-serif;color:#5E5B52">{{ dl.store }} <span style="font-size:9px">{{ dl.chev }}</span></span></span>
+<span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none"><span style="font:800 14px/1 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ dl.price }}<small style="font:500 10px 'DM Mono',monospace">{{ dl.unit }}</small></span><span style="font:800 10.5px/16px 'Bricolage Grotesque',sans-serif;background:#10C95C;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;white-space:nowrap">{{ dl.off }}</span></span></div>
+<sc-if value="{{ dl.open }}" hint-placeholder-val="{{ false }}"><div style="margin:0 4px 8px;padding:10px 12px;border:1.5px dashed #BDB6A6;border-radius:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">{{ dl.regCaps }}</span><span style="font:700 13px 'Bricolage Grotesque',sans-serif">{{ dl.reg }}</span></div><div style="display:flex;flex-direction:column;gap:2px"><span style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">{{ dl.endsCaps }}</span><span style="font:700 13px 'Bricolage Grotesque',sans-serif">{{ dl.ends }}</span></div><div style="display:flex;flex-direction:column;gap:2px"><span style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">{{ dl.qcCaps }}</span><span style="font:700 13px 'Bricolage Grotesque',sans-serif;color:#00753F">{{ dl.qc }}</span></div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><span onClick="{{ dl.addList }}" style="height:32px;padding:0 13px;border-radius:16px;border:2px solid #16181F;background:{{ dl.addBg }};display:flex;align-items:center;font:800 12px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">{{ dl.addLbl }}</span><span style="height:32px;padding:0 13px;border-radius:16px;border:2px dashed #16181F;display:flex;align-items:center;font:700 12px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">{{ dl.flyerLbl }}</span></div></div></sc-if>
+</div></sc-for></div></sc-if>
+</div>
+</div></sc-for>
+</div>
+<div style="flex:1;min-height:14px"></div>
+</section>
+<sc-if value="{{ mkOn }}" hint-placeholder-val="{{ false }}"><section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:22px;display:flex;flex-direction:column;box-sizing:border-box;min-width:0">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px"><h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ makeableNow }}</h3><span style="color:#2323FF;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ allLink }}</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="font:800 44px/.9 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em">0</span><span style="font:600 14px/1.25 'Bricolage Grotesque',sans-serif">{{ readyNow }}<br><span style="font-weight:500;color:#5E5B52">{{ nearly }}</span></span></div>
+</section></sc-if>
+<section style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:22px;display:flex;flex-direction:column;box-sizing:border-box;min-width:0">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px"><h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ useItUp }}</h3><span style="color:#2323FF;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ inventoryLink }}</span></div>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{ useRows }}" as="u" hint-placeholder-count="3"><div style="display:flex;gap:12px;align-items:center;margin-top:{{ u.mt }};padding-top:{{ u.mt }};border-top:{{ u.bt }}">
+<div style="width:56px;height:56px;flex:none;box-sizing:border-box;border:2px solid #16181F;border-radius:14px;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:2px 2px 0 #16181F">{{ u.emoji }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+<div style="display:flex;flex-direction:column;min-width:0"><span style="font:700 15px/1.2 'Bricolage Grotesque',sans-serif;overflow-wrap:anywhere">{{ u.name }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5E5B52;white-space:nowrap">{{ u.qty }}</span></div>
+<span style="font:800 11px/18px 'Bricolage Grotesque',sans-serif;background:{{ u.tone }};color:{{ u.toneFg }};border:1.5px solid #16181F;border-radius:999px;padding:0 9px;white-space:nowrap">{{ u.days }}</span></div>
+<div style="height:8px;border-radius:4px;background:#F4F1EA;border:1.5px solid #16181F;overflow:hidden"><div style="width:{{ u.pct }}%;height:100%;background:{{ u.tone }}"></div></div>
+</div></div></sc-for>
+<sc-if value="{{ useMore }}" hint-placeholder-val="{{ false }}"><div style="margin-top:12px;padding-top:12px;border-top:1.5px solid #D9D3C4;color:#2323FF;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ useMoreLabel }}</div></sc-if>
+</div>
+<div style="flex:1;min-height:14px"></div>
+<p style="margin:0 0 10px;font-size:13.5px;line-height:1.45;color:#3F3E37">{{ usesTwo }}</p>
+<div style="height:44px;border-radius:22px;background:#16181F;color:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ cookWithThese }}</div>
+</section>
+
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;1500px&quot;},&quot;tonight&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;blank&quot;,&quot;options&quot;:[&quot;blank&quot;,&quot;empty&quot;,&quot;note&quot;,&quot;recipe&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tonight card&quot;},&quot;showSticker&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Tonight card&quot;},&quot;meal&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;auto&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;breakfast&quot;,&quot;lunch&quot;,&quot;supper&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Time of day&quot;},&quot;userName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Matthieu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Home&quot;},&quot;makeable&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;none&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;some&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Makeable now card&quot;}}">
+class Component extends DCLogic {
+  state = { w: typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1280, all: false, off: 0, sel: null };
+  async componentDidMount() {
+    try { this.setState({ all: localStorage.getItem('mealprep-home-all-meals') === '1' }); } catch (e) {}
+    const m = await import('./riso-v2-copy.js');
+    this.m = m; this.unsub = m.subscribe(() => this.forceUpdate()); this.forceUpdate();
+  }
+  componentWillUnmount() { if (this.unsub) this.unsub(); if (this.ro) this.ro.disconnect(); }
+  setRoot = el => {
+    if (this.ro) this.ro.disconnect();
+    if (!el) return;
+    const upd = () => { const w = Math.round(el.getBoundingClientRect().width); if (w && w !== this.state.w) this.setState({ w }); };
+    upd();
+    this.ro = new ResizeObserver(upd);
+    this.ro.observe(el);
+  };
+  renderVals() {
+    const m = this.m, lang = m ? m.getLang() : 'en';
+    const tt = (k, v) => (m ? m.t('home.' + k, v) : '');
+    const W = this.state.w, P = W < 768, S = this.state, fr = lang === 'fr';
+    const state = this.props.tonight || 'blank';
+    const hrN = new Date().getHours(), mpr = this.props.meal, sfx = mpr === 'breakfast' ? 0 : mpr === 'lunch' ? 1 : mpr === 'supper' ? 2 : (hrN < 10 ? 0 : hrN < 15 ? 1 : 2);
+    const A = m ? m.t('home.days') : '';
+    const days = m && m.getLang() ? (fr ? ['LUN','MAR','MER','JEU','VEN','SAM','DIM'] : ['MON','TUE','WED','THU','FRI','SAT','SUN']) : [];
+    const meals = fr ? ['DÉ', 'DÎ', 'S'] : ['B', 'L', 'S'];
+    const nums0 = [28, 29, 30, 1, 2, 3, 4], nums1 = [5, 6, 7, 8, 9, 10, 11];
+    const DATA = [
+      { k: 'photo', t: 'Easy Shrimp Macaroni Salad with Bacon Recipe' }, { k: 'note', t: 'Hockey Pool @ Normal' },
+      { k: 'photo', t: 'Crispy Chicken Salad with Sriracha Honey BBQ Dressing' }, { k: 'note', t: '🥪' }, { k: 'note', t: '🍟' }, { k: 'note', t: '🥗' }, { k: 'empty', t: '' }];
+    const next = S.off === 1;
+    const todayIdx = next ? -1 : 6;
+    const dayObjs = [0, 1, 2, 3, 4, 5, 6].map(i => {
+      const e = next ? { k: 'empty', t: '' } : DATA[i], past = !next && i < todayIdx, today = i === todayIdx;
+      const num = (next ? nums1 : nums0)[i];
+      const label = (today ? tt('today') : days[i]) + ' ' + num;
+      const base = { label, past, photo: e.k === 'photo' };
+      const col = past ? '#6B685F' : '#5E5B52';
+      if (e.k === 'empty') return Object.assign(base, { bs: past ? 'solid' : 'dashed', bg: past ? '#E9E4D8' : 'transparent', fg: '#16181F', ai: 'center', jc: 'center', gap: '8px', sh: today ? '4px 4px 0 #FF48B0' : 'none', pad: '10px', cur: past ? 'default' : 'pointer', bodyPad: '0', lab: col, tw: '600', tfs: '13px', tcol: '#5E5B52', ta: 'center', title: past ? '—' : tt('plan'), filter: 'none' });
+      return Object.assign(base, { bs: 'solid', bg: past ? '#E9E4D8' : today ? '#FF48B0' : '#F4F1EA', fg: past ? '#6B685F' : '#16181F', ai: 'stretch', jc: e.k === 'note' ? 'center' : 'flex-start', gap: '0', sh: past ? 'none' : '4px 4px 0 #FF48B0', pad: '0', cur: e.k === 'note' ? 'default' : 'pointer', bodyPad: '8px 9px 9px', lab: today ? '#16181F' : col, tw: '700', tfs: e.k === 'note' && /^\p{Extended_Pictographic}/u.test(e.t) ? '15px' : '12.5px', tcol: past ? '#6B685F' : '#16181F', ta: 'left', title: e.t, filter: past ? 'grayscale(1) contrast(.95)' : 'none' });
+    });
+    const planned = next ? 0 : 6;
+    const cols = [0, 1, 2, 3, 4, 5, 6].map(i => {
+      const past = !next && i < todayIdx, today = i === todayIdx, e = next ? { k: 'empty' } : DATA[i];
+      return { label: (today ? tt('today') : days[i]) + ' ' + (next ? nums1 : nums0)[i], bg: today ? '#FFFDF8' : '#F4F1EA', lab: '#5E5B52', filter: past ? 'grayscale(1)' : 'none', op: past ? '.7' : '1', sh: today ? '4px 4px 0 #FF48B0' : 'none',
+        rows: [0, 1, 2].map(j => { const has = j === 2 && e.k !== 'empty', cur = today && j === sfx; return { short: meals[j], title: has ? e.t : '—', bg: has || cur ? '#FFFDF8' : 'transparent', bs: has || cur ? 'solid' : 'dashed', bd: has || cur ? '#16181F' : (today ? '#16181F' : '#BDB6A6'), rsh: cur ? '3px 3px 0 #FF48B0' : 'none' }; }) };
+    });
+    const supW = S.all ? (next ? 'nextMeals' : 'weekMeals') : (next ? 'nextSupper' : 'weekSupper');
+    const chip = (label, on, off) => ({ label, bg: on ? '#16181F' : 'transparent', fg: on ? '#fff' : '#16181F', sh: on ? '3px 3px 0 #2323FF' : 'none', pick: () => this.setState({ off }) });
+    const USEALL = (fr ? [['🥬', 'Bébés épinards', '162 G', 3], ['🧅', 'Oignon rouge', '1', 4], ['🥬', 'Céleri', '4', 7], ['🧀', 'Feta', '200 G', 6], ['🥛', 'Yogourt nature', '1 L', 9], ['🍅', 'Tomates cerises', '1 pt', 12]] : [['🥬', 'Baby Spinach', '162 G', 3], ['🧅', 'Red Onion', '1', 4], ['🥬', 'Celery', '4', 7], ['🧀', 'Feta', '200 G', 6], ['🥛', 'Plain yogurt', '1 L', 9], ['🍅', 'Cherry tomatoes', '1 pt', 12]]), USE = USEALL.slice(0, 5);
+    const mkOn = this.props.makeable === 'some', protWide = !mkOn && W >= 1560, protCompact = mkOn;
+    const metaFull = protCompact ? false : !protWide;
+    const dword = n => tt(n === 1 ? 'dayOne' : 'dayMany', { count: n });
+    const fmt = n => fr ? n.toFixed(2).replace('.', ',') + ' $' : '$' + n.toFixed(2);
+    const off = (n) => tt('offReg', { n }), under = n => tt('underQc', { n });
+    const P8 = [
+      ['chicken', '🍗', fr ? 'Poulet' : 'Chicken', 'Chicken breast strips', 'Super C', off(50) + tt('more', { count: 8 }), 7.92, '/lb', 'stock'],
+      ['seafood', '🦐', fr ? 'Fruits de mer' : 'Seafood', 'Shrimp', 'Super C', off(50) + tt('more', { count: 6 }), 5.99, ' ' + tt('ea'), 'stock'],
+      ['fish', '🐟', fr ? 'Poisson' : 'Fish', 'Frozen wild pacific salmon', 'Super C', off(50) + tt('more', { count: 2 }), 8.97, '/lb', 'stock'],
+      ['beef', '🥩', fr ? 'Bœuf' : 'Beef', 'Strip loin roast', 'Super C', off(50) + tt('more', { count: 8 }), 9.99, '/lb', 'stock'],
+      ['pork', '🐖', fr ? 'Porc' : 'Pork', 'Pork side ribs', 'Super C', under(48) + tt('more', { count: 8 }), 2.99, '/lb', 'best'],
+      ['tofu', '▢', 'Tofu', 'Tofu', 'Metro', off(37) + tt('more', { count: 1 }), 3.01, '/lb', 'stock'],
+      ['turkey', '🦃', fr ? 'Dinde' : 'Turkey', 'Turkey breast', 'Metro', off(6), 20.37, '/lb', 'buy'],
+      ['lamb', '🐑', fr ? 'Agneau' : 'Lamb', 'Lamb leg', 'Maxi', '', 6.99, '/lb', 'tell']];
+    const DEALS = fr ? { chicken: [['Lanières de poitrine de poulet', 'Super C', 7.92, '/lb', 50], ['Cuisses de poulet désossées', 'Metro', 4.99, '/lb', 33], ['Poulet entier', 'Maxi', 2.49, '/lb', 28], ['Pilons de poulet', 'IGA', 1.99, '/lb', 25]], seafood: [['Crevettes', 'Super C', 5.99, ' ch.', 50], ['Pétoncles', 'Metro', 12.99, '/lb', 20]], fish: [['Saumon sauvage du Pacifique surgelé', 'Super C', 8.97, '/lb', 50], ['Filets de tilapia', 'Maxi', 6.99, '/lb', 22]], beef: [['Rôti de contre-filet', 'Super C', 9.99, '/lb', 50], ['Bœuf haché mi-maigre', 'Metro', 4.49, '/lb', 30]], pork: [['Côtes levées de porc', 'Super C', 2.99, '/lb', 48], ['Longe de porc', 'Maxi', 3.49, '/lb', 35]], tofu: [['Tofu ferme', 'Metro', 3.01, '/lb', 37]], turkey: [['Poitrine de dinde', 'Metro', 20.37, '/lb', 6]], lamb: [['Gigot d’agneau', 'Maxi', 6.99, '/lb', 10]] } : { chicken: [['Chicken breast strips', 'Super C', 7.92, '/lb', 50], ['Boneless chicken thighs', 'Metro', 4.99, '/lb', 33], ['Whole chicken', 'Maxi', 2.49, '/lb', 28], ['Chicken drumsticks', 'IGA', 1.99, '/lb', 25]], seafood: [['Shrimp', 'Super C', 5.99, ' ea', 50], ['Scallops', 'Metro', 12.99, '/lb', 20]], fish: [['Frozen wild pacific salmon', 'Super C', 8.97, '/lb', 50], ['Tilapia fillets', 'Maxi', 6.99, '/lb', 22]], beef: [['Strip loin roast', 'Super C', 9.99, '/lb', 50], ['Lean ground beef', 'Metro', 4.49, '/lb', 30]], pork: [['Pork side ribs', 'Super C', 2.99, '/lb', 48], ['Pork loin', 'Maxi', 3.49, '/lb', 35]], tofu: [['Firm tofu', 'Metro', 3.01, '/lb', 37]], turkey: [['Turkey breast', 'Metro', 20.37, '/lb', 6]], lamb: [['Leg of lamb', 'Maxi', 6.99, '/lb', 10]] };
+    const verdictOf = { stock: tt('stockUp'), buy: tt('buy'), tell: tt('cantTell'), best: '' };
+    const user = this.props.userName || 'Matthieu';
+    const hr = new Date().getHours();
+    return {
+      setRoot: this.setRoot, showHeader: !this.props.embedded,
+      pad: P ? '0 18px 40px' : '8px 40px 44px', greetFs: P ? '32px' : '44px', userName: user,
+      greeting: tt(hr < 12 ? 'gMorning' : hr < 18 ? 'gAfternoon' : 'gEvening') + ',',
+      topCols: P ? '1fr' : 'minmax(0,1.7fr) minmax(0,1fr)',
+      isRecipe: state === 'recipe', isNote: state === 'note', isEmpty: state === 'blank' || state === 'empty', stickerOn: state === 'recipe' && this.props.showSticker !== false,
+      showOut: state === 'empty', emptyText: tt(state === 'blank' ? ['markedBlankMorning', 'markedBlankMidday', 'markedBlank'][sfx] : ['nothingMorning', 'nothingMidday', 'nothingTonight'][sfx]),
+      tonight: tt(sfx === 0 ? 'tonightMorning' : sfx === 1 ? 'tonightMidday' : 'tonight'), nothingToBuy: tt('nothingToBuy'), photoW: P ? '100%' : 'clamp(160px,30%,250px)', photoH: P ? '180px' : '230px',
+      recipeBlurb: tt('haveAll', { count: 9 }), startCooking: tt('startCooking'), swap: tt('swap'), eatingOut: tt('eatingOut'),
+      noteDir: P ? 'column' : 'row', noteGap: P ? '18px' : '24px', emojiW: P ? '120px' : 'clamp(150px,26%,220px)', emojiH: P ? '120px' : '200px', emojiFs: P ? '64px' : '92px', noteFs: P ? '34px' : '42px',
+      notFromRecipe: tt('notFromRecipe'), nothingToPrep: tt('nothingToPrep'), noteBlurb: tt('noteBlurb') + ' ' + tt('stillMany', { days: fr ? 'Samedi et dimanche' : 'Saturday and Sunday' }),
+      pickRecipe: tt('pickRecipe'), changeInPlanner: tt('changeInPlanner'), addRecipe: tt('addRecipe'),
+      groceryList: tt('groceryList'), leftLabel: tt('leftMany'), cartLine: tt('inCart', { checked: 0, total: 21 }) + tt('onSale', { count: 15 }), openList: tt('openList'),
+      weekTitle: tt(supW), plannedOf: tt('plannedOf', { planned: S.all ? planned : planned, total: S.all ? 21 : 7 }),
+      weekChips: [chip(tt('thisWeek'), !next, 0), chip(tt('nextWeek'), next, 1)],
+      allToggle: S.all ? tt('suppersOnly') : tt('allMeals'),
+      toggleAll: () => { const v = !S.all; try { localStorage.setItem('mealprep-home-all-meals', v ? '1' : '0'); } catch (e) {} this.setState({ all: v }); },
+      showSupperStrip: !S.all, showAllStrip: S.all, days: dayObjs, cols,
+      stripCols: P ? 'grid-auto-flow:column;grid-auto-columns:minmax(110px,1fr)' : 'grid-template-columns:repeat(7,minmax(0,1fr))', stripOx: P ? 'auto' : 'visible',
+      useItUp: tt('useItUp'), inventoryLink: tt('inventoryLink'), cookWithThese: tt('cookWithThese'), usesTwo: tt('usesTwoMany', { count: USEALL.length }), useMore: USEALL.length > USE.length, useMoreLabel: '+ ' + (USEALL.length - USE.length) + (fr ? (USEALL.length - USE.length === 1 ? ' autre à utiliser' : ' autres à utiliser') : ' more to use up'), mkOn,
+      botCols: P ? '1fr' : mkOn ? 'minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1.7fr) minmax(0,1fr)', protCols: protWide ? 'repeat(2,minmax(0,1fr))' : '1fr', protGapX: '28px', protGapY: '12px',
+      useRows: USE.map((u, i) => ({ emoji: u[0], name: u[1], qty: u[2], days: dword(u[3]), pct: Math.max(8, Math.min(96, Math.round((1 - u[3] / 7) * 100))), tone: u[3] <= 3 ? '#FF5CB8' : u[3] <= 7 ? '#FFE14D' : '#2323FF', toneFg: u[3] <= 7 ? '#16181F' : '#fff', mt: i ? '12px' : '0', bt: i ? '1.5px solid #D9D3C4' : 'none' })),
+      makeableNow: tt('makeableNow'), allLink: tt('allLink'), readyNow: tt('readyNow'), nearly: tt('nearlyMany', { count: 2 }),
+      proteinsTitle: tt('proteins'), flyersLink: tt('flyersLink'), bestLabel: tt('bestDeal'), seeDeal: tt('seeDeal'),
+      proteins: P8.map((r, i) => { const sel = S.sel === r[0]; const [pa, pb] = fmt(r[6]).split(fr ? ' ' : '\u0000'); return {
+        metaShow: !protCompact, emoji: r[1], name: r[2], meta: [r[3], r[4], r[5]].filter(Boolean).join(' · ').replace(' · ·', ' ·').replace(/ · \+/, ' · +'), price: fmt(r[6]), unit: r[7], best: r[8] === 'best', verdict: verdictOf[r[8]], vc: r[8] === 'tell' ? '#5E5B52' : '#16A34A', sel,
+        metaDisp: 'none', stop: e => e.stopPropagation(), chev: sel ? '▴' : '▾', chevBg: sel ? '#16181F' : '#FFFDF8', chevFg: sel ? '#fff' : '#16181F', count: (DEALS[r[0]] || []).length + (fr ? ((DEALS[r[0]] || []).length > 1 ? ' produits' : ' produit') : ((DEALS[r[0]] || []).length > 1 ? ' products' : ' product')), blur: S.sel && !sel ? 'blur(3px)' : 'none', dim: S.sel && !sel ? '.55' : '1', z: sel ? '31' : '1', listCaps: fr ? 'PRODUITS EN RABAIS' : 'PRODUCTS ON SALE', deals: (DEALS[r[0]] || []).map((x, di) => { const key = r[0] + ':' + di, op = S.deal === key, on = !!(S.listed || {})[key]; return { name: x[0], store: x[1], price: fmt(x[2]), unit: x[3], off: x[4] + (fr ? ' % de rabais' : '% off'), open: op, chev: op ? '▴' : '▾', bg: op ? '#F4F1EA' : 'transparent', bt: di ? '1.5px solid #E9E4D8' : 'none', regCaps: fr ? 'PRIX COURANT' : 'REG. PRICE', reg: fmt(x[2] * 100 / (100 - x[4])), endsCaps: fr ? 'SE TERMINE' : 'ENDS', ends: fr ? ['mercredi', 'jeudi', 'demain'][di % 3] : ['Wednesday', 'Thursday', 'tomorrow'][di % 3], qcCaps: fr ? 'MOYENNE QC' : 'QC AVERAGE', qc: x[4] >= 25 ? (fr ? '− ' + (x[4] - 5) + ' %' : '−' + (x[4] - 5) + '%') : (fr ? 'près de la moyenne' : 'near average'), addLbl: on ? (fr ? '✓ Sur la liste' : '✓ On list') : (fr ? '+ Ajouter à la liste' : '+ Add to list'), addBg: on ? '#10C95C' : '#FFE14D', flyerLbl: fr ? 'Ouvrir la circulaire' : 'Open the flyer', addList: e => { e.stopPropagation(); this.setState({ listed: Object.assign({}, S.listed || {}, { [key]: true }) }); }, pick: e => { e.stopPropagation(); this.setState({ deal: op ? null : key }); } }; }), mt: '0', bt: 'none', mTop: '', rad: sel ? '16px 16px 0 0' : '14px', cardBd: '#16181F', cardBg: '#FFFDF8', pc: '#16181F', mc: '#5E5B52', panelPos: protWide && i % 2 ? 'right:0' : 'left:0', panelW: protWide ? 'calc(200% + 28px)' : '100%', panelRad: '0 0 16px 16px', hdrW: sel && protWide ? 'calc(200% + 28px)' : 'auto', hdrMl: sel && protWide && i % 2 ? 'calc(-100% - 28px)' : '0', cardSh: sel ? '4px 4px 0 #2323FF' : 'none', eo: '1', nw: '700', nc: '#16181F',
+        pick: () => this.setState({ sel: sel ? null : r[0], deal: null }) }; }),
+      protOpen: !!S.sel, protBg: S.sel ? '#F2F0EB' : '#FFFDF8', closeProt: () => this.setState({ sel: null, deal: null }), secZ: S.sel ? '25' : '1',
+    };
+  }
+}
+</script>
+</body>
+</html>

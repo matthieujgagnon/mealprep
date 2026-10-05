@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>input::placeholder{color:#8A8677}input:focus{outline:none}</style></helmet>
+<div style="display:flex;flex-direction:column;gap:12px;min-width:0;font-family:'Bricolage Grotesque',sans-serif;color:#16181F">
+<sc-if value="{{ showHead }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="display:flex;flex-direction:{{ headDir }};gap:{{ headGap }};align-items:{{ headAi }}"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">{{ caps }}</span><span style="font:800 {{ slotFs }}/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">{{ slotLabel }}</span></div>
+<sc-if value="{{ showClose }}" hint-placeholder-val="{{ true }}"><span onClick="{{ close }}" style="width:36px;height:36px;border-radius:18px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;flex:none">×</span></sc-if></div></sc-if>
+<sc-if value="{{ showModes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+<sc-for list="{{ modes }}" as="md" hint-placeholder-count="3"><div onClick="{{ md.pick }}" style="min-height:{{ modeH }};border-radius:16px;border:2px solid #16181F;background:{{ md.bg }};color:{{ md.fg }};box-shadow:{{ md.sh }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;box-sizing:border-box;text-align:center;cursor:pointer;user-select:none"><span style="font:800 18px/1 'Bricolage Grotesque',sans-serif;display:{{ iconDisp }}">{{ md.icon }}</span><span style="font:700 13px 'Bricolage Grotesque',sans-serif">{{ md.label }}</span></div></sc-for>
+</div></sc-if>
+<sc-if value="{{ isRecipe }}" hint-placeholder-val="{{ true }}"><dc-import name="Finder" lang="{{ lang }}" layout="{{ layout }}" ctx="planner" has-slot="true" slot-label="{{ slotLabel }}" replaces="{{ replaces }}" planned="{{ planned }}" on-add="{{ onAdd }}" on-open-full="{{ onOpenFull }}" hint-size="100%,420px"></dc-import></sc-if>
+<sc-if value="{{ isNote }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:10px">
+<input type="text" value="{{ note }}" onInput="{{ onNote }}" onKeyDown="{{ onKey }}" placeholder="{{ noteType }}" style="height:48px;padding:0 16px;border-radius:24px;border:2px solid #16181F;background:#F4F1EA;color:#16181F;font:500 16px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">
+<div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ quick }}" as="qn" hint-placeholder-count="4"><div onClick="{{ qn.pick }}" style="height:34px;padding:0 12px;border-radius:17px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">{{ qn.label }}</div></sc-for></div>
+<div onClick="{{ saveNote }}" style="height:48px;border-radius:24px;border:2px solid #16181F;background:{{ saveBg }};color:{{ saveFg }};box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">{{ saveLabel }}</div></div></sc-if>
+<sc-if value="{{ isBlank }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:12px"><div style="border:2px dashed #16181F;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px"><strong style="font:800 16px 'Bricolage Grotesque',sans-serif">{{ blankTitle }}</strong><span style="font:500 13.5px/1.5 Inter,sans-serif;color:#3F3E37">{{ blankText }}</span></div>
+<div onClick="{{ blank }}" style="height:48px;border-radius:24px;border:2px solid #16181F;background:#2323FF;color:#fff;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">{{ blankBtn }}</div></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;440px&quot;,&quot;height&quot;:&quot;700px&quot;}}">
+class Component extends DCLogic {
+  state = {};
+  cur() { const p = this.props || {}; return Object.assign({ mode: p.mode !== undefined ? p.mode : 'recipe', note: p.noteInit || '' }, this.state); }
+  async componentDidMount() { this.d = await import('./finder-data.js'); this.forceUpdate(); }
+  componentDidUpdate(prev) { const p = this.props; if (prev.slotLabel !== p.slotLabel || prev.mode !== p.mode || prev.noteInit !== p.noteInit) this.setState({ mode: p.mode !== undefined ? p.mode : 'recipe', note: p.noteInit || '' }); }
+  renderVals() {
+    const d = this.d, P = this.props, S = this.cur();
+    if (!d) return { modes: [], quick: [], isRecipe: false, isNote: false, isBlank: false, showHead: false, showModes: false };
+    const lang = P.lang === 'en' ? 'en' : 'fr', C = d.copy(lang), t = C.t, layout = P.layout || 'card', tiles = layout === 'wide';
+    const COL = { recipe: ['#2323FF', '#fff'], note: ['#FFE14D', '#16181F'], blank: ['#FFFDF8', '#16181F'] };
+    const mk = (id, ic, k) => ({ icon: ic, label: t(k), bg: COL[id][0], fg: COL[id][1], sh: S.mode === id ? '4px 4px 0 #16181F' : 'none', pick: () => { if (id === 'recipe' && P.onRecipe) P.onRecipe(); else this.setState({ mode: id }); } });
+    const ok = S.note.trim() !== '';
+    return {
+      lang, layout, slotLabel: P.slotLabel || t('slotName'), replaces: P.replaces || '', planned: P.planned || '', onAdd: P.onAdd, onOpenFull: P.onOpenFull, caps: t('addToCaps'),
+      showHead: P.noHead !== 'true', showModes: P.noModes !== 'true', showClose: P.onClose !== undefined, close: () => P.onClose && P.onClose(), headDir: tiles ? 'row' : 'column', headGap: tiles ? '10px' : '2px', headAi: tiles ? 'baseline' : 'flex-start', slotFs: tiles ? '24px' : '24px',
+      modes: [mk('recipe', '+', 'modeRecipe'), mk('note', '✎', 'modeNote'), mk('blank', '○', 'modeBlank')], modeH: tiles ? '40px' : '58px', iconDisp: tiles ? 'none' : 'block',
+      isRecipe: S.mode === 'recipe', isNote: S.mode === 'note', isBlank: S.mode === 'blank',
+      note: S.note, onNote: e => this.setState({ note: e.target.value }), onKey: e => { if (e.key === 'Enter' && S.note.trim()) { P.onNote && P.onNote(S.note.trim()); this.setState({ note: '' }); } },
+      noteType: t('noteType'), quick: ['q1', 'q2', 'q3', 'q4'].map(k => ({ label: t(k), pick: () => this.setState({ note: t(k) }) })), saveLabel: t('saveNote'), saveBg: ok ? '#2323FF' : '#E9E4D8', saveFg: ok ? '#fff' : '#5E5B52',
+      saveNote: () => { if (S.note.trim()) { P.onNote && P.onNote(S.note.trim()); this.setState({ note: '' }); } },
+      blankTitle: t('blankTitle'), blankText: t('blankText'), blankBtn: t('blankBtn'), blank: () => P.onBlank && P.onBlank(),
+    };
+  }
+}
+</script>
+</body>
+</html>

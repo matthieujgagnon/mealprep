@@ -903,6 +903,7 @@ select {
   margin: 0;
   font: 800 52px/0.98 var(--riso-font-display);
   letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 .riso-auth-card {
@@ -3802,10 +3803,215 @@ input[type="date"].planner-week-picker {
   --riso-shadow-lg: 8px 8px 0 var(--riso-ink); /* hero/color blocks, recipe card, pop-ups */
   --riso-shadow-selected: 4px 4px 0 var(--riso-accent); /* selected inventory item */
   --riso-shadow-today: 4px 4px 0 var(--riso-hot); /* today's Planner column */
+
+  /* Riso v2 (Pill Study). Added next to the colours above; nothing that
+     already uses a token above changed. */
+  --riso-hot-soft: #ff5cb8; /* light pink: "Planned Wednesday", "expires soon" tags (black text reads well on it). The vivid --riso-hot stays for today. */
+  --riso-accent-tint: #e4e4ff; /* light blue: a selected pill's fill */
+  --riso-shelf-fridge: #4de3ff; /* ingredient picker shelves */
+  --riso-shelf-freezer: #a56bff;
+  --riso-shelf-pantry: #eae3cf;
+  --riso-shelf-spice: #ffb86b;
+  --riso-shelf-baking: #ffd0e8;
+  --riso-shadow-xs: 2px 2px 0 var(--riso-ink); /* small chips */
+  --riso-shadow-xs-accent: 2px 2px 0 var(--riso-accent); /* an active filter chip */
+  --riso-shadow-card: 6px 6px 0 var(--riso-ink);
+  --riso-shadow-pill-selected: 1.5px 1.5px 0 var(--riso-accent); /* selected pill */
+  --riso-border: 2px; /* cards, big pills, buttons */
+  --riso-border-thin: 1.5px; /* small pills, ingredient pills */
+  --riso-radius-pill: 999px;
+  --riso-radius-card: 18px; /* cards 16 to 22 */
+  --riso-radius-card-lg: 26px; /* big cards 24 to 28 */
   --riso-font-display: "Bricolage Grotesque", sans-serif;
   --riso-font-body: "Inter", system-ui, sans-serif;
   --riso-font-mono: "DM Mono", ui-monospace, monospace;
   color-scheme: light;
+}
+
+/* ---------- Riso v2 pills (Pill Study) ----------
+   One base class and a size and a tone, drawn by the components in
+   components/RisoPills.jsx (the comment block there says which to use):
+     .riso-pill                        the base: ink outline, one line, display font
+     .size-tag  22px   label on a surface or a photo: time, expiry, sale
+     .size-fact 26px   facts in a pop-out: time | portions, meal
+     .size-chip 32px   filters, menus, ingredients you have
+     .size-badge 26px  a round count
+     .sticker          tilted -3deg, for a label laid on an edge or photo
+     .tone-yellow      a measure or something to deal with: time, to buy, leftovers
+     .tone-pink        when: planned day, expiring soon (light pink; black text)
+     .tone-hot         today (vivid pink)
+     .tone-green       all good: ready, nothing to buy, on sale, in stock
+     .tone-blue        the main action or choice (white text)
+     .tone-ink         what you picked (paper text)
+     .tone-canvas      meal type
+     .tone-dash        a secondary action (dashed outline)
+     .is-selected      light blue fill and a small blue shadow
+   Colour roles: pink = when, yellow = measure / to buy, green = good, blue =
+   action / selected. Black text on yellow, pink and green. */
+.riso-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  flex: none;
+  max-width: 100%;
+  border: var(--riso-border-thin) solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.riso-pill.size-tag {
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 11px;
+  font-size: 11px;
+}
+
+.riso-pill.size-fact {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  font-size: 12px;
+}
+
+.riso-pill.size-chip {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border-width: var(--riso-border);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.riso-pill.size-badge {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 13px;
+  border-width: var(--riso-border);
+  justify-content: center;
+  font-size: 12px;
+}
+
+.riso-pill.sticker {
+  transform: rotate(-3deg);
+}
+
+.riso-pill.tone-yellow {
+  background: var(--riso-yellow);
+}
+
+.riso-pill.tone-pink {
+  background: var(--riso-hot-soft);
+}
+
+.riso-pill.tone-hot {
+  background: var(--riso-hot);
+}
+
+.riso-pill.tone-green {
+  background: var(--riso-green);
+}
+
+.riso-pill.tone-blue {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-pill.tone-ink {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+/* An active filter chip: black with a small blue shadow. */
+.riso-pill.size-chip.tone-ink {
+  box-shadow: var(--riso-shadow-xs-accent);
+}
+
+.riso-pill.tone-canvas {
+  background: var(--riso-canvas);
+  font-weight: 600;
+}
+
+.riso-pill.tone-dash {
+  background: transparent;
+  border-style: dashed;
+}
+
+/* A count with a blue outline (the "In your week" group in Makeable). */
+.riso-pill.outline-blue {
+  border-color: var(--riso-accent);
+}
+
+/* Selected: light blue fill with a small blue shadow. Beats the tone. */
+.riso-pill.is-selected {
+  background: var(--riso-accent-tint);
+  color: var(--riso-ink);
+  box-shadow: var(--riso-shadow-pill-selected);
+}
+
+/* Clickable pills (rendered as buttons). */
+button.riso-pill {
+  cursor: pointer;
+  font-family: var(--riso-font-display);
+}
+
+button.riso-pill:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.riso-pill:focus-visible {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+/* The thin rule between time and portions in "⏱ 40 min | 4 portions". */
+.riso-pill-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--riso-ink);
+  opacity: 0.4;
+}
+
+/* The round mark in front of an ingredient you have: a green circle with ✓. */
+.riso-pill.has-mark {
+  padding-left: 6px;
+  gap: 9px;
+}
+
+.riso-pill-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: var(--riso-border) solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.riso-pill-clock {
+  font-size: 0.9em;
+}
+
+/* Visible to screen readers only (the ✓ says "in stock" without drawing it). */
+.riso-pill-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* ---------- Riso Poster shared components ---------- */

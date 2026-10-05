@@ -1501,6 +1501,15 @@ export const en = {
     hours: "{h} h",
     hoursMinutes: "{h} h {m} min",
   },
+  // The shared pills (components/RisoPills.jsx). A meal chip reads the meal
+  // type from recipes.mealTypes, a planned pill the day from days.long.
+  pills: {
+    serves: { one: "Serves {count}", other: "Serves {count}" },
+    planned: "Planned {day}",
+    toBuy: { one: "{count} to buy", other: "{count} to buy" },
+    inStock: "In stock",
+    salePercent: "-{n}%",
+  },
   foodCategories: {
     Produce: "Produce",
     Meat: "Meat",

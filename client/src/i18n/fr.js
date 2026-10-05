@@ -1507,6 +1507,13 @@ export const fr = {
     hours: "{h} h",
     hoursMinutes: "{h} h {m} min",
   },
+  pills: {
+    serves: { one: "{count} portion", other: "{count} portions" },
+    planned: "Prévu {day}",
+    toBuy: { one: "{count} à acheter", other: "{count} à acheter" },
+    inStock: "En stock",
+    salePercent: "-{n}\u00a0%",
+  },
   foodCategories: {
     Produce: "Fruits et légumes",
     Meat: "Viande",
