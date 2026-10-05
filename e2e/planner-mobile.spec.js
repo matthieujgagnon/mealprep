@@ -144,3 +144,61 @@ test("the bottom button shows what's left to buy and opens Grocery", async ({ pa
   await button.click();
   await expect(page.locator(".tab.active")).toHaveText("Grocery");
 });
+
+test("the bottom card holds the shared finder: + puts a recipe in the tapped slot, and it saves", async ({ page }) => {
+  await setup(page);
+  await openPlanner(page);
+  await page.getByRole("button", { name: "Next week" }).click();
+
+  await page.getByRole("button", { name: "Add to supper, Tuesday" }).click();
+  const sheet = page.locator(".riso-sheet");
+  await expect(sheet.getByRole("heading", { name: "Add to Tue · Supper" })).toBeVisible();
+  await expect(sheet.locator(".fnd-sheet")).toBeVisible();
+  // The finder's search, filters and results are all in the card.
+  await expect(sheet.getByRole("textbox", { name: "Title, ingredient or tag" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: /Makeable now/ })).toBeVisible();
+
+  await sheet.getByRole("button", { name: "Add Roast chicken to the plan" }).click();
+  await expect(page.locator(".riso-sheet")).toHaveCount(0);
+  await expect(page.locator(".rpm-cell.card")).toHaveCount(1);
+  const entries = await (await page.request.get(`/api/planner?week=${nextMonday()}`)).json();
+  expect(entries).toHaveLength(1);
+  expect([entries[0].dayOfWeek, entries[0].mealType]).toEqual([1, "dinner"]);
+});
+
+test("a recipe's pop-out opens inside the card, and leftovers can be placed from a Main meal", async ({ page }) => {
+  const recipe = await setup(page);
+  await plan(page, recipe, nextMonday(), 0, "dinner");
+  await openPlanner(page);
+  await page.getByRole("button", { name: "Next week" }).click();
+
+  await page.getByRole("button", { name: "Add to lunch, Wednesday" }).click();
+  const sheet = page.locator(".riso-sheet");
+  await sheet.locator(".fnd-card-open", { hasText: "Roast chicken" }).click();
+  const pop = page.getByRole("dialog", { name: "Roast chicken" });
+  await expect(pop).toBeVisible();
+  await expect(pop).toContainText("Serves 2");
+  await pop.getByRole("button", { name: "Similar recipes" }).click();
+  await expect(sheet.locator(".fnd-main")).toContainText("Roast chicken");
+
+  // Place leftovers closes the card and lets the board's empty slots take them.
+  await sheet.getByRole("button", { name: "Place leftovers" }).click();
+  await expect(page.locator(".riso-sheet")).toHaveCount(0);
+  const bar = page.locator(".rpm-leftoverbar");
+  await expect(bar).toContainText("Placing leftovers of Roast chicken");
+  await page.getByRole("button", { name: "Put leftovers on lunch, Wednesday" }).click();
+  await expect(page.locator(".rpm-leftover")).toHaveText("leftover");
+  const entries = await (await page.request.get(`/api/planner?week=${nextMonday()}`)).json();
+  expect(entries.filter((e) => e.isLeftover)).toHaveLength(1);
+  await bar.getByRole("button", { name: "Done" }).click();
+  await expect(bar).toHaveCount(0);
+});
+
+test("the weekend days are grouped in a block on the phone board too", async ({ page }) => {
+  await setup(page);
+  await openPlanner(page);
+  await expect(page.locator(".rpm-weekend")).toHaveCount(1);
+  // No "Thu - Sun" hint and no Fill button: all seven days are on the board.
+  await expect(page.locator(".rpm-more")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Fill \d+ empty/ })).toHaveCount(0);
+});

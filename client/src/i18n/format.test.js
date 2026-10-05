@@ -96,7 +96,8 @@ describe("text", () => {
   });
 
   it("picks the plural French uses (0 and 1 are singular)", () => {
-    expect(t("tray.allRecipes", { count: 2 }, "fr")).toBe("TOUTES LES RECETTES · 2");
+    expect(t("finder.chosen", { count: 2 }, "fr")).toBe("2 choisis");
+    expect(t("finder.chosen", { count: 1 }, "fr")).toBe("1 choisi");
     expect(t("inventory.itemCount", { count: 0 }, "fr")).toBe("0 article");
     expect(t("inventory.itemCount", { count: 1 }, "fr")).toBe("1 article");
     expect(t("inventory.itemCount", { count: 2 }, "fr")).toBe("2 articles");

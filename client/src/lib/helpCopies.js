@@ -76,12 +76,17 @@ export const HELP_COPIES = {
   weekPrev: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "‹" },
   weekNext: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "›" },
   copyLastWeek: { kind: "pill", cls: "riso-chip small", label: "planner.copyLastWeek" },
-  fillEmpty: { kind: "pill", cls: "riso-btn", label: "planner.fillEmpty", vars: { count: 3 } },
-  trayTabs: {
-    kind: "group",
-    cls: "riso-segmented",
-    items: [{ label: "tray.tabSuggested", active: true }, { label: "tray.tabAround" }, { label: "tray.tabAll" }],
-  },
+  weekendPill: { kind: "pill", cls: "riso-weekend-pill", label: "planner.weekendLabel" },
+  slotRecipe: { kind: "pill", cls: "riso-slotcard-btn recipe", label: "planner.slotRecipe", strong: true },
+  slotNote: { kind: "pill", cls: "riso-slotcard-btn note", label: "planner.slotNote" },
+  slotBlank: { kind: "pill", cls: "riso-slotcard-btn blank", label: "planner.slotBlank" },
+  finderExpiring: { kind: "pill", cls: "riso-pill size-chip", label: "finder.expiring" },
+  finderQuick: { kind: "pill", cls: "riso-pill size-chip", label: "finder.quick" },
+  finderAddIngredient: { kind: "pill", cls: "fnd-add-ing", label: "finder.addIngredient" },
+  popPlan: { kind: "pill", cls: "fnd-pop-btn primary", label: "finder.plan", strong: true },
+  popSimilar: { kind: "pill", cls: "fnd-pop-btn", label: "finder.similar" },
+  popOpenFull: { kind: "pill", cls: "fnd-pop-btn soft", label: "finder.openFull" },
+  leftoversBtn: { kind: "pill", cls: "fnd-main-btn", label: "finder.placeLeftovers" },
   haveDot: { kind: "icon", cls: "rpm-have", glyph: "" },
 
   // Makeable

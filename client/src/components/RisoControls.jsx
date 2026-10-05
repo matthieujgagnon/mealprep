@@ -73,6 +73,44 @@ export function HintStrip({ userId, screenKey, items, children }) {
   );
 }
 
+// A dropdown: label, value, ▾. Yellow when it isn't on its default option. On
+// a phone it is a full-width pill that shows only the value (the label stays
+// for screen readers). Only one is open at a time (the page keeps `open`).
+export function PillMenu({ id, label, value, options, selected, isDefault, open, phone, openLeft, onToggle, onPick }) {
+  return (
+    <div className="rv2-menu-wrap">
+      <button
+        type="button"
+        className={`rv2-drop${isDefault ? "" : " set"}${phone ? " phone" : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => onToggle(id)}
+      >
+        <span className="rv2-drop-label">{label}</span>
+        <span className="rv2-drop-value">{value}</span>
+        <span className="rv2-drop-caret" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className={`rv2-menu${openLeft ? " left" : ""}`} role="listbox" aria-label={label}>
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="option"
+              aria-selected={o.id === selected}
+              className={`rv2-menu-item${o.id === selected ? " selected" : ""}`}
+              onClick={() => onPick(o.id)}
+            >
+              {o.label}
+              {o.id === selected && <span aria-hidden="true">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Phone bottom sheet (Riso Mobile.dc.html): card-white, 2px top border,
 // 28px top corners, a drag handle, over a 45% ink backdrop that closes it.
 export function BottomSheet({ onClose, label, children }) {

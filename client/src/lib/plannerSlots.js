@@ -26,6 +26,32 @@ export const DAY_SHORT = new Proxy([0, 1, 2, 3, 4, 5, 6], {
   },
 });
 
+// "Wed · Breakfast": a slot in words, on the slot card, the finder's "Add to"
+// chip and the phone sheet's title.
+export function slotLabel(slot) {
+  return `${DAY_SHORT[slot.dayOfWeek]} · ${MEAL_LABEL[slot.mealType]}`;
+}
+
+// The weekend as runs of neighbouring days, each drawn as one block with a pink
+// dotted line: [5, 6] is one run, [4, 6] is two (Fri, Sun). Days are 0 = Monday.
+export function weekendRuns(days) {
+  const sorted = [...new Set(days || [])].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).sort((a, b) => a - b);
+  const runs = [];
+  for (const day of sorted) {
+    const last = runs[runs.length - 1];
+    if (last && last.end === day - 1) last.end = day;
+    else runs.push({ start: day, end: day });
+  }
+  return runs;
+}
+
+// "Sat Sun", "Fri Sat Sun": the weekend's days in the app's language, the way
+// the weekend pill says them.
+export function weekendDaysLabel(days) {
+  const sorted = [...new Set(days || [])].sort((a, b) => a - b);
+  return sorted.map((d) => dict().days.short[d].replace(/\.$/, "")).join(" ");
+}
+
 export function todayIndex() {
   return (new Date().getDay() + 6) % 7; // Monday = 0
 }

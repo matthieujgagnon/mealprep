@@ -71,7 +71,7 @@ test("a written meal gets its food's emoji, and Pick a recipe instead swaps toni
   await hero.getByRole("button", { name: "Pick a recipe instead" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Planner");
   const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  await expect(page.locator(".riso-tray-target")).toContainText(DAYS[today]);
+  await expect(page.locator(".fnd-target")).toContainText(DAYS[today]);
   await page.getByRole("button", { name: `Add ${recipe.title} to the plan` }).click();
 
   await page.getByRole("button", { name: "Home", exact: true }).click();

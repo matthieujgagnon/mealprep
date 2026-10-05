@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword, createSession, destroySession, requireAut
 import { seedPlaceholderRecipesForUser } from "../lib/placeholders.js";
 import { sendPasswordResetEmail } from "../lib/mailer.js";
 import { fail, langOf, msg, normalizeLang } from "../lib/i18n.js";
+import { cleanWeekendDays, DEFAULT_WEEKEND_DAYS } from "../lib/weekendDays.js";
 
 export const authRouter = Router();
 
@@ -14,7 +15,13 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RESET_REQUEST_COOLDOWN_MS = 2 * 60 * 1000;
 
 function serializeUser(user) {
-  return { id: user.id, email: user.email, name: user.name, locale: user.locale || null };
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    locale: user.locale || null,
+    weekendDays: user.weekendDays ?? DEFAULT_WEEKEND_DAYS,
+  };
 }
 
 // POST /api/auth/signup { email, password, name? } - creates an account.
@@ -95,12 +102,23 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   res.json(serializeUser(user));
 });
 
-// PATCH /api/auth/me { locale: "fr" | "en" } - the account's language, for
-// the app on every device and for the emails it sends.
+// PATCH /api/auth/me { locale?: "fr" | "en", weekendDays?: [0-6, ...] } - the
+// account's language (for the app on every device and for the emails it
+// sends) and the days the Planner groups as the weekend.
 authRouter.patch("/me", requireAuth, async (req, res) => {
-  const locale = normalizeLang(req.body?.locale);
-  if (!locale || String(req.body.locale).length > 5) return res.status(400).json(fail(req, "badLocale"));
-  const user = await prisma.user.update({ where: { id: req.userId }, data: { locale } });
+  const data = {};
+  if (req.body?.locale !== undefined) {
+    const locale = normalizeLang(req.body.locale);
+    if (!locale || String(req.body.locale).length > 5) return res.status(400).json(fail(req, "badLocale"));
+    data.locale = locale;
+  }
+  if (req.body?.weekendDays !== undefined) {
+    const weekendDays = cleanWeekendDays(req.body.weekendDays);
+    if (!weekendDays) return res.status(400).json(fail(req, "badWeekendDays"));
+    data.weekendDays = weekendDays;
+  }
+  if (Object.keys(data).length === 0) return res.status(400).json(fail(req, "badLocale"));
+  const user = await prisma.user.update({ where: { id: req.userId }, data });
   res.json(serializeUser(user));
 });
 

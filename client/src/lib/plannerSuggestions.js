@@ -4,8 +4,6 @@ import { capitalize } from "./groceryList.js";
 import { recipeHaveStats } from "./onHand.js";
 import { isNoteEntry } from "./plannerSlots.js";
 import { recipeSlot } from "./mealSlots.js";
-import { t } from "../i18n/index.js";
-import { formatList } from "../i18n/format.js";
 
 // The planner looks a week ahead, so "expiring" here is anything going off
 // within 7 days - wider than the 3-day "use soon" line elsewhere.
@@ -30,11 +28,6 @@ export function isDessertRecipe(recipe) {
   return recipeSlot(recipe) === "dessert";
 }
 
-export function formatTrayTime(minutes) {
-  if (!minutes) return null;
-  return minutes >= 60 ? `${Math.floor(minutes / 60)} H` : `${minutes} MIN`;
-}
-
 // Ingredients are matched by their core ("poi chich") but shown as the
 // kitchen or the recipe writes them ("Pois chiches").
 function namesAsWritten(pantryInventory, recipes) {
@@ -48,7 +41,7 @@ function namesAsWritten(pantryInventory, recipes) {
   return (c) => names.get(c) || capitalize(c);
 }
 
-// Ranks every recipe for the tray. `upcomingEntries` are this week's
+// Ranks every recipe for the finder. `upcomingEntries` are this week's
 // placements from today on - what "already in a meal" means for expiring
 // food, and what "shared with the week" counts against.
 export function rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, haveCores }) {
@@ -64,7 +57,7 @@ export function rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, 
     for (const c of recipeCores(e.recipe)) plannedCoreCounts.set(c, (plannedCoreCounts.get(c) || 0) + 1);
   }
 
-  // Expiring food that no upcoming meal uses yet is what the tray should
+  // Expiring food that no upcoming meal uses yet is what the finder should
   // push; once everything expiring is in a meal, fall back to all of it.
   const unusedExpiring = expiringCores.filter((c) => !plannedCoreCounts.has(c));
   const expiringFocus = new Set(unusedExpiring.length > 0 ? unusedExpiring : expiringCores);
@@ -88,78 +81,4 @@ export function rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, 
   const nameOf = namesAsWritten(pantryInventory, recipes);
   for (const x of ranked) x.nameOf = nameOf;
   return { ranked, expiringCores, unusedExpiringCores: unusedExpiring, nameOf };
-}
-
-// "Spinach, Feta" as a list; "spinach and feta" inside a sentence.
-function namesOf(x, cores, { inSentence = false } = {}) {
-  const names = cores.map((c) => (x.nameOf ? x.nameOf(c) : capitalize(c)));
-  return inSentence ? formatList(names.map((n) => n.charAt(0).toLowerCase() + n.slice(1))) : names.join(", ");
-}
-
-function tile(info, reason) {
-  return { ...info, reason };
-}
-
-// Suggested tab: three groups, each recipe appearing in at most one.
-export function suggestedGroups(ranked) {
-  const taken = new Set();
-  const pick = (list, n) => {
-    const out = list.filter((x) => !taken.has(x.recipe.id)).slice(0, n);
-    out.forEach((x) => taken.add(x.recipe.id));
-    return out;
-  };
-
-  const expiring = pick(
-    ranked.filter((x) => x.expUsed.length > 0).sort((a, b) => b.expUsed.length - a.expUsed.length || b.score - a.score),
-    3
-  );
-  const nothing = pick(ranked.filter((x) => x.stats.totalCount > 0 && x.stats.missingCount === 0), 2);
-
-  const groups = [
-    {
-      id: "expiring",
-      title: t("tray.groupExpiring"),
-      tone: "pink",
-      tiles: expiring.map((x) => tile(x, t("tray.uses", { names: namesOf(x, x.expUsed, { inSentence: true }) }))),
-    },
-    { id: "nothing", title: t("tray.groupNothing"), tone: "yellow", tiles: nothing.map((x) => tile(x, t("tray.allHere"))) },
-  ].filter((g) => g.tiles.length > 0);
-
-  // No inventory yet: still offer something rather than an empty tray.
-  if (groups.length === 0) {
-    const top = pick(ranked, 5);
-    if (top.length > 0) {
-      groups.push({
-        id: "top",
-        title: t("tray.groupTop"),
-        tone: "paper",
-        tiles: top.map((x) => tile(x, namesOf(x, x.cores.slice(0, 3)))),
-      });
-    }
-  }
-  return groups;
-}
-
-// Plan around tab: recipes that use the most picked ingredients.
-export function planAroundMatches(ranked, pickedCores, limit = 6) {
-  if (pickedCores.size === 0) return [];
-  return ranked
-    .map((x) => ({ x, matched: x.cores.filter((c) => pickedCores.has(c)) }))
-    .filter(({ matched }) => matched.length > 0)
-    .sort((a, b) => b.matched.length - a.matched.length || b.x.score - a.x.score)
-    .slice(0, limit)
-    .map(({ x, matched }) => tile(x, t("tray.uses", { names: namesOf(x, matched, { inSentence: true }) })));
-}
-
-export function searchRecipes(ranked, query) {
-  const q = query.trim().toLowerCase();
-  return [...ranked]
-    .sort((a, b) => a.recipe.title.localeCompare(b.recipe.title))
-    .filter(
-      (x) =>
-        !q ||
-        x.recipe.title.toLowerCase().includes(q) ||
-        x.recipe.ingredients?.some((i) => i.name?.toLowerCase().includes(q))
-    )
-    .map((x) => tile(x, namesOf(x, x.cores.slice(0, 3))));
 }

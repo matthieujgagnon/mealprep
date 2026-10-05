@@ -16,6 +16,7 @@ model User {
   name         String?
   passwordHash String
   locale       String? // "fr" | "en": the app's language for this account (and its emails); null until first chosen
+  weekendDays  Int[]    @default([5, 6]) // the days the Planner groups as the weekend (0 = Monday ... 6 = Sunday)
   createdAt    DateTime @default(now())
 
   sessions              Session[]
