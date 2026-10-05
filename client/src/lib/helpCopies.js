@@ -17,11 +17,12 @@ export const COPY_TOKEN = /\[\[(\w+)\]\]/g;
 // `label` is a dictionary key; `vars` are example values for its {placeholders}.
 // `onAccent`: the real button sits on the blue block, so the copy gets blue behind it.
 export const HELP_COPIES = {
-  // Home: the Tonight card and the grocery card
+  // Home: the Tonight card, the grocery card and Proteins on sale
   startCooking: { kind: "pill", cls: "riso-btn hot", label: "home.startCooking", strong: true },
   swap: { kind: "pill", cls: "riso-btn outline-on-accent", label: "home.swap", onAccent: true },
   eatingOut: { kind: "pill", cls: "riso-btn outline-on-accent", label: "home.eatingOut", onAccent: true },
   openList: { kind: "pill", cls: "riso-btn ink", label: "home.openList", strong: true },
+  addProteinToList: { kind: "pill", cls: "riso-protein-add", label: "proteins.addToList" },
 
   // Recipes
   expiringChip: { kind: "pill", cls: "riso-recipe-chip expiring", label: "recipes.usesExpiring" },

@@ -4,8 +4,8 @@ import { langSwitch } from "./account-menu.js";
 
 const prisma = new PrismaClient();
 
-// Home's Proteins on sale by general protein (the count and "See them" cover
-// every kind of it), and the recipes line under each grocery item.
+// Home's Proteins on sale by general protein (the count and "See your recipes"
+// cover every kind of it), and the recipes line under each grocery item.
 
 const pad = (n) => String(n).padStart(2, "0");
 const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -71,26 +71,35 @@ test.describe("Proteins on sale, by general protein", () => {
   test("one card per general protein, with its best deal, and the specific item under the name", async ({ page }) => {
     await seed(page);
     const block = page.locator(".riso-home-proteins");
-    await expect(block.locator(".riso-protein-row")).toHaveCount(8);
+    await expect(block.locator(".riso-protein-card")).toHaveCount(8);
     const names = await block.locator(".riso-protein-name").allInnerTexts();
     expect(names.sort()).toEqual(["Beef", "Chicken", "Fish", "Lamb", "Pork", "Seafood", "Tofu", "Turkey"].sort());
 
-    // Chicken: the general name as the title, its best buy (the thighs, the
-    // biggest saving) under it, and the other two kinds as "+2 more".
+    // Chicken: the general name as the title and how many products are on
+    // sale under it; opening it lists them, the thighs (the biggest saving) first.
     const chicken = block.getByRole("button", { name: /^Chicken:/ });
     await expect(chicken.locator(".riso-protein-name")).toHaveText("Chicken");
-    await expect(chicken.locator(".riso-protein-meta")).toContainText("Chicken thighs");
-    await expect(chicken.locator(".riso-protein-meta")).toContainText("Super C");
-    await expect(chicken.locator(".riso-protein-meta")).toContainText("+2 more");
-    await expect(block.getByRole("button", { name: /^Fish:/ }).locator(".riso-protein-name")).toHaveText("Fish");
-    await expect(block.getByRole("button", { name: /^Fish:/ }).locator(".riso-protein-meta")).toContainText("Atlantic salmon");
-    await expect(block.getByRole("button", { name: "Pork: no deal this week" })).toContainText("No deal this week");
+    await expect(chicken.locator(".riso-protein-count")).toHaveText("3 products");
+    await chicken.click();
+    const products = block.locator(".riso-protein-product");
+    await expect(products).toHaveCount(3);
+    await expect(products.first()).toContainText("Chicken thighs");
+    await expect(products.first()).toContainText("Super C");
+    await expect(products.first()).toContainText("50% off");
+    await chicken.click();
+
+    const fish = block.getByRole("button", { name: /^Fish:/ });
+    await expect(fish.locator(".riso-protein-name")).toHaveText("Fish");
+    await fish.click();
+    await expect(block.locator(".riso-protein-product").first()).toContainText("Atlantic salmon");
+    await fish.click();
+    await expect(block.locator(".riso-protein-card.none", { hasText: "Pork" })).toContainText("No deal this week");
   });
 
-  test("the bar counts every recipe that uses any kind of it, and See them opens a filter chip with those same recipes", async ({ page }) => {
+  test("an open protein counts every recipe that uses any kind of it, and See your recipes opens a filter chip with those same recipes", async ({ page }) => {
     await seed(page);
     const block = page.locator(".riso-home-proteins");
-    const bar = page.locator(".riso-protein-bar");
+    const link = page.locator(".riso-protein-recipes-link");
 
     for (const [kind, count, word, titles] of [
       ["Chicken", 4, "chicken", ["BBQ legs", "Curry", "Lemon chicken", "Roast"]],
@@ -98,8 +107,8 @@ test.describe("Proteins on sale, by general protein", () => {
       ["Beef", 1, "beef", ["Chili"]],
     ]) {
       await block.getByRole("button", { name: new RegExp(`^${kind}:`) }).click();
-      await expect(bar).toContainText(count === 1 ? `1 of your recipes uses ${word}.` : `${count} of your recipes use ${word}.`);
-      await bar.click();
+      await expect(link).toHaveText(count === 1 ? `See your recipe with ${word} →` : `See your ${count} recipes with ${word} →`);
+      await link.click();
       await expect(page.locator(".tab.active")).toHaveText("Recipes");
       // A chip with the protein's name, not a long search.
       await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
@@ -110,15 +119,14 @@ test.describe("Proteins on sale, by general protein", () => {
     }
   });
 
-  test("names, the bar and the count are in French too", async ({ page }) => {
+  test("names, the link and the count are in French too", async ({ page }) => {
     await seed(page);
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     const block = page.locator(".riso-home-proteins");
     const names = await block.locator(".riso-protein-name").allInnerTexts();
     expect(names.sort()).toEqual(["Agneau", "Bœuf", "Dinde", "Fruits de mer", "Poisson", "Porc", "Poulet", "Tofu"].sort());
     await block.getByRole("button", { name: /^Poulet :/ }).click();
-    await expect(page.locator(".riso-protein-bar")).toContainText("4 de vos recettes utilisent du poulet.");
-    await expect(page.locator(".riso-protein-bar")).toContainText("Les voir →");
+    await expect(page.locator(".riso-protein-recipes-link")).toHaveText("Voir vos 4 recettes avec du poulet →");
   });
 });
 
@@ -317,12 +325,24 @@ test.describe("Recipes protein filter: a sauce or stock is not the protein", () 
 
   test("Home and the filter always agree on the count", async ({ page }) => {
     await seed(page);
+    // Only a protein with a real sale opens, so give each one a sale.
+    const me = await (await page.request.get("/api/auth/me")).json();
+    const deal = (item, unitPrice, regularPrice) => ({
+      userId: me.user?.id ?? me.id, store: "Metro", source: "Metro", category: "protein", item, matchName: item.toLowerCase(),
+      price: `$${unitPrice}/lb`, unitPrice, unitBasis: "lb", regularPrice, isCurrent: true, createdAt: new Date(),
+    });
+    await prisma.flyerDeal.createMany({
+      data: [deal("Whole chicken", 2.49, 4.49), deal("Cod fillets", 8.99, 12.99), deal("Lean ground beef", 5.97, 8.99)],
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "Recipes", exact: true }).click();
     for (const kind of ["Chicken", "Fish", "Beef"]) {
       await chooseProtein(page, kind);
       const shown = await page.locator(".riso-recipe-card-name").count();
       await page.getByRole("button", { name: "Home", exact: true }).click();
       await page.getByRole("button", { name: new RegExp(`^${kind}:`) }).click();
-      await expect(page.locator(".riso-protein-bar")).toContainText(shown === 1 ? "1 of your recipes uses" : `${shown} of your recipes use`);
+      await expect(page.locator(".riso-protein-recipes-link")).toContainText(shown === 1 ? "See your recipe with" : `See your ${shown} recipes with`);
+      await page.keyboard.press("Escape");
       await page.getByRole("button", { name: "Recipes", exact: true }).click();
     }
   });

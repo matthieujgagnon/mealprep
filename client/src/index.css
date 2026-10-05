@@ -7738,7 +7738,7 @@ button.riso-table-group-head:disabled {
 
 .riso-home-top-row {
   display: grid;
-  grid-template-columns: 1.7fr 1fr;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
   gap: 20px;
 }
 
@@ -7768,12 +7768,7 @@ button.riso-table-group-head:disabled {
 }
 
 .riso-home-hero-photo.placeholder {
-  background: rgba(255, 255, 255, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: var(--riso-on-accent);
+  background: repeating-linear-gradient(135deg, var(--riso-track) 0 10px, #ddd6c6 10px 20px);
 }
 
 .riso-home-hero-info {
@@ -7989,9 +7984,12 @@ button.riso-table-group-head:disabled {
 }
 
 .riso-home-week-strip {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 10px;
+  /* Room for the pink shadows, so a scrolling strip doesn't clip them. */
+  padding: 0 6px 6px 0;
 }
 
 .riso-home-week-day {
@@ -8006,7 +8004,13 @@ button.riso-table-group-head:disabled {
   padding: 0;
   min-height: 128px;
   color: var(--riso-ink);
-  /* The Planner's pink, so Home's days and the Planner's day headers match. */
+  box-shadow: none;
+}
+
+/* The Planner's pink shadow, so Home's days and the Planner's day headers
+   match: on today and on planned days still to come, never on next week. */
+.riso-home-week-strip:not(.next) .riso-home-week-day:not(.empty):not(.past),
+.riso-home-week-strip:not(.next) .riso-home-week-day.today {
   box-shadow: var(--riso-shadow-today);
 }
 
@@ -8084,6 +8088,10 @@ button.riso-table-group-head:disabled {
   justify-content: center;
 }
 
+.riso-home-week-day-title.emoji {
+  font-size: 15px;
+}
+
 .riso-home-week-day.empty {
   align-items: center;
   justify-content: center;
@@ -8100,10 +8108,27 @@ button.riso-table-group-head:disabled {
   color: var(--riso-muted);
 }
 
+/* Proteins on sale first; Makeable now only when it has something, and then
+   Proteins gives up some room for it. */
 .riso-home-bottom-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
   gap: 20px;
+  align-items: stretch;
+}
+
+.riso-home-bottom-row.three {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+@media (max-width: 1000px) {
+  .riso-home-bottom-row.three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .riso-home-bottom-row.three > .riso-home-proteins {
+    grid-column: 1 / -1;
+  }
 }
 
 .riso-home-mini {
@@ -8168,12 +8193,6 @@ button.riso-table-group-head:disabled {
   border-top: 1.5px solid #d9d3c4;
 }
 
-.riso-home-rows.ruled {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 2px solid var(--riso-ink);
-}
-
 .riso-home-mini-spacer {
   flex: 1;
   min-height: 14px;
@@ -8206,8 +8225,8 @@ button.riso-table-group-head:disabled {
   background: var(--riso-yellow);
 }
 
-.riso-freshness-bar-fill.ink {
-  background: var(--riso-ink);
+.riso-freshness-bar-fill.blue {
+  background: var(--riso-accent);
 }
 
 /* Use it up */
@@ -8271,12 +8290,32 @@ button.riso-table-group-head:disabled {
 
 .riso-useup-badge.pink {
   background: var(--riso-hot);
-  transform: rotate(-4deg);
 }
 
 .riso-useup-badge.yellow {
   background: var(--riso-yellow);
-  transform: rotate(3deg);
+}
+
+.riso-useup-badge.blue {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-home-more-link {
+  margin-top: 12px;
+  padding: 12px 0 0;
+  width: 100%;
+  border: 0;
+  border-top: 1.5px solid #d9d3c4;
+  background: none;
+  color: var(--riso-accent);
+  font: 700 13px var(--riso-font-display);
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-home-more-link:hover {
+  text-decoration: underline;
 }
 
 /* Makeable now */
@@ -8300,220 +8339,71 @@ button.riso-table-group-head:disabled {
   color: #5e5b52;
 }
 
-.riso-nearly-row {
-  display: flex;
+/* Proteins on sale (Riso v2 Home): one 78px card per protein; the open one
+   shows a panel of its products under it, and the rest of the page blurs. */
+.riso-home-proteins.has-open {
+  position: relative;
+  z-index: 61;
+  background: #f2f0eb;
+}
+
+.riso-protein-list {
   gap: 12px;
-  align-items: center;
 }
 
-.riso-nearly-open {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+.riso-home-proteins .riso-empty-note {
+  margin-bottom: 12px;
 }
 
-.riso-nearly-open:hover .riso-nearly-title {
-  text-decoration: underline;
+.riso-protein-list > li + li {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
-.riso-nearly-thumb {
-  width: 54px;
-  height: 54px;
+.riso-protein-list > li {
+  position: relative;
+}
+
+.riso-protein-list > li.open {
+  z-index: 31;
+}
+
+.riso-protein-card {
+  width: 100%;
   box-sizing: border-box;
-  border-radius: 12px;
+  height: 78px;
+  padding: 10px 12px;
   border: 2px solid var(--riso-ink);
-  object-fit: cover;
-  flex: none;
-  background: #e9e4d8;
-}
-
-.riso-nearly-thumb.placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 800 20px var(--riso-font-display);
-  color: var(--riso-muted);
-}
-
-.riso-nearly-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.riso-nearly-title {
-  font: 700 15px/1.15 var(--riso-font-display);
-}
-
-.riso-nearly-missing {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  font-size: 12.5px;
-  color: #3f3e37;
-}
-
-.riso-nearly-tag {
-  background: var(--riso-yellow);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 0 8px;
-  font: 800 11.5px var(--riso-font-display);
-  white-space: nowrap;
-  color: var(--riso-ink);
-}
-
-.riso-nearly-tag.ready {
-  background: var(--riso-green);
-}
-
-.riso-nearly-list {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 16px;
-  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
   background: var(--riso-surface);
   color: var(--riso-ink);
-  font: 700 12.5px var(--riso-font-display);
-  white-space: nowrap;
-  flex: none;
-  cursor: pointer;
-}
-
-.riso-nearly-list:hover {
-  box-shadow: 2px 2px 0 var(--riso-ink);
-}
-
-.riso-nearly-listed {
-  font: 700 12px var(--riso-font-display);
-  color: var(--riso-green-text);
-  white-space: nowrap;
-  flex: none;
-}
-
-/* Proteins on sale */
-.riso-protein-list > li + li {
-  margin-top: 10px;
-  padding-top: 10px;
-}
-
-.riso-protein-row {
-  width: 100%;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--riso-ink);
   font: inherit;
   text-align: left;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  column-gap: 18px;
+  align-items: center;
+  transition: filter 0.15s, opacity 0.15s;
+}
+
+button.riso-protein-card {
+  grid-template-columns: 30px minmax(0, 1fr) auto 38px;
   cursor: pointer;
 }
 
-.riso-protein-row:hover .riso-protein-name {
+button.riso-protein-card:hover .riso-protein-name {
   text-decoration: underline;
-}
-
-/* The selected kind: the Riso "selected" look (blue offset shadow). The border
-   and padding are always there, so selecting never moves the list. */
-.riso-protein-card {
-  margin: -8px -10px;
-  padding: 8px 10px;
-  border: 2px solid transparent;
-  border-radius: 14px;
 }
 
 .riso-protein-card.selected {
-  border-color: var(--riso-ink);
-  background: var(--riso-surface);
+  border-radius: 16px 16px 0 0;
   box-shadow: var(--riso-shadow-selected);
 }
 
-.riso-protein-deal-link {
-  margin: 6px 0 0 38px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--riso-accent);
-  font: 700 13px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-protein-deal-link:hover {
-  text-decoration: underline;
-}
-
-/* The bar at the bottom of the screen: how many recipes use the selected kind.
-   It slides up and sits above the phone's home-bar gap; nothing else on the
-   phone is fixed at the bottom of Home, so it covers no navigation. */
-.riso-protein-bar-wrap {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 60;
-  display: flex;
-  justify-content: center;
-  padding: 0 14px calc(14px + env(safe-area-inset-bottom));
-  pointer-events: none;
-  background: none;
-  animation: riso-protein-bar-up 0.22s ease-out;
-}
-
-.riso-protein-bar {
-  pointer-events: auto;
-  width: 100%;
-  max-width: 560px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 18px;
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  box-shadow: var(--riso-shadow);
-  font: 700 14.5px/1.3 var(--riso-font-display);
-  text-align: left;
-}
-
-button.riso-protein-bar {
-  cursor: pointer;
-}
-
-.riso-protein-bar-go {
-  flex: none;
-  white-space: nowrap;
-}
-
-@keyframes riso-protein-bar-up {
-  from {
-    transform: translateY(110%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .riso-protein-bar-wrap {
-    animation: none;
-  }
+.riso-protein-card.dimmed {
+  filter: blur(3px);
+  opacity: 0.55;
 }
 
 .riso-protein-emoji {
@@ -8524,7 +8414,6 @@ button.riso-protein-bar {
 }
 
 .riso-protein-item {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -8536,9 +8425,21 @@ button.riso-protein-bar {
   overflow-wrap: anywhere;
 }
 
+.riso-protein-count {
+  margin-top: 3px;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #5e5b52;
+}
+
 .riso-protein-meta {
   font-size: 12px;
   color: #5e5b52;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .riso-protein-right {
@@ -8569,9 +8470,10 @@ button.riso-protein-bar {
 
 .riso-protein-verdict {
   font: 500 10px var(--riso-font-mono);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
+  text-align: right;
   color: #16a34a;
 }
 
@@ -8584,7 +8486,26 @@ button.riso-protein-bar {
   color: #8a0f55;
 }
 
-/* A kind with no deal this week: the same row, quieter. */
+.riso-protein-chevron {
+  width: 38px;
+  height: 38px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 17px/1 var(--riso-font-display);
+}
+
+.riso-protein-card.selected .riso-protein-chevron {
+  background: var(--riso-ink);
+  color: #fff;
+}
+
+/* A kind with no real sale this week: the same card, quieter. */
 .riso-protein-card.none .riso-protein-emoji {
   opacity: 0.55;
 }
@@ -8592,6 +8513,215 @@ button.riso-protein-bar {
 .riso-protein-card.none .riso-protein-name {
   font-weight: 600;
   color: var(--riso-muted);
+}
+
+.riso-protein-panel {
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  left: -2px;
+  width: calc(100% + 4px);
+  box-sizing: border-box;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px 14px 10px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 0 0 16px 16px;
+  box-shadow: var(--riso-shadow-selected);
+}
+
+.riso-protein-products {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.riso-protein-product + .riso-protein-product {
+  border-top: 1.5px solid var(--riso-track);
+}
+
+.riso-protein-product-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--riso-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-protein-product.open .riso-protein-product-head {
+  background: var(--riso-canvas);
+}
+
+.riso-protein-product .riso-deal-photo {
+  flex: none;
+  border: 2px solid var(--riso-ink);
+  border-radius: 9px;
+  box-sizing: border-box;
+  object-fit: cover;
+}
+
+.riso-protein-product-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.riso-protein-product-name {
+  font: 600 13px/1.2 var(--riso-font-body);
+}
+
+.riso-protein-product-store {
+  font: 500 11px/1.2 var(--riso-font-body);
+  color: #5e5b52;
+}
+
+.riso-protein-product-store span {
+  font-size: 9px;
+}
+
+.riso-protein-product-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: none;
+}
+
+.riso-protein-product-price {
+  font: 800 14px/1 var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-protein-product-price small {
+  font: 500 10px var(--riso-font-mono);
+}
+
+.riso-protein-off {
+  background: var(--riso-green);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 0 7px;
+  font: 800 10.5px/16px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.riso-protein-detail {
+  margin: 0 4px 8px;
+  padding: 10px 12px;
+  border: 1.5px dashed var(--riso-dash-strong);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-protein-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.riso-protein-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.riso-protein-stat-cap {
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5e5b52;
+}
+
+.riso-protein-stat-val {
+  font: 700 13px var(--riso-font-display);
+}
+
+.riso-protein-stat-val.good {
+  color: var(--riso-green-text);
+}
+
+.riso-protein-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.riso-protein-add,
+.riso-protein-flyer {
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 13px;
+  border-radius: 16px;
+  border: 2px solid var(--riso-ink);
+  display: inline-flex;
+  align-items: center;
+  font: 800 12px var(--riso-font-display);
+  color: var(--riso-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.riso-protein-add {
+  background: var(--riso-yellow);
+}
+
+.riso-protein-add.listed {
+  background: var(--riso-green);
+  cursor: default;
+}
+
+.riso-protein-flyer {
+  border-style: dashed;
+  font-weight: 700;
+}
+
+.riso-protein-recipes {
+  margin-top: 4px;
+  padding: 10px 6px 4px;
+  border-top: 1.5px solid var(--riso-track);
+}
+
+.riso-protein-recipes p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--riso-muted);
+}
+
+.riso-protein-recipes-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--riso-accent);
+  font: 700 13px var(--riso-font-display);
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-protein-recipes-link:hover {
+  text-decoration: underline;
+}
+
+/* While a protein is open the rest of the page blurs; tapping it closes. */
+.riso-protein-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(22, 24, 31, 0.22);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 /* ================================================================
@@ -10702,8 +10832,23 @@ button.riso-deal-detail-other:focus-visible {
   }
 
   .riso-home-top-row,
-  .riso-home-bottom-row {
+  .riso-home-bottom-row,
+  .riso-home-bottom-row.three {
     grid-template-columns: 1fr;
+  }
+
+  .riso-protein-card {
+    column-gap: 10px;
+    padding: 10px;
+  }
+
+  button.riso-protein-card {
+    grid-template-columns: 26px minmax(0, 1fr) auto 34px;
+  }
+
+  .riso-protein-chevron {
+    width: 34px;
+    height: 34px;
   }
 
   .riso-home-hero-photo {
@@ -12402,11 +12547,13 @@ body.no-select {
   flex-direction: column;
   gap: 5px;
   min-width: 0;
-  box-shadow: var(--riso-shadow-today);
+  box-shadow: none;
 }
 
+/* Only today's column and the meal that is on now carry the pink shadow. */
 .riso-home-week-col.today {
-  background: var(--riso-hot);
+  background: var(--riso-surface);
+  box-shadow: var(--riso-shadow-today);
 }
 
 .riso-home-week-meal {
@@ -12457,6 +12604,17 @@ body.no-select {
   background: none;
   color: var(--riso-muted);
   font-weight: 500;
+}
+
+.riso-home-week-col.today .riso-home-week-meal.empty {
+  border-color: var(--riso-ink);
+}
+
+.riso-home-week-meal.current {
+  border-style: solid;
+  border-color: var(--riso-ink);
+  background: var(--riso-surface);
+  box-shadow: 3px 3px 0 var(--riso-hot);
 }
 
 /* ---- Planner tray: recipes drawn like the Recipes page cards ---- */

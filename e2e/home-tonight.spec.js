@@ -12,6 +12,14 @@ function mondayOf(d) {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 }
 
+// These are about supper, which is the card from 3 pm: fix the clock at 6 pm
+// so they give the same answer whenever they run.
+test.beforeEach(async ({ page }) => {
+  const evening = new Date();
+  evening.setHours(18, 0, 0, 0);
+  await page.clock.setFixedTime(evening);
+});
+
 test("a written note tonight shows without Start cooking", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
