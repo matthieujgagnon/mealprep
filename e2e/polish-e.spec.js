@@ -350,17 +350,19 @@ test.describe("Recipes protein filter: a sauce or stock is not the protein", () 
   test.describe("on a phone, in French", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test("the protein menu and chip fit, and the chip clears it", async ({ page }) => {
+    test("the Protein menu fits, shows the choice, and clears it", async ({ page }) => {
       await seed(page);
       await langSwitch(page).getByRole("button", { name: "Français" }).click();
-      await page.getByLabel("Filtrer les recettes par protéine").selectOption({ label: "Poisson (1)" });
-      const chip = page.locator(".riso-recipes-protein-chip");
-      await expect(chip).toContainText("Poisson");
-      const box = await chip.boundingBox();
+      const menu = page.getByRole("button", { name: /^PROTÉINE/ });
+      await menu.click();
+      await page.getByRole("option", { name: "Poisson", exact: true }).click();
+      await expect(menu).toContainText("Poisson");
+      const box = await menu.boundingBox();
       expect(box.x + box.width).toBeLessThanOrEqual(390);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-      await chip.click();
-      await expect(chip).toHaveCount(0);
+      await menu.click();
+      await page.getByRole("option", { name: "Toute protéine", exact: true }).click();
+      await expect(menu).toContainText("Toute protéine");
     });
   });
 });

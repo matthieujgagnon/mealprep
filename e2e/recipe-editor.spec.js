@@ -53,7 +53,7 @@ test("a new recipe with a slot, pasted steps and a pasted ingredient list", asyn
   await page.locator(".riso-filter-chip", { hasText: /Pantry \/ Prep/ }).click();
   const card = page.locator(".riso-recipe-card", { hasText: "Quick pickled shallots" });
   await expect(card).toBeVisible();
-  await expect(card.locator(".riso-recipe-chip.time")).toHaveText("⏱5 min");
+  await expect(card.locator(".rv2-card-meta .riso-pill")).toHaveText("⏱5 min");
 
   const recipes = await (await page.request.get("/api/recipes")).json();
   const saved = recipes.find((r) => r.title === "Quick pickled shallots");

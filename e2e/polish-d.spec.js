@@ -36,50 +36,69 @@ const goRecipes = async (page) => {
 };
 const SVG = (c) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='30'><rect width='40' height='30' fill='${c}'/></svg>`)}`;
 
-test.describe("Recipes toolbar and headers on a phone", () => {
+test.describe("Recipes on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("Cookbook, Imported and Sort share one line, every control the same size, with no sideways scroll", async ({ page }) => {
+  test("the search pill and + New recipe stack; Cookbook and Imported share a line; Meal, Protein, Time and Sort sit in two rows; no sideways scroll", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Chicken curry");
     const pad = await recipe(page, "Pad thai");
     await api(page, "PUT", `/api/recipes/${pad.id}`, { inCookbook: false });
     await goRecipes(page);
 
-    const row = page.locator(".riso-recipes-source-row");
-    const boxes = await row.locator(".riso-filter-chip, .riso-recipes-sort-btn").evaluateAll((els) =>
-      els.map((e) => {
-        const r = e.getBoundingClientRect();
-        return { top: Math.round(r.top), h: Math.round(r.height), right: Math.round(r.right) };
-      })
-    );
-    expect(boxes).toHaveLength(3); // Cookbook, Imported, the sort button
-    expect(new Set(boxes.map((b) => b.top)).size).toBe(1); // one line
-    expect(boxes.every((b) => b.right <= 390)).toBe(true);
-    // The same height as the filter chips under them.
-    const chipHeight = await page.locator(".riso-recipes-filter-chips:not(.riso-recipes-source-chips) .riso-filter-chip").first().evaluate((e) => Math.round(e.getBoundingClientRect().height));
-    expect(new Set([...boxes.map((b) => b.h), chipHeight])).toEqual(new Set([32]));
+    const box = (loc) => loc.evaluate((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right) }; });
+    // The button is under the search pill, the full width of it.
+    const pill = await box(page.locator(".rv2-searchpill"));
+    const add = await box(page.getByRole("button", { name: "+ New recipe" }));
+    expect(add.top).toBeGreaterThan(pill.top + pill.h - 1);
+    expect(add.w).toBe(pill.w);
+    // Cookbook and Imported side by side.
+    const tabs = [await box(page.getByRole("tab", { name: /^Cookbook/ })), await box(page.getByRole("tab", { name: /^Imported/ }))];
+    expect(tabs[0].top).toBe(tabs[1].top);
+    expect(tabs.every((b) => b.right <= 390)).toBe(true);
+    // Four menus in two rows of two, the same size, and no chip row.
+    const menus = [];
+    for (const name of [/^MEAL/, /^PROTEIN/, /^TIME/, /^SORT/]) menus.push(await box(page.getByRole("button", { name })));
+    expect(new Set([menus[0].top, menus[1].top]).size).toBe(1);
+    expect(new Set([menus[2].top, menus[3].top]).size).toBe(1);
+    expect(menus[2].top).toBeGreaterThan(menus[0].top);
+    expect(new Set(menus.map((m) => m.w)).size).toBe(1);
+    expect(menus.every((m) => m.right <= 390)).toBe(true);
+    await expect(page.locator(".rv2-chips")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    await expect(row.getByLabel("Sort recipes")).toBeVisible();
   });
 
-  test("Cookbook and Imported are bigger, bolder bands; the meal types inside are plain smaller headers", async ({ page }) => {
+  test("the cards sit two across, with no folding sections", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Chicken curry");
+    await recipe(page, "Beef stew");
+    await recipe(page, "Fish pie");
     await goRecipes(page);
-    const top = page.locator(".riso-recipes-section > .riso-recipes-head").first();
-    const sub = page.locator(".riso-recipes-subsection > .riso-recipes-head").first();
-    const look = (loc) =>
-      loc.evaluate((e) => {
-        const h2 = getComputedStyle(e.querySelector("h2"));
-        return { size: parseFloat(h2.fontSize), weight: Number(h2.fontWeight), bg: getComputedStyle(e).backgroundColor, pad: parseFloat(getComputedStyle(e).paddingTop) };
-      });
-    const [a, b] = [await look(top), await look(sub)];
-    expect(a.size).toBeGreaterThan(b.size);
-    expect(a.weight).toBeGreaterThanOrEqual(b.weight);
-    expect(a.bg).not.toBe("rgba(0, 0, 0, 0)"); // a coloured band
-    expect(b.bg).toBe("rgba(0, 0, 0, 0)");
-    expect(a.pad).toBeGreaterThan(0);
+    await expect(page.locator(".riso-recipes-head")).toHaveCount(0);
+    const cards = page.locator(".riso-recipe-card");
+    await expect(cards).toHaveCount(3);
+    const lefts = await cards.evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) }; }));
+    expect(lefts[0].top).toBe(lefts[1].top); // two on the first row
+    expect(lefts[2].top).toBeGreaterThan(lefts[0].top); // the third wraps
+    expect(lefts[2].left).toBe(lefts[0].left);
+    expect(lefts[0].w).toBe(lefts[1].w);
+    expect(lefts[0].w).toBeLessThan(200);
+  });
+
+  test("the Meal menu picks a meal type and Makeable now, and a click outside closes it", async ({ page }) => {
+    await signUp(page);
+    await recipe(page, "Chicken curry");
+    await recipe(page, "Toast", { mealSlot: "breakfast" });
+    await goRecipes(page);
+    const meal = page.getByRole("button", { name: /^MEAL/ });
+    await meal.click();
+    await page.getByRole("option", { name: /^Breakfast/ }).click();
+    await expect(meal).toContainText("Breakfast");
+    await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Toast"]);
+    await meal.click();
+    await expect(page.getByRole("listbox", { name: /^MEAL/ })).toBeVisible();
+    await page.locator(".riso-recipes-title").click();
+    await expect(page.getByRole("listbox")).toHaveCount(0);
   });
 });
 

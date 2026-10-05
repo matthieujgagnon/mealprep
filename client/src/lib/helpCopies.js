@@ -25,15 +25,16 @@ export const HELP_COPIES = {
   addProteinToList: { kind: "pill", cls: "riso-protein-add", label: "proteins.addToList" },
 
   // Recipes
-  expiringChip: { kind: "pill", cls: "riso-recipe-chip expiring", label: "recipes.usesExpiring" },
+  expiringChip: { kind: "pill", cls: "riso-pill size-tag tone-pink", label: "recipes.d.usesExpiring" },
+  saleChip: { kind: "pill", cls: "riso-pill size-tag tone-green", label: "recipes.d.onSale" },
   filterAll: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.all" },
   filterMakeable: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.makeable" },
   filterExpiring: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.expiring" },
   filterMeals: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.meals" },
-  sourceCookbook: { kind: "pill", cls: "riso-filter-chip", label: "recipes.sources.cookbook" },
-  sourceImported: { kind: "pill", cls: "riso-filter-chip", label: "recipes.sources.imported" },
-  importRecipe: { kind: "pill", cls: "riso-recipes-searchbar-btn primary", label: "recipes.importRecipe", strong: true },
-  newRecipe: { kind: "pill", cls: "riso-recipes-searchbar-btn", label: "recipes.newRecipe" },
+  sourceCookbook: { kind: "pill", cls: "rv2-tab", label: "recipes.sources.cookbook" },
+  sourceImported: { kind: "pill", cls: "rv2-tab", label: "recipes.sources.imported" },
+  importRecipe: { kind: "pill", cls: "rv2-new", label: "recipes.importRecipe", strong: true },
+  newRecipe: { kind: "pill", cls: "rv2-new", label: "recipes.newRecipe", strong: true },
 
   // Recipe card
   servingsMinus: { kind: "icon", cls: "riso-help-copy-stepper", glyph: "−" },
