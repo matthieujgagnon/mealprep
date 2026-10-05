@@ -40,16 +40,25 @@ export function Segmented({ options, value, onChange }) {
 
 // The "how it works" dashed strip shown once per user per screen, per
 // design_handoff_riso's shared component - `screenKey` scopes the
-// dismissal (e.g. "home", "flyers"). `children` is the strip's copy.
-export function HintStrip({ userId, screenKey, children }) {
+// dismissal (e.g. "home", "flyers"). `children` is the strip's copy; `items`
+// (an array of lines) draws it as a bulleted list instead.
+export function HintStrip({ userId, screenKey, items, children }) {
   const [dismissed, setDismissed] = useState(() => isHintDismissed(userId, screenKey));
   if (dismissed) return null;
   return (
-    <div className="riso-hint-strip">
+    <div className={`riso-hint-strip${items ? " has-list" : ""}`}>
       <span className="riso-sticker yellow riso-hint-sticker" style={{ position: "static" }}>
         {t("common.howItWorks")}
       </span>
-      <p className="riso-hint-text">{children}</p>
+      {items ? (
+        <ul className="riso-hint-list">
+          {items.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="riso-hint-text">{children}</p>
+      )}
       <button
         type="button"
         className="riso-hint-dismiss"

@@ -5118,14 +5118,6 @@ button.riso-table-group-head:disabled {
   cursor: default;
 }
 
-.riso-recipes-heading-row {
-  display: flex;
-  gap: 16px;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
 .riso-recipes-filter-chips {
   display: flex;
   gap: 5px;
@@ -5218,135 +5210,6 @@ button.riso-table-group-head:disabled {
   font-family: var(--riso-font-mono);
   font-size: 10px;
   opacity: 0.75;
-}
-
-/* The protein filter: a select like SORT, and, once a protein is picked (or Home's
-   "See them" picked it), a chip you can press to clear it. */
-.riso-recipes-protein-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.riso-recipes-protein-row .riso-recipes-sort-group {
-  margin-left: 0;
-}
-
-.riso-recipes-protein-chip {
-  box-shadow: 3px 3px 0 var(--riso-accent);
-}
-
-.riso-recipes-protein-x {
-  margin-left: 2px;
-  font-size: 15px;
-  line-height: 1;
-}
-
-/* Cookbook / Imported on the left, SORT on the right: one line, on a phone too. */
-.riso-recipes-source-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.riso-recipes-source-row .riso-recipes-filter-chips {
-  flex: none;
-  flex-wrap: nowrap;
-  overflow: visible;
-}
-
-.riso-recipes-source-row .riso-recipes-sort-group {
-  margin-left: 0;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-/* Cookbook and Imported: a collapsible section each (the header is the
-   Flyers' one: arrow, title, count, rule). The Cookbook has a smaller
-   collapsible header per meal type inside it. */
-.riso-recipes-section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.riso-recipes-section-body {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.riso-recipes-subsection {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.riso-recipes-head h2 {
-  margin: 0;
-  font: 800 26px var(--riso-font-display);
-  letter-spacing: -0.02em;
-}
-
-.riso-recipes-head.collapsed h2 {
-  color: var(--riso-muted);
-}
-
-/* The two big sections are a blue band (accent, ink outline, hard shadow);
-   the meal types inside stay a plain smaller header, so the levels read apart. */
-.riso-recipes-head.top {
-  box-sizing: border-box;
-  padding: 10px 16px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: var(--riso-shadow);
-}
-
-.riso-recipes-head.top h2 {
-  font-size: 24px;
-  color: var(--riso-on-accent);
-}
-
-.riso-recipes-head.top.collapsed {
-  box-shadow: none;
-}
-
-.riso-recipes-head.top.collapsed h2 {
-  color: var(--riso-on-accent);
-}
-
-.riso-recipes-head.top .riso-ing-group-rule {
-  background: var(--riso-on-accent);
-  opacity: 0.35;
-}
-
-.riso-recipes-head.top:focus-visible {
-  outline-offset: 3px;
-}
-
-.riso-recipes-head.sub h2 {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.riso-recipes-head.sub .riso-ing-group-count {
-  min-width: 26px;
-  height: 24px;
-  font-size: 12px;
-}
-
-.riso-recipes-head.sub .riso-ing-group-caret {
-  font-size: 15px;
-}
-
-.riso-recipes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 20px;
 }
 
 .riso-recipe-card {
@@ -12182,24 +12045,6 @@ button.riso-deal-detail-other:focus-visible {
     order: -1;
   }
 
-  .riso-recipes-source-row .riso-recipes-sort-group {
-    order: 0;
-  }
-
-  .riso-recipes-source-row .riso-recipes-sort-label {
-    display: none;
-  }
-
-  .riso-recipes-source-row .riso-recipes-filter-chips {
-    margin: 0;
-    padding: 0;
-  }
-
-  .riso-recipes-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
   .riso-recipe-card {
     border-radius: 18px;
   }
@@ -17336,17 +17181,46 @@ body.no-select {
   gap: 22px;
 }
 
+/* The search bar: the pill (SEARCH, the box, the paste chip) and "+ New recipe"
+   (or "Import recipe" once a link is typed) side by side in one bar. On a
+   phone the bar goes away and the pill and the button stack. */
+.rv2-searchbar {
+  padding: 10px 10px 10px 14px;
+}
+
+.rv2-searchpill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rv2-searchpill input {
+  order: 0;
+  flex: 1 1 0;
+}
+
 .rv2-new {
-  height: 48px;
-  padding: 0 24px;
-  border-radius: 24px;
+  flex: none;
+  height: 40px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-accent);
   color: var(--riso-on-accent);
-  box-shadow: var(--riso-shadow);
-  font: 800 16px var(--riso-font-display);
+  box-shadow: var(--riso-shadow-xs);
+  font: 800 15px var(--riso-font-display);
   white-space: nowrap;
   cursor: pointer;
+}
+
+.rv2-new:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* "paste a link to import" in the search pill (not a button: typing a link
@@ -17569,8 +17443,10 @@ body.no-select {
   font-size: 10.5px;
 }
 
-.rv2-chips-gap {
-  width: 12px;
+/* The rule between the meal types and Makeable now / Uses expiring */
+.rv2-chips-rule.inline {
+  align-self: center;
+  margin: 0 6px;
 }
 
 .rv2-countline {
@@ -17619,22 +17495,210 @@ body.no-select {
   text-wrap: pretty;
 }
 
-.rv2-card-chips {
+/* Time and the meal / protein line, then (when there are any) the pink and
+   green tags on their own row. */
+.rv2-card-meta,
+.rv2-card-tags {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
 
-.rv2-grid .riso-recipe-chip {
-  padding: 0 9px;
-}
-
-.rv2-grid .riso-recipe-chip.time {
-  padding: 0 8px;
-  border-radius: 5px;
-}
-
 .rv2-grid .riso-recipe-card-havelabel {
   font-size: 13.5px;
+}
+
+/* A menu that opens toward the right (left column on a phone) */
+.rv2-menu.left {
+  left: 0;
+  right: auto;
+}
+
+/* The "how it works" strip as a bulleted list (Recipes): sticker and "Got it"
+   on the first line, the bullets under them. */
+.riso-hint-strip.has-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.riso-hint-strip.has-list .riso-hint-sticker {
+  order: 0;
+}
+
+.riso-hint-strip.has-list .riso-hint-dismiss {
+  order: 1;
+  margin-left: auto;
+  align-self: center;
+  padding: 4px;
+}
+
+.riso-hint-list {
+  order: 2;
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-hint-list li {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--riso-ink);
+}
+
+.riso-hint-list li::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 3px;
+  background: var(--riso-accent);
+}
+
+/* Recipes on a phone: the same page as the desktop, tighter. The search pill
+   and "+ New recipe" stack; Cookbook / Imported share the width; Meal, Protein,
+   Time and Sort are four pill menus in two rows; the cards are two across. */
+@media (max-width: 767px) {
+  .rv2 {
+    gap: 24px;
+  }
+
+  .rv2-searchbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .rv2-searchpill {
+    padding: 6px 12px 6px 10px;
+    border: 2px solid var(--riso-ink);
+    border-radius: 999px;
+    background: var(--riso-surface);
+    box-shadow: var(--riso-shadow-ready);
+  }
+
+  .rv2-paste {
+    display: none;
+  }
+
+  .rv2-new {
+    width: 100%;
+  }
+
+  .rv2-tabrow {
+    gap: 0;
+  }
+
+  .rv2-tabs {
+    flex: 1 1 100%;
+    gap: 8px;
+  }
+
+  .rv2-tab {
+    flex: 1;
+    min-width: 0;
+    height: auto;
+    min-height: 46px;
+    padding: 4px 10px;
+    justify-content: center;
+    gap: 8px;
+    font-size: 17px;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .rv2-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .rv2-menu-wrap {
+    min-width: 0;
+  }
+
+  .rv2-drop.phone {
+    position: relative;
+    width: 100%;
+    height: 44px;
+    padding: 0 30px 0 16px;
+    border-radius: 22px;
+    font-size: 14px;
+  }
+
+  .rv2-drop.set.phone {
+    box-shadow: var(--riso-shadow-xs);
+  }
+
+  .rv2-drop.phone .rv2-drop-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .rv2-drop.phone .rv2-drop-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rv2-drop.phone .rv2-drop-caret {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+  }
+
+  .rv2-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .rv2-grid .riso-recipe-card {
+    border-radius: 18px;
+  }
+
+  .rv2-grid .riso-recipe-card-photo {
+    height: 120px;
+  }
+
+  .rv2-grid .riso-recipe-card-body {
+    padding: 10px 11px 12px;
+    gap: 6px;
+  }
+
+  .rv2-grid .riso-recipe-card-name {
+    font-size: 15px;
+  }
+
+  .rv2-grid .riso-recipe-card-havebar {
+    height: 10px;
+  }
+
+  .rv2-grid .riso-recipe-card-havelabel {
+    font-size: 11.5px;
+  }
+
+  .rv2-grid .riso-recipe-card-meta {
+    font-size: 9.5px;
+  }
 }
