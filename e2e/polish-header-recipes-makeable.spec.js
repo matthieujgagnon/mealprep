@@ -140,12 +140,16 @@ test("Home shows a tofu deal that has no regular price, and Tofu says so when it
     data: { userId, store: "IGA", source: "IGA", category: "protein", item: "Smoked tofu, 350 g", matchName: "smoked tofu", price: "$2.99", unitPrice: 2.99, unitBasis: "each", isCurrent: true, createdAt: new Date() },
   });
   await page.reload();
-  // No real sale to list, so it doesn't open, but its price shows.
-  const tofu = proteins.locator(".riso-protein-card.none", { hasText: "Smoked tofu" });
+  // No real sale to list, but its price shows, and it opens onto that price.
+  const tofu = proteins.getByRole("button", { name: /^Tofu: Smoked tofu/ });
   await expect(tofu).toBeVisible();
   await expect(tofu).toContainText("$3.87/lb"); // 350 g at $2.99, per lb like the rest
   await expect(tofu).toContainText("Can't tell yet");
   await expect(proteins.locator(".riso-protein-card")).toHaveCount(8);
+  await tofu.click();
+  await expect(tofu).toHaveAttribute("aria-expanded", "true");
+  await expect(proteins.locator(".riso-protein-product")).toHaveCount(1);
+  await expect(proteins.locator(".riso-protein-product").first()).toContainText("Smoked tofu");
 });
 
 test.describe("Proteins on sale panel on a phone", () => {
