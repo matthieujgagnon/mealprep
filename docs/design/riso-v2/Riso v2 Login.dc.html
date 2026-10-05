@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:'Bricolage Grotesque',sans-serif;color:#16181F}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}input::placeholder{color:#8A8576}input:focus{outline:none}</style></helmet>
+<div ref="{{ setRoot }}" style="min-height:100vh;display:flex;justify-content:center;align-items:center;padding:{{ pagePad }};box-sizing:border-box;background:#F4F1EA">
+<div style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:22px">
+<div style="align-self:flex-end;display:inline-flex;border:2px solid #16181F;border-radius:999px;overflow:hidden;background:#FFFDF8" role="group" aria-label="{{ langLabel }}">
+<sc-for list="{{ langs }}" as="l" hint-placeholder-count="2"><div onClick="{{ l.pick }}" title="{{ l.title }}" style="padding:6px 9px;display:flex;align-items:center;font:600 11px/1 'DM Mono',monospace;letter-spacing:.08em;cursor:pointer;background:{{ l.bg }};color:{{ l.fg }};box-sizing:border-box;user-select:none">{{ l.label }}</div></sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="align-self:flex-start;background:#FFE14D;border:2px solid #16181F;border-radius:999px;padding:2px 12px;font:500 11px 'DM Mono',monospace;letter-spacing:.12em">{{ eyebrow }}</span>
+<h1 style="margin:0;font:800 {{ titleFs }}/.98 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;text-wrap:balance">{{ title }}</h1>
+</div>
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:26px;padding:22px;display:flex;flex-direction:column;gap:18px;box-shadow:6px 6px 0 #2323FF">
+<sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}"><div role="group" aria-label="{{ modeLabel }}" style="display:flex;gap:6px;padding:4px;border:2px solid #16181F;border-radius:999px;background:#F4F1EA">
+<sc-for list="{{ modes }}" as="md" hint-placeholder-count="2"><div onClick="{{ md.pick }}" style="flex:1;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:{{ md.bg }};border:2px solid {{ md.bd }};box-sizing:border-box;user-select:none">{{ md.label }}</div></sc-for>
+</div></sc-if>
+<sc-if value="{{ isForm }}" hint-placeholder-val="{{ true }}"><form onSubmit="{{ submit }}" style="display:flex;flex-direction:column;gap:18px">
+<sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}"><label style="display:flex;flex-direction:column;gap:6px;font:700 14px 'Bricolage Grotesque',sans-serif">{{ nameLabel }}<input type="text" placeholder="{{ namePh }}" style="height:48px;border:2px solid #16181F;border-radius:14px;background:#fff;padding:0 14px;font:500 16px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box" style-focus="box-shadow:3px 3px 0 #2323FF"></label></sc-if>
+<label style="display:flex;flex-direction:column;gap:6px;font:700 14px 'Bricolage Grotesque',sans-serif">{{ emailLabel }}<input type="email" value="matthieugagnon@me.com" style="height:48px;border:2px solid #16181F;border-radius:14px;background:#fff;padding:0 14px;font:500 16px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box" style-focus="box-shadow:3px 3px 0 #2323FF"></label>
+<sc-if value="{{ showPassword }}" hint-placeholder-val="{{ true }}"><label style="display:flex;flex-direction:column;gap:6px;font:700 14px 'Bricolage Grotesque',sans-serif">{{ pwLabel }}<input type="password" value="password1" style="height:48px;border:2px solid #16181F;border-radius:14px;background:#fff;padding:0 14px;font:500 16px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box" style-focus="box-shadow:3px 3px 0 #2323FF"></label></sc-if>
+<sc-if value="{{ isReset }}" hint-placeholder-val="{{ false }}"><label style="display:flex;flex-direction:column;gap:6px;font:700 14px 'Bricolage Grotesque',sans-serif">{{ confirmLabel }}<input type="password" style="height:48px;border:2px solid #16181F;border-radius:14px;background:#fff;padding:0 14px;font:500 16px 'Bricolage Grotesque',sans-serif;color:#16181F;box-sizing:border-box" style-focus="box-shadow:3px 3px 0 #2323FF"></label></sc-if>
+<sc-if value="{{ showHint }}" hint-placeholder-val="{{ false }}"><p style="margin:-10px 0 0;font:400 13px 'Bricolage Grotesque',sans-serif;color:#5E5B52">{{ hint }}</p></sc-if>
+<sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}"><p style="margin:-10px 0 0;font:700 13px 'Bricolage Grotesque',sans-serif;color:#C4123F">{{ error }}</p></sc-if>
+<div style="display:flex;flex-direction:column;gap:12px">
+<button type="submit" style="height:52px;width:100%;border:2px solid #16181F;border-radius:999px;background:#2323FF;color:#fff;font:800 17px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-shadow:3px 3px 0 #16181F" style-active="transform:translate(2px,2px);box-shadow:1px 1px 0 #16181F">{{ cta }}</button>
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}"><div onClick="{{ toForgot }}" style="align-self:center;font:600 14px 'Bricolage Grotesque',sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:2px 4px" style-hover="color:#2323FF">{{ forgotLabel }}</div></sc-if>
+</div>
+</form></sc-if>
+<sc-if value="{{ isSent }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font:400 15px 'Bricolage Grotesque',sans-serif;color:#3F3E37">{{ sentText }}</p></sc-if>
+<sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:16px"><p style="margin:0;font:400 15px 'Bricolage Grotesque',sans-serif;color:#3F3E37">{{ updatedText }}</p><div onClick="{{ toLogin }}" style="height:52px;width:100%;border:2px solid #16181F;border-radius:999px;background:#2323FF;color:#fff;display:flex;align-items:center;justify-content:center;font:800 17px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-shadow:3px 3px 0 #16181F">{{ goLogin }}</div></div></sc-if>
+<sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}"><div onClick="{{ toLogin }}" style="align-self:center;font:600 14px 'Bricolage Grotesque',sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:2px 4px" style-hover="color:#2323FF">{{ backLabel }}</div></sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;860px&quot;},&quot;startMode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;login&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;signup&quot;,&quot;forgot&quot;,&quot;reset&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Login&quot;}}">
+class Component extends DCLogic {
+  state = { mode: 'login', sent: false, done: false, error: '', narrow: false };
+  async componentDidMount() {
+    const m = await import('./riso-v2-copy.js');
+    this.m = m;
+    this.unsub = m.subscribe(() => this.forceUpdate());
+    const s = this.props.startMode;
+    if (s && s !== this.state.mode) this.setState({ mode: s });
+    this.forceUpdate();
+  }
+  componentDidUpdate(prev) { if (prev.startMode !== this.props.startMode && this.props.startMode) this.setState({ mode: this.props.startMode, sent: false, done: false, error: '' }); }
+  componentWillUnmount() { if (this.unsub) this.unsub(); if (this.ro) this.ro.disconnect(); }
+  setRoot = el => { if (this.ro) this.ro.disconnect(); if (!el) return; this.ro = new ResizeObserver(() => { cancelAnimationFrame(this.raf); this.raf = requestAnimationFrame(() => { const n = el.getBoundingClientRect().width <= 480; if (n !== this.state.narrow) this.setState({ narrow: n }); }); }); this.ro.observe(el); };
+  renderVals() {
+    const m = this.m, t = m ? m.t : () => '', lang = m ? m.getLang() : 'en', S = this.state, mode = S.mode;
+    const go = md => () => this.setState({ mode: md, sent: false, done: false, error: '' });
+    const isForm = !S.sent && !S.done;
+    return {
+      setRoot: this.setRoot, pagePad: S.narrow ? '20px 16px' : '32px', titleFs: S.narrow ? '42px' : '52px',
+      langLabel: t('lang.label'), eyebrow: t('auth.eyebrow'), title: t('auth.title'), modeLabel: t('auth.modeLabel'),
+      langs: ['fr', 'en'].map(c => { const on = lang === c; return { label: t('lang.' + c), title: t(c === 'fr' ? 'lang.langFr' : 'lang.langEn'), bg: on ? '#16181F' : 'transparent', fg: on ? '#F4F1EA' : '#16181F', pick: () => m && m.setLang(c) }; }),
+      showTabs: mode === 'login' || mode === 'signup',
+      modes: [['login', 'auth.logIn'], ['signup', 'auth.signUp']].map(([k, key]) => { const on = mode === k; return { label: t(key), bg: on ? '#FFE14D' : 'transparent', bd: on ? '#16181F' : 'transparent', pick: go(k) }; }),
+      isForm, isSignup: mode === 'signup', isLogin: mode === 'login', isReset: mode === 'reset',
+      showPassword: mode !== 'forgot', showHint: mode === 'signup' || mode === 'reset',
+      isSent: mode === 'forgot' && S.sent, isDone: mode === 'reset' && S.done,
+      showBack: mode === 'forgot',
+      nameLabel: t('auth.name'), namePh: t('auth.namePlaceholder'), emailLabel: t('auth.email'),
+      pwLabel: mode === 'reset' ? t('auth.newPassword') : t('auth.password'), confirmLabel: t('auth.confirmPassword'),
+      hint: t('auth.passwordHint'), hasError: !!S.error, error: S.error ? t(S.error) : '',
+      cta: mode === 'login' ? t('auth.logIn') : mode === 'signup' ? t('auth.createAccount') : mode === 'forgot' ? t('auth.sendReset') : t('auth.setPassword'),
+      forgotLabel: t('auth.forgot'), backLabel: t('auth.backToLogIn'), sentText: t('auth.forgotSent'), updatedText: t('auth.updated'), goLogin: t('auth.goToLogIn'),
+      toForgot: go('forgot'), toLogin: go('login'),
+      submit: e => {
+        e.preventDefault();
+        if (mode === 'forgot') this.setState({ sent: true });
+        else if (mode === 'reset') {
+          const f = e.target.querySelectorAll('input[type=password]');
+          if (f[0].value !== f[1].value) this.setState({ error: 'auth.mismatch' }); else this.setState({ done: true, error: '' });
+        }
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>
