@@ -1,138 +1,112 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef } from "react";
+import { Switch } from "./RisoControls.jsx";
+import { WEEKEND_PRESETS, presetIsOn } from "../lib/weekend.js";
 import { dict, t } from "../i18n/index.js";
-import { slotLabel, weekendDaysLabel } from "../lib/plannerSlots.js";
 
-// An empty slot's pop-up card on a computer: "Add to Wed · Breakfast" with
-// Recipe, Note and Nothing planned. It sits under the slot that was clicked
-// (above it when there is no room), and closes with ×, Escape or a click
-// outside. Recipe makes the slot the finder's target; Note and Nothing planned
-// fill the slot straight away.
-export function SlotCard({ slot, anchor, onRecipe, onNote, onBlank, onClose }) {
-  const cardRef = useRef(null);
-  const [pos, setPos] = useState(null);
-
-  useLayoutEffect(() => {
-    const card = cardRef.current;
-    if (!card || !anchor?.isConnected) return;
-    const rect = anchor.getBoundingClientRect();
-    const width = card.offsetWidth;
-    const height = card.offsetHeight;
-    const margin = 12;
-    const left = Math.min(Math.max(margin, rect.left), Math.max(margin, window.innerWidth - width - margin));
-    const below = rect.bottom + 8;
-    const top = below + height > window.innerHeight - margin && rect.top - 8 - height > margin ? rect.top - 8 - height : below;
-    setPos({ left: left + window.scrollX, top: top + window.scrollY });
-  }, [anchor, slot]);
-
+// The little message at the bottom of the Planner after something is put on the
+// plan, taken off, or placed as leftovers: a dark pill that goes by itself
+// after five seconds, with Undo when the change can be taken back.
+export function PlannerToast({ toast, onClose }) {
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    const onDown = (e) => {
-      if (!cardRef.current?.contains(e.target) && !anchor?.contains(e.target)) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onDown);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDown);
-    };
-  }, [anchor, onClose]);
+    if (!toast) return undefined;
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast?.id]);
 
-  return createPortal(
-    <div
-      ref={cardRef}
-      className="riso-theme riso-slotcard"
-      data-theme="light"
-      role="dialog"
-      aria-label={t("tray.addTo", { slot: slotLabel(slot) })}
-      style={pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0, visibility: "hidden" }}
-    >
-      <div className="riso-slotcard-head">
-        <div>
-          <span className="riso-slotcard-caps">{t("finder.addTo")}</span>
-          <h2 className="riso-slotcard-title">{slotLabel(slot)}</h2>
-        </div>
-        <button type="button" className="riso-slotcard-close" aria-label={t("common.close")} onClick={onClose}>
-          ×
+  if (!toast) return null;
+  return (
+    <div className="riso-planner-toast" role="status">
+      <span>{toast.message}</span>
+      {toast.undo && (
+        <button
+          type="button"
+          className="riso-planner-toast-undo"
+          onClick={() => {
+            const undo = toast.undo;
+            onClose();
+            undo();
+          }}
+        >
+          {t("common.undo")}
         </button>
-      </div>
-      <div className="riso-slotcard-buttons">
-        <button type="button" className="riso-slotcard-btn recipe" onClick={onRecipe}>
-          <span aria-hidden="true">+</span>
-          {t("planner.slotRecipe")}
-        </button>
-        <button type="button" className="riso-slotcard-btn note" onClick={onNote}>
-          <span aria-hidden="true">✎</span>
-          {t("planner.slotNote")}
-        </button>
-        <button type="button" className="riso-slotcard-btn blank" onClick={onBlank}>
-          <span aria-hidden="true">○</span>
-          {t("planner.slotBlank")}
-        </button>
-      </div>
-    </div>,
-    document.body
+      )}
+    </div>
   );
 }
 
-// "Weekend: Sat Sun ▾": which days the board groups as the weekend. It opens a
-// row of the seven days to switch on or off; the choice is saved for the
-// account (and so follows it to other devices).
-export function WeekendControl({ days, onChange }) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
-  const selected = new Set(days);
-  const names = dict().days.long;
+// The weekend menu under the "WEEKEND ▾" tag: a switch to show the weekend, any
+// days in any order, a switch for the evening before, and three presets. Every
+// change is saved at once (for the account). A click outside, or Escape,
+// closes it.
+export function WeekendMenu({ weekend, onChange, onClose }) {
+  const ref = useRef(null);
+  const names = dict().days.short;
+  const picked = new Set(weekend.days);
+  const showing = weekend.on;
 
   useEffect(() => {
-    if (!open) return undefined;
     const onDown = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+      // The tag that opens it toggles it, so a click on that is not "outside".
+      if (!ref.current?.contains(e.target) && !e.target.closest?.("[data-weekend-toggle]")) onClose();
     };
-    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    const onKey = (e) => e.key === "Escape" && onClose();
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [onClose]);
 
-  function toggle(day) {
-    const next = selected.has(day) ? days.filter((d) => d !== day) : [...days, day].sort((a, b) => a - b);
-    onChange(next);
+  function toggleDay(day) {
+    const days = picked.has(day) ? weekend.days.filter((d) => d !== day) : [...weekend.days, day].sort((a, b) => a - b);
+    onChange({ ...weekend, on: true, days });
   }
 
   return (
-    <div className="riso-weekend" ref={wrapRef}>
-      <button
-        type="button"
-        className="riso-weekend-pill"
-        aria-expanded={open}
-        aria-haspopup="true"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {days.length > 0 ? t("planner.weekendPill", { days: weekendDaysLabel(days) }) : t("planner.weekendNone")}
-        <span aria-hidden="true">▾</span>
-      </button>
-      {open && (
-        <div className="riso-weekend-panel" role="group" aria-label={t("planner.weekendTitle")}>
-          <span className="riso-weekend-caps">{t("planner.weekendTitle")}</span>
-          <div className="riso-weekend-days">
-            {names.map((name, day) => (
-              <button
-                key={day}
-                type="button"
-                className={`riso-weekend-day${selected.has(day) ? " on" : ""}`}
-                aria-pressed={selected.has(day)}
-                onClick={() => toggle(day)}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="riso-weekendmenu" ref={ref} role="dialog" aria-label={t("planner.weekendTag")}>
+      <div className="riso-weekendmenu-row">
+        <span className="riso-weekendmenu-label">{t("planner.weekendShow")}</span>
+        <Switch on={weekend.on} onToggle={() => onChange({ ...weekend, on: !weekend.on })} label={t("planner.weekendShow")} />
+      </div>
+      <span className="riso-weekendmenu-caps">{t("planner.weekendDays")}</span>
+      <div className={`riso-weekendmenu-days${showing ? "" : " dim"}`} role="group" aria-label={t("planner.weekendDays")}>
+        {names.map((name, day) => (
+          <button
+            key={day}
+            type="button"
+            className={`riso-weekendmenu-day${showing && picked.has(day) ? " on" : ""}`}
+            aria-pressed={showing && picked.has(day)}
+            onClick={() => toggleDay(day)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      <div className={`riso-weekendmenu-row${showing ? "" : " dim"}`}>
+        <span className="riso-weekendmenu-label small">{t("planner.weekendEveSwitch")}</span>
+        <Switch
+          on={weekend.eve}
+          onToggle={() => onChange({ ...weekend, on: true, eve: !weekend.eve })}
+          label={t("planner.weekendEveSwitch")}
+        />
+      </div>
+      <span className="riso-weekendmenu-caps">{t("planner.weekendPresetsCaps")}</span>
+      <div className="riso-weekendmenu-presets">
+        {WEEKEND_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className={`riso-weekendmenu-preset${presetIsOn(preset, weekend) ? " on" : ""}`}
+            aria-pressed={presetIsOn(preset, weekend)}
+            onClick={() => onChange({ on: true, days: preset.days, eve: preset.eve })}
+          >
+            {t(`planner.weekendPresets.${preset.id}`)}
+          </button>
+        ))}
+      </div>
+      <p className="riso-weekendmenu-note">{t("planner.weekendNote")}</p>
     </div>
   );
 }

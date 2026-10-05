@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanWeekendDays, DEFAULT_WEEKEND_DAYS } from "./weekendDays.js";
+import { cleanWeekendDays, cleanWeekendFlag, DEFAULT_WEEKEND_DAYS } from "./weekendDays.js";
 
 describe("cleanWeekendDays", () => {
   it("keeps a valid list, sorted", () => {
@@ -22,5 +22,15 @@ describe("cleanWeekendDays", () => {
   });
   it("defaults to Saturday and Sunday", () => {
     expect(DEFAULT_WEEKEND_DAYS).toEqual([5, 6]);
+  });
+});
+
+describe("cleanWeekendFlag", () => {
+  it("keeps a true or false and refuses anything else", () => {
+    expect(cleanWeekendFlag(true)).toBe(true);
+    expect(cleanWeekendFlag(false)).toBe(false);
+    expect(cleanWeekendFlag("true")).toBeNull();
+    expect(cleanWeekendFlag(1)).toBeNull();
+    expect(cleanWeekendFlag(undefined)).toBeNull();
   });
 });

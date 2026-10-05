@@ -11,3 +11,9 @@ export function cleanWeekendDays(value) {
   if (!value.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) return null;
   return [...new Set(value)].sort((a, b) => a - b);
 }
+
+// A true or false from whatever the browser sent, or null when it is neither
+// (for the weekend's on/off and "include the evening before" switches).
+export function cleanWeekendFlag(value) {
+  return typeof value === "boolean" ? value : null;
+}
