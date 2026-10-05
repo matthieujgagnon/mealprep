@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { api } from "../api.js";
 import { dealSavings, dealVerdict, savingText as savingWords, tilePrice } from "../lib/flyerIngredients.js";
-import { flyerUrl } from "../lib/flyerLinks.js";
 import { parseDateKey } from "../lib/dates.js";
 import { proteinName, proteinRows, recipesUsingProtein } from "../lib/proteins.js";
 import { daysUntil } from "../lib/pantryInventory.js";
@@ -61,8 +59,9 @@ function quebecText(deal) {
 
 // One product on sale under a protein: photo, name, store, price and what
 // it saves. Tapping it opens its details (regular price, when it ends,
-// Quebec's average) with "Add to list" and a link to the store's flyer.
-function ProductRow({ deal, open, onToggle, listed, onAdd, postalCode }) {
+// Quebec's average) with "Add to list" (tap "On list" to take it off again)
+// and a button that opens the deal's card on the Flyers page.
+function ProductRow({ deal, open, onToggle, listed, onAdd, onRemove, onOpenFlyer }) {
   const { amount, unit } = priceParts(deal);
   const off = offText(deal);
   const regular = regularText(deal);
@@ -107,14 +106,14 @@ function ProductRow({ deal, open, onToggle, listed, onAdd, postalCode }) {
             <button
               type="button"
               className={`riso-protein-add${listed ? " listed" : ""}`}
-              disabled={listed}
-              onClick={() => onAdd(deal, name)}
+              aria-pressed={listed}
+              onClick={() => (listed ? onRemove(deal, name) : onAdd(deal, name))}
             >
               {listed ? t("proteins.onList") : t("proteins.addToList")}
             </button>
-            <a className="riso-protein-flyer" href={flyerUrl(deal.store, postalCode)} target="_blank" rel="noreferrer">
+            <button type="button" className="riso-protein-flyer" onClick={() => onOpenFlyer?.(deal)}>
               {t("proteins.openFlyer")}
-            </a>
+            </button>
           </div>
         </div>
       )}
@@ -130,15 +129,22 @@ function ProductRow({ deal, open, onToggle, listed, onAdd, postalCode }) {
 // Tapping it opens a panel of those products - only real sales, see
 // proteinRows - and the rest of the page blurs until it closes (tap
 // outside, the same card, or Esc). A protein on a flyer with nothing to
-// compare its price to says "Can't tell yet" and one with nothing says "No
-// deal this week"; neither opens. The panel ends with a link that opens
+// compare its price to says "Can't tell yet" and opens too, onto its prices;
+// one with nothing says "No deal this week" and doesn't open. The panel ends with a link that opens
 // Recipes with that protein's filter on (the same match counts and filters,
 // see recipeUsesProtein).
-export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein, isOnGroceryList = () => false, onAddToList }) {
+export function ProteinsOnSale({
+  deals,
+  recipes = [],
+  onNavigate,
+  onFindProtein,
+  onOpenFlyer,
+  isOnGroceryList = () => false,
+  onAddToList,
+  onRemoveFromList,
+}) {
   const [openId, setOpenId] = useState(null);
   const [productId, setProductId] = useState(null);
-  // Only needed for a store that has no flyer page of its own.
-  const [postalCode, setPostalCode] = useState(null);
   const rows = proteinRows(deals);
   const perLb = (d) => {
     const p = tilePrice(d);
@@ -148,7 +154,7 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein,
     .filter((k) => k.status === "deal")
     .reduce((best, k) => (best == null || perLb(k.best) < perLb(best.best) ? k : best), null);
 
-  const opened = rows.find((k) => k.status === "deal" && k.protein.id === openId) || null;
+  const opened = rows.find((k) => k.status !== "none" && k.protein.id === openId) || null;
   const using = opened ? recipesUsingProtein(recipes, opened.protein) : [];
 
   function close() {
@@ -162,14 +168,6 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein,
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openId]);
-
-  useEffect(() => {
-    if (!openId || postalCode != null) return;
-    api
-      .getFlyerSettings()
-      .then((s) => setPostalCode(s?.postalCode || ""))
-      .catch(() => setPostalCode(""));
-  }, [openId, postalCode]);
 
   return (
     <section
@@ -185,10 +183,10 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein,
       {deals.length === 0 && <p className="riso-empty-note">{t("proteins.noDeals")}</p>}
       <ul className="riso-home-rows riso-protein-list">
         {rows.map((k) => {
-          const { protein, best, onSale, status } = k;
+          const { protein, best, products, status } = k;
           const isOpen = opened?.protein.id === protein.id;
           const dimmed = !!opened && !isOpen;
-          if (status !== "deal") {
+          if (status === "none") {
             return (
               <li key={protein.id}>
                 <div className={`riso-protein-card none${dimmed ? " dimmed" : ""}`}>
@@ -197,19 +195,8 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein,
                   </span>
                   <span className="riso-protein-item">
                     <span className="riso-protein-name">{protein.label}</span>
-                    <span className="riso-protein-meta">
-                      {best ? `${proteinName(best)} · ${best.store}` : t("proteins.noDeal")}
-                    </span>
+                    <span className="riso-protein-meta">{t("proteins.noDeal")}</span>
                   </span>
-                  {best && (
-                    <span className="riso-protein-right">
-                      <span className="riso-protein-price">
-                        {priceParts(best).amount}
-                        {priceParts(best).unit && <small>{priceParts(best).unit}</small>}
-                      </span>
-                      <span className="riso-protein-verdict unknown">{dealVerdict(best)?.label}</span>
-                    </span>
-                  )}
                 </div>
               </li>
             );
@@ -239,14 +226,14 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein,
                 </span>
                 <span className="riso-protein-item">
                   <span className="riso-protein-name">{protein.label}</span>
-                  <span className="riso-protein-count">{t("proteins.products", { count: onSale.length })}</span>
+                  <span className="riso-protein-count">{t("proteins.products", { count: products.length })}</span>
                 </span>
                 <span className="riso-protein-right">
                   <span className="riso-protein-price">
                     {amount}
                     {unit && <small>{unit}</small>}
                   </span>
-                  {k === cheapest ? (
+                  {status === "deal" && k === cheapest ? (
                     <span className="riso-protein-best">{t("proteins.bestDeal")}</span>
                   ) : (
                     verdict && <span className={`riso-protein-verdict ${verdict.key}`}>{verdict.label}</span>
@@ -259,7 +246,7 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein,
               {isOpen && (
                 <div className="riso-protein-panel" role="region" aria-label={t("proteins.panelLabel", { kind: protein.label })}>
                   <ul className="riso-protein-products">
-                    {onSale.map((deal) => (
+                    {products.map((deal) => (
                       <ProductRow
                         key={deal.id}
                         deal={deal}
@@ -267,7 +254,8 @@ export function ProteinsOnSale({ deals, recipes = [], onNavigate, onFindProtein,
                         onToggle={() => setProductId((cur) => (cur === deal.id ? null : deal.id))}
                         listed={isOnGroceryList(proteinName(deal))}
                         onAdd={(d, name) => onAddToList?.([name], { dealId: d.id })}
-                        postalCode={postalCode}
+                        onRemove={(d, name) => onRemoveFromList?.(name)}
+                        onOpenFlyer={onOpenFlyer}
                       />
                     ))}
                   </ul>

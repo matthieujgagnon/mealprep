@@ -10,10 +10,12 @@ export function currentMealType(date = new Date()) {
   return "dinner";
 }
 
-// "To use" lists what expires within this many days; the soonest few show,
-// the rest sit behind a link to Inventory.
-export const TO_USE_DAYS = 14;
-export const TO_USE_SHOWN = 5;
+// "Use it up" lists everything that expires within this many days (a month),
+// soonest first. The card scrolls inside itself when they don't all fit.
+export const TO_USE_DAYS = 30;
+// "Cook with these" searches recipes for just the soonest few, so a month of
+// items doesn't make one long search.
+export const TO_USE_COOK = 5;
 
 // How urgent an item is: pink at three days or fewer, yellow up to a week,
 // blue after that.
@@ -26,11 +28,12 @@ export function useBarPct(daysLeft) {
   return Math.max(8, Math.min(96, Math.round((1 - daysLeft / 7) * 100)));
 }
 
-// The items to show in "To use": soonest first, only those not yet past
-// their date and inside the window. { shown, rest } (rest is how many more).
+// The items to show in "Use it up": soonest first, only those not yet past
+// their date and inside the window. { shown, soonest } (soonest is the few
+// that "Cook with these" searches for).
 export function toUseItems(items, daysUntil) {
-  const pool = (items || [])
+  const shown = (items || [])
     .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0 && daysUntil(i.expiresAt) <= TO_USE_DAYS)
     .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt));
-  return { shown: pool.slice(0, TO_USE_SHOWN), rest: Math.max(0, pool.length - TO_USE_SHOWN) };
+  return { shown, soonest: shown.slice(0, TO_USE_COOK) };
 }

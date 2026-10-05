@@ -88,26 +88,69 @@ test("the all-meals strip: shadow on today's column and the meal on now only, no
   for (let i = 0; i < 7; i++) expect(await shadow(cols.nth(i))).toBe("none");
 });
 
-test("To use shows the five soonest, coloured by days left, and a link to the rest", async ({ page }) => {
+test("Use it up lists everything inside a month, soonest first, and scrolls inside the card", async ({ page }) => {
   await signUp(page);
-  for (const [name, days] of [["Spinach", 1], ["Onion", 2], ["Celery", 4], ["Feta", 6], ["Yogurt", 9], ["Tomatoes", 12], ["Eggs", 13], ["Rice flour", 40]]) {
+  const names = [];
+  for (let d = 1; d <= 24; d++) {
+    const name = `Item ${String(d).padStart(2, "0")}`;
+    names.push(name);
     await page.request.post("/api/pantry-inventory", {
-      data: { name, location: "fridge", expiresAt: new Date(Date.now() + days * 86400000 + 3600000).toISOString() },
+      data: { name, location: "fridge", expiresAt: new Date(Date.now() + d * 86400000 + 3600000).toISOString() },
     });
   }
+  // Past the month: not listed.
+  await page.request.post("/api/pantry-inventory", {
+    data: { name: "Rice flour", location: "pantry", expiresAt: new Date(Date.now() + 40 * 86400000).toISOString() },
+  });
   await page.reload();
   const card = page.locator(".riso-home-useup");
   const rows = card.locator(".riso-useup-row");
-  await expect(rows).toHaveCount(5);
-  await expect(rows.locator(".riso-useup-name")).toHaveText(["Spinach", "Onion", "Celery", "Feta", "Yogurt"]);
+  await expect(rows).toHaveCount(24);
+  await expect(rows.locator(".riso-useup-name")).toHaveText(names);
   // Two to three days: pink; up to a week: yellow; later: blue.
-  await expect(rows.locator(".riso-useup-badge")).toHaveClass([
-    /pink/, /pink/, /yellow/, /yellow/, /blue/,
-  ]);
-  // Two more inside two weeks; the one in 40 days isn't "to use".
-  const more = card.getByRole("button", { name: "+ 2 more to use up" });
-  await more.click();
-  await expect(page.locator(".tab.active")).toHaveText("Inventory");
+  await expect(rows.nth(1).locator(".riso-useup-badge")).toHaveClass(/pink/);
+  await expect(rows.nth(5).locator(".riso-useup-badge")).toHaveClass(/yellow/);
+  await expect(rows.nth(20).locator(".riso-useup-badge")).toHaveClass(/blue/);
+  // No "more" link: the list scrolls inside the card, which stays no taller
+  // than the row it sits in.
+  await expect(card.getByRole("button", { name: /more to use up/ })).toHaveCount(0);
+  const list = card.locator(".riso-home-useup-scroll > .riso-home-rows");
+  const { client, scroll } = await list.evaluate((el) => ({ client: el.clientHeight, scroll: el.scrollHeight }));
+  expect(scroll).toBeGreaterThan(client);
+  const proteins = page.locator(".riso-home-proteins");
+  const [cardBox, proteinsBox] = await Promise.all([card.boundingBox(), proteins.boundingBox()]);
+  expect(cardBox.height).toBeLessThanOrEqual(Math.max(proteinsBox.height, 360) + 1);
+});
+
+test("this week's suppers: only today has the pink shadow, other planned days a black one", async ({ page }) => {
+  await signUp(page);
+  await page.clock.setFixedTime(atHour(12));
+  const recipe = await (await page.request.post("/api/recipes", { data: { title: "Shadow soup", ingredients: [{ name: "leek" }] } })).json();
+  const weekStart = mondayOf(new Date());
+  const today = todayIndex();
+  const planned = [];
+  for (let d = 0; d < 7; d++) {
+    if (d === today || d > today) {
+      await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: d, mealType: "dinner" } });
+      planned.push(d);
+    }
+  }
+  await page.reload();
+  const shadow = (loc) => loc.evaluate((el) => getComputedStyle(el).boxShadow);
+  const strip = page.locator(".riso-home-week-strip");
+  const todayCell = strip.locator(".riso-home-week-day.today");
+  await expect(todayCell).toHaveCount(1);
+  expect(await shadow(todayCell)).toContain("rgb(255, 72, 176)");
+  const others = strip.locator(".riso-home-week-day:not(.today):not(.empty):not(.past)");
+  const n = await others.count();
+  expect(n).toBe(planned.length - 1);
+  for (let i = 0; i < n; i++) {
+    const sh = await shadow(others.nth(i));
+    expect(sh).not.toContain("rgb(255, 72, 176)");
+    expect(sh).not.toBe("none");
+  }
+  const none = strip.locator(".riso-home-week-day.past, .riso-home-week-day.empty:not(.today)");
+  for (let i = 0; i < (await none.count()); i++) expect(await shadow(none.nth(i))).toBe("none");
 });
 
 test("Makeable now steps aside when it has nothing, and Proteins on sale fills the row", async ({ page }) => {

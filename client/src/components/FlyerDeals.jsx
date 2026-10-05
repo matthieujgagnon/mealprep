@@ -1238,6 +1238,8 @@ export function FlyerDeals({
   isOnGroceryList,
   onAddToGroceryList,
   onRemoveFromGroceryList,
+  openDealId = null,
+  onDealOpened,
 }) {
   const [deals, setDeals] = useState(() => lastDeals);
   const [watchlist, setWatchlist] = useState(new Set());
@@ -1253,7 +1255,9 @@ export function FlyerDeals({
   const [collapsed, setCollapsed] = useState(() => new Set(readStored(COLLAPSED_KEY, [])));
   const [sections, setSections] = useState([]);
   const [clearing, setClearing] = useState(false);
-  const [detailId, setDetailId] = useState(null);
+  // A deal Home asked for opens straight away (its card shows once the
+  // deals are in).
+  const [detailId, setDetailId] = useState(openDealId);
   const [importSettings, setImportSettings] = useState(null);
   const [runningImport, setRunningImport] = useState(false);
 
@@ -1277,6 +1281,7 @@ export function FlyerDeals({
   const reloadChanged = () => loadDeals({ changed: true });
 
   useEffect(() => {
+    if (openDealId != null) onDealOpened?.();
     loadDeals();
     api.getFlyerSettings().then(setImportSettings).catch(() => setImportSettings(null));
     api

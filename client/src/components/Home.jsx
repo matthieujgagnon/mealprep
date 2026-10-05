@@ -106,9 +106,11 @@ export function Home({
   onSelectRecipe,
   onFindRecipes,
   onFindProtein,
+  onOpenFlyerDeal,
   onPickRecipeFor,
   isOnGroceryList = () => false,
   onAddToGroceryList,
+  onRemoveFromGroceryList,
 }) {
   const weekStart = currentWeekStart();
   const todayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
@@ -192,12 +194,19 @@ export function Home({
   // items away it steps aside, and Proteins on sale takes its place.
   const showMakeable = readyNow.length > 0 || nearly.length > 0;
 
-  // Proteins on sale adds a deal's product to the grocery list; the grocery
-  // card above follows.
-  async function addToList(names, opts) {
-    await onAddToGroceryList?.(names, opts);
+  // Proteins on sale adds a deal's product to the grocery list, or takes it
+  // off again; the grocery card above follows.
+  function refreshGrocery() {
     api.listGroceryExtras().then(setExtraItems).catch(() => {});
     api.listGroceryOverrides().then(setGroceryOverrides).catch(() => {});
+  }
+  async function addToList(names, opts) {
+    await onAddToGroceryList?.(names, opts);
+    refreshGrocery();
+  }
+  async function removeFromList(name) {
+    await onRemoveFromGroceryList?.(name);
+    refreshGrocery();
   }
 
   const groceryItems = buildGroceryList(upcomingEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
@@ -240,7 +249,7 @@ export function Home({
     api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => {});
   }
 
-  const { shown: useSoonItems, rest: useSoonRest } = toUseItems(pantryInventory, daysUntil);
+  const { shown: useSoonItems, soonest: useSoonest } = toUseItems(pantryInventory, daysUntil);
   // Recipes that would use up two or more of them (or at least one).
   const useSoonCores = useSoonItems.map((i) => canonicalize(i.name).core);
   const usesOf = (recipe) =>
@@ -545,8 +554,10 @@ export function Home({
           recipes={recipes}
           onNavigate={onNavigate}
           onFindProtein={onFindProtein}
+          onOpenFlyer={onOpenFlyerDeal}
           isOnGroceryList={isOnGroceryList}
           onAddToList={addToList}
+          onRemoveFromList={removeFromList}
         />
 
         {showMakeable && (
@@ -579,17 +590,13 @@ export function Home({
             <p className="riso-empty-note">{t("home.nothingExpiring")}</p>
           ) : (
             <>
-              <ul className="riso-home-rows">
-                {useSoonItems.map((item) => (
-                  <ToUseRow key={item.id} item={item} />
-                ))}
-              </ul>
-              {useSoonRest > 0 && (
-                <button type="button" className="riso-home-more-link" onClick={() => onNavigate("inventory")}>
-                  {t("home.moreToUse", { count: useSoonRest })}
-                </button>
-              )}
-              <div className="riso-home-mini-spacer" />
+              <div className="riso-home-useup-scroll">
+                <ul className="riso-home-rows">
+                  {useSoonItems.map((item) => (
+                    <ToUseRow key={item.id} item={item} />
+                  ))}
+                </ul>
+              </div>
               <p className="riso-home-mini-note">
                 {usesTwo > 0
                   ? t("home.usesTwo", { count: usesTwo })
@@ -601,7 +608,7 @@ export function Home({
                 <button
                   type="button"
                   className="riso-btn ink full"
-                  onClick={() => onFindRecipes?.(useSoonItems.map((i) => i.name).join(", "))}
+                  onClick={() => onFindRecipes?.(useSoonest.map((i) => i.name).join(", "))}
                 >
                   {t("home.cookWithThese")}
                 </button>

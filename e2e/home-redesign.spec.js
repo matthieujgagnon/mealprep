@@ -132,12 +132,11 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   const fish = block.getByRole("button", { name: /^Fish:/ });
   await expect(fish).toContainText("$9.99/lb");
   await expect(fish.locator(".riso-protein-verdict")).toBeVisible();
-  // Nothing to compare ground beef with: still shown, with its price, but
-  // there is no real sale to open.
-  const beef = block.locator(".riso-protein-card.none", { hasText: "Beef" });
+  // Nothing to compare ground beef with: it says "Can't tell yet", and it
+  // still opens onto its price.
+  const beef = block.getByRole("button", { name: /^Beef:/ });
   await expect(beef).toContainText("$5.97/lb");
   await expect(beef.locator(".riso-protein-verdict")).toHaveText("Can't tell yet");
-  await expect(block.getByRole("button", { name: /^Beef:/ })).toHaveCount(0);
   // Every other kind has its card, saying there is no deal.
   for (const [kind, emoji] of [["Pork", "🐖"], ["Seafood", "🦐"], ["Turkey", "🦃"], ["Lamb", "🐑"], ["Tofu", "⬜"]]) {
     const none = block.locator(".riso-protein-card.none", { hasText: kind });
@@ -145,6 +144,14 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
     await expect(none).toContainText(emoji);
   }
   await expect(block.locator(".riso-protein-card")).toHaveCount(8);
+
+  await beef.click();
+  await expect(beef).toHaveAttribute("aria-expanded", "true");
+  const beefProducts = block.locator(".riso-protein-product");
+  await expect(beefProducts).toHaveCount(1);
+  await expect(beefProducts.first()).toContainText("$5.97");
+  await page.keyboard.press("Escape");
+  await expect(block.locator(".riso-protein-panel")).toHaveCount(0);
 
   // Opening a protein lists its real sales only, blurs the rest of the page,
   // and a product opens its details.
@@ -162,11 +169,15 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   const detail = products.first().locator(".riso-protein-detail");
   await expect(detail).toContainText("Reg. price");
   await expect(detail).toContainText("$8.49/lb");
-  await expect(detail.getByRole("link", { name: "Open the flyer" })).toHaveAttribute("href", /superc\.ca/);
 
-  // Add to list puts the product on the grocery list, and the card says so.
+  // Add to list puts the product on the grocery list, and the card says so;
+  // tapping "On list" takes it off again.
   await detail.getByRole("button", { name: "+ Add to list" }).click();
-  await expect(detail.getByRole("button", { name: "✓ On list" })).toBeDisabled();
+  await expect(detail.getByRole("button", { name: "✓ On list" })).toBeEnabled();
+  await detail.getByRole("button", { name: "✓ On list" }).click();
+  await expect(detail.getByRole("button", { name: "+ Add to list" })).toBeVisible();
+  await detail.getByRole("button", { name: "+ Add to list" }).click();
+  await expect(detail.getByRole("button", { name: "✓ On list" })).toBeVisible();
 
   // Esc, or tapping outside, closes it.
   await page.keyboard.press("Escape");
@@ -178,6 +189,40 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.getByText("Chicken breasts", { exact: true }).first()).toBeVisible();
+});
+
+test("Open the flyer lands on that deal's card in Flyers, and \"On list\" takes an added product off the list", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await seedRealDeal(page);
+  const block = page.locator(".riso-home-proteins");
+  await block.getByRole("button", { name: /^Chicken:/ }).click();
+  const product = block.locator(".riso-protein-product").first();
+  await product.locator(".riso-protein-product-head").click();
+  await product.getByRole("button", { name: "Open the flyer" }).click();
+
+  await expect(page.locator(".tab.active")).toHaveText("Flyers");
+  const card = page.getByRole("dialog");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("Boneless chicken breast");
+  // Closing it and coming back to Flyers later doesn't reopen it.
+  await card.getByRole("button", { name: /close/i }).first().click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: "Flyers", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Add a product, check the grocery card counts it, then undo.
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await block.getByRole("button", { name: /^Chicken:/ }).click();
+  const row = block.locator(".riso-protein-product").first();
+  await row.locator(".riso-protein-product-head").click();
+  const count = page.locator(".home-grocery-number");
+  const before = Number(await count.textContent());
+  await row.getByRole("button", { name: "+ Add to list" }).click();
+  await expect(count).toHaveText(String(before + 1));
+  await row.getByRole("button", { name: "✓ On list" }).click();
+  await expect(row.getByRole("button", { name: "+ Add to list" })).toBeVisible();
+  await expect(count).toHaveText(String(before));
 });
 
 test("Use it up finds recipes for those items; Makeable now counts the ones one or two items away", async ({ page }) => {
