@@ -145,7 +145,7 @@ test("a real touch drag repositions a placed meal card between planner cells wit
   // exactly the direction a pan-y touch-action would hand to native scroll.
   const targetCell = cells.nth(7);
 
-  await sourceCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await sourceCard.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }));
 
   const client = await context.newCDPSession(page);
   const sourceBox = await sourceCard.boundingBox();

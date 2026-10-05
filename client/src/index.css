@@ -8705,13 +8705,6 @@ button.riso-protein-card:hover .riso-protein-name {
   flex-wrap: wrap;
 }
 
-.riso-planner-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 22px;
-  align-items: flex-start;
-}
-
 /* ---------- Board ---------- */
 .riso-planner-board {
   flex: 1 1 640px;
@@ -9037,330 +9030,6 @@ button.riso-protein-card:hover .riso-protein-name {
   overflow-wrap: anywhere;
 }
 
-/* Legend row under the grid. */
-.riso-planner-legend {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1.5px dashed var(--riso-dash-strong);
-  font-size: 12.5px;
-  color: var(--riso-soft);
-}
-
-.riso-planner-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.riso-planner-legend-have {
-  width: 22px;
-  height: 16px;
-  border-radius: 5px;
-  border: 3px solid var(--riso-accent);
-  box-sizing: border-box;
-  display: inline-block;
-}
-
-.riso-planner-legend-leftover {
-  background: var(--riso-yellow);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 0 7px;
-  font: 800 10.5px var(--riso-font-display);
-  color: var(--riso-ink);
-  white-space: nowrap;
-}
-
-.riso-planner-legend-note {
-  font: 500 9.5px var(--riso-font-mono);
-  color: var(--riso-ink);
-}
-
-.riso-planner-legend-scroll {
-  cursor: pointer;
-  margin-left: auto;
-  transform: rotate(-2deg);
-  background: var(--riso-yellow);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 2px 10px;
-  font: 800 12px var(--riso-font-display);
-  color: var(--riso-ink);
-  white-space: nowrap;
-}
-
-/* ---------- Recipe tray ("Add recipes") ---------- */
-.riso-planner-tray {
-  flex: 0 1 320px;
-  min-width: 280px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 26px;
-  box-shadow: 6px 6px 0 var(--riso-ink);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  box-sizing: border-box;
-  position: sticky;
-  top: 20px;
-}
-
-.riso-tray-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.riso-tray-title {
-  margin: 0;
-  font: 800 24px var(--riso-font-display);
-}
-
-.riso-tray-target {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transform: rotate(-2deg);
-  background: var(--riso-yellow);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 3px 6px 3px 11px;
-  font: 800 12.5px var(--riso-font-display);
-  white-space: nowrap;
-}
-
-.riso-tray-target button {
-  width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  border: none;
-  background: var(--riso-ink);
-  color: var(--riso-yellow);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.riso-tray-hint {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--riso-soft);
-}
-
-.riso-tray-note-input {
-  height: 38px;
-  padding: 0 14px;
-  border-radius: 19px;
-  border: 2px dashed var(--riso-ink);
-  background: var(--riso-canvas);
-  outline: none;
-  color: var(--riso-ink);
-  font: 500 14px var(--riso-font-display);
-  box-sizing: border-box;
-}
-
-.riso-tray-search {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 20px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-canvas);
-  outline: none;
-  color: var(--riso-ink);
-  font: 500 14.5px var(--riso-font-display);
-  box-sizing: border-box;
-}
-
-.riso-tray-tabs .riso-segmented {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  width: 100%;
-}
-
-.riso-tray-tabs .riso-segmented button {
-  height: 36px;
-  padding: 0;
-  font: 700 13px var(--riso-font-display);
-  white-space: nowrap;
-}
-
-.riso-tray-chip-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.riso-tray-chip-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.riso-tray-chip-label {
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-}
-
-.riso-tray-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.riso-tray-chip {
-  height: 30px;
-  padding: 0 11px;
-  border-radius: 15px;
-  border: 2px solid var(--riso-ink);
-  color: var(--riso-ink);
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font: 700 12.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-}
-
-.riso-tray-chip.pink {
-  background: var(--riso-hot);
-}
-
-.riso-tray-chip.paper {
-  background: var(--riso-surface);
-}
-
-.riso-tray-chip.on {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.riso-tray-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-height: 620px;
-  overflow-y: auto;
-  margin: 0 -6px;
-  padding: 2px 6px 6px;
-}
-
-.riso-tray-empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--riso-muted);
-}
-
-.riso-tray-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.riso-tray-group-pill {
-  align-self: flex-start;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 1px 9px;
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  white-space: nowrap;
-  background: var(--riso-surface);
-}
-
-.riso-tray-group-pill.pink {
-  background: var(--riso-hot);
-}
-
-.riso-tray-group-pill.yellow {
-  background: var(--riso-yellow);
-}
-
-.riso-tray-tile {
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: grab;
-  touch-action: none;
-}
-
-.riso-tray-tile.dragging {
-  opacity: 0.4;
-}
-
-.riso-tray-tile-photo {
-  width: 52px;
-  height: 52px;
-  border-radius: 11px;
-  overflow: hidden;
-  flex: none;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-track);
-  padding: 0;
-  cursor: pointer;
-}
-
-.riso-tray-tile-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.riso-tray-tile-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.riso-tray-tile-name {
-  font: 700 14px/1.2 var(--riso-font-display);
-}
-
-.riso-tray-tile-meta {
-  font: 500 9.5px var(--riso-font-mono);
-  letter-spacing: 0.06em;
-  color: var(--riso-muted);
-}
-
-.riso-tray-tile-reason {
-  font-size: 12px;
-  line-height: 1.3;
-  color: var(--riso-soft);
-}
-
-.riso-tray-tile-add {
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  box-shadow: 2px 2px 0 var(--riso-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  padding: 0;
-  font: 700 16px var(--riso-font-display);
-  cursor: pointer;
-  box-sizing: border-box;
-}
 
 /* Floating copy under the pointer while dragging a planner card, note or
    tray tile. */
@@ -9399,13 +9068,6 @@ button.riso-protein-card:hover .riso-protein-name {
   align-items: center;
   gap: 4px;
   text-align: center;
-}
-
-@media (max-width: 1000px) {
-  .riso-planner-tray {
-    position: static;
-    flex: 1 1 100%;
-  }
 }
 
 /* ================================================================
@@ -10605,14 +10267,9 @@ button.riso-deal-detail-other:focus-visible {
     padding: 0;
   }
 
-  .riso-planner-row {
-    flex-direction: column;
-  }
+  
 
-  .riso-planner-tray {
-    width: 100%;
-    flex-basis: auto;
-  }
+  
 
   .riso-planner-title {
     font-size: 38px;
@@ -10965,18 +10622,6 @@ button.riso-deal-detail-other:focus-visible {
 .rpm-weekpill.open {
   background: var(--riso-yellow);
   box-shadow: var(--riso-shadow);
-}
-
-.rpm-more {
-  margin-left: auto;
-  transform: rotate(-3deg);
-  background: var(--riso-yellow);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 3px 10px;
-  font: 800 12px var(--riso-font-display);
-  white-space: nowrap;
-  color: var(--riso-ink);
 }
 
 /* month calendar under the pill */
@@ -11365,17 +11010,6 @@ button.riso-deal-detail-other:focus-visible {
   background: linear-gradient(to right, transparent, var(--riso-canvas));
 }
 
-.rpm-fill {
-  align-self: center;
-  border: none;
-  background: none;
-  padding: 6px 4px;
-  color: var(--riso-soft);
-  font: 600 13px var(--riso-font-display);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 /* the bar fixed to the bottom of the screen */
 .rpm-bottombar {
   position: fixed;
@@ -11481,31 +11115,6 @@ button.riso-deal-detail-other:focus-visible {
 }
 
 /* The tray inside the phone suggestions sheet: no card chrome, no drag. */
-.riso-planner-tray.in-sheet {
-  position: static;
-  flex: none;
-  min-width: 0;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-  background: transparent;
-}
-
-.riso-planner-tray.in-sheet .riso-tray-list {
-  max-height: none;
-  overflow: visible;
-}
-
-.riso-tray-tile.static {
-  cursor: default;
-  touch-action: auto;
-}
-
-.riso-planner-tray.in-sheet .riso-tray-tile-add {
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-}
 
 /* ---------- Grocery, phone + Store mode (Riso Mobile.dc.html) ---------- */
 .riso-grocery-store-btn {
@@ -12103,14 +11712,9 @@ button.riso-deal-detail-other:focus-visible {
   }
 }
 
-/* Planner: an empty slot is just a dashed box; click it to write on it.
+/* Planner: an empty slot is just a dashed box; click it for its card.
    A blank card is plain paper (click again to clear), a written one shows
    its text. */
-.riso-planner-cell-empty:hover::after {
-  content: "write…";
-  font: 500 12px var(--riso-font-body);
-  color: var(--riso-muted);
-}
 
 .riso-planner-note {
   background: var(--riso-surface);
@@ -12143,13 +11747,6 @@ button.riso-deal-detail-other:focus-visible {
   font: 700 14.5px/1.2 var(--riso-font-display);
   color: var(--riso-ink);
   text-align: center;
-}
-
-.riso-planner-legend-blank {
-  width: 18px;
-  height: 14px;
-  border-radius: 5px;
-  border: 1.5px dashed var(--riso-dash-strong);
 }
 
 @media (max-width: 767px) {
@@ -12496,107 +12093,6 @@ body.no-select {
   border-color: var(--riso-ink);
   background: var(--riso-surface);
   box-shadow: 3px 3px 0 var(--riso-hot);
-}
-
-/* ---- Planner tray: recipes drawn like the Recipes page cards ---- */
-.riso-tray-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.riso-tray-tile {
-  position: relative;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--riso-surface);
-}
-
-.riso-tray-tile.ready {
-  box-shadow: var(--riso-shadow-ready);
-}
-
-.riso-tray-tile .riso-tray-tile-photo {
-  position: relative;
-  width: 100%;
-  height: 88px;
-  border: none;
-  border-bottom: 2px solid var(--riso-ink);
-  border-radius: 0;
-}
-
-.riso-tray-tile-time {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  padding: 1px 7px;
-  border-radius: 10px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 800 11px var(--riso-font-display);
-  white-space: nowrap;
-}
-
-.riso-tray-tile .riso-tray-tile-add {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-}
-
-.riso-tray-tile .riso-tray-tile-info {
-  padding: 8px 9px 9px;
-  gap: 5px;
-}
-
-.riso-tray-tile .riso-tray-tile-name {
-  font: 800 13px/1.2 var(--riso-font-display);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.riso-tray-tile-bar {
-  display: block;
-  height: 8px;
-  border-radius: 4px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-track);
-  overflow: hidden;
-}
-
-.riso-tray-tile-bar span {
-  display: block;
-  height: 100%;
-  background: var(--riso-accent);
-}
-
-.riso-tray-tile .riso-tray-tile-meta {
-  font: 600 11px/1.3 var(--riso-font-display);
-  letter-spacing: 0;
-  color: var(--riso-soft);
-}
-
-.riso-tray-tile .riso-tray-tile-meta.ready {
-  color: var(--riso-green-text);
-}
-
-.riso-tray-tile .riso-tray-tile-reason {
-  font-size: 11px;
-}
-
-.riso-planner-tray.in-sheet .riso-tray-tile .riso-tray-tile-add {
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
 }
 
 /* ================================================================
@@ -17837,4 +17333,1460 @@ body.no-select {
   .rv2-grid .riso-recipe-card-meta {
     font-size: 9.5px;
   }
+}
+
+/* ================================================================
+   Riso v2 - Planner board, weekend blocks, slot card, shared finder
+   and recipe pop-out (design/riso-v2: Finder, FinderSheet).
+   ================================================================ */
+
+/* ---------- Board: seven days, all in view on a computer ---------- */
+.riso-planner-scroll {
+  scroll-snap-type: none;
+  scroll-padding-left: 0;
+}
+
+/* Narrower than this the board scrolls sideways (it opens on today). */
+.riso-planner-grid {
+  grid-template-columns: 84px repeat(7, minmax(0, 1fr));
+  min-width: 860px;
+  position: relative;
+}
+
+.riso-planner-day-header,
+.riso-planner-cell {
+  position: relative;
+  z-index: 1;
+}
+
+/* A block of weekend days: a pink dotted line round the headers and slots it
+   covers, drawn behind them. One block for each run of neighbouring days. */
+.riso-planner-weekend {
+  margin: -8px -7px;
+  border: 2px dotted var(--riso-hot);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--riso-accent) 4%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.riso-planner-cell-empty.leftover-target {
+  border-color: var(--riso-accent);
+  background: var(--riso-accent-tint);
+  font-size: 13px;
+}
+
+.riso-planner-header-actions {
+  align-items: center;
+}
+
+/* "Weekend: Sat Sun ▾" above the board, and its seven days. */
+.riso-weekend {
+  position: relative;
+}
+
+.riso-weekend-pill {
+  height: 36px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  box-shadow: var(--riso-shadow-xs);
+  font: 800 13.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-weekend-pill [aria-hidden] {
+  font-size: 9px;
+}
+
+.riso-weekend-panel {
+  position: absolute;
+  z-index: 40;
+  right: 0;
+  top: calc(100% + 10px);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  box-shadow: 5px 5px 0 var(--riso-ink);
+}
+
+.riso-weekend-caps {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.riso-weekend-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-weekend-day {
+  height: 32px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-weekend-day.on {
+  background: var(--riso-accent-tint);
+  box-shadow: var(--riso-shadow-pill-selected);
+}
+
+/* The little message after adding something (and when the week is full). */
+.riso-planner-toast {
+  position: fixed;
+  z-index: 85;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) rotate(-1deg);
+  max-width: calc(100vw - 36px);
+  padding: 9px 18px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  box-shadow: var(--riso-shadow);
+  font: 800 14px var(--riso-font-display);
+}
+
+@media (max-width: 767px) {
+  .riso-planner-toast {
+    bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- The empty slot's card (a computer) ---------- */
+.riso-slotcard {
+  position: absolute;
+  z-index: 120;
+  width: min(440px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-lg);
+}
+
+.riso-slotcard-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riso-slotcard-caps {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--riso-muted);
+}
+
+.riso-slotcard-title {
+  margin: 2px 0 0;
+  font: 800 24px/1.1 var(--riso-font-display);
+}
+
+.riso-slotcard-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 16px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-slotcard-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.riso-slotcard-btn {
+  white-space: nowrap;
+  height: 58px;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 14px var(--riso-font-display);
+  cursor: pointer;
+  box-shadow: var(--riso-shadow-xs);
+}
+
+.riso-slotcard-btn [aria-hidden] {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.riso-slotcard-btn.recipe {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-slotcard-btn.note {
+  background: var(--riso-yellow);
+}
+
+/* ---------- The shared finder ---------- */
+.riso-planner-finder {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 28px;
+  padding: 16px 22px 22px;
+}
+
+.fnd {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  color: var(--riso-ink);
+}
+
+.fnd-grab {
+  align-self: center;
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--riso-dash-strong);
+}
+
+.fnd-top,
+.fnd-browse {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fnd-hint {
+  margin: 0;
+  font: 400 13.5px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.fnd-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fnd-caps {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fnd-caps.small {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.fnd-caps.muted {
+  color: var(--riso-muted);
+}
+
+.fnd-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px 7px 8px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  box-shadow: var(--riso-shadow);
+}
+
+.fnd-searchbar:focus-within {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+.fnd-searchlabel {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 17px;
+  background: var(--riso-canvas);
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+}
+
+.fnd-searchbar input {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 38px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 500 17px var(--riso-font-display);
+}
+
+.fnd-searchbar input::placeholder {
+  color: var(--riso-placeholder);
+}
+
+.fnd-target {
+  flex: none;
+  height: 30px;
+  padding: 0 6px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 15px;
+  font: 800 12.5px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.fnd-target button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--riso-ink);
+  color: var(--riso-yellow);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fnd-clearq {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* "WITH" and the ingredients to cook with: a dashed tray tucked under the search. */
+.fnd-with {
+  margin: -8px 14px 0;
+  padding: 12px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--riso-canvas);
+  border: 2px dashed var(--riso-ink);
+  border-top: none;
+  border-radius: 0 0 18px 18px;
+}
+
+.fnd-token {
+  height: 28px;
+  padding: 0 6px 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-ink);
+  color: #fff;
+  box-shadow: 2px 2px 0 var(--riso-accent);
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fnd-token-x {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  font-size: 11px;
+}
+
+.fnd-add-ing {
+  height: 28px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fnd-add-ing [aria-hidden] {
+  font-size: 9px;
+}
+
+/* Cook with */
+.fnd-picker {
+  flex: 1 1 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  box-shadow: 5px 5px 0 var(--riso-ink);
+}
+
+.fnd-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fnd-picker-head .fnd-caps {
+  flex: 1;
+}
+
+.fnd-chosen {
+  height: 28px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  border: var(--riso-border-thin) solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-accent-tint);
+  font: 800 12.5px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.fnd-round {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.fnd-picker-search {
+  height: 38px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font: 500 14px var(--riso-font-display);
+}
+
+.fnd-picker-search::placeholder {
+  color: var(--riso-placeholder);
+}
+
+.fnd-picker-exp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fnd-picker-exphead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fnd-tag {
+  height: 24px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  border: var(--riso-border-thin) solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-surface);
+  font: 800 12px var(--riso-font-display);
+}
+
+.fnd-tag.hot {
+  background: var(--riso-hot);
+}
+
+.fnd-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fnd-item {
+  height: 28px;
+  padding: 0 10px 0 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  border: 1px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fnd-item.picked {
+  background: var(--riso-accent-tint);
+  box-shadow: var(--riso-shadow-pill-selected);
+}
+
+.fnd-item-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.fnd-item-rule {
+  width: 1px;
+  height: 14px;
+  background: var(--riso-ink);
+  opacity: 0.35;
+}
+
+.fnd-item-days {
+  font: 700 11.5px var(--riso-font-display);
+  color: var(--riso-muted);
+}
+
+.fnd-item-check {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  font: 800 10px/1 var(--riso-font-display);
+}
+
+.fnd-drawers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.fnd-picker-exp + .fnd-drawers {
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.fnd-drawer {
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  overflow: hidden;
+}
+
+.fnd-drawer-head {
+  width: 100%;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.fnd-drawer.closed .fnd-drawer-head {
+  background: var(--riso-surface);
+}
+
+.fnd-shelf {
+  height: 24px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  border: var(--riso-border-thin) solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-surface);
+  font: 800 12px var(--riso-font-display);
+}
+
+.fnd-shelf.tone-fridge {
+  background: var(--riso-shelf-fridge);
+}
+
+.fnd-shelf.tone-freezer {
+  background: var(--riso-shelf-freezer);
+}
+
+.fnd-shelf.tone-pantry {
+  background: var(--riso-shelf-pantry);
+}
+
+.fnd-shelf.tone-spice {
+  background: var(--riso-shelf-spice);
+}
+
+.fnd-shelf.tone-baking {
+  background: var(--riso-shelf-baking);
+}
+
+.fnd-shelf-count {
+  font: 700 11px var(--riso-font-display);
+  opacity: 0.75;
+}
+
+.fnd-drawer-chev {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  font: 800 16px/1 var(--riso-font-display);
+}
+
+.fnd-drawer-body {
+  padding: 10px;
+}
+
+.fnd-picker-empty {
+  margin: 0;
+  font: 400 13.5px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+/* Filters */
+.fnd-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.fnd-seg {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-surface);
+}
+
+.fnd-seg-btn {
+  height: 30px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--riso-ink);
+  font: 800 13.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fnd-seg-btn.active {
+  background: var(--riso-ink);
+  color: #fff;
+}
+
+.fnd-seg-count {
+  font: 500 10.5px var(--riso-font-mono);
+  opacity: 0.7;
+}
+
+.fnd-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+}
+
+.fnd-dot.green {
+  background: var(--riso-green);
+}
+
+.fnd-dot.yellow {
+  background: var(--riso-yellow);
+}
+
+.fnd-dot.hot {
+  background: var(--riso-hot);
+}
+
+.fnd-dot.ink {
+  background: var(--riso-ink);
+}
+
+.fnd-seg-btn.active .fnd-dot.ink {
+  background: #fff;
+  border-color: #fff;
+}
+
+.fnd-menus {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.fnd-menus .rv2-menu {
+  right: 0;
+  left: auto;
+}
+
+/* Main meal: the yellow banner */
+.fnd-main {
+  display: flex;
+  align-items: stretch;
+  background: var(--riso-yellow);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow);
+  overflow: hidden;
+}
+
+.fnd-main-photo {
+  flex: none;
+  width: 116px;
+  background: var(--riso-track);
+  border-right: 2px solid var(--riso-ink);
+}
+
+.fnd-main-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fnd-main-body {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fnd-main-title {
+  margin: 0;
+  font: 800 24px/1.15 var(--riso-font-display);
+}
+
+.fnd-main-hint {
+  margin: 0 0 6px;
+  font: 400 13px var(--riso-font-body);
+}
+
+.fnd-main-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.fnd-main-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.fnd-main-groupname {
+  flex: none;
+  width: 110px;
+  padding-top: 7px;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fnd-main-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fnd-ing {
+  height: 28px;
+  padding: 0 11px 0 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-ink);
+  color: #fff;
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fnd-ing-mark {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  font: 800 10px/1 var(--riso-font-display);
+}
+
+.fnd-ing.off {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  text-decoration: line-through;
+}
+
+.fnd-ing.off .fnd-ing-mark {
+  background: transparent;
+  border: 1.5px solid var(--riso-ink);
+}
+
+.fnd-main-leftovers {
+  margin: 6px 0 0;
+  font: 600 13px var(--riso-font-body);
+}
+
+.fnd-main-actions {
+  flex: none;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+}
+
+.fnd-main-btn {
+  height: 38px;
+  padding: 0 18px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 13.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fnd-main-btn.dark {
+  background: var(--riso-ink);
+  color: #fff;
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.fnd-main-btn.on {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+/* Results */
+.fnd-results-title {
+  margin: 6px 0 0;
+  font: 800 20px var(--riso-font-display);
+}
+
+.fnd-countline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 20px;
+}
+
+.fnd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.fnd-card {
+  min-width: 0;
+  cursor: default;
+}
+
+.fnd-card.draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.fnd-card.dragging {
+  opacity: 0.35;
+}
+
+.fnd-card-open {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: inherit;
+}
+
+.fnd-card-photo {
+  position: relative;
+  display: block;
+  height: 140px;
+  overflow: hidden;
+}
+
+.fnd-card-time {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+}
+
+.fnd-card-body {
+  padding: 12px 14px 14px;
+  gap: 8px;
+}
+
+.fnd-card-reason {
+  font: 400 12.5px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.fnd-card-add {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  font: 800 20px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.fnd-empty {
+  margin: 0;
+  padding: 24px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 22px;
+  text-align: center;
+  color: var(--riso-soft);
+  font: 400 14px var(--riso-font-body);
+}
+
+.fnd-browse-btn {
+  flex: none;
+  height: 40px;
+  padding: 0 24px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow-xs);
+  font: 800 15px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* In the phone's bottom card: no panel frame, two cards across. */
+.fnd-sheet {
+  gap: 12px;
+}
+
+.fnd-sheet .fnd-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fnd-sheet .fnd-card-photo {
+  height: 96px;
+}
+
+.fnd-sheet .fnd-card-body {
+  padding: 9px 10px 11px;
+}
+
+.fnd-sheet .riso-recipe-card-name {
+  font-size: 14px;
+}
+
+.fnd-sheet .fnd-searchbar input {
+  font-size: 15px;
+}
+
+.fnd-sheet .fnd-menus {
+  margin-left: 0;
+  width: 100%;
+}
+
+.fnd-sheet .fnd-menus .rv2-menu-wrap {
+  flex: 1;
+}
+
+.fnd-sheet .fnd-menus .rv2-drop {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.fnd-sheet .fnd-menus .rv2-menu {
+  left: 0;
+  right: auto;
+}
+
+.fnd-sheet .fnd-main {
+  flex-direction: column;
+}
+
+.fnd-sheet .fnd-main-photo {
+  display: none;
+}
+
+.fnd-sheet .fnd-main-body {
+  padding: 14px 16px 6px;
+}
+
+.fnd-sheet .fnd-main-groupname {
+  width: 78px;
+}
+
+.fnd-sheet .fnd-main-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  padding: 8px 16px 14px;
+}
+
+.fnd-sheet .fnd-drawers {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 767px) {
+  .fnd-searchlabel {
+    display: none;
+  }
+
+  .fnd-with {
+    margin: -8px 8px 0;
+  }
+
+  .fnd-picker {
+    padding: 12px;
+  }
+}
+
+/* ---------- The recipe pop-out ---------- */
+.fnd-pop-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: rgba(22, 24, 31, 0.5);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  animation: fnd-pop-fade 0.2s ease;
+}
+
+.fnd-pop {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 22px 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 28px;
+  box-shadow: var(--riso-shadow-lg);
+  animation: fnd-pop-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes fnd-pop-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fnd-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+}
+
+.fnd-pop-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.fnd-pop-title {
+  margin: 0;
+  font: 800 28px/1.1 var(--riso-font-display);
+  text-wrap: balance;
+}
+
+.fnd-pop-facts {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fnd-pop-close {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 18px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.fnd-pop-body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 22px;
+}
+
+.fnd-pop-photo {
+  align-self: start;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-track);
+}
+
+.fnd-pop-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fnd-pop-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fnd-pop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fnd-pop-caps {
+  margin: 0;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.fnd-pop-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fnd-pop-buy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fnd-buy-pill {
+  cursor: pointer;
+}
+
+/* On the grocery list: the mark turns to a filled ✓. */
+.fnd-buy-pill .riso-pill-mark {
+  background: var(--riso-surface);
+}
+
+.fnd-buy-pill.listed .riso-pill-mark {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.fnd-pop-allhere {
+  margin: 0;
+  font: 700 14px var(--riso-font-display);
+  color: var(--riso-green-text);
+}
+
+.fnd-pop-steps {
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.fnd-pop-stepshead {
+  margin: 0;
+  font: 800 17px var(--riso-font-display);
+}
+
+.fnd-pop-steplist {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 400 13.5px/1.45 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.fnd-pop-stephead {
+  margin-left: -20px;
+  list-style: none;
+  font: 700 13.5px var(--riso-font-display);
+  color: var(--riso-ink);
+}
+
+.fnd-pop-nosteps {
+  margin: 0;
+  font: 400 13.5px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.fnd-pop-actions {
+  padding-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 2px solid var(--riso-ink);
+}
+
+.fnd-pop-btn {
+  flex: 1 1 140px;
+  min-height: 46px;
+  padding: 6px 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 23px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 14.5px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.fnd-pop-btn.primary {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow-xs);
+}
+
+.fnd-pop-btn.soft {
+  background: var(--riso-canvas);
+  color: var(--riso-accent);
+}
+
+@media (max-width: 767px) {
+  .fnd-pop {
+    width: min(360px, 100%);
+    padding: 18px 18px 20px;
+    gap: 14px;
+  }
+
+  .fnd-pop-title {
+    font-size: 22px;
+  }
+
+  .fnd-pop-body {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .fnd-pop-photo {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* ---------- Planner, phone: weekend block, leftovers, the bottom card ---------- */
+.rpm-board-inner {
+  position: relative;
+}
+
+.rpm-heads,
+.rpm-mealrow {
+  position: relative;
+  z-index: 1;
+}
+
+.rpm-weekend {
+  position: absolute;
+  top: -4px;
+  bottom: 0;
+  z-index: 0;
+  border: 2px dotted var(--riso-hot);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--riso-accent) 4%, transparent);
+  pointer-events: none;
+}
+
+.rpm-cell.empty.leftover-target {
+  border-color: var(--riso-accent);
+  background: var(--riso-accent-tint);
+  color: var(--riso-accent);
+}
+
+.rpm-leftoverbar {
+  width: 100%;
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 6px 8px 6px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  box-shadow: var(--riso-shadow);
+  font: 800 14px/1.2 var(--riso-font-display);
+}
+
+.rpm-leftoverbar button {
+  flex: none;
+  height: 38px;
+  padding: 0 18px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-ink);
+  color: #fff;
+  font: 800 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.rpm-sheet-title-main {
+  margin: 0 0 4px;
+  font: 800 22px/1.15 var(--riso-font-display);
+}
+
+.rpm-sheet-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-sheet .fnd {
+  padding-bottom: 8px;
+}
+
+.fnd-card-open > span,
+.fnd-card-body > span {
+  display: block;
+}
+
+.fnd-card-body .riso-recipe-card-havebar-fill {
+  display: block;
+}
+
+.rpm-sheet-quick .rpm-sheet-note {
+  flex: 1 1 auto;
+  padding: 0 14px;
+}
+
+/* On a phone the three availability choices share the full width. */
+.fnd-sheet .fnd-seg {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fnd-sheet .fnd-seg-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 34px;
+  height: auto;
+  padding: 3px 6px;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+}
+
+.fnd-sheet .fnd-seg-count {
+  font-size: 10px;
 }

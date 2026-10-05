@@ -26,6 +26,7 @@ export const api = {
     request("/auth/signup", { method: "POST", body: JSON.stringify({ email, password, name, locale: getLang() }) }),
   // The account's language ("fr" | "en").
   saveLocale: (locale) => request("/auth/me", { method: "PATCH", body: JSON.stringify({ locale }) }),
+  saveWeekendDays: (weekendDays) => request("/auth/me", { method: "PATCH", body: JSON.stringify({ weekendDays }) }),
   login: (email, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),

@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { BottomSheet } from "./RisoControls.jsx";
-import { PlannerTray } from "./PlannerTray.jsx";
 import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
 import { useGroceryToBuyCount } from "../hooks/useGroceryToBuyCount.js";
 import {
@@ -13,8 +12,8 @@ import {
   shiftWeek,
   toDateKey,
 } from "../lib/dates.js";
-import { centerScroll, firstHiddenDay, gridRange, inWeek, monthGrid, monthOf, shiftMonth, weekOf } from "../lib/plannerCalendar.js";
-import { MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, todayIndex } from "../lib/plannerSlots.js";
+import { centerScroll, gridRange, inWeek, monthGrid, monthOf, shiftMonth, weekOf } from "../lib/plannerCalendar.js";
+import { MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, slotLabel, todayIndex, weekendRuns } from "../lib/plannerSlots.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { dict, t } from "../i18n/index.js";
 
@@ -23,7 +22,8 @@ import { dict, t } from "../i18n/index.js";
 // of seven day columns, three in view, scrolling sideways with the meal labels
 // staying put; a week pill that opens a month calendar; and a button at the
 // bottom that goes to the grocery list. No drag and drop on a phone: tapping a
-// card or an empty cell opens the suggestions sheet.
+// card or an empty cell opens the bottom card, with the shared recipe finder in
+// it (Planner.jsx hands it in as `finder`).
 
 const COL = 104;
 const GAP = 8;
@@ -40,16 +40,20 @@ function cellTime(minutes) {
 // "jeu." -> "JEU"
 const shortDay = (i) => dict().days.short[i].replace(/\.$/, "").toUpperCase();
 
-function Cell({ entry, slot, meal, dayName, past, stale, editing, onTap, onEditNote, onSaveNote, onRemove }) {
+function Cell({ entry, slot, meal, dayName, past, stale, editing, leftoverMode, onTap, onEditNote, onSaveNote, onRemove }) {
   if (!entry) {
     return (
       <button
         type="button"
-        className={`rpm-cell empty${past ? " past" : ""}`}
-        aria-label={t("planner.emptyAria", { meal: meal.label.toLowerCase(), day: dayName })}
+        className={`rpm-cell empty${past ? " past" : ""}${leftoverMode ? " leftover-target" : ""}`}
+        aria-label={
+          leftoverMode
+            ? t("planner.leftoversOnMealDay", { meal: meal.label.toLowerCase(), day: dayName })
+            : t("planner.emptyAria", { meal: meal.label.toLowerCase(), day: dayName })
+        }
         onClick={() => onTap(slot)}
       >
-        {t("planner.addCell")}
+        {leftoverMode ? t("planner.leftoversCell") : t("planner.addCell")}
       </button>
     );
   }
@@ -187,25 +191,28 @@ export function PlannerMobile({
   entries,
   weekStart,
   onChangeWeek,
+  weekendDays,
   target,
   onSelectSlot,
-  onCardClick,
+  onOpenRecipe,
   onRemove,
   onCycleState,
   editingNoteId,
   onWriteInSlot,
+  onMarkBlank,
   onEditNote,
   onSaveNote,
-  emptyCount,
-  onFillEmptySlots,
-  trayProps,
+  leftoverMode,
+  leftoverTitle,
+  onLeftoverCell,
+  onLeftoverDone,
+  finder,
   customStaples,
   excludedStaples,
   onOpenGrocery,
 }) {
   const currentWeek = isCurrentWeek(weekStart);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [hiddenFrom, setHiddenFrom] = useState(null);
   const boardRef = useRef(null);
   const buyCount = useGroceryToBuyCount({ customStaples, excludedStaples, refreshKey: entries });
 
@@ -213,19 +220,12 @@ export function PlannerMobile({
   for (const e of entries) (grouped[slotKey(e.dayOfWeek, e.mealType)] ||= []).push(e);
   const staleIds = computeStaleLeftoverIds(entries);
 
-  function updateHint() {
-    const board = boardRef.current;
-    if (!board) return;
-    setHiddenFrom(firstHiddenDay({ scrollLeft: board.scrollLeft, viewWidth: board.clientWidth, col: COL, gap: GAP, pad: PAD }));
-  }
-
   // The week's board opens with today's column in the middle (the first day for
   // another week), the same as the desktop planner.
   useLayoutEffect(() => {
     const board = boardRef.current;
     if (!board) return;
     board.scrollLeft = currentWeek ? centerScroll({ day: todayIndex(), viewWidth: board.clientWidth, col: COL, gap: GAP, pad: PAD }) : 0;
-    updateHint();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStart]);
 
@@ -266,11 +266,6 @@ export function PlannerMobile({
           <button type="button" className="rpm-round" onClick={() => onChangeWeek(shiftWeek(weekStart, 1))} aria-label={t("planner.nextWeek")}>
             ›
           </button>
-          {hiddenFrom !== null && (
-            <span className="rpm-more" aria-hidden="true">
-              {shortDay(hiddenFrom).toLowerCase()} – {shortDay(6).toLowerCase()} →
-            </span>
-          )}
         </div>
         {calendarOpen && (
           <PlannerCalendar
@@ -283,8 +278,19 @@ export function PlannerMobile({
       </div>
 
       <div className="rpm-boardwrap">
-        <div className="rpm-board" ref={boardRef} onScroll={updateHint} role="group" aria-label={t("planner.boardAria")}>
+        <div className="rpm-board" ref={boardRef} role="group" aria-label={t("planner.boardAria")}>
           <div className="rpm-board-inner">
+            {weekendRuns(weekendDays).map((run) => (
+              <div
+                key={run.start}
+                className="rpm-weekend"
+                aria-hidden="true"
+                style={{
+                  left: PAD + run.start * (COL + GAP) - 5,
+                  width: (run.end - run.start + 1) * COL + (run.end - run.start) * GAP + 10,
+                }}
+              />
+            ))}
             <div className="rpm-heads">
               {dict().days.long.map((name, i) => {
                 const { dayNum, isToday } = formatDayLabel(weekStart, i);
@@ -312,7 +318,8 @@ export function PlannerMobile({
                         past={isPastDay(weekStart, i)}
                         stale={!!entry && staleIds.has(entry.id)}
                         editing={!!entry && editingNoteId === entry.id}
-                        onTap={onSelectSlot}
+                        leftoverMode={leftoverMode && !isPastDay(weekStart, i)}
+                        onTap={(slot) => (leftoverMode && !entry ? onLeftoverCell(slot) : onSelectSlot(slot))}
                         onEditNote={onEditNote}
                         onSaveNote={onSaveNote}
                         onRemove={onRemove}
@@ -327,20 +334,24 @@ export function PlannerMobile({
         <span className="rpm-fade" aria-hidden="true" />
       </div>
 
-      {emptyCount > 0 && (
-        <button type="button" className="rpm-fill" onClick={onFillEmptySlots}>
-          {t("planner.fillEmpty", { count: emptyCount })}
-        </button>
-      )}
-
       <div className="rpm-bottombar">
-        <button type="button" className="rpm-makelist" onClick={onOpenGrocery}>
-          {t("planner.makeList", { count: buyCount })}
-        </button>
+        {leftoverMode ? (
+          <div className="rpm-leftoverbar" role="status">
+            <span>{t("planner.leftoversBar", { title: leftoverTitle })}</span>
+            <button type="button" onClick={onLeftoverDone}>
+              {t("common.done")}
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="rpm-makelist" onClick={onOpenGrocery}>
+            {t("planner.makeList", { count: buyCount })}
+          </button>
+        )}
       </div>
 
       {target && (
         <BottomSheet label={t("planner.suggestions")} onClose={() => onSelectSlot(null)}>
+          <h2 className="rpm-sheet-title-main">{t("tray.addTo", { slot: slotLabel(target) })}</h2>
           {targetRecipeEntry && (
             <div className="rpm-sheet-card">
               <div className="rpm-sheet-head">
@@ -348,14 +359,7 @@ export function PlannerMobile({
                 <span className="rpm-sheet-state">{t(`planner.sheetState.${sheetState}`)}</span>
               </div>
               <div className="rpm-sheet-actions">
-                <button
-                  type="button"
-                  className="rpm-chip"
-                  onClick={() => {
-                    onSelectSlot(null);
-                    onCardClick(targetRecipeEntry.recipe);
-                  }}
-                >
+                <button type="button" className="rpm-chip" onClick={() => onOpenRecipe(targetRecipeEntry.recipe)}>
                   {t("planner.sheetOpen")}
                 </button>
                 <button type="button" className="rpm-chip" onClick={() => onCycleState(targetRecipeEntry.id)}>
@@ -375,18 +379,30 @@ export function PlannerMobile({
             </div>
           )}
           {!targetEntry && (
-            <button
-              type="button"
-              className="rpm-sheet-note"
-              onClick={() => {
-                onSelectSlot(null);
-                onWriteInSlot(target);
-              }}
-            >
-              {t("planner.sheetNote")}
-            </button>
+            <div className="rpm-sheet-quick">
+              <button
+                type="button"
+                className="rpm-sheet-note"
+                onClick={() => {
+                  onSelectSlot(null);
+                  onWriteInSlot(target);
+                }}
+              >
+                {t("planner.sheetNote")}
+              </button>
+              <button
+                type="button"
+                className="rpm-sheet-note"
+                onClick={() => {
+                  onSelectSlot(null);
+                  onMarkBlank(target);
+                }}
+              >
+                {t("planner.slotBlank")}
+              </button>
+            </div>
           )}
-          <PlannerTray {...trayProps} target={target} inSheet />
+          {finder}
         </BottomSheet>
       )}
     </div>

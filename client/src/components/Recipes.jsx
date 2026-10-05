@@ -3,7 +3,7 @@ import { api } from "../api.js";
 import { core, findExpiringSoonInRecipe, findSaleDeal } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { HintStrip } from "./RisoControls.jsx";
+import { HintStrip, PillMenu } from "./RisoControls.jsx";
 import { Pill, TimePill } from "./RisoPills.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
@@ -34,44 +34,6 @@ const MEAL_CHIPS = [
   ...RECIPE_SLOTS.map((slot) => chip(`slot:${slot.id}`, () => t(`recipes.mealTypes.${slot.id}`))),
 ];
 const EXTRA_CHIPS = ["makeable", "expiring"].map((id) => chip(id, () => t(`recipes.filters.${id}`)));
-
-// A dropdown: label, value, ▾. Yellow when it isn't on its default option. On
-// a phone it is a full-width pill that shows only the value (the label stays
-// for screen readers). Only one is open at a time (the page keeps `open`).
-function PillMenu({ id, label, value, options, selected, isDefault, open, phone, openLeft, onToggle, onPick }) {
-  return (
-    <div className="rv2-menu-wrap">
-      <button
-        type="button"
-        className={`rv2-drop${isDefault ? "" : " set"}${phone ? " phone" : ""}`}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => onToggle(id)}
-      >
-        <span className="rv2-drop-label">{label}</span>
-        <span className="rv2-drop-value">{value}</span>
-        <span className="rv2-drop-caret" aria-hidden="true">▾</span>
-      </button>
-      {open && (
-        <div className={`rv2-menu${openLeft ? " left" : ""}`} role="listbox" aria-label={label}>
-          {options.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              role="option"
-              aria-selected={o.id === selected}
-              className={`rv2-menu-item${o.id === selected ? " selected" : ""}`}
-              onClick={() => onPick(o.id)}
-            >
-              {o.label}
-              {o.id === selected && <span aria-hidden="true">✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
   const totalTime = recipeTotalMinutes(recipe);

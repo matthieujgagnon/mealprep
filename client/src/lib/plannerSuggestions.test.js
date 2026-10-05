@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { findNextEmptySlot, upcomingSlots } from "./plannerSlots.js";
-import { planAroundMatches, rankRecipesForTray, suggestedGroups } from "./plannerSuggestions.js";
+import { rankRecipesForTray } from "./plannerSuggestions.js";
 import { currentWeekStart, shiftWeek } from "./dates.js";
 
 const recipe = (id, title, names, extra = {}) => ({
@@ -37,7 +37,7 @@ describe("upcomingSlots", () => {
   });
 });
 
-describe("tray suggestions", () => {
+describe("recipe ranking", () => {
   const recipes = [
     recipe("a", "Spinach pie", ["spinach", "feta"]),
     recipe("b", "Chicken tacos", ["chicken thighs", "tortillas"]),
@@ -50,21 +50,6 @@ describe("tray suggestions", () => {
   ];
   const haveCores = new Set(["spinach", "feta", "egg"]);
 
-  it("groups expiring and nothing-to-buy, each recipe once", () => {
-    const { ranked } = rankRecipesForTray({
-      recipes,
-      upcomingEntries: [],
-      pantryInventory,
-      haveCores,
-    });
-    const groups = suggestedGroups(ranked);
-    const ids = groups.flatMap((g) => g.tiles.map((t) => t.recipe.id));
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(groups[0].id).toBe("expiring");
-    expect(groups[0].tiles[0].recipe.id).toBe("a");
-    expect(groups[0].tiles[0].reason).toMatch(/spinach/);
-  });
-
   it("stops pushing expiring food an upcoming meal already uses", () => {
     const { unusedExpiringCores } = rankRecipesForTray({
       recipes,
@@ -73,12 +58,5 @@ describe("tray suggestions", () => {
       haveCores,
     });
     expect(unusedExpiringCores).not.toContain("spinach");
-  });
-
-  it("plan around ranks recipes by how many picked ingredients they use", () => {
-    const { ranked } = rankRecipesForTray({ recipes, upcomingEntries: [], pantryInventory, haveCores });
-    const matches = planAroundMatches(ranked, new Set(["spinach", "feta"]));
-    expect(matches[0].recipe.id).toBe("a");
-    expect(matches.every((m) => m.recipe.id !== "b")).toBe(true);
   });
 });
