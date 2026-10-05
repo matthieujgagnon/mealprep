@@ -25,6 +25,7 @@ import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { Planner } from "./components/Planner.jsx";
 import { Toast } from "./components/Toast.jsx";
+import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
 import { RecipePopoutHost } from "./components/RecipePopout.jsx";
 import { SlotPicker } from "./components/SlotPicker.jsx";
 import { weekendFrom } from "./lib/weekend.js";
@@ -325,8 +326,13 @@ export default function App({ user, onLogout }) {
   }
 
   // Header nav: leaving the editor with unsaved changes asks first.
+  // `leaveFor` is the tab waiting on the "leave without saving?" pop-up.
+  const [leaveFor, setLeaveFor] = useState(null);
   function goToTab(next) {
-    if (recipeEditor && editorDirty.current && !window.confirm(t("app.leaveUnsaved"))) return;
+    if (recipeEditor && editorDirty.current) {
+      setLeaveFor(next);
+      return;
+    }
     setRecipeEditor(null);
     editorDirty.current = false;
     setTab(next);
@@ -1261,6 +1267,21 @@ export default function App({ user, onLogout }) {
               if (!(await handlePlanRecipe(recipe, slot, week))) showToast(t("app.slotsFull"));
             }}
             onClose={() => setPickerFor(null)}
+          />
+        )}
+        {leaveFor && (
+          <ConfirmDialog
+            message={t("app.leaveUnsaved")}
+            stayLabel={t("editor.keepEditing")}
+            leaveLabel={t("editor.discard")}
+            onStay={() => setLeaveFor(null)}
+            onLeave={() => {
+              const next = leaveFor;
+              setLeaveFor(null);
+              setRecipeEditor(null);
+              editorDirty.current = false;
+              setTab(next);
+            }}
           />
         )}
         <Toast toast={toast} onClose={() => setToast(null)} />

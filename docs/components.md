@@ -13,6 +13,7 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Makeable now rule | `lib/mealSlots.js`, `hooks/useIncludeSides.js`, `IncludeSidesToggle` | What counts as "makeable". |
 | `openRecipeCard` | `App.jsx` | Opens a recipe's card on the Recipes page. |
 | Riso pills and chips | `components/RisoPills.jsx`, `lib/pills.js` | Every pill, tag and chip. |
+| Confirm dialog | `components/ConfirmDialog.jsx` | The one "are you sure?" question. |
 | Recipe finder | `components/Finder.jsx`, `hooks/useFinder.js`, `lib/finder.js` | Search, filters, Main meal and results. |
 | Grocery item | `components/GroceryItem.jsx` | One grocery row. |
 | Inventory item form | `components/InventoryItemForm.jsx` | Add or edit an Inventory item. |
@@ -74,6 +75,14 @@ Passed down as `onOpenRecipeCard`.
 ## Riso pills and chips
 
 `RisoPills.jsx` holds every pill: `Pill` (sizes tag, fact, chip, badge; tones; `selected`), `TimePill`, `ServesPill`, `MealChip`, `PlannedPill`, `ToBuyPill`, `InStockPill`, `SalePill` and `CountPill`. A screen uses these instead of a new pill class. The comment block at the top of the file says which to use and what the colours mean; see `docs/design/riso-v2/`.
+
+## Confirm dialog
+
+`ConfirmDialog` is the app's own "are you sure?" question, in the Riso v2 style instead of the browser's `window.confirm`: a small centred pop-up (white card, black outline, hard shadow) over a dimmed page, with a question and two pill buttons. The safe answer comes first, is blue and has the focus. Escape, a tap on the dimmed area and the safe button all give it, and they close only the question: Escape never reaches the form underneath.
+
+Props: `message`, `stayLabel` and `leaveLabel`, `onStay`, `onLeave`. Its classes are `riso-ask*` (`riso-confirm*` belongs to the Inventory confirmation sheet). The two buttons reuse the pop-out's `fnd-pop-btn`.
+
+Used by: the recipe form (the new-recipe pop-up and the full-page editor) when closed with something typed, and `App.jsx` when a header tab is pressed with unsaved changes. The text is `editor.leaveUnsaved` / `app.leaveUnsaved` with « Continuer à modifier » (`editor.keepEditing`) and « Abandonner » (`editor.discard`). Other confirmations still use the browser's dialog (delete recipe, remove a store, clear flyers, leave Cook mode with a timer); move them here when they are next touched.
 
 ## Recipe finder
 

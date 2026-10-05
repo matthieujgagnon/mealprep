@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import {
   DndContext,
   PointerSensor,
@@ -515,12 +516,30 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
     }
   }
 
+  // Closing with something typed asks first, in the app's own pop-up.
+  const [askLeave, setAskLeave] = useState(false);
   function handleCancel() {
-    if (dirty && !window.confirm(t("editor.leaveUnsaved"))) return;
+    if (dirty) {
+      setAskLeave(true);
+      return;
+    }
     onDirtyChange?.(false);
     onCancel();
   }
   closeRef.current = handleCancel;
+  const leaveDialog = askLeave ? (
+    <ConfirmDialog
+      message={t("editor.leaveUnsaved")}
+      stayLabel={t("editor.keepEditing")}
+      leaveLabel={t("editor.discard")}
+      onStay={() => setAskLeave(false)}
+      onLeave={() => {
+        setAskLeave(false);
+        onDirtyChange?.(false);
+        onCancel();
+      }}
+    />
+  ) : null;
 
   // --- preview --------------------------------------------------------
   const total = (Number(state.prep) || 0) + (Number(state.cook) || 0);
@@ -1068,7 +1087,14 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
     </div>
   );
 
-  if (!popup) return page;
+  if (!popup) {
+    return (
+      <>
+        {page}
+        {leaveDialog}
+      </>
+    );
+  }
   return (
     <div className="riso-theme re-overlay" data-theme="light" onClick={handleCancel}>
       <div
@@ -1083,6 +1109,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
         </button>
         {page}
       </div>
+      {leaveDialog}
     </div>
   );
 }
