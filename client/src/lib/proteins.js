@@ -224,16 +224,18 @@ export function proteinsOnSale(deals) {
 //   unsure - on a flyer, but nothing to say if it's a good price (tofu has
 //            no Quebec average and flyers rarely print a regular price)
 //   none   - nothing on the flyers, or only prices not worth it
+// `products` is what opens under a card: the real sales for a deal, the
+// priced items we can't judge yet for an unsure kind, nothing for none.
 // Deals come first (best buy first), then the unsure ones, then the kinds
 // with nothing, in PROTEINS order.
 export function proteinRows(deals) {
   const found = new Map(proteinsOnSale(deals).map((k) => [k.protein.id, k]));
   const rows = PROTEINS.map((protein, order) => {
     const k = found.get(protein.id);
-    if (k?.best) return { protein, order, status: "deal", best: k.best, onSale: k.onSale, all: k.all };
-    const unsure = k?.all.find((d) => dealVerdict(d)?.key === "unknown");
-    if (unsure) return { protein, order, status: "unsure", best: unsure, onSale: [], all: k.all };
-    return { protein, order, status: "none", best: null, onSale: [], all: k?.all || [] };
+    if (k?.best) return { protein, order, status: "deal", best: k.best, onSale: k.onSale, products: k.onSale, all: k.all };
+    const unsure = (k?.all || []).filter((d) => dealVerdict(d)?.key === "unknown");
+    if (unsure.length > 0) return { protein, order, status: "unsure", best: unsure[0], onSale: [], products: unsure, all: k.all };
+    return { protein, order, status: "none", best: null, onSale: [], products: [], all: k?.all || [] };
   });
   const group = { deal: 0, unsure: 1, none: 2 };
   return rows.sort((a, b) => group[a.status] - group[b.status] || (a.best && b.best ? compareProteinDeals(a.best, b.best) : 0) || a.order - b.order);

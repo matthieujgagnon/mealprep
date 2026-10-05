@@ -103,6 +103,20 @@ describe("Home's protein rows", () => {
     expect(tofu.best.item).toBe("Smoked tofu, 350 g");
   });
 
+  it("opens an unsure kind onto its priced items, and a deal onto its real sales", () => {
+    const rows = proteinRows([
+      deal("Smoked tofu, 350 g", "other"),
+      deal("Firm tofu, 454 g", "other"),
+      deal("Boneless chicken breast", "meat", { regularPrice: 5.99, unitPrice: 3.99, unitBasis: "lb" }),
+    ]);
+    const tofu = rows.find((r) => r.protein.id === "tofu");
+    expect(tofu.status).toBe("unsure");
+    expect(tofu.products.map((d) => d.item).sort()).toEqual(["Firm tofu, 454 g", "Smoked tofu, 350 g"]);
+    const chicken = rows.find((r) => r.protein.id === "chicken");
+    expect(chicken.products).toEqual(chicken.onSale);
+    expect(rows.find((r) => r.protein.id === "beef").products).toEqual([]);
+  });
+
   it("gives a tofu with a real saving the deal row", () => {
     const rows = proteinRows([deal("Firm tofu", "other", { regularPrice: 3.99, unitPrice: 2.49 })]);
     expect(rows[0].protein.id).toBe("tofu");

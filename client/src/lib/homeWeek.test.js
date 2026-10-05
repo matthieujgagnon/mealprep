@@ -37,11 +37,15 @@ describe("toUseItems", () => {
   const at = (n) => new Date(base + n * 86400000).toISOString();
   const daysUntil = (iso) => Math.round((new Date(iso).getTime() - base) / 86400000);
 
-  it("shows the five soonest and counts the rest", () => {
-    const items = [9, 1, 4, 2, 6, 3, 5].map((n) => ({ id: n, expiresAt: at(n) }));
-    const { shown, rest } = toUseItems(items, daysUntil);
-    expect(shown.map((i) => i.id)).toEqual([1, 2, 3, 4, 5]);
-    expect(rest).toBe(2);
+  it("shows everything inside the window, soonest first", () => {
+    const items = [29, 1, 4, 2, 6, 3, 5].map((n) => ({ id: n, expiresAt: at(n) }));
+    const { shown, soonest } = toUseItems(items, daysUntil);
+    expect(shown.map((i) => i.id)).toEqual([1, 2, 3, 4, 5, 6, 29]);
+    expect(soonest.map((i) => i.id)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("covers a month", () => {
+    expect(TO_USE_DAYS).toBe(30);
   });
 
   it("leaves out what is past its date, undated, or beyond the window", () => {
@@ -51,9 +55,8 @@ describe("toUseItems", () => {
       { id: "far", expiresAt: at(TO_USE_DAYS + 1) },
       { id: "ok", expiresAt: at(TO_USE_DAYS) },
     ];
-    const { shown, rest } = toUseItems(items, daysUntil);
+    const { shown } = toUseItems(items, daysUntil);
     expect(shown.map((i) => i.id)).toEqual(["ok"]);
-    expect(rest).toBe(0);
-    expect(toUseItems(undefined, daysUntil)).toEqual({ shown: [], rest: 0 });
+    expect(toUseItems(undefined, daysUntil)).toEqual({ shown: [], soonest: [] });
   });
 });

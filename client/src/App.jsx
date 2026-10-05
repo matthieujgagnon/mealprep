@@ -176,6 +176,9 @@ export default function App({ user, onLogout }) {
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("all");
+  // The Flyers deal to open as soon as that page shows ("Open the flyer" on
+  // Home's Proteins on sale); Flyers clears it once it has taken it.
+  const [flyerDealId, setFlyerDealId] = useState(null);
   const [recipeProtein, setRecipeProtein] = useState(null); // a protein id (see lib/proteins.js) or null
   // The full-page recipe editor on the Recipes tab: { recipe } to edit one,
   // { recipe: null } for a new one, null when closed.
@@ -924,6 +927,8 @@ export default function App({ user, onLogout }) {
             isOnGroceryList={isOnGroceryList}
             onAddToGroceryList={addToGroceryList}
             onRemoveFromGroceryList={removeFromGroceryList}
+            openDealId={flyerDealId}
+            onDealOpened={() => setFlyerDealId(null)}
           />
         )}
 
@@ -994,6 +999,11 @@ export default function App({ user, onLogout }) {
               setRecipeProtein(proteinId);
               setTab("collection");
             }}
+            // "Open the flyer" on Proteins on sale: that deal's card on Flyers.
+            onOpenFlyerDeal={(deal) => {
+              setFlyerDealId(deal.id);
+              setTab("flyers");
+            }}
             onPickRecipeFor={(slot) => {
               setWeekStart(currentWeekStart());
               setPlannerTarget(slot);
@@ -1002,6 +1012,7 @@ export default function App({ user, onLogout }) {
             }}
             isOnGroceryList={isOnGroceryList}
             onAddToGroceryList={addToGroceryList}
+            onRemoveFromGroceryList={removeFromGroceryList}
           />
         )}
 
