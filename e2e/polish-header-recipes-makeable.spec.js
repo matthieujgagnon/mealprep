@@ -98,27 +98,30 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ })).toBeVisible();
   await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ }).locator(".riso-protein-emoji")).toHaveText("⬜"); // its own emoji, not the beans
   // Every kind has a row; the ones with nothing this week say so.
-  await expect(proteins.locator(".riso-protein-row")).toHaveCount(8);
-  await expect(proteins.getByRole("button", { name: "Chicken: no deal this week" })).toContainText("No deal this week");
+  await expect(proteins.locator(".riso-protein-card")).toHaveCount(8);
+  await expect(proteins.locator(".riso-protein-card.none", { hasText: "Chicken" })).toContainText("No deal this week");
 
-  // Selecting it shows the bar with the count of recipes Recipes then lists.
-  const row = proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ });
-  const bar = page.locator(".riso-protein-bar");
-  await expect(bar).toHaveCount(0);
+  // Opening it shows the link with the count of recipes Recipes then lists.
+  const row = proteins.locator("button.riso-protein-card", { hasText: "Tofu" }); // the same card in either language
+  const link = page.locator(".riso-protein-recipes-link");
+  await expect(link).toHaveCount(0);
   await row.click();
-  await expect(row).toHaveAttribute("aria-pressed", "true");
-  await expect(bar).toContainText("2 of your recipes use tofu.");
-  // The same bar in French, with the right article.
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(link).toHaveText("See your 2 recipes with tofu →");
+  // The same link in French, with the right article.
+  await page.keyboard.press("Escape");
   await langSwitch(page).getByRole("button", { name: "Français" }).click();
-  await expect(bar).toContainText("2 de vos recettes utilisent du tofu.");
-  await expect(bar).toContainText("Les voir →");
-  await langSwitch(page).getByRole("button", { name: "English" }).click();
-  // Tapping it again deselects and hides the bar.
   await row.click();
-  await expect(bar).toHaveCount(0);
+  await expect(link).toHaveText("Voir vos 2 recettes avec du tofu →");
+  await page.keyboard.press("Escape");
+  await langSwitch(page).getByRole("button", { name: "English" }).click();
+  await row.click();
+  // Tapping the card again closes it.
+  await row.click();
+  await expect(link).toHaveCount(0);
 
   await row.click();
-  await bar.click();
+  await link.click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
   await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
   // A Tofu chip you can clear, not a long search.
@@ -131,19 +134,21 @@ test("Home shows a tofu deal that has no regular price, and Tofu says so when it
   const userId = await signUp(page, "Matt");
   await page.reload();
   const proteins = page.locator(".riso-home-proteins");
-  await expect(proteins.getByRole("button", { name: "Tofu: no deal this week" })).toContainText("No deal this week");
+  await expect(proteins.locator(".riso-protein-card.none", { hasText: "Tofu" })).toContainText("No deal this week");
   // Smoked tofu with nothing to compare it with is still this week's tofu.
   await prisma.flyerDeal.create({
     data: { userId, store: "IGA", source: "IGA", category: "protein", item: "Smoked tofu, 350 g", matchName: "smoked tofu", price: "$2.99", unitPrice: 2.99, unitBasis: "each", isCurrent: true, createdAt: new Date() },
   });
   await page.reload();
-  const tofu = proteins.getByRole("button", { name: /^Tofu: Smoked tofu at IGA/ });
+  // No real sale to list, so it doesn't open, but its price shows.
+  const tofu = proteins.locator(".riso-protein-card.none", { hasText: "Smoked tofu" });
   await expect(tofu).toBeVisible();
   await expect(tofu).toContainText("$3.87/lb"); // 350 g at $2.99, per lb like the rest
-  await expect(proteins.locator(".riso-protein-row")).toHaveCount(8);
+  await expect(tofu).toContainText("Can't tell yet");
+  await expect(proteins.locator(".riso-protein-card")).toHaveCount(8);
 });
 
-test.describe("Proteins on sale bar on a phone", () => {
+test.describe("Proteins on sale panel on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("says none use it when no recipe does, with no arrow, and stays inside the screen", async ({ page }) => {
@@ -153,20 +158,19 @@ test.describe("Proteins on sale bar on a phone", () => {
     });
     await page.reload();
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
-    const row = page.locator(".riso-home-proteins .riso-protein-row", { hasText: "Tofu ferme" });
+    const row = page.locator("button.riso-protein-card", { hasText: "Tofu" });
     await row.scrollIntoViewIfNeeded();
     await row.click();
-    const bar = page.locator(".riso-protein-bar");
-    await expect(bar).toHaveText("Aucune de vos recettes n'utilise de tofu pour l'instant.");
-    await expect(bar).not.toContainText("→");
-    await page.waitForTimeout(400); // the slide-up
-    const box = await bar.boundingBox();
+    const panel = page.locator(".riso-protein-panel");
+    await expect(panel.locator(".riso-protein-recipes")).toHaveText("Aucune de vos recettes n'utilise de tofu pour l'instant.");
+    await expect(panel.locator(".riso-protein-recipes-link")).toHaveCount(0);
+    const box = await panel.boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(390);
-    expect(box.y + box.height).toBeLessThanOrEqual(844);
-    await page.screenshot({ path: test.info().outputPath("proteins-bar-phone-fr.png") });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await page.screenshot({ path: test.info().outputPath("proteins-panel-phone-fr.png") });
     await row.click();
-    await expect(bar).toHaveCount(0);
+    await expect(panel).toHaveCount(0);
   });
 });
 

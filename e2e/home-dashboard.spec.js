@@ -9,6 +9,14 @@ function uniqueEmail() {
   return `smoke-home+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
 }
 
+// These are about supper, which is the card from 3 pm: fix the clock at 6 pm
+// so they give the same answer whenever they run.
+test.beforeEach(async ({ page }) => {
+  const evening = new Date();
+  evening.setHours(18, 0, 0, 0);
+  await page.clock.setFixedTime(evening);
+});
+
 test("signing up lands on Home, not Recipes", async ({ page }) => {
   const email = uniqueEmail();
   await page.goto("/");
@@ -78,6 +86,6 @@ test("the grocery summary and inventory cards reflect real data", async ({ page 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   const useUp = page.locator(".riso-useup-row", { hasText: "cilantro" });
   await expect(useUp).toBeVisible();
-  await expect(useUp.locator(".riso-useup-badge.yellow")).toHaveText("tomorrow!");
+  await expect(useUp.locator(".riso-useup-badge.pink")).toHaveText("tomorrow!");
   await expect(page.locator(".home-grocery-number")).toHaveText("0");
 });

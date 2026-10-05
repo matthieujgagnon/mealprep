@@ -1,0 +1,59 @@
+import { describe, expect, it } from "vitest";
+import { TO_USE_DAYS, currentMealType, toUseItems, useBarPct, useTone } from "./homeWeek.js";
+
+describe("currentMealType", () => {
+  it("is breakfast in the morning, lunch around noon and supper after", () => {
+    expect(currentMealType(new Date(2026, 9, 5, 8))).toBe("breakfast");
+    expect(currentMealType(new Date(2026, 9, 5, 9, 59))).toBe("breakfast");
+    expect(currentMealType(new Date(2026, 9, 5, 10))).toBe("lunch");
+    expect(currentMealType(new Date(2026, 9, 5, 14, 59))).toBe("lunch");
+    expect(currentMealType(new Date(2026, 9, 5, 15))).toBe("dinner");
+    expect(currentMealType(new Date(2026, 9, 5, 22))).toBe("dinner");
+  });
+});
+
+describe("useTone", () => {
+  it("colours by days left", () => {
+    expect(useTone(0)).toBe("pink");
+    expect(useTone(3)).toBe("pink");
+    expect(useTone(4)).toBe("yellow");
+    expect(useTone(7)).toBe("yellow");
+    expect(useTone(8)).toBe("blue");
+    expect(useTone(12)).toBe("blue");
+  });
+});
+
+describe("useBarPct", () => {
+  it("is nearly full on the last day and never empty", () => {
+    expect(useBarPct(0)).toBe(96);
+    expect(useBarPct(1)).toBe(86);
+    expect(useBarPct(5)).toBe(29);
+    expect(useBarPct(30)).toBe(8);
+  });
+});
+
+describe("toUseItems", () => {
+  const base = new Date(2026, 9, 5).getTime();
+  const at = (n) => new Date(base + n * 86400000).toISOString();
+  const daysUntil = (iso) => Math.round((new Date(iso).getTime() - base) / 86400000);
+
+  it("shows the five soonest and counts the rest", () => {
+    const items = [9, 1, 4, 2, 6, 3, 5].map((n) => ({ id: n, expiresAt: at(n) }));
+    const { shown, rest } = toUseItems(items, daysUntil);
+    expect(shown.map((i) => i.id)).toEqual([1, 2, 3, 4, 5]);
+    expect(rest).toBe(2);
+  });
+
+  it("leaves out what is past its date, undated, or beyond the window", () => {
+    const items = [
+      { id: "past", expiresAt: at(-1) },
+      { id: "none", expiresAt: null },
+      { id: "far", expiresAt: at(TO_USE_DAYS + 1) },
+      { id: "ok", expiresAt: at(TO_USE_DAYS) },
+    ];
+    const { shown, rest } = toUseItems(items, daysUntil);
+    expect(shown.map((i) => i.id)).toEqual(["ok"]);
+    expect(rest).toBe(0);
+    expect(toUseItems(undefined, daysUntil)).toEqual({ shown: [], rest: 0 });
+  });
+});

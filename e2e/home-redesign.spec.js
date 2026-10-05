@@ -58,15 +58,17 @@ test("Makeable now counts what's ready and lists it with a ready tag", async ({ 
   await addInventoryItem(page, "test ingredient");
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
+  // Makeable now is just the count and a link to Makeable (the one-tap add
+  // lives on the Makeable screen).
   const card = page.locator(".riso-home-makeable");
   await expect(card.locator(".riso-home-makeable-num")).toHaveText("1");
-  const row = card.locator(".riso-nearly-row", { hasText: "Home Redesign Test Dish" });
-  await expect(row).toBeVisible();
-  await expect(row.locator(".riso-nearly-tag")).toHaveText("ready");
-  await expect(row.getByRole("button", { name: /\+ List|Add .* to the grocery list/ })).toHaveCount(0);
+  await expect(card).toContainText("ready to cook now");
+  await expect(card.locator(".riso-nearly-row")).toHaveCount(0);
+  await card.getByRole("button", { name: "All →" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Makeable");
 });
 
-test("selecting a protein on sale shows its recipe count, and the bar opens Recipes filtered to it", async ({ page }) => {
+test("an open protein links to your recipes that use it, and that opens Recipes filtered to it", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await seedRealDeal(page);
 
@@ -83,14 +85,13 @@ test("selecting a protein on sale shows its recipe count, and the bar opens Reci
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.waitForTimeout(400);
 
-  // The seeded deal is "Boneless chicken breast": tapping its row selects
-  // Chicken, and a bar at the bottom says how many recipes use it.
+  // The seeded deal is "Boneless chicken breast": opening Chicken ends with
+  // a link saying how many recipes use it.
   await page.getByRole("button", { name: /^Chicken:/ }).click();
-  const bar = page.locator(".riso-protein-bar");
-  await expect(bar).toContainText("1 of your recipes uses chicken.");
-  await expect(bar).toContainText("See them →");
+  const link = page.locator(".riso-protein-recipes-link");
+  await expect(link).toHaveText("See your recipe with chicken →");
 
-  await bar.click();
+  await link.click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
   await expect(page.getByText("Home Redesign Chicken Dish")).toBeVisible();
   await expect(page.getByRole("button", { name: /^PROTEIN/ })).toContainText("Chicken");
@@ -123,39 +124,63 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
 
   const block = page.locator(".riso-home-proteins");
   await expect(block.getByRole("heading", { name: "Proteins on sale" })).toBeVisible();
-  const chicken = block.locator(".riso-protein-row", { hasText: "Chicken" });
-  await expect(chicken).toContainText("Chicken breasts");
-  await expect(chicken).toContainText("Super C");
+  const chicken = block.getByRole("button", { name: /^Chicken:/ });
+  await expect(chicken).toContainText("2 products");
   await expect(chicken).toContainText("$4.87/lb");
   await expect(chicken.locator(".riso-protein-best")).toHaveText("Best deal");
-  await expect(chicken).toContainText("+1 more");
   await expect(block).not.toContainText("pie");
   const fish = block.getByRole("button", { name: /^Fish:/ });
   await expect(fish).toContainText("$9.99/lb");
   await expect(fish.locator(".riso-protein-verdict")).toBeVisible();
-  // Nothing to compare ground beef with: still shown, with its price.
-  const beef = block.getByRole("button", { name: /^Beef:/ });
+  // Nothing to compare ground beef with: still shown, with its price, but
+  // there is no real sale to open.
+  const beef = block.locator(".riso-protein-card.none", { hasText: "Beef" });
   await expect(beef).toContainText("$5.97/lb");
   await expect(beef.locator(".riso-protein-verdict")).toHaveText("Can't tell yet");
-  // Every other kind has its row, saying there is no deal.
+  await expect(block.getByRole("button", { name: /^Beef:/ })).toHaveCount(0);
+  // Every other kind has its card, saying there is no deal.
   for (const [kind, emoji] of [["Pork", "🐖"], ["Seafood", "🦐"], ["Turkey", "🦃"], ["Lamb", "🐑"], ["Tofu", "⬜"]]) {
-    const none = block.getByRole("button", { name: `${kind}: no deal this week` });
+    const none = block.locator(".riso-protein-card.none", { hasText: kind });
     await expect(none).toContainText("No deal this week");
     await expect(none).toContainText(emoji);
   }
-  await expect(block.locator(".riso-protein-row")).toHaveCount(8);
+  await expect(block.locator(".riso-protein-card")).toHaveCount(8);
 
-  // Tapping a row selects it; "See the deal" on the selected row opens its card.
+  // Opening a protein lists its real sales only, blurs the rest of the page,
+  // and a product opens its details.
   await chicken.click();
-  await expect(chicken).toHaveAttribute("aria-pressed", "true");
-  await block.getByRole("button", { name: "See the deal →" }).click();
-  const modal = page.locator(".riso-deal-detail, [role=dialog]").first();
-  await expect(modal).toContainText(/poitrines de poulet/i);
-  await expect(modal.locator(".riso-deal-detail-other", { hasText: "Metro" }).first()).toBeVisible();
+  await expect(chicken).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator(".riso-protein-scrim")).toHaveCount(1);
+  await expect(fish).toHaveClass(/dimmed/);
+  const products = block.locator(".riso-protein-product");
+  await expect(products).toHaveCount(2);
+  await expect(products.first()).toContainText("Chicken breasts");
+  await expect(products.first()).toContainText("Super C");
+  await expect(products.first().locator(".riso-protein-off")).toHaveText("43% off");
+  await expect(products.nth(1)).toContainText("Chicken legs");
+  await products.first().locator(".riso-protein-product-head").click();
+  const detail = products.first().locator(".riso-protein-detail");
+  await expect(detail).toContainText("Reg. price");
+  await expect(detail).toContainText("$8.49/lb");
+  await expect(detail.getByRole("link", { name: "Open the flyer" })).toHaveAttribute("href", /superc\.ca/);
+
+  // Add to list puts the product on the grocery list, and the card says so.
+  await detail.getByRole("button", { name: "+ Add to list" }).click();
+  await expect(detail.getByRole("button", { name: "✓ On list" })).toBeDisabled();
+
+  // Esc, or tapping outside, closes it.
   await page.keyboard.press("Escape");
+  await expect(page.locator(".riso-protein-scrim")).toHaveCount(0);
+  await expect(block.locator(".riso-protein-panel")).toHaveCount(0);
+  await chicken.click();
+  await page.locator(".riso-protein-scrim").click({ position: { x: 5, y: 5 } });
+  await expect(block.locator(".riso-protein-panel")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  await expect(page.getByText("Chicken breasts", { exact: true }).first()).toBeVisible();
 });
 
-test("Use it up finds recipes for those items; Makeable now puts what's missing on the list", async ({ page }) => {
+test("Use it up finds recipes for those items; Makeable now counts the ones one or two items away", async ({ page }) => {
   await signUp(page, uniqueEmail());
   const soon = new Date(Date.now() + 2 * 86400000 + 3600000).toISOString();
   for (const name of ["parsley", "cucumber", "chickpeas"]) {
@@ -183,15 +208,6 @@ test("Use it up finds recipes for those items; Makeable now puts what's missing 
   const makeable = page.locator(".riso-home-makeable");
   await expect(makeable.locator(".riso-home-makeable-num")).toHaveText("0");
   await expect(makeable).toContainText("2 are one or two items away");
-  const tz = makeable.locator(".riso-nearly-row", { hasText: "Tzatziki chickpea salad" });
-  await expect(tz).toContainText("missing 1");
-  await expect(tz).toContainText("Dill");
-  await tz.getByRole("button", { name: "Add Dill to the grocery list" }).click();
-  await expect(tz.locator(".riso-nearly-listed")).toHaveText("✓ Listed");
-  await makeable.getByRole("button", { name: "Add all 1 missing to list" }).click();
-  await expect(makeable).toContainText("Everything they're missing is on your list ✓");
-
-  await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: "Check off Dill", exact: true })).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: /^Check off Pine nuts?$/ })).toBeVisible();
+  await makeable.getByRole("button", { name: "All →" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Makeable");
 });
