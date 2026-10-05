@@ -201,7 +201,10 @@ function toPayload(s) {
   };
 }
 
-export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [], onSaved, onCancel, onDirtyChange }) {
+// `popup` draws the form as a pop-up over the page it was opened from (a
+// centred panel on a computer, a sheet sliding up on a phone) instead of a
+// full page. Used for a new recipe; editing one is still the full page.
+export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [], onSaved, onCancel, onDirtyChange, popup = false }) {
   const isNew = !recipe;
   const [state, setState] = useState(() => initialState(recipe));
   const initialPayload = useRef(JSON.stringify(toPayload(initialState(recipe))));
@@ -241,8 +244,24 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
   }, [dirty]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    if (!popup) window.scrollTo(0, 0);
+  }, [popup]);
+
+  // The pop-up: Escape closes it (asking first when something is typed), and
+  // the page behind it doesn't scroll. `closeRef` keeps the listener on the
+  // latest handleCancel without re-binding on every keystroke.
+  const closeRef = useRef(null);
+  useEffect(() => {
+    if (!popup) return undefined;
+    const onKey = (e) => e.key === "Escape" && closeRef.current?.();
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [popup]);
 
   // New recipes get a fridge-life guess from the ingredients until the
   // field is changed by hand.
@@ -501,6 +520,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
     onDirtyChange?.(false);
     onCancel();
   }
+  closeRef.current = handleCancel;
 
   // --- preview --------------------------------------------------------
   const total = (Number(state.prep) || 0) + (Number(state.cook) || 0);
@@ -522,12 +542,14 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
 
   let stepNumber = 0;
 
-  return (
-    <div className="riso-theme re-page" data-theme="light">
+  const page = (
+    <div className={`riso-theme re-page${popup ? " re-popup-page" : ""}`} data-theme="light">
       <div className="re-heading">
-        <button type="button" className="riso-eyebrow re-back" onClick={handleCancel}>
-          {t("editor.back", { mode: isNew ? t("editor.modeNew") : t("editor.modeEditing") })}
-        </button>
+        {!popup && (
+          <button type="button" className="riso-eyebrow re-back" onClick={handleCancel}>
+            {t("editor.back", { mode: isNew ? t("editor.modeNew") : t("editor.modeEditing") })}
+          </button>
+        )}
         <h1 className="re-title">
           {isNew ? t("editor.titleNew") : t("editor.titleEdit")} <span className="accent">{t("editor.titleAccent")}</span>
         </h1>
@@ -1042,6 +1064,24 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
             {saving ? t("editor.saving") : isNew ? t("editor.saveRecipe") : t("editor.saveChanges")}
           </button>
         </div>
+      </div>
+    </div>
+  );
+
+  if (!popup) return page;
+  return (
+    <div className="riso-theme re-overlay" data-theme="light" onClick={handleCancel}>
+      <div
+        className="re-popup"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${isNew ? t("editor.titleNew") : t("editor.titleEdit")} ${t("editor.titleAccent")}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" className="re-popup-close" aria-label={t("common.close")} onClick={handleCancel}>
+          ×
+        </button>
+        {page}
       </div>
     </div>
   );
