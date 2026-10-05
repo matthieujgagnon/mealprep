@@ -24,9 +24,11 @@ import { RecipeEditor } from "./components/RecipeEditor.jsx";
 import { Recipes } from "./components/Recipes.jsx";
 import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { Planner } from "./components/Planner.jsx";
+import { PlannerToast } from "./components/PlannerExtras.jsx";
+import { weekendFrom } from "./lib/weekend.js";
 import { useIsPhone } from "./hooks/useIsPhone.js";
 import { useHeaderTightness } from "./hooks/useHeaderTightness.js";
-import { findNextEmptySlot, isCustomNote, todayIndex } from "./lib/plannerSlots.js";
+import { findNextEmptySlot, isCustomNote, slotLabel, todayIndex } from "./lib/plannerSlots.js";
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
@@ -155,15 +157,10 @@ export default function App({ user, onLogout }) {
   const [plannerMainId, setPlannerMainId] = useState(null); // a recipe to open the Planner's finder on as its Main meal ("Plan around this")
   const [plannerTarget, setPlannerTarget] = useState(null); // the slot the finder is adding to { dayOfWeek, mealType }
   const [editingNoteId, setEditingNoteId] = useState(null); // blank/written card being typed on
-  // The days the Planner groups as the weekend, saved with the account so every
-  // device shows the same (0 = Monday). Saturday and Sunday until changed.
-  const [weekendDays, setWeekendDays] = useState(() => user.weekendDays ?? [5, 6]);
-  useEffect(() => {
-    if (!plannerTarget) return undefined;
-    const onKey = (e) => e.key === "Escape" && setPlannerTarget(null);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [plannerTarget]);
+  // The Planner's weekend ({ on, days, eve }; days 0 = Monday), saved with the
+  // account so every device shows the same.
+  const [weekend, setWeekend] = useState(() => weekendFrom(user));
+  const [plannerToast, setPlannerToast] = useState(null); // { id, message, undo? } the little message with Undo at the bottom of the Planner
   const [customStaples, setCustomStaples] = useState([]);
   const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
   const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
@@ -558,7 +555,7 @@ export default function App({ user, onLogout }) {
 
     // A recipe dragged in from the tray replaces whatever was in the slot.
     const recipeId = active.data.current?.recipe?.id;
-    if (recipeId) await handlePlaceRecipe(recipeId, slot);
+    if (recipeId) announcePlacement(await handlePlaceRecipe(recipeId, slot), slot);
   }
 
   function entriesInSlot(slot) {
@@ -566,11 +563,13 @@ export default function App({ user, onLogout }) {
   }
 
   // One thing per slot: placing a recipe replaces whatever was there.
+  // Resolves with the new entry and what it replaced (or null), for the toast's Undo.
   async function handlePlaceRecipe(recipeId, slot) {
     const existing = entriesInSlot(slot);
     await Promise.all(existing.map((e) => api.removeFromPlanner(e.id)));
     const entry = await api.placeOnPlanner({ recipeId, weekStart, ...slot });
     setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), entry]);
+    return { entry, replaced: existing[0] || null };
   }
 
   async function handleMoveEntry(entryId, slot) {
@@ -587,23 +586,88 @@ export default function App({ user, onLogout }) {
     );
   }
 
-  // The finder's "+" and "Plan": the slot it is adding to if there is one,
-  // otherwise the next empty upcoming slot (supper first). Resolves with the
-  // slot it used, or null when the week has no free slot.
-  async function handlePlanRecipe(recipe) {
-    const slot = plannerTarget || findNextEmptySlot(plannerEntries, weekStart);
+  // ---- The little message with Undo at the bottom of the Planner ----
+  function showPlannerToast(message, undo) {
+    setPlannerToast({ id: Date.now() + Math.random(), message, undo });
+  }
+
+  // A meal put back as it was (a removed one, or the one a new meal replaced):
+  // the same recipe or note in the same slot, with its leftover and
+  // already-have marks.
+  async function restoreEntry(snap) {
+    let entry;
+    if (snap.recipe?.isPlaceholder) {
+      entry = await api.markSlotBlank(snap.weekStart, snap.dayOfWeek, snap.mealType, isCustomNote(snap) ? snap.recipe.title : undefined);
+    } else {
+      entry = await api.placeOnPlanner({
+        recipeId: snap.recipeId || snap.recipe.id,
+        weekStart: snap.weekStart,
+        dayOfWeek: snap.dayOfWeek,
+        mealType: snap.mealType,
+        servings: snap.servings,
+        isLeftover: snap.isLeftover,
+        alreadyHave: snap.alreadyHave,
+      });
+    }
+    if (entry.weekStart === weekStart) setPlannerEntries((prev) => [...prev.filter((e) => e.id !== entry.id), entry]);
+    return entry;
+  }
+
+  async function dropEntry(id) {
+    setPlannerEntries((prev) => prev.filter((e) => e.id !== id));
+    await api.removeFromPlanner(id);
+  }
+
+  // After something is put in a slot: "Added to Tue · Supper" or "<old meal>
+  // replaced", with Undo (take it out again and put back what it replaced).
+  function announcePlacement({ entry, replaced }, slot) {
+    showPlannerToast(
+      replaced ? t("planner.toastReplaced", { title: replaced.recipe.title }) : t("planner.toastAdded", { slot: slotLabel(slot) }),
+      async () => {
+        await dropEntry(entry.id);
+        if (replaced) await restoreEntry(replaced);
+      }
+    );
+  }
+
+  // The finder's "+" and "Plan": the slot it is adding to if there is one (or
+  // `slotOverride`, from the slot picker), otherwise the next empty upcoming
+  // slot (supper first). Resolves with the slot it used, or null when the
+  // week has no free slot.
+  async function handlePlanRecipe(recipe, slotOverride) {
+    const slot = slotOverride || plannerTarget || findNextEmptySlot(plannerEntries, weekStart);
     if (!slot) return null;
     const { dayOfWeek, mealType } = slot;
-    await handlePlaceRecipe(recipe.id, { dayOfWeek, mealType });
+    const placed = await handlePlaceRecipe(recipe.id, { dayOfWeek, mealType });
     setPlannerTarget(null);
+    announcePlacement(placed, { dayOfWeek, mealType });
     return { dayOfWeek, mealType };
   }
 
   // "Nothing planned" on an empty slot's card: the slot is marked as planned
   // with no meal (eating out, skipping). Clicking the blank card clears it.
   async function handleMarkBlank(slot) {
+    const existing = entriesInSlot(slot);
+    await Promise.all(existing.map((e) => api.removeFromPlanner(e.id)));
     const saved = await api.markSlotBlank(weekStart, slot.dayOfWeek, slot.mealType);
-    setPlannerEntries((prev) => [...prev, saved]);
+    setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), saved]);
+    announcePlacement({ entry: saved, replaced: existing[0] || null }, slot);
+  }
+
+  // The slot card's Save on its Note tab: a note on the slot, replacing what
+  // was there (a note is changed in place).
+  async function handleSaveSlotNote(slot, text) {
+    const note = text.trim();
+    if (!note) return;
+    const existing = entriesInSlot(slot);
+    const existingNote = existing.find((e) => e.recipe?.isPlaceholder);
+    const others = existing.filter((e) => e !== existingNote);
+    await Promise.all(others.map((e) => api.removeFromPlanner(e.id)));
+    let saved;
+    if (existingNote) saved = await api.setPlannerEntryNote(existingNote.id, note);
+    else saved = await api.markSlotBlank(weekStart, slot.dayOfWeek, slot.mealType, note);
+    setPlannerEntries((prev) => [...prev.filter((e) => !others.includes(e) && e !== existingNote), saved]);
+    announcePlacement({ entry: saved, replaced: existingNote ? null : others[0] || null }, slot);
   }
 
   // Leftovers of a recipe on an empty slot: the same recipe, flagged as a
@@ -612,16 +676,28 @@ export default function App({ user, onLogout }) {
     if (entriesInSlot(slot).length > 0) return;
     const entry = await api.placeOnPlanner({ recipeId: recipe.id, weekStart, ...slot, isLeftover: true });
     setPlannerEntries((prev) => [...prev, entry]);
+    showPlannerToast(t("planner.leftoversAdded", { title: recipe.title, slot: slotLabel(slot) }), () => dropEntry(entry.id));
   }
 
-  async function handleSaveWeekendDays(days) {
-    const before = weekendDays;
-    setWeekendDays(days);
-    try {
-      await api.saveWeekendDays(days);
-    } catch {
-      setWeekendDays(before);
+  // The × on a card (or a blank card clicked again): off the plan, with Undo.
+  async function handleRemoveWithUndo(entryId) {
+    const snap = plannerEntries.find((e) => e.id === entryId);
+    await handleRemoveFromPlanner(entryId);
+    if (snap && !String(snap.id).startsWith("pending-")) {
+      const name = snap.recipe?.isPlaceholder ? (isCustomNote(snap) ? snap.recipe.title : t("planner.blankName")) : snap.recipe?.title;
+      showPlannerToast(t("planner.toastRemoved", { title: name, slot: slotLabel(snap) }), () => restoreEntry(snap));
     }
+  }
+
+  // The weekend menu saves with every click, so saves go one after another:
+  // the last choice is the one the account keeps, whatever the network does.
+  const weekendSaves = useRef(Promise.resolve());
+  function handleSaveWeekend(next) {
+    const before = weekend;
+    setWeekend(next);
+    weekendSaves.current = weekendSaves.current
+      .then(() => api.saveWeekend({ weekendDays: next.days, weekendOn: next.on, weekendEve: next.eve }))
+      .catch(() => setWeekend(before));
   }
 
   // Clicking an empty slot turns it into a blank card to write on. The card
@@ -998,13 +1074,14 @@ export default function App({ user, onLogout }) {
               <p className="riso-planner-empty">{t("app.plannerEmpty")}</p>
             ) : (
               <Planner
+                user={user}
                 recipes={plannableRecipes}
                 entries={plannerEntries}
                 upcomingEntries={upcomingEntries}
                 weekStart={weekStart}
                 onChangeWeek={setWeekStart}
-                weekendDays={weekendDays}
-                onWeekendDaysChange={handleSaveWeekendDays}
+                weekend={weekend}
+                onWeekendChange={handleSaveWeekend}
                 pantryInventory={pantryInventory}
                 pantryLocations={pantryLocations}
                 inventoryLayout={inventoryLayout}
@@ -1020,7 +1097,9 @@ export default function App({ user, onLogout }) {
                   placeLeftover: handlePlaceLeftover,
                   markBlank: handleMarkBlank,
                   writeInSlot: handleWriteInSlot,
-                  removeEntry: handleRemoveFromPlanner,
+                  removeEntry: handleRemoveWithUndo,
+                  saveSlotNote: handleSaveSlotNote,
+                  toast: showPlannerToast,
                   cycleState: handleCycleMealState,
                   editNote: setEditingNoteId,
                   saveNote: handleSaveNote,
@@ -1032,6 +1111,7 @@ export default function App({ user, onLogout }) {
                 excludedStaples={excludedStaples}
               />
             )}
+            <PlannerToast toast={plannerToast} onClose={() => setPlannerToast(null)} />
           </div>
         )}
 

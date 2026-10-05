@@ -39,7 +39,7 @@ const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 // One result: photo with the time and a round + (adds it to the plan), name,
 // the have bar and what is left to buy. Dragging it (when `draggable`) onto the
 // Planner's board puts it in a slot. Clicking it opens the pop-out.
-function ResultCard({ tile, reason, draggable, onOpen, onAdd }) {
+function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
   const { recipe, stats } = tile;
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `tray-${recipe.id}`,
@@ -54,14 +54,14 @@ function ResultCard({ tile, reason, draggable, onOpen, onAdd }) {
   return (
     <div
       ref={setNodeRef}
-      className={`riso-recipe-card fnd-card${nothingToBuy ? " ready" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}`}
+      className={`riso-recipe-card fnd-card${nothingToBuy ? " ready" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
       {...dragProps}
     >
       <button
         type="button"
         className="fnd-card-open"
         aria-label={draggable ? t("tray.dragAria", { title: recipe.title }) : t("planner.open", { title: recipe.title })}
-        onClick={() => onOpen(recipe)}
+        onClick={(e) => onOpen(recipe, e.currentTarget.closest(".fnd-card").getBoundingClientRect())}
       >
         <span className="riso-recipe-card-photo fnd-card-photo">
           {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} draggable="false" /> : null}
@@ -180,9 +180,11 @@ export function Finder({
   draggable = false,
   target = null,
   targetLabel = "",
+  targetNotice = null,
   onClearTarget,
   planLabel,
   onPlan,
+  onAdd = onPlan,
   onOpenFull,
   leftovers,
 }) {
@@ -264,7 +266,7 @@ export function Finder({
     return null;
   }
 
-  const openRecipe = (recipe) => finder.setPopoutId(recipe.id);
+  const openRecipe = (recipe, from) => finder.setPopoutId(recipe.id, from);
 
   const popRecipe = finder.popoutId ? recipes.find((r) => r.id === finder.popoutId) : null;
   const popLists = popRecipe ? haveAndBuy(popRecipe, haveCores) : null;
@@ -296,6 +298,7 @@ export function Finder({
 
   return (
     <div ref={finder.rootRef} className={`fnd fnd-${layout}`}>
+      {targetNotice && <div className="fnd-notice">{targetNotice}</div>}
       {!sheet && <span className="fnd-grab" aria-hidden="true" />}
       {!sheet && (
         <div className="fnd-top">
@@ -466,8 +469,9 @@ export function Finder({
                   tile={tile}
                   reason={reasonFor(tile)}
                   draggable={draggable}
+                  isOpen={finder.popoutId === tile.recipe.id}
                   onOpen={openRecipe}
-                  onAdd={onPlan}
+                  onAdd={onAdd}
                 />
               ))}
             </div>
@@ -490,6 +494,7 @@ export function Finder({
           onSimilar={() => finder.setMainMeal(popRecipe.id)}
           onOpenFull={onOpenFull ? () => { finder.setPopoutId(null); onOpenFull(popRecipe); } : undefined}
           onClose={() => finder.setPopoutId(null)}
+          from={finder.popoutFrom}
         />
       )}
     </div>

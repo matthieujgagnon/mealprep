@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { InStockPill, MealChip, Pill, PlannedPill, SalePill, TimePill } from "./RisoPills.jsx";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
@@ -22,11 +22,40 @@ import { t } from "../i18n/index.js";
 //   plan          optional: { label, onClick } for the blue Plan button
 //   onSimilar, onOpenFull, onClose
 
-export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggleList, saleOf, plan, onSimilar, onOpenFull, onClose }) {
-  const closeRef = useRef(null);
+const CLOSE_MS = 300;
 
+export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggleList, saleOf, plan, onSimilar, onOpenFull, onClose: close, from }) {
+  const closeRef = useRef(null);
+  const popRef = useRef(null);
+  const [closing, setClosing] = useState(false);
+  const [origin, setOrigin] = useState(null);
+
+  // The card the pop-out grows out of (and shrinks back into): the origin of
+  // its scale is that card's centre.
+  useLayoutEffect(() => {
+    const el = popRef.current;
+    if (!el || !from) return;
+    const box = el.getBoundingClientRect();
+    setOrigin(`${from.left + from.width / 2 - box.left}px ${from.top + from.height / 2 - box.top}px`);
+  }, [from]);
+
+  // Closing plays the animation backwards first (not with reduced motion).
+  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const onClose = () => {
+    if (closing) return;
+    if (reduced) {
+      close();
+      return;
+    }
+    setClosing(true);
+    setTimeout(close, CLOSE_MS);
+  };
+
+  // The latest close, so the key listener and the focus are set up once.
+  const latestClose = useRef(onClose);
+  latestClose.current = onClose;
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (e) => e.key === "Escape" && latestClose.current();
     document.addEventListener("keydown", onKey);
     const previous = document.activeElement;
     closeRef.current?.focus();
@@ -34,7 +63,7 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
       document.removeEventListener("keydown", onKey);
       previous?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   const steps = (recipe.instructions || []).filter((s) => stepText(s).trim());
   const numbered = steps.filter((s) => !stepIsHeading(s));
@@ -42,9 +71,11 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
   let stepNumber = 0;
 
   return createPortal(
-    <div className="riso-theme fnd-pop-backdrop" data-theme="light" onClick={onClose}>
+    <div className={`riso-theme fnd-pop-backdrop${closing ? " closing" : ""}`} data-theme="light" onClick={onClose}>
       <div
-        className="fnd-pop"
+        ref={popRef}
+        className={`fnd-pop${closing ? " closing" : ""}`}
+        style={origin ? { transformOrigin: origin } : undefined}
         role="dialog"
         aria-modal="true"
         aria-label={recipe.title}

@@ -1,7 +1,10 @@
-import { Fragment, useLayoutEffect, useRef } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, isPastDay, shiftWeek } from "../lib/dates.js";
-import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, weekendRuns } from "../lib/plannerSlots.js";
+import { currentWeekStart, formatDayLabel, formatWeekRangeLabel, isCurrentWeek, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
+import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
+import { PlannerCalendar } from "./PlannerCalendar.jsx";
+import { weekOf } from "../lib/plannerCalendar.js";
+import { weekendLayout, weekendSummary } from "../lib/weekend.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { t } from "../i18n/index.js";
 
@@ -34,58 +37,88 @@ export function computeStaleLeftoverIds(entries) {
   return stale;
 }
 
-function PlannerHeaderNav({ weekStart, onChangeWeek, hasEntries, onCopyLastWeek }) {
-  return (
-    <div className="riso-planner-nav-row">
-      <button
-        type="button"
-        className="riso-planner-nav-arrow"
-        onClick={() => onChangeWeek(shiftWeek(weekStart, -1))}
-        aria-label={t("planner.prevWeek")}
-      >
-        ‹
-      </button>
-      <span className="riso-planner-week-label">{formatWeekRangeLabel(weekStart, { year: false })}</span>
-      <button
-        type="button"
-        className="riso-planner-nav-arrow"
-        onClick={() => onChangeWeek(shiftWeek(weekStart, 1))}
-        aria-label={t("planner.nextWeek")}
-      >
-        ›
-      </button>
-      {isCurrentWeek(weekStart) ? (
-        <span className="riso-planner-week-badge">{t("planner.thisWeekBadge")}</span>
-      ) : (
-        <button type="button" className="riso-chip small" onClick={() => onChangeWeek(currentWeekStart())}>
-          {t("planner.thisWeek")}
-        </button>
-      )}
-      {!hasEntries && (
-        <button type="button" className="riso-chip small" onClick={onCopyLastWeek}>
-          {t("planner.copyLastWeek")}
-        </button>
-      )}
-    </div>
-  );
-}
+// Title block (the week's dates over the title) and, at its right, the week
+// controls: the arrows, the week pill that opens a month calendar, "this week"
+// when another week is shown, and "Copy last week's plan" on an empty week.
+export function PlannerHeader({ weekStart, onChangeWeek, hasEntries, onCopyLastWeek }) {
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const currentWeek = isCurrentWeek(weekStart);
 
-// Title row: the week's arrows, the title and, at the right, the weekend pill.
-export function PlannerHeader({ weekStart, onChangeWeek, hasEntries, onCopyLastWeek, actions }) {
+  useEffect(() => {
+    if (!calendarOpen) return undefined;
+    const onDown = (e) => {
+      if (!wrapRef.current?.contains(e.target)) setCalendarOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [calendarOpen]);
+
+  function goToWeek(key) {
+    setCalendarOpen(false);
+    onChangeWeek(weekOf(key));
+  }
+
   return (
     <div className="riso-planner-header">
       <div className="riso-planner-header-left">
-        <PlannerHeaderNav
-          weekStart={weekStart}
-          onChangeWeek={onChangeWeek}
-          hasEntries={hasEntries}
-          onCopyLastWeek={onCopyLastWeek}
-        />
+        <span className="riso-planner-week-label">{formatWeekRangeLabel(weekStart, { year: false })}</span>
         <h1 className="riso-planner-title">
           {t("planner.title")} <span className="accent">{t("planner.titleAccent")}</span>
         </h1>
       </div>
-      <div className="riso-planner-header-actions">{actions}</div>
+      <div className="riso-planner-header-actions">
+        <div className="riso-planner-weekpicker" ref={wrapRef}>
+          <div className="riso-planner-nav-row">
+            <button
+              type="button"
+              className="riso-planner-nav-arrow"
+              onClick={() => onChangeWeek(shiftWeek(weekStart, -1))}
+              aria-label={t("planner.prevWeek")}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className={`riso-planner-weekpill${calendarOpen ? " open" : ""}`}
+              aria-expanded={calendarOpen}
+              aria-haspopup="dialog"
+              onClick={() => setCalendarOpen((open) => !open)}
+            >
+              {currentWeek ? t("planner.thisWeek").toLowerCase() : formatWeekRangeLabel(weekStart, { year: false }).toLowerCase()}{" "}
+              <span aria-hidden="true">{calendarOpen ? "▴" : "▾"}</span>
+            </button>
+            <button
+              type="button"
+              className="riso-planner-nav-arrow"
+              onClick={() => onChangeWeek(shiftWeek(weekStart, 1))}
+              aria-label={t("planner.nextWeek")}
+            >
+              ›
+            </button>
+            {!currentWeek && (
+              <button type="button" className="riso-chip small" onClick={() => onChangeWeek(currentWeekStart())}>
+                {t("planner.thisWeek")}
+              </button>
+            )}
+            {!hasEntries && (
+              <button type="button" className="riso-chip small" onClick={onCopyLastWeek}>
+                {t("planner.copyLastWeek")}
+              </button>
+            )}
+          </div>
+          {calendarOpen && (
+            <div className="riso-planner-calpop">
+              <PlannerCalendar
+                weekStart={weekStart}
+                onPick={goToWeek}
+                onThisWeek={() => goToWeek(toDateKey(new Date()))}
+                onClose={() => setCalendarOpen(false)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -96,7 +129,11 @@ function stateLabel(entry) {
   return t("planner.stateNone");
 }
 
-function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleState }) {
+function cellOf(e) {
+  return e.currentTarget.closest(".riso-planner-cell");
+}
+
+function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, onRemove, onCycleState }) {
   const { recipe } = entry;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
@@ -112,7 +149,7 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
     <div
       ref={setNodeRef}
       className={classes.join(" ")}
-      onClick={onClick}
+      onClick={(e) => onClick(entry, cellOf(e), mealIndex)}
       {...listeners}
       {...attributes}
       aria-label={t("planner.cardAria", { title: recipe.title })}
@@ -137,7 +174,7 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
-          onCycleState();
+          onCycleState(entry.id);
         }}
       >
         {entry.alreadyHave ? "✓" : ""}
@@ -150,7 +187,7 @@ function PlannerMealCard({ entry, isPast, isStale, onClick, onRemove, onCycleSta
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
-          onRemove();
+          onRemove(entry.id);
         }}
       >
         ×
@@ -195,32 +232,39 @@ export function NoteTextarea({ initial, label, onSave, className }) {
   );
 }
 
-function PlannerNoteCard({ entry, isPast, editing, onEdit, onSave, onClear }) {
+// A slot you've written on (or marked "no meal planned"). Click written text to
+// edit it in the slot's card; a blank card clears when clicked; the × takes
+// either off the plan.
+function PlannerNoteCard({ entry, mealIndex, isPast, onEdit, onRemove }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
     data: { recipe: entry.recipe, entryId: entry.id },
-    disabled: editing,
   });
   const text = isCustomNote(entry) ? entry.recipe.title : "";
-
-  if (editing) {
-    return (
-      <div ref={setNodeRef} className={`riso-planner-note editing${isPast ? " past" : ""}`}>
-        <NoteTextarea initial={text} label={t("planner.writeOnSlot")} onSave={onSave} className="riso-planner-note-input" />
-      </div>
-    );
-  }
 
   return (
     <div
       ref={setNodeRef}
       className={`riso-planner-note${text ? "" : " blank"}${isPast ? " past" : ""}${isDragging ? " dragging" : ""}`}
-      onClick={text ? onEdit : onClear}
+      onClick={(e) => (text ? onEdit(entry, cellOf(e), mealIndex) : onRemove(entry.id))}
       title={text ? t("planner.clickToEdit") : t("planner.clickToClear")}
       {...listeners}
       {...attributes}
       aria-label={text ? t("planner.noteAria", { text }) : t("planner.blankAria")}
     >
+      <button
+        type="button"
+        className="riso-planner-note-remove"
+        aria-label={t("planner.removeFromSlot", { title: text || t("planner.blankName") })}
+        title={t("planner.remove")}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(entry.id);
+        }}
+      >
+        ×
+      </button>
       {text && <span className={`riso-planner-note-text${isEmojiOnly(text) ? " emoji" : ""}`}>{text}</span>}
     </div>
   );
@@ -235,13 +279,12 @@ function PlannerCell({
   isPast,
   selected,
   leftoverMode,
+  offset,
   onCardClick,
+  onNoteClick,
   onRemove,
   onCycleState,
-  editingNoteId,
   onEmptyClick,
-  onEditNote,
-  onSaveNote,
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}-${mealType}` });
   // One thing per slot. Older plans can hold two; show the first, and
@@ -251,8 +294,8 @@ function PlannerCell({
   return (
     <div
       ref={setNodeRef}
-      className={`riso-planner-cell${isPast ? " past" : ""}${isOver ? " drop-active" : ""}`}
-      style={{ gridColumn: dayIndex + 2, gridRow: mealIndex + 2 }}
+      className={`riso-planner-cell${isPast ? " past" : ""}${isOver ? " drop-active" : ""}${selected ? " selected" : ""}`}
+      style={{ gridColumn: dayIndex + 2, gridRow: mealIndex + 2, transform: `translate(${offset.x}px, ${offset.y}px)` }}
     >
       {!entry ? (
         <button
@@ -263,29 +306,48 @@ function PlannerCell({
               ? t("planner.leftoversOnMealDay", { meal: MEAL_LABEL[mealType], day: DAY_SHORT[dayIndex] })
               : t("planner.emptyAria", { meal: MEAL_LABEL[mealType], day: DAY_SHORT[dayIndex] })
           }
-          onClick={(e) => onEmptyClick({ dayOfWeek: dayIndex, mealType }, e.currentTarget)}
+          onClick={(e) => onEmptyClick({ dayOfWeek: dayIndex, mealType }, cellOf(e), mealIndex)}
         >
-          {(selected || leftoverMode) && <span aria-hidden="true">{leftoverMode ? t("planner.leftoversCell") : "+"}</span>}
+          <span aria-hidden="true" className="riso-planner-cell-plus">
+            {leftoverMode ? t("planner.leftoversCell") : "+"}
+          </span>
         </button>
       ) : isNoteEntry(entry) ? (
-        <PlannerNoteCard
-          entry={entry}
-          isPast={isPast}
-          editing={editingNoteId === entry.id}
-          onEdit={() => onEditNote(entry.id)}
-          onSave={(text) => onSaveNote(entry.id, text)}
-          onClear={() => onRemove(entry.id)}
-        />
+        <PlannerNoteCard entry={entry} mealIndex={mealIndex} isPast={isPast} onEdit={onNoteClick} onRemove={onRemove} />
       ) : (
         <PlannerMealCard
           entry={entry}
+          mealIndex={mealIndex}
           isPast={isPast}
           isStale={staleIds.has(entry.id)}
-          onClick={() => onCardClick(entry.recipe)}
-          onRemove={() => onRemove(entry.id)}
-          onCycleState={() => onCycleState(entry.id)}
+          onClick={onCardClick}
+          onRemove={onRemove}
+          onCycleState={onCycleState}
         />
       )}
+    </div>
+  );
+}
+
+// The Souper-only segment of a weekend block that takes in the evening before:
+// a dotted panel with a rounded corner that joins the main block.
+function EveSegment({ plate }) {
+  const m = plate.eveMargin;
+  return (
+    <div
+      className="riso-planner-weekend-eve"
+      aria-hidden="true"
+      style={{
+        gridColumn: `${plate.start + 1} / span 1`,
+        gridRow: "4 / 5",
+        margin: `${m.top}px ${m.right}px ${m.bottom}px ${m.left}px`,
+      }}
+    >
+      <span className="riso-planner-weekend-eve-join" />
+      <svg width="22" height="22" viewBox="0 0 22 22" className="riso-planner-weekend-eve-arc">
+        <path className="fill" d="M0 20 A20 20 0 0 0 20 0 L22 0 L22 22 L0 22 Z" />
+        <path className="line" d="M0 20 A20 20 0 0 0 20 0" />
+      </svg>
     </div>
   );
 }
@@ -293,28 +355,31 @@ function PlannerCell({
 export function PlannerBoard({
   entries,
   weekStart,
-  weekendDays,
+  weekend,
+  boardRef,
   selectedSlot,
   leftoverMode,
   onCardClick,
+  onNoteClick,
   onRemove,
   onCycleState,
-  editingNoteId,
   onEmptyClick,
-  onEditNote,
-  onSaveNote,
+  onWeekendMenu,
+  overlay,
+  legendExtra,
 }) {
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
 
   const staleIds = computeStaleLeftoverIds(entries);
   const scrollRef = useRef(null);
-  const runs = weekendRuns(weekendDays);
+  const layout = weekendLayout(weekend);
   const currentWeek = isCurrentWeek(weekStart);
+  const summary = weekendSummary(weekend);
 
-  // All seven days fit on a computer; on a narrow window, where the board
-  // scrolls sideways, it opens with today in the middle (the first day for
-  // any other week).
+  // All seven days fit on a computer; in a narrow window the board scrolls
+  // sideways and opens with today in the middle (the first day for any other
+  // week).
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -324,18 +389,39 @@ export function PlannerBoard({
   }, [weekStart, currentWeek]);
 
   return (
-    <section className="riso-planner-board">
-      <div className="riso-planner-scroll" ref={scrollRef}>
+    <section className="riso-planner-board" ref={boardRef}>
+      {!layout.on && (
+        <button type="button" className="riso-planner-weekend-off" data-weekend-toggle onClick={onWeekendMenu}>
+          + {t("planner.weekendTag")}
+        </button>
+      )}
+      {overlay}
+      <div className="riso-planner-scroll" ref={scrollRef} style={{ paddingRight: layout.padRight, paddingBottom: layout.padBottom }}>
         <div className="riso-planner-grid">
-          {/* Each run of weekend days is one block with a pink dotted line, drawn
-              behind the headers and slots it covers. */}
-          {runs.map((run) => (
-            <div
-              key={run.start}
-              className="riso-planner-weekend"
-              aria-hidden="true"
-              style={{ gridColumn: `${run.start + 2} / ${run.end + 3}`, gridRow: "1 / 5" }}
-            />
+          {/* Each run of weekend days is one dotted block behind the headers and
+              slots it covers; the first carries the WEEKEND tag that opens the menu. */}
+          {layout.plates.map((plate, index) => (
+            <Fragment key={plate.key}>
+              <div
+                className="riso-planner-weekend"
+                style={{
+                  gridColumn: `${plate.start + 2} / span ${plate.end - plate.start + 1}`,
+                  gridRow: "1 / span 4",
+                  margin: `${plate.margin.top}px ${plate.margin.right}px ${plate.margin.bottom}px ${plate.margin.left}px`,
+                  borderRadius: plate.eve ? "22px 22px 22px 0" : "22px",
+                }}
+              >
+                {index === 0 && (
+                  <button type="button" className="riso-planner-weekend-tag" data-weekend-toggle onClick={onWeekendMenu}>
+                    {t("planner.weekendTag")}
+                    <span className="riso-planner-weekend-tag-caret" aria-hidden="true">
+                      ▾
+                    </span>
+                  </button>
+                )}
+              </div>
+              {plate.eve && <EveSegment plate={plate} />}
+            </Fragment>
           ))}
           <div className="riso-planner-corner" style={{ gridColumn: 1, gridRow: 1 }} />
           {DAY_INDICES.map((dayIndex) => {
@@ -344,9 +430,9 @@ export function PlannerBoard({
               <div
                 key={dayIndex}
                 className={`riso-planner-day-header${isToday ? " is-today" : ""}${isPastDay(weekStart, dayIndex) ? " past" : ""}`}
-                style={{ gridColumn: dayIndex + 2, gridRow: 1 }}
+                style={{ gridColumn: dayIndex + 2, gridRow: 1, transform: `translateX(${layout.shiftX[dayIndex]}px)` }}
               >
-                <span className="riso-planner-day-weekday">{(isToday ? t("days.today") : weekday).toUpperCase()}</span>
+                <span className="riso-planner-day-weekday">{(isToday ? t("planner.todayShort") : weekday).toUpperCase()}</span>
                 <span className="riso-planner-day-date">{t("dates.monthDay", { month: monthShort, day: dayNum })}</span>
               </div>
             );
@@ -355,7 +441,7 @@ export function PlannerBoard({
           {MEAL_TYPES.map((meal, mealIndex) => (
             <Fragment key={meal.id}>
               <div className="riso-planner-meal-label" style={{ gridColumn: 1, gridRow: mealIndex + 2 }}>
-                {meal.label}
+                <span>{meal.label}</span>
               </div>
               {DAY_INDICES.map((dayIndex) => (
                 <PlannerCell
@@ -368,18 +454,31 @@ export function PlannerBoard({
                   isPast={isPastDay(weekStart, dayIndex)}
                   selected={selectedSlot?.dayOfWeek === dayIndex && selectedSlot?.mealType === meal.id}
                   leftoverMode={leftoverMode && !isPastDay(weekStart, dayIndex)}
+                  offset={{ x: layout.shiftX[dayIndex], y: layout.shiftY(dayIndex, mealIndex) }}
                   onCardClick={onCardClick}
+                  onNoteClick={onNoteClick}
                   onRemove={onRemove}
                   onCycleState={onCycleState}
-                  editingNoteId={editingNoteId}
                   onEmptyClick={onEmptyClick}
-                  onEditNote={onEditNote}
-                  onSaveNote={onSaveNote}
                 />
               ))}
             </Fragment>
           ))}
         </div>
+      </div>
+
+      <div className="riso-planner-legend">
+        {layout.on && (
+          <span className="riso-planner-legend-item">
+            <i className="riso-planner-legend-swatch weekend" aria-hidden="true" />
+            {t("planner.legendWeekend", { summary })}
+          </span>
+        )}
+        <span className="riso-planner-legend-item">
+          <i className="riso-planner-legend-swatch today" aria-hidden="true" />
+          {t("planner.legendTodayName")}
+        </span>
+        {legendExtra}
       </div>
     </section>
   );

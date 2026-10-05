@@ -3808,6 +3808,8 @@ input[type="date"].planner-week-picker {
      already uses a token above changed. */
   --riso-hot-soft: #ff5cb8; /* light pink: "Planned Wednesday", "expires soon" tags (black text reads well on it). The vivid --riso-hot stays for today. */
   --riso-accent-tint: #e4e4ff; /* light blue: a selected pill's fill */
+  --riso-hot-tint: #ffe9f5; /* light pink: an empty Planner slot with a recipe dragged over it */
+  --riso-weekend-fill: #f8f8ff; /* the Planner's weekend block */
   --riso-shelf-fridge: #4de3ff; /* ingredient picker shelves */
   --riso-shelf-freezer: #a56bff;
   --riso-shelf-pantry: #eae3cf;
@@ -9029,7 +9031,6 @@ button.riso-protein-card:hover .riso-protein-name {
   font: 700 14.5px/1.2 var(--riso-font-display);
   overflow-wrap: anywhere;
 }
-
 
 /* Floating copy under the pointer while dragging a planner card, note or
    tray tile. */
@@ -17361,202 +17362,16 @@ body.no-select {
 
 /* A block of weekend days: a pink dotted line round the headers and slots it
    covers, drawn behind them. One block for each run of neighbouring days. */
-.riso-planner-weekend {
-  margin: -8px -7px;
-  border: 2px dotted var(--riso-hot);
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--riso-accent) 4%, transparent);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.riso-planner-cell-empty.leftover-target {
-  border-color: var(--riso-accent);
-  background: var(--riso-accent-tint);
-  font-size: 13px;
-}
 
 .riso-planner-header-actions {
   align-items: center;
 }
 
 /* "Weekend: Sat Sun ▾" above the board, and its seven days. */
-.riso-weekend {
-  position: relative;
-}
-
-.riso-weekend-pill {
-  height: 36px;
-  padding: 0 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 18px;
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  box-shadow: var(--riso-shadow-xs);
-  font: 800 13.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.riso-weekend-pill [aria-hidden] {
-  font-size: 9px;
-}
-
-.riso-weekend-panel {
-  position: absolute;
-  z-index: 40;
-  right: 0;
-  top: calc(100% + 10px);
-  width: max-content;
-  max-width: calc(100vw - 32px);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 20px;
-  box-shadow: 5px 5px 0 var(--riso-ink);
-}
-
-.riso-weekend-caps {
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.riso-weekend-days {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.riso-weekend-day {
-  height: 32px;
-  padding: 0 14px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 13px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-weekend-day.on {
-  background: var(--riso-accent-tint);
-  box-shadow: var(--riso-shadow-pill-selected);
-}
 
 /* The little message after adding something (and when the week is full). */
-.riso-planner-toast {
-  position: fixed;
-  z-index: 85;
-  left: 50%;
-  bottom: 28px;
-  transform: translateX(-50%) rotate(-1deg);
-  max-width: calc(100vw - 36px);
-  padding: 9px 18px;
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  box-shadow: var(--riso-shadow);
-  font: 800 14px var(--riso-font-display);
-}
-
-@media (max-width: 767px) {
-  .riso-planner-toast {
-    bottom: calc(96px + env(safe-area-inset-bottom));
-  }
-}
 
 /* ---------- The empty slot's card (a computer) ---------- */
-.riso-slotcard {
-  position: absolute;
-  z-index: 120;
-  width: min(440px, calc(100vw - 24px));
-  box-sizing: border-box;
-  padding: 16px 18px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  border-radius: 24px;
-  box-shadow: var(--riso-shadow-lg);
-}
-
-.riso-slotcard-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.riso-slotcard-caps {
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-  color: var(--riso-muted);
-}
-
-.riso-slotcard-title {
-  margin: 2px 0 0;
-  font: 800 24px/1.1 var(--riso-font-display);
-}
-
-.riso-slotcard-close {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 50%;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 16px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-slotcard-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.riso-slotcard-btn {
-  white-space: nowrap;
-  height: 58px;
-  padding: 0 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 800 14px var(--riso-font-display);
-  cursor: pointer;
-  box-shadow: var(--riso-shadow-xs);
-}
-
-.riso-slotcard-btn [aria-hidden] {
-  font-size: 15px;
-  line-height: 1;
-}
-
-.riso-slotcard-btn.recipe {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.riso-slotcard-btn.note {
-  background: var(--riso-yellow);
-}
 
 /* ---------- The shared finder ---------- */
 .riso-planner-finder {
@@ -18789,4 +18604,1049 @@ body.no-select {
 
 .fnd-sheet .fnd-seg-count {
   font-size: 10px;
+}
+
+/* ================================================================
+   Riso v2 - Planner (desktop), second pass: the board's look, the weekend
+   block and its menu, the cards beside a slot, the slot picker and the toast
+   (design/riso-v2-planner-desktop).
+   ================================================================ */
+
+/* ---------- Header: dates over the title, week controls at the right ---------- */
+.riso-planner-header {
+  align-items: flex-end;
+}
+
+.riso-planner-header-left {
+  gap: 6px;
+}
+
+.riso-planner-week-label {
+  font: 500 12px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.riso-planner-weekpicker {
+  position: relative;
+}
+
+.riso-planner-weekpill {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 19px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 15px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-planner-weekpill.open {
+  background: var(--riso-yellow);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-planner-calpop {
+  position: absolute;
+  z-index: 70;
+  right: 0;
+  top: calc(100% + 12px);
+  width: 340px;
+  max-width: calc(100vw - 32px);
+}
+
+.riso-planner-calpop .rpm-cal {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+}
+
+.riso-planner-calpop .rpm-cal-caret {
+  left: auto;
+  right: 60px;
+}
+
+/* ---------- Board ---------- */
+.riso-planner-board {
+  position: relative;
+  padding: 20px;
+  gap: 12px;
+}
+
+.riso-planner-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: none;
+  scroll-padding-left: 0;
+  padding: 22px 0 0 10px;
+  margin: -18px 0 0 -10px;
+}
+
+.riso-planner-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.riso-planner-grid {
+  display: grid;
+  grid-template-columns: 84px repeat(7, minmax(104px, 1fr));
+  gap: 12px;
+  min-width: 0;
+  position: relative;
+}
+
+.riso-planner-day-header {
+  gap: 2px;
+  padding: 7px 0;
+  box-sizing: border-box;
+}
+
+.riso-planner-day-date {
+  font-size: 14px;
+}
+
+.riso-planner-meal-label {
+  font-size: 15px;
+}
+
+.riso-planner-meal-label::before,
+.riso-planner-corner::before {
+  display: none;
+}
+
+.riso-planner-corner,
+.riso-planner-meal-label {
+  position: static;
+  background: transparent;
+}
+
+/* A slot: the card's photo takes 58%, the title 12.5px under it. */
+.riso-planner-card-photo-wrap {
+  height: 58%;
+}
+
+.riso-planner-card-body {
+  padding: 8px 9px;
+}
+
+.riso-planner-card-name {
+  font-size: 12.5px;
+}
+
+.riso-planner-card-have,
+.riso-planner-card-remove {
+  top: 6px;
+}
+
+.riso-planner-card-remove {
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+}
+
+.riso-planner-card-have {
+  left: 6px;
+  width: 24px;
+  height: 24px;
+}
+
+.riso-planner-card-leftover {
+  right: 5px;
+  bottom: -10px;
+  padding: 0 7px;
+  font: 800 10px/16px var(--riso-font-display);
+}
+
+/* A note and a blank card: plain paper with a solid ink border. */
+.riso-planner-note {
+  background: var(--riso-canvas);
+  padding: 6px;
+}
+
+.riso-planner-note-text {
+  font: 700 13.5px/1.2 var(--riso-font-display);
+}
+
+.riso-planner-note-text.emoji {
+  font: 400 40px/1 var(--riso-font-display);
+}
+
+.riso-planner-note .riso-planner-note-remove {
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+
+/* An empty slot: dashed; the "+" shows when it is selected, a recipe is dragged
+   over it, or leftovers are being placed. */
+.riso-planner-cell-empty .riso-planner-cell-plus {
+  display: none;
+  font: 700 18px var(--riso-font-display);
+}
+
+.riso-planner-cell-empty.selected,
+.riso-planner-cell-empty.leftover-target {
+  border: 2px solid var(--riso-accent);
+  background: var(--riso-accent-tint);
+}
+
+.riso-planner-cell-empty.leftover-target {
+  border-style: dashed;
+}
+
+.riso-planner-cell-empty.selected .riso-planner-cell-plus,
+.riso-planner-cell-empty.leftover-target .riso-planner-cell-plus {
+  display: inline;
+}
+
+.riso-planner-cell-empty.leftover-target .riso-planner-cell-plus {
+  font-size: 13px;
+}
+
+/* The slot whose card is open (or the finder's target): a dashed blue outline. */
+.riso-planner-cell.selected {
+  outline: 3px dashed var(--riso-accent);
+  outline-offset: 3px;
+}
+
+.riso-planner-cell.drop-active {
+  outline: 3px dashed var(--riso-hot);
+  outline-offset: 3px;
+}
+
+.riso-planner-cell.drop-active .riso-planner-cell-empty {
+  border-color: var(--riso-hot);
+  background: var(--riso-hot-tint);
+}
+
+.riso-planner-cell.drop-active .riso-planner-cell-empty .riso-planner-cell-plus {
+  display: inline;
+  color: var(--riso-accent);
+}
+
+/* ---------- The weekend: dotted blocks, their tag, the "+ WEEKEND" pill ---------- */
+.riso-planner-weekend {
+  position: relative;
+  z-index: auto;
+  box-sizing: border-box;
+  background: var(--riso-weekend-fill);
+  border: 2px dotted var(--riso-hot);
+  pointer-events: none;
+}
+
+.riso-planner-weekend-tag {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-3deg);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 10px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  box-shadow: var(--riso-shadow-xs);
+  font: 500 10.5px/18px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.riso-planner-weekend-tag-caret {
+  width: 16px;
+  height: 16px;
+  margin-right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--riso-ink);
+  color: var(--riso-yellow);
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* The Souper-only segment that takes in the evening before a block. */
+.riso-planner-weekend-eve {
+  position: relative;
+  z-index: 0;
+  box-sizing: border-box;
+  background: var(--riso-weekend-fill);
+  border: 2px dotted var(--riso-hot);
+  border-right: 0;
+  border-radius: 22px 0 0 22px;
+  pointer-events: none;
+}
+
+.riso-planner-weekend-eve-join {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--riso-weekend-fill);
+}
+
+.riso-planner-weekend-eve-arc {
+  position: absolute;
+  right: -3px;
+  top: -21px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.riso-planner-weekend-eve-arc .fill {
+  fill: var(--riso-weekend-fill);
+}
+
+.riso-planner-weekend-eve-arc .line {
+  fill: none;
+  stroke: var(--riso-hot);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 4.2;
+}
+
+.riso-planner-weekend-off {
+  position: absolute;
+  z-index: 5;
+  right: 22px;
+  top: -13px;
+  height: 26px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 13px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* The weekend menu */
+.riso-weekendmenu {
+  position: absolute;
+  z-index: 50;
+  right: 16px;
+  top: 46px;
+  width: 300px;
+  box-sizing: border-box;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  box-shadow: 5px 5px 0 var(--riso-ink);
+}
+
+.riso-weekendmenu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riso-weekendmenu-row.dim,
+.riso-weekendmenu-days.dim {
+  opacity: 0.4;
+}
+
+.riso-weekendmenu-label {
+  font: 800 15px var(--riso-font-display);
+}
+
+.riso-weekendmenu-label.small {
+  font: 600 13px/1.3 var(--riso-font-display);
+}
+
+.riso-weekendmenu-caps {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--riso-muted);
+}
+
+.riso-weekendmenu-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.riso-weekendmenu-day {
+  height: 36px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 12px var(--riso-font-display);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-weekendmenu-day.on,
+.riso-weekendmenu-preset.on {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 2px 2px 0 var(--riso-accent);
+}
+
+.riso-weekendmenu-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.riso-weekendmenu-preset {
+  height: 32px;
+  padding: 0 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-weekendmenu-preset.on {
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-weekendmenu-note {
+  margin: 0;
+  font: 500 12.5px/1.4 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+/* ---------- Legend row ---------- */
+.riso-planner-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding-top: 12px;
+  margin-top: 6px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  font: 500 12.5px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.riso-planner-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-planner-legend-swatch {
+  width: 20px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+.riso-planner-legend-swatch.weekend {
+  background: var(--riso-weekend-fill);
+  border: 2px dotted var(--riso-hot);
+}
+
+.riso-planner-legend-swatch.today {
+  background: var(--riso-hot);
+  border: 1.5px solid var(--riso-ink);
+}
+
+.riso-planner-grocery {
+  margin-left: auto;
+  height: 38px;
+  padding: 0 18px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  font: 800 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* ---------- Toast with Undo ---------- */
+.riso-planner-toast {
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 10px 12px 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--riso-accent);
+  font: 700 14px var(--riso-font-display);
+}
+
+.riso-planner-toast-undo {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 14px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  font: 800 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .riso-planner-toast {
+    bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- The cards beside a slot ---------- */
+.riso-slotcard {
+  position: absolute;
+  z-index: 120;
+  width: 440px;
+  max-width: calc(100vw - 24px);
+  max-height: 660px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  box-shadow: var(--riso-shadow-card);
+}
+
+.riso-slotcard-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riso-slotcard-caps {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+}
+
+.riso-slotcard-title {
+  margin: 2px 0 0;
+  font: 800 24px/1.1 var(--riso-font-display);
+}
+
+.riso-slotcard-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 16px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-slotcard-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.riso-slotcard-btn {
+  height: 40px;
+  padding: 0 6px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-slotcard-btn.recipe {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-slotcard-btn.note {
+  background: var(--riso-yellow);
+}
+
+.riso-slotcard-btn.selected {
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.riso-slotcard-form,
+.riso-slotcard-blank {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-slotcard-input {
+  height: 48px;
+  padding: 0 18px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font: 500 16px var(--riso-font-display);
+}
+
+.riso-slotcard-input::placeholder {
+  color: var(--riso-placeholder);
+}
+
+.riso-slotcard-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-slotcard-quickpill {
+  height: 34px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 17px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-slotcard-save {
+  height: 48px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  background: var(--riso-track);
+  color: var(--riso-muted);
+  font: 800 15px var(--riso-font-display);
+  cursor: default;
+}
+
+.riso-slotcard-save.ready {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  cursor: pointer;
+}
+
+.riso-slotcard-blank {
+  padding: 14px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 18px;
+}
+
+.riso-slotcard-blank strong {
+  font: 800 15px var(--riso-font-display);
+}
+
+.riso-slotcard-blank p {
+  margin: 0;
+  font: 400 13.5px/1.4 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+/* The planned meal's card */
+.riso-plannedcard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+}
+
+.riso-plannedcard-photo {
+  height: 140px;
+  overflow: hidden;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-track);
+}
+
+.riso-plannedcard-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-plannedcard-name {
+  margin: 0;
+  font: 800 22px/1.1 var(--riso-font-display);
+}
+
+.riso-plannedcard-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-plannedcard-meal {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: var(--riso-border-thin) solid var(--riso-ink);
+  border-radius: 13px;
+  background: var(--riso-canvas);
+  font: 800 12px var(--riso-font-display);
+}
+
+.riso-plannedcard-body h4 {
+  margin: 0 0 6px;
+}
+
+.riso-plannedcard-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.riso-plannedcard-btn {
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-plannedcard-btn.primary {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow-xs);
+}
+
+/* ---------- The slot picker ---------- */
+.riso-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 24, 31, 0.45);
+}
+
+.riso-picker {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: var(--riso-shadow-lg);
+}
+
+.riso-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.riso-picker-photo {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  overflow: hidden;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-track);
+}
+
+.riso-picker-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.riso-picker-titlewrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.riso-picker-title {
+  margin: 2px 0 0;
+  font: 800 20px/1.15 var(--riso-font-display);
+}
+
+.riso-picker-grid {
+  display: grid;
+  grid-template-columns: 70px repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.riso-picker-row {
+  display: contents;
+}
+
+.riso-picker-head-cell,
+.riso-picker-grid > .riso-picker-head {
+  text-align: center;
+}
+
+.riso-picker-grid > .riso-picker-head {
+  display: block;
+  padding: 6px 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.riso-picker-grid > .riso-picker-head.today {
+  background: var(--riso-hot);
+  border-color: var(--riso-ink);
+}
+
+.riso-picker-meal {
+  display: flex;
+  align-items: center;
+  font: 800 13px var(--riso-font-display);
+}
+
+.riso-picker-cell {
+  position: relative;
+  height: 58px;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2px dashed var(--riso-dash-strong);
+  border-radius: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.riso-picker-cell.weekend {
+  background: var(--riso-weekend-fill);
+}
+
+.riso-picker-cell.filled {
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+}
+
+.riso-picker-cell img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.8;
+}
+
+.riso-picker-cell.past {
+  filter: grayscale(1);
+}
+
+.riso-picker-cell.on {
+  border: 3px solid var(--riso-accent);
+  background: var(--riso-accent-tint);
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-picker-cell.on img {
+  opacity: 0.35;
+}
+
+.riso-picker-emoji {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.riso-picker-plus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--riso-accent);
+  font: 700 22px var(--riso-font-display);
+}
+
+.riso-picker-status {
+  padding: 8px 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-green-tint);
+  font: 700 13.5px var(--riso-font-display);
+}
+
+.riso-picker-status.taken {
+  background: var(--riso-yellow);
+}
+
+.riso-picker-confirm {
+  height: 50px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 25px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  font: 800 16px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* ---------- The finder, second pass ---------- */
+.riso-planner-finder {
+  padding: 14px 24px 20px;
+}
+
+.fnd-notice {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-yellow);
+  font: 700 13px var(--riso-font-display);
+}
+
+/* Expiring soon and Quick: filled with ink when on. */
+.fnd-filters .riso-pill.size-chip {
+  height: 36px;
+  border-radius: 18px;
+  font-size: 13.5px;
+}
+
+.fnd-filters .riso-pill.is-selected {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 2px 2px 0 var(--riso-accent);
+}
+
+.fnd-seg {
+  height: 36px;
+  box-sizing: border-box;
+}
+
+/* A thing to buy that is on the grocery list turns green. */
+.fnd-buy-pill.listed {
+  background: var(--riso-green);
+}
+
+.fnd-buy-pill.listed .riso-pill-mark {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+/* The pop-out grows out of its card and returns on close (0.35s). */
+.fnd-pop {
+  animation: fnd-pop-grow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.fnd-pop.closing {
+  animation: fnd-pop-shrink 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.fnd-pop-backdrop.closing {
+  animation: fnd-pop-unfade 0.3s ease forwards;
+}
+
+@keyframes fnd-pop-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes fnd-pop-shrink {
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes fnd-pop-unfade {
+  to {
+    opacity: 0;
+  }
+}
+
+/* The card the pop-out came from stays in the grid, a little blurred. */
+.fnd-card.is-open {
+  filter: blur(2px);
+}
+
+/* The planned meal's card: only the preview scrolls, its buttons stay in view. */
+.riso-slotcard {
+  max-height: min(660px, calc(100vh - 24px));
+  overflow: hidden;
+}
+
+.riso-plannedcard-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.riso-slotcard-input:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+/* "FIN DE SEMAINE" drawn inside a Help sentence. */
+.riso-help-copy-weekend {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 10px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-yellow);
+  box-shadow: var(--riso-shadow-xs);
+  font: 500 10.5px/18px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
 }

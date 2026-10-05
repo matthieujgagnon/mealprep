@@ -16,10 +16,18 @@ export function useFinder() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mainId, setMainId] = useState(null);
   const [off, setOff] = useState(() => new Set()); // Main meal ingredients switched off
-  const [popoutId, setPopoutId] = useState(null);
+  const [popoutId, setPopoutIdState] = useState(null);
+  const [popoutFrom, setPopoutFrom] = useState(null); // the result card's box the pop-out grows out of
   const [open, setOpen] = useState(false); // the panel's results, when nothing is filtered
   const inputRef = useRef(null);
   const rootRef = useRef(null);
+
+  // Opens (or, with null, closes) a recipe's pop-out; `from` is the box of the
+  // card it grows out of.
+  const setPopoutId = useCallback((id, from = null) => {
+    setPopoutIdState(id);
+    setPopoutFrom(id ? from : null);
+  }, []);
 
   const togglePick = useCallback((item) => {
     setPicks((prev) => (prev.some((p) => p.key === item.key) ? prev.filter((p) => p.key !== item.key) : [...prev, { key: item.key, name: item.name }]));
@@ -66,8 +74,8 @@ export function useFinder() {
     () => ({
       query, setQuery, avail, setAvail, meal, setMeal, protein, setProtein, quick, setQuick, expiring, setExpiring,
       picks, togglePick, setPicks, pickerOpen, setPickerOpen, mainId, setMainMeal, off, toggleIngredient,
-      popoutId, setPopoutId, open, setOpen, filtered, clearFilters, focusSearch, inputRef, rootRef,
+      popoutId, setPopoutId, popoutFrom, open, setOpen, filtered, clearFilters, focusSearch, inputRef, rootRef,
     }),
-    [query, avail, meal, protein, quick, expiring, picks, pickerOpen, mainId, off, popoutId, open, filtered, togglePick, setMainMeal, toggleIngredient, clearFilters, focusSearch]
+    [query, avail, meal, protein, quick, expiring, picks, pickerOpen, mainId, off, popoutId, popoutFrom, setPopoutId, open, filtered, togglePick, setMainMeal, toggleIngredient, clearFilters, focusSearch]
   );
 }
