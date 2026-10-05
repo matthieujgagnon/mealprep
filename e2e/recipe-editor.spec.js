@@ -88,9 +88,13 @@ test("editing from the recipe card: uploaded photo, save returns to the card", a
   await expect(page.locator(".re-photo.cover img")).toHaveAttribute("src", /^\/api\/recipe-images\//);
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Weeknight red dal");
 
-  // Leaving with unsaved changes asks first; dismissing keeps the editor.
-  page.once("dialog", (d) => d.dismiss());
+  // Leaving with unsaved changes asks first, in the app's own pop-up (not the
+  // browser's); Keep editing stays in the editor.
   await page.getByRole("button", { name: "Planner", exact: true }).click();
+  const ask = page.getByRole("alertdialog");
+  await expect(ask).toContainText("Leave without saving your changes?");
+  await ask.getByRole("button", { name: "Keep editing" }).click();
+  await expect(ask).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Edit recipe." })).toBeVisible();
 
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -161,16 +165,16 @@ test("photos drag to reorder, and the cover moves with its photo", async ({ page
   await expect(page.locator(".re-photo.cover")).toHaveAttribute("data-url", "https://example.com/1.jpg");
 });
 
-test("+ New recipe is a pop-up over Recipes; x, Escape and the dimmed area close it, asking first when something is typed", async ({ page }) => {
+test("+ New recipe is a pop-up over Recipes; x, Escape and the dimmed area close it, asking first (in the app's own pop-up) when something is typed", async ({ page }) => {
   await signUp(page);
   const dialog = page.getByRole("dialog", { name: "New recipe." });
   const title = page.locator('input[placeholder="Grandma\'s lasagna"]');
-  const asked = [];
+  const ask = page.getByRole("alertdialog");
+  let browserDialogs = 0;
   page.on("dialog", (d) => {
-    asked.push(d.type());
-    return keep ? d.dismiss() : d.accept();
+    browserDialogs += 1;
+    return d.dismiss();
   });
-  let keep = true;
 
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await expect(dialog).toBeVisible();
@@ -188,23 +192,47 @@ test("+ New recipe is a pop-up over Recipes; x, Escape and the dimmed area close
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await overlay.click({ position: { x: 4, y: 4 } });
   await expect(dialog).toHaveCount(0);
-  expect(asked).toEqual([]);
+  await expect(ask).toHaveCount(0);
 
-  // Something typed: each way asks; keeping it loses nothing.
+  // Something typed: each way asks, and each way of keeping it loses nothing.
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await title.fill("Lost-if-careless chili");
   await page.keyboard.press("Escape");
+  await expect(ask).toContainText("Leave without saving your changes?");
+  await expect(ask.getByRole("button", { name: "Keep editing" })).toBeFocused();
+  // Escape closes only the question.
+  await page.keyboard.press("Escape");
+  await expect(ask).toHaveCount(0);
+  await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Close" }).click();
+  await ask.getByRole("button", { name: "Keep editing" }).click();
+  await expect(ask).toHaveCount(0);
   await overlay.click({ position: { x: 4, y: 4 } });
-  await expect.poll(() => asked.length).toBe(3);
+  await expect(ask).toBeVisible();
+  // A tap on the dimmed area behind the question keeps the form too.
+  await page.locator(".riso-ask-backdrop").click({ position: { x: 4, y: 4 } });
+  await expect(ask).toHaveCount(0);
   await expect(dialog).toBeVisible();
   await expect(title).toHaveValue("Lost-if-careless chili");
 
-  // Agreeing throws it away and goes back to Recipes.
-  keep = false;
+  // Discard throws it away and goes back to Recipes.
   await page.keyboard.press("Escape");
+  await ask.getByRole("button", { name: "Discard" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+  expect(browserDialogs).toBe(0);
+});
+
+test("the new-recipe pop-up is white and its sections are paper cards with an edge", async ({ page }) => {
+  await signUp(page);
+  await page.getByRole("button", { name: "+ New recipe" }).click();
+  const css = (loc, prop) => loc.evaluate((el, p) => getComputedStyle(el)[p], prop);
+  const popup = page.locator(".re-popup");
+  const section = page.locator(".re-popup .re-section").first();
+  expect(await css(popup, "backgroundColor")).toBe("rgb(255, 253, 248)");
+  expect(await css(section, "backgroundColor")).toBe("rgb(244, 241, 234)");
+  expect(await css(section, "borderTopWidth")).toBe("2px");
+  expect(await css(section, "boxShadow")).not.toBe("none");
 });
 
 test("a recipe typed in the pop-up saves and lands first in the list", async ({ page }) => {

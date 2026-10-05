@@ -450,7 +450,7 @@ export function Home({
               return (
                 <div key={d} className={`riso-home-week-col${isToday ? " today" : ""}${past ? " past" : ""}`}>
                   <span className="riso-home-week-day-label">
-                    {isToday ? t("home.today") : weekday.toUpperCase()} {dayNum}
+                    {weekday.toUpperCase()} {dayNum}
                   </span>
                   {STRIP_MEALS.map((m) => {
                     const entry = mealFor(d, m.id);
@@ -506,7 +506,7 @@ export function Home({
               // mechanism (see isCustomNote/isBlankMarker in PlannerBoard.jsx)
               // - there's no real recipe or photo behind it, so it renders as
               // plain text with no click target, instead of a fake recipe card.
-              const label = `${isToday ? t("home.today") : weekday.toUpperCase()} ${dayNum}`;
+              const label = `${weekday.toUpperCase()} ${dayNum}`;
               return entry?.recipe.isPlaceholder ? (
                 <div key={d} className={`riso-home-week-day note${state}`}>
                   <div className="riso-home-week-day-body">
