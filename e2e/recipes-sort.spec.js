@@ -54,8 +54,8 @@ test("cards show the total time, and Quickest puts recipes without a time last",
   await page.getByRole("option", { name: "Quickest" }).click();
 
   await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Quick salad", "Slow braise", "No time given"]);
-  await expect(page.locator(".riso-recipe-card", { hasText: "Slow braise" }).locator(".rv2-card-meta .riso-pill")).toHaveText("⏱3 h");
-  await expect(page.locator(".riso-recipe-card", { hasText: "No time given" }).locator(".rv2-card-meta .riso-pill")).toHaveText("⏱add time");
+  await expect(page.locator(".riso-recipe-card", { hasText: "Slow braise" }).locator(".rv2-card-meta .riso-pill").first()).toHaveText("⏱3 h");
+  await expect(page.locator(".riso-recipe-card", { hasText: "No time given" }).locator(".rv2-card-meta .riso-pill").first()).toHaveText("⏱add time");
 });
 
 test("an ingredient can be a count of units", async ({ page }) => {

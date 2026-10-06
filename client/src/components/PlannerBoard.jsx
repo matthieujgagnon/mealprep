@@ -1,13 +1,13 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { currentWeekStart, formatDayLabel, formatWeekLabel, isCurrentWeek, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
-import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
+import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, canClearDay, isCustomNote, isEmojiOnly, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
 import { WeekCalendar } from "./WeekCalendar.jsx";
 import { Pill } from "./RisoPills.jsx";
 import { weekOf } from "../lib/plannerCalendar.js";
 import { weekendLayout, weekendSummary } from "../lib/weekend.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
-import { t } from "../i18n/index.js";
+import { dict, t } from "../i18n/index.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 
@@ -361,6 +361,7 @@ export function PlannerBoard({
   onCardClick,
   onNoteClick,
   onRemove,
+  onClearDay,
   onCycleState,
   onEmptyClick,
   onWeekendMenu,
@@ -462,6 +463,27 @@ export function PlannerBoard({
                 />
               ))}
             </Fragment>
+          ))}
+
+          {/* A small, quiet "Clear" under each day that has something planned
+              (not before today): the whole day comes off, with the toast's Undo. */}
+          {DAY_INDICES.map((dayIndex) => (
+            <div
+              key={`clear-${dayIndex}`}
+              className="riso-planner-clear-cell"
+              style={{ gridColumn: dayIndex + 2, gridRow: MEAL_TYPES.length + 2, transform: `translateX(${layout.shiftX[dayIndex]}px)` }}
+            >
+              {canClearDay(entries, weekStart, dayIndex) && (
+                <button
+                  type="button"
+                  className="riso-planner-clear"
+                  aria-label={t("planner.clearDayAria", { day: dict().days.long[dayIndex] })}
+                  onClick={() => onClearDay(dayIndex)}
+                >
+                  {t("planner.clearDay")}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>

@@ -12,7 +12,7 @@ import {
   toDateKey,
 } from "../lib/dates.js";
 import { centerScroll, weekOf } from "../lib/plannerCalendar.js";
-import { MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, slotLabel, todayIndex, weekendRuns } from "../lib/plannerSlots.js";
+import { MEAL_TYPES, canClearDay, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, slotLabel, todayIndex, weekendRuns } from "../lib/plannerSlots.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { dict, t } from "../i18n/index.js";
 
@@ -113,6 +113,7 @@ export function PlannerMobile({
   onSelectSlot,
   onOpenRecipe,
   onRemove,
+  onClearDay,
   onCycleState,
   editingNoteId,
   onWriteInSlot,
@@ -246,6 +247,19 @@ export function PlannerMobile({
                 </div>
               </div>
             ))}
+            {/* Under supper, in each day's column: a small, quiet "Clear" for a
+                day with something planned (not before today). */}
+            <div className="rpm-cells rpm-clearrow">
+              {dict().days.long.map((dayName, i) => (
+                <div key={i} className="rpm-clearcell">
+                  {canClearDay(entries, weekStart, i) && (
+                    <button type="button" className="rpm-clear" aria-label={t("planner.clearDayAria", { day: dayName })} onClick={() => onClearDay(i)}>
+                      {t("planner.clearDay")}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         <span className="rpm-fade" aria-hidden="true" />

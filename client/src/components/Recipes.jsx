@@ -4,7 +4,7 @@ import { core, findExpiringSoonInRecipe, findSaleDeal } from "../lib/similarReci
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { HintStrip, IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
-import { Pill, TimePill } from "./RisoPills.jsx";
+import { MealChip, Pill, ServesPill, TimePill } from "./RisoPills.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
@@ -36,13 +36,16 @@ const MEAL_CHIPS = [
 ];
 const EXTRA_CHIPS = ["makeable", "expiring"].map((id) => chip(id, () => t(`recipes.filters.${id}`)));
 
+// One card: the photo, the title, then what you need to pick a recipe at a
+// glance (time, servings, the meal type, the main protein, and the "on sale" /
+// "uses expiring" flags) as the shared Riso pills, and one small line at the
+// bottom: how many things to buy. Cards in a row stretch to the same height;
+// the line stays at the bottom.
 function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
   const totalTime = recipeTotalMinutes(recipe);
   const nothingToBuy = stats.totalCount > 0 && stats.missingCount === 0;
-  const pct = stats.totalCount > 0 ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
   const slot = recipeSlot(recipe);
   const protein = proteinOfRecipe(recipe);
-  const meta = [slot ? t(`recipes.mealTypes.${slot}`) : null, protein?.label].filter(Boolean).join(" · ");
 
   return (
     <button type="button" className={`riso-recipe-card${nothingToBuy ? " ready" : ""}`} onClick={(e) => onClick(recipe, e.currentTarget.getBoundingClientRect())}>
@@ -60,8 +63,14 @@ function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
               {t("recipes.addTime")}
             </Pill>
           )}
-          {meta && <span className="riso-recipe-card-meta">{meta.toUpperCase()}</span>}
+          <ServesPill count={recipe.baseServings} />
         </div>
+        {(slot || protein) && (
+          <div className="rv2-card-meta">
+            <MealChip mealType={slot} size="tag" />
+            {protein && <Pill size="tag">{protein.label}</Pill>}
+          </div>
+        )}
         {(usesExpiring || onSale) && (
           <div className="rv2-card-tags">
             {usesExpiring && <Pill tone="pink">{t("recipes.d.usesExpiring")}</Pill>}
@@ -70,17 +79,10 @@ function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
         )}
         <div className="riso-recipe-card-spacer" />
         {stats.totalCount > 0 && (
-          <div className="riso-recipe-card-havebar">
-            <div className="riso-recipe-card-havebar-fill" style={{ width: `${pct}%` }} />
+          <div className={`rv2-card-buy${nothingToBuy ? " ready" : ""}`}>
+            {nothingToBuy ? t("recipes.nothingToBuy") : t("pills.toBuy", { count: stats.missingCount })}
           </div>
         )}
-        <div className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
-          {nothingToBuy
-            ? t("recipes.allOnHand", { count: stats.totalCount })
-            : stats.totalCount > 0
-              ? t("recipes.someOnHand", { have: stats.matchedCount, total: stats.totalCount, buy: stats.missingCount })
-              : t("recipes.noIngredients")}
-        </div>
       </div>
     </button>
   );
