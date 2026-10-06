@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#E9E4D8;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}</style></helmet>
+<section style="display:flex;flex-wrap:wrap;gap:64px;padding:56px 48px 0;width:1376px;box-sizing:border-box;color:#16181F">
+<div id="6a" style="width:1280px;min-height:460px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box"><span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">6a · NEIGHBOUR WEEKS</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px"><h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="display:flex;align-items:center;gap:14px">
+<div onClick="{{ prev }}" style="height:40px;padding:0 14px;border-radius:20px;border:2px dashed #16181F;display:flex;align-items:center;gap:8px;font:700 13.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box;color:#3F3E37" style-hover="background:#FFE14D">‹ {{ prevLabel }}</div>
+<div style="height:48px;padding:0 22px;border-radius:24px;border:2px solid #16181F;background:#2323FF;color:#fff;box-shadow:4px 4px 0 #16181F;display:flex;align-items:center;font:800 18px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box;position:relative">{{ label }}</div>
+<div onClick="{{ next }}" style="height:40px;padding:0 14px;border-radius:20px;border:2px dashed #16181F;display:flex;align-items:center;gap:8px;font:700 13.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box;color:#3F3E37" style-hover="background:#FFE14D">{{ nextLabel }} ›</div>
+<sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">this week</span></sc-if><sc-if value="{{ notCur }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCur }}" style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer">↩ this week</span></sc-if></div></div></div>
+<div id="6b" style="width:1280px;min-height:460px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box"><span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">6b · CALENDAR STAMP</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px"><h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="display:flex;align-items:center;gap:14px"><div onClick="{{ prev }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box;flex:none" style-hover="background:#FFE14D">‹</div>
+<div style="display:flex;align-items:stretch;border:2px solid #16181F;border-radius:16px;box-shadow:4px 4px 0 #16181F;overflow:hidden;background:#FFFDF8">
+<div style="background:#FF48B0;border-right:2px solid #16181F;padding:6px 12px;display:flex;align-items:center;font:500 12px 'DM Mono',monospace;letter-spacing:.14em">{{ mon }}</div>
+<div style="padding:6px 16px;display:flex;align-items:center;font:800 26px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap;min-width:90px;justify-content:center">{{ range }}</div></div>
+<div onClick="{{ next }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box;flex:none" style-hover="background:#FFE14D">›</div><sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">this week</span></sc-if><sc-if value="{{ notCur }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCur }}" style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer">↩ this week</span></sc-if></div></div></div>
+<div id="6c" style="width:1280px;min-height:460px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box"><span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">6c · WEEK TRACK</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px"><h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+<div style="display:flex;align-items:center;gap:12px"><div onClick="{{ prev }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box;flex:none" style-hover="background:#FFE14D">‹</div>
+<div style="display:flex;align-items:center;gap:6px;height:48px;padding:0 8px;border:2px solid #16181F;border-radius:24px;background:#FFFDF8;box-sizing:border-box">
+<sc-for list="{{ dots }}" as="d" hint-placeholder-count="6"><div onClick="{{ d.pick }}" style="min-width:52px;height:34px;padding:0 8px;border-radius:17px;background:{{ d.bg }};color:{{ d.fg }};border:2px solid {{ d.bd }};display:flex;align-items:center;justify-content:center;font:700 12.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box">{{ d.t }}</div></sc-for></div>
+<div onClick="{{ next }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box;flex:none" style-hover="background:#FFE14D">›</div><sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">this week</span></sc-if><sc-if value="{{ notCur }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCur }}" style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer">↩ this week</span></sc-if></div>
+<span style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52;padding-right:62px">{{ labelCaps }}</span></div></div></div>
+<div id="6d" style="width:1280px;min-height:460px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box"><span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">6d · BLUE BUTTON + MENU</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px"><h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="position:relative;display:flex;align-items:center;gap:14px">
+<div onClick="{{ tgE }}" style="height:44px;padding:0 20px;border-radius:22px;border:2px solid #16181F;background:#2323FF;color:#fff;box-shadow:4px 4px 0 #16181F;display:flex;align-items:center;gap:10px;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box;user-select:none">{{ label }}<span style="font-size:10px">▾</span></div>
+<sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">this week</span></sc-if><sc-if value="{{ notCur }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCur }}" style="transform:rotate(-4deg);height:26px;padding:0 12px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer">↩ this week</span></sc-if><sc-if value="{{ oE }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;z-index:50;right:0;top:calc(100% + 12px);width:300px;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:6px 6px 0 #16181F;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px"><sc-for list="{{ weekList }}" as="w" hint-placeholder-count="6"><div onClick="{{ w.pick }}" style="height:44px;padding:0 12px;border-radius:14px;background:{{ w.bg }};display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer" style-hover="background:#FFE14D"><span style="font:800 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ w.l }}</span><span style="font:500 11.5px 'DM Mono',monospace;color:#3F3E37;white-space:nowrap">{{ w.n }}</span></div></sc-for></div></sc-if></div></div></div>
+</section>
+<section style="display:flex;flex-wrap:wrap;gap:64px;padding:56px 48px;width:1376px;box-sizing:border-box;color:#16181F">
+
+<div id="5a" style="width:1280px;min-height:500px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box">
+<span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">5a · JOINED PILL + MONTH</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+<h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="position:relative;display:flex;align-items:center;gap:12px">
+<div style="display:inline-flex;align-items:center;height:40px;border:2px solid #16181F;border-radius:20px;background:#FFFDF8;box-sizing:border-box;padding:0 4px">
+<div onClick="{{ prev }}" style="width:30px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none" style-hover="background:#FFE14D">‹</div>
+<div onClick="{{ tgA }}" style="padding:0 8px;display:flex;align-items:center;gap:8px;font:800 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;min-width:96px;justify-content:center">{{ label }}<span style="font-size:10px">▾</span></div>
+<div onClick="{{ next }}" style="width:30px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none" style-hover="background:#FFE14D">›</div>
+</div>
+<sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="height:26px;padding:0 11px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">this week</span></sc-if>
+<sc-if value="{{ notCur }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCur }}" style="height:26px;padding:0 11px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer">↩ this week</span></sc-if>
+<sc-if value="{{ oA }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;z-index:50;right:0;top:calc(100% + 10px);width:310px;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:6px 6px 0 #16181F;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px">
+<span style="font:800 18px 'Bricolage Grotesque',sans-serif">October 2026</span>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52;text-align:center"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+<div style="display:flex;flex-direction:column;gap:2px"><sc-for list="{{ calRows }}" as="w" hint-placeholder-count="5"><div onClick="{{ w.pick }}" style="display:grid;grid-template-columns:repeat(7,1fr);background:{{ w.bg }};border-radius:16px;cursor:pointer"><sc-for list="{{ w.days }}" as="c" hint-placeholder-count="7"><div style="height:34px;display:flex;align-items:center;justify-content:center"><span style="min-width:28px;height:28px;border-radius:14px;background:{{ c.bg }};border:2px solid {{ c.bd }};display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque',sans-serif;color:{{ c.fg }};box-sizing:border-box">{{ c.n }}</span></div></sc-for></div></sc-for></div>
+</div></sc-if>
+</div></div>
+</div>
+
+<div id="5b" style="width:1280px;min-height:500px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box">
+<span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">5b · WEEK LIST</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+<h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="position:relative;display:flex;align-items:center;gap:10px">
+<div onClick="{{ prev }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box" style-hover="background:#FFE14D">‹</div>
+<div onClick="{{ tgB }}" style="height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;gap:8px;font:800 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box;min-width:130px;justify-content:center" style-hover="background:#FFE14D">{{ label }}<span style="font-size:10px">▾</span></div>
+<div onClick="{{ next }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box" style-hover="background:#FFE14D">›</div>
+<sc-if value="{{ oB }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;z-index:50;right:0;top:calc(100% + 10px);width:300px;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:6px 6px 0 #16181F;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ weekList }}" as="w" hint-placeholder-count="6"><div onClick="{{ w.pick }}" style="height:44px;padding:0 12px;border-radius:14px;background:{{ w.bg }};display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer" style-hover="background:#FFE14D"><span style="font:800 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ w.l }}<span style="margin-left:8px;font:800 11px 'Bricolage Grotesque',sans-serif;color:#2323FF">{{ w.tag }}</span></span><span style="font:500 11.5px 'DM Mono',monospace;color:#3F3E37;white-space:nowrap">{{ w.n }}</span></div></sc-for>
+</div></sc-if>
+</div></div>
+</div>
+
+<div id="5c" style="width:1280px;min-height:500px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box">
+<span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">5c · LAST / THIS / NEXT</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+<h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="position:relative;display:flex;align-items:center;gap:12px">
+<div style="display:inline-flex;border:2px solid #16181F;border-radius:20px;overflow:hidden;height:40px;box-sizing:border-box;background:#FFFDF8">
+<sc-for list="{{ segs }}" as="g" hint-placeholder-count="3"><div onClick="{{ g.pick }}" style="padding:0 16px;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;background:{{ g.bg }};color:{{ g.fg }}">{{ g.t }}</div></sc-for>
+</div>
+<div onClick="{{ tgC }}" style="height:40px;padding:0 14px;border-radius:20px;border:2px solid #16181F;background:{{ otherBg }};display:flex;align-items:center;gap:8px;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box" style-hover="background:#FFE14D">{{ otherLabel }}<span style="font-size:10px">▾</span></div>
+<sc-if value="{{ oC }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;z-index:50;right:0;top:calc(100% + 10px);width:300px;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:6px 6px 0 #16181F;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ weekList }}" as="w" hint-placeholder-count="6"><div onClick="{{ w.pick }}" style="height:44px;padding:0 12px;border-radius:14px;background:{{ w.bg }};display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer" style-hover="background:#FFE14D"><span style="font:800 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ w.l }}<span style="margin-left:8px;font:800 11px 'Bricolage Grotesque',sans-serif;color:#2323FF">{{ w.tag }}</span></span><span style="font:500 11.5px 'DM Mono',monospace;color:#3F3E37;white-space:nowrap">{{ w.n }}</span></div></sc-for>
+</div></sc-if>
+</div></div>
+</div>
+
+<div id="5d" style="width:1280px;min-height:500px;background:#F4F1EA;position:relative;padding:48px 40px 40px;box-sizing:border-box">
+<span style="position:absolute;top:0;left:0;white-space:nowrap;background:#16181F;color:#F4F1EA;font:600 12px 'DM Mono',monospace;letter-spacing:.1em;padding:4px 10px;border-radius:0 0 8px 0">5d · TEXT TRIGGER + MEAL DOTS</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+<h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">The week <span style="color:#2323FF">ahead.</span></h1>
+<div style="position:relative;display:flex;align-items:center;gap:14px">
+<span onClick="{{ prev }}" style="font:800 22px/1 'Bricolage Grotesque',sans-serif;cursor:pointer;padding:4px 6px;user-select:none" style-hover="color:#2323FF">‹</span>
+<div onClick="{{ tgD }}" style="display:flex;align-items:center;gap:8px;font:500 14px 'DM Mono',monospace;letter-spacing:.12em;cursor:pointer;white-space:nowrap;border-bottom:2px solid #16181F;padding-bottom:3px" style-hover="color:#2323FF">{{ labelCaps }}<span style="font-size:10px">▾</span></div>
+<span onClick="{{ next }}" style="font:800 22px/1 'Bricolage Grotesque',sans-serif;cursor:pointer;padding:4px 6px;user-select:none" style-hover="color:#2323FF">›</span>
+<sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="height:26px;padding:0 11px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">this week</span></sc-if>
+<sc-if value="{{ notCur }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCur }}" style="height:26px;padding:0 11px;border-radius:13px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer">↩ this week</span></sc-if>
+<sc-if value="{{ oD }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;z-index:50;right:0;top:calc(100% + 12px);width:310px;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px">
+<span style="font:800 18px 'Bricolage Grotesque',sans-serif">October 2026</span>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52;text-align:center"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+<div style="display:flex;flex-direction:column;gap:2px"><sc-for list="{{ calRows }}" as="w" hint-placeholder-count="5"><div onClick="{{ w.pick }}" style="display:grid;grid-template-columns:repeat(7,1fr);background:{{ w.bg }};border-radius:16px;cursor:pointer"><sc-for list="{{ w.days }}" as="c" hint-placeholder-count="7"><div style="height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="min-width:26px;height:26px;border-radius:13px;background:{{ c.bg }};border:2px solid {{ c.bd }};display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque',sans-serif;color:{{ c.fg }};box-sizing:border-box">{{ c.n }}</span><span style="width:5px;height:5px;border-radius:3px;background:{{ c.dot }}"></span></div></sc-for></div></sc-for></div>
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52">● DAYS WITH MEALS PLANNED</span>
+</div></sc-if>
+</div></div>
+</div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1376px&quot;,&quot;height&quot;:&quot;2400px&quot;}}">
+class Component extends DCLogic {
+  state = { sel: 2, o: '' };
+  renderVals() {
+    const { sel, o } = this.state;
+    const W = [['Sep 21 – 27','6 / 21','SEP','21 – 27'],['Sep 28 – Oct 4','12 / 21','SEP–OCT','28 – 4'],['Oct 5 – 11','9 / 21','OCT','5 – 11'],['Oct 12 – 18','0 / 21','OCT','12 – 18'],['Oct 19 – 25','0 / 21','OCT','19 – 25'],['Oct 26 – Nov 1','0 / 21','OCT–NOV','26 – 1']];
+    const sh = ['Sep 21','Sep 28','Oct 5','Oct 12','Oct 19','Oct 26'];
+    const dots = sh.map((t, i) => ({ t, bg: i === sel ? '#2323FF' : (i === 2 ? '#FFE14D' : 'transparent'), fg: i === sel ? '#fff' : '#16181F', bd: i === sel ? '#16181F' : 'transparent', pick: () => set(i) }));
+    const set = i => this.setState({ sel: Math.max(0, Math.min(5, i)), o: '' });
+    const tg = k => () => this.setState(s => ({ o: s.o === k ? '' : k }));
+    let n = -2;
+    const calRows = [];
+    for (let r = 0; r < 5; r++) {
+      const days = [];
+      for (let c = 0; c < 7; c++, n++) {
+        const ok = n >= 1 && n <= 31;
+        days.push({ n: ok ? n : '', bg: n === 5 ? '#FF48B0' : 'transparent', bd: n === 5 ? '#16181F' : 'transparent', fg: ok ? '#16181F' : 'transparent', dot: (n >= 5 && n <= 8) ? '#2323FF' : 'transparent' });
+      }
+      calRows.push({ days, bg: r + 1 === sel ? '#FFE14D' : 'transparent', pick: () => set(r + 1) });
+    }
+    const segs = [['Last week', 1], ['This week', 2], ['Next week', 3]].map(([t, i]) => ({ t, bg: sel === i ? '#16181F' : 'transparent', fg: sel === i ? '#F4F1EA' : '#16181F', pick: () => set(i) }));
+    const inSeg = sel >= 1 && sel <= 3;
+    return {
+      label: W[sel][0], labelCaps: W[sel][0].toUpperCase(), isCur: sel === 2, notCur: sel !== 2,
+      prev: () => set(sel - 1), next: () => set(sel + 1), goCur: () => set(2),
+      tgA: tg('a'), tgE: tg('e'), oE: o === 'e', dots, mon: W[sel][2], range: W[sel][3], prevLabel: sel > 0 ? W[sel-1][0] : '—', nextLabel: sel < 5 ? W[sel+1][0] : '—', tgB: tg('b'), tgC: tg('c'), tgD: tg('d'),
+      oA: o === 'a', oB: o === 'b', oC: o === 'c', oD: o === 'd',
+      calRows, segs,
+      otherLabel: inSeg ? 'Pick week' : W[sel][0], otherBg: inSeg ? '#FFFDF8' : '#FFE14D',
+      weekList: W.map((w, i) => ({ l: w[0], n: w[1] + ' planned', tag: i === 2 ? 'this week' : '', bg: i === sel ? '#FFE14D' : 'transparent', pick: () => set(i) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

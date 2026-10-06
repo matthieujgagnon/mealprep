@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Finder } from "./Finder.jsx";
 import { HintStrip } from "./RisoControls.jsx";
-import { PlannerBoard, PlannerHeader } from "./PlannerBoard.jsx";
+import { PlannerBoard } from "./PlannerBoard.jsx";
+import { PlannerHeader } from "./PlannerHeader.jsx";
 import { PlannerMobile } from "./PlannerMobile.jsx";
 import { WeekendMenu } from "./PlannerExtras.jsx";
 import { PlannedCard, SlotCard } from "./PlannerCards.jsx";
@@ -35,7 +36,7 @@ import { t } from "../i18n/index.js";
 //   actions.placeLeftover(recipe, slot), markBlank(slot), saveSlotNote(slot, text),
 //   actions.removeEntry(id), clearDay(dayOfWeek), cycleState(id), toast(message, undo?),
 //   actions.writeInSlot(slot), editNote(id), saveNote(id, text)  (a phone writes on the slot),
-//   actions.copyLastWeek()  fills the empty slots from last week
+//   actions.copyLastWeek()  fills the empty slots from last week; resolves with how many it copied
 //   onOpenPopout(recipe, from?)  opens the shared recipe pop-out
 //   onRequestPlan(recipe)        opens the shared slot picker
 //   onOpenRecipeCard(recipeId)   "Cook": the recipe's card on the Recipes page
@@ -210,6 +211,8 @@ export function Planner({
           onTargetChange(null);
         }}
         weekend={weekend}
+        lastWeekCount={lastWeekCount}
+        onCopyLastWeek={actions.copyLastWeek}
         target={target}
         onSelectSlot={onTargetChange}
         onOpenRecipe={(recipe) => onOpenPopout(recipe)}

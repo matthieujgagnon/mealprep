@@ -10,7 +10,9 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Ingredient marks | `IngredientMarks` in `components/RecipePopout.jsx`, `grocery.toggle` in `App.jsx` | The round ✓ on an ingredient: blue = in Inventory, green = on the grocery list. |
 | Slot picker | `components/SlotPicker.jsx` | The mini week where you choose a day and meal. |
 | Toast | `components/Toast.jsx` | The one message with Undo. |
-| Week calendar | `components/WeekCalendar.jsx` | The month calendar a week picker opens. |
+| Planner header | `components/PlannerHeader.jsx` | The title, the week controls (‹, date pill, ›, "this week" sticker) and the calendar they open. |
+| Week calendar | `components/WeekCalendar.jsx` | The month calendar the date pill opens, with the day preview and "Copy last week". |
+| Planner legend | `components/PlannerLegend.jsx` | The legend under the Planner board. |
 | Makeable now rule | `lib/mealSlots.js`, `hooks/useIncludeSides.js`, `IncludeSidesToggle` | What counts as "makeable". |
 | `openRecipeCard` | `App.jsx` | Opens a recipe's card on the Recipes page. |
 | Riso pills and chips | `components/RisoPills.jsx`, `lib/pills.js` | Every pill, tag and chip. |
@@ -61,13 +63,28 @@ It sits above every pop-out, picker and question (z-index 500), so Undo can be p
 
 Used by: Planner (add, replace, remove, copy, leftovers, Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), and the grocery ✓ in Ingredient marks (taken off the list).
 
+## Planner header
+
+`PlannerHeader` is the strip above the Planner board, on a computer and on a phone (design: `docs/design/riso-v2-planner-header/`). The title « Le menu de la **semaine.** » / "This week's **menu.**" is at the left and **never changes with the week**. At the right: ‹, the date pill (blue while the calendar is open), ›, and the yellow sticker, "this week" on the current week and "↩ this week" on another (it goes back). On a phone the title is above the controls and wraps if it is too long. The dates are written with `formatWeekLabel(weekStart)` (`lib/dates.js`): "Oct 5 – 11" / "5 – 11 oct.". Use that everywhere a week is named.
+
+Props: `weekStart`, `onChangeWeek(weekStart)`, `lastWeekCount`, `onCopyLastWeek`. The desktop Planner and `PlannerMobile` both render it, so there is one header.
+
 ## Week calendar
 
-`WeekCalendar` is what the week pill opens: a month, with three small bars under each day (breakfast, lunch, supper; filled when planned), the shown week yellow, today pink, and a tooltip on hover listing the day's meals. The data is `GET /api/planner/dates` (`{ date, meals }` for each planned day). Its helpers are in `lib/plannerCalendar.js`.
+`WeekCalendar` is what the date pill opens, centred under the pill (on a phone it lines up with the page edge). A month drawn as weeks: three dashes under each day (breakfast, lunch, supper; blue when planned), the shown week yellow, today pink. A row **picks that week** and closes the calendar. The month arrows only change the month; the arrows next to the pill change the week.
 
-Props: `weekStart`, `onPick(dateKey)`, `onThisWeek`, `onClose`. Weeks are written with `formatWeekLabel(weekStart)` (`lib/dates.js`): "Oct 5 – 11" / "5 – 11 oct.". Use that everywhere a week is named.
+- **Day preview**: on a computer, hovering a day shows a card to the left with its three meals, real recipe photos and the rotated "leftover" tag (`Pill` sticker). On a phone there is no hover: tapping a day shows the same card under that day's row, with "Show this week", and a row does not pick the week.
+- **Footer**: "Go to this week" and "↺ Copy last week". Copy fills only empty slots, shows the toast with Undo (`actions.copyLastWeek`) and the button says "✓ Copied" for a moment. It is greyed out when last week is empty.
 
-Used by: the desktop Planner's header and the phone Planner's week pill.
+The data is `GET /api/planner/dates` (`{ date, meals }` for each planned day; each meal has `mealType`, `title`, `placeholder`, `photoUrl`, `isLeftover`). Its helpers are in `lib/plannerCalendar.js` (`monthWeeks`, `inWeek`, `weekOf`).
+
+Props: `weekStart`, `onPick(dateKey)`, `onThisWeek`, `onCopyLastWeek` (resolves with how many meals it copied), `canCopy`, `onClose`.
+
+Used by: `PlannerHeader`.
+
+## Planner legend
+
+`PlannerLegend` is the row under the board on every size: planned meal, ingredients on hand (blue outline), leftovers (yellow tag), note, empty slot, today and, when the board shows one, the weekend ("Fin de semaine", without the list of days). Prop: `weekendOn`. Used by the desktop board (`PlannerBoard`) and `PlannerMobile`.
 
 ## Makeable now rule
 

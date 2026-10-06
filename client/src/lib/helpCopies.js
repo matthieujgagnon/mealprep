@@ -75,8 +75,9 @@ export const HELP_COPIES = {
   // Planner
   weekPrev: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "‹" },
   weekNext: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "›" },
-  copyLastWeek: { kind: "pill", cls: "riso-pill size-chip", label: "planner.copyLastWeek" },
-  weekPill: { kind: "pill", cls: "riso-planner-weekpill", label: "planner.thisWeek" },
+  weekSticker: { kind: "pill", cls: "riso-pill size-tag tone-yellow sticker", label: "planner.thisWeekBadge" },
+  goThisWeek: { kind: "pill", cls: "wcal-btn", label: "planner.goThisWeek" },
+  copyLastWeek: { kind: "pill", cls: "wcal-btn", label: "planner.copyLastWeek" },
   makeList: { kind: "pill", cls: "riso-planner-grocery", label: "planner.makeList", vars: { count: 3 }, strong: true },
   clearDay: { kind: "pill", cls: "riso-planner-clear", label: "planner.clearDay" },
   weekendTag: { kind: "pill", cls: "riso-help-copy-weekend", label: "planner.weekendTag" },

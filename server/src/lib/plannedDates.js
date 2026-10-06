@@ -1,5 +1,5 @@
 // Which calendar days have a planned meal, for the Planner's month calendar
-// (three bars under each day, one per meal, and a tooltip with the meals). An entry is a week (its Monday,
+// (three dashes under each day, one per meal, and the day's preview card). An entry is a week (its Monday,
 // "YYYY-MM-DD") and a day in it (0 = Monday). Pure calendar-date math on the
 // dates the browser sent, like upcomingMeals.js.
 
@@ -28,19 +28,25 @@ export function mondayKey(key) {
 const MEAL_ORDER = { breakfast: 0, lunch: 1, dinner: 2 };
 
 // The same days, with what is planned on each: { date, meals: [{ mealType,
-// title, placeholder }] }, days sorted, meals in the day's order (breakfast,
-// lunch, supper). A slot holds one thing, so a second entry in the same
-// slot is left out.
+// title, placeholder, photoUrl, isLeftover }] }, days sorted, meals in the
+// day's order (breakfast, lunch, supper). A slot holds one thing, so a second
+// entry in the same slot is left out.
 export function plannedDays(entries, from, to) {
   const byDay = new Map();
-  for (const { weekStart, dayOfWeek, mealType, recipe } of entries) {
+  for (const { weekStart, dayOfWeek, mealType, isLeftover, recipe } of entries) {
     const monday = validKey(weekStart);
     if (!monday) continue;
     const key = dateKey(new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + dayOfWeek)));
     if (key < from || key > to) continue;
     const meals = byDay.get(key) || [];
     if (!meals.some((m) => m.mealType === mealType)) {
-      meals.push({ mealType, title: recipe?.title || "", placeholder: !!recipe?.isPlaceholder });
+      meals.push({
+        mealType,
+        title: recipe?.title || "",
+        placeholder: !!recipe?.isPlaceholder,
+        photoUrl: recipe?.photoUrl || null,
+        isLeftover: !!isLeftover,
+      });
     }
     byDay.set(key, meals);
   }

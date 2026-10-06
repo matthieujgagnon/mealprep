@@ -51,9 +51,9 @@ plannerRouter.get("/upcoming", async (req, res) => {
 
 // GET /api/planner/dates?from=YYYY-MM-DD&to=YYYY-MM-DD - the days in that
 // range (at most 400) that have a planned meal or note, each as
-// { date: "YYYY-MM-DD", meals: [{ mealType, title, placeholder }] }. The
-// Planner's month calendar (desktop and phone) draws three bars under each
-// day and lists the meals in a tooltip.
+// { date: "YYYY-MM-DD", meals: [{ mealType, title, placeholder, photoUrl,
+// isLeftover }] }. The Planner's month calendar (desktop and phone) draws three
+// dashes under each day and shows the meals, with photos, in a preview card.
 plannerRouter.get("/dates", async (req, res) => {
   const { from, to } = req.query;
   const first = validKey(from);
@@ -63,7 +63,13 @@ plannerRouter.get("/dates", async (req, res) => {
   }
   const entries = await prisma.plannerEntry.findMany({
     where: { userId: req.userId, weekStart: { gte: mondayKey(from), lte: to } },
-    select: { weekStart: true, dayOfWeek: true, mealType: true, recipe: { select: { title: true, isPlaceholder: true } } },
+    select: {
+      weekStart: true,
+      dayOfWeek: true,
+      mealType: true,
+      isLeftover: true,
+      recipe: { select: { title: true, isPlaceholder: true, photoUrl: true } },
+    },
   });
   res.json(plannedDays(entries, from, to));
 });

@@ -3789,6 +3789,7 @@ input[type="date"].planner-week-picker {
   --riso-chip-dash: #8a877d; /* dashed outline of the grocery recipe-quantity pill */
   --riso-placeholder: #8a8677; /* placeholder text, an empty preview name */
   --riso-faint: #a9a394; /* the days outside the month in the Planner calendar */
+  --riso-empty-dash: #d8d4c8; /* an unplanned meal's dash in the Planner calendar */
   --riso-store-checked: #2a2d38; /* a checked row in dark Store mode */
   --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
@@ -8653,70 +8654,40 @@ button.riso-protein-card:hover .riso-protein-name {
   font-size: 14px;
 }
 
-.riso-planner-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.riso-planner-header-left {
-  flex: 1 1 320px;
-  min-width: 280px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.riso-planner-nav-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .riso-planner-nav-arrow {
-  width: 38px;
-  height: 38px;
-  border-radius: 19px;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 16px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   color: var(--riso-ink);
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 700 18px var(--riso-font-display);
+  font: 800 15px var(--riso-font-display);
+  padding: 0;
   cursor: pointer;
+  user-select: none;
   box-sizing: border-box;
 }
 
-.riso-planner-week-label {
-  font: 500 13px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.riso-planner-nav-arrow:hover {
+  background: var(--riso-yellow);
 }
 
-.riso-planner-week-badge {
-  transform: rotate(-4deg);
-  background: var(--riso-yellow);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 3px 11px;
-  font: 800 12.5px var(--riso-font-display);
-  white-space: nowrap;
+/* the month arrows in the week calendar */
+.riso-planner-nav-arrow.large {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 18px;
 }
 
 .riso-planner-title {
   font: 800 60px/0.95 var(--riso-font-display);
   letter-spacing: -0.035em;
   margin: 0;
-}
-
-.riso-planner-header-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 /* ---------- Board ---------- */
@@ -10317,17 +10288,8 @@ button.riso-deal-detail-other:focus-visible {
   .riso-planner {
     padding: 0;
   }
-
-  
-
-  
-
   .riso-planner-title {
     font-size: 38px;
-  }
-
-  .riso-planner-header {
-    align-items: flex-start;
   }
 
   .riso-planner-board {
@@ -10614,266 +10576,13 @@ button.riso-deal-detail-other:focus-visible {
   padding-bottom: calc(86px + env(safe-area-inset-bottom));
 }
 
-.rpm-top {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rpm-range {
-  font: 500 12px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.rpm-top .riso-planner-title {
-  font-size: 44px;
-}
-
 /* week row: ‹ pill › and the "jeu – dim →" sticker */
-.rpm-weekrow-wrap {
-  position: relative;
-}
-
-.rpm-weekrow {
-  position: relative;
-  z-index: 70;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rpm-round {
-  width: 38px;
-  height: 38px;
-  flex: none;
-  border-radius: 19px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 18px var(--riso-font-display);
-  padding: 0;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.rpm-weekpill {
-  height: 38px;
-  padding: 0 16px;
-  border-radius: 19px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 800 15px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.rpm-weekpill.open {
-  background: var(--riso-yellow);
-  box-shadow: var(--riso-shadow);
-}
 
 /* month calendar under the pill */
-.rpm-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 65;
-  background: rgba(22, 24, 31, 0.45);
-}
-
-.rpm-cal {
-  position: absolute;
-  z-index: 70;
-  left: 0;
-  right: 0;
-  top: calc(100% + 12px);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  border-radius: 22px;
-  box-shadow: 4px 4px 0 var(--riso-ink);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rpm-cal-caret {
-  position: absolute;
-  left: 50%;
-  top: -9px;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
-  background: var(--riso-surface);
-  border-left: 2px solid var(--riso-ink);
-  border-top: 2px solid var(--riso-ink);
-  transform: rotate(45deg);
-}
-
-.rpm-cal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.rpm-cal-title {
-  margin: 0;
-  font: 800 22px/1 var(--riso-font-display);
-  letter-spacing: -0.02em;
-}
-
-.rpm-cal-nav {
-  display: flex;
-  gap: 6px;
-}
-
-.rpm-cal-dows,
-.rpm-cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-
-.rpm-cal-dows span {
-  text-align: center;
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
-}
-
-.rpm-cal-day {
-  position: relative;
-  height: 44px;
-  border-radius: 12px;
-  border: 2px solid transparent;
-  background: transparent;
-  color: var(--riso-ink);
-  font: 700 14px var(--riso-font-display);
-  padding: 0;
-  cursor: pointer;
-}
-
-.rpm-cal-day.out {
-  color: var(--riso-faint);
-}
-
-.rpm-cal-day.week {
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-}
-
-.rpm-cal-day.today {
-  background: var(--riso-hot);
-  border-color: var(--riso-ink);
-  color: var(--riso-ink);
-}
 
 /* Three bars under a day, one for each meal, filled when that meal is planned. */
-.rpm-cal-bars {
-  position: absolute;
-  left: 50%;
-  bottom: 3px;
-  display: flex;
-  gap: 2px;
-  transform: translateX(-50%);
-}
-
-.rpm-cal-bars span {
-  width: 8px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--riso-ink);
-  opacity: 0.16;
-}
-
-.rpm-cal-bars span.on {
-  background: var(--riso-accent);
-  opacity: 1;
-}
-
-.rpm-cal-day.today .rpm-cal-bars span.on,
-.rpm-cal-day.week .rpm-cal-bars span.on {
-  background: var(--riso-ink);
-}
 
 /* Hovering a day with meals: a small tooltip listing them. */
-.rpm-cal-tip {
-  position: absolute;
-  z-index: 5;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  transform: translateX(-50%);
-  display: none;
-  flex-direction: column;
-  gap: 2px;
-  width: max-content;
-  max-width: 220px;
-  padding: 7px 10px;
-  border-radius: 10px;
-  background: var(--riso-ink);
-  color: var(--riso-canvas);
-  font: 600 11.5px/1.3 var(--riso-font-display);
-  text-align: left;
-  pointer-events: none;
-}
-
-.rpm-cal-tip b {
-  font-weight: 800;
-}
-
-.rpm-cal-day:hover .rpm-cal-tip,
-.rpm-cal-day:focus-visible .rpm-cal-tip {
-  display: flex;
-}
-
-.rpm-cal-legend {
-  display: flex;
-  gap: 16px;
-  font: 500 10px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
-}
-
-.rpm-cal-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.rpm-cal-legend .bars {
-  display: inline-flex;
-  gap: 2px;
-}
-
-.rpm-cal-legend .bars::before,
-.rpm-cal-legend .bars::after {
-  content: "";
-  width: 7px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--riso-accent);
-}
-
-.rpm-cal-legend .swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
-  border: 1.5px solid var(--riso-ink);
-  background: var(--riso-hot);
-}
-
-.rpm-cal-go {
-  height: 40px;
-  border-radius: 20px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 14px var(--riso-font-display);
-  cursor: pointer;
-}
 
 /* the week board: seven columns, about three in view */
 .rpm-boardwrap {
@@ -17446,10 +17155,6 @@ body.no-select {
 /* A block of weekend days: a pink dotted line round the headers and slots it
    covers, drawn behind them. One block for each run of neighbouring days. */
 
-.riso-planner-header-actions {
-  align-items: center;
-}
-
 /* "Weekend: Sat Sun ▾" above the board, and its seven days. */
 
 /* The little message after adding something (and when the week is full). */
@@ -18696,62 +18401,516 @@ body.no-select {
    (design/riso-v2-planner-desktop).
    ================================================================ */
 
-/* ---------- Header: dates over the title, week controls at the right ---------- */
-.riso-planner-header {
-  align-items: flex-end;
-}
-
-.riso-planner-header-left {
-  gap: 6px;
-}
-
-.riso-planner-week-label {
-  font: 500 12px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.riso-planner-weekpicker {
+/* ---------- Header: the title at the left, the week controls at the right ---------- */
+/* (design/riso-v2-planner-header: PlannerHeader.jsx, WeekCalendar.jsx, PlannerLegend.jsx) */
+.phd {
   position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin-bottom: -9px;
 }
 
-.riso-planner-weekpill {
-  height: 38px;
-  padding: 0 16px;
-  border-radius: 19px;
+.phd .riso-planner-title {
+  white-space: nowrap;
+}
+
+.phd-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 2px;
+}
+
+.phd-pick {
+  position: relative;
+  flex: none;
+}
+
+.phd-date {
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 17px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   color: var(--riso-ink);
+  box-shadow: var(--riso-shadow-xs);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 800 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.phd-date.open {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.phd-date-caret {
+  font-size: 9px;
+}
+
+.phd-controls .riso-pill {
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .phd {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 0;
+    padding-bottom: 14px;
+  }
+
+  /* The French title is longer than a phone is wide: it wraps there. */
+  .phd .riso-planner-title {
+    font-size: 40px;
+    white-space: normal;
+  }
+}
+
+/* The week calendar: opens under the date pill. */
+.wcal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.wcal-caret {
+  position: absolute;
+  z-index: 51;
+  top: calc(100% + 7px);
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: var(--riso-surface);
+  border-left: 2px solid var(--riso-ink);
+  border-top: 2px solid var(--riso-ink);
+  transform: rotate(45deg);
+}
+
+.wcal {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 350px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: 6px 6px 0 var(--riso-ink);
+  box-sizing: border-box;
+}
+
+.wcal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wcal-title {
+  margin: 0;
+  font: 800 28px/1 var(--riso-font-display);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.wcal-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.wcal-dows {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 4px 0;
+  text-align: center;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+}
+
+.wcal-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wcal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.wcal-week.selected {
+  background: var(--riso-yellow);
+}
+
+.wcal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 0 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: inherit;
+}
+
+.wcal-num {
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
   font: 800 15px var(--riso-font-display);
+  box-sizing: border-box;
+}
+
+.wcal-day.out .wcal-num {
+  color: var(--riso-faint);
+}
+
+.wcal-day.today .wcal-num {
+  background: var(--riso-hot);
+  border-color: var(--riso-ink);
+  color: var(--riso-ink);
+}
+
+.wcal-day.hover .wcal-num {
+  outline-color: var(--riso-accent);
+}
+
+/* Three dashes under a day, one for each meal, blue when that meal is planned. */
+.wcal-dashes {
+  display: flex;
+  gap: 2px;
+}
+
+.wcal-dashes i {
+  width: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--riso-empty-dash);
+}
+
+.wcal-dashes i.on {
+  background: var(--riso-accent);
+}
+
+.wcal-week.selected .wcal-dashes i {
+  background: rgba(22, 24, 31, 0.18);
+}
+
+.wcal-week.selected .wcal-dashes i.on {
+  background: var(--riso-ink);
+}
+
+.wcal-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 4px;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-soft);
+}
+
+.wcal-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wcal-legend .dash {
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--riso-accent);
+}
+
+.wcal-legend .today {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-hot);
+  box-sizing: border-box;
+}
+
+.wcal-foot {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 2px dashed var(--riso-dash-strong);
+}
+
+.wcal-btn {
+  flex: 1;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 21px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
   white-space: nowrap;
   cursor: pointer;
   box-sizing: border-box;
 }
 
-.riso-planner-weekpill.open {
+.wcal-btn:hover:not(:disabled) {
   background: var(--riso-yellow);
-  box-shadow: var(--riso-shadow);
 }
 
-.riso-planner-calpop {
+.wcal-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* A day's meals: beside the calendar on a computer, under the week's row on a phone. */
+.wcal-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  box-sizing: border-box;
+}
+
+.wcal-preview.beside {
   position: absolute;
-  z-index: 70;
-  right: 0;
-  top: calc(100% + 12px);
-  width: 340px;
-  max-width: calc(100vw - 32px);
+  top: 0;
+  right: calc(100% + 16px);
+  width: 280px;
+  box-shadow: 6px 6px 0 var(--riso-ink);
+  pointer-events: none;
 }
 
-.riso-planner-calpop .rpm-cal {
-  position: relative;
-  left: auto;
-  right: auto;
-  top: auto;
+.wcal-preview.inline {
+  gap: 10px;
+  margin: 4px 0 8px;
+  padding: 12px;
+  background: var(--riso-canvas);
+  border-radius: 18px;
+  text-align: left;
 }
 
-.riso-planner-calpop .rpm-cal-caret {
-  left: auto;
-  right: 60px;
+.wcal-preview-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wcal-preview-title {
+  font: 800 20px/1 var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+.wcal-preview.inline .wcal-preview-title {
+  font-size: 18px;
+}
+
+.wcal-preview-count {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.wcal-meal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wcal-preview.inline .wcal-meal {
+  gap: 10px;
+}
+
+.wcal-photo {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  overflow: hidden;
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  background: var(--riso-track);
+  box-sizing: border-box;
+}
+
+.wcal-preview.inline .wcal-photo {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.wcal-photo.empty {
+  border-style: dashed;
+  background: transparent;
+}
+
+.wcal-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.wcal-meal-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wcal-meal-slot {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.wcal-meal-name {
+  font: 800 14px/1.2 var(--riso-font-display);
+}
+
+.wcal-meal-name.none {
+  color: var(--riso-faint);
+}
+
+.wcal-meal .riso-pill {
+  margin-left: auto;
+  flex: none;
+}
+
+.wcal-show-week {
+  height: 38px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .wcal {
+    left: -40px;
+    transform: none;
+    width: min(350px, calc(100vw - 36px));
+  }
+}
+
+/* The legend under the board, on every size. */
+.plg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+  font: 500 13px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.plg-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plg-swatch {
+  width: 22px;
+  height: 16px;
+  display: inline-block;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+
+.plg-swatch.meal {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-top-width: 6px;
+}
+
+.plg-swatch.have {
+  background: var(--riso-surface);
+  border: 2.5px solid var(--riso-accent);
+}
+
+.plg-swatch.leftover {
+  height: 16px;
+  padding: 0 6px;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 8px;
+  background: var(--riso-yellow);
+  font: 800 10px var(--riso-font-display);
+  transform: rotate(-4deg);
+}
+
+.plg-swatch.note {
+  background: var(--riso-canvas);
+  border: 2px solid var(--riso-ink);
+}
+
+.plg-swatch.empty {
+  border: 2px dashed var(--riso-dash-strong);
+}
+
+.plg-swatch.today {
+  width: 20px;
+  height: 14px;
+  background: var(--riso-hot);
+  border: 1.5px solid var(--riso-ink);
+}
+
+.plg-swatch.weekend {
+  width: 20px;
+  height: 14px;
+  background: var(--riso-weekend-fill);
+  border: 2px dotted var(--riso-hot);
 }
 
 /* ---------- Board ---------- */
@@ -19124,52 +19283,8 @@ body.no-select {
 }
 
 /* ---------- Legend row ---------- */
-.riso-planner-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 18px;
-  padding-top: 12px;
-  margin-top: 6px;
-  border-top: 1.5px dashed var(--riso-dash-strong);
-  font: 500 12.5px var(--riso-font-body);
-  color: var(--riso-soft);
-}
-
-.riso-planner-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.riso-planner-legend-swatch {
-  width: 20px;
-  height: 14px;
-  box-sizing: border-box;
-  border-radius: 5px;
-  display: inline-block;
-}
-
-.riso-planner-legend-swatch.weekend {
-  background: var(--riso-weekend-fill);
-  border: 2px dotted var(--riso-hot);
-}
-
-.riso-planner-legend-swatch.today {
-  background: var(--riso-hot);
-  border: 1.5px solid var(--riso-ink);
-}
 
 /* The two card borders: blue = already have everything, yellow = leftovers. */
-.riso-planner-legend-swatch.have {
-  background: var(--riso-surface);
-  border: 3px solid var(--riso-accent);
-}
-
-.riso-planner-legend-swatch.leftover {
-  background: var(--riso-surface);
-  border: 3px solid var(--riso-yellow);
-}
 
 .riso-planner-grocery {
   margin-left: auto;
@@ -19755,43 +19870,6 @@ body.no-select {
 }
 
 /* ---------- Planner fixes (Matt's review): header, Copy last week, drag, slot picker weeks, Remove note ---------- */
-
-/* The week picker is at the left of the header, the title after it at the right. */
-.riso-planner-header {
-  align-items: center;
-  justify-content: space-between;
-}
-
-.riso-planner-header-actions {
-  flex: 0 1 auto;
-}
-
-.riso-planner-calpop {
-  left: 0;
-  right: auto;
-}
-
-.riso-planner-calpop .rpm-cal-caret {
-  left: 150px;
-  right: auto;
-}
-
-.riso-planner-weekpill {
-  min-width: 128px;
-}
-
-.riso-pill.riso-planner-copy:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.riso-planner-copy-note {
-  font: 500 11px var(--riso-font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--riso-muted);
-}
 
 /* While a recipe is dragged, only the slot under it changes: its border turns
    pink, with its +. No fill, no outline, and no other slot or card changes. */

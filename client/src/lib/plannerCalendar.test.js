@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centerScroll, firstHiddenDay, gridRange, inWeek, monthGrid, monthOf, shiftMonth, weekOf } from "./plannerCalendar.js";
+import { centerScroll, firstHiddenDay, gridRange, inWeek, monthGrid, monthOf, monthWeeks, shiftMonth, weekOf } from "./plannerCalendar.js";
 
 describe("the month grid", () => {
   it("starts on a Monday and ends on a Sunday, six rows", () => {
@@ -10,6 +10,13 @@ describe("the month grid", () => {
     expect(grid[0][3]).toBe("2026-10-01");
     expect(grid[5][6]).toBe("2026-11-08");
     expect(grid[4][6]).toBe("2026-11-01"); // November 1 closes the fifth row
+  });
+
+  it("draws five or six weeks: a last row with only the next month's days is left out", () => {
+    expect(monthWeeks({ year: 2026, month: 9 })).toHaveLength(5); // October 2026 ends on a Saturday, the fifth row closes it
+    const march = monthWeeks({ year: 2026, month: 2 }); // March 2026 starts on a Sunday and needs six rows
+    expect(march).toHaveLength(6);
+    expect(march[5][0]).toBe("2026-03-30");
   });
 
   it("shifts months across a year", () => {

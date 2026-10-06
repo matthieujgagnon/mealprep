@@ -930,18 +930,20 @@ export default function App({ user, onLogout }) {
   }
 
   // "Copy last week": last week's meals into this week's EMPTY slots only (the
-  // server never replaces anything). The toast says how many, with Undo.
+  // server never replaces anything). The toast says how many, with Undo, and the
+  // week calendar's button gets the count.
   async function handleCopyLastWeek() {
     const { entries, createdIds } = await api.copyPlannerWeek(shiftWeek(weekStart, -1), weekStart);
     setPlannerEntries(entries);
     if (createdIds.length === 0) {
       showToast(t("planner.toastCopiedNone"));
-      return;
+      return 0;
     }
     showToast(t("planner.toastCopied", { count: createdIds.length }), async () => {
       await Promise.all(createdIds.map((id) => api.removeFromPlanner(id)));
       setPlannerEntries((prev) => prev.filter((e) => !createdIds.includes(e.id)));
     });
+    return createdIds.length;
   }
 
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
