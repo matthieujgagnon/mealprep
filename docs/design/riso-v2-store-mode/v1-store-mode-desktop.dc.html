@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#8A8A94;font-family:'Bricolage Grotesque',system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}.nos::-webkit-scrollbar{display:none}@keyframes cf{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(820px) rotate(720deg);opacity:1}}@keyframes bl{0%{transform:translate(0,0) rotate(0);opacity:1}45%{transform:translate(90px,-380px) rotate(300deg);opacity:1}100%{transform:translate(140px,160px) rotate(720deg);opacity:0}}@keyframes bl2{0%{transform:translate(0,0) rotate(0);opacity:1}45%{transform:translate(170px,-300px) rotate(240deg);opacity:1}100%{transform:translate(260px,200px) rotate(680deg);opacity:0}}@keyframes br{0%{transform:translate(0,0) rotate(0);opacity:1}45%{transform:translate(-90px,-380px) rotate(-300deg);opacity:1}100%{transform:translate(-140px,160px) rotate(-720deg);opacity:0}}@keyframes br2{0%{transform:translate(0,0) rotate(0);opacity:1}45%{transform:translate(-170px,-300px) rotate(-240deg);opacity:1}100%{transform:translate(-260px,200px) rotate(-680deg);opacity:0}}@keyframes ring{0%{transform:scale(.2);opacity:1}100%{transform:scale(12);opacity:0}}@keyframes rise{0%{transform:translate(0,0) rotate(-6deg);opacity:1}50%{transform:translate(18px,-450px) rotate(6deg);opacity:1}100%{transform:translate(-12px,-950px) rotate(-6deg);opacity:1}}@keyframes streamer{0%{transform:scaleY(0) rotate(0);opacity:1}30%{transform:scaleY(1) rotate(9deg);opacity:1}60%{transform:scaleY(1) rotate(-9deg);opacity:1}100%{transform:translateY(900px) scaleY(1) rotate(6deg);opacity:0}}@keyframes twinkle{0%,100%{transform:scale(0) rotate(0);opacity:0}50%{transform:scale(1.2) rotate(90deg);opacity:1}}@keyframes bl3{0%{transform:translate(0,0) rotate(0);opacity:1}45%{transform:translate(40px,-440px) rotate(200deg);opacity:1}100%{transform:translate(70px,220px) rotate(640deg);opacity:0}}@keyframes br3{0%{transform:translate(0,0) rotate(0);opacity:1}45%{transform:translate(-40px,-440px) rotate(-200deg);opacity:1}100%{transform:translate(-70px,220px) rotate(-640deg);opacity:0}}@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}@keyframes wig{0%,100%{transform:rotate(5deg)}50%{transform:rotate(-4deg) scale(1.08)}}@keyframes pop{0%{transform:scale(.6) rotate(-8deg);opacity:0}60%{transform:scale(1.06) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(-1.5deg);opacity:1}}</style></helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:{{ t.page }}">
+<div style="width:390px;max-width:100%;height:780px;max-height:calc(100vh - 48px);background:{{ t.bg }};color:{{ t.text }};border:2px solid {{ t.frame }};border-radius:30px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:5px 5px 0 {{ t.shadow }}">
+
+<div style="flex:none;padding:0;display:flex;flex-direction:column;gap:0">
+<div style="display:flex;gap:8px;align-items:center;padding:18px">
+<div onClick="{{ leave }}" style="flex:none;height:36px;padding:0 14px;border-radius:18px;border:2px solid {{ t.text }};display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box">{{ tr.back }}</div>
+<div style="flex:1"></div>
+
+<div onClick="{{ openPal }}" style="flex:none;height:36px;padding:0 14px;border-radius:18px;border:2px solid {{ t.text }};display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box">{{ tr.colors }}</div>
+<div onClick="{{ toggleTheme }}" title="Light / dark" style="flex:none;width:36px;height:36px;border-radius:18px;border:2px solid {{ t.text }};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;box-sizing:border-box">{{ themeIcon }}</div>
+</div>
+<div style="height:2px;background:{{ t.line }}"></div>
+<div style="display:flex;align-items:center;gap:12px;padding:18px">
+<div style="flex:none;color:{{ t.num }};font:800 28px/.9 'Bricolage Grotesque',sans-serif;letter-spacing:-.04em;transform-origin:left center;animation:{{ numAnim }}">{{ left }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+<div style="font:700 15px/1.1 'Bricolage Grotesque',sans-serif">{{ scopeLabel }}</div>
+<div style="height:8px;border-radius:4px;background:{{ t.track }};border:1.5px solid {{ t.line }};overflow:hidden;box-sizing:border-box"><div style="height:100%;width:{{ pct }};background:#FF48B0;transition:width .25s"></div></div>
+</div>
+
+</div>
+</div>
+
+<div class="nos" ref="{{ setSc }}" onScroll="{{ onScroll }}" style="flex:1;min-height:0;overflow-y:auto;position:relative;padding:0 14px 18px;display:flex;flex-direction:column;gap:12px;border-top:2px solid {{ t.line }};scrollbar-width:none">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 2px 4px">
+<div style="display:flex;border:1.5px solid {{ t.text }};border-radius:16px;overflow:hidden;box-sizing:border-box">
+<sc-for list="{{ sorts }}" as="o" hint-placeholder-count="2"><div onClick="{{ o.pick }}" style="height:32px;padding:0 18px;display:flex;align-items:center;background:{{ o.bg }};color:{{ o.color }};font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">{{ o.label }}</div></sc-for>
+</div>
+<div onClick="{{ toggleHide }}" style="height:32px;padding:0 16px;border-radius:16px;border:1.5px solid {{ t.text }};background:{{ hideBg }};color:{{ hideFg }};display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box">{{ tr.hide }}</div>
+</div>
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+<section data-store="{{ g.name }}" style="display:flex;flex-direction:column;gap:8px">
+<sc-if value="{{ g.showHead }}" hint-placeholder-val="{{ true }}"><div style="position:sticky;top:0;z-index:3;margin:0 -14px;padding:10px 14px 8px;background:{{ t.bg }}">
+<div onClick="{{ g.toggle }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;height:48px;cursor:pointer;user-select:none">
+<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:18px;height:18px;flex:none;display:flex;align-items:center;justify-content:center;transform:rotate({{ g.rot }})"><span style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid {{ t.text }}"></span></span><span style="background:{{ g.bgc }};color:{{ g.fg }};border:2px solid {{ g.bdc }};border-radius:999px;padding:4px 16px;box-shadow:3px 3px 0 {{ g.sh }};transform:rotate(-2deg);line-height:1.15;font:800 19px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ g.name }}</span></div>
+<span style="background:{{ t.accent }};color:#fff;border-radius:999px;height:24px;padding:0 10px;display:flex;align-items:center;font:500 11px 'DM Mono',monospace;letter-spacing:.08em;white-space:nowrap;margin-right:2px">{{ g.count }}</span>
+</div></div></sc-if>
+<sc-for list="{{ g.aisles }}" as="a" hint-placeholder-count="2">
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-if value="{{ a.showLabel }}" hint-placeholder-val="{{ true }}"><div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em;color:{{ t.muted }};text-transform:uppercase;padding:4px 4px 0">{{ a.label }}</div></sc-if>
+<sc-for list="{{ a.items }}" as="it" hint-placeholder-count="3">
+<div onClick="{{ it.flip }}" style="display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 12px;background:{{ t.card }};color:{{ t.text }};border:2px solid {{ t.cardBorder }};border-radius:16px;opacity:{{ it.opacity }};cursor:pointer;box-sizing:border-box">
+<div style="width:26px;height:26px;border-radius:8px;flex:none;box-sizing:border-box;border:2px solid {{ t.accent }};background:{{ it.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">{{ it.tick }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<div style="font:700 16px/1.2 'Bricolage Grotesque',sans-serif;text-decoration:{{ it.strike }}">{{ it.name }}</div>
+</div>
+<div style="flex:none;font:700 14px 'DM Mono',monospace;white-space:nowrap">{{ it.qty }}</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</section>
+</sc-for>
+</div>
+
+<sc-if value="{{ celebrate }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:15"><sc-for list="{{ confetti }}" as="c" hint-placeholder-count="12"><span style="position:absolute;top:{{ c.top }};bottom:{{ c.bottom }};left:{{ c.left }};right:{{ c.right }};width:{{ c.w }};height:{{ c.h }};background:{{ c.bg }};border-radius:{{ c.r }};opacity:0;animation:{{ c.anim }} {{ c.d }} {{ c.delay }} ease-out forwards"></span></sc-for>
+<sc-for list="{{ sparkles }}" as="p" hint-placeholder-count="10"><span style="position:absolute;left:{{ p.left }};top:{{ p.top }};width:{{ p.s }};height:{{ p.s }};background:{{ p.c }};clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);opacity:0;animation:twinkle .9s {{ p.delay }} ease-in-out 4"></span></sc-for>
+</div></sc-if>
+<sc-if value="{{ palOn }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.6);display:flex;align-items:flex-end">
+<div style="width:100%;box-sizing:border-box;background:{{ t.card }};color:{{ t.text }};border-top:2px solid {{ t.text }};border-radius:30px 30px 0 0;padding:26px 22px 22px;display:flex;flex-direction:column;gap:16px">
+<div style="font:800 24px/1.1 'Bricolage Grotesque',sans-serif">{{ tr.palTitle }}</div>
+<div style="font:500 13px/1.45 'Bricolage Grotesque',sans-serif;color:{{ t.muted }}">{{ tr.palHint }}</div>
+<sc-for list="{{ palRows }}" as="p" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="flex:1;min-width:0"><span style="display:inline-block;background:{{ p.bgc }};color:{{ p.fg }};border:2px solid {{ p.bdc }};border-radius:999px;padding:4px 14px;box-shadow:3px 3px 0 {{ p.sh }};transform:rotate(-2deg);font:800 16px 'Bricolage Grotesque',sans-serif;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle">{{ p.name }}</span></div>
+<input type="color" value="{{ p.color }}" onInput="{{ p.onColor }}" title="{{ tr.wheel }}" style="flex:none;width:44px;height:44px;border:2px solid {{ t.text }};border-radius:12px;padding:0;background:none;cursor:pointer;box-sizing:border-box">
+<input type="text" value="{{ p.draft }}" onInput="{{ p.onText }}" placeholder="#FF48B0" autocomplete="off" spellcheck="false" style="flex:none;width:112px;height:44px;border:2px solid {{ p.bd }};border-radius:12px;background:{{ t.bg }};color:{{ t.text }};padding:0 10px;font:600 13px 'DM Mono',monospace;box-sizing:border-box;outline:none">
+</div>
+</sc-for>
+<div style="display:flex;gap:10px;margin-top:4px"><div onClick="{{ resetPal }}" style="height:48px;padding:0 20px;border-radius:24px;border:2px solid {{ t.text }};display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">{{ tr.palReset }}</div><div onClick="{{ closePal }}" style="flex:1;height:48px;border-radius:24px;background:{{ t.accent }};color:#fff;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer">{{ tr.palDone }}</div></div>
+</div></div></sc-if>
+<sc-if value="{{ askOn }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.6);display:flex;align-items:flex-end">
+<div style="width:100%;box-sizing:border-box;background:{{ t.card }};color:{{ t.text }};border-top:2px solid {{ t.text }};border-radius:30px 30px 0 0;padding:28px 22px 26px;display:flex;flex-direction:column;gap:20px">
+<div style="font:800 24px/1.1 'Bricolage Grotesque',sans-serif">{{ ask.title }}</div>
+<div style="font:500 14px/1.45 'Bricolage Grotesque',sans-serif;color:{{ t.muted }}">{{ ask.body }}</div>
+<div style="height:2px"></div>
+<div onClick="{{ ask.primaryAct }}" style="height:52px;border-radius:26px;background:{{ t.accent }};color:#fff;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;text-align:center;padding:0 12px">{{ ask.primary }}</div>
+<sc-if value="{{ ask.hasSecond }}" hint-placeholder-val="{{ true }}"><div onClick="{{ ask.secondAct }}" style="height:48px;border-radius:24px;border:2px solid {{ t.text }};display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">{{ ask.second }}</div></sc-if>
+<sc-if value="{{ ask.hasThird }}" hint-placeholder-val="{{ true }}"><div onClick="{{ ask.thirdAct }}" style="align-self:center;font:700 14px 'Bricolage Grotesque',sans-serif;text-decoration:underline;cursor:pointer;padding:4px 8px">{{ ask.third }}</div></sc-if>
+</div></div></sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;metro&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#FF48B0&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Store sticker colours&quot;},&quot;superc&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#FFE14D&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Store sticker colours&quot;},&quot;fruits&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#10C95C&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Store sticker colours&quot;}}">
+class Component extends DCLogic {
+  state = { colors: null, pal: false, draft: {}, collapsed: {}, active: 'All', ask: null, added: 0, gone: {}, flat: false, aisle: false, dark: true, hideDone: false, checked: {} };
+  setSc = el => { this.sc = el; };
+  cfOf(on) {
+    if (!on) { this._cf = null; return []; }
+    if (this._cf) return this._cf;
+    const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
+    const cl = ['#FF48B0', '#2323FF', '#FFE14D', '#10C95C', '#F4F1EA', '#FF8A3D', '#7B5CFF'];
+    const out = [];
+    for (let i = 0; i < 240; i++) { const w = rnd(5, 14), shape = Math.random(); out.push({ anim: 'cf', top: rnd(-30, 0).toFixed(0) + 'px', bottom: 'auto', left: rnd(0, 98).toFixed(1) + '%', right: 'auto', w: w.toFixed(0) + 'px', h: (shape < .3 ? w : rnd(8, 22)).toFixed(0) + 'px', bg: pick(cl), r: shape < .3 ? '50%' : shape < .4 ? '8px' : '2px', d: rnd(1.6, 4.2).toFixed(2) + 's', delay: rnd(0, 2).toFixed(2) + 's' }); }
+    for (let i = 0; i < 150; i++) { const left = Math.random() < .5, v = pick(['', '2', '3']), w = rnd(6, 13), shape = Math.random(); out.push({ anim: (left ? 'bl' : 'br') + v, top: 'auto', bottom: rnd(-24, -4).toFixed(0) + 'px', left: left ? rnd(0, 70).toFixed(0) + 'px' : 'auto', right: left ? 'auto' : rnd(0, 70).toFixed(0) + 'px', w: w.toFixed(0) + 'px', h: (shape < .3 ? w : rnd(9, 20)).toFixed(0) + 'px', bg: pick(cl), r: shape < .3 ? '50%' : '2px', d: rnd(1.5, 3.2).toFixed(2) + 's', delay: rnd(0.05, 1.8).toFixed(2) + 's' }); }
+    return (this._cf = out);
+  }
+  spOf(on) {
+    if (!on) { this._sp = null; return []; }
+    if (this._sp) return this._sp;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    return (this._sp = Array.from({ length: 22 }, () => ({ left: rnd(2, 92).toFixed(0) + '%', top: rnd(2, 85).toFixed(0) + '%', s: rnd(12, 32).toFixed(0) + 'px', c: Math.random() < .5 ? '#FFE14D' : '#F4F1EA', delay: rnd(0, 2).toFixed(2) + 's' })));
+  }
+  DEF() { return { 'Metro': this.props.metro ?? '#FF48B0', 'Super C': this.props.superc ?? '#FFE14D', 'Fruits du jour': this.props.fruits ?? '#10C95C' }; }
+  cols() { if (this.state.colors) return this.state.colors; try { const s = JSON.parse(localStorage.getItem('mealprep-store-colors') || 'null'); if (s) return Object.assign(this.DEF(), s); } catch (e) {} return this.DEF(); }
+  saveCols(c) { this.setState({ colors: c }); try { localStorage.setItem('mealprep-store-colors', JSON.stringify(c)); } catch (e) {} }
+  parseCol(s) { s = (s || '').trim(); let m = s.match(/^#?([0-9a-f]{6})$/i); if (m) return '#' + m[1].toUpperCase(); m = s.match(/^#?([0-9a-f]{3})$/i); if (m) return '#' + m[1].split('').map(c => c + c).join('').toUpperCase(); m = s.match(/^(?:rgb\()?\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*\)?$/i); if (m && [1, 2, 3].every(i => +m[i] <= 255)) return '#' + [1, 2, 3].map(i => (+m[i]).toString(16).padStart(2, '0')).join('').toUpperCase(); return null; }
+  fgOn(hex) { const n = parseInt(hex.slice(1), 16), ch = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }), L = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2], cInk = (L + 0.05) / (0.0098 + 0.05), cWhite = 1.05 / (L + 0.05); return cInk >= cWhite ? '#16181F' : '#FFFFFF'; }
+  onScroll = () => { const sc = this.sc; if (!sc) return; let cur = 'All'; if (sc.scrollTop > 8) sc.querySelectorAll('[data-store]').forEach(e => { if (e.offsetTop <= sc.scrollTop + 12) cur = e.dataset.store; }); if (cur !== this.state.active) this.setState({ active: cur }); };
+  jump(name) { const sc = this.sc; if (!sc) return; const el = name === 'All' ? null : sc.querySelector('[data-store="' + name + '"]'); sc.scrollTo({ top: el ? el.offsetTop : 0, behavior: 'smooth' }); }
+  _li = (() => { Promise.resolve().then(() => this._initLang()); return 1; })();
+  async _initLang() { try { const m = await import('./part-copy.js'); this._cp = m; m.subscribe(() => this.forceUpdate()); this.forceUpdate(); } catch (e) {} }
+  T(en, fr) { return this._cp && this._cp.getLang() === 'fr' ? fr : en; }
+  renderVals() {
+    const SECTIONS = ['Produce', 'Meat', 'Dairy', 'Bakery', 'Pantry', 'Frozen'];
+    const SFR = { Produce: 'Fruits et légumes', Meat: 'Viandes', Dairy: 'Produits laitiers', Bakery: 'Boulangerie', Pantry: 'Garde-manger', Frozen: 'Surgelés' };
+    const STORES = ['Metro', 'Super C', 'Fruits du jour'];
+    const items = [
+      ['Limes', 'Produce', 'Metro', '2', '0,88 $', 'Mexico'],
+      ['Ground beef', 'Meat', 'Metro', '1 lb', '5,44 $/lb', 'Irresistibles'],
+      ['Lac brome frozen duck wings', 'Frozen', 'Metro', '1 kg', '9,99 $', 'Lac Brome'],
+      ['Frozen chicken cutlets', 'Frozen', 'Metro', '1.2 kg', '5,99 $', 'Irresistibles'],
+      ['Pizza mikes', 'Frozen', 'Metro', '2 boxes', '7,49 $', 'Pizza Mikes'],
+      ['Rice', 'Pantry', 'Metro', '8 kg', '19,99 $', "Uncle Ben's"],
+      ['Grapefruits', 'Produce', 'Super C', '3', '0,99 $', 'Ruby Star'],
+      ['Chicken breasts', 'Meat', 'Super C', '2 lb', '4,87 $/lb', 'Maple Leaf'],
+      ['Cuisine adventures french onion soup', 'Pantry', 'Super C', '2 cans', '4,99 $', 'Cuisine Adventures'],
+      ['Pois chiches', 'Pantry', 'Super C', '2 cans', '1,34 $', 'Unico'],
+      ['Frozen dessert', 'Frozen', 'Super C', '1 tub', '3,94 $', 'Sealtest'],
+      ['Avocados', 'Produce', 'Fruits du jour', '4', '4 / 5 $', 'Hass'],
+      ['Cilantro', 'Produce', 'Fruits du jour', '1 bunch', '1,29 $', 'Local'],
+      ['Jalapeños', 'Produce', 'Fruits du jour', '2', '0,79 $', 'Local'],
+    ];
+    const COLS = this.cols(); const { pal, draft, collapsed, active, ask, added, gone, flat: isFlat, aisle, checked, dark, hideDone } = this.state;
+    const fr = this._cp && this._cp.getLang() === 'fr', T = (a, b) => this.T(a, b);
+    const t = dark
+      ? { page: '#2A2A31', bg: '#000000', text: '#F4F1EA', line: '#2A2A34', frame: '#2A2A34', shadow: '#2323FF', stk: '#2323FF', num: '#F4F1EA', accent: '#2323FF', card: '#111115', cardBorder: '#26262E', muted: '#9A9AA8', track: '#15151B' }
+      : { page: '#E9E4D8', bg: '#F4F1EA', text: '#16181F', line: '#16181F', frame: '#16181F', shadow: '#16181F', stk: '#16181F', num: '#2323FF', accent: '#2323FF', card: '#FFFDF8', cardBorder: '#16181F', muted: '#5E5B52', track: '#FFFDF8' };
+    const all = items.map((it, i) => ({ it, i })).filter(x => !gone[x.i]);
+    const inScope = all;
+    const row = ({ it, i }) => {
+      const on = !!checked[i];
+      return { name: it[0], qty: it[3], price: it[4], brand: it[5], on, opacity: on ? .45 : 1, strike: on ? 'line-through' : 'none', boxBg: on ? t.accent : 'transparent', tick: on ? '✓' : '',
+        flip: () => this.setState(s => ({ checked: { ...s.checked, [i]: !s.checked[i] } })) };
+    };
+    const leftOf = list => list.filter(x => !checked[x.i]).length;
+    const mkAisles = list => aisle ? SECTIONS.map(sec => ({ label: fr ? SFR[sec] : sec, showLabel: true, items: list.filter(x => x.it[1] === sec).map(row) })).filter(a => a.items.length) : [{ label: '', showLabel: false, items: list.slice().sort((a, b) => a.it[0].localeCompare(b.it[0])).map(row) }];
+    const groupsStore = STORES.map(name => {
+      let list = all.filter(x => x.it[2] === name);
+      const n = leftOf(list);
+      if (hideDone) list = list.filter(x => !checked[x.i]);
+      const aisles = mkAisles(list);
+      const cl = !!collapsed[name]; return { color: COLS[name], bgc: dark ? '#000000' : COLS[name], bdc: dark ? 'transparent' : '#16181F', sh: dark ? COLS[name] : t.stk, fg: dark ? '#F4F1EA' : this.fgOn(COLS[name]), showHead: true, name, count: n + ' ' + T('LEFT', 'RESTANTS'), aisles: cl ? [] : aisles, n: list.length, chev: cl ? '▸' : '▾', rot: cl ? '-90deg' : '0deg', toggle: () => this.setState(s => ({ collapsed: { ...s.collapsed, [name]: !s.collapsed[name] } })) };
+    }).filter(g => g.n);
+    let flat = all; if (hideDone) flat = flat.filter(x => !checked[x.i]);
+    const allGroup = { showHead: false, name: 'all', count: '', chev: '', toggle: () => {}, n: flat.length, aisles: mkAisles(flat) };
+    const groups = isFlat ? (flat.length ? [allGroup] : []) : groupsStore;
+    const total = inScope.length, done = inScope.filter(x => checked[x.i]).length, left = total - done;
+    const checkedAll = Object.keys(checked).filter(k => checked[k]).length;
+    return {
+      palOn: pal, openPal: () => this.setState({ pal: true, draft: {} }), closePal: () => this.setState({ pal: false, draft: {} }), resetPal: () => { this.saveCols(this.DEF()); this.setState({ draft: {} }); try { localStorage.removeItem('mealprep-store-colors'); } catch (e) {} },
+      palRows: STORES.map(name => { const c = COLS[name], txt = draft[name] != null ? draft[name] : c, ok = this.parseCol(txt) != null; return { name, color: c, bgc: dark ? '#000000' : c, bdc: dark ? 'transparent' : '#16181F', sh: dark ? c : t.stk, fg: dark ? '#F4F1EA' : this.fgOn(c), draft: txt, bd: ok ? t.text : '#C4123F', onColor: e => { this.saveCols({ ...COLS, [name]: e.target.value.toUpperCase() }); this.setState(s => ({ draft: { ...s.draft, [name]: null } })); }, onText: e => { const v = e.target.value, p = this.parseCol(v); this.setState(s => ({ draft: { ...s.draft, [name]: v } })); if (p) this.saveCols({ ...COLS, [name]: p }); } }; }),
+      t, groups, left, pct: Math.round(done / total * 100) + '%', empty: groups.length === 0,
+      scopeLabel: T('left on the list', 'restants sur la liste'),
+      celebrate: left === 0 && total > 0, numAnim: left === 0 && total > 0 ? 'pulse 1s ease-in-out 3' : 'none',
+      confetti: this.cfOf(left === 0 && total > 0),
+      sparkles: this.spOf(left === 0 && total > 0),
+      tabs: ['All', ...STORES].map(name => { const on = active === name, n = leftOf(name === 'All' ? all : all.filter(x => x.it[2] === name)); return { name: name === 'All' ? T('All', 'Tout') : name, left: n, bg: on ? t.accent : 'transparent', color: on ? '#fff' : t.text, bd: on ? t.accent : t.text, pick: () => { this.setState({ active: name }); this.jump(name); } }; }),
+      sorts: [[T('All', 'Tout'), isFlat, () => this.setState({ flat: !isFlat })], [T('Aisle', 'Rayon'), aisle, () => this.setState({ aisle: !aisle })]].map(([label, on, pick]) => ({ label, bg: on ? t.accent : 'transparent', color: on ? '#fff' : t.text, pick })),
+      hideBg: hideDone ? t.accent : 'transparent', hideBg2: hideDone ? t.accent : t.card, hideFg: hideDone ? '#fff' : t.text, toggleHide: () => this.setState({ hideDone: !hideDone }),
+      themeIcon: dark ? '☀' : '☾', toggleTheme: () => this.setState(s => ({ dark: !s.dark })),
+      leave: () => { if (checkedAll > 0) this.setState({ ask: 'ask' }); },
+      askOn: !!ask,
+      ask: ask === 'done' ? { title: T('Added to your inventory', 'Ajouté à votre inventaire'), body: T(added + (added === 1 ? ' item is' : ' items are') + ' now in the Fridge, Freezer or Pantry with a use-by date.', added + (added === 1 ? ' article est' : ' articles sont') + ' maintenant au frigo, au congélateur ou au garde-manger avec une date limite.'), primary: T('Back to the list', 'Retour à la liste'), primaryAct: () => this.setState({ ask: null }), hasSecond: false, hasThird: false }
+        : { title: T('Add ' + checkedAll + (checkedAll === 1 ? ' checked item' : ' checked items') + ' to your inventory?', 'Ajouter ' + checkedAll + (checkedAll === 1 ? ' article coché' : ' articles cochés') + ' à votre inventaire ?'), body: T('They go to the Fridge, Freezer or Pantry with a use-by date. You can still edit them there.', 'Ils vont au frigo, au congélateur ou au garde-manger avec une date limite. Vous pourrez les modifier là-bas.'),
+          primary: T('Add to inventory', 'Ajouter à l’inventaire'), primaryAct: () => this.setState({ ask: 'done', added: checkedAll, gone: { ...gone, ...checked }, checked: {} }),
+          hasSecond: true, second: T('Leave without adding', 'Quitter sans ajouter'), secondAct: () => this.setState({ ask: null }),
+          hasThird: true, third: T('Keep shopping', 'Continuer les achats'), thirdAct: () => this.setState({ ask: null }) },
+      tr: { back: T('← List', '← Liste'), hide: T('Hide done', 'Masquer cochés'), colors: T('Colours', 'Couleurs'), wheel: T('Colour wheel', 'Roue des couleurs'), palTitle: T('Store colours', 'Couleurs des magasins'), palHint: T('Pick with the colour wheel, or type a hex code (#FF48B0) or RGB (255, 72, 176).', 'Choisissez avec la roue, ou tapez un code hex (#FF48B0) ou RVB (255, 72, 176).'), palDone: T('Done', 'Terminé'), palReset: T('Reset', 'Réinitialiser') }
+    };
+  }
+}
+</script>
+</body>
+</html>

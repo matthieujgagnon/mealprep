@@ -271,8 +271,8 @@ test.describe("on a phone", () => {
     const h = await heights(rows);
     expect(h.length).toBeGreaterThanOrEqual(5);
     expect(new Set(h).size, h.join(" ")).toBe(1);
-    expect(h[0]).toBeGreaterThanOrEqual(84);
-    expect(h[0]).toBeLessThan(120); // only a name and a number: no tall rows
+    expect(h[0]).toBeGreaterThanOrEqual(52);
+    expect(h[0]).toBeLessThan(100); // only a name and a number: no tall rows
     const beef = rows.filter({ has: page.locator(".store-mode-name", { hasText: /^Ground beef$/ }) });
     await expect(beef.locator(".store-mode-qty")).toHaveText("1");
     // Nothing under the name: no recipes, brand, recipe quantity or sale tag.
@@ -280,18 +280,18 @@ test.describe("on a phone", () => {
     await expect(beef).not.toContainText("Tacos");
     await expect(beef).not.toContainText("750 g");
     await expect(beef.locator(".riso-row-delete, .riso-row-toinv")).toHaveCount(0); // no × and no inventory button here
-    // No sale tag here, and a checked row's box is pink in the dark theme.
+    // No sale tag here, and a checked row's box is filled blue.
     await expect(mode.locator(".store-mode-sale, .riso-row-deal")).toHaveCount(0);
-    // The dark theme is dark all the way through: a dark row, light text, a dark number pill.
+    // The dark theme is dark all the way through: a dark row and light text.
     const look = await beef.evaluate((e) => {
       const c = (sel) => getComputedStyle(e.querySelector(sel));
-      return { row: getComputedStyle(e).backgroundColor, name: c(".store-mode-name").color, qty: c(".store-mode-qty").backgroundColor };
+      return { row: getComputedStyle(e).backgroundColor, name: c(".store-mode-name").color, qty: c(".store-mode-qty").color };
     });
-    expect(look).toEqual({ row: "rgb(17, 17, 21)", name: "rgb(244, 241, 234)", qty: "rgb(21, 21, 27)" });
+    expect(look).toEqual({ row: "rgb(17, 17, 21)", name: "rgb(244, 241, 234)", qty: "rgb(244, 241, 234)" });
     await beef.click();
     await expect(beef).toHaveClass(/\bon\b/);
     const box = await beef.locator(".store-mode-check").evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).borderTopColor]);
-    expect(box).toEqual(["rgb(255, 72, 176)", "rgb(255, 255, 255)"]); // pink, with a white border
+    expect(box).toEqual(["rgb(35, 35, 255)", "rgb(35, 35, 255)"]); // blue, with a tick
     const cut = await mode.locator(".store-mode-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
     expect(cut).toBe(false);
   });

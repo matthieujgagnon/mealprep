@@ -3790,7 +3790,6 @@ input[type="date"].planner-week-picker {
   --riso-placeholder: #8a8677; /* placeholder text, an empty preview name */
   --riso-faint: #a9a394; /* the days outside the month in the Planner calendar */
   --riso-empty-dash: #d8d4c8; /* an unplanned meal's dash in the Planner calendar */
-  --riso-store-checked: #2a2d38; /* a checked row in dark Store mode */
   --riso-accent: #2323ff; /* blue */
   --riso-on-accent: #ffffff;
   --riso-hot: #ff48b0; /* pink */
@@ -9677,132 +9676,6 @@ body.riso-copy-drag .riso-planner-note.dragging {
   }
 }
 
-/* ---------- Store mode: the "store" form of the same item ---------- */
-.store-mode-list {
-  --gi-min: 84px;
-}
-
-.store-mode .store-mode-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-  width: 100%;
-  height: max(var(--gi-min, 84px), var(--gi-h, 0px));
-  padding: 0 12px 0 4px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 22px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  text-align: left;
-  cursor: pointer;
-}
-
-/* The whole row checks it; the box is a picture of the state, 40 px in a 56 px area. */
-.store-mode-check {
-  flex: none;
-  width: 40px;
-  height: 40px;
-  margin: 0 8px 0 8px;
-  box-sizing: border-box;
-  border-radius: 9px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-on-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 800 22px/1 var(--riso-font-display);
-}
-
-.store-mode-main {
-  flex: 1;
-  min-width: 0;
-  padding: 0 8px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.store-mode-name {
-  font: 800 19px/23px var(--riso-font-display);
-  letter-spacing: -0.01em;
-  overflow-wrap: break-word;
-}
-
-.store-mode-qty {
-  flex: none;
-  min-width: 32px;
-  height: 32px;
-  box-sizing: border-box;
-  padding: 0 10px;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 16px;
-  background: var(--riso-track);
-  color: var(--riso-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 700 15px var(--riso-font-mono);
-}
-
-/* The dark Store mode is dark all the way through: dark rows, light text, dark
-   pills. A checked row goes a shade lighter and its box turns pink. */
-.store-mode[data-sm-theme="dark"] .store-mode-row {
-  background: var(--sm-card);
-  border-color: var(--sm-card-border);
-  color: var(--sm-text);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-check {
-  background: transparent;
-  border-color: var(--sm-text);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-qty {
-  background: var(--sm-track);
-  border-color: var(--sm-text);
-  color: var(--sm-text);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-row.on {
-  background: var(--riso-store-checked);
-  border-color: var(--riso-store-checked);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-check {
-  background: var(--riso-hot);
-  border-color: var(--riso-on-accent);
-  color: var(--riso-ink);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-name {
-  color: var(--sm-muted);
-}
-
-.store-mode[data-sm-theme="dark"] .store-mode-row.on .store-mode-qty {
-  background: transparent;
-  border-color: var(--sm-muted);
-  color: var(--sm-muted);
-}
-
-/* Checked, in the light Store mode: the row greys, the box is blue. */
-.store-mode[data-sm-theme="light"] .store-mode-row.on {
-  background: var(--riso-track);
-}
-
-.store-mode[data-sm-theme="light"] .store-mode-row.on .store-mode-check {
-  background: var(--riso-accent);
-}
-
-.store-mode-row.on .store-mode-name {
-  text-decoration: line-through;
-}
-
-.store-mode[data-sm-theme="light"] .store-mode-row.on .store-mode-name {
-  color: var(--riso-muted);
-}
-
 .riso-group-grip {
   flex: none;
   margin-right: 4px;
@@ -10614,265 +10487,6 @@ button.riso-deal-detail-other:focus-visible {
     font: 500 10.5px var(--riso-font-mono);
     letter-spacing: 0.1em;
   }
-}
-
-/* ---------- Store mode (Design4 "Riso Store Mode") ----------
-   Full screen while shopping: a fixed header (store tabs, count, progress,
-   sort), the list grouped by section, and a fixed footer. Dark by
-   default, with a light theme; both use the same sale green. */
-.store-mode {
-  --sm-bg: #000000;
-  --sm-text: #f4f1ea;
-  --sm-line: #2a2a34;
-  --sm-accent: #2a2aff;
-  --sm-num: #f4f1ea;
-  --sm-card: #111115;
-  --sm-card-border: #26262e;
-  --sm-muted: #9a9aa8;
-  --sm-track: #15151b;
-  --sm-sale: #10c95c;
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  background: var(--sm-bg);
-  color: var(--sm-text);
-  font-family: var(--riso-font-display);
-}
-
-.store-mode[data-sm-theme="light"] {
-  --sm-bg: #f4f1ea;
-  --sm-text: #16181f;
-  --sm-line: #16181f;
-  --sm-accent: #2323ff;
-  --sm-num: #2323ff;
-  --sm-card: #fffdf8;
-  --sm-card-border: #16181f;
-  --sm-muted: #5e5b52;
-  --sm-track: #fffdf8;
-}
-
-.store-mode button {
-  font-family: var(--riso-font-display);
-  color: inherit;
-}
-
-.store-mode-head {
-  flex: none;
-  padding: calc(22px + env(safe-area-inset-top)) 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.store-mode-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.store-mode-back {
-  flex: none;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 17px;
-  border: 2px solid var(--sm-text);
-  background: transparent;
-  font: 700 13px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.store-mode-stores {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  border: 2px solid var(--sm-text);
-  border-radius: 17px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.store-mode-stores::-webkit-scrollbar {
-  display: none;
-}
-
-.store-mode-stores button {
-  flex: 1 0 auto;
-  height: 30px;
-  padding: 0 8px;
-  border: none;
-  background: transparent;
-  font: 700 12.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.store-mode-stores button.on,
-.store-mode-sort button.on {
-  background: var(--sm-accent);
-  color: #fff;
-}
-
-.store-mode-theme {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 17px;
-  border: 2px solid var(--sm-text);
-  background: transparent;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.store-mode-summary {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.store-mode-num {
-  flex: none;
-  color: var(--sm-num);
-  font: 800 40px/0.9 var(--riso-font-display);
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.store-mode-progress {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.store-mode-at {
-  font: 700 15px/1.1 var(--riso-font-display);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.store-mode-track {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--sm-track);
-  border: 1.5px solid var(--sm-line);
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.store-mode-track div {
-  height: 100%;
-  background: var(--sm-accent);
-  transition: width 0.25s;
-}
-
-.store-mode-sort {
-  flex: none;
-  display: flex;
-  border: 1.5px solid var(--sm-text);
-  border-radius: 15px;
-  overflow: hidden;
-}
-
-.store-mode-sort button {
-  height: 27px;
-  padding: 0 10px;
-  border: none;
-  background: transparent;
-  font: 700 11.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.store-mode-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 2px 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border-top: 2px solid var(--sm-line);
-  scrollbar-width: none;
-}
-
-.store-mode-list::-webkit-scrollbar {
-  display: none;
-}
-
-.store-mode-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.store-mode-group:first-child:not(:has(.store-mode-section)) {
-  padding-top: 12px;
-}
-
-.store-mode-empty {
-  padding: 24px 0;
-  text-align: center;
-  color: var(--sm-muted);
-}
-
-.store-mode-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-top: 10px;
-}
-
-.store-mode-section-pill {
-  background: var(--sm-accent);
-  color: #fff;
-  border-radius: 999px;
-  padding: 2px 11px;
-  font: 800 12px var(--riso-font-display);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.store-mode-section-rule {
-  flex: 1;
-  height: 1.5px;
-  background: var(--sm-line);
-}
-
-.store-mode-section-left {
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  color: var(--sm-muted);
-}
-
-.store-mode-foot {
-  flex: none;
-  padding: 10px 14px calc(14px + env(safe-area-inset-bottom));
-  border-top: 2px solid var(--sm-line);
-}
-
-.store-mode-done {
-  width: 100%;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: 22px;
-  border: none;
-  background: var(--sm-accent);
-  color: #fff !important;
-  font: 800 15px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.store-mode-done:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* The shelf pill: a chip per shelf that jumps to it, the same on a computer and
@@ -19836,5 +19450,631 @@ body.no-select {
     padding: 6px 0;
     font-size: 8.5px;
     letter-spacing: 0;
+  }
+}
+
+/* ---------- Store mode (design: docs/design/riso-v2-store-mode) ----------
+   Full screen while shopping: a fixed header (Back, Colours, theme, then the big
+   count and its progress bar) over one scrolling list, a section for each store
+   under a sticky coloured sticker. Dark by default, with a light theme. The item
+   is the shared GroceryItem, in its "store" form. */
+.store-mode {
+  --sm-bg: #000000;
+  --sm-text: #f4f1ea;
+  --sm-line: #2a2a34;
+  --sm-accent: #2323ff;
+  --sm-num: #f4f1ea;
+  --sm-card: #111115;
+  --sm-card-border: #26262e;
+  --sm-muted: #9a9aa8;
+  --sm-track: #15151b;
+  --gi-min: 52px;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  background: var(--sm-bg);
+  color: var(--sm-text);
+  font-family: var(--riso-font-display);
+  overflow: hidden;
+}
+
+.store-mode[data-sm-theme="light"] {
+  --sm-bg: #f4f1ea;
+  --sm-text: #16181f;
+  --sm-line: #16181f;
+  --sm-num: #2323ff;
+  --sm-card: #fffdf8;
+  --sm-card-border: #16181f;
+  --sm-muted: #5e5b52;
+  --sm-track: #fffdf8;
+}
+
+.store-mode button {
+  font-family: var(--riso-font-display);
+  color: inherit;
+}
+
+.store-mode-head {
+  flex: none;
+  padding-top: env(safe-area-inset-top);
+}
+
+.store-mode-top,
+.store-mode-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px;
+}
+
+.store-mode-summary {
+  gap: 12px;
+  border-top: 2px solid var(--sm-line);
+}
+
+.store-mode-spacer {
+  flex: 1;
+}
+
+.store-mode-back,
+.store-mode-colours {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 2px solid var(--sm-text);
+  background: transparent;
+  font: 700 14px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.store-mode-colours {
+  font-size: 13px;
+}
+
+.store-mode-theme {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  border: 2px solid var(--sm-text);
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.store-mode-num {
+  flex: none;
+  color: var(--sm-num);
+  font: 800 28px/0.9 var(--riso-font-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  transform-origin: left center;
+}
+
+.store-mode-num.pulse {
+  animation: sm-pulse 1s ease-in-out 3;
+}
+
+.store-mode-progress {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.store-mode-at {
+  font: 700 15px/1.1 var(--riso-font-display);
+}
+
+.store-mode-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sm-track);
+  border: 1.5px solid var(--sm-line);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.store-mode-track div {
+  height: 100%;
+  background: var(--riso-hot);
+  transition: width 0.25s;
+}
+
+.store-mode-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 2px solid var(--sm-line);
+  scrollbar-width: none;
+}
+
+.store-mode-list::-webkit-scrollbar {
+  display: none;
+}
+
+.store-mode-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 2px 4px;
+}
+
+.store-mode-toggles {
+  display: flex;
+  border: 1.5px solid var(--sm-text);
+  border-radius: 16px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.store-mode-toggles button,
+.store-mode-hide {
+  height: 32px;
+  padding: 0 18px;
+  border: none;
+  background: transparent;
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.store-mode-hide {
+  padding: 0 16px;
+  border: 1.5px solid var(--sm-text);
+  border-radius: 16px;
+  box-sizing: border-box;
+}
+
+.store-mode-toggles button.on,
+.store-mode-hide.on {
+  background: var(--sm-accent);
+  color: #fff;
+}
+
+.store-mode-empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--sm-muted);
+}
+
+.store-mode-store,
+.store-mode-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The store's header stays at the top while its items go by. */
+.store-mode-store-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0 -14px;
+  padding: 10px 14px 8px;
+  background: var(--sm-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  box-sizing: content-box;
+}
+
+.store-mode-store-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+}
+
+.store-mode-chevron {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.store-mode-chevron span {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--sm-text);
+}
+
+.store-mode-chevron.folded {
+  transform: rotate(-90deg);
+}
+
+.store-mode-sticker {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 4px 16px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  transform: rotate(-2deg);
+  font: 800 19px/1.15 var(--riso-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-mode-badge {
+  flex: none;
+  height: 24px;
+  margin-right: 2px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--sm-accent);
+  color: #fff;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.store-mode-aisle {
+  padding: 4px 4px 0;
+  color: var(--sm-muted);
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* The item (GroceryItem, "store" form): the whole row checks it, and it stays put. */
+.store-mode .store-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  height: max(var(--gi-min, 52px), var(--gi-h, 0px));
+  padding: 8px 12px;
+  border: 2px solid var(--sm-card-border);
+  border-radius: 16px;
+  background: var(--sm-card);
+  color: var(--sm-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.store-mode-row.on {
+  opacity: 0.45;
+}
+
+.store-mode-check {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 2px solid var(--sm-accent);
+  background: transparent;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 14px/1 var(--riso-font-display);
+}
+
+.store-mode-row.on .store-mode-check {
+  background: var(--sm-accent);
+}
+
+.store-mode-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.store-mode-name {
+  font: 700 16px/1.2 var(--riso-font-display);
+  overflow-wrap: break-word;
+}
+
+.store-mode-name.struck {
+  text-decoration: line-through;
+}
+
+.store-mode-qty {
+  flex: none;
+  text-align: right;
+  white-space: nowrap;
+  font: 700 14px var(--riso-font-mono);
+}
+
+/* The sheets that rise from the bottom (leave, added, store colours). */
+.store-mode-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.store-mode-sheet {
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 92%;
+  overflow-y: auto;
+  padding: 28px 22px calc(26px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--sm-card);
+  color: var(--sm-text);
+  border-top: 2px solid var(--sm-text);
+  border-radius: 30px 30px 0 0;
+}
+
+.store-mode-sheet-title {
+  margin: 0;
+  font: 800 24px/1.1 var(--riso-font-display);
+}
+
+.store-mode-sheet-body {
+  margin: 0;
+  color: var(--sm-muted);
+  font: 500 14px/1.45 var(--riso-font-display);
+}
+
+.store-mode-sheet-primary,
+.store-mode-sheet-second {
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 26px;
+  border: 2px solid var(--sm-text);
+  background: transparent;
+  font: 700 15px var(--riso-font-display);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.store-mode-sheet-primary {
+  min-height: 52px;
+  border-color: var(--sm-accent);
+  background: var(--sm-accent);
+  color: #fff !important;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.store-mode-sheet-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.store-mode-sheet-link {
+  align-self: center;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  font: 700 14px var(--riso-font-display);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.store-mode-sheet-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.store-mode-sheet-row .store-mode-sheet-primary {
+  flex: 1;
+}
+
+.store-mode-colour-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.store-mode-colour-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.store-mode-colour-name .store-mode-sticker {
+  font-size: 16px;
+  padding: 4px 14px;
+}
+
+.store-mode-colour-wheel {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid var(--sm-text);
+  border-radius: 12px;
+  background: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.store-mode-colour-text {
+  flex: none;
+  width: 112px;
+  height: 44px;
+  padding: 0 10px;
+  border: 2px solid var(--sm-text);
+  border-radius: 12px;
+  background: var(--sm-bg);
+  color: var(--sm-text);
+  font: 600 13px var(--riso-font-mono);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.store-mode-colour-text.bad {
+  border-color: #c4123f;
+}
+
+/* The celebration when the list is done: over everything, never in the way of a tap. */
+.store-mode-confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.store-mode-confetti > span {
+  position: absolute;
+  opacity: 0;
+}
+
+.store-mode-sparkle {
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: sm-twinkle 0.9s ease-in-out 4;
+}
+
+@keyframes sm-fall {
+  0% {
+    transform: translateY(-20px) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 1;
+  }
+}
+
+@keyframes sm-bl {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(90px, -380px) rotate(300deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(140px, 160px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sm-bl2 {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(170px, -300px) rotate(240deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(260px, 200px) rotate(680deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sm-bl3 {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(40px, -440px) rotate(200deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(70px, 220px) rotate(640deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sm-br {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(-90px, -380px) rotate(-300deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-140px, 160px) rotate(-720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sm-br2 {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(-170px, -300px) rotate(-240deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-260px, 200px) rotate(-680deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sm-br3 {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(-40px, -440px) rotate(-200deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-70px, 220px) rotate(-640deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sm-twinkle {
+  0%,
+  100% {
+    transform: scale(0) rotate(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(90deg);
+    opacity: 1;
+  }
+}
+
+@keyframes sm-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
   }
 }

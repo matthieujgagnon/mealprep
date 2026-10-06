@@ -1,30 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { GroceryItem } from "./GroceryItem.jsx";
+import { AddedSheet, ColoursSheet, LeaveSheet, StoreConfetti, StoreSticker } from "./StoreModeParts.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { brandOf } from "../lib/flyerIngredients.js";
+import { colorOfStore, readStoreColors, writeStoreColors } from "../lib/storeColors.js";
 import { getLang, t } from "../i18n/index.js";
 
-// The list while you shop (Design4 "Riso Store Mode"): one store at a
-// time, what's left there grouped by section in walking order (or A to Z),
-// a big count and a progress bar, light or dark. Tapping a row checks it
-// off; checked rows fade and sink to the bottom of their section.
+// The list while you shop (design: docs/design/riso-v2-store-mode, "Store
+// Mode"): one scrolling list in a section for each store, each under a coloured
+// sticker that folds it away, with a big count and a progress bar above it, light
+// or dark. Tapping a row checks it off, and it stays where it is. All turns the
+// stores off (one list), Aisle groups by section of the store, Hide done takes
+// the checked ones out of view. Leaving with items checked asks about adding them
+// to Inventory, which always goes through the Inventory confirmation (`onDone`).
 
 const THEME_KEY = "mealprep-store-mode-theme";
-const SORT_KEY = "mealprep-store-mode-sort";
 const AISLE_ORDER = ["produce", "meat", "seafood", "dairy", "deli", "bakery", "frozen", "pantry", "snacks", "drinks", "household", "other"];
 
-function readStored(key, fallback, allowed) {
+function readTheme() {
   try {
-    const value = localStorage.getItem(key);
-    return allowed.includes(value) ? value : fallback;
+    const value = localStorage.getItem(THEME_KEY);
+    return value === "light" ? "light" : "dark";
   } catch {
-    return fallback;
+    return "dark";
   }
 }
 
-function writeStored(key, value) {
+function writeTheme(value) {
   try {
-    localStorage.setItem(key, value);
+    localStorage.setItem(THEME_KEY, value);
   } catch {
     // Private mode: the choice just isn't remembered.
   }
@@ -42,15 +46,24 @@ export function StoreMode({
   aisleOrder = [],
   sendCount = 0,
 }) {
-  const firstWithItems = stores.find((s) => rows.some((r) => r.store === s && !checked[r.item.key])) || stores[0];
-  const [store, setStore] = useState(firstWithItems);
+  const [theme, setTheme] = useState(readTheme);
+  const [colors, setColors] = useState(readStoreColors);
+  const [flat, setFlat] = useState(false);
+  const [aisle, setAisle] = useState(false);
+  const [hideDone, setHideDone] = useState(false);
+  const [collapsed, setCollapsed] = useState({});
+  const [sheet, setSheet] = useState(null); // null | "colours" | "leave" | "added"
+  const [added, setAdded] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [theme, setTheme] = useState(() => readStored(THEME_KEY, "dark", ["dark", "light"]));
-  const [sort, setSort] = useState(() => readStored(SORT_KEY, "section", ["section", "az"]));
+  const dark = theme === "dark";
 
   useEffect(() => {
-    // Escape closes the Inventory confirmation first, not Store mode under it.
-    const onKey = (e) => e.key === "Escape" && !document.querySelector(".riso-confirm") && onClose();
+    // Escape closes a sheet first, and the Inventory confirmation before Store mode under it.
+    const onKey = (e) => {
+      if (e.key !== "Escape" || document.querySelector(".riso-confirm")) return;
+      if (sheet) setSheet(null);
+      else onClose();
+    };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -58,129 +71,179 @@ export function StoreMode({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [onClose]);
-
-  function pickTheme(next) {
-    setTheme(next);
-    writeStored(THEME_KEY, next);
-  }
-  function pickSort(next) {
-    setSort(next);
-    writeStored(SORT_KEY, next);
-  }
+  }, [onClose, sheet]);
 
   // Every row is as tall as the one with the longest name (names are never cut).
   const listRef = useRef(null);
-  useEqualRowHeight(listRef, { pad: 14 });
+  useEqualRowHeight(listRef, { pad: 10 });
 
-  const here = rows.filter((r) => r.store === store);
-  const left = here.filter((r) => !checked[r.item.key]).length;
-  const pct = here.length > 0 ? Math.round(((here.length - left) / here.length) * 100) : 0;
-  const isOn = (r) => (checked[r.item.key] ? 1 : 0);
+  const total = rows.length;
+  const left = rows.filter((r) => !checked[r.item.key]).length;
+  const pct = total > 0 ? Math.round(((total - left) / total) * 100) : 0;
+  const celebrate = total > 0 && left === 0;
+
   const byName = (a, b) => a.item.name.localeCompare(b.item.name, getLang());
-
-  // Sections in the store's walking order; checked rows sink within each.
   const order = [...aisleOrder, ...AISLE_ORDER.filter((id) => !aisleOrder.includes(id))];
-  const groups =
-    sort === "section"
+  const shown = (list) => (hideDone ? list.filter((r) => !checked[r.item.key]) : list);
+  // A store's rows A to Z, or in its sections in walking order (A to Z in each).
+  // Checking a row never moves it.
+  const sectionsOf = (list) =>
+    aisle
       ? order
-          .map((id) => ({ id, rows: here.filter((r) => (r.category || "other") === id) }))
+          .map((id) => ({ id, rows: list.filter((r) => (r.category || "other") === id).sort(byName) }))
           .filter((g) => g.rows.length > 0)
-          .map((g) => ({ ...g, rows: [...g.rows].sort((a, b) => isOn(a) - isOn(b) || byName(a, b)) }))
-      : [{ id: "all", rows: [...here].sort((a, b) => isOn(a) - isOn(b) || byName(a, b)) }];
+      : [{ id: "", rows: [...list].sort(byName) }];
+
+  const groups = flat
+    ? shown(rows).length > 0
+      ? [{ store: null, sections: sectionsOf(shown(rows)) }]
+      : []
+    : stores
+        .map((store) => {
+          const here = rows.filter((r) => r.store === store);
+          return {
+            store,
+            left: here.filter((r) => !checked[r.item.key]).length,
+            visible: shown(here).length,
+            sections: collapsed[store] ? [] : sectionsOf(shown(here)),
+          };
+        })
+        .filter((g) => g.visible > 0);
+
+  function setColor(name, hex) {
+    setColors((prev) => {
+      const next = { ...prev, [name]: hex };
+      writeStoreColors(next);
+      return next;
+    });
+  }
+  function resetColors() {
+    writeStoreColors({});
+    setColors({});
+  }
+  function pickTheme() {
+    const next = dark ? "light" : "dark";
+    setTheme(next);
+    writeTheme(next);
+  }
+
+  function leave() {
+    if (sendCount > 0) setSheet("leave");
+    else onClose();
+  }
+
+  // Adding opens the Inventory confirmation; cancelling it leaves the sheet as it was.
+  async function addChecked() {
+    if (busy) return;
+    const count = sendCount;
+    setBusy(true);
+    try {
+      if (await onDone()) {
+        setAdded(count);
+        setSheet("added");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="riso-theme store-mode" data-sm-theme={theme} role="dialog" aria-modal="true" aria-label={t("storeMode.aria")}>
       <header className="store-mode-head">
         <div className="store-mode-top">
-          <button type="button" className="store-mode-back" onClick={onClose}>
+          <button type="button" className="store-mode-back" onClick={leave}>
             {t("storeMode.back")}
           </button>
-          <div className="store-mode-stores" role="tablist" aria-label={t("storeMode.storeAria")}>
-            {stores.map((s) => (
-              <button key={s} type="button" role="tab" aria-selected={s === store} className={s === store ? "on" : ""} onClick={() => setStore(s)}>
-                {storeLabel(s)}
-              </button>
-            ))}
-          </div>
+          <span className="store-mode-spacer" />
+          <button type="button" className="store-mode-colours" onClick={() => setSheet("colours")}>
+            {t("storeMode.colours")}
+          </button>
           <button
             type="button"
             className="store-mode-theme"
-            onClick={() => pickTheme(theme === "dark" ? "light" : "dark")}
-            aria-label={theme === "dark" ? t("storeMode.toLight") : t("storeMode.toDark")}
-            title={theme === "dark" ? t("storeMode.toLight") : t("storeMode.toDark")}
+            onClick={pickTheme}
+            aria-label={dark ? t("storeMode.toLight") : t("storeMode.toDark")}
+            title={dark ? t("storeMode.toLight") : t("storeMode.toDark")}
           >
-            {theme === "dark" ? "☀" : "☾"}
+            {dark ? "☀" : "☾"}
           </button>
         </div>
 
         <div className="store-mode-summary">
-          <span className="store-mode-num">{left}</span>
+          <span className={`store-mode-num${celebrate ? " pulse" : ""}`}>{left}</span>
           <div className="store-mode-progress">
-            <span className="store-mode-at">{t("storeMode.leftAt", { count: left, store: storeLabel(store) })}</span>
+            <span className="store-mode-at">{t("storeMode.leftOnList")}</span>
             <div className="store-mode-track" aria-hidden="true">
               <div style={{ width: `${pct}%` }} />
             </div>
-          </div>
-          <div className="store-mode-sort" role="group" aria-label={t("storeMode.sortAria")}>
-            {[
-              ["section", t("storeMode.sortSection")],
-              ["az", t("same.az")],
-            ].map(([id, label]) => (
-              <button key={id} type="button" aria-pressed={sort === id} className={sort === id ? "on" : ""} onClick={() => pickSort(id)}>
-                {label}
-              </button>
-            ))}
           </div>
         </div>
       </header>
 
       <div className="store-mode-list" ref={listRef}>
-        {here.length === 0 && <p className="store-mode-empty">{t("storeMode.nothingFor", { store: storeLabel(store) })}</p>}
+        <div className="store-mode-toolbar">
+          <div className="store-mode-toggles" role="group" aria-label={t("storeMode.viewAria")}>
+            <button type="button" aria-pressed={flat} className={flat ? "on" : ""} onClick={() => setFlat(!flat)}>
+              {t("storeMode.all")}
+            </button>
+            <button type="button" aria-pressed={aisle} className={aisle ? "on" : ""} onClick={() => setAisle(!aisle)}>
+              {t("storeMode.aisle")}
+            </button>
+          </div>
+          <button type="button" className={`store-mode-hide${hideDone ? " on" : ""}`} aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>
+            {t("storeMode.hideDone")}
+          </button>
+        </div>
+
+        {total === 0 && <p className="store-mode-empty">{t("storeMode.empty")}</p>}
+
         {groups.map((group) => (
-          <section key={group.id} className="store-mode-group" aria-label={sort === "section" ? aisleLabel(group.id) : undefined}>
-            {sort === "section" && (
-              <div className="store-mode-section">
-                <span className="store-mode-section-pill">{aisleLabel(group.id)}</span>
-                <span className="store-mode-section-rule" />
-                <span className="store-mode-section-left">
-                  {t("storeMode.sectionLeft", { count: group.rows.filter((r) => !checked[r.item.key]).length })}
-                </span>
+          <section key={group.store ?? "all"} className="store-mode-store" data-store={group.store ?? undefined}>
+            {group.store != null && (
+              <div className="store-mode-store-head">
+                <button
+                  type="button"
+                  className="store-mode-store-toggle"
+                  aria-expanded={!collapsed[group.store]}
+                  aria-label={t(collapsed[group.store] ? "storeMode.expandAria" : "storeMode.collapseAria", { store: storeLabel(group.store) })}
+                  onClick={() => setCollapsed((c) => ({ ...c, [group.store]: !c[group.store] }))}
+                >
+                  <span className={`store-mode-chevron${collapsed[group.store] ? " folded" : ""}`} aria-hidden="true">
+                    <span />
+                  </span>
+                  <StoreSticker name={storeLabel(group.store)} color={colorOfStore(colors, group.store)} dark={dark} />
+                </button>
+                <span className="store-mode-badge">{t("storeMode.leftBadge", { count: group.left })}</span>
               </div>
             )}
-            {group.rows.map(({ item, deal, flyerDeal }) => (
-              <GroceryItem
-                key={item.key}
-                variant="store"
-                item={item}
-                checked={!!checked[item.key]}
-                deal={deal}
-                brand={brandOf(deal || flyerDeal)}
-                onToggle={() => onToggle(item.key)}
-              />
+            {group.sections.map((section) => (
+              <div key={section.id || "list"} className="store-mode-group">
+                {aisle && <div className="store-mode-aisle">{aisleLabel(section.id)}</div>}
+                {section.rows.map(({ item, deal, flyerDeal }) => (
+                  <GroceryItem
+                    key={item.key}
+                    variant="store"
+                    item={item}
+                    checked={!!checked[item.key]}
+                    deal={deal}
+                    brand={brandOf(deal || flyerDeal)}
+                    onToggle={() => onToggle(item.key)}
+                  />
+                ))}
+              </div>
             ))}
           </section>
         ))}
       </div>
 
-      <footer className="store-mode-foot">
-        <button
-          type="button"
-          className="store-mode-done"
-          disabled={sendCount === 0 || busy}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              // Cancelling the Inventory confirmation keeps you in Store mode.
-              if (await onDone()) onClose();
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          {t("storeMode.done", { count: sendCount })}
-        </button>
-      </footer>
+      {celebrate && <StoreConfetti />}
+      {sheet === "colours" && (
+        <ColoursSheet stores={stores} colors={colors} dark={dark} storeLabel={storeLabel} onColor={setColor} onReset={resetColors} onClose={() => setSheet(null)} />
+      )}
+      {sheet === "leave" && (
+        <LeaveSheet count={sendCount} busy={busy} onAdd={addChecked} onLeave={onClose} onKeep={() => setSheet(null)} />
+      )}
+      {sheet === "added" && <AddedSheet count={added} onBack={() => setSheet(null)} />}
     </div>
   );
 }
