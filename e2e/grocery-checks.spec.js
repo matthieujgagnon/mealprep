@@ -213,8 +213,12 @@ test.describe("on a phone", () => {
     await page.getByRole("button", { name: /I'm at the store/ }).click();
     const mode = page.getByRole("dialog", { name: "Store mode" });
     await modeRow(page, "Chicken").click();
-    await mode.getByRole("button", { name: "Done · add 1 to inventory" }).click();
+    await mode.getByRole("button", { name: "← List" }).click();
+    await mode.getByRole("button", { name: "Add to inventory" }).click();
     await confirmAdd(page);
+    await mode.getByRole("button", { name: "Back to the list" }).click();
+    await expect(modeRow(page, "Chicken")).toHaveCount(0);
+    await mode.getByRole("button", { name: "← List" }).click();
     await expect(mode).toHaveCount(0);
     await expect(row(page, "Chicken")).toHaveCount(0);
 
