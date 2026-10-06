@@ -1,11 +1,12 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../api.js";
-import { formatShortWeekdayMonthDay, formatWeekLabel, parseDateKey, toDateKey } from "../lib/dates.js";
+import { formatLongWeekdayMonthDay, formatShortWeekdayMonthDay, formatWeekLabel, parseDateKey, toDateKey } from "../lib/dates.js";
 import { gridRange, inWeek, monthOf, monthWeeks, shiftMonth } from "../lib/plannerCalendar.js";
 import { MEAL_TYPES } from "../lib/plannerSlots.js";
 import { dict, t } from "../i18n/index.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { Pill } from "./RisoPills.jsx";
+import { WeekendSettings } from "./PlannerExtras.jsx";
 
 // The week calendar: what the Planner's date pill opens, on a computer and on a
 // phone (design: docs/design/riso-v2-planner-header). A month drawn as weeks:
@@ -16,7 +17,10 @@ import { Pill } from "./RisoPills.jsx";
 // photos, in a card to the left. On a phone a row does not pick: tapping a day
 // shows the card under its row, with "Show this week".
 //
-// The footer has "Go to this week" and "Copy last week".
+// The footer has "Go to this week" and "Copy last week". On a phone the calendar
+// is a panel from under the week controls down to the bottom of the screen, and
+// it also holds the weekend's settings (the "Fin de semaine" section: the shared
+// WeekendSettings), since a phone has no tag on the board to open them.
 //
 //   weekStart         the Monday of the week shown ("YYYY-MM-DD")
 //   onPick(key)       a week was chosen (any day in it)
@@ -24,6 +28,7 @@ import { Pill } from "./RisoPills.jsx";
 //   onCopyLastWeek    fills the shown week's empty slots from last week; it
 //                     resolves with how many meals it copied
 //   canCopy           whether last week has anything to copy
+//   weekend, onWeekendChange   the weekend setting and how to change it (a phone)
 //   onClose           Escape or a click outside
 //
 // A day's meals as { breakfast: { title, photoUrl, isLeftover }, ... }: a note
@@ -45,8 +50,8 @@ function DayPreview({ date, meals, inline, onShowWeek }) {
   return (
     <div className={`wcal-preview ${inline ? "inline" : "beside"}`} aria-hidden={inline ? undefined : "true"}>
       <div className="wcal-preview-head">
-        <span className="wcal-preview-title">{formatShortWeekdayMonthDay(date)}</span>
-        <span className="wcal-preview-count">{count ? t("planner.previewPlanned", { count }) : t("planner.previewNothing")}</span>
+        <span className="wcal-preview-title">{inline ? formatLongWeekdayMonthDay(date) : formatShortWeekdayMonthDay(date)}</span>
+        <span className="wcal-preview-count">{count ? t(inline ? "planner.previewPlannedShort" : "planner.previewPlanned", { count }) : t("planner.previewNothing")}</span>
       </div>
       {MEAL_TYPES.map((m) => {
         const meal = meals?.[m.id];
@@ -76,8 +81,10 @@ function DayPreview({ date, meals, inline, onShowWeek }) {
   );
 }
 
-export function WeekCalendar({ weekStart, onPick, onThisWeek, onCopyLastWeek, canCopy = true, onClose }) {
+export function WeekCalendar({ weekStart, onPick, onThisWeek, onCopyLastWeek, canCopy = true, weekend, onWeekendChange, onClose }) {
   const phone = useIsPhone();
+  const caretRef = useRef(null);
+  const [panelTop, setPanelTop] = useState(null); // a phone: where the panel starts, under the controls row
   const [month, setMonth] = useState(() => monthOf(weekStart));
   const [planned, setPlanned] = useState(() => new Map()); // "YYYY-MM-DD" -> { breakfast: { title, ... }, ... }
   const [hovered, setHovered] = useState(null); // a day's key: hovered on a computer, tapped on a phone
@@ -107,6 +114,23 @@ export function WeekCalendar({ weekStart, onPick, onThisWeek, onCopyLastWeek, ca
 
   useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
+  // On a phone the panel starts just under the date pill's row and follows it
+  // when the page moves.
+  useLayoutEffect(() => {
+    if (!phone) return undefined;
+    const place = () => {
+      const pick = caretRef.current?.parentElement;
+      if (pick) setPanelTop(Math.round(pick.getBoundingClientRect().bottom + 14));
+    };
+    place();
+    window.addEventListener("scroll", place, { passive: true });
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place);
+      window.removeEventListener("resize", place);
+    };
+  }, [phone]);
+
   async function copyLastWeek() {
     const count = await onCopyLastWeek();
     if (!count) return;
@@ -121,8 +145,8 @@ export function WeekCalendar({ weekStart, onPick, onThisWeek, onCopyLastWeek, ca
   return (
     <>
       <div className="wcal-backdrop" onClick={onClose} />
-      <span className="wcal-caret" aria-hidden="true" />
-      <div className="wcal" role="dialog" aria-label={t("planner.calendarAria")}>
+      <span ref={caretRef} className="wcal-caret" aria-hidden="true" />
+      <div className="wcal" role="dialog" aria-label={t("planner.calendarAria")} style={phone && panelTop != null ? { top: panelTop } : undefined}>
         <div className="wcal-head">
           <h2 className="wcal-title">
             {dict().months.long[month.month].toLowerCase()} <span className="accent">{month.year}</span>
@@ -216,8 +240,13 @@ export function WeekCalendar({ weekStart, onPick, onThisWeek, onCopyLastWeek, ca
             {t("planner.legendToday")}
           </span>
         </div>
+        {phone && weekend && (
+          <section className="wcal-weekend" aria-label={t("planner.legendWeekend")}>
+            <WeekendSettings weekend={weekend} onChange={onWeekendChange} inCalendar />
+          </section>
+        )}
         <div className="wcal-foot">
-          <button type="button" className="wcal-btn" onClick={onThisWeek}>
+          <button type="button" className="wcal-btn go" onClick={onThisWeek}>
             {t("planner.goThisWeek")}
           </button>
           <button

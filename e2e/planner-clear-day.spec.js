@@ -114,18 +114,18 @@ test.describe("desktop", () => {
 test.describe("phone, in French", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
-  test("« Vider » sits at the bottom of the day's column, under supper; the Recipes cards stay the same height", async ({ page }) => {
+  test("« Vider » sits under the day's supper; the Recipes cards stay the same height", async ({ page }) => {
     await setup(page, "fr");
     const { week, today } = await seedPlan(page);
     await page.reload();
     await page.getByRole("button", { name: "Planificateur", exact: true }).first().click();
-    await expect(page.locator(".riso-planner-board.paged")).toBeVisible();
+    await expect(page.locator(".pmb")).toBeVisible();
 
     await expect(page.locator(".riso-planner-clear")).toHaveCount(1);
     await expect(page.locator(".riso-planner-clear")).toHaveText("Vider");
     // Under supper: lower than the supper cell of the same day.
     const clear = await page.locator(".riso-planner-clear").boundingBox();
-    const supper = await page.locator(".riso-planner-cell").nth(2 * 7 + today).boundingBox();
+    const supper = await page.locator(".pmb-cell").nth(today * 3 + 2).boundingBox();
     expect(clear.y).toBeGreaterThan(supper.y + supper.height - 1);
     expect(Math.abs(clear.x + clear.width / 2 - (supper.x + supper.width / 2))).toBeLessThan(6);
     await page.locator(".riso-planner-clear").scrollIntoViewIfNeeded();

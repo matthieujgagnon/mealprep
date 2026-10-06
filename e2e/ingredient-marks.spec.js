@@ -171,7 +171,7 @@ test("Option-drag copies a planned recipe as leftovers (Undo); a plain drag stil
   await expect.poll(async () => (await weekEntries(page)).map((e) => `${e.dayOfWeek}-${e.mealType}`)).toEqual(["4-lunch"]);
 });
 
-test("Nothing planned: the tile turns blue and says Confirm; a second click marks the slot; Escape cancels", async ({ page }) => {
+test("Nothing planned: the tile turns ink with a pink shadow and says ✓ Confirm; a second click marks the slot; Escape cancels", async ({ page }) => {
   await setup(page, [{ title: "Any Recipe" }]);
   await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
@@ -181,8 +181,9 @@ test("Nothing planned: the tile turns blue and says Confirm; a second click mark
   await expect(tile).toHaveText("Nothing planned");
 
   await tile.click();
-  await expect(tile).toHaveText("Confirm");
-  expect(await markColor(tile)).toBe(BLUE);
+  await expect(tile).toHaveText("✓ Confirm");
+  await expect(tile).toHaveCSS("background-color", "rgb(22, 24, 31)");
+  expect(await tile.evaluate((el) => getComputedStyle(el).boxShadow)).toContain("rgb(255, 72, 176)");
   await expect(card.locator(".riso-slotcard-save")).toHaveCount(0);
   expect(await weekEntries(page)).toHaveLength(0);
 
@@ -193,7 +194,7 @@ test("Nothing planned: the tile turns blue and says Confirm; a second click mark
 
   // So does clicking something else in the card.
   await tile.click();
-  await expect(tile).toHaveText("Confirm");
+  await expect(tile).toHaveText("✓ Confirm");
   await card.getByRole("button", { name: "Note", exact: true }).click();
   await expect(tile).toHaveText("Nothing planned");
 

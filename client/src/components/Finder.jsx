@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
+import { useIsPhone } from "../hooks/useIsPhone.js";
 import { Pill, TimePill } from "./RisoPills.jsx";
 import { FinderPicker } from "./FinderPicker.jsx";
 import { PROTEINS } from "../lib/proteins.js";
@@ -181,6 +182,7 @@ export function Finder({
   leftovers,
 }) {
   const sheet = layout === "sheet";
+  const phone = useIsPhone();
   const [menu, setMenu] = useState(null); // null | "meal" | "protein"
   const [includeSides, setIncludeSides] = useIncludeSides();
   const menusRef = useRef(null);
@@ -296,7 +298,7 @@ export function Finder({
   const hint = target ? t("tray.hintTarget", { slot: targetLabel }) : t("finder.hint");
 
   return (
-    <div ref={finder.rootRef} className={`fnd fnd-${layout}`}>
+    <div ref={finder.rootRef} className={`fnd fnd-${layout}${showResults ? " is-open" : ""}`}>
       {targetNotice && <div className="fnd-notice">{targetNotice}</div>}
       {!sheet && <span className="fnd-grab" aria-hidden="true" />}
       {!sheet && (
@@ -325,7 +327,7 @@ export function Finder({
           ref={finder.inputRef}
           type="text"
           value={finder.query}
-          placeholder={t("finder.placeholder")}
+          placeholder={t(phone && !sheet ? "finder.placeholderShort" : "finder.placeholder")}
           aria-label={t("finder.placeholder")}
           onChange={(e) => finder.setQuery(e.target.value)}
           onFocus={() => finder.setOpen(true)}
@@ -333,6 +335,22 @@ export function Finder({
         {finder.query && (
           <button type="button" className="fnd-clearq" aria-label={t("finder.clearSearch")} onClick={() => finder.setQuery("")}>
             ×
+          </button>
+        )}
+        {/* A phone's Browse / Close sits inside the bar (a computer has the Browse
+            button under it). With a Main meal the banner's own Cancel closes it. */}
+        {!sheet && !mainRecipe && (
+          <button
+            type="button"
+            className={`fnd-bar-toggle${showResults ? " open" : ""}`}
+            onClick={() => {
+              if (showResults) {
+                finder.setOpen(false);
+                if (finder.filtered) finder.clearFilters();
+              } else finder.setOpen(true);
+            }}
+          >
+            {showResults ? t("common.close") : t("finder.browse")}
           </button>
         )}
       </div>
@@ -362,7 +380,7 @@ export function Finder({
             finder.setPickerOpen(!finder.pickerOpen);
           }}
         >
-          + {t("finder.addIngredient")} <span aria-hidden="true">▾</span>
+          {phone && !sheet ? t("finder.cookWith") : `+ ${t("finder.addIngredient")}`} <span aria-hidden="true">▾</span>
         </button>
         {finder.pickerOpen && (
           <FinderPicker
@@ -383,7 +401,7 @@ export function Finder({
               type="button"
               className={`fnd-seg-btn${finder.avail === id ? " active" : ""}`}
               aria-pressed={finder.avail === id}
-              onClick={() => finder.setAvail(id)}
+              onClick={() => finder.setAvail(phone && !sheet && finder.avail === id && id !== "all" ? "all" : id)}
             >
               <span className={`fnd-dot ${id === "all" ? "ink" : id === "ready" ? "green" : "yellow"}`} aria-hidden="true" />
               {t(`finder.avail.${id}`)}
@@ -392,11 +410,11 @@ export function Finder({
           ))}
         </div>
         {finder.avail === "ready" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
-        <Pill size="chip" selected={finder.expiring} onClick={() => finder.setExpiring(!finder.expiring)}>
+        <Pill size="chip" className="fnd-expiring" selected={finder.expiring} onClick={() => finder.setExpiring(!finder.expiring)}>
           <span className="fnd-dot hot" aria-hidden="true" />
           {t("finder.expiring")}
         </Pill>
-        <Pill size="chip" selected={finder.quick} onClick={() => finder.setQuick(!finder.quick)}>
+        <Pill size="chip" className="fnd-quick" selected={finder.quick} onClick={() => finder.setQuick(!finder.quick)}>
           <span className="fnd-dot ring" aria-hidden="true" />
           {t("finder.quick")}
         </Pill>

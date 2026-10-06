@@ -35,7 +35,7 @@ export function presetIsOn(preset, weekend) {
 
 // A run starts the evening before when that is switched on, the run does not
 // start on Monday, and the day before is not itself a weekend day.
-function takesEve(run, days, eve) {
+export function takesEve(run, days, eve) {
   return eve && run.start > 0 && !days.includes(run.start - 1);
 }
 

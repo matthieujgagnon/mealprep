@@ -1,24 +1,14 @@
-import { Fragment, useCallback, useLayoutEffect, useRef, useState } from "react";
-import { useDndMonitor, useDraggable, useDroppable } from "@dnd-kit/core";
+import { Fragment, useLayoutEffect, useRef } from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { formatDayLabel, isCurrentWeek, isPastDay } from "../lib/dates.js";
-import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, PHONE_PAGE_STARTS, canClearDay, isCustomNote, isEmojiOnly, isNoteEntry, pageOfDay, slotKey, todayIndex } from "../lib/plannerSlots.js";
+import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, canClearDay, isCustomNote, isEmojiOnly, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
+import { formatRecipeTime, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { PlannerLegend } from "./PlannerLegend.jsx";
 import { weekendLayout } from "../lib/weekend.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { dict, t } from "../i18n/index.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
-
-// The phone board (design: docs/design/riso-v2-planner-header, "Board changes on
-// phone"): the same grid, three days in view, a sticky meal column the days
-// slide under, and a nav row above it. Sizes are px and match the CSS.
-const PHONE_LABEL = 56;
-const PHONE_GAP = 8;
-const PHONE_EDGE = 28; // how close to the edge a dragged card must be to page the board
-const clampPage = (p) => Math.min(PHONE_PAGE_STARTS.length - 1, Math.max(0, p));
-
-// "MON" / "LUN": a day's short name for the nav label.
-const shortDayName = (i) => dict().days.short[i].replace(/\.$/, "").toUpperCase();
 
 // A leftover card is "stale" once more days have passed since the earliest
 // non-leftover placement of that same recipe this week than the recipe's
@@ -53,11 +43,15 @@ function stateLabel(entry) {
   return t("planner.stateNone");
 }
 
+// The slot a card sits in: a cell of the computer's grid, or of the phone board.
 function cellOf(e) {
-  return e.currentTarget.closest(".riso-planner-cell");
+  return e.currentTarget.closest(".riso-planner-cell, .pmb-cell");
 }
 
-function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, onRemove, onCycleState }) {
+// A planned meal's card in a slot. The computer board and the phone board both
+// draw it (the phone's CSS makes it 104 x 104, hides the round ✓ and the ×, and
+// shows the cooking time).
+export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, onRemove, onCycleState }) {
   const { recipe } = entry;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
@@ -119,6 +113,7 @@ function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, onRemove,
       </button>
       <div className="riso-planner-card-body">
         <p className="riso-planner-card-name">{recipe.title}</p>
+        <span className="riso-planner-card-time">{formatRecipeTime(recipeTotalMinutes(recipe))}</span>
       </div>
     </div>
   );
@@ -127,7 +122,7 @@ function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, onRemove,
 // A slot you've written on (or marked "no meal planned"). Neither has a ×: click
 // written text to edit it in the slot's card (which has Remove note); click a
 // blank card to clear it (the toast has Undo).
-function PlannerNoteCard({ entry, mealIndex, isPast, onEdit, onRemove }) {
+export function PlannerNoteCard({ entry, mealIndex, isPast, onEdit, onRemove }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
     data: { recipe: entry.recipe, entryId: entry.id },
@@ -144,7 +139,8 @@ function PlannerNoteCard({ entry, mealIndex, isPast, onEdit, onRemove }) {
       {...attributes}
       aria-label={text ? t("planner.noteAria", { text }) : t("planner.blankAria")}
     >
-      {text && <span className={`riso-planner-note-text${isEmojiOnly(text) ? " emoji" : ""}`}>{text}</span>}
+      {text && <span className="riso-planner-note-label">{t("planner.noteTag")}</span>}
+      {text ? <span className={`riso-planner-note-text${isEmojiOnly(text) ? " emoji" : ""}`}>{text}</span> : <span className="riso-planner-note-blank">{t("planner.slotBlank")}</span>}
     </div>
   );
 }
@@ -246,14 +242,13 @@ export function PlannerBoard({
   onEmptyClick,
   onWeekendMenu,
   overlay,
-  phone = false,
 }) {
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
 
   const staleIds = computeStaleLeftoverIds(entries);
   const scrollRef = useRef(null);
-  const layout = weekendLayout(weekend, phone ? { gap: PHONE_GAP } : undefined);
+  const layout = weekendLayout(weekend);
   const currentWeek = isCurrentWeek(weekStart);
 
   // All seven days fit on a computer; in a narrow window the board scrolls
@@ -261,133 +256,21 @@ export function PlannerBoard({
   // week).
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (!el || phone) return;
+    if (!el) return;
     if (el.scrollWidth <= el.clientWidth) return;
     const today = el.querySelector(".riso-planner-day-header.is-today");
     el.scrollLeft = currentWeek && today ? Math.max(0, today.offsetLeft - (el.clientWidth - today.offsetWidth) / 2) : 0;
-  }, [weekStart, currentWeek, phone]);
-
-  // ---- Phone: three days at a time ----
-  const [page, setPage] = useState(() => pageOfDay(isCurrentWeek(weekStart) ? todayIndex() : 0));
-  const [colW, setColW] = useState(84);
-  const seen = useRef({ week: null, col: null });
-  const swipe = useRef(null);
-  const dragHappened = useRef(false);
-  const edge = useRef({ side: 0, timer: null });
-  const shiftKey = layout.shiftX.join();
-
-  // The weekend nudges the columns to the right, a little more for each day, and
-  // its dotted block reaches past the last one: that room is kept on every page.
-  const reserve = Math.max(...PHONE_PAGE_STARTS.map((start) => layout.shiftX[start + 2] - layout.shiftX[start])) + (layout.on ? 10 : 0);
-
-  // The columns are sized so exactly three days fit beside the meal labels.
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!phone || !el) return undefined;
-    const measure = () => setColW(Math.max(60, Math.floor((el.clientWidth - PHONE_LABEL - PHONE_GAP * 3 - reserve) / 3)));
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [phone, reserve]);
-
-  // The page with today opens first (the first page for another week); paging
-  // is a scroll, smooth unless the week or the width just changed.
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!phone || !el) return;
-    const weekChanged = seen.current.week !== weekStart;
-    const instant = weekChanged || seen.current.col !== colW || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    seen.current = { week: weekStart, col: colW };
-    const want = weekChanged ? pageOfDay(currentWeek ? todayIndex() : 0) : page;
-    if (want !== page) setPage(want);
-    const start = PHONE_PAGE_STARTS[want];
-    el.scrollTo({ left: start * (colW + PHONE_GAP) + layout.shiftX[start], behavior: instant ? "auto" : "smooth" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phone, weekStart, page, colW, shiftKey]);
-
-  // Dragging a card toward the left or right edge pages the board once it has
-  // rested there for a moment, so a card can be carried to any day.
-  const stopEdge = useCallback(() => {
-    clearTimeout(edge.current.timer);
-    edge.current = { side: 0, timer: null };
-  }, []);
-  useDndMonitor({
-    onDragStart() {
-      dragHappened.current = true;
-    },
-    onDragMove(event) {
-      const el = scrollRef.current;
-      const start = event.activatorEvent;
-      if (!phone || !el || start?.clientX == null) return;
-      const x = start.clientX + event.delta.x;
-      const y = start.clientY + event.delta.y;
-      const box = el.getBoundingClientRect();
-      const inRows = y > box.top - 24 && y < box.bottom + 24;
-      const side = !inRows ? 0 : x < box.left + PHONE_LABEL + PHONE_EDGE ? -1 : x > box.right - PHONE_EDGE ? 1 : 0;
-      if (side === edge.current.side) return;
-      stopEdge();
-      if (!side) return;
-      const turn = () => {
-        setPage((p) => clampPage(p + side));
-        edge.current.timer = setTimeout(turn, 800);
-      };
-      edge.current = { side, timer: setTimeout(turn, 450) };
-    },
-    onDragEnd: stopEdge,
-    onDragCancel: stopEdge,
-  });
-
-  const firstDay = PHONE_PAGE_STARTS[page];
-  const lastDay = firstDay + 2;
-  const pageLabel = `${shortDayName(firstDay)} ${formatDayLabel(weekStart, firstDay).dayNum} – ${shortDayName(lastDay)} ${formatDayLabel(weekStart, lastDay).dayNum}`;
-
-  // A swipe along the board turns the page; one that was really a drag does not.
-  const swipeHandlers = phone
-    ? {
-        onTouchStart: (e) => {
-          dragHappened.current = false;
-          swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        },
-        onTouchEnd: (e) => {
-          const from = swipe.current;
-          swipe.current = null;
-          if (!from || dragHappened.current) return;
-          const dx = e.changedTouches[0].clientX - from.x;
-          const dy = e.changedTouches[0].clientY - from.y;
-          if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) setPage((p) => clampPage(p + (dx < 0 ? 1 : -1)));
-        },
-      }
-    : {};
+  }, [weekStart, currentWeek]);
 
   return (
-    <section className={`riso-planner-board${phone ? " paged" : ""}`} ref={boardRef} style={phone ? { "--rpm-col": `${colW}px` } : undefined}>
+    <section className="riso-planner-board" ref={boardRef}>
       {!layout.on && (
         <button type="button" className="riso-planner-weekend-off" data-weekend-toggle onClick={onWeekendMenu}>
           + {t("planner.weekendTag")}
         </button>
       )}
       {overlay}
-      {phone && (
-        <div className="riso-planner-pagenav">
-          <button type="button" className="riso-planner-pagebtn" aria-label={t("planner.pagePrev")} disabled={page === 0} onClick={() => setPage((p) => clampPage(p - 1))}>
-            ‹
-          </button>
-          <span className="riso-planner-pagelabel" role="status">
-            {pageLabel}
-          </span>
-          <button
-            type="button"
-            className="riso-planner-pagebtn next"
-            aria-label={t("planner.pageNext")}
-            disabled={page === PHONE_PAGE_STARTS.length - 1}
-            onClick={() => setPage((p) => clampPage(p + 1))}
-          >
-            ›
-          </button>
-        </div>
-      )}
-      <div className="riso-planner-scroll" ref={scrollRef} style={{ paddingRight: layout.padRight, paddingBottom: layout.padBottom }} {...swipeHandlers}>
+      <div className="riso-planner-scroll" ref={scrollRef} style={{ paddingRight: layout.padRight, paddingBottom: layout.padBottom }}>
         <div className="riso-planner-grid">
           {/* Each run of weekend days is one dotted block behind the headers and
               slots it covers; the first carries the WEEKEND tag that opens the menu. */}
@@ -414,7 +297,7 @@ export function PlannerBoard({
               {plate.eve && <EveSegment plate={plate} />}
             </Fragment>
           ))}
-          <div className="riso-planner-corner" style={{ gridColumn: 1, gridRow: 1 }} {...(phone ? { "data-drop-block": "" } : {})} />
+          <div className="riso-planner-corner" style={{ gridColumn: 1, gridRow: 1 }} />
           {DAY_INDICES.map((dayIndex) => {
             const { weekday, dayNum, monthShort, isToday } = formatDayLabel(weekStart, dayIndex);
             return (
@@ -431,7 +314,7 @@ export function PlannerBoard({
 
           {MEAL_TYPES.map((meal, mealIndex) => (
             <Fragment key={meal.id}>
-              <div className="riso-planner-meal-label" style={{ gridColumn: 1, gridRow: mealIndex + 2 }} {...(phone ? { "data-drop-block": "" } : {})}>
+              <div className="riso-planner-meal-label" style={{ gridColumn: 1, gridRow: mealIndex + 2 }}>
                 <span>{meal.label}</span>
               </div>
               {DAY_INDICES.map((dayIndex) => (
@@ -456,7 +339,6 @@ export function PlannerBoard({
             </Fragment>
           ))}
 
-          {phone && <div className="riso-planner-corner" style={{ gridColumn: 1, gridRow: MEAL_TYPES.length + 2 }} data-drop-block="" />}
           {/* A small, quiet "Clear" under each day that has something planned
               (not before today): the whole day comes off, with the toast's Undo. */}
           {DAY_INDICES.map((dayIndex) => (
