@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { GroceryItem } from "./GroceryItem.jsx";
-import { AddedSheet, ColoursSheet, LeaveSheet, MovableRow, MoveSheet, StoreConfetti, StoreSticker } from "./StoreModeParts.jsx";
+import { useDndMonitor } from "@dnd-kit/core";
+import { AddedSheet, ColoursSheet, DraggableRow, DropTray, LeaveSheet, StoreConfetti, StoreDropZone, StoreSticker } from "./StoreModeParts.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
+import { capitalize } from "../lib/groceryList.js";
 import { brandOf } from "../lib/flyerIngredients.js";
 import { colorOfStore, readStoreColors, writeStoreColors } from "../lib/storeColors.js";
 import { getLang, t } from "../i18n/index.js";
@@ -13,6 +15,8 @@ import { getLang, t } from "../i18n/index.js";
 // stores off (one list), Aisle groups by section of the store, Hide done takes
 // the checked ones out of view. Leaving with items checked asks about adding them
 // to Inventory, which always goes through the Inventory confirmation (`onDone`).
+// Press and hold a row, then drag it onto another store (its section or its
+// sticker, folded or not) to file it there for good, with Undo (`onMove`, `onToast`).
 
 const THEME_KEY = "mealprep-store-mode-theme";
 const AISLE_ORDER = ["produce", "meat", "seafood", "dairy", "deli", "bakery", "frozen", "pantry", "snacks", "drinks", "household", "other"];
@@ -47,6 +51,7 @@ export function StoreMode({
   sendCount = 0,
   moveTargets = stores, // every store an item can be moved to (not only those with items today)
   onMove,
+  onToast,
 }) {
   const [theme, setTheme] = useState(readTheme);
   const [colors, setColors] = useState(readStoreColors);
@@ -54,8 +59,7 @@ export function StoreMode({
   const [aisle, setAisle] = useState(false);
   const [hideDone, setHideDone] = useState(false);
   const [collapsed, setCollapsed] = useState({});
-  const [sheet, setSheet] = useState(null); // null | "colours" | "leave" | "added" | "move"
-  const [moving, setMoving] = useState(null); // the row whose "Move to" sheet is open
+  const [sheet, setSheet] = useState(null); // null | "colours" | "leave" | "added"
   const [flash, setFlash] = useState(null); // the key of the item just moved
   const [added, setAdded] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -98,6 +102,8 @@ export function StoreMode({
           .filter((g) => g.rows.length > 0)
       : [{ id: "", rows: [...list].sort(byName) }];
 
+  // Dragging needs somewhere to drop: stores in view (not in All) and more than one store.
+  const canDrag = !!onMove && !flat && moveTargets.length > 1;
   const groups = flat
     ? shown(rows).length > 0
       ? [{ store: null, sections: sectionsOf(shown(rows)) }]
@@ -114,17 +120,41 @@ export function StoreMode({
         })
         .filter((g) => g.visible > 0);
 
-  // Filing an item under another store saves it for good (Grocery's own rule, the
-  // same as dragging it there on the Grocery page). The store opens if it was
-  // folded, and the item is scrolled to and ringed in its new place.
-  async function moveTo(store) {
-    const row = moving;
-    setSheet(null);
-    setMoving(null);
-    if (!row || !onMove) return;
-    setCollapsed((c) => ({ ...c, [store]: false }));
+  // Dropping an item on another store saves it there for good (Grocery's own rule,
+  // the same as dragging it there on the Grocery page). A folded store stays folded;
+  // otherwise the item is scrolled to and ringed in its new place. Undo puts it back.
+  const latestMove = useRef(onMove);
+  latestMove.current = onMove;
+  async function dropOn(row, store) {
+    if (!onMove || store === row.store) return;
     await onMove(row.item, store);
     setFlash(row.item.key);
+    // Undo runs later, so it asks the latest `onMove` (the one made after this move was saved).
+    onToast?.(t("storeMode.moved", { name: capitalize(row.item.name), store: storeLabel(store) }), () => latestMove.current(row.item, row.store));
+  }
+
+  // A drag never checks the row it lifted from: the click that follows a drop (it
+  // can land on the row it started in) is swallowed, and so is any click for a moment
+  // after it, since the row may have been redrawn in another store.
+  const carrying = useRef(false);
+  const calmUntil = useRef(0);
+  useDndMonitor({
+    onDragStart: (e) => {
+      if (e.active.data.current?.storeDrag) carrying.current = true;
+    },
+    onDragEnd: () => {
+      if (carrying.current) calmUntil.current = Date.now() + 200;
+      carrying.current = false;
+    },
+    onDragCancel: () => {
+      if (carrying.current) calmUntil.current = Date.now() + 200;
+      carrying.current = false;
+    },
+  });
+  function swallowClick(e) {
+    if (!carrying.current && Date.now() >= calmUntil.current) return;
+    e.preventDefault();
+    e.stopPropagation();
   }
 
   useEffect(() => {
@@ -205,7 +235,7 @@ export function StoreMode({
         </div>
       </header>
 
-      <div className="store-mode-list" ref={listRef}>
+      <div className="store-mode-list" ref={listRef} onClickCapture={swallowClick}>
         <div className="store-mode-toolbar">
           <div className="store-mode-toggles" role="group" aria-label={t("storeMode.viewAria")}>
             <button type="button" aria-pressed={flat} className={flat ? "on" : ""} onClick={() => setFlat(!flat)}>
@@ -220,11 +250,16 @@ export function StoreMode({
           </button>
         </div>
 
-        {onMove && moveTargets.length > 1 && total > 0 && <p className="store-mode-hint">{t("storeMode.moveHint")}</p>}
+        {canDrag && total > 0 && <p className="store-mode-hint">{t("storeMode.moveHint")}</p>}
         {total === 0 && <p className="store-mode-empty">{t("storeMode.empty")}</p>}
 
         {groups.map((group) => (
-          <section key={group.store ?? "all"} className="store-mode-store" data-store={group.store ?? undefined}>
+          <StoreDropZone
+            key={group.store ?? "all"}
+            store={group.store ?? ""}
+            className="store-mode-store"
+            data-store={group.store ?? undefined}
+          >
             {group.store != null && (
               <div className="store-mode-store-head">
                 <button
@@ -246,15 +281,11 @@ export function StoreMode({
               <div key={section.id || "list"} className="store-mode-group">
                 {aisle && <div className="store-mode-aisle">{aisleLabel(section.id)}</div>}
                 {section.rows.map((row) => (
-                  <MovableRow
+                  <DraggableRow
                     key={row.item.key}
                     itemKey={row.item.key}
                     flash={flash === row.item.key}
-                    onLongPress={() => {
-                      if (!onMove || moveTargets.length < 2) return;
-                      setMoving(row);
-                      setSheet("move");
-                    }}
+                    drag={canDrag ? { name: capitalize(row.item.name), from: row.store, drop: (store) => dropOn(row, store) } : null}
                   >
                     <GroceryItem
                       variant="store"
@@ -264,12 +295,20 @@ export function StoreMode({
                       brand={brandOf(row.deal || row.flyerDeal)}
                       onToggle={() => onToggle(row.item.key)}
                     />
-                  </MovableRow>
+                  </DraggableRow>
                 ))}
               </div>
             ))}
-          </section>
+          </StoreDropZone>
         ))}
+        {canDrag && (
+          <DropTray
+            stores={moveTargets.filter((store) => !groups.some((g) => g.store === store))}
+            colors={colors}
+            dark={dark}
+            storeLabel={storeLabel}
+          />
+        )}
       </div>
 
       {celebrate && <StoreConfetti />}
@@ -278,21 +317,6 @@ export function StoreMode({
       )}
       {sheet === "leave" && (
         <LeaveSheet count={sendCount} busy={busy} onAdd={addChecked} onLeave={onClose} onKeep={() => setSheet(null)} />
-      )}
-      {sheet === "move" && moving && (
-        <MoveSheet
-          name={moving.item.name}
-          current={moving.store}
-          stores={moveTargets}
-          colors={colors}
-          dark={dark}
-          storeLabel={storeLabel}
-          onPick={moveTo}
-          onClose={() => {
-            setSheet(null);
-            setMoving(null);
-          }}
-        />
       )}
       {sheet === "added" && <AddedSheet count={added} onBack={() => setSheet(null)} />}
     </div>

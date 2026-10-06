@@ -1,12 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { useLongPress } from "../hooks/useLongPress.js";
+import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import { colorOfStore, parseColor, textOn } from "../lib/storeColors.js";
 import { makeConfetti } from "../lib/storeConfetti.js";
 import { t } from "../i18n/index.js";
 
 // The small pieces of Store mode (design: docs/design/riso-v2-store-mode): the
-// store's sticker, the three sheets that rise from the bottom (leave, added,
-// store colours) and the confetti. StoreMode.jsx puts them together.
+// store's sticker, the draggable row and the places it is dropped, the three
+// sheets that rise from the bottom (leave, added, store colours) and the confetti. StoreMode.jsx puts them together.
 
 const EXAMPLE_COLOUR = "#FF48B0"; // the example in the colour box
 
@@ -44,35 +44,65 @@ function Sheet({ label, onClose, children }) {
   );
 }
 
-// A row of the list that opens its "Move to" sheet when it is pressed and held. A
-// tap still checks it (the row's own button); `flash` rings it for a moment after
-// it was moved, so it is easy to find in its new store.
-export function MovableRow({ itemKey, flash, onLongPress, children }) {
+// A row of the list that is picked up by a press and hold (the app's one drag
+// setup, in `App.jsx`) and dropped on another store. A tap still checks it (the
+// row's own button); `flash` rings it for a moment after it was moved, so it is
+// easy to find in its new store. Only the listeners go on the row, not dnd-kit's
+// button role: the row already holds a button.
+export function DraggableRow({ itemKey, flash, drag, children }) {
+  const { listeners, setNodeRef, isDragging } = useDraggable({
+    id: `store-row-${itemKey}`,
+    data: { storeDrag: drag },
+    disabled: !drag,
+  });
   return (
-    <div className={`store-mode-move${flash ? " moved" : ""}`} data-move-key={itemKey} {...useLongPress(onLongPress)}>
+    <div
+      ref={setNodeRef}
+      className={`store-mode-move${drag ? " draggable" : ""}${flash ? " moved" : ""}${isDragging ? " lifted" : ""}`}
+      data-move-key={itemKey}
+      onContextMenu={(e) => e.preventDefault()}
+      {...listeners}
+    >
       {children}
     </div>
   );
 }
 
-// Press and hold an item: which store does it belong in? It is kept there from now on.
-export function MoveSheet({ name, current, stores, colors, dark, storeLabel, onPick, onClose }) {
+// Something an item can be dropped on: a store's whole section (sticker header
+// included) or, in the tray, a store with nothing on screen. It lights up while
+// a dragged item is over it, and never for the store the item is already in.
+export function StoreDropZone({ store, className = "", children, ...rest }) {
+  const { active } = useDndContext();
+  const drag = active?.data.current?.storeDrag;
+  const here = !!drag && drag.from === store;
+  const { setNodeRef, isOver } = useDroppable({
+    id: `store-drop:${store}`,
+    data: { storeDrop: store },
+    disabled: !drag || here,
+  });
   return (
-    <Sheet label={t("storeMode.moveTitle", { name })} onClose={onClose}>
-      <h2 className="store-mode-sheet-title">{t("storeMode.moveTitle", { name })}</h2>
-      <p className="store-mode-sheet-body">{t("storeMode.moveBody")}</p>
-      <div className="store-mode-move-list">
+    <section ref={setNodeRef} className={`${className}${drag && !here ? " drop-ready" : ""}${isOver ? " drop-over" : ""}`} {...rest}>
+      {children}
+    </section>
+  );
+}
+
+// While an item is carried: a row of the stores that are not on screen (no items
+// today, or all done and hidden), so every store can be dropped on.
+export function DropTray({ stores, colors, dark, storeLabel }) {
+  const { active } = useDndContext();
+  if (!active?.data.current?.storeDrag || stores.length === 0) return null;
+  return (
+    <div className="store-mode-tray" role="group" aria-label={t("storeMode.trayAria")}>
+      <span className="store-mode-tray-label">{t("storeMode.trayLabel")}</span>
+      <div className="store-mode-tray-stores">
         {stores.map((store) => (
-          <button key={store} type="button" className="store-mode-move-option" disabled={store === current} onClick={() => onPick(store)}>
+          <StoreDropZone key={store} store={store} className="store-mode-tray-drop" data-store-drop={store}>
             <StoreSticker name={storeLabel(store)} color={colorOfStore(colors, store)} dark={dark} />
-            {store === current && <span className="store-mode-move-here">{t("storeMode.moveHere")}</span>}
-          </button>
+          </StoreDropZone>
         ))}
       </div>
-      <button type="button" className="store-mode-sheet-link" onClick={onClose}>
-        {t("common.cancel")}
-      </button>
-    </Sheet>
+    </div>
   );
 }
 

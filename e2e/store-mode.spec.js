@@ -198,52 +198,89 @@ test("leaving: with nothing checked ← List just goes back; with items checked 
   await expect.poll(async () => (await (await page.request.get("/api/pantry-inventory")).json()).map((i) => i.name.toLowerCase()).sort()).toEqual(["cilantro", "limes"]);
 });
 
-test.describe("moving an item to another store", () => {
+// Real touch input needs hasTouch (set where it is used).
+const centre = async (locator) => {
+  const box = await locator.boundingBox();
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+};
+
+// Real touch input (Chromium's own): put a finger on `from`, hold still for `holdMs`, then
+// move through `path` (points on the screen) and lift. `during` runs while the finger is
+// still down at the last point, to look at the drag in progress.
+async function drag(page, from, path, { holdMs = 350, during } = {}) {
+  const client = await page.context().newCDPSession(page);
+  const start = await centre(from);
+  await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [start] });
+  await page.waitForTimeout(holdMs);
+  for (const point of path) {
+    await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [point] });
+    await page.waitForTimeout(60);
+  }
+  await page.waitForTimeout(150);
+  if (during) await during();
+  await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(150);
+}
+const towards = (a, b, steps = 6) =>
+  Array.from({ length: steps }, (_, i) => ({ x: a.x + ((b.x - a.x) * (i + 1)) / steps, y: a.y + ((b.y - a.y) * (i + 1)) / steps }));
+
+test.describe("moving an item to another store by dragging it", () => {
   test.use({ hasTouch: true });
 
-  // A real long press (Chromium's own touch input): hold still, then lift.
-  async function hold(page, locator, ms = 700) {
-    const box = await locator.boundingBox();
-    const client = await page.context().newCDPSession(page);
-    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-    await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
-    await page.waitForTimeout(ms);
-    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  }
-
-  test("press and hold an item, pick a store, and it stays there; a tap still checks, and Cancel moves nothing", async ({ page }) => {
+  test("press and hold an item, drag it onto another store, and it stays there with Undo; a tap still checks and the lift never does", async ({ page }) => {
     await signUp(page);
     await seedList(page);
     let mode = await openStoreMode(page);
-    await expect(mode.locator(".store-mode-hint")).toHaveText("Press and hold an item to move it to another store.");
+    await expect(mode.locator(".store-mode-hint")).toHaveText("Press and hold an item, then drag it onto another store.");
     const metro = mode.locator(".store-mode-store", { hasText: "Metro" });
     const superC = mode.locator(".store-mode-store", { hasText: "Super C" });
+    const beef = metro.locator(".store-mode-row", { hasText: "Ground beef" });
 
-    // A long press opens "Move to" and does not check the row.
-    await hold(page, metro.locator(".store-mode-row", { hasText: "Ground beef" }));
-    const sheet = mode.getByRole("dialog", { name: "Move Ground beef to" });
-    await expect(sheet).toBeVisible();
+    // No pop-up menu any more, and the browser's own press-and-hold menus are off the rows.
+    await expect(mode.getByRole("dialog", { name: /Move/ })).toHaveCount(0);
+    await expect(metro.locator(".store-mode-move").first()).toHaveCSS("user-select", "none");
+    await expect(metro.locator(".store-mode-move").first()).toHaveCSS("touch-action", "pan-y");
+    expect(await beef.evaluate((el) => !el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })))).toBe(true); // the browser's menu is cancelled
+
+    // Released on the row it started in (a small drag): nothing moves and the row is not checked.
+    const here = await centre(beef);
+    await drag(page, beef, towards(here, { x: here.x + 20, y: here.y + 4 }, 3));
     await expect(mode.locator(".store-mode-row.on")).toHaveCount(0);
-    await expect(sheet.getByRole("button", { name: /Metro/ })).toBeDisabled(); // it is here already
-    await expect(sheet.getByRole("button", { name: /Super C/ })).toBeEnabled();
-    await page.screenshot({ path: test.info().outputPath("move-sheet.png") });
-
-    // Cancel: nothing moves.
-    await sheet.getByRole("button", { name: "Cancel" }).click();
-    await expect(sheet).toHaveCount(0);
     await expect(metro.locator(".store-mode-name")).toHaveText(["Cilantro", "Frozen peas", "Ground beef", "Limes", "Rice"]);
 
-    // Pick Super C: it moves, the counts follow, and it is found in its new place.
-    await hold(page, metro.locator(".store-mode-row", { hasText: "Ground beef" }));
-    await sheet.getByRole("button", { name: /Super C/ }).click();
+    // Dragged onto Super C's sticker: it lights up while the finger is over it, and the item follows.
+    const sticker = await centre(superC.locator(".store-mode-sticker"));
+    await drag(page, beef, towards(here, sticker), {
+      during: async () => {
+        await expect(superC).toHaveClass(/drop-over/);
+        await expect(metro).not.toHaveClass(/drop-over/);
+        await expect(page.locator(".store-drag-chip")).toHaveText("Ground beef");
+        await page.screenshot({ path: test.info().outputPath("dragging.png") });
+      },
+    });
     await expect(superC.locator(".store-mode-name")).toHaveText(["Chicken breasts", "Ground beef"]);
     await expect(metro.locator(".store-mode-name")).toHaveText(["Cilantro", "Frozen peas", "Limes", "Rice"]);
     await expect(metro.locator(".store-mode-badge")).toHaveText("4 LEFT");
     await expect(superC.locator(".store-mode-badge")).toHaveText("2 LEFT");
     await expect(superC.locator(".store-mode-move.moved")).toHaveCount(1);
-    await expect(mode.locator(".store-mode-num")).toHaveText("6");
+    await expect(mode.locator(".store-mode-row.on")).toHaveCount(0); // the lift did not check it
+    const toast = page.locator(".riso-toast");
+    await expect(toast).toContainText("Ground beef moved to Super C");
+    await page.screenshot({ path: test.info().outputPath("moved.png") });
 
-    // A short tap still checks a row.
+    // Undo puts it back.
+    await toast.getByRole("button", { name: "Undo" }).click();
+    await expect(metro.locator(".store-mode-name")).toHaveText(["Cilantro", "Frozen peas", "Ground beef", "Limes", "Rice"]);
+    await expect(superC.locator(".store-mode-name")).toHaveText(["Chicken breasts"]);
+
+    // Dropped on a section (not the sticker): it moves too, for good.
+    const row = await centre(metro.locator(".store-mode-row", { hasText: "Ground beef" }));
+    const body = await centre(superC.locator(".store-mode-row").first());
+    await drag(page, metro.locator(".store-mode-row", { hasText: "Ground beef" }), towards(row, body));
+    await expect(superC.locator(".store-mode-name")).toHaveText(["Chicken breasts", "Ground beef"]);
+
+    // A short tap still checks a row (a real tap comes a moment after a drop).
+    await page.waitForTimeout(400);
     await metro.locator(".store-mode-row", { hasText: "Limes" }).tap();
     await expect(metro.locator(".store-mode-row.on")).toHaveCount(1);
 
@@ -253,6 +290,105 @@ test.describe("moving an item to another store", () => {
     await page.reload();
     mode = await openStoreMode(page);
     await expect(mode.locator(".store-mode-store", { hasText: "Super C" }).locator(".store-mode-name")).toHaveText(["Chicken breasts", "Ground beef"]);
+  });
+
+  test("dropping on a folded store works and does not unfold it", async ({ page }) => {
+    await signUp(page);
+    await seedList(page);
+    const mode = await openStoreMode(page);
+    const metro = mode.locator(".store-mode-store", { hasText: "Metro" });
+    const superC = mode.locator(".store-mode-store", { hasText: "Super C" });
+    await superC.getByRole("button", { name: "Fold Super C" }).click();
+    await expect(superC.locator(".store-mode-row")).toHaveCount(0);
+
+    const beef = metro.locator(".store-mode-row", { hasText: "Ground beef" });
+    const from = await centre(beef);
+    await drag(page, beef, towards(from, await centre(superC.locator(".store-mode-sticker"))), {
+      during: async () => expect(superC).toHaveClass(/drop-over/),
+    });
+    await expect(superC.locator(".store-mode-row")).toHaveCount(0); // still folded
+    await expect(superC.locator(".store-mode-badge")).toHaveText("2 LEFT");
+    await expect(metro.locator(".store-mode-name")).toHaveText(["Cilantro", "Frozen peas", "Limes", "Rice"]);
+    await page.waitForTimeout(400); // taps right after a drag are swallowed; a real tap comes later
+    await superC.getByRole("button", { name: "Unfold Super C" }).click();
+    await expect(superC.locator(".store-mode-name")).toHaveText(["Chicken breasts", "Ground beef"]);
+  });
+
+  test("a store with nothing on screen is a drop target in the tray at the bottom while an item is carried", async ({ page }) => {
+    await signUp(page);
+    await seedList(page);
+    await page.request.post("/api/grocery-sections", { data: { name: "Costco" } });
+    await page.reload();
+    const mode = await openStoreMode(page);
+    await expect(mode.locator(".store-mode-tray")).toHaveCount(0); // only while carrying
+    const metro = mode.locator(".store-mode-store", { hasText: "Metro" });
+    const rice = metro.locator(".store-mode-row", { hasText: "Rice" });
+    const from = await centre(rice);
+    const client = await page.context().newCDPSession(page);
+    await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+    await page.waitForTimeout(350);
+    await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x, y: from.y - 30 }] });
+    const tray = mode.locator(".store-mode-tray");
+    await expect(tray).toBeVisible();
+    const costco = tray.locator(".store-mode-tray-drop", { hasText: "Costco" });
+    await expect(costco).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath("tray.png") });
+    const target = await centre(costco.locator(".store-mode-sticker"));
+    for (const point of towards({ x: from.x, y: from.y - 30 }, target, 6)) {
+      await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [point] });
+      await page.waitForTimeout(60);
+    }
+    await expect(costco).toHaveClass(/drop-over/);
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(tray).toHaveCount(0);
+    await expect(mode.locator(".store-mode-store", { hasText: "Costco" }).locator(".store-mode-name")).toHaveText(["Rice"]);
+    await expect(page.locator(".riso-toast")).toContainText("Rice moved to Costco");
+    await expect(mode.locator(".store-mode-row.on")).toHaveCount(0);
+  });
+
+  test("a swipe still scrolls the list, and holding near the bottom edge scrolls it while carrying", async ({ page }) => {
+    await signUp(page);
+    await seedList(page);
+    for (let i = 0; i < 18; i++) await page.request.post("/api/grocery-extra-items", { data: { name: `extra item ${String(i).padStart(2, "0")}`, quantity: 1 } });
+    await page.reload();
+    const mode = await openStoreMode(page);
+    const list = mode.locator(".store-mode-list");
+    const scrollTop = () => list.evaluate((el) => el.scrollTop);
+    expect(await scrollTop()).toBe(0);
+
+    // A swipe (the finger moves at once) scrolls and picks nothing up.
+    const client = await page.context().newCDPSession(page);
+    await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 195, y: 600 }] });
+    for (let i = 1; i <= 12; i++) {
+      await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 195, y: 600 - i * 25 }] });
+      await page.waitForTimeout(16);
+    }
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(scrollTop).toBeGreaterThan(100);
+    await expect(mode.locator(".store-mode-row.on")).toHaveCount(0);
+    await expect(page.locator(".store-drag-chip")).toHaveCount(0);
+
+    // Carried to the bottom edge, the list scrolls by itself.
+    await list.evaluate((el) => (el.scrollTop = 0));
+    const row = mode.locator(".store-mode-row").first();
+    const from = await centre(row);
+    const before = await scrollTop();
+    await drag(page, row, [{ x: from.x, y: 700 }, { x: from.x, y: 830 }], {
+      during: async () => {
+        await page.waitForTimeout(900);
+        expect(await scrollTop()).toBeGreaterThan(before + 50);
+      },
+    });
+    await expect(mode.locator(".store-mode-row.on")).toHaveCount(0);
+  });
+
+  test("there is no drag in All, and no hint", async ({ page }) => {
+    await signUp(page);
+    await seedList(page);
+    const mode = await openStoreMode(page);
+    await mode.getByRole("button", { name: "All", exact: true }).click();
+    await expect(mode.locator(".store-mode-hint")).toHaveCount(0);
+    await expect(mode.locator(".store-mode-move.draggable")).toHaveCount(0);
   });
 });
 
@@ -311,7 +447,7 @@ test("finishing the whole list sets off the confetti and makes the count pulse",
 });
 
 test.describe("in French", () => {
-  test.use({ locale: "fr-CA" });
+  test.use({ locale: "fr-CA", hasTouch: true });
 
   test("Store mode reads in French", async ({ page }) => {
     await page.goto("/");
@@ -347,5 +483,38 @@ test.describe("in French", () => {
     await ask.getByRole("button", { name: "Continuer les achats" }).click();
     await mode.getByRole("button", { name: "Couleurs" }).click();
     await expect(mode.getByRole("dialog", { name: "Couleurs des magasins" })).toBeVisible();
+  });
+
+  test("dragging an item to another store reads in French, with Annuler", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "S'inscrire" }).click();
+    await page.fill('input[type="email"]', `store-mode-fr-drag+${Date.now()}@example.com`);
+    await page.fill('input[type="password"]', "testpass123");
+    await page.getByRole("button", { name: "Créer un compte" }).click();
+    await expect(page.locator(".tab.active")).toHaveText("Accueil");
+    await seedList(page);
+    await page.request.post("/api/grocery-sections", { data: { name: "Costco" } });
+    await page.reload();
+    await page.getByRole("button", { name: "Épicerie", exact: true }).first().click();
+    await expect(page.locator(".riso-row").first()).toBeVisible();
+    await page.getByRole("button", { name: /Je suis à l.épicerie/ }).click();
+    const mode = page.getByRole("dialog", { name: "Mode magasin" });
+    await expect(mode.locator(".store-mode-hint")).toHaveText("Appuyez longuement sur un article, puis glissez-le vers un autre magasin.");
+    const metro = mode.locator(".store-mode-store", { hasText: "Metro" });
+    const superC = mode.locator(".store-mode-store", { hasText: "Super C" });
+    const beef = metro.locator(".store-mode-row", { hasText: "Ground beef" });
+    const from = await centre(beef);
+    await drag(page, beef, towards(from, await centre(superC.locator(".store-mode-sticker"))), {
+      during: async () => {
+        await expect(page.locator(".store-mode-tray-label")).toHaveText("Déposez ici pour le déplacer vers un autre magasin");
+        await page.screenshot({ path: test.info().outputPath("fr-dragging.png") });
+      },
+    });
+    await expect(superC.locator(".store-mode-name")).toHaveText(["Chicken breasts", "Ground beef"]);
+    const toast = page.locator(".riso-toast");
+    await expect(toast).toContainText("Ground beef déplacé vers Super C");
+    await page.screenshot({ path: test.info().outputPath("fr-moved.png") });
+    await toast.getByRole("button", { name: "Annuler" }).click();
+    await expect(metro.locator(".store-mode-name", { hasText: "Ground beef" })).toHaveCount(1);
   });
 });

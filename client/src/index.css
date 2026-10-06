@@ -18459,6 +18459,8 @@ body.no-select {
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
+  /* As wide as its message (left: 50% would otherwise squeeze it into half the screen). */
+  width: max-content;
   max-width: calc(100vw - 32px);
   box-sizing: border-box;
   padding: 10px 12px 10px 20px;
@@ -20091,6 +20093,86 @@ body.no-select {
   border-radius: 16px;
 }
 
+/* A finger that has held still carries the row; a finger that just moves still
+   scrolls the list (App.jsx keeps the list still once a drag has started). The
+   browser's own press-and-hold menus (callout, text selection) stay off. */
+.store-mode-move.draggable {
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.store-mode-move.lifted {
+  opacity: 0.35;
+}
+
+/* While a row is carried: every other store is a place to drop it, and the one under
+   the finger (its sticker and its section) lights up. */
+.store-mode-store.drop-ready,
+.store-mode-tray-drop.drop-ready {
+  border-radius: 16px;
+  outline: 2px dashed var(--sm-line);
+  outline-offset: 4px;
+  transition: outline-color 120ms, background-color 120ms;
+}
+
+.store-mode-store.drop-over,
+.store-mode-tray-drop.drop-over {
+  outline: 3px solid var(--sm-accent);
+  background: color-mix(in srgb, var(--sm-accent) 22%, transparent);
+}
+
+.store-mode-store.drop-over .store-mode-sticker,
+.store-mode-tray-drop.drop-over .store-mode-sticker {
+  transform: rotate(-2deg) scale(1.12);
+}
+
+/* The stores that are not on screen, pinned at the bottom of the list while a row is carried. */
+.store-mode-tray {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  margin: 0 -14px -18px;
+  padding: 10px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--sm-bg);
+  border-top: 2px solid var(--sm-line);
+}
+
+.store-mode-tray-label {
+  color: var(--sm-muted);
+  font: 500 11px/1.4 var(--riso-font-mono);
+  letter-spacing: 0.04em;
+}
+
+.store-mode-tray-stores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.store-mode-tray-drop {
+  padding: 6px 8px;
+}
+
+.store-drag-chip {
+  width: max-content;
+  max-width: 260px;
+  margin: 0 auto;
+  font-family: var(--riso-font-display, var(--font-mono));
+  font-size: 15px;
+  font-weight: 800;
+  color: #f4f1ea;
+  background: #111115;
+  border: 2px solid #2323ff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
 .store-mode-move.moved .store-mode-row {
   animation: sm-moved 1.8s ease-out;
 }
@@ -20111,38 +20193,4 @@ body.no-select {
   color: var(--sm-muted);
   font: 500 11px/1.4 var(--riso-font-mono);
   letter-spacing: 0.04em;
-}
-
-.store-mode-move-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.store-mode-move-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 56px;
-  padding: 6px 16px;
-  border: 2px solid var(--sm-text);
-  border-radius: 18px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.store-mode-move-option:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.store-mode-move-here {
-  flex: none;
-  color: var(--sm-muted);
-  font: 500 11px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
