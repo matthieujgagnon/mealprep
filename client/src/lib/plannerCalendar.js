@@ -1,8 +1,8 @@
 import { addDays, mondayOf, parseDateKey, toDateKey } from "./dates.js";
 
-// The month calendar on the phone Planner (design handoff:
-// docs/design/planner-mobile-and-recipes/README.md). Dates are plain
-// "YYYY-MM-DD" keys, like everywhere in the planner.
+// The week calendar's month (design handoff:
+// docs/design/riso-v2-planner-header/README.md). Dates are plain "YYYY-MM-DD"
+// keys, like everywhere in the planner.
 
 // { year, month } (month 0-11) of a date key.
 export function monthOf(key) {
@@ -21,6 +21,12 @@ export function shiftMonth({ year, month }, delta) {
 export function monthGrid({ year, month }) {
   const start = toDateKey(mondayOf(new Date(year, month, 1)));
   return Array.from({ length: 6 }, (_, row) => Array.from({ length: 7 }, (_, col) => addDays(start, row * 7 + col)));
+}
+
+// The weeks the calendar draws: monthGrid, without a last row that holds only
+// days of the next month (so 5 or 6 rows).
+export function monthWeeks(monthValue) {
+  return monthGrid(monthValue).filter((row, i) => i < 5 || parseDateKey(row[0]).getMonth() === monthValue.month);
 }
 
 // The first and last key the grid shows (what to ask the server for).

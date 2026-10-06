@@ -102,38 +102,52 @@ test("an empty cell: the sheet offers recipes or a note instead", async ({ page 
   await expect(page.locator(".rpm-cell.note .rpm-note-text")).toHaveText("Eating out");
 });
 
-test("the week pill opens a month calendar with a meal bar on planned days, and goes back to this week", async ({ page }) => {
+test("the date pill opens the week calendar: three dashes a day, a tapped day shows its meals under its row, and Show this week opens it", async ({ page }) => {
   const recipe = await setup(page);
   await plan(page, recipe, mondayOf(new Date()), todayIndex(), "dinner");
   await openPlanner(page);
 
-  await expect(page.locator(".rpm-weekpill")).toContainText("this week");
-  await page.locator(".rpm-weekpill").click();
+  // The title is above the controls, and the sticker says this is the current week.
+  const header = page.locator(".phd");
+  await expect(header.locator(".riso-planner-title")).toHaveText("This week's menu.");
+  await expect(header.getByText("this week", { exact: true })).toBeVisible();
+  await header.locator(".phd-date").click();
   const calendar = page.getByRole("dialog", { name: "Choose a week" });
   await expect(calendar).toBeVisible();
-  await expect(calendar.locator(".rpm-cal-day.today")).toHaveCount(1);
-  await expect(calendar.locator(".rpm-cal-day.week")).not.toHaveCount(0);
-  // Three bars a day, one for each meal; the planned supper is the only one filled.
-  await expect(calendar.locator(".rpm-cal-bars span.on")).toHaveCount(1);
-  await expect(calendar.locator(".rpm-cal-day.today .rpm-cal-bars span")).toHaveCount(3);
+  await expect(calendar.locator(".wcal-day.today")).toHaveCount(1);
+  await expect(calendar.locator(".wcal-week.selected")).toHaveCount(1);
+  // Three dashes a day, one for each meal; the planned supper is the only one filled.
+  await expect(calendar.locator(".wcal-dashes i.on")).toHaveCount(1);
+  await expect(calendar.locator(".wcal-day.today .wcal-dashes i")).toHaveCount(3);
+
+  // Tapping a day shows its meals inline under its week's row; a row does not pick the week.
+  await calendar.locator(".wcal-day.today").click();
+  const preview = calendar.locator(".wcal-preview.inline");
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText("1 planned");
+  await expect(preview).toContainText(recipe.title);
+  await expect(calendar).toBeVisible();
 
   // Escape closes it.
   await page.keyboard.press("Escape");
   await expect(calendar).toHaveCount(0);
 
+  // Another week: the title does not change, the sticker goes back to this week.
   await page.getByRole("button", { name: "Next week" }).click();
-  await expect(page.locator(".rpm-weekpill")).not.toContainText("this week");
-  await page.locator(".rpm-weekpill").click();
-  await page.getByRole("button", { name: "Go to this week" }).click();
+  await expect(header.locator(".riso-planner-title")).toHaveText("This week's menu.");
+  await expect(header.getByText("this week", { exact: true })).toHaveCount(0);
+  await header.locator(".phd-date").click();
+  await calendar.getByRole("button", { name: "Go to this week" }).click();
   await expect(calendar).toHaveCount(0);
-  await expect(page.locator(".rpm-weekpill")).toContainText("this week");
+  await expect(header.getByText("this week", { exact: true })).toBeVisible();
 
-  // Tapping a day in the calendar opens that day's week.
-  await page.locator(".rpm-weekpill").click();
-  await page.getByRole("button", { name: "Next month" }).click();
-  await page.locator(".rpm-cal-day:not(.out)").nth(14).click();
+  // Tap a day in the next month, then Show this week: that week opens.
+  await header.locator(".phd-date").click();
+  await calendar.getByRole("button", { name: "Next month" }).click();
+  await calendar.locator(".wcal-day:not(.out)").nth(14).click();
+  await calendar.getByRole("button", { name: "Show this week" }).click();
   await expect(calendar).toHaveCount(0);
-  await expect(page.locator(".rpm-weekpill")).not.toContainText("this week");
+  await expect(page.getByRole("button", { name: "↩ this week" })).toBeVisible();
 });
 
 test("the bottom button shows what's left to buy and opens Grocery", async ({ page }) => {

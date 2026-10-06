@@ -1,17 +1,11 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { BottomSheet } from "./RisoControls.jsx";
 import { NoteTextarea, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
-import { WeekCalendar } from "./WeekCalendar.jsx";
+import { PlannerHeader } from "./PlannerHeader.jsx";
+import { PlannerLegend } from "./PlannerLegend.jsx";
 import { useGroceryToBuyCount } from "../hooks/useGroceryToBuyCount.js";
-import {
-  formatDayLabel,
-  formatWeekRangeLabel,
-  isCurrentWeek,
-  isPastDay,
-  shiftWeek,
-  toDateKey,
-} from "../lib/dates.js";
-import { centerScroll, weekOf } from "../lib/plannerCalendar.js";
+import { formatDayLabel, isCurrentWeek, isPastDay } from "../lib/dates.js";
+import { centerScroll } from "../lib/plannerCalendar.js";
 import { MEAL_TYPES, canClearDay, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, slotLabel, todayIndex, weekendRuns } from "../lib/plannerSlots.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { dict, t } from "../i18n/index.js";
@@ -109,6 +103,8 @@ export function PlannerMobile({
   weekStart,
   onChangeWeek,
   weekend,
+  lastWeekCount,
+  onCopyLastWeek,
   target,
   onSelectSlot,
   onOpenRecipe,
@@ -130,7 +126,6 @@ export function PlannerMobile({
   onOpenGrocery,
 }) {
   const currentWeek = isCurrentWeek(weekStart);
-  const [calendarOpen, setCalendarOpen] = useState(false);
   const boardRef = useRef(null);
   const buyCount = useGroceryToBuyCount({ customStaples, excludedStaples, refreshKey: entries });
 
@@ -152,48 +147,9 @@ export function PlannerMobile({
   const sheetState = targetRecipeEntry ? (targetRecipeEntry.alreadyHave ? "have" : targetRecipeEntry.isLeftover ? "leftover" : "none") : null;
   const nextMark = { none: "sheetMarkLeftover", leftover: "sheetMarkHave", have: "sheetClear" };
 
-  function goToWeek(key) {
-    setCalendarOpen(false);
-    onChangeWeek(weekOf(key));
-  }
-
   return (
     <div className="rpm">
-      <div className="rpm-top">
-        <span className="rpm-range">{formatWeekRangeLabel(weekStart, { year: false })}</span>
-        <h1 className="riso-planner-title">
-          {t("planner.title")} <span className="accent">{t("planner.titleAccent")}</span>
-        </h1>
-      </div>
-
-      <div className="rpm-weekrow-wrap">
-        {calendarOpen && <div className="rpm-backdrop" onClick={() => setCalendarOpen(false)} />}
-        <div className="rpm-weekrow">
-          <button type="button" className="rpm-round" onClick={() => onChangeWeek(shiftWeek(weekStart, -1))} aria-label={t("planner.prevWeek")}>
-            ‹
-          </button>
-          <button
-            type="button"
-            className={`rpm-weekpill${calendarOpen ? " open" : ""}`}
-            aria-expanded={calendarOpen}
-            onClick={() => setCalendarOpen((open) => !open)}
-          >
-            {currentWeek ? t("planner.thisWeek").toLowerCase() : formatWeekRangeLabel(weekStart, { year: false }).toLowerCase()}{" "}
-            <span aria-hidden="true">{calendarOpen ? "▴" : "▾"}</span>
-          </button>
-          <button type="button" className="rpm-round" onClick={() => onChangeWeek(shiftWeek(weekStart, 1))} aria-label={t("planner.nextWeek")}>
-            ›
-          </button>
-        </div>
-        {calendarOpen && (
-          <WeekCalendar
-            weekStart={weekStart}
-            onPick={goToWeek}
-            onThisWeek={() => goToWeek(toDateKey(new Date()))}
-            onClose={() => setCalendarOpen(false)}
-          />
-        )}
-      </div>
+      <PlannerHeader weekStart={weekStart} onChangeWeek={onChangeWeek} lastWeekCount={lastWeekCount} onCopyLastWeek={onCopyLastWeek} />
 
       <div className="rpm-boardwrap">
         <div className="rpm-board" ref={boardRef} role="group" aria-label={t("planner.boardAria")}>
@@ -264,6 +220,8 @@ export function PlannerMobile({
         </div>
         <span className="rpm-fade" aria-hidden="true" />
       </div>
+
+      <PlannerLegend weekendOn={weekendRuns(weekend.on ? weekend.days : []).length > 0} />
 
       <div className="rpm-bottombar">
         {leftoverMode ? (

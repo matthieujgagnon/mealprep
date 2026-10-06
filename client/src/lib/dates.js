@@ -89,6 +89,16 @@ export function formatWeekdayMonthDay(date) {
   });
 }
 
+// "Tue, Oct 6" / "mar. 6 oct."
+export function formatShortWeekdayMonthDay(date) {
+  const d = dict();
+  return t("dates.weekdayMonthDay", {
+    weekday: d.days.short[(date.getDay() + 6) % 7],
+    month: d.months.short[date.getMonth()],
+    day: date.getDate(),
+  });
+}
+
 // "Aug 31" / "31 août"
 export function formatMonthDayKey(key) {
   const date = parseDateKey(key);

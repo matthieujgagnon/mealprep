@@ -1,11 +1,9 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useLayoutEffect, useRef } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { currentWeekStart, formatDayLabel, formatWeekLabel, isCurrentWeek, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
+import { formatDayLabel, isCurrentWeek, isPastDay } from "../lib/dates.js";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, canClearDay, isCustomNote, isEmojiOnly, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
-import { WeekCalendar } from "./WeekCalendar.jsx";
-import { Pill } from "./RisoPills.jsx";
-import { weekOf } from "../lib/plannerCalendar.js";
-import { weekendLayout, weekendSummary } from "../lib/weekend.js";
+import { PlannerLegend } from "./PlannerLegend.jsx";
+import { weekendLayout } from "../lib/weekend.js";
 import { hideBrokenPhoto } from "../lib/photos.js";
 import { dict, t } from "../i18n/index.js";
 
@@ -36,102 +34,6 @@ export function computeStaleLeftoverIds(entries) {
   }
 
   return stale;
-}
-
-// The header: the week picker at the left (the arrows, the week pill that opens
-// the week calendar, "this week" when another week is shown, and "Copy last
-// week"), then the title. The pill and the calendar say the week with
-// formatWeekLabel, so the dates read the same everywhere.
-//
-//   lastWeekCount   how many meals last week has; "Copy last week" is off at 0
-//   onCopyLastWeek  fills this week's empty slots from last week (never replaces)
-export function PlannerHeader({ weekStart, onChangeWeek, lastWeekCount, onCopyLastWeek }) {
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const wrapRef = useRef(null);
-  const currentWeek = isCurrentWeek(weekStart);
-  const canCopy = lastWeekCount > 0;
-
-  useEffect(() => {
-    if (!calendarOpen) return undefined;
-    const onDown = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setCalendarOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [calendarOpen]);
-
-  function goToWeek(key) {
-    setCalendarOpen(false);
-    onChangeWeek(weekOf(key));
-  }
-
-  return (
-    <div className="riso-planner-header">
-      <div className="riso-planner-header-actions">
-        <div className="riso-planner-weekpicker" ref={wrapRef}>
-          <div className="riso-planner-nav-row">
-            <button
-              type="button"
-              className="riso-planner-nav-arrow"
-              onClick={() => onChangeWeek(shiftWeek(weekStart, -1))}
-              aria-label={t("planner.prevWeek")}
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              className={`riso-planner-weekpill${calendarOpen ? " open" : ""}`}
-              aria-expanded={calendarOpen}
-              aria-haspopup="dialog"
-              onClick={() => setCalendarOpen((open) => !open)}
-            >
-              {formatWeekLabel(weekStart)} <span aria-hidden="true">{calendarOpen ? "▴" : "▾"}</span>
-            </button>
-            <button
-              type="button"
-              className="riso-planner-nav-arrow"
-              onClick={() => onChangeWeek(shiftWeek(weekStart, 1))}
-              aria-label={t("planner.nextWeek")}
-            >
-              ›
-            </button>
-            {currentWeek ? (
-              <Pill size="tag" tone="yellow" sticker>
-                {t("planner.thisWeekBadge")}
-              </Pill>
-            ) : (
-              <Pill size="chip" onClick={() => onChangeWeek(currentWeekStart())}>
-                {t("planner.thisWeek")}
-              </Pill>
-            )}
-            <Pill
-              size="chip"
-              className="riso-planner-copy"
-              disabled={!canCopy}
-              title={canCopy ? t("planner.copyLastWeekHint") : t("planner.copyLastWeekNone")}
-              onClick={onCopyLastWeek}
-            >
-              {t("planner.copyLastWeek")}
-            </Pill>
-            {!canCopy && <span className="riso-planner-copy-note">{t("planner.copyLastWeekNone")}</span>}
-          </div>
-          {calendarOpen && (
-            <div className="riso-planner-calpop">
-              <WeekCalendar
-                weekStart={weekStart}
-                onPick={goToWeek}
-                onThisWeek={() => goToWeek(toDateKey(new Date()))}
-                onClose={() => setCalendarOpen(false)}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-      <h1 className="riso-planner-title">
-        {t("planner.title")} <span className="accent">{t("planner.titleAccent")}</span>
-      </h1>
-    </div>
-  );
 }
 
 function stateLabel(entry) {
@@ -366,7 +268,6 @@ export function PlannerBoard({
   onEmptyClick,
   onWeekendMenu,
   overlay,
-  legendExtra,
 }) {
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
@@ -375,7 +276,6 @@ export function PlannerBoard({
   const scrollRef = useRef(null);
   const layout = weekendLayout(weekend);
   const currentWeek = isCurrentWeek(weekStart);
-  const summary = weekendSummary(weekend);
 
   // All seven days fit on a computer; in a narrow window the board scrolls
   // sideways and opens with today in the middle (the first day for any other
@@ -488,27 +388,7 @@ export function PlannerBoard({
         </div>
       </div>
 
-      <div className="riso-planner-legend">
-        {layout.on && (
-          <span className="riso-planner-legend-item">
-            <i className="riso-planner-legend-swatch weekend" aria-hidden="true" />
-            {t("planner.legendWeekend", { summary })}
-          </span>
-        )}
-        <span className="riso-planner-legend-item">
-          <i className="riso-planner-legend-swatch today" aria-hidden="true" />
-          {t("planner.legendTodayName")}
-        </span>
-        <span className="riso-planner-legend-item">
-          <i className="riso-planner-legend-swatch have" aria-hidden="true" />
-          {t("planner.legendHave")}
-        </span>
-        <span className="riso-planner-legend-item">
-          <i className="riso-planner-legend-swatch leftover" aria-hidden="true" />
-          {t("planner.legendLeftover")}
-        </span>
-        {legendExtra}
-      </div>
+      <PlannerLegend weekendOn={layout.on} />
     </section>
   );
 }

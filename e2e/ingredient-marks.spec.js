@@ -124,8 +124,8 @@ test("Planner: already have is a blue border only, leftovers a yellow border onl
   expect(a.border).not.toBe(BLUE);
   expect(a.border).not.toBe(YELLOW);
   expect(a.shadow).toBe("none");
-  await expect(page.locator(".riso-planner-legend")).toContainText("Already have everything");
-  await expect(page.locator(".riso-planner-legend")).toContainText("Leftovers");
+  await expect(page.locator(".plg")).toContainText("Ingredients on hand, nothing to buy");
+  await expect(page.locator(".plg")).toContainText("Leftovers, nothing to buy");
 });
 
 async function drag(page, from, to, { alt }) {

@@ -319,8 +319,8 @@ test("there is no Fill button, no scroll-for-the-weekend button and no banner; t
   await expect(page.getByText(/meals planned/i)).toHaveCount(0);
   // All seven days are on the board, and the legend says what the colours mean.
   await expect(page.locator(".riso-planner-day-header")).toHaveCount(7);
-  await expect(page.locator(".riso-planner-legend")).toContainText("Weekend: Fri eve + Sat–Sun");
-  await expect(page.locator(".riso-planner-legend")).toContainText("Today");
+  await expect(page.locator(".plg")).toContainText("Weekend");
+  await expect(page.locator(".plg")).toContainText("Today");
 
   // The how-it-works card is back, with five lines, and "Got it" hides it for good.
   const hint = page.locator(".riso-hint-strip");
@@ -568,21 +568,21 @@ test("the weekend menu: days in any order, the evening before, presets, off; all
   // Friday supper through Sunday by default: one block, plus the Friday supper segment.
   await expect(page.locator(".riso-planner-weekend")).toHaveCount(1);
   await expect(page.locator(".riso-planner-weekend-eve")).toHaveCount(1);
-  await expect(page.locator(".riso-planner-legend")).toContainText("Weekend: Fri eve + Sat–Sun");
+  await expect(page.locator(".plg")).toContainText("Weekend");
 
   await page.locator(".riso-planner-weekend-tag").click();
   const menu = page.getByRole("dialog", { name: "WEEKEND" });
   await expect(menu).toBeVisible();
-  // The evening before off: no segment, and the legend loses "Fri eve".
+  // The evening before off: no segment.
   await menu.getByRole("switch", { name: "Include the evening before" }).click();
   await expect(page.locator(".riso-planner-weekend-eve")).toHaveCount(0);
-  await expect(page.locator(".riso-planner-legend")).toContainText("Weekend: Sat–Sun");
+  await expect(page.locator(".plg")).toContainText("Weekend");
 
   // Any days, in any order: Wednesday and Sunday make two blocks.
   await menu.getByRole("button", { name: "Sat", exact: true }).click();
   await menu.getByRole("button", { name: "Wed", exact: true }).click();
   await expect(page.locator(".riso-planner-weekend")).toHaveCount(2);
-  await expect(page.locator(".riso-planner-legend")).toContainText("Weekend: Wed, Sun");
+  await expect(page.locator(".plg")).toContainText("Weekend");
 
   // A preset sets days and the evening together.
   await menu.getByRole("button", { name: "Sun – Mon" }).click();
@@ -597,7 +597,7 @@ test("the weekend menu: days in any order, the evening before, presets, off; all
   await expect.poll(async () => (await (await page.request.get("/api/auth/me")).json()).weekendEve).toBe(false);
   await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
-  await expect(page.locator(".riso-planner-legend")).toContainText("Weekend: Sat–Sun");
+  await expect(page.locator(".plg")).toContainText("Weekend");
   const other = await playwright.request.newContext({ baseURL: "http://localhost:4000" });
   await other.post("/api/auth/login", { data: { email: recipes.email, password: "testpass123" } });
   const me = await (await other.get("/api/auth/me")).json();
@@ -605,12 +605,12 @@ test("the weekend menu: days in any order, the evening before, presets, off; all
   expect((await other.patch("/api/auth/me", { data: { weekendDays: [9] } })).status()).toBe(400);
   expect((await other.patch("/api/auth/me", { data: { weekendOn: "yes" } })).status()).toBe(400);
 
-  // Off: no blocks and no legend line; a dashed "+ WEEKEND" pill brings the menu back.
+  // Off: no blocks and no legend line for the weekend; a dashed "+ WEEKEND" pill brings the menu back.
   await page.locator(".riso-planner-weekend-tag").click();
   await page.getByRole("dialog", { name: "WEEKEND" }).getByRole("switch", { name: "Show the weekend" }).click();
   await expect(page.locator(".riso-planner-weekend")).toHaveCount(0);
   await expect(page.locator(".riso-planner-weekend-off")).toHaveText("+ WEEKEND");
-  await expect(page.locator(".riso-planner-legend")).not.toContainText("Weekend:");
+  await expect(page.locator(".plg")).not.toContainText("Weekend");
   expect((await (await other.get("/api/auth/me")).json()).weekendOn).toBe(false);
   await page.keyboard.press("Escape");
   await page.locator(".riso-planner-weekend-off").click();
@@ -693,39 +693,54 @@ test("on a phone, a meal card with an emoji is the same size as a recipe card wi
   await page.screenshot({ path: test.info().outputPath("planner-phone-emoji-card.png") });
 });
 
-test("the week picker is at the left; Copy last week fills only empty slots, with Undo; there is no grocery button", async ({ page }) => {
+test("the title is at the left and the week controls at the right; Copy last week is in the calendar and fills only empty slots, with Undo", async ({ page }) => {
   const [recipe, other] = await setup(page, [{ title: "Copy Me", ingredients: [{ name: "zucchini" }] }, { title: "Already There" }]);
   const lastWeek = mondayOf(new Date(Date.now() - 7 * 86400000));
   const thisWeek = mondayOf(new Date());
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 0, mealType: "dinner" } });
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 1, mealType: "dinner" } });
-  // This week already has something in Tuesday's supper: it must not be replaced.
-  await page.request.post("/api/planner", { data: { recipeId: other.id, weekStart: thisWeek, dayOfWeek: 1, mealType: "dinner" } });
+  // This week already has something in Tuesday's supper (a leftover): it must not be replaced.
+  await page.request.post("/api/planner", { data: { recipeId: other.id, weekStart: thisWeek, dayOfWeek: 1, mealType: "dinner", isLeftover: true } });
   await openPlanner(page);
 
-  // The picker sits at the left of the header, before the title, with the dates on the pill.
-  const header = page.locator(".riso-planner-header");
-  const pill = header.locator(".riso-planner-weekpill");
+  // The title is the same on every week and sits at the left; the date pill and the sticker are at the right.
+  const header = page.locator(".phd");
+  const title = header.locator(".riso-planner-title");
+  await expect(title).toHaveText("This week's menu.");
+  const pill = header.locator(".phd-date");
   const pillBox = await pill.boundingBox();
-  const titleBox = await header.locator(".riso-planner-title").boundingBox();
-  expect(pillBox.x).toBeLessThan(titleBox.x);
+  const titleBox = await title.boundingBox();
+  expect(pillBox.x).toBeGreaterThan(titleBox.x + titleBox.width);
   await expect(pill).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – (?:[A-Z][a-z]{2} )?\d{1,2}/);
+  await expect(header.getByText("this week", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy last week" })).toHaveCount(0); // it lives in the calendar
 
-  // The pill opens the week calendar: three meal bars a day, today pink, and a tooltip with the meals.
+  // The pill opens the week calendar: three dashes a day, today pink, the shown week yellow.
   await pill.click();
   const calendar = page.getByRole("dialog", { name: "Choose a week" });
   await expect(calendar).toBeVisible();
-  await expect(calendar.locator(".rpm-cal-day.today")).toHaveCount(1);
-  await expect(calendar.locator(".rpm-cal-day.today .rpm-cal-bars span")).toHaveCount(3);
-  await calendar.locator(".rpm-cal-day", { has: page.locator(".rpm-cal-tip") }).first().hover();
-  await expect(calendar.locator(".rpm-cal-tip").first()).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(calendar).toHaveCount(0);
+  await expect(pill).toHaveClass(/open/);
+  await expect(calendar.locator(".wcal-day.today")).toHaveCount(1);
+  await expect(calendar.locator(".wcal-day.today .wcal-dashes i")).toHaveCount(3);
+  await expect(calendar.locator(".wcal-week.selected")).toHaveCount(1);
+  // Hovering a planned day shows its meals in a card to the left, with the leftover tag.
+  await calendar.locator(".wcal-week.selected .wcal-day").nth(1).hover();
+  const preview = calendar.locator(".wcal-preview.beside");
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText("1 planned");
+  await expect(preview).toContainText("Already There");
+  await expect(preview.locator(".riso-pill")).toHaveText("leftover");
+  const calBox = await calendar.boundingBox();
+  const previewBox = await preview.boundingBox();
+  expect(previewBox.x + previewBox.width).toBeLessThan(calBox.x);
 
-  // Copy last week is always there; it fills the empty slot only, and says how many.
-  await page.getByRole("button", { name: "Copy last week" }).click();
+  // Copy last week, from the calendar's footer: it fills the empty slot only, and says how many.
+  const dashesBefore = await calendar.locator(".wcal-dashes i.on").count();
+  await calendar.getByRole("button", { name: "Copy last week" }).click();
   const toast = page.getByRole("status").filter({ hasText: "Copied 1 meal from last week" });
   await expect(toast).toBeVisible();
+  await expect(calendar.getByRole("button", { name: "Copied" })).toBeVisible();
+  await expect(calendar.locator(".wcal-dashes i.on")).toHaveCount(dashesBefore + 1); // the dashes follow the copy
   await expect(cell(page, 0, "dinner").locator(".riso-planner-card-name")).toHaveText("Copy Me");
   await expect(cell(page, 1, "dinner").locator(".riso-planner-card-name")).toHaveText("Already There");
   expect(await weekEntries(page)).toHaveLength(2);
@@ -733,12 +748,25 @@ test("the week picker is at the left; Copy last week fills only empty slots, wit
   await expect.poll(async () => (await weekEntries(page)).length).toBe(1);
   await expect(cell(page, 1, "dinner").locator(".riso-planner-card-name")).toHaveText("Already There");
 
-  // With nothing to copy from, it is off and says why.
+  // Escape closes it.
+  await page.keyboard.press("Escape");
+  await expect(calendar).toHaveCount(0);
+
+  // Picking a week row opens that week; the sticker then says "↩ this week" and goes back.
+  await pill.click();
+  await calendar.locator(".wcal-week.selected + .wcal-week").click(); // the week after the shown one
+  await expect(calendar).toHaveCount(0);
+  await expect(title).toHaveText("This week's menu.");
+  await expect(header.getByText("this week", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "↩ this week" }).click();
+  await expect(header.getByText("this week", { exact: true })).toBeVisible();
+
+  // With nothing to copy from, Copy last week is off in the calendar.
   await page.getByRole("button", { name: "Previous week" }).click();
   await page.getByRole("button", { name: "Previous week" }).click();
-  const copy = page.getByRole("button", { name: "Copy last week" });
-  await expect(copy).toBeDisabled();
-  await expect(page.locator(".riso-planner-copy-note")).toHaveText("Last week is empty");
+  await pill.click();
+  await expect(calendar.getByRole("button", { name: "Copy last week" })).toBeDisabled();
+  await page.keyboard.press("Escape");
 
   // The desktop board has no "Make the grocery list" button.
   await expect(page.getByRole("button", { name: /^Make the grocery list/ })).toHaveCount(0);
