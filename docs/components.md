@@ -10,11 +10,14 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Ingredient marks | `IngredientMarks` in `components/RecipePopout.jsx`, `grocery.toggle` in `App.jsx` | The round ✓ on an ingredient: blue = in Inventory, green = on the grocery list. |
 | Slot picker | `components/SlotPicker.jsx` | The mini week where you choose a day and meal. |
 | Toast | `components/Toast.jsx` | The one message with Undo. |
-| Planner header | `components/PlannerHeader.jsx` | The title, the week controls (‹, date pill, ›, "this week" sticker) and the calendar they open. |
-| Week calendar | `components/WeekCalendar.jsx` | The month calendar the date pill opens, with the day preview and "Copy last week". |
-| Planner legend | `components/PlannerLegend.jsx` | The legend under the Planner board. |
-| Planner board | `components/PlannerBoard.jsx` | The week board, on a computer (seven days) and on a phone (`phone`: three days at a time). |
-| Slot card and planned-meal card | `components/PlannerCards.jsx` | The cards that open from a Planner slot: beside it on a computer, a sheet from the bottom on a phone (`sheet`). |
+| Planner header | `components/PlannerHeader.jsx` | The title on its own line, the week controls (‹, date pill, ›; the "this week" sticker on a computer, the page stickers on a phone) and the calendar they open. |
+| Week calendar | `components/WeekCalendar.jsx` | The month calendar the date pill opens, with the day preview and "Copy last week"; on a phone a panel that also holds the weekend's settings. |
+| Weekend settings | `WeekendSettings` in `components/PlannerExtras.jsx` | The weekend's switch, days, evening before and presets: in the computer's menu under the tag, and in the phone calendar's "Fin de semaine" section. |
+| Planner legend | `components/PlannerLegend.jsx` | The legend under the Planner board on a computer. |
+| Planner board | `components/PlannerBoard.jsx` | The week board on a computer (seven days). Its card pieces (`PlannerMealCard`, `PlannerNoteCard`) are the phone board's too. |
+| Phone Planner board | `components/PlannerBoardPhone.jsx`, `lib/plannerPhone.js` | The week board on a phone: three days at a time on a track that slides under the pinned meal names, with the weekend band and the inline card. |
+| Slot card and planned-meal card | `components/PlannerCards.jsx` | The cards that open from a Planner slot: beside it on a computer, under its row on a phone (`inline`). |
+| Trash strip | `components/TrashZone.jsx` | The strip at the bottom of a phone while a Planner card is held: drop on it to remove, with Undo. |
 | Recipe photo | `components/RecipePhoto.jsx` | Every recipe photo: one that fails to load disappears, and tries again for another address. |
 | Makeable now rule | `lib/mealSlots.js`, `hooks/useIncludeSides.js`, `IncludeSidesToggle` | What counts as "makeable". |
 | `openRecipeCard` | `App.jsx` | Opens a recipe's card on the Recipes page. |
@@ -64,42 +67,62 @@ Used by: the pop-out's Plan (Planner, Recipes, Home) and the Planner finder's + 
 
 It sits above every pop-out, picker and question (z-index 500), so Undo can be pressed while one is open.
 
-Used by: Planner (add, replace, remove, copy, leftovers, Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), and the grocery ✓ in Ingredient marks (taken off the list).
+Used by: Planner (add, replace, remove, copy, leftovers, a card dropped on the phone's trash strip, a phone status tap ("marked as leftovers", with Undo putting the old mark back), Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), and the grocery ✓ in Ingredient marks (taken off the list).
 
 ## Planner header
 
-`PlannerHeader` is the strip above the Planner board, on a computer and on a phone (design: `docs/design/riso-v2-planner-header/`). The title « Le menu de la **semaine.** » / "This week's **menu.**" is at the left and **never changes with the week**. At the right: ‹, the date pill (blue while the calendar is open), ›, and the yellow sticker, "this week" on the current week and "↩ this week" on another (it goes back). On a phone the title is above the controls and wraps if it is too long. The dates are written with `formatWeekLabel(weekStart)` (`lib/dates.js`): "Oct 5 – 11" / "5 – 11 oct.". Use that everywhere a week is named.
+`PlannerHeader` is the strip above the Planner board, on a computer and on a phone (designs: `docs/design/riso-v2-planner-header/`, and for the phone `docs/design/riso-v2-planner-mobile-v2/`). The title « Le menu de la **semaine.** » / "This week's **menu.**" has a line to itself, is **never changed by the week**, and wraps to two lines on a phone (the last word in blue). Under it, the controls: ‹, the date pill (blue while the calendar is open), ›.
 
-Props: `weekStart`, `onChangeWeek(weekStart)`, `lastWeekCount`, `onCopyLastWeek`. The Planner renders it on a computer and on a phone, so there is one header.
+- **Computer:** the row ends with the yellow sticker, "this week" on the current week and "↩ this week" on another (it goes back). The pill always reads the range, `formatWeekLabel(weekStart)` (`lib/dates.js`): "Oct 5 – 11" / "5 – 11 oct.".
+- **Phone:** a small date line sits above the title (`formatWeekRangeLong`: `5 – 11 OCTOBRE`). The pill is smaller and tilted, and says « cette semaine » on the current week and the range on another (the calendar's "Go to this week" goes back). The row ends with the **page stickers** (`pageStickers(page)` in `lib/plannerPhone.js`: « jeu–sam → » on page 1, « ← lun–mer » and « ven–dim → » on page 2, « ← jeu–sam » on page 3), which move the board three days at a time. ‹ › change the week.
+
+Use the one `formatWeekLabel` wherever a week is named.
+
+Props: `weekStart`, `onChangeWeek(weekStart)`, `lastWeekCount`, `onCopyLastWeek`, and for a phone `page`, `onPage(page)`, `weekend`, `onWeekendChange`. The Planner renders it on every size, so there is one header.
 
 ## Week calendar
 
-`WeekCalendar` is what the date pill opens, centred under the pill (on a phone it lines up with the page edge). A month drawn as weeks: three dashes under each day (breakfast, lunch, supper; blue when planned), the shown week yellow, today pink. A row **picks that week** and closes the calendar. The month arrows only change the month; the arrows next to the pill change the week.
+`WeekCalendar` is what the date pill opens. A month drawn as weeks: three dashes under each day (breakfast, lunch, supper; blue when planned), the shown week yellow, today pink. On a computer it sits centred under the pill and a row **picks that week**. On a phone it is a panel from just under the controls row down to 14px from the bottom and the sides, with a caret under the pill, over a dimmed backdrop (the controls stay in front of it); a row does not pick the week. The month arrows only change the month; the arrows next to the pill change the week.
 
-- **Day preview**: on a computer, hovering a day shows a card to the left with its three meals, real recipe photos and the rotated "leftover" tag (`Pill` sticker). On a phone there is no hover: tapping a day shows the same card under that day's row, with "Show this week", and a row does not pick the week.
-- **Footer**: "Go to this week" and "↺ Copy last week". Copy fills only empty slots, shows the toast with Undo (`actions.copyLastWeek`) and the button says "✓ Copied" for a moment. It is greyed out when last week is empty.
+- **Day preview**: on a computer, hovering a day shows a card to the left with its three meals, real recipe photos and the rotated "leftover" tag (`Pill` sticker). On a phone there is no hover: tapping a day shows the same card under that day's row (« Jeudi 8 octobre », « 2 PRÉVUS »), with "Show this week".
+- **Weekend (phone only)**: after a dashed rule, the « Fin de semaine » section is the shared `WeekendSettings` (`inCalendar`): the switch, `DAYS · summary`, seven one-letter day buttons, « la veille au souper », the presets. Every change is saved at once, the same setting as the computer's tag menu.
+- **Footer**: "Go to this week" (yellow on a phone) and "↺ Copy last week". Copy fills only empty slots, shows the toast with Undo (`actions.copyLastWeek`) and the button says "✓ Copied" for a moment. It is greyed out when last week is empty.
 
 The data is `GET /api/planner/dates` (`{ date, meals }` for each planned day; each meal has `mealType`, `title`, `placeholder`, `photoUrl`, `isLeftover`). Its helpers are in `lib/plannerCalendar.js` (`monthWeeks`, `inWeek`, `weekOf`).
 
-Props: `weekStart`, `onPick(dateKey)`, `onThisWeek`, `onCopyLastWeek` (resolves with how many meals it copied), `canCopy`, `onClose`.
+Props: `weekStart`, `onPick(dateKey)`, `onThisWeek`, `onCopyLastWeek` (resolves with how many meals it copied), `canCopy`, `weekend`, `onWeekendChange` (a phone), `onClose`.
 
 Used by: `PlannerHeader`.
 
+## Weekend settings
+
+`WeekendSettings` (in `components/PlannerExtras.jsx`) is the one set of controls for the weekend: a switch to show it, any days in any order, a switch for the evening before, and the three presets. Each change goes to `onChange(weekend)` and is saved at once for the account (`handleSaveWeekend` in `App.jsx`, `lib/weekend.js` for the model). `WeekendMenu` wraps it in the popover under the "WEEKEND ▾" tag on a computer; with `inCalendar` it is the « Fin de semaine » section of a phone's week calendar (the title is the switch's label, one letter per day, a `DAYS · summary` line). Do not build a second weekend control.
+
 ## Planner legend
 
-`PlannerLegend` is the row under the board on every size: planned meal, ingredients on hand (blue outline), leftovers (yellow tag), note, empty slot, today and, when the board shows one, the weekend ("Fin de semaine", without the list of days). Prop: `weekendOn`. Used by `PlannerBoard`, on a computer and on a phone.
+`PlannerLegend` is the row under the board on a computer: planned meal, ingredients on hand (blue outline), leftovers (yellow tag), note, empty slot, today and, when the board shows one, the weekend ("Fin de semaine", without the list of days). Prop: `weekendOn`. Used by `PlannerBoard`. The phone board has no legend (the v2 design leaves it out).
 
 ## Planner board
 
-`PlannerBoard` draws the week for the Planner on every size, so a phone never has a board of its own. On a computer all seven days are in view. With `phone`, it is the same grid with three days at a time (design: `docs/design/riso-v2-planner-header/`, "Board changes on phone"): a nav row above it (a ‹ round button, a label like "MON 5 – WED 7", a yellow › round button, each dim at its end), pages that start at days 0, 3 and 4 (`PHONE_PAGE_STARTS`, `pageOfDay` in `lib/plannerSlots.js`, so every page has three days), columns sized so exactly three fit beside the meal names, which are a sticky first column the days slide under. The page with today opens first. The board only moves by paging: the buttons, a swipe, or holding a dragged card near the left or right edge. The weekend, cards, legend, drop targets and "Clear" are the computer's (`lib/weekend.js` gives the same layout; the columns are narrowed by the room the weekend's shifts need).
+`PlannerBoard` draws the week for the Planner on a computer: all seven days in view. On a phone the Planner draws `PlannerBoardPhone` instead (design: `docs/design/riso-v2-planner-mobile-v2/`), which reuses `PlannerBoard`'s card pieces (`PlannerMealCard`, `PlannerNoteCard`, `computeStaleLeftoverIds`) and the same drop slots (`day-<d>-<meal>`), so cards, drag, swap, Clear and the toast are the same pieces everywhere.
 
-On a phone a card has no ✓ and no hover: the planned meal's sheet has the button that marks plain, then leftover (yellow border), then already have (blue border). A card has no drop shadow either way, and a leftover has both the yellow border and the tag. Cards and results (and Store mode's grocery rows, which drop on a store) are picked up by a long press (the app's one drag setup in `App.jsx`: `PointerSensor` with a delay, a `touchmove` that keeps the page still once a drag has started, `touch-action: pan-y` so a plain swipe still scrolls). Drop targets under the sticky meal names are ignored (`data-drop-block`). The fallback is the shared + / pop-out Plan, which opens the slot picker.
+**Phone board.** Three days in view on a track (`.pmb-track`, 104px columns, 8px apart, about 40px of the next day peeking) that slides with `translateX(trackX(page, dragDx))` (`lib/plannerPhone.js`; pages start at days 0, 3 and 4 so every page has three days, `PHONE_PAGE_STARTS`). The meal names (Déjeuner, Dîner, Souper) are **not on the track**: they sit at x = 14 above each row and follow the rows when an inline card pushes them down. All the numbers (row tops, the board's height, the card's place, the notch, the weekend band's outline) come from `boardGeometry`, `notchLeft` and `weekendBands`, so everything agrees on where a row is. The page is owned by `Planner` and changed by the header's stickers, a swipe along the board (past 50px; pointer events with `touch-action: pan-y`; ignored while a card is being dragged) and holding a dragged card near the left or right of the screen (`useDndMonitor`). A new week starts on the page with today (Mon–Wed for another week), without sliding.
 
-Props (besides the computer's): `phone`. Used by: `Planner`.
+A card is 104 × 104 (photo 50px, name, time), with a 3px blue border for "already have", a 3px yellow border and the « restes » tag for leftovers, no round ✓ and no ×; a note says « ✎ NOTE » over its text; "Nothing planned" is a plain solid card; past days are faded and cannot be opened. « Vider » is a tiny link under each future day with something planned. The weekend is a dotted pink band (an SVG outline, an L when it takes in the evening before); its settings live in the calendar. The open slot or meal's card is the board's `inline` prop (see Slot card), measured so the rows below move.
+
+The computer's board: seven days by three meals, the weekend, cards and "Clear" as on every size (`lib/weekend.js`). Cards and results (and Store mode's grocery rows, which drop on a store) are picked up by a long press on a touch screen (the app's one drag setup in `App.jsx`: `PointerSensor` with a delay, a `touchmove` that keeps the page still once a drag has started, `touch-action: pan-y` so a plain swipe still scrolls). The fallback is the shared + / pop-out Plan, which opens the slot picker.
+
+Props (computer): `entries`, `weekStart`, `weekend`, `selectedSlot`, `leftoverMode`, `onCardClick`, `onNoteClick`, `onRemove`, `onClearDay`, `onCycleState`, `onEmptyClick`, `onWeekendMenu`. The phone board takes the same (minus the weekend menu) plus `page`, `onPageChange` and `inline`. Used by: `Planner`.
+
+**Trash strip.** While a planned card or note is held on a phone, `TrashZone` (`components/TrashZone.jsx`) shows a strip fixed to the bottom of the screen in place of the search bar: « Déposer ici pour retirer », pink and « Relâcher pour retirer » when the card is over it. A drop on `planner-trash` calls the same removal as the × (`handleRemoveWithUndo` in `App.jsx`), so the shared Toast offers Undo. The page does not auto-scroll while the card is over it. A result carried from the finder does not show it.
 
 ## Slot card and planned-meal card
 
-`SlotCard` (Recipe / Note / Nothing planned, the note box with quick notes and Save) and `PlannedCard` (a preview, then Cook, Use as a base, Replace this recipe) open beside the slot on a computer. With `sheet` (a phone) they are the same cards, with the same content and rules, in the shared `BottomSheet` from the bottom of the screen; the planned-meal card also gets `mark` (`{ label, onCycle }`), the button that steps the meal through the marks. Recipe makes the slot the search panel's target and the page scrolls to the panel (`showFinder` in `Planner.jsx`).
+`SlotCard` (Recipe / Note / Nothing planned, the note box with quick notes and Save) and `PlannedCard` (a preview, then Cook, Use as a base, Replace this recipe) open beside the slot on a computer. With `inline` (a phone) they are the same cards, with the same content and rules, drawn directly **under the tapped slot's row** by the phone board (it gives the card its place and a notch pointing at the slot, and pushes the rows below down); tapping the slot again, ✕ or Escape closes it. The three tiles are in the desktop colours with a glyph over the label: Recipe blue, Note yellow, Nothing planned white (planned meal: Cook blue, Use as a base yellow, Replace white).
+
+**Nothing planned asks twice, on every size**: the first tap turns the tile ink (`--ink`) with a pink shadow and "✓ Confirm" (blue is Recipe); the second marks the slot; Escape or tapping elsewhere puts it back.
+
+On a phone the planned meal's card shows the photo, the slot (« MER 7 · SOUPER »), the name, the time and a **status** that is also a button (`state`, `onCycle`): « RIEN À ACHETER », « 2 À ACHETER », « RESTES » or « DÉJÀ EN MAIN », with a ⟳. Tapping it steps plain → restes → déjà en main → plain (`actions.cycleState(id, { toast: true })`), and the shared Toast says what changed with Undo (it puts the old mark back). Recipe and Replace make the slot the search panel's target and the page scrolls to the panel (`showFinder` in `Planner.jsx`).
 
 ## Recipe photo
 
@@ -136,6 +159,8 @@ Used by: the recipe form (the new-recipe pop-up and the full-page editor) when c
 ## Recipe finder
 
 `Finder` is the search bar, "Cook with", filters, the Main meal banner and the results, for the Planner's panel at the bottom of the page (`layout="panel"`, on a computer and on a phone; `layout="sheet"` is for a bottom card). `useFinder()` holds what it shows. It does not hold the recipe pop-out: it asks the caller (`onOpenPopout`) and `onAdd` is the caller's. Choosing Similar recipes scrolls the Main meal banner into view.
+
+**On a phone** the same markup is dressed as the design's search panel (`docs/design/riso-v2-planner-mobile-v2/`): one pill holding the box for typing (« Chercher une recette »), the target chip (« mer · Déjeuner ✕ ») and a **Browse / Close** button (`.fnd-bar-toggle`, hidden on a computer); closed, nothing else shows. Open, it shows the « AVEC… » strip (« + Cuisiner avec… »), the filters as chips in the design's order (Faisable maintenant, 1 ou 2 à acheter, Expire bientôt, Repas ▾, Protéine ▾, Rapide; a second tap on the first two turns them off, and the "All" choice is not shown), the count and the results two across. Repas, Protéine and Cuisiner avec… are the shared menus, as on a computer. The **Main meal banner** stacks on a phone: the photo as a strip on top, then the text and ingredient chips across the width, the buttons at the bottom.
 
 ## Where things live in `App.jsx`
 

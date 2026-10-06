@@ -59,7 +59,7 @@ async function slotCardFor(page, day, meal) {
 // Shows the board's lower rows and the finder's first results together, so a
 // drag between them never has to scroll the page.
 async function scrollBetween(page) {
-  await page.evaluate(() => window.scrollTo(0, 450));
+  await page.evaluate(() => window.scrollTo(0, 530));
   await page.waitForTimeout(300);
 }
 
@@ -103,8 +103,8 @@ test("Nothing planned marks the slot blank; clicking the blank card clears it", 
   const target = cell(page, day, "lunch");
   const card = await slotCardFor(page, day, "lunch");
   await card.getByRole("button", { name: /Nothing planned/ }).click();
-  // The first click only turns the tile blue ("Confirm"); nothing is saved until it is pressed again.
-  await expect(card.getByRole("button", { name: /^Confirm/ })).toHaveText("Confirm");
+  // The first click only turns the tile ink ("✓ Confirm"); nothing is saved until it is pressed again.
+  await expect(card.getByRole("button", { name: /Confirm/ })).toHaveText("✓ Confirm");
   await expect.poll(async () => (await weekEntries(page)).length).toBe(0);
   await card.getByRole("button", { name: /^Confirm/ }).click();
 
@@ -676,23 +676,23 @@ test("on a phone, a meal card with an emoji is the same size as a recipe card wi
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
-  await expect(page.locator(".riso-planner-board.paged")).toBeVisible();
+  await expect(page.locator(".pmb")).toBeVisible();
 
   // Tap today's empty breakfast, choose Note, and write only an emoji.
-  await page.locator(".riso-planner-cell").nth(todayIndex()).getByRole("button").click();
+  await page.locator(".pmb-cell").nth(todayIndex() * 3).getByRole("button").click();
   await page.getByRole("button", { name: "Note", exact: true }).click();
   await page.getByRole("textbox", { name: "Write on this slot" }).fill("🥞");
   await page.getByRole("button", { name: "Save note" }).click();
   await expect(page.locator(".riso-planner-note-text.emoji")).toBeVisible();
 
-  const meal = await page.locator(".riso-planner-card").boundingBox();
-  const note = await page.locator(".riso-planner-note:not(.blank)").boundingBox();
+  const meal = await page.locator(".pmb-cell .riso-planner-card").boundingBox();
+  const note = await page.locator(".pmb-cell .riso-planner-note:not(.blank)").boundingBox();
   expect(Math.round(note.height)).toBe(Math.round(meal.height));
   expect(Math.round(note.width)).toBe(Math.round(meal.width));
   await page.screenshot({ path: test.info().outputPath("planner-phone-emoji-card.png") });
 });
 
-test("the title is at the left and the week controls at the right; Copy last week is in the calendar and fills only empty slots, with Undo", async ({ page }) => {
+test("the title is on its own line with the week controls under it; Copy last week is in the calendar and fills only empty slots, with Undo", async ({ page }) => {
   const [recipe, other] = await setup(page, [{ title: "Copy Me", ingredients: [{ name: "zucchini" }] }, { title: "Already There" }]);
   const lastWeek = mondayOf(new Date(Date.now() - 7 * 86400000));
   const thisWeek = mondayOf(new Date());
@@ -702,14 +702,15 @@ test("the title is at the left and the week controls at the right; Copy last wee
   await page.request.post("/api/planner", { data: { recipeId: other.id, weekStart: thisWeek, dayOfWeek: 1, mealType: "dinner", isLeftover: true } });
   await openPlanner(page);
 
-  // The title is the same on every week and sits at the left; the date pill and the sticker are at the right.
+  // The title is the same on every week and has a line to itself; the date pill and the sticker are under it.
   const header = page.locator(".phd");
   const title = header.locator(".riso-planner-title");
   await expect(title).toHaveText("This week's menu.");
   const pill = header.locator(".phd-date");
   const pillBox = await pill.boundingBox();
   const titleBox = await title.boundingBox();
-  expect(pillBox.x).toBeGreaterThan(titleBox.x + titleBox.width);
+  expect(pillBox.y).toBeGreaterThan(titleBox.y + titleBox.height - 2);
+  expect(Math.round(pillBox.x)).toBeLessThanOrEqual(Math.round(titleBox.x) + 70);
   await expect(pill).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – (?:[A-Z][a-z]{2} )?\d{1,2}/);
   await expect(header.getByText("this week", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy last week" })).toHaveCount(0); // it lives in the calendar

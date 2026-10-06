@@ -75,6 +75,7 @@ export const HELP_COPIES = {
   // Planner
   weekPrev: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "‹" },
   weekNext: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "›" },
+  pageSticker: { kind: "pill", cls: "riso-pill size-tag tone-yellow sticker", label: "planner.stickerExample" },
   weekSticker: { kind: "pill", cls: "riso-pill size-tag tone-yellow sticker", label: "planner.thisWeekBadge" },
   goThisWeek: { kind: "pill", cls: "wcal-btn", label: "planner.goThisWeek" },
   copyLastWeek: { kind: "pill", cls: "wcal-btn", label: "planner.copyLastWeek" },

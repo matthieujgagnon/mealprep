@@ -17558,11 +17558,10 @@ body.no-select {
   position: relative;
   z-index: 20;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px 24px;
-  margin-bottom: -9px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .phd .riso-planner-title {
@@ -17610,22 +17609,6 @@ body.no-select {
 
 .phd-controls .riso-pill {
   white-space: nowrap;
-}
-
-@media (max-width: 767px) {
-  .phd {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-    margin-bottom: 0;
-    padding-bottom: 14px;
-  }
-
-  /* The French title is longer than a phone is wide: it wraps there. */
-  .phd .riso-planner-title {
-    font-size: 40px;
-    white-space: normal;
-  }
 }
 
 /* The week calendar: opens under the date pill. */
@@ -18577,11 +18560,12 @@ body.no-select {
   box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
-/* "Nothing planned" asked once: the tile turns blue and says Confirm. */
+/* "Nothing planned" asked once: the tile turns ink, with a pink shadow, and says
+   ✓ Confirm (blue is Recipe). The same on a computer and on a phone. */
 .riso-slotcard-btn.blank.confirming {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: 4px 4px 0 var(--riso-ink);
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 3px 3px 0 var(--riso-hot);
 }
 
 .riso-slotcard-form {
@@ -19184,146 +19168,6 @@ body.no-select {
 }
 
 
-/* ---------- Planner on a phone: the same board, three days at a time ---------- */
-/* Design: docs/design/riso-v2-planner-header ("Board changes on phone"). The
-   columns are sized in PlannerBoard.jsx (--rpm-col) so exactly three days fit
-   beside the sticky meal labels; the board only moves by paging. */
-.riso-planner-pagenav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.riso-planner-pagebtn {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 2px solid var(--riso-ink);
-  border-radius: 50%;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 800 18px/1 var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-planner-pagebtn.next {
-  background: var(--riso-yellow);
-}
-
-.riso-planner-pagebtn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.riso-planner-pagelabel {
-  font: 500 12px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-  text-align: center;
-}
-
-.riso-planner-board.paged {
-  padding: 14px;
-  gap: 8px;
-}
-
-.riso-planner-board.paged .riso-planner-scroll {
-  overflow: hidden;
-  padding: 20px 0 0 0;
-  margin: -6px 0 0 0;
-  touch-action: pan-y;
-}
-
-.riso-planner-board.paged .riso-planner-grid {
-  grid-template-columns: 56px repeat(7, var(--rpm-col, 84px));
-  gap: 8px;
-  width: max-content;
-  min-width: 0;
-}
-
-/* The meal names are a column of their own that the days slide under: it covers
-   the gap beside it too, so nothing peeks out. */
-.riso-planner-board.paged .riso-planner-corner,
-.riso-planner-board.paged .riso-planner-meal-label {
-  position: sticky;
-  left: 0;
-  z-index: 4;
-  margin-right: -8px;
-  padding-right: 8px;
-  background: var(--riso-surface);
-}
-
-.riso-planner-board.paged .riso-planner-meal-label {
-  font-size: 12px;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
-.riso-planner-board.paged .riso-planner-day-header {
-  padding: 5px 0;
-}
-
-.riso-planner-board.paged .riso-planner-day-date {
-  font-size: 13px;
-}
-
-/* A slot is a little taller than on a computer, so a two-line title fits. */
-.riso-planner-board.paged .riso-planner-cell {
-  aspect-ratio: 0.78;
-}
-
-.riso-planner-board.paged .riso-planner-card-body {
-  padding: 5px 6px;
-}
-
-.riso-planner-board.paged .riso-planner-card-name {
-  font-size: 11px;
-  line-height: 1.15;
-}
-
-/* No ✓ on a phone (there is no hover to show it): the planned meal's sheet has
-   the mark. The blue or yellow border says what it is. */
-.riso-planner-board.paged .riso-planner-card-have {
-  display: none;
-}
-
-.riso-planner-board.paged .riso-planner-card-remove {
-  top: 4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
-  font-size: 12px;
-}
-
-/* A leftover's tag sits across the photo's bottom edge: the photo is a little
-   shorter and the title starts below the tag, so neither is covered. */
-.riso-planner-board.paged .riso-planner-card-leftover {
-  right: 3px;
-  font-size: 9.5px;
-}
-
-.riso-planner-board.paged .riso-planner-card.leftover .riso-planner-card-photo-wrap {
-  height: 48%;
-}
-
-.riso-planner-board.paged .riso-planner-card.leftover .riso-planner-card-body {
-  padding-top: 11px;
-}
-
-.riso-planner-board.paged .riso-planner-note-text {
-  font-size: 12px;
-}
-
-.riso-planner-board.paged .riso-planner-note-text.emoji {
-  font-size: 34px;
-}
-
-.riso-planner-board.paged .riso-weekendmenu {
-  width: min(300px, calc(100% - 28px));
-  right: 14px;
-}
-
 /* Cards and results carry a finger that has held still; a finger that just
    moves still scrolls the page (App.jsx keeps the page still once a drag has
    started). */
@@ -19409,29 +19253,6 @@ body.no-select {
   .fnd-panel .fnd-searchbar input {
     flex: 1 1 150px;
   }
-}
-
-/* The add card and the planned meal's card, as a sheet from the bottom. */
-.riso-slotcard-sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  max-height: calc(78vh - 60px);
-}
-
-.riso-slotcard-sheet .riso-slotcard-title {
-  font-size: 22px;
-}
-
-.riso-slotcard-sheet .riso-slotcard-btn {
-  padding-left: 6px;
-  padding-right: 6px;
-  font-size: 14px;
-}
-
-.riso-plannedcard-btn.mark {
-  border-style: dashed;
 }
 
 /* The Help text's copy of the round ✓ button on a meal. */
@@ -20193,4 +20014,1017 @@ body.no-select {
   color: var(--sm-muted);
   font: 500 11px/1.4 var(--riso-font-mono);
   letter-spacing: 0.04em;
+}
+
+/* ================================================================
+   Planner on a phone, v2 (design: docs/design/riso-v2-planner-mobile-v2)
+   The header's stickers, the calendar panel with the weekend's settings, the
+   board (pinned meal names over a sliding track), the cards that open under a
+   row, the trash strip while a card is held, the search panel as one pill, and
+   the Main meal banner stacked. Everything below applies to a phone only,
+   except the card pieces that are hidden on a computer.
+   ================================================================ */
+
+/* A note or blank card's extra words, and a meal card's time, show on a phone only. */
+.riso-planner-note > .riso-planner-note-label,
+.riso-planner-note-blank,
+.riso-planner-card-time {
+  display: none;
+}
+
+.fnd-bar-toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* The Planner uses the whole width (the app's own side padding is 18px): the
+     header and the search panel keep the design's 14px, the board runs edge to
+     edge, and the pieces under each other set their own spacing. */
+  .riso-planner {
+    gap: 0;
+    margin-left: -18px;
+    margin-right: -18px;
+  }
+
+  /* ---------- Header: date line, title, controls row ---------- */
+  .phd {
+    gap: 6px;
+    margin-bottom: 0;
+    padding: 12px 14px 0;
+  }
+
+  .phd-range {
+    margin: 0;
+    height: 14px;
+    font: 500 12px/14px var(--riso-font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* « Le menu de la / semaine. » on two lines, the last word in blue. */
+  .phd .riso-planner-title {
+    font-size: 38px;
+    line-height: 36px;
+    white-space: normal;
+  }
+
+  .phd .riso-planner-title .accent {
+    display: block;
+  }
+
+  .phd-controls {
+    width: 100%;
+    height: 40px;
+    margin-top: 2px;
+    padding-bottom: 0;
+    gap: 4px;
+  }
+
+  .phd-controls .riso-planner-nav-arrow {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    font: 700 19px var(--riso-font-display);
+  }
+
+  /* The controls stay in front of the calendar's dimmed backdrop. */
+  .phd-controls .riso-planner-nav-arrow,
+  .phd-date,
+  .phd-stickers {
+    position: relative;
+    z-index: 45;
+  }
+
+  .phd-date {
+    height: 32px;
+    padding: 0 9px;
+    border-radius: 16px;
+    box-shadow: none;
+    font-size: 13px;
+    transform: rotate(-3deg);
+  }
+
+  .phd-date.open {
+    box-shadow: 3px 3px 0 var(--riso-ink);
+  }
+
+  .phd-date-caret {
+    font-size: 10px;
+  }
+
+  .phd-stickers {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* A yellow sticker, tilted, with a 40px-high tap area around it. */
+  .phd-sticker {
+    padding: 9px 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--riso-ink);
+  }
+
+  .phd-sticker span {
+    display: block;
+    padding: 1px 5px;
+    border: 1.5px solid var(--riso-ink);
+    border-radius: 999px;
+    background: var(--riso-yellow);
+    font: 800 11px/1.35 var(--riso-font-display);
+    white-space: nowrap;
+  }
+
+  .phd-sticker.back span {
+    transform: rotate(-3deg);
+  }
+
+  .phd-sticker.forward span {
+    transform: rotate(3deg);
+  }
+
+  /* ---------- The calendar: a panel from the controls to the bottom ---------- */
+  .wcal-backdrop {
+    background: rgba(22, 24, 31, 0.45);
+    touch-action: none;
+  }
+
+  .wcal {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    top: 200px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    width: auto;
+    transform: none;
+    padding: 14px;
+    gap: 10px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 24px;
+  }
+
+  .wcal > * {
+    flex: none;
+  }
+
+  .wcal-title {
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+
+  .wcal-dows {
+    gap: 2px;
+    letter-spacing: 0.06em;
+  }
+
+  .wcal-week {
+    gap: 2px;
+    padding: 3px 0;
+  }
+
+  .wcal-weeks {
+    gap: 6px;
+  }
+
+  .wcal-day {
+    justify-content: center;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .wcal-num {
+    min-width: 0;
+    width: 34px;
+    height: 26px;
+    border-radius: 10px;
+    font: 800 14px/1 var(--riso-font-display);
+  }
+
+  .wcal-day.today .wcal-num {
+    box-shadow: 2px 2px 0 var(--riso-ink);
+  }
+
+  .wcal-day.hover .wcal-num {
+    outline: none;
+    box-shadow: 0 0 0 2.5px var(--riso-accent);
+  }
+
+  .wcal-legend {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  /* « Fin de semaine »: the shared WeekendSettings, in the calendar. */
+  .wcal-weekend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 2px dashed var(--riso-dash-strong);
+  }
+
+  .wcal-weekend .riso-weekendmenu-label.title {
+    font: 800 17px var(--riso-font-display);
+    white-space: nowrap;
+  }
+
+  .wcal-weekend .riso-weekendmenu-label.small {
+    font: 600 14px/1.25 var(--riso-font-display);
+  }
+
+  .wcal-weekend .riso-weekendmenu-row {
+    min-height: 44px;
+  }
+
+  .wcal-weekend .riso-weekendmenu-days {
+    gap: 5px;
+  }
+
+  .wcal-weekend .riso-weekendmenu-day {
+    height: 44px;
+    border-radius: 14px;
+    font-size: 13px;
+  }
+
+  .wcal-weekend .riso-weekendmenu-day.on,
+  .wcal-weekend .riso-weekendmenu-preset.on {
+    box-shadow: none;
+  }
+
+  .wcal-weekend .riso-weekendmenu-preset {
+    height: 36px;
+    padding: 0 13px;
+    border-radius: 18px;
+    font-size: 13px;
+  }
+
+  .wcal-foot {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 0;
+    padding-top: 12px;
+  }
+
+  .wcal-btn {
+    flex: none;
+    height: 46px;
+    border-radius: 23px;
+    font: 800 15px var(--riso-font-display);
+  }
+
+  .wcal-btn.go {
+    background: var(--riso-yellow);
+  }
+
+  /* ---------- The board ---------- */
+  .pmb {
+    margin-top: 8px;
+  }
+
+  .pmb-viewport {
+    position: relative;
+    overflow: hidden;
+    touch-action: pan-y;
+    isolation: isolate;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  .pmb-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.3, 1);
+    will-change: transform;
+  }
+
+  .pmb-bands {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .pmb-bands path {
+    fill: rgba(255, 72, 176, 0.08);
+    stroke: var(--riso-hot);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-dasharray: 0.1 6;
+  }
+
+  .pmb-day {
+    position: absolute;
+    top: 6px;
+    width: 104px;
+    height: 44px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    color: var(--riso-ink);
+  }
+
+  .pmb-day.today {
+    background: var(--riso-hot);
+    border-color: var(--riso-ink);
+    box-shadow: 3px 3px 0 var(--riso-ink);
+  }
+
+  .pmb-day.past {
+    color: var(--riso-placeholder);
+  }
+
+  .pmb-day-name {
+    font: 500 10px/1.2 var(--riso-font-mono);
+    letter-spacing: 0.1em;
+  }
+
+  .pmb-day-num {
+    font: 800 18px/1 var(--riso-font-display);
+  }
+
+  /* The meal names stay at the left edge while the days slide under them. */
+  .pmb-meal {
+    position: absolute;
+    left: 14px;
+    z-index: 31;
+    height: 18px;
+    font: 400 11px/18px var(--riso-font-mono);
+    letter-spacing: 0.02em;
+    color: var(--riso-muted);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .pmb-cell {
+    position: absolute;
+    width: 104px;
+    height: 104px;
+    border-radius: 14px;
+  }
+
+  .pmb-cell.selected {
+    outline: 2px solid var(--riso-accent);
+    outline-offset: 2px;
+  }
+
+  .pmb-cell.drop-active {
+    outline: 3px solid var(--riso-hot);
+    outline-offset: 2px;
+  }
+
+  .pmb-cell.drop-active .pmb-empty {
+    background: rgba(255, 72, 176, 0.14);
+  }
+
+  /* A slot with nothing in it: dashed, « + ajouter » in blue. */
+  .pmb-empty {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: 2px dashed var(--riso-dash-strong);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--riso-accent);
+    font: 700 13px var(--riso-font-display);
+    cursor: pointer;
+  }
+
+  .pmb-empty.leftover-target {
+    border-color: var(--riso-accent);
+    background: var(--riso-accent-tint);
+  }
+
+  .pmb-empty:disabled {
+    cursor: default;
+  }
+
+  .pmb-cell.past .pmb-empty {
+    opacity: 0.6;
+  }
+
+  /* A recipe card: 104 x 104, photo 50px, name, time. */
+  .pmb-cell .riso-planner-card,
+  .pmb-cell .riso-planner-note {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+
+  .pmb-cell .riso-planner-card.have {
+    border-width: 3px;
+  }
+
+  .pmb-cell .riso-planner-card-photo-wrap,
+  .pmb-cell .riso-planner-card.leftover .riso-planner-card-photo-wrap {
+    height: 50px;
+  }
+
+  .pmb-cell .riso-planner-card-have,
+  .pmb-cell .riso-planner-card-remove {
+    display: none;
+  }
+
+  .pmb-cell .riso-planner-card-body,
+  .pmb-cell .riso-planner-card.leftover .riso-planner-card-body {
+    padding: 5px 7px 5px;
+    gap: 2px;
+  }
+
+  .pmb-cell .riso-planner-card-name {
+    font: 800 12px/1.15 var(--riso-font-display);
+  }
+
+  .pmb-cell .riso-planner-card-time {
+    display: block;
+    margin-top: auto;
+    font: 500 9.5px/1 var(--riso-font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--riso-soft);
+  }
+
+  .pmb-cell .riso-planner-card-leftover {
+    right: 4px;
+    bottom: -11px;
+    padding: 0 7px;
+    font: 800 10.5px/1.35 var(--riso-font-display);
+  }
+
+  /* A note: « ✎ NOTE » over its text. Nothing planned: a plain solid card. */
+  .pmb-cell .riso-planner-note {
+    gap: 5px;
+    padding: 8px;
+    background: var(--riso-canvas);
+  }
+
+  .pmb-cell .riso-planner-note > .riso-planner-note-label {
+    display: block;
+  }
+
+  .pmb-cell .riso-planner-note-text {
+    font: 700 13px/1.15 var(--riso-font-display);
+  }
+
+  .pmb-cell .riso-planner-note-text.emoji {
+    font-size: 34px;
+  }
+
+  .pmb-cell .riso-planner-note.blank {
+    background: var(--riso-surface);
+  }
+
+  .pmb-cell .riso-planner-note-blank {
+    display: block;
+    font: 700 13px/1.15 var(--riso-font-display);
+    color: var(--riso-muted);
+  }
+
+  .pmb-cell .riso-planner-note.blank:hover::after {
+    content: none;
+  }
+
+  /* Days already gone: faded, photo in greys, a thin border. */
+  .pmb-cell.past .riso-planner-card,
+  .pmb-cell.past .riso-planner-note {
+    opacity: 0.6;
+    border: 1.5px solid var(--riso-dash-strong);
+  }
+
+  .pmb-cell.past .riso-planner-card-photo {
+    filter: grayscale(1);
+  }
+
+  /* The card that is held leaves a faded, dashed ghost behind. */
+  .pmb-cell .riso-planner-card.dragging,
+  .pmb-cell .riso-planner-note.dragging {
+    opacity: 1;
+    border: 2px dashed var(--riso-dash-strong);
+    background: rgba(244, 241, 234, 0.8);
+  }
+
+  .pmb-cell .dragging > * {
+    visibility: hidden;
+  }
+
+  /* « Vider »: a tiny link under each day that has something planned. */
+  .pmb-clear {
+    position: absolute;
+    width: 104px;
+    height: 26px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0;
+    font: 500 10.5px var(--riso-font-mono);
+    letter-spacing: 0.08em;
+    text-transform: none;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    color: var(--riso-placeholder);
+  }
+
+  /* ---------- The card under a row (a slot's, or a planned meal's) ---------- */
+  .pmb-inline {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    z-index: 35;
+    scroll-margin: 124px 0 20px; /* in view: under the sticky header, clear of the bottom */
+  }
+
+  .pmi {
+    position: relative;
+    box-sizing: border-box;
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--riso-surface);
+    color: var(--riso-ink);
+    border: 2px solid var(--riso-ink);
+    border-radius: 20px;
+    box-shadow: 4px 4px 0 var(--riso-ink);
+  }
+
+  .pmi-notch {
+    position: absolute;
+    top: -9px;
+    left: var(--pmb-notch, 14px);
+    width: 14px;
+    height: 14px;
+    background: var(--riso-surface);
+    border-top: 2px solid var(--riso-ink);
+    border-left: 2px solid var(--riso-ink);
+    transform: rotate(45deg);
+  }
+
+  .pmi-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 22px;
+  }
+
+  .pmi-caps {
+    font: 500 11px var(--riso-font-mono);
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  .pmi-close {
+    min-width: 40px;
+    min-height: 32px;
+    margin: -6px -8px -6px 0;
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--riso-ink);
+    font: 700 16px var(--riso-font-display);
+    cursor: pointer;
+  }
+
+  .pmi-glyph {
+    font: 700 17px/1 var(--riso-font-display);
+  }
+
+  /* Three tiles in the desktop colours, a glyph over the label. */
+  .riso-slotcard-buttons.inline,
+  .riso-plannedcard-actions.inline {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .pmi .riso-slotcard-btn,
+  .pmi .riso-plannedcard-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: auto;
+    min-height: 60px;
+    padding: 4px 4px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 14px;
+    font: 800 13.5px/1.1 var(--riso-font-display);
+    text-align: center;
+    white-space: normal;
+    box-shadow: none;
+  }
+
+  .pmi .riso-plannedcard-btn {
+    min-height: 52px;
+  }
+
+  .pmi .riso-plannedcard-btn .pmi-glyph {
+    font-size: 16px;
+  }
+
+  .pmi .riso-slotcard-btn.selected {
+    box-shadow: 3px 3px 0 var(--riso-ink);
+  }
+
+  .pmi .riso-slotcard-btn.blank.confirming {
+    box-shadow: 3px 3px 0 var(--riso-hot);
+  }
+
+  .pmi .riso-plannedcard-btn.base {
+    background: var(--riso-yellow);
+  }
+
+  .pmi .riso-slotcard-form {
+    gap: 8px;
+  }
+
+  .pmi .riso-slotcard-input {
+    height: 44px;
+  }
+
+  .pmi .riso-slotcard-save {
+    height: 44px;
+  }
+
+  .pmi-rec {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .pmi-photo {
+    flex: none;
+    width: 64px;
+    height: 64px;
+    overflow: hidden;
+    border: 2px solid var(--riso-ink);
+    border-radius: 14px;
+    background: var(--riso-track);
+  }
+
+  .pmi-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .pmi-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .pmi-info .pmi-caps {
+    color: var(--riso-muted);
+  }
+
+  .pmi-name {
+    margin: 0;
+    font: 800 17px/1.1 var(--riso-font-display);
+  }
+
+  .pmi-facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 6px;
+    font: 500 10.5px var(--riso-font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--riso-soft);
+  }
+
+  /* The status is a button: it steps plain -> leftovers -> already have. */
+  .pmi-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+    margin: -4px 0;
+    padding: 0 9px;
+    border: 1.5px dashed var(--riso-ink);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--riso-ink);
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+  }
+
+  .pmi-status.leftover {
+    border-style: solid;
+    background: var(--riso-yellow);
+  }
+
+  .pmi-status.have {
+    border-style: solid;
+    background: var(--riso-accent);
+    color: var(--riso-on-accent);
+  }
+
+  /* ---------- The card that is held, and the trash strip ---------- */
+  .riso-planner-drag-preview {
+    width: 104px;
+    border-radius: 14px;
+    transform: rotate(-4deg) scale(1.05);
+    box-shadow: 6px 8px 0 var(--riso-ink);
+  }
+
+  .riso-planner-drag-preview img,
+  .riso-planner-drag-preview .photo-placeholder {
+    height: 50px;
+  }
+
+  .riso-planner-drag-preview-name {
+    padding: 5px 7px 7px;
+    font-size: 12px;
+  }
+
+  .pm-trash {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 140;
+    box-sizing: border-box;
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+    background: var(--riso-canvas);
+    border-top: 2px solid var(--riso-ink);
+  }
+
+  .pm-trash-pill {
+    height: 52px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 2px dashed var(--riso-ink);
+    border-radius: 26px;
+    background: var(--riso-surface);
+    color: var(--riso-ink);
+    font: 800 15px var(--riso-font-display);
+  }
+
+  .pm-trash-pill.over {
+    border-style: solid;
+    background: var(--riso-hot);
+    box-shadow: 3px 3px 0 var(--riso-ink);
+  }
+
+  /* ---------- The search panel: one pill, then the filters ---------- */
+  .riso-planner-finder {
+    margin: 6px 14px 0;
+    padding: 14px 0 28px;
+    background: transparent;
+    border: none;
+    border-top: 2px dashed var(--riso-dash-strong);
+    border-radius: 0;
+  }
+
+  .fnd-panel .fnd-grab,
+  .fnd-panel .fnd-top,
+  .fnd-panel .fnd-browse,
+  .fnd-panel .fnd-searchlabel,
+  .fnd-panel .fnd-target .fnd-caps {
+    display: none;
+  }
+
+  .fnd-panel .fnd-searchbar {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 5px 5px 5px 6px;
+    row-gap: 6px;
+  }
+
+  .fnd-panel .fnd-searchbar input {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 34px;
+    padding: 0 4px 0 10px;
+    font-size: 15px;
+  }
+
+  .fnd-panel .fnd-target {
+    height: 32px;
+    padding: 0 9px 0 11px;
+    border-radius: 16px;
+    font-size: 12px;
+  }
+
+  .fnd-panel .fnd-target button {
+    width: auto;
+    height: auto;
+    background: transparent;
+    color: var(--riso-ink);
+    font-size: 11px;
+  }
+
+  .fnd-panel .fnd-bar-toggle {
+    flex: none;
+    height: 34px;
+    padding: 0 15px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    border: 2px solid var(--riso-ink);
+    border-radius: 17px;
+    background: var(--riso-accent);
+    color: var(--riso-on-accent);
+    font: 800 13.5px var(--riso-font-display);
+    cursor: pointer;
+  }
+
+  .fnd-panel .fnd-bar-toggle.open {
+    background: var(--riso-yellow);
+    color: var(--riso-ink);
+  }
+
+  .fnd-panel:not(.is-open) .fnd-with,
+  .fnd-panel:not(.is-open) .fnd-filters {
+    display: none;
+  }
+
+  /* Filters as chips; the order is the design's. */
+  .fnd-panel .fnd-filters {
+    gap: 6px;
+  }
+
+  .fnd-panel .fnd-seg {
+    display: contents;
+  }
+
+  .fnd-panel .fnd-seg-btn:first-child,
+  .fnd-panel .fnd-seg-count,
+  .fnd-panel .fnd-dot {
+    display: none;
+  }
+
+  .fnd-panel .fnd-seg-btn,
+  .fnd-panel .fnd-filters .riso-pill.size-chip,
+  .fnd-panel .fnd-menus .rv2-drop {
+    height: 36px;
+    min-height: 0;
+    padding: 0 13px;
+    box-sizing: border-box;
+    border: 2px solid var(--riso-ink);
+    border-radius: 18px;
+    background: var(--riso-surface);
+    color: var(--riso-ink);
+    box-shadow: none;
+    font: 700 13px var(--riso-font-display);
+    white-space: nowrap;
+  }
+
+  .fnd-panel .fnd-seg-btn.active,
+  .fnd-panel .fnd-filters .riso-pill.is-selected {
+    background: var(--riso-accent);
+    color: var(--riso-on-accent);
+    box-shadow: none;
+  }
+
+  .fnd-panel .fnd-seg-btn:nth-child(2) {
+    order: 1;
+  }
+
+  .fnd-panel .fnd-seg-btn:nth-child(3) {
+    order: 2;
+  }
+
+  .fnd-panel .fnd-expiring {
+    order: 3;
+  }
+
+  .fnd-panel .fnd-menus {
+    display: contents;
+  }
+
+  .fnd-panel .fnd-menus .rv2-menu-wrap {
+    order: 4;
+    width: auto;
+    min-width: 0;
+  }
+
+  .fnd-panel .fnd-quick {
+    order: 5;
+  }
+
+  .fnd-panel .fnd-menus .rv2-drop {
+    width: auto;
+    justify-content: flex-start;
+    gap: 5px;
+  }
+
+  .fnd-panel .fnd-menus .rv2-drop-value {
+    display: none;
+  }
+
+  /* A menu with a choice made is blue, like the other filters, and says the choice. */
+  .fnd-panel .fnd-menus .rv2-drop.set {
+    background: var(--riso-accent);
+    color: var(--riso-on-accent);
+  }
+
+  .fnd-panel .fnd-menus .rv2-drop.set .rv2-drop-value {
+    display: inline;
+  }
+
+  .fnd-panel .fnd-menus .rv2-drop-label,
+  .fnd-panel .fnd-menus .rv2-drop.set .rv2-drop-label {
+    font: 700 13px var(--riso-font-display);
+    letter-spacing: 0;
+    text-transform: lowercase;
+    color: inherit;
+  }
+
+  .fnd-panel .fnd-menus .rv2-drop-label::first-letter {
+    text-transform: uppercase;
+  }
+
+  /* The bar rings only while the box for typing has focus (not after Browse). */
+  .fnd-panel .fnd-searchbar:focus-within {
+    outline: none;
+  }
+
+  .fnd-panel .fnd-searchbar:has(input:focus) {
+    outline: 3px solid var(--riso-accent);
+    outline-offset: 2px;
+  }
+
+  .fnd-panel .fnd-menus .rv2-menu {
+    left: 0;
+    right: auto;
+  }
+
+  .fnd-panel .fnd-with {
+    padding: 12px 14px 10px;
+  }
+
+  .riso-planner-finder .fnd-card-photo {
+    height: 84px;
+  }
+
+  /* ---------- The Main meal banner, stacked ---------- */
+  .fnd-main {
+    flex-direction: column;
+    scroll-margin-top: 124px; /* under the phone's taller sticky header */
+  }
+
+  .fnd-main-photo {
+    width: auto;
+    height: 92px;
+    border-right: 0;
+    border-bottom: 2px solid var(--riso-ink);
+  }
+
+  .fnd-main-body {
+    padding: 14px 16px 6px;
+  }
+
+  .fnd-main-title {
+    font-size: 22px;
+  }
+
+  .fnd-main-group {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .fnd-main-groupname {
+    width: auto;
+    padding-top: 0;
+  }
+
+  .fnd-main-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 8px 16px 14px;
+  }
+
+  .fnd-main-btn {
+    flex: 1 1 auto;
+    padding: 0 12px;
+  }
 }

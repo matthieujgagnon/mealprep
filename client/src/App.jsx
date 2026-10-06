@@ -39,6 +39,7 @@ import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
 import { Inventory, InventoryDragPreview, shelfOptions } from "./components/Inventory.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
+import { TRASH_ID } from "./components/TrashZone.jsx";
 
 // Rendered inside <DragOverlay> — a floating copy that actually follows the
 // cursor, independent of wherever the real (now-dimmed) source element sits.
@@ -116,12 +117,6 @@ function collisionDetection(args) {
     const visible = droppableContainers.filter(
       (c) => c.node.current && under.some((el) => c.node.current.contains(el))
     );
-    // The phone board's sticky meal labels sit over the days that slid under
-    // them: a drop there is a drop on nothing, not on the hidden day.
-    for (const el of under) {
-      if (el.closest?.("[data-drop-block]")) return [];
-      if (visible.some((c) => c.node.current.contains(el))) break;
-    }
     // A grocery item carried in Store mode lands on whatever is on top under the
     // finger: a store's sticky sticker stays over the rows of the next store.
     if (active.data.current?.storeDrag) {
@@ -672,6 +667,14 @@ export default function App({ user, onLogout }) {
       return;
     }
 
+    // A planned card dropped on the phone Planner's trash strip comes off the plan
+    // (the toast has Undo).
+    if (over.id === TRASH_ID) {
+      const trashed = active.data.current?.entryId;
+      if (trashed) await handleRemoveWithUndo(trashed);
+      return;
+    }
+
     const inventoryItemId = active.data.current?.inventoryItemId;
     if (inventoryItemId) {
       const shelfMatch = /^inv-shelf-(.+)$/.exec(over.id);
@@ -902,7 +905,9 @@ export default function App({ user, onLogout }) {
   // -> already have it -> back to plain. isLeftover/alreadyHave stay two
   // separate booleans server-side, but the UI only ever has one of them true
   // at a time, driven from this single handler.
-  async function handleCycleMealState(entryId) {
+  // With `toast` (a phone's status tap) the shared toast says what changed, and
+  // its Undo puts the old mark back.
+  async function handleCycleMealState(entryId, { toast = false } = {}) {
     const entry = plannerEntries.find((e) => e.id === entryId);
     if (!entry) return;
     const next = entry.isLeftover
@@ -910,8 +915,15 @@ export default function App({ user, onLogout }) {
       : entry.alreadyHave
       ? { isLeftover: false, alreadyHave: false }
       : { isLeftover: true, alreadyHave: false };
-    await api.updatePlannerEntry(entryId, next);
-    setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...next } : e)));
+    const apply = async (flags) => {
+      await api.updatePlannerEntry(entryId, flags);
+      setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...flags } : e)));
+    };
+    await apply(next);
+    if (toast) {
+      const key = next.alreadyHave ? "toastMarkedHave" : next.isLeftover ? "toastMarkedLeftover" : "toastMarkedPlain";
+      showToast(t(`planner.${key}`, { title: entry.recipe?.title }), () => apply({ isLeftover: !!entry.isLeftover, alreadyHave: !!entry.alreadyHave }));
+    }
   }
 
   // Cook mode's "Save leftovers" (fridge): each portion becomes a leftover
@@ -958,7 +970,9 @@ export default function App({ user, onLogout }) {
     <DndContext
       sensors={sensors}
       collisionDetection={collisionDetection}
-      autoScroll={{ threshold: { x: 0.06, y: 0.12 } }}
+      // The page scrolls when a held card nears its top or bottom edge, except over
+      // the phone Planner's trash strip, which sits in the bottom edge.
+      autoScroll={dragOverId === TRASH_ID ? false : { threshold: { x: 0.06, y: 0.12 } }}
       onDragStart={(event) => {
         dragLive.current = true;
         setIsDragActive(true);

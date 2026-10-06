@@ -78,6 +78,22 @@ export function formatWeekLabel(weekStart) {
   return formatWeekRangeLabel(weekStart, { year: false });
 }
 
+// The week with whole month names, for the phone Planner's small line above the
+// title: "October 5 – 11" / "5 – 11 octobre", "September 28 – October 4" /
+// "28 septembre – 4 octobre".
+export function formatWeekRangeLong(weekStart) {
+  const start = parseDateKey(weekStart);
+  const end = parseDateKey(addDays(weekStart, 6));
+  const months = dict().months.long;
+  const sameMonth = start.getMonth() === end.getMonth();
+  return t(sameMonth ? "dates.weekLongSameMonth" : "dates.weekLongTwoMonths", {
+    month: months[start.getMonth()],
+    startDay: start.getDate(),
+    endMonth: months[end.getMonth()],
+    endDay: end.getDate(),
+  });
+}
+
 // "Monday, Sep 28" / "Lundi 28 sept."
 export function formatWeekdayMonthDay(date) {
   const d = dict();
@@ -85,6 +101,18 @@ export function formatWeekdayMonthDay(date) {
   return t("dates.weekdayMonthDay", {
     weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1),
     month: d.months.short[date.getMonth()],
+    day: date.getDate(),
+  });
+}
+
+// "Thursday, October 8" / "Jeudi 8 octobre": the whole names, for the phone
+// calendar's day card.
+export function formatLongWeekdayMonthDay(date) {
+  const d = dict();
+  const weekday = d.days.long[(date.getDay() + 6) % 7];
+  return t("dates.weekdayMonthDay", {
+    weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1),
+    month: d.months.long[date.getMonth()],
     day: date.getDate(),
   });
 }

@@ -96,7 +96,7 @@ test("while dragging, only the slot under the recipe gets a pink border and no f
   await setup(page, [{ title: "Drag Me" }]);
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.evaluate(() => window.scrollTo(0, 450));
+  await page.evaluate(() => window.scrollTo(0, 530));
   const from = await page.locator(".fnd-card", { hasText: "Drag Me" }).boundingBox();
   const target = cell(page, Math.min(todayIndex(), 4), "dinner");
   const to = await target.boundingBox();
