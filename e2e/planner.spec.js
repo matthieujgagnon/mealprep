@@ -103,10 +103,10 @@ test("Nothing planned marks the slot blank; clicking the blank card clears it", 
   const target = cell(page, day, "lunch");
   const card = await slotCardFor(page, day, "lunch");
   await card.getByRole("button", { name: /Nothing planned/ }).click();
-  // The tile opens an explanation and a button; nothing is saved until it is pressed.
-  await expect(card.getByText("Marks this slot as planned with nothing on it")).toBeVisible();
+  // The first click only turns the tile blue ("Confirm"); nothing is saved until it is pressed again.
+  await expect(card.getByRole("button", { name: /^Confirm/ })).toHaveText("Confirm");
   await expect.poll(async () => (await weekEntries(page)).length).toBe(0);
-  await card.getByRole("button", { name: "Mark as no meal planned" }).click();
+  await card.getByRole("button", { name: /^Confirm/ }).click();
 
   await expect(target.locator(".riso-planner-note.blank")).toBeVisible();
   await target.locator(".riso-planner-note.blank").click();
@@ -508,7 +508,7 @@ test("what to buy in the pop-out is shared with the Grocery list", async ({ page
   const pop = page.getByRole("dialog", { name: "Zucchini Bake" });
 
   await pop.getByRole("button", { name: "Add zucchini to grocery list" }).click();
-  await expect(pop.getByRole("button", { name: "Remove zucchini from grocery list" })).toHaveAttribute("aria-pressed", "true");
+  await expect(pop.getByRole("button", { name: "Take zucchini off your grocery list" })).toHaveAttribute("aria-pressed", "true");
   await pop.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.getByText(/zucchini/i).first()).toBeVisible();

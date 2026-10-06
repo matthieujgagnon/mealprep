@@ -268,7 +268,7 @@ export function Planner({
         onWeekendMenu={() => open(overlay?.type === "weekend" ? null : { type: "weekend" })}
         overlay={overlay?.type === "weekend" ? <WeekendMenu weekend={weekend} onChange={onWeekendChange} onClose={close} /> : null}
       />
-      <HintStrip userId={user.id} screenKey="planner-v6" items={hintLines} />
+      <HintStrip userId={user.id} screenKey="planner-v7" items={hintLines} />
       <section className="riso-planner-finder" aria-label={t("finder.panelAria")}>
         {finderNode("panel")}
       </section>

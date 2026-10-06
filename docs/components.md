@@ -7,6 +7,7 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Piece | File | What it is |
 | --- | --- | --- |
 | Recipe pop-out | `components/RecipePopout.jsx` | The small window for a recipe. |
+| Ingredient marks | `IngredientMarks` in `components/RecipePopout.jsx`, `grocery.toggle` in `App.jsx` | The round ✓ on an ingredient: blue = in Inventory, green = on the grocery list. |
 | Slot picker | `components/SlotPicker.jsx` | The mini week where you choose a day and meal. |
 | Toast | `components/Toast.jsx` | The one message with Undo. |
 | Week calendar | `components/WeekCalendar.jsx` | The month calendar a week picker opens. |
@@ -23,16 +24,26 @@ Everything below is one piece used by every page that shows the same thing. The 
 
 `RecipePopout` is the look; `RecipePopoutHost` works out its lists. **`App.jsx` renders the one host**, so a recipe opens the same pop-out from the Planner (board cards and finder results), Recipes and Home. Makeable and the recipe card use it next.
 
-It shows time and servings, the meal, "Planned Wednesday", what you have, what to buy (tap to put an item on the grocery list, or take it off), the steps, and four buttons: **Plan** (first), **Cook**, **Similar recipes** and **Open the full recipe**.
+It shows time and servings, the meal, "Planned Wednesday", what you have, what to buy (tap to put an item on the grocery list, or take it off; see Ingredient marks), the steps, and four buttons: **Plan** (first), **Cook**, **Similar recipes** and **Open the full recipe**.
 
 Open it with `openPopout(recipeOrId, from?)` (`from` is the box of the card it grows out of). Main props:
 
-- `RecipePopoutHost`: `recipe`, `from`, `haveCores`, `plannedEntries`, `grocery` (`{ isOnList, add, remove }`), `deals` and `showSales` (optional green sale pills).
+- `RecipePopoutHost`: `recipe`, `from`, `haveCores`, `plannedEntries`, `grocery` (`{ isOnList, add, remove, toggle }`), `deals` and `showSales` (optional green sale pills).
 - Buttons (each optional): `onPlan`, `onCook`, `onSimilar`, `onOpenFull`, `onClose`.
 
 In `App.jsx`: Plan calls `requestPlan`, Cook and Open the full recipe call `openRecipeCard`, Similar recipes sets `plannerMainId` and goes to the Planner.
 
 Used by: Planner (`Finder` results, board cards on a phone), Recipes (`RecipeCard`), Home (week strip).
+
+## Ingredient marks
+
+Every place that lists a recipe's ingredients marks each one with the same round ✓, so it is one piece, not three:
+
+- **Blue ✓**: in your Inventory (it follows Inventory by itself).
+- **Green ✓**: not in Inventory, but on your grocery list. Tapping it takes the item off the list and shows the shared Toast with Undo; tapping the + that replaces it puts the item back.
+- **White +**: neither; tap to put it on the list. (Inventory wins if an item is both.)
+
+`IngredientMarks` (in `RecipePopout.jsx`) draws the "you have" and "to buy" lists for the recipe pop-out and the Planner's planned-meal card. The full recipe card (`RecipeDetailModal`) draws the same three marks as the dot beside each ingredient and the three-part legend under the list. All of them read `grocery.isOnList` and call `grocery.toggle`, which `App.jsx` builds once (`toggleGroceryItem`), so Grocery and every mark always agree. A page that shows ingredients gets `grocery` as a prop; do not read the grocery list any other way.
 
 ## Slot picker
 
@@ -46,7 +57,9 @@ Used by: the pop-out's Plan (Planner, Recipes, Home) and the Planner finder's + 
 
 `Toast` is a dark pill at the bottom of the screen for five seconds, with Undo when the change can be taken back. **`App.jsx` keeps it**: `showToast(message, undo?)`, passed down as `onToast` (Recipes, Inventory) and `actions.toast` (Planner). Do not draw another message. Put what undoing means in `undo`.
 
-Used by: Planner (add, replace, remove, copy, leftovers), Recipes (imported), Inventory (added, saved).
+It sits above every pop-out, picker and question (z-index 500), so Undo can be pressed while one is open.
+
+Used by: Planner (add, replace, remove, copy, leftovers, Option-drag copies), Recipes (imported), Inventory (added, saved), and the grocery ✓ in Ingredient marks (taken off the list).
 
 ## Week calendar
 

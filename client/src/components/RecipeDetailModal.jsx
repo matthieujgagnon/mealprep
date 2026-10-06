@@ -188,7 +188,8 @@ function IngredientRow({
   scaledQty,
   isOpen,
   onToggle,
-  onAddOneToGroceryList,
+  onList,
+  onToggleList,
   onRequestInventoryAdd,
   onRemoveFromInventory,
   onNavigate,
@@ -196,23 +197,11 @@ function IngredientRow({
 }) {
   const have = status !== "need";
   const matched = have ? findMatchedPantryItem(ing, pantryInventory) : null;
-  // "+ Grocery list" turns into a quiet "On grocery list ✓" once it's added.
-  const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
-  async function addToList() {
-    setAdding(true);
-    try {
-      await onAddOneToGroceryList(ing);
-      setAdded(true);
-    } finally {
-      setAdding(false);
-    }
-  }
   const where = (matched ? locationLabel(matched.location) : t("recipeCard.inventory")).toLowerCase();
 
   let why;
   if (status === "need") {
-    why = t("recipeCard.whyNeed");
+    why = onList ? t("recipeCard.whyOnList") : t("recipeCard.whyNeed");
   } else if (status === "soon") {
     const expiry = matched?.expiresAt ? formatExpiry(matched.expiresAt).toLowerCase() : t("recipeCard.soon");
     why = t("recipeCard.whySoon", { where, expiry });
@@ -222,34 +211,48 @@ function IngredientRow({
 
   return (
     <div className="riso-rc-ingredient">
-      <button type="button" className="riso-rc-ingredient-row" onClick={onToggle}>
-        <span className={`riso-rc-ingredient-dot${have ? " have" : ""}`}>{have && "✓"}</span>
-        <span className="riso-rc-ingredient-name">
-          {ing.name}
-          {ing.notes && <span className="riso-rc-ingredient-note"> {ing.notes}</span>}
-          {isPerishable(ing.name) && <span className="perishable-dot" title={t("recipeCard.perishable")} />}
-        </span>
-        {status === "soon" && <span className="riso-rc-use-soon-sticker">{t("recipeCard.useSoon")}</span>}
-        {status === "need" && <SaleTag deal={deal} others={saleOthers} />}
-        <span className="riso-rc-ingredient-qty">
-          {scaledQty != null
-            ? `${formatQuantity(scaledQty)}${ing.unit ? " " + unitLabel(ing.unit, scaledQty) : ""}`
-            : unitLabel(ing.unit)}
-        </span>
-      </button>
+      <div className="riso-rc-ingredient-line">
+        {have ? (
+          // Blue ✓: in your Inventory (it follows Inventory by itself).
+          <span className="riso-rc-ingredient-dot have" aria-hidden="true" onClick={onToggle}>
+            ✓
+          </span>
+        ) : (
+          // Green ✓: on your grocery list; empty +: not on it. Tapping either toggles the list.
+          <button
+            type="button"
+            className={`riso-rc-ingredient-dot toggle${onList ? " onlist" : ""}`}
+            aria-pressed={onList}
+            aria-label={onList ? t("finder.takeOffListAria", { name: ing.name }) : t("makeable.addToList", { name: ing.name })}
+            title={onList ? t("finder.onListTitle") : t("makeable.addToListTitle")}
+            onClick={() => onToggleList(ing.name)}
+          >
+            {onList ? "✓" : "+"}
+          </button>
+        )}
+        <button type="button" className="riso-rc-ingredient-row" aria-expanded={isOpen} onClick={onToggle}>
+          <span className="riso-rc-ingredient-name">
+            {ing.name}
+            {ing.notes && <span className="riso-rc-ingredient-note"> {ing.notes}</span>}
+            {isPerishable(ing.name) && <span className="perishable-dot" title={t("recipeCard.perishable")} />}
+          </span>
+          {status === "soon" && <span className="riso-rc-use-soon-sticker">{t("recipeCard.useSoon")}</span>}
+          {status === "need" && <SaleTag deal={deal} others={saleOthers} />}
+          <span className="riso-rc-ingredient-qty">
+            {scaledQty != null
+              ? `${formatQuantity(scaledQty)}${ing.unit ? " " + unitLabel(ing.unit, scaledQty) : ""}`
+              : unitLabel(ing.unit)}
+          </span>
+        </button>
+      </div>
       {isOpen && (
         <div className="riso-rc-ingredient-explainer">
           <p>{why}</p>
           <div className="riso-rc-ingredient-actions">
             {status === "need" ? (
               <>
-                <button
-                  type="button"
-                  className={`riso-rc-ing-action primary${added ? " added" : ""}`}
-                  onClick={addToList}
-                  disabled={adding || added}
-                >
-                  {added ? t("recipeCard.onList") : adding ? t("recipeCard.adding") : t("recipeCard.addOne")}
+                <button type="button" className={`riso-rc-ing-action primary${onList ? " added" : ""}`} onClick={() => onToggleList(ing.name)}>
+                  {onList ? t("recipeCard.takeOffList") : t("recipeCard.addOne")}
                 </button>
                 <button type="button" className="riso-rc-ing-action" onClick={() => onRequestInventoryAdd([{ ref: ing.name, name: ing.name }], { title: t("inventoryConfirm.haveItTitle") })}>
                   {t("recipeCard.haveIt")}
@@ -288,6 +291,7 @@ export function RecipeDetailModal({
   onRequestInventoryAdd,
   onDeletePantryItem,
   onAddToGroceryList,
+  grocery, // { isOnList(name), toggle(name) } from App: the one grocery list every page reads
   onConsumePantryItems,
   onPlanLeftovers,
   onNavigate,
@@ -303,7 +307,6 @@ export function RecipeDetailModal({
   const [tagInput, setTagInput] = useState("");
   const [phoneTab, setPhoneTab] = useState("ingredients");
   const [addingMissing, setAddingMissing] = useState(false);
-  const [addedMissing, setAddedMissing] = useState(false);
   const [openIngredientKey, setOpenIngredientKey] = useState(null);
   const [moveNote, setMoveNote] = useState(null); // "cookbook" | "imported" | "error" once a move is done
   const [moving, setMoving] = useState(false);
@@ -428,20 +431,18 @@ export function RecipeDetailModal({
     api.updateRecipe(recipe.id, { fridgeLifeDays: days }).then((updated) => onRecipeUpdated?.(updated));
   }
 
+  // The missing ingredients that are not on the grocery list yet (the list is App's,
+  // so this always agrees with Grocery and the pop-out).
+  const notOnList = missingIngredients.filter((ing) => !grocery.isOnList(ing.name));
+
   async function handleAddMissingToGroceryList() {
-    if (missingIngredients.length === 0 || !weekStart) return;
+    if (notOnList.length === 0 || !weekStart) return;
     setAddingMissing(true);
     try {
-      await onAddToGroceryList(missingIngredients.map((ing) => ing.name));
-      setAddedMissing(true);
+      await onAddToGroceryList(notOnList.map((ing) => ing.name));
     } finally {
       setAddingMissing(false);
     }
-  }
-
-  async function handleAddOneToGroceryList(ing) {
-    if (!weekStart) return;
-    await onAddToGroceryList([ing.name]);
   }
 
   async function handleRemoveFromInventory(ing) {
@@ -713,7 +714,8 @@ export function RecipeDetailModal({
                           scaledQty={scaledQty}
                           isOpen={openIngredientKey === key}
                           onToggle={() => setOpenIngredientKey((prev) => (prev === key ? null : key))}
-                          onAddOneToGroceryList={handleAddOneToGroceryList}
+                          onList={grocery.isOnList(ing.name)}
+                          onToggleList={grocery.toggle}
                           onRequestInventoryAdd={onRequestInventoryAdd}
                           onRemoveFromInventory={handleRemoveFromInventory}
                           onNavigate={onNavigate}
@@ -731,6 +733,10 @@ export function RecipeDetailModal({
                   {t("recipeCard.inInventory")}
                 </span>
                 <span>
+                  <span className="riso-rc-legend-dot onlist" />
+                  {t("recipeCard.onGroceryList")}
+                </span>
+                <span>
                   <span className="riso-rc-legend-dot" />
                   {t("recipeCard.needToBuy")}
                 </span>
@@ -743,15 +749,17 @@ export function RecipeDetailModal({
               </div>
 
               {missingIngredients.length > 0 && weekStart && (
-                plannedEntry ? (
+                notOnList.length === 0 ? (
                   <div className="riso-rc-planned-note">
                     <span className="riso-rc-planned-check">✓</span>
                     <p>
-                      {t("recipeCard.planned", {
-                        count: missingIngredients.length,
-                        day: dict().days.long[plannedEntry.dayOfWeek],
-                        meal: t(`meals.${plannedEntry.mealType}`).toLowerCase(),
-                      })}{" "}
+                      {plannedEntry
+                        ? t("recipeCard.planned", {
+                            count: missingIngredients.length,
+                            day: dict().days.long[plannedEntry.dayOfWeek],
+                            meal: t(`meals.${plannedEntry.mealType}`).toLowerCase(),
+                          })
+                        : t("recipeCard.allOnList", { count: missingIngredients.length })}{" "}
                       <button type="button" className="riso-rc-planned-link" onClick={() => onNavigate?.("grocery")}>
                         {t("recipeCard.viewList")}
                       </button>
@@ -760,15 +768,11 @@ export function RecipeDetailModal({
                 ) : (
                   <button
                     type="button"
-                    className={`riso-rc-add-missing-btn${addedMissing ? " added" : ""}`}
+                    className="riso-rc-add-missing-btn"
                     onClick={handleAddMissingToGroceryList}
-                    disabled={addingMissing || addedMissing}
+                    disabled={addingMissing}
                   >
-                    {addedMissing
-                      ? t("recipeCard.addedMissing")
-                      : addingMissing
-                        ? t("recipeCard.adding")
-                        : t("recipeCard.addMissing", { count: missingIngredients.length })}
+                    {addingMissing ? t("recipeCard.adding") : t("recipeCard.addMissing", { count: notOnList.length })}
                   </button>
                 )
               )}

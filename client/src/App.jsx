@@ -44,7 +44,7 @@ import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 // Without this, dnd-kit still tracks the drag internally and drop zones
 // still light up correctly, but nothing visibly moves with the pointer —
 // which reads as "it doesn't drag, it just highlights where I'm dropping."
-function DragPreview({ active }) {
+function DragPreview({ active, copy = false }) {
   const recipe = active?.data.current?.recipe;
   const ingredientCore = active?.data.current?.ingredientCore;
   const inventoryItem = active?.data.current?.inventoryItem;
@@ -61,7 +61,7 @@ function DragPreview({ active }) {
       );
     }
     return (
-      <div className="riso-theme riso-planner-drag-preview">
+      <div className={`riso-theme riso-planner-drag-preview${copy ? " copy" : ""}`}>
         {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" /> : <span className="photo-placeholder" />}
         <span className="riso-planner-drag-preview-name">{recipe.title}</span>
       </div>
@@ -194,6 +194,46 @@ export default function App({ user, onLogout }) {
   // useSortable already handles reflow for same-grid drags on its own).
   const [dragOverId, setDragOverId] = useState(null);
 
+  // Option (Mac) / Alt (Windows) held while a planned recipe is dragged: the drop makes
+  // a leftover copy in the target slot instead of moving the card. `optionHeld` is
+  // read at the drop (a ref, so it is never stale); `copyDrag` only drives the "+"
+  // cursor and badge while it is held.
+  const optionHeld = useRef(false);
+  const [copyDrag, setCopyDrag] = useState(false);
+  const draggingPlannedRecipe = !!activeDragItem?.data.current?.entryId && !activeDragItem.data.current?.recipe?.isPlaceholder;
+  useEffect(() => {
+    if (!isDragActive) {
+      optionHeld.current = false;
+      setCopyDrag(false);
+      return undefined;
+    }
+    const sync = (held) => {
+      optionHeld.current = held;
+      setCopyDrag(held && draggingPlannedRecipe);
+    };
+    const onKey = (e) => {
+      if (e.key !== "Alt") return;
+      e.preventDefault(); // letting go of Alt must not focus the browser's menu bar
+      sync(e.type === "keydown");
+    };
+    const onPointer = (e) => sync(e.altKey);
+    const onBlur = () => sync(false);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKey);
+    window.addEventListener("pointermove", onPointer);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
+      window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [isDragActive, draggingPlannedRecipe]);
+  useEffect(() => {
+    document.body.classList.toggle("riso-copy-drag", copyDrag);
+    return () => document.body.classList.remove("riso-copy-drag");
+  }, [copyDrag]);
+
   // A distance-based activation constraint (start dragging after 8px of
   // movement) is fine for a mouse, but on a touchscreen it means any quick
   // vertical swipe to scroll the page — which is also "more than 8px of
@@ -295,6 +335,23 @@ export default function App({ user, onLogout }) {
     );
     if (recipeRow) await setGroceryOverride(recipeRow.key, { removed: true });
   }
+
+  // The ✓ on an ingredient (recipe pop-out, planned meal's card, full recipe card):
+  // on the list -> take it off, with the shared Undo toast; off the list -> put it
+  // back. Undo goes through `latestGrocery` because the list has changed by then.
+  const latestGrocery = useRef({});
+  latestGrocery.current = { addToGroceryList };
+  async function toggleGroceryItem(name) {
+    if (!isOnGroceryList(name)) {
+      await addToGroceryList([name]);
+      return;
+    }
+    await removeFromGroceryList(name);
+    showToast(t("grocery.takenOff", { name }), () => latestGrocery.current.addToGroceryList([name]));
+  }
+
+  // One set of grocery functions for every page that shows an ingredient's marks.
+  const grocery = { isOnList: isOnGroceryList, add: addToGroceryList, remove: removeFromGroceryList, toggle: toggleGroceryItem };
 
   function handleImported(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
@@ -553,6 +610,7 @@ export default function App({ user, onLogout }) {
   }
 
   async function handleDragEnd(event) {
+    const copying = optionHeld.current;
     setIsDragActive(false);
     setActiveDragItem(null);
     const { active, over } = event;
@@ -581,9 +639,17 @@ export default function App({ user, onLogout }) {
     if (!cellMatch) return;
     const slot = { dayOfWeek: Number(cellMatch[1]), mealType: cellMatch[2] };
 
-    // A meal or note dragged between slots: the two slots swap.
     const entryId = active.data.current?.entryId;
     if (entryId) {
+      // With Option held, a planned recipe is copied as leftovers into an empty slot
+      // (the original stays put).
+      const source = plannerEntries.find((e) => e.id === entryId);
+      if (copying && source && !source.recipe?.isPlaceholder) {
+        if (entriesInSlot(slot).length > 0) showToast(t("planner.copyNeedsEmpty"));
+        else await handlePlaceLeftover(source.recipe, slot);
+        return;
+      }
+      // A meal or note dragged between slots: the two slots swap.
       await handleMoveEntry(entryId, slot);
       return;
     }
@@ -875,6 +941,11 @@ export default function App({ user, onLogout }) {
       onDragStart={(event) => {
         setIsDragActive(true);
         setActiveDragItem(event.active);
+        // Option already held when the drag starts.
+        const held = !!event.activatorEvent?.altKey;
+        optionHeld.current = held;
+        const data = event.active.data.current;
+        setCopyDrag(held && !!data?.entryId && !data?.recipe?.isPlaceholder);
       }}
       onDragOver={(event) => {
         setDragOverId(event.over?.id ?? null);
@@ -1156,7 +1227,7 @@ export default function App({ user, onLogout }) {
                 pantryLocations={pantryLocations}
                 inventoryLayout={inventoryLayout}
                 haveCores={pantryHaveCores}
-                grocery={{ isOnList: isOnGroceryList, add: addToGroceryList, remove: removeFromGroceryList }}
+                grocery={grocery}
                 target={plannerTarget}
                 onTargetChange={setPlannerTarget}
                 initialMainId={plannerMainId}
@@ -1225,6 +1296,7 @@ export default function App({ user, onLogout }) {
             onRequestInventoryAdd={requestInventoryAdd}
             onDeletePantryItem={handleDeletePantryItem}
             onAddToGroceryList={addToGroceryList}
+            grocery={grocery}
             onConsumePantryItems={handleConsumePantryItems}
             onPlanLeftovers={handlePlanLeftovers}
             onNavigate={(t) => {
@@ -1239,7 +1311,7 @@ export default function App({ user, onLogout }) {
             from={popout.from}
             haveCores={pantryHaveCores}
             plannedEntries={[...plannerEntries, ...upcomingEntries]}
-            grocery={{ isOnList: isOnGroceryList, add: addToGroceryList, remove: removeFromGroceryList }}
+            grocery={grocery}
             onPlan={() => requestPlan(recipes.find((r) => r.id === popout.recipeId))}
             onCook={() => openRecipeCard(popout.recipeId)}
             onSimilar={() => {
@@ -1287,7 +1359,7 @@ export default function App({ user, onLogout }) {
         <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
       <DragOverlay dropAnimation={null}>
-        {activeDragItem && <DragPreview active={activeDragItem} />}
+        {activeDragItem && <DragPreview active={activeDragItem} copy={copyDrag} />}
       </DragOverlay>
     </DndContext>
   );
