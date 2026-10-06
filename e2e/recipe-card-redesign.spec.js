@@ -168,10 +168,12 @@ test("the photo gallery flips with the arrow keys and has a clear × to close", 
   await expect(viewer).toHaveCount(0);
   await expect(page.locator(".riso-rc-modal")).toBeVisible();
 
-  // "+ Grocery list" on a missing ingredient says it's done.
+  // "+ Grocery list" on a missing ingredient puts it on the list: its dot turns green
+  // and the button becomes "Take off grocery list".
   await page.locator(".riso-rc-ingredient-row", { hasText: "quokka beans" }).click();
   const add = page.getByRole("button", { name: "+ Grocery list" });
   await add.hover();
   await add.click();
-  await expect(page.getByRole("button", { name: "On grocery list ✓" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Take off grocery list" })).toBeVisible();
+  await expect(page.locator(".riso-rc-ingredient-dot.onlist")).toHaveCount(1);
 });

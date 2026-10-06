@@ -153,6 +153,7 @@ function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, onRemove,
 
   const classes = ["riso-planner-card"];
   if (entry.alreadyHave) classes.push("have");
+  else if (entry.isLeftover) classes.push("leftover");
   if (isPast) classes.push("past");
   if (isDragging) classes.push("dragging");
 
@@ -475,6 +476,14 @@ export function PlannerBoard({
         <span className="riso-planner-legend-item">
           <i className="riso-planner-legend-swatch today" aria-hidden="true" />
           {t("planner.legendTodayName")}
+        </span>
+        <span className="riso-planner-legend-item">
+          <i className="riso-planner-legend-swatch have" aria-hidden="true" />
+          {t("planner.legendHave")}
+        </span>
+        <span className="riso-planner-legend-item">
+          <i className="riso-planner-legend-swatch leftover" aria-hidden="true" />
+          {t("planner.legendLeftover")}
         </span>
         {legendExtra}
       </div>

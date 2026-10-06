@@ -9,7 +9,8 @@ import { t } from "../i18n/index.js";
 
 // A recipe's pop-out (design: docs/design/riso-v2, Finder): time and servings,
 // the meal, the day it is planned, what you have (green ✓), what to buy
-// (yellow; tap to put it on, or take it off, the grocery list), the steps, and
+// (yellow; tap to put it on, or take it off, the grocery list; IngredientMarks
+// below says what the blue and green ✓ mean), the steps, and
 // four buttons: Plan (first: it opens the slot picker), Cook, Similar recipes
 // and Open the full recipe (Cook and the full recipe both open the recipe's card
 // on the Recipes page, through App's openRecipeCard).
@@ -30,6 +31,68 @@ import { t } from "../i18n/index.js";
 //     App.jsx renders the one host, so Planner, Recipes and Home open the same pop-out.
 
 const CLOSE_MS = 300;
+
+function PopSection({ className = "", children }) {
+  return <section className={`fnd-pop-section ${className}`.trim()}>{children}</section>;
+}
+
+// The ingredient marks, one piece for the pop-out and the Planner's meal card
+// (so every page agrees). A round ✓ says where an ingredient stands:
+//   blue ✓    in your Inventory (the "you have" pills)
+//   green ✓   not in Inventory, but on your grocery list; tap to take it off
+//             (the caller's onToggleList shows the Undo toast), tap again to put it back
+//   + (white) not in Inventory and not on the list; tap to put it on the list
+// `Section` is the wrapper each caller already uses; `headingTag` the heading level.
+export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Section = "section", headingTag: H = "h3" }) {
+  return (
+    <>
+      {have.length > 0 && (
+        <Section>
+          <H className="fnd-pop-caps">{t("finder.youHave", { count: have.length })}</H>
+          <div className="fnd-pop-pills fnd-pop-have">
+            {have.map((item) => (
+              <InStockPill key={item.core} title={t("finder.haveTitle")}>
+                {item.name}
+              </InStockPill>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {buy.length > 0 ? (
+        <Section>
+          <H className="fnd-pop-caps">{t("finder.toBuy", { count: buy.length })}</H>
+          <div className="fnd-pop-pills">
+            {buy.map((item) => {
+              const listed = isOnList(item.name);
+              const sale = saleOf?.(item.name);
+              return (
+                <span key={item.core} className="fnd-pop-buy">
+                  <button
+                    type="button"
+                    className={`riso-pill size-chip tone-yellow has-mark fnd-buy-pill${listed ? " listed" : ""}`}
+                    aria-pressed={listed}
+                    aria-label={listed ? t("finder.takeOffListAria", { name: item.name }) : t("makeable.addToList", { name: item.name })}
+                    title={listed ? t("finder.onListTitle") : t("makeable.addToListTitle")}
+                    onClick={() => onToggleList(item.name)}
+                  >
+                    <span className="riso-pill-mark" aria-hidden="true">
+                      {listed ? "✓" : "+"}
+                    </span>
+                    {item.name}
+                  </button>
+                  {sale && <SalePill size="tag" percent={sale.percent} store={sale.store} price={sale.price} />}
+                </span>
+              );
+            })}
+          </div>
+        </Section>
+      ) : (
+        <p className="fnd-pop-allhere">{t("finder.allHere")}</p>
+      )}
+    </>
+  );
+}
 
 export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggleList, saleOf, onPlan, onCook, onSimilar, onOpenFull, onClose: close, from }) {
   const closeRef = useRef(null);
@@ -116,47 +179,14 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
               </div>
             )}
 
-            {have.length > 0 && (
-              <section className="fnd-pop-section">
-                <h3 className="fnd-pop-caps">{t("finder.youHave", { count: have.length })}</h3>
-                <div className="fnd-pop-pills">
-                  {have.map((item) => (
-                    <InStockPill key={item.core}>{item.name}</InStockPill>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {buy.length > 0 ? (
-              <section className="fnd-pop-section">
-                <h3 className="fnd-pop-caps">{t("finder.toBuy", { count: buy.length })}</h3>
-                <div className="fnd-pop-pills">
-                  {buy.map((item) => {
-                    const listed = isOnList(item.name);
-                    const sale = saleOf?.(item.name);
-                    return (
-                      <span key={item.core} className="fnd-pop-buy">
-                        <button
-                          type="button"
-                          className={`riso-pill size-chip tone-yellow has-mark fnd-buy-pill${listed ? " listed" : ""}`}
-                          aria-pressed={listed}
-                          aria-label={listed ? t("makeable.removeFromList", { name: item.name }) : t("makeable.addToList", { name: item.name })}
-                          onClick={() => onToggleList(item.name)}
-                        >
-                          <span className="riso-pill-mark" aria-hidden="true">
-                            {listed ? "✓" : "+"}
-                          </span>
-                          {item.name}
-                        </button>
-                        {sale && <SalePill size="tag" percent={sale.percent} store={sale.store} price={sale.price} />}
-                      </span>
-                    );
-                  })}
-                </div>
-              </section>
-            ) : (
-              <p className="fnd-pop-allhere">{t("finder.allHere")}</p>
-            )}
+            <IngredientMarks
+              have={have}
+              buy={buy}
+              isOnList={isOnList}
+              onToggleList={onToggleList}
+              saleOf={saleOf}
+              Section={PopSection}
+            />
 
             <section className="fnd-pop-section fnd-pop-steps">
               <h3 className="fnd-pop-stepshead">{t("finder.steps", { count: numbered.length })}</h3>
@@ -216,7 +246,8 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
 // The pop-out with its lists worked out. `recipe` may be null (then nothing shows).
 //   haveCores      what is on hand (lib/onHand.js haveCoresFor)
 //   plannedEntries this week's and the upcoming entries, for the "Planned Wednesday" pill
-//   grocery        { isOnList, add, remove }
+//   grocery        { isOnList, add, remove, toggle } (toggle takes an item off the list
+//                  with the Undo toast, or puts it back: App.jsx toggleGroceryItem)
 //   deals, showSales  optional: green sale pills next to the things to buy
 export function RecipePopoutHost({ recipe, from, haveCores, plannedEntries, grocery, deals, showSales = false, ...actions }) {
   const lists = useMemo(() => (recipe ? haveAndBuy(recipe, haveCores) : { have: [], buy: [] }), [recipe, haveCores]);
@@ -229,7 +260,7 @@ export function RecipePopoutHost({ recipe, from, haveCores, plannedEntries, groc
       have={lists.have}
       buy={lists.buy}
       isOnList={grocery.isOnList}
-      onToggleList={(name) => (grocery.isOnList(name) ? grocery.remove(name) : grocery.add([name]))}
+      onToggleList={grocery.toggle}
       saleOf={showSales ? (name) => saleFor(name, deals) : undefined}
       {...actions}
     />

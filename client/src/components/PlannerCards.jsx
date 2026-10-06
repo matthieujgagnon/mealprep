@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { InStockPill, TimePill } from "./RisoPills.jsx";
+import { TimePill } from "./RisoPills.jsx";
+import { IngredientMarks } from "./RecipePopout.jsx";
 import { haveAndBuy } from "../lib/finder.js";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { stepIsHeading, stepText } from "../lib/steps.js";
@@ -81,15 +82,39 @@ const QUICK = ["q1", "q2", "q3", "q4"];
 // The empty slot's card. `note` is the existing note's text when a note slot
 // was clicked (the card opens on the Note tile with it filled in).
 export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSaveNote, onBlank, onRemoveNote, onClose }) {
-  const [mode, setMode] = useState(note != null ? "note" : null); // null | "note" | "blank"
+  const [mode, setMode] = useState(note != null ? "note" : null); // null | "note"
   const [text, setText] = useState(note || "");
+  // "Nothing planned" asks twice: the first click turns the tile blue ("Confirm"),
+  // the second marks the slot. Anything else clicked, or Escape, puts the tile back.
+  const [confirming, setConfirming] = useState(false);
   const { ref, style } = useBesideSlot({ anchor, board, mealIndex }, [mode]);
   useCloseOutside(ref, anchor, onClose);
   const inputRef = useRef(null);
+  const blankRef = useRef(null);
 
   useEffect(() => {
     if (mode === "note") inputRef.current?.focus();
   }, [mode]);
+
+  useEffect(() => {
+    if (!confirming) return undefined;
+    // Capture on window, so this Escape cancels the question only and does not
+    // also close the card (useCloseOutside listens on document).
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setConfirming(false);
+    };
+    const onDown = (e) => {
+      if (!blankRef.current?.contains(e.target)) setConfirming(false);
+    };
+    window.addEventListener("keydown", onKey, true);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [confirming]);
 
   const canSave = text.trim() !== "";
   const save = () => canSave && onSaveNote(text.trim());
@@ -110,8 +135,21 @@ export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSav
         <button type="button" className={`riso-slotcard-btn note${mode === "note" ? " selected" : ""}`} aria-pressed={mode === "note"} onClick={() => setMode("note")}>
           {t("planner.slotNote")}
         </button>
-        <button type="button" className={`riso-slotcard-btn blank${mode === "blank" ? " selected" : ""}`} aria-pressed={mode === "blank"} onClick={() => setMode("blank")}>
-          {t("planner.slotBlank")}
+        <button
+          ref={blankRef}
+          type="button"
+          className={`riso-slotcard-btn blank${confirming ? " confirming" : ""}`}
+          aria-label={confirming ? t("planner.slotConfirmAria", { slot: slotLabel(slot) }) : undefined}
+          onClick={() => {
+            if (!confirming) {
+              setMode(null);
+              setConfirming(true);
+            } else {
+              onBlank();
+            }
+          }}
+        >
+          {confirming ? t("planner.slotConfirm") : t("planner.slotBlank")}
         </button>
       </div>
 
@@ -159,16 +197,6 @@ export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSav
           )}
         </div>
       )}
-
-      {mode === "blank" && (
-        <div className="riso-slotcard-blank">
-          <strong>{t("planner.blankName")}</strong>
-          <p>{t("planner.blankText")}</p>
-          <button type="button" className="riso-slotcard-save ready" onClick={onBlank}>
-            {t("planner.blankButton")}
-          </button>
-        </div>
-      )}
     </CardShell>
   );
 }
@@ -199,43 +227,7 @@ export function PlannedCard({ slot, mealIndex, anchor, board, recipe, haveCores,
           <TimePill minutes={recipeTotalMinutes(recipe)} serves={recipe.baseServings} />
           {slotName && <span className="riso-plannedcard-meal">{t(`recipes.mealTypes.${slotName}`)}</span>}
         </div>
-        {have.length > 0 && (
-          <section>
-            <h4 className="fnd-pop-caps">{t("finder.youHave", { count: have.length })}</h4>
-            <div className="fnd-pop-pills">
-              {have.map((item) => (
-                <InStockPill key={item.core}>{item.name}</InStockPill>
-              ))}
-            </div>
-          </section>
-        )}
-        {buy.length > 0 ? (
-          <section>
-            <h4 className="fnd-pop-caps">{t("finder.toBuy", { count: buy.length })}</h4>
-            <div className="fnd-pop-pills">
-              {buy.map((item) => {
-                const listed = grocery.isOnList(item.name);
-                return (
-                  <button
-                    key={item.core}
-                    type="button"
-                    className={`riso-pill size-chip tone-yellow has-mark fnd-buy-pill${listed ? " listed" : ""}`}
-                    aria-pressed={listed}
-                    aria-label={listed ? t("makeable.removeFromList", { name: item.name }) : t("makeable.addToList", { name: item.name })}
-                    onClick={() => (listed ? grocery.remove(item.name) : grocery.add([item.name]))}
-                  >
-                    <span className="riso-pill-mark" aria-hidden="true">
-                      {listed ? "✓" : "+"}
-                    </span>
-                    {item.name}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ) : (
-          <p className="fnd-pop-allhere">{t("finder.allHere")}</p>
-        )}
+        <IngredientMarks have={have} buy={buy} isOnList={grocery.isOnList} onToggleList={grocery.toggle} headingTag="h4" />
         {steps.length > 0 && (
           <section className="fnd-pop-steps">
             <h4 className="fnd-pop-stepshead">{t("finder.steps", { count: numbered.length })}</h4>

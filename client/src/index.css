@@ -6023,6 +6023,19 @@ button.riso-table-group-head:disabled {
   border-top: 1.5px dashed var(--riso-dash-strong);
 }
 
+/* The ✓ circle sits beside the row button (not inside it): it has its own tap. */
+.riso-rc-ingredient-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-rc-ingredient-line .riso-rc-ingredient-row {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .riso-rc-ingredient-row {
   display: flex;
   align-items: center;
@@ -6053,8 +6066,28 @@ button.riso-table-group-head:disabled {
   font-weight: 700;
 }
 
+/* Blue ✓ = in your Inventory. */
 .riso-rc-ingredient-dot.have {
   background: var(--riso-accent);
+}
+
+/* The tappable dot: green ✓ = on your grocery list, "+" = to buy (tap to add). */
+.riso-rc-ingredient-dot.toggle {
+  position: relative;
+  padding: 0;
+  cursor: pointer;
+  color: var(--riso-ink);
+  font-family: inherit;
+}
+
+.riso-rc-ingredient-dot.toggle::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+}
+
+.riso-rc-ingredient-dot.toggle.onlist {
+  background: var(--riso-green);
 }
 
 .riso-rc-ingredient-name {
@@ -6198,6 +6231,10 @@ button.riso-table-group-head:disabled {
 
 .riso-rc-legend-dot.have {
   background: var(--riso-accent);
+}
+
+.riso-rc-legend-dot.onlist {
+  background: var(--riso-green);
 }
 
 .riso-rc-legend-sticker {
@@ -8835,9 +8872,14 @@ button.riso-protein-card:hover .riso-protein-name {
   touch-action: none;
 }
 
+/* Already have everything: a blue border, nothing else. Leftovers: a yellow
+   border, nothing else. Neither has a drop shadow. */
 .riso-planner-card.have {
   border: 3px solid var(--riso-accent);
-  box-shadow: 4px 4px 0 var(--riso-accent);
+}
+
+.riso-planner-card.leftover {
+  border: 3px solid var(--riso-yellow);
 }
 
 /* Days already gone read in black and white: photos, blue "have it"
@@ -9036,6 +9078,39 @@ button.riso-protein-card:hover .riso-protein-name {
 .riso-planner-drag-preview-name {
   padding: 8px 10px;
   font: 800 14px/1.2 var(--riso-font-display);
+}
+
+/* Option (Alt) held while dragging a planned recipe: it will be copied as leftovers,
+   not moved. The cursor shows a small "+", the floating card wears a yellow "+", and
+   the card left behind stays at full strength because it is not going anywhere. */
+body.riso-copy-drag,
+body.riso-copy-drag * {
+  cursor: copy !important;
+}
+
+body.riso-copy-drag .riso-planner-card.dragging,
+body.riso-copy-drag .riso-planner-note.dragging {
+  opacity: 1;
+}
+
+.riso-planner-drag-preview.copy {
+  position: relative;
+}
+
+.riso-planner-drag-preview.copy::after {
+  content: "+";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 16px/1 var(--riso-font-display);
 }
 
 .riso-planner-drag-preview.note {
@@ -19077,6 +19152,17 @@ body.no-select {
   border: 1.5px solid var(--riso-ink);
 }
 
+/* The two card borders: blue = already have everything, yellow = leftovers. */
+.riso-planner-legend-swatch.have {
+  background: var(--riso-surface);
+  border: 3px solid var(--riso-accent);
+}
+
+.riso-planner-legend-swatch.leftover {
+  background: var(--riso-surface);
+  border: 3px solid var(--riso-yellow);
+}
+
 .riso-planner-grocery {
   margin-left: auto;
   height: 38px;
@@ -19094,7 +19180,8 @@ body.no-select {
 /* The one toast (components/Toast.jsx): a dark pill at the bottom with Undo. */
 .riso-toast {
   position: fixed;
-  z-index: 200;
+  /* Above every pop-out, picker and question, so Undo can be pressed while one is open. */
+  z-index: 500;
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
@@ -19214,8 +19301,14 @@ body.no-select {
   box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
-.riso-slotcard-form,
-.riso-slotcard-blank {
+/* "Nothing planned" asked once: the tile turns blue and says Confirm. */
+.riso-slotcard-btn.blank.confirming {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.riso-slotcard-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -19268,22 +19361,6 @@ body.no-select {
   color: var(--riso-on-accent);
   box-shadow: var(--riso-shadow);
   cursor: pointer;
-}
-
-.riso-slotcard-blank {
-  padding: 14px;
-  border: 2px dashed var(--riso-ink);
-  border-radius: 18px;
-}
-
-.riso-slotcard-blank strong {
-  font: 800 15px var(--riso-font-display);
-}
-
-.riso-slotcard-blank p {
-  margin: 0;
-  font: 400 13.5px/1.4 var(--riso-font-body);
-  color: var(--riso-soft);
 }
 
 /* The planned meal's card */
@@ -19579,13 +19656,15 @@ body.no-select {
   box-sizing: border-box;
 }
 
-/* A thing to buy that is on the grocery list turns green. */
-.fnd-buy-pill.listed {
-  background: var(--riso-green);
+/* The round ✓ says where an ingredient stands (IngredientMarks in RecipePopout.jsx):
+   blue = in your Inventory, green = on your grocery list, white + = to buy. */
+.fnd-pop-have .riso-pill-mark {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
 }
 
 .fnd-buy-pill.listed .riso-pill-mark {
-  background: var(--riso-surface);
+  background: var(--riso-green);
   color: var(--riso-ink);
 }
 
