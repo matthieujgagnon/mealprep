@@ -109,6 +109,12 @@ function collisionDetection(args) {
     const visible = droppableContainers.filter(
       (c) => c.node.current && under.some((el) => c.node.current.contains(el))
     );
+    // The phone board's sticky meal labels sit over the days that slid under
+    // them: a drop there is a drop on nothing, not on the hidden day.
+    for (const el of under) {
+      if (el.closest?.("[data-drop-block]")) return [];
+      if (visible.some((c) => c.node.current.contains(el))) break;
+    }
     const hits = pointerWithin({ ...args, droppableContainers: visible });
     if (hits.length > 0 || !active.data.current?.sortable) return hits;
   }
@@ -160,7 +166,6 @@ export default function App({ user, onLogout }) {
   const [pickerFor, setPickerFor] = useState(null);
   const [plannerMainId, setPlannerMainId] = useState(null); // a recipe to open the Planner's finder on as its Main meal ("Plan around this")
   const [plannerTarget, setPlannerTarget] = useState(null); // the slot the finder is adding to { dayOfWeek, mealType }
-  const [editingNoteId, setEditingNoteId] = useState(null); // blank/written card being typed on
   // The Planner's weekend ({ on, days, eve }; days 0 = Monday), saved with the
   // account so every device shows the same.
   const [weekend, setWeekend] = useState(() => weekendFrom(user));
@@ -200,6 +205,20 @@ export default function App({ user, onLogout }) {
   // cursor and badge while it is held.
   const optionHeld = useRef(false);
   const [copyDrag, setCopyDrag] = useState(false);
+
+  // A finger that has held still long enough to pick something up must carry it
+  // without the page scrolling under it: once a drag is live, touch moves are not
+  // handed to the browser's scroll (which would cancel the drag). Before the drag
+  // starts a touch scrolls the page as usual. The listener is always on (and
+  // reads a ref) so it is already in place for the very first move.
+  const dragLive = useRef(false);
+  useEffect(() => {
+    const onTouchMove = (e) => {
+      if (dragLive.current && e.cancelable) e.preventDefault();
+    };
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => window.removeEventListener("touchmove", onTouchMove);
+  }, []);
   const draggingPlannedRecipe = !!activeDragItem?.data.current?.entryId && !activeDragItem.data.current?.recipe?.isPlaceholder;
   useEffect(() => {
     if (!isDragActive) {
@@ -807,7 +826,7 @@ export default function App({ user, onLogout }) {
   async function handleRemoveWithUndo(entryId) {
     const snap = plannerEntries.find((e) => e.id === entryId);
     await handleRemoveFromPlanner(entryId);
-    if (snap && !String(snap.id).startsWith("pending-")) {
+    if (snap) {
       const name = snap.recipe?.isPlaceholder ? (isCustomNote(snap) ? snap.recipe.title : t("planner.blankName")) : snap.recipe?.title;
       showToast(t("planner.toastRemoved", { title: name, slot: slotLabel(snap) }), () => restoreEntry(snap));
     }
@@ -820,10 +839,9 @@ export default function App({ user, onLogout }) {
     const snaps = entriesOnDay(plannerEntries, dayOfWeek);
     if (snaps.length === 0) return;
     await Promise.all(snaps.map((e) => handleRemoveFromPlanner(e.id)));
-    const saved = snaps.filter((e) => !String(e.id).startsWith("pending-"));
     const long = dict().days.long[dayOfWeek];
     showToast(t("planner.toastDayCleared", { day: long }), async () => {
-      for (const snap of saved) await restoreEntry(snap);
+      for (const snap of snaps) await restoreEntry(snap);
     });
   }
 
@@ -838,59 +856,9 @@ export default function App({ user, onLogout }) {
       .catch(() => setWeekend(before));
   }
 
-  // Clicking an empty slot turns it into a blank card to write on. The card
-  // (and its text box) shows at once, so nothing typed is lost while the
-  // server saves it; the real entry swaps in underneath when it arrives.
-  const pendingBlanks = useRef(new Map()); // temp id -> Promise<saved entry>
-  function handleWriteInSlot(slot) {
-    const tempId = `pending-${Date.now()}`;
-    const temp = {
-      id: tempId,
-      weekStart,
-      ...slot,
-      recipe: { id: null, title: "No meal planned", isPlaceholder: true, ingredients: [] },
-    };
-    setPlannerEntries((prev) => [...prev, temp]);
-    setEditingNoteId(tempId);
-    const created = api.markSlotBlank(weekStart, slot.dayOfWeek, slot.mealType);
-    pendingBlanks.current.set(tempId, created);
-    created
-      .then((saved) => {
-        setPlannerEntries((prev) => prev.map((e) => (e.id === tempId ? saved : e)));
-        setEditingNoteId((id) => (id === tempId ? saved.id : id));
-      })
-      .catch(() => setPlannerEntries((prev) => prev.filter((e) => e.id !== tempId)))
-      .finally(() => pendingBlanks.current.delete(tempId));
-  }
-
-  // Saves what was typed on a blank/written card ("" leaves it blank).
-  async function handleSaveNote(entryId, text) {
-    setEditingNoteId((id) => (id === entryId ? null : id));
-    let id = entryId;
-    let entry = plannerEntries.find((e) => e.id === entryId);
-    if (pendingBlanks.current.has(entryId)) {
-      entry = await pendingBlanks.current.get(entryId);
-      id = entry.id;
-    }
-    const next = text.trim();
-    const current = entry && isCustomNote(entry) ? entry.recipe.title : "";
-    if (!entry || next === current) return;
-    // Shown right away; the server copy replaces it.
-    setPlannerEntries((prev) =>
-      prev.map((e) =>
-        e.id === id || e.id === entryId ? { ...e, recipe: { ...e.recipe, title: next || "No meal planned" } } : e
-      )
-    );
-    const saved = await api.setPlannerEntryNote(id, next);
-    setPlannerEntries((prev) => prev.map((e) => (e.id === id ? saved : e)));
-  }
-
   async function handleRemoveFromPlanner(entryId) {
     setPlannerEntries((prev) => prev.filter((e) => e.id !== entryId));
-    const pending = pendingBlanks.current.get(entryId);
-    const id = pending ? (await pending).id : entryId;
-    setPlannerEntries((prev) => prev.filter((e) => e.id !== id));
-    await api.removeFromPlanner(id);
+    await api.removeFromPlanner(entryId);
   }
 
   // One control cycles a placed card through three states: plain -> leftover
@@ -955,6 +923,7 @@ export default function App({ user, onLogout }) {
       collisionDetection={collisionDetection}
       autoScroll={{ threshold: { x: 0.06, y: 0.12 } }}
       onDragStart={(event) => {
+        dragLive.current = true;
         setIsDragActive(true);
         setActiveDragItem(event.active);
         // Option already held when the drag starts.
@@ -967,10 +936,12 @@ export default function App({ user, onLogout }) {
         setDragOverId(event.over?.id ?? null);
       }}
       onDragEnd={(event) => {
+        dragLive.current = false;
         setDragOverId(null);
         return handleDragEnd(event);
       }}
       onDragCancel={() => {
+        dragLive.current = false;
         setIsDragActive(false);
         setActiveDragItem(null);
         setDragOverId(null);
@@ -1248,28 +1219,21 @@ export default function App({ user, onLogout }) {
                 onTargetChange={setPlannerTarget}
                 initialMainId={plannerMainId}
                 onInitialMainConsumed={() => setPlannerMainId(null)}
-                editingNoteId={editingNoteId}
                 actions={{
                   placeRecipe: handlePlanRecipe,
                   placeLeftover: handlePlaceLeftover,
                   markBlank: handleMarkBlank,
-                  writeInSlot: handleWriteInSlot,
                   removeEntry: handleRemoveWithUndo,
                   clearDay: handleClearDay,
                   saveSlotNote: handleSaveSlotNote,
                   toast: showToast,
                   cycleState: handleCycleMealState,
-                  editNote: setEditingNoteId,
-                  saveNote: handleSaveNote,
                   copyLastWeek: handleCopyLastWeek,
                 }}
                 onOpenPopout={openPopout}
                 popoutId={popout?.recipeId}
                 onRequestPlan={requestPlan}
                 onOpenRecipeCard={openRecipeCard}
-                onOpenGrocery={() => goToTab("grocery")}
-                customStaples={customStaples}
-                excludedStaples={excludedStaples}
               />
             )}
           </div>

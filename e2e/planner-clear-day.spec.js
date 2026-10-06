@@ -119,19 +119,19 @@ test.describe("phone, in French", () => {
     const { week, today } = await seedPlan(page);
     await page.reload();
     await page.getByRole("button", { name: "Planificateur", exact: true }).first().click();
-    await expect(page.locator(".rpm-board")).toBeVisible();
+    await expect(page.locator(".riso-planner-board.paged")).toBeVisible();
 
-    await expect(page.locator(".rpm-clear")).toHaveCount(1);
-    await expect(page.locator(".rpm-clear")).toHaveText("Vider");
+    await expect(page.locator(".riso-planner-clear")).toHaveCount(1);
+    await expect(page.locator(".riso-planner-clear")).toHaveText("Vider");
     // Under supper: lower than the supper cell of the same day.
-    const clear = await page.locator(".rpm-clear").boundingBox();
-    const supper = await page.locator(".rpm-mealrow").nth(2).locator(".rpm-cell").nth(today).boundingBox();
+    const clear = await page.locator(".riso-planner-clear").boundingBox();
+    const supper = await page.locator(".riso-planner-cell").nth(2 * 7 + today).boundingBox();
     expect(clear.y).toBeGreaterThan(supper.y + supper.height - 1);
     expect(Math.abs(clear.x + clear.width / 2 - (supper.x + supper.width / 2))).toBeLessThan(6);
-    await page.locator(".rpm-clear").scrollIntoViewIfNeeded();
+    await page.locator(".riso-planner-clear").scrollIntoViewIfNeeded();
     await page.screenshot({ path: test.info().outputPath("phone-fr-planner-clear.png") });
 
-    await page.locator(".rpm-clear").click();
+    await page.locator(".riso-planner-clear").click();
     await expect.poll(async () => (await weekEntries(page, week)).filter((e) => e.dayOfWeek === today).length).toBe(0);
     const toast = page.getByRole("status").filter({ hasText: "vidée" });
     await expect(toast).toBeVisible();

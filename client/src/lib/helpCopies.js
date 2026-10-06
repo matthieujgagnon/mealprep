@@ -78,7 +78,6 @@ export const HELP_COPIES = {
   weekSticker: { kind: "pill", cls: "riso-pill size-tag tone-yellow sticker", label: "planner.thisWeekBadge" },
   goThisWeek: { kind: "pill", cls: "wcal-btn", label: "planner.goThisWeek" },
   copyLastWeek: { kind: "pill", cls: "wcal-btn", label: "planner.copyLastWeek" },
-  makeList: { kind: "pill", cls: "riso-planner-grocery", label: "planner.makeList", vars: { count: 3 }, strong: true },
   clearDay: { kind: "pill", cls: "riso-planner-clear", label: "planner.clearDay" },
   weekendTag: { kind: "pill", cls: "riso-help-copy-weekend", label: "planner.weekendTag" },
   plannedCook: { kind: "pill", cls: "riso-plannedcard-btn primary", label: "planner.cook", strong: true },
@@ -96,7 +95,7 @@ export const HELP_COPIES = {
   popSimilar: { kind: "pill", cls: "fnd-pop-btn", label: "finder.similar" },
   popOpenFull: { kind: "pill", cls: "fnd-pop-btn soft", label: "finder.openFull" },
   leftoversBtn: { kind: "pill", cls: "fnd-main-btn", label: "finder.placeLeftovers" },
-  haveDot: { kind: "icon", cls: "rpm-have", glyph: "" },
+  haveDot: { kind: "icon", cls: "riso-help-copy-have", glyph: "" },
 
   // Makeable
   useInventory: { kind: "group", cls: "riso-help-copy-toggle", switch: true, items: [{ label: "makeable.useInventory" }] },

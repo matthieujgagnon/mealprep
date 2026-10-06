@@ -7,7 +7,7 @@ import { inMealGroup, isMakeableMeal, makeableRuleOn, recipeSlot, recipeTotalMin
 import { matchesSearch } from "./recipeSearch.js";
 
 // The logic behind the shared recipe finder (components/Finder.jsx): the
-// Planner's bottom panel and the phone's bottom card use it today, Makeable
+// Planner's bottom panel (computer and phone) uses it today, Makeable
 // next. Plain functions so they can be tested without a browser. The ranking
 // itself stays in lib/plannerSuggestions.js (rankRecipesForTray) and what is
 // on hand in lib/onHand.js; this file filters, groups and words what they give.

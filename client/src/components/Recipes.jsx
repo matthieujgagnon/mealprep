@@ -7,7 +7,7 @@ import { HintStrip, IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
 import { MealChip, Pill, ServesPill, TimePill } from "./RisoPills.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { matchesSearch } from "../lib/recipeSearch.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
 import { RECIPE_SLOTS, inMealGroup, isMakeableMeal, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
@@ -50,7 +50,7 @@ function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
   return (
     <button type="button" className={`riso-recipe-card${nothingToBuy ? " ready" : ""}`} onClick={(e) => onClick(recipe, e.currentTarget.getBoundingClientRect())}>
       <div className="riso-recipe-card-photo">
-        {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}
+        {recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" /> : null}
       </div>
       <div className="riso-recipe-card-body">
         <div className="riso-recipe-card-name">{recipe.title}</div>

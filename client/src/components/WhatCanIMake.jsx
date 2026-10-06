@@ -7,7 +7,7 @@ import { Switch, HintStrip, IncludeSidesToggle } from "./RisoControls.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, findNextEmptySlot, todayIndex } from "../lib/plannerSlots.js";
 import { formatDayLabel, isCurrentWeek } from "../lib/dates.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { MEAL_GROUPS, inMealGroup, isMakeableMeal, makeableRuleOn } from "../lib/mealSlots.js";
 import { MAKEABLE_SORTS, sortMakeable } from "../lib/makeableOrder.js";
 import { matchesSearch } from "../lib/recipeSearch.js";
@@ -160,7 +160,7 @@ function MakeableCard({ recipe, missingIngredients, atRiskUsed, onOpen, onCookTo
   return (
     <div className="riso-makeable-card">
       <button type="button" className="riso-makeable-card-photo" onClick={onOpen} title={recipe.title}>
-        {recipe.photoUrl && <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
+        {recipe.photoUrl && <RecipePhoto src={recipe.photoUrl} alt="" />}
         {ready && <span className="riso-makeable-ready-sticker">{t("makeable.nothingToBuy")}</span>}
       </button>
       <div className="riso-makeable-card-body">

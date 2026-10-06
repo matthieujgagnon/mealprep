@@ -10566,371 +10566,6 @@ button.riso-deal-detail-other:focus-visible {
   }
 }
 
-/* ---------- Planner, phone (design/planner-mobile-and-recipes) ---------- */
-
-.rpm {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  /* room for the bar fixed at the bottom */
-  padding-bottom: calc(86px + env(safe-area-inset-bottom));
-}
-
-/* week row: ‹ pill › and the "jeu – dim →" sticker */
-
-/* month calendar under the pill */
-
-/* Three bars under a day, one for each meal, filled when that meal is planned. */
-
-/* Hovering a day with meals: a small tooltip listing them. */
-
-/* the week board: seven columns, about three in view */
-.rpm-boardwrap {
-  position: relative;
-  margin: 0 -18px;
-}
-
-.rpm-board {
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: 18px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 0 6px;
-}
-
-.rpm-board::-webkit-scrollbar {
-  display: none;
-}
-
-.rpm-board-inner {
-  width: max-content;
-  padding: 0 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rpm-heads,
-.rpm-cells {
-  display: grid;
-  grid-template-columns: repeat(7, 104px);
-  gap: 8px;
-}
-
-.rpm-head {
-  height: 50px;
-  box-sizing: border-box;
-  scroll-snap-align: start;
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  background: var(--riso-surface);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.rpm-head.today {
-  background: var(--riso-hot);
-  box-shadow: 3px 3px 0 var(--riso-ink);
-}
-
-.rpm-head.past {
-  opacity: 0.6;
-  filter: grayscale(1);
-  border: 1.5px solid var(--riso-dash-strong);
-}
-
-.rpm-head-dow {
-  font: 500 10px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-}
-
-.rpm-head-num {
-  font: 800 20px/1 var(--riso-font-display);
-}
-
-.rpm-mealrow {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rpm-meallabel {
-  position: sticky;
-  left: 18px;
-  align-self: flex-start;
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--riso-muted);
-}
-
-.rpm-cell {
-  position: relative;
-  width: 104px;
-  height: 108px;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  padding: 0;
-  overflow: hidden;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-}
-
-.rpm-cell.past {
-  opacity: 0.6;
-  filter: grayscale(1);
-  border: 1.5px solid var(--riso-dash-strong);
-}
-
-.rpm-cell.empty {
-  border: 2px dashed var(--riso-dash-strong);
-  background: transparent;
-  color: var(--riso-muted);
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.06em;
-  align-items: center;
-  justify-content: center;
-}
-
-.rpm-cell.card.have {
-  border: 3px solid var(--riso-accent);
-}
-
-.rpm-cell-photo {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  background: var(--riso-track);
-  border-bottom: 2px solid var(--riso-ink);
-}
-
-.rpm-cell-photo img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.rpm-cell-have {
-  position: absolute;
-  left: 5px;
-  top: 5px;
-  width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  background: var(--riso-accent);
-  border: 2px solid var(--riso-surface);
-  color: var(--riso-on-accent);
-  font: 800 11px/16px var(--riso-font-display);
-  text-align: center;
-}
-
-.rpm-leftover {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  transform: rotate(-4deg);
-  background: var(--riso-yellow);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 0 6px;
-  font: 800 10px/16px var(--riso-font-display);
-  color: var(--riso-ink);
-  white-space: nowrap;
-}
-
-.rpm-leftover.stale {
-  background: var(--riso-hot);
-}
-
-.rpm-cell-body {
-  padding: 4px 7px 5px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.rpm-cell-title {
-  font: 800 11.5px/1.15 var(--riso-font-display);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.rpm-cell-time {
-  font: 500 9px var(--riso-font-mono);
-  letter-spacing: 0.06em;
-  color: var(--riso-muted);
-}
-
-.rpm-cell.note {
-  padding: 8px 9px;
-  gap: 4px;
-  background: var(--riso-surface);
-}
-
-.rpm-cell.note.blank {
-  border: 2px dashed var(--riso-dash-strong);
-  background: transparent;
-}
-
-.rpm-cell.note.editing {
-  border-color: var(--riso-accent);
-  padding: 6px;
-}
-
-.rpm-cell.note.editing .riso-planner-note-input {
-  text-align: left;
-  min-height: 0;
-  font-size: 12.5px;
-}
-
-.rpm-note-label {
-  font: 500 9px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
-}
-
-.rpm-note-text {
-  font: 800 12px/1.2 var(--riso-font-display);
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.rpm-note-text.emoji {
-  font-size: 40px;
-  line-height: 1.1;
-}
-
-.rpm-boardwrap .rpm-fade {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 26px;
-  pointer-events: none;
-  background: linear-gradient(to right, transparent, var(--riso-canvas));
-}
-
-/* the bar fixed to the bottom of the screen */
-.rpm-bottombar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 60;
-  box-sizing: border-box;
-  min-height: 68px;
-  padding: 9px 18px calc(9px + env(safe-area-inset-bottom));
-  background: var(--riso-canvas);
-  border-top: 2px solid var(--riso-ink);
-}
-
-.rpm-makelist {
-  width: 100%;
-  height: 50px;
-  border-radius: 25px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: var(--riso-shadow);
-  font: 800 16px var(--riso-font-display);
-  cursor: pointer;
-}
-
-/* the sheet that opens when a card or an empty cell is tapped */
-.rpm-sheet-card {
-  flex: none;
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  background: var(--riso-canvas);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rpm-sheet-head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.rpm-sheet-title {
-  font: 800 17px/1.2 var(--riso-font-display);
-}
-
-.rpm-sheet-state {
-  font: 500 10.5px var(--riso-font-mono);
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
-  text-transform: uppercase;
-}
-
-.rpm-sheet-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.rpm-sheet-note {
-  flex: none;
-  height: 40px;
-  border-radius: 20px;
-  border: 2px dashed var(--riso-ink);
-  background: transparent;
-  color: var(--riso-ink);
-  font: 700 14px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.rpm-have {
-  position: absolute;
-  left: 7px;
-  top: 7px;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-  border: 2px dashed var(--riso-ink);
-  background: rgba(255, 253, 248, 0.85);
-  color: var(--riso-on-accent);
-  font-size: 12px;
-  padding: 0;
-  cursor: pointer;
-}
-
-.rpm-have.on {
-  border-style: solid;
-  background: var(--riso-accent);
-}
-
-.rpm-chip {
-  height: 32px;
-  min-width: 32px;
-  padding: 0 12px;
-  border-radius: 16px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 13px var(--riso-font-display);
-  cursor: pointer;
-}
-
-/* The tray inside the phone suggestions sheet: no card chrome, no drag. */
-
-/* ---------- Grocery, phone + Store mode (Riso Mobile.dc.html) ---------- */
 .riso-grocery-store-btn {
   display: none;
 }
@@ -11542,25 +11177,6 @@ button.riso-deal-detail-other:focus-visible {
   content: "clear";
   font: 500 11px var(--riso-font-body);
   color: var(--riso-muted);
-}
-
-.riso-planner-note.editing {
-  padding: 6px;
-  cursor: text;
-  border-color: var(--riso-accent);
-}
-
-.riso-planner-note-input {
-  width: 100%;
-  height: 100%;
-  min-height: 48px;
-  resize: none;
-  border: none;
-  outline: none;
-  background: transparent;
-  font: 700 14.5px/1.2 var(--riso-font-display);
-  color: var(--riso-ink);
-  text-align: center;
 }
 
 @media (max-width: 767px) {
@@ -15561,13 +15177,6 @@ body.no-select {
   content: none;
 }
 
-.riso-help-copy .rpm-have {
-  position: static;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-}
-
 .riso-help-copy .riso-help-copy-body.riso-row-check {
   width: 20px;
   height: 20px;
@@ -18285,73 +17894,6 @@ body.no-select {
   }
 }
 
-/* ---------- Planner, phone: weekend block, leftovers, the bottom card ---------- */
-.rpm-board-inner {
-  position: relative;
-}
-
-.rpm-heads,
-.rpm-mealrow {
-  position: relative;
-  z-index: 1;
-}
-
-.rpm-weekend {
-  position: absolute;
-  top: -4px;
-  bottom: 0;
-  z-index: 0;
-  border: 2px dotted var(--riso-hot);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--riso-accent) 4%, transparent);
-  pointer-events: none;
-}
-
-.rpm-cell.empty.leftover-target {
-  border-color: var(--riso-accent);
-  background: var(--riso-accent-tint);
-  color: var(--riso-accent);
-}
-
-.rpm-leftoverbar {
-  width: 100%;
-  min-height: 52px;
-  box-sizing: border-box;
-  padding: 6px 8px 6px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  box-shadow: var(--riso-shadow);
-  font: 800 14px/1.2 var(--riso-font-display);
-}
-
-.rpm-leftoverbar button {
-  flex: none;
-  height: 38px;
-  padding: 0 18px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 19px;
-  background: var(--riso-ink);
-  color: #fff;
-  font: 800 14px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.rpm-sheet-title-main {
-  margin: 0 0 4px;
-  font: 800 22px/1.15 var(--riso-font-display);
-}
-
-.rpm-sheet-quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 
 .riso-sheet .fnd {
   padding-bottom: 8px;
@@ -18364,11 +17906,6 @@ body.no-select {
 
 .fnd-card-body .riso-recipe-card-havebar-fill {
   display: block;
-}
-
-.rpm-sheet-quick .rpm-sheet-note {
-  flex: 1 1 auto;
-  padding: 0 14px;
 }
 
 /* On a phone the three availability choices share the full width. */
@@ -20000,16 +19537,14 @@ body.no-select {
 }
 
 /* ---------- Planner: the quiet "Clear" under a day ---------- */
-.riso-planner-clear-cell,
-.rpm-clearcell {
+.riso-planner-clear-cell {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 22px;
 }
 
-.riso-planner-clear,
-.rpm-clear {
+.riso-planner-clear {
   appearance: none;
   background: none;
   border: 0;
@@ -20022,18 +19557,284 @@ body.no-select {
   cursor: pointer;
 }
 
-.riso-planner-clear:hover,
-.rpm-clear:active {
+.riso-planner-clear:hover {
   color: var(--riso-ink);
   text-decoration: underline;
 }
 
-.riso-planner-clear:focus-visible,
-.rpm-clear:focus-visible {
+.riso-planner-clear:focus-visible {
   outline: 2px solid var(--riso-accent);
   outline-offset: 1px;
 }
 
-.rpm-clearrow {
-  margin-top: 2px;
+
+/* ---------- Planner on a phone: the same board, three days at a time ---------- */
+/* Design: docs/design/riso-v2-planner-header ("Board changes on phone"). The
+   columns are sized in PlannerBoard.jsx (--rpm-col) so exactly three days fit
+   beside the sticky meal labels; the board only moves by paging. */
+.riso-planner-pagenav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riso-planner-pagebtn {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 18px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-planner-pagebtn.next {
+  background: var(--riso-yellow);
+}
+
+.riso-planner-pagebtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.riso-planner-pagelabel {
+  font: 500 12px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.riso-planner-board.paged {
+  padding: 14px;
+  gap: 8px;
+}
+
+.riso-planner-board.paged .riso-planner-scroll {
+  overflow: hidden;
+  padding: 20px 0 0 0;
+  margin: -6px 0 0 0;
+  touch-action: pan-y;
+}
+
+.riso-planner-board.paged .riso-planner-grid {
+  grid-template-columns: 56px repeat(7, var(--rpm-col, 84px));
+  gap: 8px;
+  width: max-content;
+  min-width: 0;
+}
+
+/* The meal names are a column of their own that the days slide under: it covers
+   the gap beside it too, so nothing peeks out. */
+.riso-planner-board.paged .riso-planner-corner,
+.riso-planner-board.paged .riso-planner-meal-label {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  margin-right: -8px;
+  padding-right: 8px;
+  background: var(--riso-surface);
+}
+
+.riso-planner-board.paged .riso-planner-meal-label {
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.riso-planner-board.paged .riso-planner-day-header {
+  padding: 5px 0;
+}
+
+.riso-planner-board.paged .riso-planner-day-date {
+  font-size: 13px;
+}
+
+/* A slot is a little taller than on a computer, so a two-line title fits. */
+.riso-planner-board.paged .riso-planner-cell {
+  aspect-ratio: 0.78;
+}
+
+.riso-planner-board.paged .riso-planner-card-body {
+  padding: 5px 6px;
+}
+
+.riso-planner-board.paged .riso-planner-card-name {
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+/* No ✓ on a phone (there is no hover to show it): the planned meal's sheet has
+   the mark. The blue or yellow border says what it is. */
+.riso-planner-board.paged .riso-planner-card-have {
+  display: none;
+}
+
+.riso-planner-board.paged .riso-planner-card-remove {
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+
+/* A leftover's tag sits across the photo's bottom edge: the photo is a little
+   shorter and the title starts below the tag, so neither is covered. */
+.riso-planner-board.paged .riso-planner-card-leftover {
+  right: 3px;
+  font-size: 9.5px;
+}
+
+.riso-planner-board.paged .riso-planner-card.leftover .riso-planner-card-photo-wrap {
+  height: 48%;
+}
+
+.riso-planner-board.paged .riso-planner-card.leftover .riso-planner-card-body {
+  padding-top: 11px;
+}
+
+.riso-planner-board.paged .riso-planner-note-text {
+  font-size: 12px;
+}
+
+.riso-planner-board.paged .riso-planner-note-text.emoji {
+  font-size: 34px;
+}
+
+.riso-planner-board.paged .riso-weekendmenu {
+  width: min(300px, calc(100% - 28px));
+  right: 14px;
+}
+
+/* Cards and results carry a finger that has held still; a finger that just
+   moves still scrolls the page (App.jsx keeps the page still once a drag has
+   started). */
+@media (max-width: 767px) {
+  .riso-planner-card,
+  .riso-planner-note,
+  .fnd-card.draggable {
+    touch-action: pan-y;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .riso-planner-finder {
+    padding: 14px 14px 18px;
+    border-radius: 24px;
+  }
+
+  .riso-planner-finder .fnd-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .riso-planner-finder .fnd-card-photo {
+    height: 100px;
+  }
+
+  /* Scrolled to, the finder stops below the sticky header. */
+  .riso-planner-finder .fnd {
+    scroll-margin-top: 124px;
+  }
+
+  .riso-planner-finder .fnd-card-body {
+    padding: 9px 10px 11px;
+  }
+
+  /* The three availability choices share the full width, in French too: a
+     long name wraps instead of running into the next choice. */
+  .fnd-panel .fnd-seg {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 22px;
+  }
+
+  .fnd-panel .fnd-seg-btn {
+    height: auto;
+    min-height: 34px;
+    min-width: 0;
+    padding: 3px 8px;
+    gap: 5px;
+    font-size: 12px;
+    line-height: 1.1;
+    text-align: left;
+    white-space: normal;
+  }
+
+  /* The Meal and Protein menus share the width too. */
+  .fnd-panel .fnd-menus {
+    width: 100%;
+    margin-left: 0;
+    flex-direction: column;
+  }
+
+  .fnd-panel .fnd-menus .rv2-menu-wrap {
+    min-width: 0;
+  }
+
+  .fnd-panel .fnd-menus .rv2-drop {
+    width: 100%;
+    padding: 0 10px;
+    justify-content: space-between;
+  }
+
+  /* With a slot chosen the search bar wraps, so the box for typing keeps a usable width. */
+  .fnd-panel .fnd-searchbar {
+    flex-wrap: wrap;
+    border-radius: 26px;
+    row-gap: 2px;
+  }
+
+  .fnd-panel .fnd-searchbar input {
+    flex: 1 1 150px;
+  }
+}
+
+/* The add card and the planned meal's card, as a sheet from the bottom. */
+.riso-slotcard-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  max-height: calc(78vh - 60px);
+}
+
+.riso-slotcard-sheet .riso-slotcard-title {
+  font-size: 22px;
+}
+
+.riso-slotcard-sheet .riso-slotcard-btn {
+  padding-left: 6px;
+  padding-right: 6px;
+  font-size: 14px;
+}
+
+.riso-plannedcard-btn.mark {
+  border-style: dashed;
+}
+
+/* The Help text's copy of the round ✓ button on a meal. */
+.riso-help-copy .riso-help-copy-have {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* The slot picker's day names fit their narrow columns on a phone ("TODAY" too). */
+@media (max-width: 767px) {
+  .riso-picker-grid > .riso-picker-head {
+    padding: 6px 0;
+    font-size: 8.5px;
+    letter-spacing: 0;
+  }
 }

@@ -13,6 +13,9 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Planner header | `components/PlannerHeader.jsx` | The title, the week controls (‹, date pill, ›, "this week" sticker) and the calendar they open. |
 | Week calendar | `components/WeekCalendar.jsx` | The month calendar the date pill opens, with the day preview and "Copy last week". |
 | Planner legend | `components/PlannerLegend.jsx` | The legend under the Planner board. |
+| Planner board | `components/PlannerBoard.jsx` | The week board, on a computer (seven days) and on a phone (`phone`: three days at a time). |
+| Slot card and planned-meal card | `components/PlannerCards.jsx` | The cards that open from a Planner slot: beside it on a computer, a sheet from the bottom on a phone (`sheet`). |
+| Recipe photo | `components/RecipePhoto.jsx` | Every recipe photo: one that fails to load disappears, and tries again for another address. |
 | Makeable now rule | `lib/mealSlots.js`, `hooks/useIncludeSides.js`, `IncludeSidesToggle` | What counts as "makeable". |
 | `openRecipeCard` | `App.jsx` | Opens a recipe's card on the Recipes page. |
 | Riso pills and chips | `components/RisoPills.jsx`, `lib/pills.js` | Every pill, tag and chip. |
@@ -67,7 +70,7 @@ Used by: Planner (add, replace, remove, copy, leftovers, Option-drag copies, and
 
 `PlannerHeader` is the strip above the Planner board, on a computer and on a phone (design: `docs/design/riso-v2-planner-header/`). The title « Le menu de la **semaine.** » / "This week's **menu.**" is at the left and **never changes with the week**. At the right: ‹, the date pill (blue while the calendar is open), ›, and the yellow sticker, "this week" on the current week and "↩ this week" on another (it goes back). On a phone the title is above the controls and wraps if it is too long. The dates are written with `formatWeekLabel(weekStart)` (`lib/dates.js`): "Oct 5 – 11" / "5 – 11 oct.". Use that everywhere a week is named.
 
-Props: `weekStart`, `onChangeWeek(weekStart)`, `lastWeekCount`, `onCopyLastWeek`. The desktop Planner and `PlannerMobile` both render it, so there is one header.
+Props: `weekStart`, `onChangeWeek(weekStart)`, `lastWeekCount`, `onCopyLastWeek`. The Planner renders it on a computer and on a phone, so there is one header.
 
 ## Week calendar
 
@@ -84,7 +87,23 @@ Used by: `PlannerHeader`.
 
 ## Planner legend
 
-`PlannerLegend` is the row under the board on every size: planned meal, ingredients on hand (blue outline), leftovers (yellow tag), note, empty slot, today and, when the board shows one, the weekend ("Fin de semaine", without the list of days). Prop: `weekendOn`. Used by the desktop board (`PlannerBoard`) and `PlannerMobile`.
+`PlannerLegend` is the row under the board on every size: planned meal, ingredients on hand (blue outline), leftovers (yellow tag), note, empty slot, today and, when the board shows one, the weekend ("Fin de semaine", without the list of days). Prop: `weekendOn`. Used by `PlannerBoard`, on a computer and on a phone.
+
+## Planner board
+
+`PlannerBoard` draws the week for the Planner on every size, so a phone never has a board of its own. On a computer all seven days are in view. With `phone`, it is the same grid with three days at a time (design: `docs/design/riso-v2-planner-header/`, "Board changes on phone"): a nav row above it (a ‹ round button, a label like "MON 5 – WED 7", a yellow › round button, each dim at its end), pages that start at days 0, 3 and 4 (`PHONE_PAGE_STARTS`, `pageOfDay` in `lib/plannerSlots.js`, so every page has three days), columns sized so exactly three fit beside the meal names, which are a sticky first column the days slide under. The page with today opens first. The board only moves by paging: the buttons, a swipe, or holding a dragged card near the left or right edge. The weekend, cards, legend, drop targets and "Clear" are the computer's (`lib/weekend.js` gives the same layout; the columns are narrowed by the room the weekend's shifts need).
+
+On a phone a card has no ✓ and no hover: the planned meal's sheet has the button that marks plain, then leftover (yellow border), then already have (blue border). A card has no drop shadow either way, and a leftover has both the yellow border and the tag. Cards and results are picked up by a long press (the app's one drag setup in `App.jsx`: `PointerSensor` with a delay, a `touchmove` that keeps the page still once a drag has started, `touch-action: pan-y` so a plain swipe still scrolls). Drop targets under the sticky meal names are ignored (`data-drop-block`). The fallback is the shared + / pop-out Plan, which opens the slot picker.
+
+Props (besides the computer's): `phone`. Used by: `Planner`.
+
+## Slot card and planned-meal card
+
+`SlotCard` (Recipe / Note / Nothing planned, the note box with quick notes and Save) and `PlannedCard` (a preview, then Cook, Use as a base, Replace this recipe) open beside the slot on a computer. With `sheet` (a phone) they are the same cards, with the same content and rules, in the shared `BottomSheet` from the bottom of the screen; the planned-meal card also gets `mark` (`{ label, onCycle }`), the button that steps the meal through the marks. Recipe makes the slot the search panel's target and the page scrolls to the panel (`showFinder` in `Planner.jsx`).
+
+## Recipe photo
+
+`RecipePhoto` is the `<img>` for every recipe photo (board cards, the finder, pop-out, Recipes, Home, pickers). When the picture fails it hides itself, and it remembers which address failed, so the same element given another address (a card reused for another recipe or week) tries again instead of staying hidden. Do not hide a broken photo with your own `onError`.
 
 ## Makeable now rule
 
@@ -116,7 +135,7 @@ Used by: the recipe form (the new-recipe pop-up and the full-page editor) when c
 
 ## Recipe finder
 
-`Finder` is the search bar, "Cook with", filters, the Main meal banner and the results, for the Planner's panel (`layout="panel"`) and the phone's bottom card (`layout="sheet"`). `useFinder()` holds what it shows. It does not hold the recipe pop-out: it asks the caller (`onOpenPopout`) and `onAdd` is the caller's. Choosing Similar recipes scrolls the Main meal banner into view.
+`Finder` is the search bar, "Cook with", filters, the Main meal banner and the results, for the Planner's panel at the bottom of the page (`layout="panel"`, on a computer and on a phone; `layout="sheet"` is for a bottom card). `useFinder()` holds what it shows. It does not hold the recipe pop-out: it asks the caller (`onOpenPopout`) and `onAdd` is the caller's. Choosing Similar recipes scrolls the Main meal banner into view.
 
 ## Where things live in `App.jsx`
 

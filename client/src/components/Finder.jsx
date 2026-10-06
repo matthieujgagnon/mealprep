@@ -16,7 +16,7 @@ import {
   shelvesWithItems,
 } from "../lib/finder.js";
 import { orderedSections } from "./Inventory.jsx";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { formatList } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
 
@@ -24,7 +24,7 @@ import { t } from "../i18n/index.js";
 // FinderSheet): a search bar, "Cook with" ingredients, filters, the results and
 // a recipe pop-out, with "Main meal" for finding recipes that share a recipe's
 // ingredients. The Planner uses it as its bottom panel (layout="panel") and
-// inside the phone's bottom card (layout="sheet"); Makeable uses it next.
+// inside a bottom card (layout="sheet"); Makeable uses it next.
 //
 // What it shows is kept by `finder`, from useFinder(), so the screen around it
 // can steer it. The data comes in as props: the recipes, the inventory, what is
@@ -61,7 +61,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
         onClick={(e) => onOpen(recipe, e.currentTarget.closest(".fnd-card").getBoundingClientRect())}
       >
         <span className="riso-recipe-card-photo fnd-card-photo">
-          {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} draggable="false" /> : null}
+          {recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" draggable="false" /> : null}
           <TimePill minutes={recipeTotalMinutes(recipe)} className="fnd-card-time" />
         </span>
         <span className="riso-recipe-card-body fnd-card-body">
@@ -103,7 +103,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
 function MainMealBanner({ bannerRef, recipe, groups, off, onToggle, onView, onCancel, leftovers }) {
   return (
     <section ref={bannerRef} className="fnd-main" aria-label={t("finder.mainMeal")}>
-      <div className="fnd-main-photo">{recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}</div>
+      <div className="fnd-main-photo">{recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" /> : null}</div>
       <div className="fnd-main-body">
         <span className="fnd-caps">{t("finder.mainMeal")}</span>
         <h3 className="fnd-main-title">{recipe.title}</h3>
