@@ -1,4 +1,4 @@
-import { currentWeekStart } from "./dates.js";
+import { currentWeekStart, isPastDay } from "./dates.js";
 import { dict, t } from "../i18n/index.js";
 
 // Labels are read when used, so they're always in the current language.
@@ -58,6 +58,17 @@ export function todayIndex() {
 
 export function slotKey(dayOfWeek, mealType) {
   return `${dayOfWeek}-${mealType}`;
+}
+
+// What "Clear" on a day removes: every meal, note and empty card planned there.
+export function entriesOnDay(entries, dayOfWeek) {
+  return entries.filter((e) => e.dayOfWeek === dayOfWeek);
+}
+
+// The Planner's quiet "Clear" under a day shows only when something is planned
+// that day and the day is not before today (today keeps it).
+export function canClearDay(entries, weekStart, dayOfWeek) {
+  return !isPastDay(weekStart, dayOfWeek) && entriesOnDay(entries, dayOfWeek).length > 0;
 }
 
 // The "no meal planned" marker and custom notes are placeholder recipes under

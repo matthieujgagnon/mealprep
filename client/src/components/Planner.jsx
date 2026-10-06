@@ -33,7 +33,7 @@ import { t } from "../i18n/index.js";
 //                                       with the slot, or null when the week is
 //                                       full (App shows the toast and its Undo)
 //   actions.placeLeftover(recipe, slot), markBlank(slot), saveSlotNote(slot, text),
-//   actions.removeEntry(id), cycleState(id), toast(message, undo?),
+//   actions.removeEntry(id), clearDay(dayOfWeek), cycleState(id), toast(message, undo?),
 //   actions.writeInSlot(slot), editNote(id), saveNote(id, text)  (a phone writes on the slot),
 //   actions.copyLastWeek()  fills the empty slots from last week
 //   onOpenPopout(recipe, from?)  opens the shared recipe pop-out
@@ -214,6 +214,7 @@ export function Planner({
         onSelectSlot={onTargetChange}
         onOpenRecipe={(recipe) => onOpenPopout(recipe)}
         onRemove={actions.removeEntry}
+        onClearDay={actions.clearDay}
         onCycleState={actions.cycleState}
         editingNoteId={editingNoteId}
         onWriteInSlot={actions.writeInSlot}
@@ -263,6 +264,7 @@ export function Planner({
         onCardClick={handleCardClick}
         onNoteClick={handleNoteClick}
         onRemove={actions.removeEntry}
+        onClearDay={actions.clearDay}
         onCycleState={actions.cycleState}
         onEmptyClick={handleEmptyClick}
         onWeekendMenu={() => open(overlay?.type === "weekend" ? null : { type: "weekend" })}

@@ -59,7 +59,7 @@ Used by: the pop-out's Plan (Planner, Recipes, Home) and the Planner finder's + 
 
 It sits above every pop-out, picker and question (z-index 500), so Undo can be pressed while one is open.
 
-Used by: Planner (add, replace, remove, copy, leftovers, Option-drag copies), Recipes (imported), Inventory (added, saved), and the grocery ✓ in Ingredient marks (taken off the list).
+Used by: Planner (add, replace, remove, copy, leftovers, Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), and the grocery ✓ in Ingredient marks (taken off the list).
 
 ## Week calendar
 
@@ -87,7 +87,7 @@ Passed down as `onOpenRecipeCard`.
 
 ## Riso pills and chips
 
-`RisoPills.jsx` holds every pill: `Pill` (sizes tag, fact, chip, badge; tones; `selected`), `TimePill`, `ServesPill`, `MealChip`, `PlannedPill`, `ToBuyPill`, `InStockPill`, `SalePill` and `CountPill`. A screen uses these instead of a new pill class. The comment block at the top of the file says which to use and what the colours mean; see `docs/design/riso-v2/`.
+`RisoPills.jsx` holds every pill: `Pill` (sizes tag, fact, chip, badge; tones; `selected`), `TimePill`, `ServesPill`, `MealChip`, `PlannedPill`, `ToBuyPill`, `InStockPill`, `SalePill` and `CountPill`. A screen uses these instead of a new pill class. The Recipes card (`RecipeCard` in `Recipes.jsx`) is drawn only with them: `TimePill`, `ServesPill`, `MealChip`, a `Pill` for the protein and the pink / green flags, plus one small "N to buy" / "Nothing to buy" line (`.rv2-card-buy`, no have-bar). The comment block at the top of the file says which to use and what the colours mean; see `docs/design/riso-v2/`.
 
 ## Confirm dialog
 

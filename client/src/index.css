@@ -17203,8 +17203,8 @@ body.no-select {
   text-wrap: pretty;
 }
 
-/* Time and the meal / protein line, then (when there are any) the pink and
-   green tags on their own row. */
+/* Time and servings, then the meal type and protein, then (when there are
+   any) the pink and green tags, each on its own row. */
 .rv2-card-meta,
 .rv2-card-tags {
   display: flex;
@@ -17213,8 +17213,24 @@ body.no-select {
   gap: 6px;
 }
 
-.rv2-grid .riso-recipe-card-havelabel {
-  font-size: 13.5px;
+/* The one small line at the bottom of a card: "3 to buy" / "Nothing to buy". */
+.rv2-card-buy {
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.rv2-card-buy.ready {
+  color: var(--riso-green-text);
+}
+
+.rv2-grid .riso-recipe-card-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* A menu that opens toward the right (left column on a phone) */
@@ -17398,15 +17414,7 @@ body.no-select {
     font-size: 15px;
   }
 
-  .rv2-grid .riso-recipe-card-havebar {
-    height: 10px;
-  }
-
-  .rv2-grid .riso-recipe-card-havelabel {
-    font-size: 11.5px;
-  }
-
-  .rv2-grid .riso-recipe-card-meta {
+  .rv2-card-buy {
     font-size: 9.5px;
   }
 }
@@ -19911,4 +19919,43 @@ body.no-select {
 
 .riso-ask-actions .fnd-pop-btn {
   flex: 1 1 150px;
+}
+
+/* ---------- Planner: the quiet "Clear" under a day ---------- */
+.riso-planner-clear-cell,
+.rpm-clearcell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+}
+
+.riso-planner-clear,
+.rpm-clear {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+  cursor: pointer;
+}
+
+.riso-planner-clear:hover,
+.rpm-clear:active {
+  color: var(--riso-ink);
+  text-decoration: underline;
+}
+
+.riso-planner-clear:focus-visible,
+.rpm-clear:focus-visible {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 1px;
+}
+
+.rpm-clearrow {
+  margin-top: 2px;
 }

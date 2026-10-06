@@ -78,6 +78,7 @@ export const HELP_COPIES = {
   copyLastWeek: { kind: "pill", cls: "riso-pill size-chip", label: "planner.copyLastWeek" },
   weekPill: { kind: "pill", cls: "riso-planner-weekpill", label: "planner.thisWeek" },
   makeList: { kind: "pill", cls: "riso-planner-grocery", label: "planner.makeList", vars: { count: 3 }, strong: true },
+  clearDay: { kind: "pill", cls: "riso-planner-clear", label: "planner.clearDay" },
   weekendTag: { kind: "pill", cls: "riso-help-copy-weekend", label: "planner.weekendTag" },
   plannedCook: { kind: "pill", cls: "riso-plannedcard-btn primary", label: "planner.cook", strong: true },
   plannedBase: { kind: "pill", cls: "riso-plannedcard-btn", label: "planner.useAsBase" },

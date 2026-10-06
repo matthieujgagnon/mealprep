@@ -13,7 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { api } from "./api.js";
-import { t } from "./i18n/index.js";
+import { dict, t } from "./i18n/index.js";
 import { LanguageSwitch } from "./components/RisoControls.jsx";
 import { currentWeekStart, isPastDay, shiftWeek, toDateKey } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
@@ -31,7 +31,7 @@ import { SlotPicker } from "./components/SlotPicker.jsx";
 import { weekendFrom } from "./lib/weekend.js";
 import { useIsPhone } from "./hooks/useIsPhone.js";
 import { useHeaderTightness } from "./hooks/useHeaderTightness.js";
-import { findNextEmptySlot, isCustomNote, slotLabel, todayIndex } from "./lib/plannerSlots.js";
+import { entriesOnDay, findNextEmptySlot, isCustomNote, slotLabel, todayIndex } from "./lib/plannerSlots.js";
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
@@ -813,6 +813,20 @@ export default function App({ user, onLogout }) {
     }
   }
 
+  // "Clear" under a day: every meal, note and empty card planned that day comes
+  // off the plan at once, with Undo (each one back as it was, leftover and
+  // already-have marks included). No question first: Undo covers a mistake.
+  async function handleClearDay(dayOfWeek) {
+    const snaps = entriesOnDay(plannerEntries, dayOfWeek);
+    if (snaps.length === 0) return;
+    await Promise.all(snaps.map((e) => handleRemoveFromPlanner(e.id)));
+    const saved = snaps.filter((e) => !String(e.id).startsWith("pending-"));
+    const long = dict().days.long[dayOfWeek];
+    showToast(t("planner.toastDayCleared", { day: long }), async () => {
+      for (const snap of saved) await restoreEntry(snap);
+    });
+  }
+
   // The weekend menu saves with every click, so saves go one after another:
   // the last choice is the one the account keeps, whatever the network does.
   const weekendSaves = useRef(Promise.resolve());
@@ -1239,6 +1253,7 @@ export default function App({ user, onLogout }) {
                   markBlank: handleMarkBlank,
                   writeInSlot: handleWriteInSlot,
                   removeEntry: handleRemoveWithUndo,
+                  clearDay: handleClearDay,
                   saveSlotNote: handleSaveSlotNote,
                   toast: showToast,
                   cycleState: handleCycleMealState,
