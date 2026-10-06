@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#1A1A1F}a{color:#FFE14D;text-decoration:none}a:hover{color:#fff}</style></helmet>
+<section style="background:#1A1A1F;color:#F3F3F6;padding:56px;box-sizing:border-box;width:2160px">
+<div style="font:800 34px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;margin-bottom:8px">Planificateur mobile · v2</div>
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em;color:#BDB6A6;margin-bottom:48px">390 PX · RISO V2 · FRANÇAIS (QUÉBEC)</div>
+<div style="display:flex;flex-wrap:wrap;gap:72px 72px;align-items:flex-start">
+<sc-for list="{{ phones }}" as="p" hint-placeholder-count="11">
+<div id="{{ p.id }}" style="display:flex;flex-direction:column;gap:18px;flex:none;width:390px">
+<div style="display:flex;align-items:flex-start;gap:12px;min-height:52px"><span style="flex:none;height:28px;padding:0 12px;border-radius:14px;background:{{ p.tag }};color:#16181F;display:flex;align-items:center;font:500 12px 'DM Mono',monospace;letter-spacing:.1em">{{ p.id }}</span><span style="font:800 19px 'Bricolage Grotesque',sans-serif;letter-spacing:-.01em">{{ p.label }}</span></div>
+<dc-import name="Riso_V2_Part_PlannerMobilePhone" scene="{{ p.scene }}" title="{{ p.title }}" hint-size="390px,844px"></dc-import>
+</div>
+</sc-for>
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const Y = '#FFE14D', K = '#FF48B0', B = '#9DA0FF';
+    const phones = [
+      ['1a', 'Page 1 · lun – mer · titre « Le menu de la semaine. »', 'p1', 'menu', Y],
+      ['1b', 'Page 1 · titre « La semaine à venir. »', 'p1', 'avenir', Y],
+      ['1c', 'En glissant · les noms de repas restent épinglés', 'swipe', 'menu', B],
+      ['1d', 'Page 2 · jeu – sam · fin de semaine en pointillé', 'p2', 'menu', Y],
+      ['1e', 'Page 3 · ven – dim · seulement retour', 'p3', 'menu', Y],
+      ['1f', 'Calendrier ouvert · jour touché', 'cal', 'menu', K],
+      ['1g', 'Calendrier · fin de semaine et pied de page', 'calwk', 'menu', K],
+      ['1h', 'Case vide touchée', 'slot', 'menu', B],
+      ['1i', 'Recette touchée', 'rec', 'menu', B],
+      ['1j', 'Panneau de recherche ouvert', 'search', 'menu', Y],
+      ['1k', 'Appui long · la corbeille remplace la recherche', 'drag', 'menu', K],
+      ['1l', 'Appui long · carte au-dessus de la corbeille', 'trash', 'menu', K],
+    ].map(([id, label, scene, title, tag]) => ({ id, label, scene, title, tag }));
+    return { phones };
+  }
+}
+</script>
+</body>
+</html>
