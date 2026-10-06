@@ -257,6 +257,7 @@ export function GroceryList({
   excludedStaples,
   stapleCategories,
   onRequestInventoryAdd,
+  onToast,
 }) {
   // Deals and stores decide which store each item sits in, so the list
   // waits for both (see `ready` below) - drawing it before they arrived
@@ -1128,6 +1129,7 @@ export function GroceryList({
           sendCount={toSendCount}
           moveTargets={storeOrder}
           onMove={moveToStore}
+          onToast={onToast}
         />
       )}
       {openDeal && (

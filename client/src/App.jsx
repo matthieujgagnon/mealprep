@@ -12,6 +12,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
+import { getEventCoordinates } from "@dnd-kit/utilities";
 import { api } from "./api.js";
 import { dict, t } from "./i18n/index.js";
 import { LanguageSwitch } from "./components/RisoControls.jsx";
@@ -48,6 +49,12 @@ function DragPreview({ active, copy = false }) {
   const recipe = active?.data.current?.recipe;
   const ingredientCore = active?.data.current?.ingredientCore;
   const inventoryItem = active?.data.current?.inventoryItem;
+
+  // A grocery item carried in Store mode.
+  const storeDrag = active?.data.current?.storeDrag;
+  if (storeDrag) {
+    return <div className="drag-preview-chip store-drag-chip">{storeDrag.name}</div>;
+  }
 
   if (recipe && (active.data.current?.entryId || active.data.current?.fromTray)) {
     if (recipe.isPlaceholder) {
@@ -115,10 +122,32 @@ function collisionDetection(args) {
       if (el.closest?.("[data-drop-block]")) return [];
       if (visible.some((c) => c.node.current.contains(el))) break;
     }
+    // A grocery item carried in Store mode lands on whatever is on top under the
+    // finger: a store's sticky sticker stays over the rows of the next store.
+    if (active.data.current?.storeDrag) {
+      for (const el of under) {
+        const top = visible.find((c) => c.node.current.contains(el));
+        if (top) return [{ id: top.id, data: { droppableContainer: top } }];
+      }
+      return [];
+    }
     const hits = pointerWithin({ ...args, droppableContainers: visible });
     if (hits.length > 0 || !active.data.current?.sortable) return hits;
   }
   return rectIntersection(args);
+}
+
+// The grocery item carried in Store mode is a small chip, held just above the
+// finger (the overlay is as wide as the row it came from, so it would otherwise
+// slide off the screen as the finger moves).
+function centreAboveFinger({ activatorEvent, draggingNodeRect, transform }) {
+  const start = activatorEvent && getEventCoordinates(activatorEvent);
+  if (!start || !draggingNodeRect) return transform;
+  return {
+    ...transform,
+    x: transform.x + start.x - draggingNodeRect.left - draggingNodeRect.width / 2,
+    y: transform.y + start.y - draggingNodeRect.top - draggingNodeRect.height / 2 - 44,
+  };
 }
 
 export default function App({ user, onLogout }) {
@@ -634,6 +663,14 @@ export default function App({ user, onLogout }) {
     setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
+
+    // A grocery item dropped on a store in Store mode (Grocery saves the move).
+    const storeDrag = active.data.current?.storeDrag;
+    if (storeDrag) {
+      const store = over.data.current?.storeDrop;
+      if (store != null) storeDrag.drop(store);
+      return;
+    }
 
     const inventoryItemId = active.data.current?.inventoryItemId;
     if (inventoryItemId) {
@@ -1246,6 +1283,7 @@ export default function App({ user, onLogout }) {
             excludedStaples={excludedStaples}
             stapleCategories={stapleCategories}
             onRequestInventoryAdd={requestInventoryAdd}
+            onToast={showToast}
           />
         )}
 
@@ -1339,7 +1377,7 @@ export default function App({ user, onLogout }) {
         )}
         <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={null} modifiers={activeDragItem?.data.current?.storeDrag ? [centreAboveFinger] : undefined}>
         {activeDragItem && <DragPreview active={activeDragItem} copy={copyDrag} />}
       </DragOverlay>
     </DndContext>
