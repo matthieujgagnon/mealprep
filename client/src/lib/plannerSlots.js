@@ -56,6 +56,17 @@ export function todayIndex() {
   return (new Date().getDay() + 6) % 7; // Monday = 0
 }
 
+// The phone board shows three days at a time. The pages start at days 0, 3 and
+// 4 (Mon–Wed, Thu–Sat, Fri–Sun), so every page has three days.
+export const PHONE_PAGE_STARTS = [0, 3, 4];
+
+// The page that opens first: the first one that has this day in it (a week with
+// no "today" opens on the first page).
+export function pageOfDay(day) {
+  const index = PHONE_PAGE_STARTS.findIndex((start) => day >= start && day < start + 3);
+  return index === -1 ? 0 : index;
+}
+
 export function slotKey(dayOfWeek, mealType) {
   return `${dayOfWeek}-${mealType}`;
 }

@@ -4,7 +4,7 @@ import { InStockPill, MealChip, Pill, PlannedPill, SalePill, TimePill } from "./
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { haveAndBuy, plannedDayOf, saleFor } from "../lib/finder.js";
 import { stepIsHeading, stepHeadingText, stepText } from "../lib/steps.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { t } from "../i18n/index.js";
 
 // A recipe's pop-out (design: docs/design/riso-v2, Finder): time and servings,
@@ -169,7 +169,7 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
 
         <div className="fnd-pop-body">
           <div className="fnd-pop-photo">
-            {recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}
+            {recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" /> : null}
           </div>
 
           <div className="fnd-pop-info">

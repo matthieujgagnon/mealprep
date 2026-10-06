@@ -8,7 +8,7 @@ import { isMakeableMeal } from "../lib/mealSlots.js";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { buildCombinedHave } from "../lib/onHand.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { currentMealType, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
@@ -320,7 +320,7 @@ export function Home({
           ) : tonightEntry ? (
             <div className="riso-home-hero-body">
               {tonightEntry.recipe.photoUrl ? (
-                <img src={tonightEntry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-home-hero-photo" />
+                <RecipePhoto src={tonightEntry.recipe.photoUrl} alt="" className="riso-home-hero-photo" />
               ) : (
                 <div className="riso-home-hero-photo placeholder" aria-hidden="true" />
               )}
@@ -524,7 +524,7 @@ export function Home({
                   onClick={(e) => onSelectRecipe(entry.recipe, e.currentTarget.getBoundingClientRect())}
                 >
                   {entry.recipe.photoUrl ? (
-                    <img src={entry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} className="riso-home-week-day-photo" />
+                    <RecipePhoto src={entry.recipe.photoUrl} alt="" className="riso-home-week-day-photo" />
                   ) : (
                     <div className="riso-home-week-day-photo placeholder" />
                   )}

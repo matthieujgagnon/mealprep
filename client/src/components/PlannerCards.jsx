@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { BottomSheet } from "./RisoControls.jsx";
 import { TimePill } from "./RisoPills.jsx";
 import { IngredientMarks } from "./RecipePopout.jsx";
 import { haveAndBuy } from "../lib/finder.js";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { stepIsHeading, stepText } from "../lib/steps.js";
 import { slotLabel } from "../lib/plannerSlots.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { t } from "../i18n/index.js";
 
 // The two cards that open beside a slot on the Planner (design: docs/design/
@@ -16,7 +17,10 @@ import { t } from "../i18n/index.js";
 // share a shell: 440px wide, to the right of the clicked slot when it fits
 // inside the board and to the left when it does not; a Breakfast slot's card is
 // top-aligned with it, the other rows' cards are bottom-aligned (they open
-// upward). Closing: ×, Escape, or a click outside.
+// upward). Closing: ×, Escape, or a click outside. On a phone (`sheet`) the same
+// card, with the same content, opens as a sheet from the bottom of the screen
+// (the shared BottomSheet) instead of beside the slot; a tap on the dimmed area
+// closes it.
 
 const GAP = 16;
 const MARGIN = 12;
@@ -44,8 +48,9 @@ function useBesideSlot({ anchor, board, mealIndex }, deps) {
   return { ref, style: pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0, visibility: "hidden" } };
 }
 
-function useCloseOutside(ref, anchor, onClose) {
+function useCloseOutside(ref, anchor, onClose, enabled = true) {
   useEffect(() => {
+    if (!enabled) return undefined;
     const onKey = (e) => e.key === "Escape" && onClose();
     const onDown = (e) => {
       if (!ref.current?.contains(e.target) && !anchor?.contains(e.target)) onClose();
@@ -56,12 +61,12 @@ function useCloseOutside(ref, anchor, onClose) {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onDown);
     };
-  }, [ref, anchor, onClose]);
+  }, [ref, anchor, onClose, enabled]);
 }
 
-function CardShell({ cardRef, style, label, caps, title, onClose, children }) {
-  return createPortal(
-    <div ref={cardRef} className="riso-theme riso-slotcard" data-theme="light" role="dialog" aria-label={label} style={style}>
+function CardShell({ cardRef, style, label, caps, title, onClose, sheet, children }) {
+  const inside = (
+    <>
       <div className="riso-slotcard-head">
         <div>
           <span className="riso-slotcard-caps">{caps}</span>
@@ -72,6 +77,19 @@ function CardShell({ cardRef, style, label, caps, title, onClose, children }) {
         </button>
       </div>
       {children}
+    </>
+  );
+  if (sheet) {
+    return createPortal(
+      <BottomSheet label={label} onClose={onClose}>
+        <div className="riso-slotcard-sheet">{inside}</div>
+      </BottomSheet>,
+      document.body
+    );
+  }
+  return createPortal(
+    <div ref={cardRef} className="riso-theme riso-slotcard" data-theme="light" role="dialog" aria-label={label} style={style}>
+      {inside}
     </div>,
     document.body
   );
@@ -81,14 +99,14 @@ const QUICK = ["q1", "q2", "q3", "q4"];
 
 // The empty slot's card. `note` is the existing note's text when a note slot
 // was clicked (the card opens on the Note tile with it filled in).
-export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSaveNote, onBlank, onRemoveNote, onClose }) {
+export function SlotCard({ slot, mealIndex, anchor, board, sheet = false, note, onRecipe, onSaveNote, onBlank, onRemoveNote, onClose }) {
   const [mode, setMode] = useState(note != null ? "note" : null); // null | "note"
   const [text, setText] = useState(note || "");
   // "Nothing planned" asks twice: the first click turns the tile blue ("Confirm"),
   // the second marks the slot. Anything else clicked, or Escape, puts the tile back.
   const [confirming, setConfirming] = useState(false);
-  const { ref, style } = useBesideSlot({ anchor, board, mealIndex }, [mode]);
-  useCloseOutside(ref, anchor, onClose);
+  const { ref, style } = useBesideSlot({ anchor: sheet ? null : anchor, board, mealIndex }, [mode]);
+  useCloseOutside(ref, anchor, onClose, !sheet);
   const inputRef = useRef(null);
   const blankRef = useRef(null);
 
@@ -126,6 +144,7 @@ export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSav
       label={t("tray.addTo", { slot: slotLabel(slot) })}
       caps={t("finder.addTo")}
       title={slotLabel(slot)}
+      sheet={sheet}
       onClose={onClose}
     >
       <div className="riso-slotcard-buttons" role="group">
@@ -201,10 +220,12 @@ export function SlotCard({ slot, mealIndex, anchor, board, note, onRecipe, onSav
   );
 }
 
-// The planned meal's card: a preview of the recipe, and three buttons.
-export function PlannedCard({ slot, mealIndex, anchor, board, recipe, haveCores, grocery, onCook, onBase, onReplace, onClose }) {
-  const { ref, style } = useBesideSlot({ anchor, board, mealIndex }, [recipe?.id]);
-  useCloseOutside(ref, anchor, onClose);
+// The planned meal's card: a preview of the recipe, and three buttons. `mark`
+// ({ label, onCycle }) is only given on a phone, where a card has no ✓ to tap:
+// one more button steps the meal through plain -> leftover -> already have.
+export function PlannedCard({ slot, mealIndex, anchor, board, sheet = false, recipe, haveCores, grocery, mark, onCook, onBase, onReplace, onClose }) {
+  const { ref, style } = useBesideSlot({ anchor: sheet ? null : anchor, board, mealIndex }, [recipe?.id]);
+  useCloseOutside(ref, anchor, onClose, !sheet);
   const { have, buy } = haveAndBuy(recipe, haveCores);
   const steps = (recipe.instructions || []).filter((s) => stepText(s).trim());
   const numbered = steps.filter((s) => !stepIsHeading(s));
@@ -218,10 +239,11 @@ export function PlannedCard({ slot, mealIndex, anchor, board, recipe, haveCores,
       label={recipe.title}
       caps={t("planner.plannedMeal")}
       title={slotLabel(slot)}
+      sheet={sheet}
       onClose={onClose}
     >
       <div className="riso-plannedcard-body">
-        <div className="riso-plannedcard-photo">{recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}</div>
+        <div className="riso-plannedcard-photo">{recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" /> : null}</div>
         <h3 className="riso-plannedcard-name">{recipe.title}</h3>
         <div className="riso-plannedcard-facts">
           <TimePill minutes={recipeTotalMinutes(recipe)} serves={recipe.baseServings} />
@@ -253,6 +275,11 @@ export function PlannedCard({ slot, mealIndex, anchor, board, recipe, haveCores,
         <button type="button" className="riso-plannedcard-btn" onClick={onReplace}>
           {t("planner.replaceRecipe")}
         </button>
+        {mark && (
+          <button type="button" className="riso-plannedcard-btn mark" onClick={mark.onCycle}>
+            {mark.label}
+          </button>
+        )}
       </div>
     </CardShell>
   );

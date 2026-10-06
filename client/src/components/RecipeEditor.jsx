@@ -23,7 +23,7 @@ import { stepHeadingText, stepIsHeading, stepTimer } from "../lib/steps.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
 import { core } from "../lib/similarRecipes.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { droppedImageUrl, isImageFile, uploadPhoto } from "../lib/photoUpload.js";
 import {
   emptyIngredient,
@@ -1024,7 +1024,7 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
           <span className="re-label">{t("editor.previewLabel")}</span>
           <div className="re-preview-card">
             <div className="re-preview-photo">
-              {cover && <img key={cover.url} src={cover.url} alt="" onError={hideBrokenPhoto} />}
+              {cover && <RecipePhoto key={cover.url} src={cover.url} alt="" />}
               <span className={`re-preview-time${total ? "" : " unset"}`}>
                 <span aria-hidden="true">⏱</span>
                 {total ? formatRecipeTime(total) : t("editor.addTime")}

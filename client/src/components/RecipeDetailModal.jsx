@@ -18,7 +18,7 @@ import { CookMode } from "./CookMode.jsx";
 import { StepTimer } from "./StepTimer.jsx";
 import { useStepTimers } from "../hooks/useStepTimers.js";
 import { buildCombinedHave } from "../lib/onHand.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { formatRecipeTime } from "../lib/mealSlots.js";
 import { isPastDay } from "../lib/dates.js";
 import { dict, t } from "../i18n/index.js";
@@ -818,7 +818,7 @@ export function RecipeDetailModal({
                 {similar.map(({ recipe: match, sharedCount }) => (
                   <button key={match.id} type="button" className="riso-rc-similar-card" onClick={() => onSelectRecipe?.(match)}>
                     {match.photoUrl ? (
-                      <img src={match.photoUrl} alt="" onError={hideBrokenPhoto} />
+                      <RecipePhoto src={match.photoUrl} alt="" />
                     ) : (
                       <div className="riso-rc-similar-photo-placeholder" />
                     )}

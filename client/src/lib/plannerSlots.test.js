@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canClearDay, entriesOnDay, slotLabel, weekendDaysLabel, weekendRuns } from "./plannerSlots.js";
+import { PHONE_PAGE_STARTS, canClearDay, entriesOnDay, pageOfDay, slotLabel, weekendDaysLabel, weekendRuns } from "./plannerSlots.js";
 import { currentWeekStart, shiftWeek } from "./dates.js";
 import { setLang } from "../i18n/index.js";
 
@@ -60,5 +60,16 @@ describe("canClearDay (the Planner's Clear under a day)", () => {
     if (today > 0) expect(canClearDay([meal(0, "a")], week, 0)).toBe(false);
     expect(canClearDay([meal(0, "a")], shiftWeek(week, -1), 0)).toBe(false);
     expect(canClearDay([meal(0, "a")], shiftWeek(week, 1), 0)).toBe(true);
+  });
+});
+
+describe("the phone board's pages", () => {
+  it("start at Mon, Thu and Fri, so every page has three days", () => {
+    expect(PHONE_PAGE_STARTS).toEqual([0, 3, 4]);
+    for (const start of PHONE_PAGE_STARTS) expect(start + 2).toBeLessThanOrEqual(6);
+  });
+
+  it("opens on the first page that has the day in it", () => {
+    expect([0, 1, 2, 3, 4, 5, 6].map(pageOfDay)).toEqual([0, 0, 0, 1, 1, 1, 2]);
   });
 });

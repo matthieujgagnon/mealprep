@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import { formatDayLabel, formatWeekLabel, isPastDay, shiftWeek } from "../lib/dates.js";
 import { MEAL_TYPES, findNextEmptySlot, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, slotLabel, upcomingSlots } from "../lib/plannerSlots.js";
 import { weekendLayout } from "../lib/weekend.js";
-import { hideBrokenPhoto } from "../lib/photos.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
 import { dict, t } from "../i18n/index.js";
 
 // The slot picker (design: docs/design/riso-v2-planner-desktop, "Slot picker"):
@@ -60,7 +60,7 @@ export function SlotPicker({ recipe, weekStart, entries, weekend, initialSlot, o
     <div className="riso-theme riso-picker-backdrop" data-theme="light" onClick={onClose}>
       <div className="riso-picker" role="dialog" aria-modal="true" aria-label={t("planner.pickerTitle")} onClick={(e) => e.stopPropagation()}>
         <header className="riso-picker-head">
-          <span className="riso-picker-photo">{recipe.photoUrl ? <img src={recipe.photoUrl} alt="" onError={hideBrokenPhoto} /> : null}</span>
+          <span className="riso-picker-photo">{recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" /> : null}</span>
           <div className="riso-picker-titlewrap">
             <span className="riso-slotcard-caps">{t("planner.pickerAdd")}</span>
             <h2 className="riso-picker-title">{recipe.title}</h2>
@@ -108,7 +108,7 @@ export function SlotPicker({ recipe, weekStart, entries, weekend, initialSlot, o
                     aria-label={`${slotLabel({ dayOfWeek: day, mealType: meal.id })}${entry ? `: ${entry.recipe?.title || ""}` : ""}`}
                     onClick={() => setSlot({ dayOfWeek: day, mealType: meal.id })}
                   >
-                    {entry && !isNoteEntry(entry) && entry.recipe.photoUrl && <img src={entry.recipe.photoUrl} alt="" onError={hideBrokenPhoto} />}
+                    {entry && !isNoteEntry(entry) && entry.recipe.photoUrl && <RecipePhoto src={entry.recipe.photoUrl} alt="" />}
                     {note && isEmojiOnly(note) && <span className="riso-picker-emoji">{note}</span>}
                     {on && <span className="riso-picker-plus">+</span>}
                   </button>

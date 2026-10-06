@@ -3,7 +3,6 @@ import { Finder } from "./Finder.jsx";
 import { HintStrip } from "./RisoControls.jsx";
 import { PlannerBoard } from "./PlannerBoard.jsx";
 import { PlannerHeader } from "./PlannerHeader.jsx";
-import { PlannerMobile } from "./PlannerMobile.jsx";
 import { WeekendMenu } from "./PlannerExtras.jsx";
 import { PlannedCard, SlotCard } from "./PlannerCards.jsx";
 import { useFinder } from "../hooks/useFinder.js";
@@ -14,10 +13,12 @@ import { isCustomNote, slotLabel, todayIndex } from "../lib/plannerSlots.js";
 import { weekendSummary } from "../lib/weekend.js";
 import { t } from "../i18n/index.js";
 
-// The Planner tab (design: docs/design/riso-v2-planner-desktop): the week
-// board with the one shared recipe finder under it. A computer shows the finder
-// as a panel below the board, always on; a phone shows the same finder inside
-// the bottom card that opens when a slot is tapped.
+// The Planner tab (design: docs/design/riso-v2-planner-desktop, and the header
+// design's "Board changes on phone"): the week board with the one shared recipe
+// finder under it, on a computer and on a phone. The phone is the same page: the
+// board shows three days at a time (`PlannerBoard` with `phone`), the cards that
+// open beside a slot open as sheets from the bottom instead, and the finder is
+// the same panel at the bottom of the page.
 //
 // App.jsx owns the planner's data and what changes it (so the board and every
 // other tab stay in step), and the pieces every page shares: the recipe pop-out,
@@ -35,7 +36,6 @@ import { t } from "../i18n/index.js";
 //                                       full (App shows the toast and its Undo)
 //   actions.placeLeftover(recipe, slot), markBlank(slot), saveSlotNote(slot, text),
 //   actions.removeEntry(id), clearDay(dayOfWeek), cycleState(id), toast(message, undo?),
-//   actions.writeInSlot(slot), editNote(id), saveNote(id, text)  (a phone writes on the slot),
 //   actions.copyLastWeek()  fills the empty slots from last week; resolves with how many it copied
 //   onOpenPopout(recipe, from?)  opens the shared recipe pop-out
 //   onRequestPlan(recipe)        opens the shared slot picker
@@ -58,15 +58,11 @@ export function Planner({
   onTargetChange,
   initialMainId,
   onInitialMainConsumed,
-  editingNoteId,
   actions,
   onOpenPopout,
   popoutId,
   onRequestPlan,
   onOpenRecipeCard,
-  onOpenGrocery,
-  customStaples,
-  excludedStaples,
 }) {
   const phone = useIsPhone();
   const finder = useFinder();
@@ -76,9 +72,21 @@ export function Planner({
 
   const mainRecipe = finder.mainId ? recipes.find((r) => r.id === finder.mainId) || null : null;
 
+  // Takes the person to the finder: on a computer the cursor goes in its search
+  // box; on a phone the page scrolls to it and opens it (the keyboard is left
+  // closed until the search bar is tapped, so the results stay in view).
+  function showFinder() {
+    if (!phone) {
+      finder.focusSearch();
+      return;
+    }
+    finder.setOpen(true);
+    requestAnimationFrame(() => finder.rootRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
+  }
+
   // Home's "Add a recipe" arrives here with a target slot already chosen.
   useEffect(() => {
-    if (target && !phone) finder.focusSearch();
+    if (target) showFinder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -134,14 +142,14 @@ export function Planner({
     return isCustomNote(entry) ? entry.recipe.title : t("planner.blankName");
   }
 
-  // Puts a recipe in the target slot, else the next empty one (a phone's + works this way).
+  // Puts a recipe in the target slot, else the next empty one.
   async function plan(recipe) {
     const slot = await actions.placeRecipe(recipe);
     if (!slot) actions.toast(t("app.slotsFull"));
   }
 
-  // A computer's +: into the target slot when there is one, else the shared slot
-  // picker, to choose where.
+  // The +, on a computer and on a phone: into the target slot when there is one,
+  // else the shared slot picker, to choose where.
   function add(recipe) {
     if (target) plan(recipe);
     else onRequestPlan(recipe);
@@ -172,14 +180,14 @@ export function Planner({
         active: leftoverMode,
         onToggle: () => {
           setLeftoverMode((on) => !on);
-          // On a phone the card covers the board: close it so the slots show.
-          if (phone) onTargetChange(null);
+          // On a phone the board is above the finder: bring it into view to tap a slot.
+          if (phone && !leftoverMode) boardRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
         },
       }
     : undefined;
 
   const replacing = target ? titleInSlot(target) : null;
-  const finderNode = (layoutName) => (
+  const finderNode = (
     <Finder
       finder={finder}
       recipes={recipes}
@@ -188,53 +196,27 @@ export function Planner({
       inventoryLayout={inventoryLayout}
       haveCores={haveCores}
       upcomingEntries={upcomingPlanner}
-      layout={layoutName}
-      draggable={layoutName === "panel"}
+      draggable
       target={target}
       targetLabel={target ? slotLabel(target) : ""}
       targetNotice={replacing ? t("finder.replaces", { title: replacing }) : null}
       onClearTarget={() => onTargetChange(null)}
-      onAdd={layoutName === "panel" ? add : plan}
+      onAdd={add}
       onOpenPopout={onOpenPopout}
       openId={popoutId}
       leftovers={leftovers}
     />
   );
 
-  if (phone) {
-    return (
-      <PlannerMobile
-        entries={entries}
-        weekStart={weekStart}
-        onChangeWeek={(w) => {
-          onChangeWeek(w);
-          onTargetChange(null);
-        }}
-        weekend={weekend}
-        lastWeekCount={lastWeekCount}
-        onCopyLastWeek={actions.copyLastWeek}
-        target={target}
-        onSelectSlot={onTargetChange}
-        onOpenRecipe={(recipe) => onOpenPopout(recipe)}
-        onRemove={actions.removeEntry}
-        onClearDay={actions.clearDay}
-        onCycleState={actions.cycleState}
-        editingNoteId={editingNoteId}
-        onWriteInSlot={actions.writeInSlot}
-        onMarkBlank={actions.markBlank}
-        onEditNote={actions.editNote}
-        onSaveNote={actions.saveNote}
-        leftoverMode={leftoverMode}
-        leftoverTitle={mainRecipe?.title}
-        onLeftoverCell={placeLeftover}
-        onLeftoverDone={() => setLeftoverMode(false)}
-        finder={finderNode("sheet")}
-        customStaples={customStaples}
-        excludedStaples={excludedStaples}
-        onOpenGrocery={onOpenGrocery}
-      />
-    );
-  }
+  // A phone's planned-meal card marks the meal here (a card has no ✓ to tap):
+  // plain -> leftover -> already have -> plain, the same steps as the ✓ on a computer.
+  const openEntry = overlay?.type === "planned" ? entries.find((e) => e.id === overlay.entry.id) || overlay.entry : null;
+  const plannedMark = openEntry
+    ? {
+        label: t(openEntry.alreadyHave ? "planner.sheetClear" : openEntry.isLeftover ? "planner.sheetMarkHave" : "planner.sheetMarkLeftover"),
+        onCycle: () => actions.cycleState(openEntry.id),
+      }
+    : undefined;
 
   const summary = weekendSummary(weekend);
   const hintLines = [
@@ -262,6 +244,7 @@ export function Planner({
         weekStart={weekStart}
         weekend={weekend}
         boardRef={boardRef}
+        phone={phone}
         selectedSlot={overlay?.type === "slot" || overlay?.type === "planned" ? overlay.slot : target}
         leftoverMode={leftoverMode}
         onCardClick={handleCardClick}
@@ -273,9 +256,9 @@ export function Planner({
         onWeekendMenu={() => open(overlay?.type === "weekend" ? null : { type: "weekend" })}
         overlay={overlay?.type === "weekend" ? <WeekendMenu weekend={weekend} onChange={onWeekendChange} onClose={close} /> : null}
       />
-      <HintStrip userId={user.id} screenKey="planner-v7" items={hintLines} />
+      {!phone && <HintStrip userId={user.id} screenKey="planner-v7" items={hintLines} />}
       <section className="riso-planner-finder" aria-label={t("finder.panelAria")}>
-        {finderNode("panel")}
+        {finderNode}
       </section>
 
       {overlay?.type === "slot" && (
@@ -285,12 +268,13 @@ export function Planner({
           mealIndex={overlay.mealIndex}
           anchor={overlay.el}
           board={boardRef.current}
+          sheet={phone}
           note={overlay.note}
           onRecipe={() => {
             const { slot } = overlay;
             close();
             onTargetChange(slot);
-            finder.focusSearch();
+            showFinder();
           }}
           onSaveNote={async (text) => {
             const { slot } = overlay;
@@ -316,9 +300,11 @@ export function Planner({
           mealIndex={overlay.mealIndex}
           anchor={overlay.el}
           board={boardRef.current}
+          sheet={phone}
           recipe={overlay.entry.recipe}
           haveCores={haveCores}
           grocery={grocery}
+          mark={phone ? plannedMark : undefined}
           onCook={() => {
             const { recipe } = overlay.entry;
             close();
@@ -334,7 +320,7 @@ export function Planner({
             const { slot } = overlay;
             close();
             onTargetChange(slot);
-            finder.focusSearch();
+            showFinder();
           }}
           onClose={close}
         />

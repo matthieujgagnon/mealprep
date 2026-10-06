@@ -249,8 +249,8 @@ test.describe("Planner cards are one size", () => {
   test("on a phone: every cell of the week board measures the same", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await seed(page);
-    await expect(page.locator(".rpm-cell").first()).toBeVisible();
-    const sizes = await page.locator(".rpm-cell").evaluateAll((els) =>
+    await expect(page.locator(".riso-planner-board.paged")).toBeVisible();
+    const sizes = await page.locator(".riso-planner-cell").evaluateAll((els) =>
       els.map((e) => {
         const r = e.getBoundingClientRect();
         return `${Math.round(r.width)}x${Math.round(r.height)}`;
@@ -259,7 +259,7 @@ test.describe("Planner cards are one size", () => {
     expect(sizes).toHaveLength(21);
     expect(new Set(sizes).size, sizes.join(" ")).toBe(1);
     // Something of each kind is really on the board.
-    for (const cls of [".rpm-cell.card", ".rpm-cell.note", ".rpm-cell.empty"]) {
+    for (const cls of [".riso-planner-card", ".riso-planner-note", ".riso-planner-cell-empty"]) {
       await expect(page.locator(cls).first()).toBeVisible();
     }
   });
