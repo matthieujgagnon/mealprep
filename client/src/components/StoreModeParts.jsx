@@ -14,8 +14,8 @@ const EXAMPLE_COLOUR = "#FF48B0"; // the example in the colour box
 // text (whichever reads better) and an ink border and shadow.
 export function StoreSticker({ name, color, dark, className = "" }) {
   const style = dark
-    ? { background: "#000000", color: "#F4F1EA", borderColor: "transparent", boxShadow: `3px 3px 0 ${color}` }
-    : { background: color, color: textOn(color), borderColor: "#16181F", boxShadow: "3px 3px 0 #16181F" };
+    ? { background: "#000000", color: "#F4F1EA", borderColor: "transparent", boxShadow: `2px 2px 0 ${color}` }
+    : { background: color, color: textOn(color), borderColor: "#16181F", boxShadow: "2px 2px 0 #16181F" };
   return (
     <span className={`store-mode-sticker ${className}`} style={style}>
       {name}

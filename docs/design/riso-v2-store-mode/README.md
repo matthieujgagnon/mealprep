@@ -108,3 +108,4 @@ Where the app differs from the prototype (which has hard-coded sample data):
 - Store sticker colours: Metro, Super C and Fruits du jour have the design's colours; any other store gets one from the palette, always the same one for the same name. Colours are kept per device under `mealprep-store-colors`.
 - "Add to inventory" never adds on its own: it opens the app's Inventory confirmation first (see `CLAUDE.md`). Cancelling that leaves the leave sheet open; confirming shows "Added to your inventory". "Leave without adding" goes back to Grocery and keeps the checks.
 - It is full screen (the phone is the frame), and it opens from Grocery's "I'm at the store" on a phone.
+- Matt asked, after trying it on his iPhone, for smaller stickers and bigger items. The sticker is 14 px type (was 19) with a 2 px shadow, and the item card is 72 px tall at least with a 34 px box, 19 px name and 18 px number (was 52, 26, 16 and 14).

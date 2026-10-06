@@ -77,7 +77,7 @@ test("Store mode is one list with a section for each store, in a sticker you can
   const sticker = metro.locator(".store-mode-sticker");
   expect(await sticker.evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).boxShadow])).toEqual([
     "rgb(0, 0, 0)",
-    "rgb(255, 72, 176) 3px 3px 0px 0px",
+    "rgb(255, 72, 176) 2px 2px 0px 0px",
   ]);
 
   // Tapping the sticker folds the store; the count stays.
@@ -212,18 +212,18 @@ test("the sticker colours: change one with a hex or RGB code, see a bad one, res
   const metro = sheet.getByRole("textbox", { name: "Colour of Metro" });
   await metro.fill("37, 99, 235");
   const sticker = mode.locator(".store-mode-store", { hasText: "Metro" }).locator(".store-mode-sticker");
-  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 3px 3px 0px 0px");
+  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 2px 2px 0px 0px");
   await metro.fill("pink");
   await expect(metro).toHaveCSS("border-top-color", "rgb(196, 18, 63)"); // not a colour: red border, nothing saved
-  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 3px 3px 0px 0px");
+  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 2px 2px 0px 0px");
   await metro.fill("#0f0");
-  await expect(sticker).toHaveCSS("box-shadow", "rgb(0, 255, 0) 3px 3px 0px 0px");
+  await expect(sticker).toHaveCSS("box-shadow", "rgb(0, 255, 0) 2px 2px 0px 0px");
   await sheet.getByRole("button", { name: "Done" }).click();
 
   // Kept on this device.
   await mode.getByRole("button", { name: "← List" }).click();
   await page.getByRole("button", { name: /I'm at the store/ }).click();
-  await expect(page.locator(".store-mode-store", { hasText: "Metro" }).locator(".store-mode-sticker")).toHaveCSS("box-shadow", "rgb(0, 255, 0) 3px 3px 0px 0px");
+  await expect(page.locator(".store-mode-store", { hasText: "Metro" }).locator(".store-mode-sticker")).toHaveCSS("box-shadow", "rgb(0, 255, 0) 2px 2px 0px 0px");
   expect(await page.evaluate(() => localStorage.getItem("mealprep-store-colors"))).toContain("#00FF00");
 
   // Reset goes back to the defaults.

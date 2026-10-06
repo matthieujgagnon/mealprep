@@ -75,7 +75,7 @@ export function StoreMode({
 
   // Every row is as tall as the one with the longest name (names are never cut).
   const listRef = useRef(null);
-  useEqualRowHeight(listRef, { pad: 10 });
+  useEqualRowHeight(listRef, { pad: 14 });
 
   const total = rows.length;
   const left = rows.filter((r) => !checked[r.item.key]).length;
