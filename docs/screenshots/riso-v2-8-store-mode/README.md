@@ -11,3 +11,4 @@ Taken with local test data in a throwaway database. Phone (390 px), in French ex
 - `phone-fr-7-inventory-confirmation.png`: « Ajouter à l'inventaire » opens the Inventory confirmation first.
 - `phone-fr-8-added-sheet.png`: after confirming.
 - `phone-fr-9-confetti.png`: the whole list checked.
+- `phone-fr-10-move-sheet.png`: press and hold an item: « Déplacer … vers » lists the stores (the one it is in is greyed).

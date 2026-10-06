@@ -77,7 +77,7 @@ test("Store mode is one list with a section for each store, in a sticker you can
   const sticker = metro.locator(".store-mode-sticker");
   expect(await sticker.evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).boxShadow])).toEqual([
     "rgb(0, 0, 0)",
-    "rgb(255, 72, 176) 3px 3px 0px 0px",
+    "rgb(255, 72, 176) 2px 2px 0px 0px",
   ]);
 
   // Tapping the sticker folds the store; the count stays.
@@ -198,6 +198,64 @@ test("leaving: with nothing checked ← List just goes back; with items checked 
   await expect.poll(async () => (await (await page.request.get("/api/pantry-inventory")).json()).map((i) => i.name.toLowerCase()).sort()).toEqual(["cilantro", "limes"]);
 });
 
+test.describe("moving an item to another store", () => {
+  test.use({ hasTouch: true });
+
+  // A real long press (Chromium's own touch input): hold still, then lift.
+  async function hold(page, locator, ms = 700) {
+    const box = await locator.boundingBox();
+    const client = await page.context().newCDPSession(page);
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+    await page.waitForTimeout(ms);
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  }
+
+  test("press and hold an item, pick a store, and it stays there; a tap still checks, and Cancel moves nothing", async ({ page }) => {
+    await signUp(page);
+    await seedList(page);
+    let mode = await openStoreMode(page);
+    await expect(mode.locator(".store-mode-hint")).toHaveText("Press and hold an item to move it to another store.");
+    const metro = mode.locator(".store-mode-store", { hasText: "Metro" });
+    const superC = mode.locator(".store-mode-store", { hasText: "Super C" });
+
+    // A long press opens "Move to" and does not check the row.
+    await hold(page, metro.locator(".store-mode-row", { hasText: "Ground beef" }));
+    const sheet = mode.getByRole("dialog", { name: "Move Ground beef to" });
+    await expect(sheet).toBeVisible();
+    await expect(mode.locator(".store-mode-row.on")).toHaveCount(0);
+    await expect(sheet.getByRole("button", { name: /Metro/ })).toBeDisabled(); // it is here already
+    await expect(sheet.getByRole("button", { name: /Super C/ })).toBeEnabled();
+    await page.screenshot({ path: test.info().outputPath("move-sheet.png") });
+
+    // Cancel: nothing moves.
+    await sheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(metro.locator(".store-mode-name")).toHaveText(["Cilantro", "Frozen peas", "Ground beef", "Limes", "Rice"]);
+
+    // Pick Super C: it moves, the counts follow, and it is found in its new place.
+    await hold(page, metro.locator(".store-mode-row", { hasText: "Ground beef" }));
+    await sheet.getByRole("button", { name: /Super C/ }).click();
+    await expect(superC.locator(".store-mode-name")).toHaveText(["Chicken breasts", "Ground beef"]);
+    await expect(metro.locator(".store-mode-name")).toHaveText(["Cilantro", "Frozen peas", "Limes", "Rice"]);
+    await expect(metro.locator(".store-mode-badge")).toHaveText("4 LEFT");
+    await expect(superC.locator(".store-mode-badge")).toHaveText("2 LEFT");
+    await expect(superC.locator(".store-mode-move.moved")).toHaveCount(1);
+    await expect(mode.locator(".store-mode-num")).toHaveText("6");
+
+    // A short tap still checks a row.
+    await metro.locator(".store-mode-row", { hasText: "Limes" }).tap();
+    await expect(metro.locator(".store-mode-row.on")).toHaveCount(1);
+
+    // Saved for good: after a reload it is still under Super C.
+    await mode.getByRole("button", { name: "← List" }).click();
+    await mode.getByRole("button", { name: "Leave without adding" }).click();
+    await page.reload();
+    mode = await openStoreMode(page);
+    await expect(mode.locator(".store-mode-store", { hasText: "Super C" }).locator(".store-mode-name")).toHaveText(["Chicken breasts", "Ground beef"]);
+  });
+});
+
 test("the sticker colours: change one with a hex or RGB code, see a bad one, reset; they stay on the device", async ({ page }) => {
   await signUp(page);
   await seedList(page);
@@ -212,18 +270,18 @@ test("the sticker colours: change one with a hex or RGB code, see a bad one, res
   const metro = sheet.getByRole("textbox", { name: "Colour of Metro" });
   await metro.fill("37, 99, 235");
   const sticker = mode.locator(".store-mode-store", { hasText: "Metro" }).locator(".store-mode-sticker");
-  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 3px 3px 0px 0px");
+  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 2px 2px 0px 0px");
   await metro.fill("pink");
   await expect(metro).toHaveCSS("border-top-color", "rgb(196, 18, 63)"); // not a colour: red border, nothing saved
-  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 3px 3px 0px 0px");
+  await expect(sticker).toHaveCSS("box-shadow", "rgb(37, 99, 235) 2px 2px 0px 0px");
   await metro.fill("#0f0");
-  await expect(sticker).toHaveCSS("box-shadow", "rgb(0, 255, 0) 3px 3px 0px 0px");
+  await expect(sticker).toHaveCSS("box-shadow", "rgb(0, 255, 0) 2px 2px 0px 0px");
   await sheet.getByRole("button", { name: "Done" }).click();
 
   // Kept on this device.
   await mode.getByRole("button", { name: "← List" }).click();
   await page.getByRole("button", { name: /I'm at the store/ }).click();
-  await expect(page.locator(".store-mode-store", { hasText: "Metro" }).locator(".store-mode-sticker")).toHaveCSS("box-shadow", "rgb(0, 255, 0) 3px 3px 0px 0px");
+  await expect(page.locator(".store-mode-store", { hasText: "Metro" }).locator(".store-mode-sticker")).toHaveCSS("box-shadow", "rgb(0, 255, 0) 2px 2px 0px 0px");
   expect(await page.evaluate(() => localStorage.getItem("mealprep-store-colors"))).toContain("#00FF00");
 
   // Reset goes back to the defaults.

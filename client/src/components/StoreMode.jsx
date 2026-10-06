@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { GroceryItem } from "./GroceryItem.jsx";
-import { AddedSheet, ColoursSheet, LeaveSheet, StoreConfetti, StoreSticker } from "./StoreModeParts.jsx";
+import { AddedSheet, ColoursSheet, LeaveSheet, MovableRow, MoveSheet, StoreConfetti, StoreSticker } from "./StoreModeParts.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { brandOf } from "../lib/flyerIngredients.js";
 import { colorOfStore, readStoreColors, writeStoreColors } from "../lib/storeColors.js";
@@ -45,6 +45,8 @@ export function StoreMode({
   aisleLabel = (id) => id,
   aisleOrder = [],
   sendCount = 0,
+  moveTargets = stores, // every store an item can be moved to (not only those with items today)
+  onMove,
 }) {
   const [theme, setTheme] = useState(readTheme);
   const [colors, setColors] = useState(readStoreColors);
@@ -52,7 +54,9 @@ export function StoreMode({
   const [aisle, setAisle] = useState(false);
   const [hideDone, setHideDone] = useState(false);
   const [collapsed, setCollapsed] = useState({});
-  const [sheet, setSheet] = useState(null); // null | "colours" | "leave" | "added"
+  const [sheet, setSheet] = useState(null); // null | "colours" | "leave" | "added" | "move"
+  const [moving, setMoving] = useState(null); // the row whose "Move to" sheet is open
+  const [flash, setFlash] = useState(null); // the key of the item just moved
   const [added, setAdded] = useState(0);
   const [busy, setBusy] = useState(false);
   const dark = theme === "dark";
@@ -75,7 +79,7 @@ export function StoreMode({
 
   // Every row is as tall as the one with the longest name (names are never cut).
   const listRef = useRef(null);
-  useEqualRowHeight(listRef, { pad: 10 });
+  useEqualRowHeight(listRef, { pad: 14 });
 
   const total = rows.length;
   const left = rows.filter((r) => !checked[r.item.key]).length;
@@ -109,6 +113,27 @@ export function StoreMode({
           };
         })
         .filter((g) => g.visible > 0);
+
+  // Filing an item under another store saves it for good (Grocery's own rule, the
+  // same as dragging it there on the Grocery page). The store opens if it was
+  // folded, and the item is scrolled to and ringed in its new place.
+  async function moveTo(store) {
+    const row = moving;
+    setSheet(null);
+    setMoving(null);
+    if (!row || !onMove) return;
+    setCollapsed((c) => ({ ...c, [store]: false }));
+    await onMove(row.item, store);
+    setFlash(row.item.key);
+  }
+
+  useEffect(() => {
+    if (!flash) return undefined;
+    const el = listRef.current?.querySelector(`[data-move-key="${CSS.escape(flash)}"]`);
+    el?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    const id = setTimeout(() => setFlash(null), 1800);
+    return () => clearTimeout(id);
+  }, [flash]);
 
   function setColor(name, hex) {
     setColors((prev) => {
@@ -195,6 +220,7 @@ export function StoreMode({
           </button>
         </div>
 
+        {onMove && moveTargets.length > 1 && total > 0 && <p className="store-mode-hint">{t("storeMode.moveHint")}</p>}
         {total === 0 && <p className="store-mode-empty">{t("storeMode.empty")}</p>}
 
         {groups.map((group) => (
@@ -219,16 +245,26 @@ export function StoreMode({
             {group.sections.map((section) => (
               <div key={section.id || "list"} className="store-mode-group">
                 {aisle && <div className="store-mode-aisle">{aisleLabel(section.id)}</div>}
-                {section.rows.map(({ item, deal, flyerDeal }) => (
-                  <GroceryItem
-                    key={item.key}
-                    variant="store"
-                    item={item}
-                    checked={!!checked[item.key]}
-                    deal={deal}
-                    brand={brandOf(deal || flyerDeal)}
-                    onToggle={() => onToggle(item.key)}
-                  />
+                {section.rows.map((row) => (
+                  <MovableRow
+                    key={row.item.key}
+                    itemKey={row.item.key}
+                    flash={flash === row.item.key}
+                    onLongPress={() => {
+                      if (!onMove || moveTargets.length < 2) return;
+                      setMoving(row);
+                      setSheet("move");
+                    }}
+                  >
+                    <GroceryItem
+                      variant="store"
+                      item={row.item}
+                      checked={!!checked[row.item.key]}
+                      deal={row.deal}
+                      brand={brandOf(row.deal || row.flyerDeal)}
+                      onToggle={() => onToggle(row.item.key)}
+                    />
+                  </MovableRow>
                 ))}
               </div>
             ))}
@@ -242,6 +278,21 @@ export function StoreMode({
       )}
       {sheet === "leave" && (
         <LeaveSheet count={sendCount} busy={busy} onAdd={addChecked} onLeave={onClose} onKeep={() => setSheet(null)} />
+      )}
+      {sheet === "move" && moving && (
+        <MoveSheet
+          name={moving.item.name}
+          current={moving.store}
+          stores={moveTargets}
+          colors={colors}
+          dark={dark}
+          storeLabel={storeLabel}
+          onPick={moveTo}
+          onClose={() => {
+            setSheet(null);
+            setMoving(null);
+          }}
+        />
       )}
       {sheet === "added" && <AddedSheet count={added} onBack={() => setSheet(null)} />}
     </div>
