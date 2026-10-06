@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useLongPress } from "../hooks/useLongPress.js";
 import { colorOfStore, parseColor, textOn } from "../lib/storeColors.js";
 import { makeConfetti } from "../lib/storeConfetti.js";
 import { t } from "../i18n/index.js";
@@ -23,13 +24,55 @@ export function StoreSticker({ name, color, dark, className = "" }) {
   );
 }
 
+// A tap on the dimmed backdrop closes it, but only a tap that started there: the
+// finger that opened a sheet (a long press) lifts over the backdrop, and that must
+// not close it again.
 function Sheet({ label, onClose, children }) {
+  const pressedHere = useRef(false);
   return (
-    <div className="store-mode-backdrop" onClick={onClose}>
+    <div
+      className="store-mode-backdrop"
+      onPointerDown={() => {
+        pressedHere.current = true;
+      }}
+      onClick={() => pressedHere.current && onClose()}
+    >
       <div className="store-mode-sheet" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>
+  );
+}
+
+// A row of the list that opens its "Move to" sheet when it is pressed and held. A
+// tap still checks it (the row's own button); `flash` rings it for a moment after
+// it was moved, so it is easy to find in its new store.
+export function MovableRow({ itemKey, flash, onLongPress, children }) {
+  return (
+    <div className={`store-mode-move${flash ? " moved" : ""}`} data-move-key={itemKey} {...useLongPress(onLongPress)}>
+      {children}
+    </div>
+  );
+}
+
+// Press and hold an item: which store does it belong in? It is kept there from now on.
+export function MoveSheet({ name, current, stores, colors, dark, storeLabel, onPick, onClose }) {
+  return (
+    <Sheet label={t("storeMode.moveTitle", { name })} onClose={onClose}>
+      <h2 className="store-mode-sheet-title">{t("storeMode.moveTitle", { name })}</h2>
+      <p className="store-mode-sheet-body">{t("storeMode.moveBody")}</p>
+      <div className="store-mode-move-list">
+        {stores.map((store) => (
+          <button key={store} type="button" className="store-mode-move-option" disabled={store === current} onClick={() => onPick(store)}>
+            <StoreSticker name={storeLabel(store)} color={colorOfStore(colors, store)} dark={dark} />
+            {store === current && <span className="store-mode-move-here">{t("storeMode.moveHere")}</span>}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="store-mode-sheet-link" onClick={onClose}>
+        {t("common.cancel")}
+      </button>
+    </Sheet>
   );
 }
 

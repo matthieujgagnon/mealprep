@@ -1126,6 +1126,8 @@ export function GroceryList({
           aisleLabel={aisleLabel}
           aisleOrder={aisleOrder}
           sendCount={toSendCount}
+          moveTargets={storeOrder}
+          onMove={moveToStore}
         />
       )}
       {openDeal && (

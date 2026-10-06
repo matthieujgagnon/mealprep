@@ -20078,3 +20078,71 @@ body.no-select {
     transform: scale(1.2);
   }
 }
+
+/* Press and hold an item to move it to another store (Store mode). */
+.store-mode .store-mode-row {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.store-mode-move {
+  display: block;
+  border-radius: 16px;
+}
+
+.store-mode-move.moved .store-mode-row {
+  animation: sm-moved 1.8s ease-out;
+}
+
+@keyframes sm-moved {
+  0%,
+  60% {
+    box-shadow: 0 0 0 4px var(--sm-accent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.store-mode-hint {
+  margin: 0;
+  padding: 0 2px;
+  color: var(--sm-muted);
+  font: 500 11px/1.4 var(--riso-font-mono);
+  letter-spacing: 0.04em;
+}
+
+.store-mode-move-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.store-mode-move-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 56px;
+  padding: 6px 16px;
+  border: 2px solid var(--sm-text);
+  border-radius: 18px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.store-mode-move-option:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.store-mode-move-here {
+  flex: none;
+  color: var(--sm-muted);
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
