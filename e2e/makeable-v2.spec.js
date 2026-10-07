@@ -97,7 +97,7 @@ test("À acheter adds and removes items on the real grocery list, with Undo, and
   await openMakeable(page);
 
   const dish = tile(page, "Riso Grocery Dish");
-  await expect(dish.getByText("Missing: broccoli, leeks")).toBeVisible();
+  await expect(dish.getByText(/Missing/)).toHaveCount(0); // what is missing is in À acheter and the pop-out, not on the tile
   await dish.getByRole("button", { name: "To buy", exact: true }).click();
   await expect(page.locator(".fnd-buypop")).toBeVisible();
 

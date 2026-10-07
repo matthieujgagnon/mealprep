@@ -42,10 +42,11 @@ const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 // One result: photo with the time and a round + (adds it to the plan), name,
 // the have bar and what is left to buy. Dragging it (when `draggable`) onto the
 // Planner's board puts it in a slot. Clicking it opens the pop-out. On the
-// Makeable page (`missingText`, `go`, `footer`) it names what is missing, a tile
+// Makeable page (`page`, `go`, `footer`) a tile with something to buy says nothing
+// about it under the bar (the À acheter popover and the pop-out list it), a tile
 // with nothing to buy and not planned this week (`go`) has a pink shadow, and
 // `footer` holds its buttons.
-function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, missingText, go = false, footer }) {
+function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, page = false, go = false, footer }) {
   const { recipe, stats } = tile;
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `tray-${recipe.id}`,
@@ -60,7 +61,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, missingTex
   return (
     <div
       ref={setNodeRef}
-      className={`riso-recipe-card fnd-card${nothingToBuy && !missingText ? " ready" : ""}${go ? " go" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
+      className={`riso-recipe-card fnd-card${nothingToBuy && !page ? " ready" : ""}${go ? " go" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
       {...dragProps}
     >
       <button
@@ -80,13 +81,15 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, missingTex
               <span className="riso-recipe-card-havebar-fill" style={{ width: `${pct}%` }} />
             </span>
           )}
-          <span className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
-            {nothingToBuy
-              ? t("tray.nothingToBuy")
-              : stats.totalCount > 0
-                ? missingText || t("pills.toBuy", { count: stats.missingCount })
-                : t("tray.noIngredients")}
-          </span>
+          {(nothingToBuy || !page) && (
+            <span className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
+              {nothingToBuy
+                ? t("tray.nothingToBuy")
+                : stats.totalCount > 0
+                  ? t("pills.toBuy", { count: stats.missingCount })
+                  : t("tray.noIngredients")}
+            </span>
+          )}
           {reason && <span className="fnd-card-reason">{reason}</span>}
         </span>
       </button>
@@ -327,7 +330,7 @@ export function Finder({
           isOpen={openId === tile.recipe.id || popOpen}
           onOpen={openRecipe}
           go={sectionId === "ready"}
-          missingText={t("finder.missing", { names: buy.map(lowerFirst).join(", ") })}
+          page
           footer={
             <div className="fnd-card-foot">
               <TileActions

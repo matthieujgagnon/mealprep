@@ -109,7 +109,7 @@ describe("text", () => {
   });
 
   it("drops React elements into a sentence", () => {
-    const parts = tx("finder.missing", { names: { $$typeof: Symbol.for("react.element"), type: "b", props: {}, key: null } }, "fr");
-    expect(parts[0]).toBe("Il manque\u00a0: ");
+    const parts = tx("finder.sharesNames", { names: { $$typeof: Symbol.for("react.element"), type: "b", props: {}, key: null } }, "fr");
+    expect(parts[0]).toBe("partage ");
   });
 });
