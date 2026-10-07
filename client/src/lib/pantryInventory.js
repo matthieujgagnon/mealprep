@@ -1,6 +1,6 @@
 import { t } from "../i18n/index.js";
 
-// Shared between Inventory.jsx (full CRUD UI) and WhatCanIMake.jsx (the
+// Shared between Inventory.jsx (full CRUD UI) and the Makeable page (the
 // read-mostly checklist + filters on Makeable) - previously duplicated
 // verbatim in both files.
 

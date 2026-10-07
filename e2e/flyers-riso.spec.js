@@ -589,7 +589,7 @@ test("Sales only keeps what's really on sale, with its saving on the card and in
   await expect(page.locator(".riso-ing-name")).toHaveCount(2);
 });
 
-test("a recipe's sale pill is only for a real sale and opens the deal; on hand needs the same cut; Makeable can hide the tags", async ({ page }) => {
+test("a recipe's sale pill is only for a real sale and opens the deal; on hand needs the same cut; Makeable shows them only with Show sales on", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -625,16 +625,20 @@ test("a recipe's sale pill is only for a real sale and opens the deal; on hand n
   await expect(page.locator(".riso-deal-detail")).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // Makeable: the same pill, and a switch to hide them (remembered).
+  // Makeable: the same real deal as a green pill in the À acheter popover, only with Show sales on (remembered).
   await page.goto("/");
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  await expect(page.locator(".riso-makeable-need-row .riso-sale-tag")).toHaveText(["Maxi$1.50"]);
-  await page.getByRole("switch", { name: "Show sale tags" }).click();
-  await expect(page.locator(".riso-makeable-need-row .riso-sale-tag")).toHaveCount(0);
+  const tile = page.locator(".fnd-tile", { hasText: "Mango chicken" });
+  await tile.getByRole("button", { name: "To buy", exact: true }).click();
+  await expect(page.locator(".fnd-buyrow-sale")).toHaveCount(0);
+  await page.locator(".fnd-scrim").click({ position: { x: 5, y: 5 } });
+  await page.getByRole("button", { name: "Show sales", exact: true }).click();
+  await tile.getByRole("button", { name: "To buy", exact: true }).click();
+  await expect(page.locator(".fnd-buyrow-sale")).toHaveCount(1);
+  await expect(page.locator(".fnd-buyrow", { hasText: "Mangoes" }).locator(".fnd-buyrow-sale")).toContainText("Maxi");
   await page.reload();
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  await expect(page.getByRole("switch", { name: "Show sale tags" })).toHaveAttribute("aria-checked", "false");
-  await expect(page.locator(".riso-makeable-need-row .riso-sale-tag")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Show sales", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("each deal says whether to buy it, and Also on sale opens the other store's card", async ({ page }) => {

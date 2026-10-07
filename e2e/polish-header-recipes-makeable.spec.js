@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 // The header on one row at every desktop width, Tofu on Home, the Recipes
 // filters (Meals, Cookbook / Imported, SORT in the chips row) and Makeable's
-// meal-type chips, search and sort.
+// Include pantry and sides, Meal menu and search.
 
 async function signUp(page, name = "Matt") {
   await page.goto("/");
@@ -284,7 +284,7 @@ test.describe("Recipes meal chips", () => {
 test.describe("Makeable", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
-  test("filters by meal type, and search and sort reorder the results, avocado toast included", async ({ page }) => {
+  test("meals only until pantry and sides are included; the Meal menu and search narrow the results", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Avocado toast", "breakfast", ["avocado", "bread"], { prepTimeMinutes: 5 });
     await recipe(page, "Brownies", "dessert", ["chocolate", "flour"], { prepTimeMinutes: 40 });
@@ -295,30 +295,23 @@ test.describe("Makeable", () => {
     }
     await page.reload();
     await page.getByRole("button", { name: "Makeable", exact: true }).click();
-    const names = page.locator(".riso-makeable-card-name");
+    const names = page.locator(".mk-page .riso-recipe-card-name");
     // Makeable now counts meals only: the dessert and the side come with the switch.
     await expect(names).toHaveCount(2);
     await page.getByRole("button", { name: "Include pantry and sides" }).click();
     await expect(names).toHaveCount(4);
 
-    const chips = page.locator(".riso-makeable .riso-recipes-filter-chips");
-    await chips.getByRole("button", { name: /^Meals/ }).click();
-    await expect(names).toHaveText(["Chicken curry"]);
-    await chips.getByRole("button", { name: /^Desserts/ }).click();
+    // The Meal menu is the same menu as on Recipes.
+    const meal = page.getByRole("button", { name: /^MEAL/ });
+    await meal.click();
+    await page.getByRole("option", { name: /^Dessert/ }).click();
     await expect(names).toHaveText(["Brownies"]);
-    await chips.getByRole("button", { name: /^Sides/ }).click();
-    await expect(names).toHaveText(["Garlic rice"]);
-    await chips.getByRole("button", { name: /^All/ }).click();
+    await meal.click();
+    await page.getByRole("option", { name: /^All/ }).click();
+    await expect(names).toHaveCount(4);
 
-    // Sort: avocado toast is first by title and by time, last by neither once another sort puts it elsewhere.
-    const sort = page.getByLabel("Sort recipes");
-    await sort.selectOption({ label: "A–Z" });
-    await expect(names).toHaveText(["Avocado toast", "Brownies", "Chicken curry", "Garlic rice"]);
-    await sort.selectOption({ label: "Quickest" });
-    await expect(names).toHaveText(["Avocado toast", "Garlic rice", "Chicken curry", "Brownies"]);
-
-    // Search narrows the list.
-    await page.getByLabel("Search these recipes").fill("rice");
-    await expect(names).toHaveText(["Garlic rice", "Chicken curry"]);
+    // Search narrows the list, by title or by ingredient.
+    await page.getByPlaceholder("Title, ingredient or tag").fill("rice");
+    await expect(names).toHaveText(["Chicken curry", "Garlic rice"]);
   });
 });

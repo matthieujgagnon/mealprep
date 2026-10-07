@@ -109,7 +109,7 @@ describe("text", () => {
   });
 
   it("drops React elements into a sentence", () => {
-    const parts = tx("makeable.youNeed", { count: { $$typeof: Symbol.for("react.element"), type: "b", props: {}, key: null } }, "fr");
-    expect(parts[0]).toBe("Il vous faut ");
+    const parts = tx("finder.sharesNames", { names: { $$typeof: Symbol.for("react.element"), type: "b", props: {}, key: null } }, "fr");
+    expect(parts[0]).toBe("partage ");
   });
 });

@@ -151,6 +151,31 @@ export function plannedDayOf(recipeId, entries) {
   return days.length ? days[0][1] : null;
 }
 
+// The recipes planned this week, for the Makeable page's "Meals of the week":
+// a Map of recipe id -> the soonest day (0 = Monday). `entries` is every
+// placement from today on (App's upcomingEntries, each with its weekStart);
+// leftovers and notes don't count, they are the same meal eaten again.
+export function plannedDaysThisWeek(entries, weekStart) {
+  const days = new Map();
+  for (const e of entries || []) {
+    if (!e.recipe || e.isLeftover || e.weekStart !== weekStart) continue;
+    const day = days.get(e.recipe.id);
+    if (day === undefined || e.dayOfWeek < day) days.set(e.recipe.id, e.dayOfWeek);
+  }
+  return days;
+}
+
+// The Makeable page's four sections, empty ones left out: planned this week
+// ("week", most missing first), then ready, few and shop. A recipe planned this
+// week is only in "week". Tiles keep the order they came in.
+export const SECTION_IDS = ["week", "ready", "few", "shop"];
+export function makeableSections(tiles, plannedDays) {
+  const buckets = { week: [], ready: [], few: [], shop: [] };
+  for (const tile of tiles) buckets[plannedDays.has(tile.recipe.id) ? "week" : availabilityOf(tile.stats)].push(tile);
+  buckets.week.sort((a, b) => b.stats.missingCount - a.stats.missingCount);
+  return SECTION_IDS.map((id) => ({ id, tiles: buckets[id] })).filter((section) => section.tiles.length > 0);
+}
+
 // What a recipe is next to the kitchen, from rankRecipesForTray's entry: nothing
 // to buy, one or two to buy, or more.
 export function availabilityOf(stats) {
@@ -178,12 +203,14 @@ function usesAny(x, cores) {
 // protein id or ""), quick, expiring, picks (a Set of ingredient cores to cook
 // with), base (the Main meal's cores still switched on, or null), baseId,
 // includeSides (the Makeable now rule, see isMakeableMeal: "ready" leaves out
-// sides, desserts and pantry prep unless it is on).
+// sides, desserts and pantry prep unless it is on), makeable (the Makeable
+// page: the rule applies to every result, not just "ready", and a recipe with
+// no ingredients is left out, as on Home).
 // Returns { tiles, counts }: counts is how many the three availability choices
 // would show with every other filter kept. Each tile is the ranked entry plus
 // `shared` (cores shared with the Main meal) and `picked` (cores from Cook with).
 export function findRecipes(ranked, filters, expiringCores) {
-  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = new Set(), base = null, baseId = null, includeSides = false } = filters;
+  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = new Set(), base = null, baseId = null, includeSides = false, makeable = false } = filters;
   const ruleOn = makeableRuleOn(includeSides, meal);
   const isReady = (x) => availabilityOf(x.stats) === "ready" && (!ruleOn || isMakeableMeal(x.recipe));
   const kind = PROTEINS.find((p) => p.id === protein) || null;
@@ -191,6 +218,7 @@ export function findRecipes(ranked, filters, expiringCores) {
 
   const beforeAvailability = ranked
     .filter((x) => x.recipe.id !== baseId)
+    .filter((x) => !makeable || ((!ruleOn || isMakeableMeal(x.recipe)) && x.stats.totalCount > 0))
     .filter((x) => !searching || matchesSearch(x.recipe, query))
     .filter((x) => meal === "all" || (meal === "meals" ? inMealGroup(x.recipe, "meals") : recipeSlot(x.recipe) === meal))
     .filter((x) => !kind || recipeUsesProtein(x.recipe, kind))

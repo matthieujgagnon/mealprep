@@ -5,6 +5,7 @@ import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { Pill, TimePill } from "./RisoPills.jsx";
 import { FinderPicker } from "./FinderPicker.jsx";
+import { GroceryPopover, ListStrip, SectionHeader, TileActions } from "./FinderTiles.jsx";
 import { PROTEINS } from "../lib/proteins.js";
 import { RECIPE_SLOTS, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
@@ -13,6 +14,7 @@ import {
   expiringItems,
   findRecipes,
   groupIngredients,
+  makeableSections,
   sharedWords,
   shelvesWithItems,
 } from "../lib/finder.js";
@@ -25,7 +27,10 @@ import { t } from "../i18n/index.js";
 // FinderSheet): a search bar, "Cook with" ingredients, filters, the results and
 // a recipe pop-out, with "Main meal" for finding recipes that share a recipe's
 // ingredients. The Planner uses it as its bottom panel (layout="panel") and
-// inside a bottom card (layout="sheet"); Makeable uses it next.
+// inside a bottom card (layout="sheet"); Makeable is layout="page"
+// (docs/design/riso-v2-makeable/): the results are in sections (planned this
+// week, ready, one or two short, needs a shop), each tile has Similar recipes and
+// À acheter, and Show sales and the Makeable now rule apply to the whole page.
 //
 // What it shows is kept by `finder`, from useFinder(), so the screen around it
 // can steer it. The data comes in as props: the recipes, the inventory, what is
@@ -36,8 +41,12 @@ const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 
 // One result: photo with the time and a round + (adds it to the plan), name,
 // the have bar and what is left to buy. Dragging it (when `draggable`) onto the
-// Planner's board puts it in a slot. Clicking it opens the pop-out.
-function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
+// Planner's board puts it in a slot. Clicking it opens the pop-out. On the
+// Makeable page (`page`, `go`, `footer`) a tile with something to buy says nothing
+// about it under the bar (the À acheter popover and the pop-out list it), a tile
+// with nothing to buy and not planned this week (`go`) has a pink shadow, and
+// `footer` holds its buttons.
+function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, page = false, go = false, footer }) {
   const { recipe, stats } = tile;
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `tray-${recipe.id}`,
@@ -52,7 +61,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
   return (
     <div
       ref={setNodeRef}
-      className={`riso-recipe-card fnd-card${nothingToBuy ? " ready" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
+      className={`riso-recipe-card fnd-card${nothingToBuy && !page ? " ready" : ""}${go ? " go" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
       {...dragProps}
     >
       <button
@@ -72,16 +81,19 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
               <span className="riso-recipe-card-havebar-fill" style={{ width: `${pct}%` }} />
             </span>
           )}
-          <span className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
-            {nothingToBuy
-              ? t("tray.nothingToBuy")
-              : stats.totalCount > 0
-                ? t("pills.toBuy", { count: stats.missingCount })
-                : t("tray.noIngredients")}
-          </span>
+          {(nothingToBuy || !page) && (
+            <span className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
+              {nothingToBuy
+                ? t("tray.nothingToBuy")
+                : stats.totalCount > 0
+                  ? t("pills.toBuy", { count: stats.missingCount })
+                  : t("tray.noIngredients")}
+            </span>
+          )}
           {reason && <span className="fnd-card-reason">{reason}</span>}
         </span>
       </button>
+      {footer}
       {onAdd && (
         <button
           type="button"
@@ -100,10 +112,16 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
 
 // The yellow banner for the Main meal: the recipe, its ingredients grouped and
 // switchable (tap one to leave it out of the search), "View recipe" and Cancel,
-// and, on the Planner, "Place leftovers".
-function MainMealBanner({ bannerRef, recipe, groups, off, onToggle, onView, onCancel, leftovers }) {
+// and, on the Planner, "Place leftovers". On the Makeable page (`page`) a ✕ in the
+// corner closes it and there is no Cancel.
+function MainMealBanner({ bannerRef, recipe, groups, off, onToggle, onView, onCancel, leftovers, page }) {
   return (
     <section ref={bannerRef} className="fnd-main" aria-label={t("finder.mainMeal")}>
+      {page && (
+        <button type="button" className="fnd-main-x" aria-label={t("finder.closeMain")} title={t("finder.closeMain")} onClick={onCancel}>
+          ×
+        </button>
+      )}
       <div className="fnd-main-photo">{recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" /> : null}</div>
       <div className="fnd-main-body">
         <span className="fnd-caps">{t("finder.mainMeal")}</span>
@@ -154,9 +172,11 @@ function MainMealBanner({ bannerRef, recipe, groups, off, onToggle, onView, onCa
         <button type="button" className="fnd-main-btn" onClick={onView}>
           {t("finder.viewRecipe")}
         </button>
-        <button type="button" className="fnd-main-btn dark" onClick={onCancel}>
-          {t("common.cancel")}
-        </button>
+        {!page && (
+          <button type="button" className="fnd-main-btn dark" onClick={onCancel}>
+            {t("common.cancel")}
+          </button>
+        )}
       </div>
     </section>
   );
@@ -180,8 +200,18 @@ export function Finder({
   onOpenPopout,
   openId = null,
   leftovers,
+  plannedDays,
+  grocery,
+  deals,
+  showSales = false,
+  onToggleSales,
+  onSimilar,
+  onOpenGrocery,
 }) {
   const sheet = layout === "sheet";
+  const page = layout === "page";
+  const [weekOpen, setWeekOpen] = useState(false); // "Meals of the week", closed to begin with
+  const [listOpenId, setListOpenId] = useState(null); // the tile whose À acheter popover is open
   const phone = useIsPhone();
   const [menu, setMenu] = useState(null); // null | "meal" | "protein"
   const [includeSides, setIncludeSides] = useIncludeSides();
@@ -221,10 +251,11 @@ export function Finder({
           picks: pickedKeys,
           base,
           baseId: mainRecipe?.id || null,
+          makeable: page,
         },
         expiringSet
       ),
-    [ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, includeSides, pickedKeys, base, mainRecipe, expiringSet]
+    [page, ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, includeSides, pickedKeys, base, mainRecipe, expiringSet]
   );
 
   // A menu closes on a click outside it, or Escape.
@@ -242,7 +273,14 @@ export function Finder({
     };
   }, [menu]);
 
-  const showResults = sheet || finder.open || finder.filtered || !!mainRecipe;
+  useEffect(() => {
+    if (!listOpenId) return undefined;
+    const onKey = (e) => e.key === "Escape" && setListOpenId(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [listOpenId]);
+
+  const showResults = sheet || page || finder.open || finder.filtered || !!mainRecipe;
   const filtersOn = finder.filtered;
 
   // What a card says under its bar: what it shares with the Main meal, or what
@@ -262,7 +300,60 @@ export function Finder({
     return null;
   }
 
-  const openRecipe = (recipe, from) => onOpenPopout(recipe, from);
+  const openRecipe = (recipe, from) => {
+    setListOpenId(null);
+    onOpenPopout(recipe, from);
+  };
+
+  // Makeable page: what each tile is missing (as the recipe writes it), the
+  // sections, and the grocery list's items that some recipe here is missing.
+  const buyNamesOf = (tile) => tile.stats.missing.map((c) => nameOf(c));
+  const sections = useMemo(() => (page ? makeableSections(tiles, plannedDays || new Map()) : []), [page, tiles, plannedDays]);
+  const listedNames = useMemo(() => {
+    if (!page || !grocery) return [];
+    const names = new Map();
+    for (const tile of tiles) for (const name of buyNamesOf(tile)) if (!names.has(name) && grocery.isOnList(name)) names.set(name, name);
+    return [...names.keys()];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, tiles, grocery, nameOf]);
+
+  function renderTile(tile, sectionId) {
+    const buy = buyNamesOf(tile);
+    const popOpen = listOpenId === tile.recipe.id;
+    const own = buy.filter((name) => grocery.isOnList(name));
+    const strip = own.length > 0 ? [...own, ...listedNames.filter((name) => !own.includes(name))] : [];
+    return (
+      <div key={tile.recipe.id} className={`fnd-tile${popOpen ? " open" : ""}`}>
+        <ResultCard
+          tile={tile}
+          reason={reasonFor(tile)}
+          isOpen={openId === tile.recipe.id || popOpen}
+          onOpen={openRecipe}
+          go={sectionId === "ready"}
+          page
+          footer={
+            <div className="fnd-card-foot">
+              <TileActions
+                buy={buy}
+                grocery={grocery}
+                deals={deals}
+                showSales={showSales}
+                popOpen={popOpen}
+                short={phone}
+                onSimilar={() => {
+                  setListOpenId(null);
+                  onSimilar(tile.recipe);
+                }}
+                onToggleBuy={() => setListOpenId(popOpen ? null : tile.recipe.id)}
+              />
+              {strip.length > 0 && <ListStrip names={strip} grocery={grocery} onOpenGrocery={onOpenGrocery} />}
+            </div>
+          }
+        />
+        {popOpen && <GroceryPopover buy={buy} grocery={grocery} deals={deals} showSales={showSales} onAdd={grocery.addWithUndo} />}
+      </div>
+    );
+  }
 
   // Choosing Similar recipes scrolls the page so the Main meal banner is fully
   // in view, right under the board (its top below the app header).
@@ -297,11 +388,13 @@ export function Finder({
 
   const hint = target ? t("tray.hintTarget", { slot: targetLabel }) : t("finder.hint");
 
+  const compact = !sheet && !page; // a computer's panel and a phone's panel have the grab bar, the hint and Browse; the sheet and the page don't
   return (
     <div ref={finder.rootRef} className={`fnd fnd-${layout}${showResults ? " is-open" : ""}`}>
+      {page && listOpenId && <div className="fnd-scrim" onClick={() => setListOpenId(null)} />}
       {targetNotice && <div className="fnd-notice">{targetNotice}</div>}
-      {!sheet && <span className="fnd-grab" aria-hidden="true" />}
-      {!sheet && (
+      {compact && <span className="fnd-grab" aria-hidden="true" />}
+      {compact && (
         <div className="fnd-top">
           <p className="fnd-hint">{hint}</p>
           {showResults && !finder.filtered && !mainRecipe && (
@@ -339,7 +432,7 @@ export function Finder({
         )}
         {/* A phone's Browse / Close sits inside the bar (a computer has the Browse
             button under it). With a Main meal the banner's own Cancel closes it. */}
-        {!sheet && !mainRecipe && (
+        {compact && !mainRecipe && (
           <button
             type="button"
             className={`fnd-bar-toggle${showResults ? " open" : ""}`}
@@ -380,7 +473,7 @@ export function Finder({
             finder.setPickerOpen(!finder.pickerOpen);
           }}
         >
-          {phone && !sheet ? t("finder.cookWith") : `+ ${t("finder.addIngredient")}`} <span aria-hidden="true">▾</span>
+          {compact && phone ? t("finder.cookWith") : `+ ${t("finder.addIngredient")}`} <span aria-hidden="true">▾</span>
         </button>
         {finder.pickerOpen && (
           <FinderPicker
@@ -401,15 +494,15 @@ export function Finder({
               type="button"
               className={`fnd-seg-btn${finder.avail === id ? " active" : ""}`}
               aria-pressed={finder.avail === id}
-              onClick={() => finder.setAvail(phone && !sheet && finder.avail === id && id !== "all" ? "all" : id)}
+              onClick={() => finder.setAvail(compact && phone && finder.avail === id && id !== "all" ? "all" : id)}
             >
               <span className={`fnd-dot ${id === "all" ? "ink" : id === "ready" ? "green" : "yellow"}`} aria-hidden="true" />
-              {t(`finder.avail.${id}`)}
+              {t(page && phone ? `finder.availShort.${id}` : `finder.avail.${id}`)}
               <span className="fnd-seg-count">{counts[id]}</span>
             </button>
           ))}
         </div>
-        {finder.avail === "ready" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
+        {!page && finder.avail === "ready" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
         <Pill size="chip" className="fnd-expiring" selected={finder.expiring} onClick={() => finder.setExpiring(!finder.expiring)}>
           <span className="fnd-dot hot" aria-hidden="true" />
           {t("finder.expiring")}
@@ -418,6 +511,15 @@ export function Finder({
           <span className="fnd-dot ring" aria-hidden="true" />
           {t("finder.quick")}
         </Pill>
+        {page && (
+          <>
+            <span className="fnd-divider" aria-hidden="true" />
+            <Pill size="chip" className="fnd-sales" selected={showSales} onClick={onToggleSales}>
+              <span className="fnd-dot green" aria-hidden="true" />
+              {t("makeable.showSales")}
+            </Pill>
+          </>
+        )}
         <div className="fnd-menus">
           <PillMenu
             id="meal"
@@ -455,10 +557,11 @@ export function Finder({
           onView={() => onOpenPopout(mainRecipe)}
           onCancel={() => finder.setMainMeal(null)}
           leftovers={leftovers}
+          page={page}
         />
       )}
 
-      {!sheet && !showResults && (
+      {compact && !showResults && (
         <div className="fnd-browse">
           <span className="fnd-hint">{t("finder.hint")}</span>
           <button type="button" className="fnd-browse-btn" onClick={() => finder.setOpen(true)}>
@@ -479,8 +582,25 @@ export function Finder({
                 {t("recipes.d.clearFilters")}
               </button>
             )}
+            {page && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
           </div>
-          {tiles.length > 0 ? (
+          {page && tiles.length > 0 ? (
+            sections.map((section) => {
+              const week = section.id === "week";
+              const open = !week || weekOpen;
+              return (
+                <section key={section.id} className={`fnd-sec ${section.id}`} aria-label={t(`finder.sections.${section.id}`)}>
+                  <SectionHeader id={section.id} count={section.tiles.length} open={open} onToggle={week ? () => setWeekOpen(!weekOpen) : null} />
+                  {open && (
+                    <>
+                      <p className="fnd-sec-desc">{t(`finder.sectionsNote.${section.id}`)}</p>
+                      <div className="fnd-grid">{section.tiles.map((tile) => renderTile(tile, section.id))}</div>
+                    </>
+                  )}
+                </section>
+              );
+            })
+          ) : tiles.length > 0 ? (
             <div className="fnd-grid">
               {tiles.map((tile) => (
                 <ResultCard
@@ -495,7 +615,7 @@ export function Finder({
               ))}
             </div>
           ) : (
-            <p className="fnd-empty">{t("recipes.d.emptyFilters")}</p>
+            <p className="fnd-empty">{t(page ? "finder.noMatch" : "recipes.d.emptyFilters")}</p>
           )}
         </>
       )}

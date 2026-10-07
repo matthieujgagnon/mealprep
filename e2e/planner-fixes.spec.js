@@ -89,7 +89,7 @@ test("Makeable now counts meals only; Include pantry and sides brings the rest b
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.locator(".riso-home-makeable-num")).toHaveText("4");
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  await expect(page.locator(".riso-makeable-card-name")).toHaveCount(4);
+  await expect(page.locator(".mk-page .riso-recipe-card-name")).toHaveCount(4);
 });
 
 test("while dragging, only the slot under the recipe gets a pink border and no fill", async ({ page }) => {
