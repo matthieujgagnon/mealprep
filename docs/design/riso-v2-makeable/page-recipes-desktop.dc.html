@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}.nos::-webkit-scrollbar{display:none}input::placeholder{color:#8A8677}input:focus{outline:none}</style></helmet>
+<div ref="{{ setRoot }}" style="min-height:100vh;background:#F4F1EA;color:#16181F;font-family:Inter,system-ui,sans-serif">
+<div style="max-width:1280px;margin:0 auto;box-sizing:border-box">
+<sc-if value="{{ showHeader }}" hint-placeholder-val="{{ true }}"><dc-import name="part-header" active="recipes" hint-size="100%,96px"></dc-import></sc-if>
+<div style="padding:{{ pad }};display:flex;flex-direction:column;gap:{{ gap }};box-sizing:border-box;min-width:0;max-width:100%">
+<div style="display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<div style="font:500 12px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52;text-transform:uppercase">{{ eyebrow }}</div>
+<h1 style="margin:0;font:800 {{ titleFs }}/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">{{ titleStart }} <span style="color:#2323FF">{{ titleAccent }}</span></h1>
+</div>
+</div>
+<div style="display:flex;flex-direction:{{ barDir }};gap:{{ barGap }};align-items:{{ barAi }};background:{{ barBg }};border:{{ barBd }};border-radius:30px;padding:{{ barPad }};box-shadow:{{ barSh }};box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:{{ pillBg }};border:{{ pillBd }};border-radius:30px;padding:{{ pillPad }};box-shadow:{{ pillSh }};box-sizing:border-box">
+<div style="height:34px;padding:0 14px;border-radius:17px;border:2px solid #16181F;display:flex;align-items:center;font:500 11px 'DM Mono',monospace;letter-spacing:.1em;white-space:nowrap;flex:none;background:{{ labBg }}">{{ searchLabel }}</div>
+<input type="text" value="{{ q }}" onInput="{{ onQ }}" placeholder="{{ placeholder }}" style="flex:1;min-width:0;height:44px;border:none;background:transparent;color:#16181F;font:500 16px 'Bricolage Grotesque',sans-serif">
+<sc-if value="{{ showPaste }}" hint-placeholder-val="{{ true }}"><span style="flex:none;height:34px;padding:0 12px;border-radius:17px;border:2px dashed #16181F;display:flex;align-items:center;font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;white-space:nowrap;margin-right:4px">{{ pasteChip }}</span></sc-if>
+</div>
+<sc-if value="{{ isUrl }}" hint-placeholder-val="{{ false }}"><div style="width:{{ btnW }};justify-content:center;height:{{ btnH }};padding:0 22px;border-radius:22px;border:2px solid #16181F;background:#2323FF;color:#fff;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap;flex:none;cursor:pointer">{{ importRecipe }}</div></sc-if>
+<sc-if value="{{ showNew }}" hint-placeholder-val="{{ true }}"><div style="width:{{ btnW }};justify-content:center;height:{{ btnH }};padding:0 20px;border-radius:22px;border:2px solid #16181F;background:#2323FF;color:#fff;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;gap:8px;font:800 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap;flex:none;cursor:pointer;box-sizing:border-box"><span style="font:800 20px/1 'Bricolage Grotesque',sans-serif;margin-top:-1px">+</span>{{ newLabel }}</div></sc-if>
+</div>
+<sc-if value="{{ showLinkFound }}" hint-placeholder-val="{{ false }}"><p style="margin:-10px 0 0;display:flex;align-items:center;gap:8px;font-size:13.5px;color:#3F3E37"><span style="width:10px;height:10px;flex:none;border-radius:50%;background:#FFE14D;border:1.5px solid #16181F;box-sizing:border-box"></span>{{ linkFound }}</p></sc-if>
+<sc-if value="{{ hintOn }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:{{ hintGap }};background:#FFFDF8;border:2px dashed #16181F;border-radius:16px;padding:12px 16px;box-sizing:border-box"><span style="flex:none;order:0;transform:rotate(-4deg);background:#FFE14D;border:2px solid #16181F;border-radius:30px;padding:2px 12px;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ howItWorks }}</span><ul style="order:2;flex:1 1 100%;min-width:0;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px"><sc-for list="{{ hintItems }}" as="h" hint-placeholder-count="4"><li style="display:flex;gap:10px;font-size:14px;line-height:1.45;color:#16181F"><span style="flex:none;width:6px;height:6px;border-radius:3px;background:#2323FF;margin-top:8px"></span><span>{{ h }}</span></li></sc-for></ul><div onClick="{{ dismiss }}" style="flex:none;order:{{ hintGotOrd }};margin-left:{{ hintGotMl }};font:600 13px 'Bricolage Grotesque',sans-serif;text-decoration:underline;cursor:pointer;padding:4px">{{ gotIt }}</div></div></sc-if>
+<div style="display:flex;flex-direction:column;gap:22px;min-width:0">
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;border-bottom:2px solid #16181F">
+<div style="display:flex;gap:{{ tabGap }};flex:{{ tabsFlex }}">
+<sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="2"><div onClick="{{ tb.pick }}" style="height:{{ tabH }};margin-bottom:-2px;padding:0 {{ tabPad }};flex:{{ tabFlex }};justify-content:center;display:flex;align-items:center;gap:10px;border:2px solid #16181F;border-bottom-color:{{ tb.bbc }};border-radius:22px 20px 0 0;background:{{ tb.bg }};color:{{ tb.fg }};font:800 {{ tabFs }} 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;user-select:none">{{ tb.label }}<span style="min-width:26px;height:24px;padding:0 6px;box-sizing:border-box;border-radius:12px;border:2px solid #16181F;background:{{ tb.cbg }};color:#16181F;display:inline-flex;align-items:center;justify-content:center;font:800 12px 'Bricolage Grotesque',sans-serif">{{ tb.count }}</span></div></sc-for>
+</div>
+<sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}"><div style="margin-left:auto;padding-bottom:10px;display:flex;gap:8px">
+<sc-for list="{{ menus }}" as="mn" hint-placeholder-count="3"><div style="position:relative">
+<div onClick="{{ mn.toggle }}" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid #16181F;background:{{ mn.bg }};display:flex;align-items:center;gap:8px;font:700 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box;user-select:none"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:.1em;color:{{ mn.lc }}">{{ mn.label }}</span><span>{{ mn.value }}</span><span style="font-size:9px">▾</span></div>
+<sc-if value="{{ mn.open }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;z-index:30;right:0;top:calc(100% + 8px);min-width:200px;padding:6px;display:flex;flex-direction:column;gap:2px;background:#FFFDF8;border:2px solid #16181F;border-radius:16px;box-shadow:5px 5px 0 #16181F;box-sizing:border-box">
+<sc-for list="{{ mn.options }}" as="o" hint-placeholder-count="4"><div onClick="{{ o.pick }}" style="height:38px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:12px;background:{{ o.bg }};font:600 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer"><span>{{ o.label }}</span><span>{{ o.check }}</span></div></sc-for>
+</div></sc-if>
+</div></sc-for>
+</div></sc-if>
+</div>
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+<sc-for list="{{ menusPhone }}" as="mn" hint-placeholder-count="4"><div style="position:relative;min-width:0">
+<div onClick="{{ mn.toggle }}" style="position:relative;height:44px;padding:0 34px 0 18px;border-radius:22px;border:2px solid #16181F;background:{{ mn.bg }};display:flex;align-items:center;justify-content:flex-start;cursor:pointer;box-sizing:border-box;user-select:none;min-width:0;font:700 14px 'Bricolage Grotesque',sans-serif;box-shadow:{{ mn.sh }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mn.value }}</span><span style="position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:10px">▾</span></div>
+<sc-if value="{{ mn.open }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;z-index:30;{{ mn.dd }};top:calc(100% + 8px);min-width:200px;padding:6px;display:flex;flex-direction:column;gap:2px;background:#FFFDF8;border:2px solid #16181F;border-radius:16px;box-shadow:5px 5px 0 #16181F;box-sizing:border-box">
+<sc-for list="{{ mn.options }}" as="o" hint-placeholder-count="4"><div onClick="{{ o.pick }}" style="height:38px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:12px;background:{{ o.bg }};font:600 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer"><span>{{ o.label }}</span><span>{{ o.check }}</span></div></sc-for>
+</div></sc-if>
+</div></sc-for>
+</div></sc-if>
+<sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:flex-start;gap:14px">
+<div onClick="{{ allChip.pick }}" style="height:{{ chipH }};padding:0 {{ chipPad }};border-radius:22px;border:2px solid #16181F;background:{{ allChip.bg }};color:{{ allChip.fg }};box-shadow:{{ allChip.sh }};display:flex;align-items:center;gap:5px;font:700 {{ chipFs }} 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box;flex:none">{{ allChip.label }}<span style="font:500 10.5px 'DM Mono',monospace;opacity:.75">{{ allChip.count }}</span></div>
+<span style="flex:none;width:2px;height:{{ chipH }};border-radius:1px;background:#D6CFBF"></span>
+<div style="flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+<sc-for list="{{ chips }}" as="c" hint-placeholder-count="8"><div style="display:contents"><sc-if value="{{ c.rule }}" hint-placeholder-val="{{ false }}"><span style="flex:none;width:2px;height:{{ chipH }};border-radius:1px;background:#D6CFBF;margin:0 6px"></span></sc-if><div onClick="{{ c.pick }}" style="height:{{ chipH }};padding:0 {{ chipPad }};margin-left:{{ c.ml }};border-radius:22px;border:2px solid #16181F;background:{{ c.bg }};color:{{ c.fg }};box-shadow:{{ c.sh }};display:flex;align-items:center;gap:5px;font:700 {{ chipFs }} 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;box-sizing:border-box;user-select:none">{{ c.label }}<span style="font:500 10.5px 'DM Mono',monospace;opacity:.75">{{ c.count }}</span></div></div></sc-for>
+</div>
+</div></sc-if>
+<div style="display:flex;align-items:center;gap:16px;min-height:20px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">{{ countText }}</span><sc-if value="{{ filtered }}" hint-placeholder-val="{{ false }}"><div onClick="{{ clearAll }}" style="font:600 13px 'Bricolage Grotesque',sans-serif;text-decoration:underline;cursor:pointer">{{ clearLabel }}</div></sc-if></div>
+<sc-if value="{{ simOn }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#FFE14D;border:2px solid #16181F;border-radius:16px;box-shadow:5px 5px 0 #16181F;padding:10px 16px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">{{ simCaps }}</span><span style="font:800 18px 'Bricolage Grotesque',sans-serif">{{ simTitle }}</span><span style="flex:1"></span><sc-if value="{{ showPlannerBtn }}" hint-placeholder-val="{{ false }}"><span onClick="{{ toPlanner }}" style="height:34px;padding:0 14px;border-radius:17px;border:2px solid #16181F;background:#2323FF;color:#fff;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap">{{ toPlannerLbl }} →</span></sc-if><span onClick="{{ clearSim }}" style="height:34px;padding:0 14px;border-radius:17px;border:2px solid #16181F;background:#16181F;color:#F4F1EA;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">× {{ clearSimLbl }}</span></div></sc-if>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:24px;min-width:0">
+<sc-for list="{{ deskCards }}" as="c" hint-placeholder-count="6"><div style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:{{ c.sh }};min-width:0;cursor:pointer">
+<div style="position:relative;height:{{ photoH }};border-bottom:2px solid #16181F;background:#E9E4D8 url({{ c.img }}) center/cover no-repeat;flex:none"><sc-if value="{{ c.hasShared }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:8px;top:10px;transform:rotate(-3deg);background:#2323FF;color:#fff;border:1.5px solid #16181F;border-radius:30px;padding:0 10px;font:800 11.5px/20px 'Bricolage Grotesque',sans-serif">{{ c.sharedLabel }}</span></sc-if></div>
+<div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;flex:1">
+<div style="font:800 20px/1.2 'Bricolage Grotesque',sans-serif;text-wrap:pretty">{{ c.name }}</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+<span style="display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 9px;border-radius:11px;border:1.5px {{ c.timeBs }} #16181F;box-sizing:border-box;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:{{ c.timeBg }}"><span style="font-size:10px">⏱</span>{{ c.time }}</span>
+<span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52">{{ c.meta }}</span>
+<span onClick="{{ c.planPick }}" style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:11px;border:1.5px solid #16181F;background:#2323FF;color:#fff;box-sizing:border-box;font:800 11px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer;margin-left:auto">{{ planLbl }}</span>
+<span onClick="{{ c.simPick }}" style="display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;border:1.5px dashed #16181F;box-sizing:border-box;font:800 11px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">{{ similarLbl }}</span>
+<div style="flex-basis:100%;height:0"></div>
+<sc-if value="{{ c.soon }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;border:1.5px solid #16181F;box-sizing:border-box;font:800 11px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:#FF48B0">{{ usesExpiring }}</span></sc-if>
+<sc-if value="{{ c.sale }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;border:1.5px solid #16181F;box-sizing:border-box;font:800 11px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:#10C95C">{{ onSaleLabel }}</span></sc-if>
+
+</div>
+<div style="flex:1"></div>
+<div style="height:12px;border-radius:6px;background:#E9E4D8;border:2px solid #16181F;overflow:hidden"><div style="width:{{ c.pct }};height:100%;background:#2323FF"></div></div>
+<div style="font:600 13.5px 'Bricolage Grotesque',sans-serif;color:{{ c.hc }}">{{ c.have }}</div>
+</div></div></sc-for>
+</div>
+<sc-if value="{{ planOpen }}" hint-placeholder-val="{{ false }}"><dc-import name="part-plan-popup" recipe-name="{{ planName }}" img="{{ planImg }}" min="{{ planMin }}" slot="{{ planSlot }}" buy="{{ planBuy }}" on-close="{{ planClose }}" hint-size="100%,100%"></dc-import></sc-if>
+<sc-if value="{{ deskEmpty }}" hint-placeholder-val="{{ false }}"><p style="margin:0;border:2px dashed #16181F;border-radius:22px;padding:40px;text-align:center;font:600 15px 'Bricolage Grotesque',sans-serif">{{ emptyText }}</p></sc-if>
+</div>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;1900px&quot;}}">
+class Component extends DCLogic {
+  state = { w: typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1280, tab: 'cookbook', filter: 'all', protein: '', time: 'any', sort: 0, menu: null, q: '', hint: true, source: null, fold: {} };
+  U = id => 'https://images.unsplash.com/photo-' + id + '?w=500&q=70&auto=format&fit=crop';
+  // title, photo, minutes, ingredients, on hand, slot, flags, source, protein
+  R = [
+    ['Pressure Cooker Beef Pho', '1569718212165-3a8278d5f624', 75, 14, 11, 'supper', 'soon', 'imported', 'beef'],
+    ['Tzatziki Chickpea Salad', '1512621776951-a57141f2eefd', 25, 9, 9, 'lunch', '', 'cookbook', ''],
+    ['Slow-Cooker Pork Tacos with Hoisin and Ginger', '1551504734-5ee1c4a1479b', 240, 17, 12, 'supper', 'sale', 'imported', 'pork'],
+    ['Slow-Cooker Black Bean Soup', '1547592180-85f173990554', 360, 7, 6, 'supper', '', 'cookbook', ''],
+    ['Chicken Shawarma Bowls', '1546069901-ba9599a7e63c', 40, 13, 10, 'supper', 'soon,sale', 'cookbook', 'chicken'],
+    ['Lemon Chicken Orzo', '1473093295043-cdd812d0e601', 35, 10, 8, 'supper', '', 'cookbook', 'chicken'],
+    ['Buttermilk Pancakes', '1567620905732-2d1ec7ab7445', 25, 8, 8, 'breakfast', '', 'cookbook', ''],
+    ['Green Goddess Bowl', '1540189549336-e6e99c3679fe', 20, 11, 11, 'lunch', 'soon', 'cookbook', ''],
+    ['Mushroom Risotto', '1476124369491-e7addf5db371', 0, 9, 5, 'supper', '', 'cookbook', ''],
+    ['Shakshuka', '1525351484163-7529414344d8', 30, 10, 9, 'breakfast', 'soon', 'imported', ''],
+    ['Weeknight Margherita Pizza', '1565299624946-b28f40a0ae38', 30, 6, 4, 'supper', '', 'cookbook', ''],
+    ['Sunday Roast Chicken', '1504674900247-0877df9cc836', 90, 8, 7, 'supper', '', 'cookbook', 'chicken'],
+    ['Garlic Roasted Asparagus', '1540189549336-e6e99c3679fe', 20, 5, 4, 'pantry', '', 'cookbook', ''],
+    ['Spiced Roasted Chickpeas', '1546069901-ba9599a7e63c', 35, 4, 4, 'snack', '', 'cookbook', ''],
+    ['Quick Pickled Shallots', '1512621776951-a57141f2eefd', 10, 4, 4, 'pantry', '', 'cookbook', ''],
+  ];
+  INGS = [['beef', 'noodles', 'onion', 'ginger', 'garlic'], ['chickpeas', 'yogurt', 'celery', 'garlic', 'cumin'], ['pork', 'onion', 'garlic', 'ginger', 'tortilla'], ['beans', 'onion', 'celery', 'garlic', 'cumin'], ['chicken', 'yogurt', 'lemon', 'onion', 'spinach', 'cucumber'], ['orzo', 'chicken', 'spinach', 'garlic', 'lemon'], ['flour', 'eggs', 'buttermilk', 'butter'], ['spinach', 'avocado', 'celery', 'yogurt', 'herbs'], ['rice', 'mushrooms', 'onion', 'parmesan', 'garlic'], ['eggs', 'tomatoes', 'onion', 'pepper', 'feta', 'garlic'], ['flour', 'tomatoes', 'mozzarella', 'basil'], ['chicken', 'onion', 'garlic', 'thyme', 'lemon'], ['asparagus', 'garlic', 'lemon'], ['chickpeas', 'cumin', 'garlic'], ['shallots', 'vinegar', 'sugar']];
+  FID = ['pho', 'tzatziki', null, 'haricots', 'shawarma', 'orzo', 'crepes', 'deesse', 'risotto', 'shakshuka', null, 'roti', null, null, null];
+  SLOTS = ['breakfast', 'lunch', 'supper', 'snack', 'pantry'];
+  PROT = ['chicken', 'beef', 'pork', 'fish', 'seafood', 'turkey', 'lamb', 'tofu'];
+  async componentDidMount() {
+    const m = await import('./part-copy.js');
+    this.m = m; this.unsub = m.subscribe(() => this.forceUpdate()); this.forceUpdate();
+  }
+  componentWillUnmount() { if (this.unsub) this.unsub(); if (this.ro) this.ro.disconnect(); }
+  setRoot = el => {
+    if (this.ro) this.ro.disconnect();
+    if (!el) return;
+    const upd = () => { const w = Math.round(el.getBoundingClientRect().width); if (w && w !== this.state.w) this.setState({ w }); };
+    upd(); this.ro = new ResizeObserver(upd); this.ro.observe(el);
+  };
+  renderVals() {
+    const m = this.m, S = this.state, P = S.w < 768;
+    const t = (k, v) => (m ? m.t('recipes.' + k, v) : '');
+    const fmtT = n => !n ? t('addTime') : n >= 60 ? Math.floor(n / 60) + ' h' + (n % 60 ? ' ' + (n % 60) + ' min' : '') : n + ' min';
+    const q = S.q.trim(), isUrl = /^https?:\/\//i.test(q) || /^www\./i.test(q), searching = q !== '' && !isUrl;
+    const all = this.R.map((r, idx) => ({ idx, title: r[0], img: this.U(r[1]), min: r[2], total: r[3], have: r[4], slot: r[5], soon: r[6].includes('soon'), sale: r[6].includes('sale'), src: r[7], protein: r[8], make: r[3] === r[4] }));
+    const slotOf = (r, id) => id.startsWith('slot:') ? r.slot === id.slice(5) : true;
+    const match = (r, id) => id === 'all' ? true : id === 'makeable' ? r.make : id === 'expiring' ? r.soon : id === 'meals' ? (r.slot === 'lunch' || r.slot === 'supper' || r.slot === 'breakfast') : slotOf(r, id);
+    const tOk = r => S.time === 'any' || (S.time === 'quick' && r.min > 0 && r.min <= 30) || (S.time === 'hour' && r.min > 0 && r.min <= 60) || (S.time === 'long' && r.min > 60);
+    const base = all.filter(r => r.src === S.tab && (!S.protein || r.protein === S.protein) && tOk(r) && (!searching || (r.title + ' ' + t(r.slot)).toLowerCase().includes(q.toLowerCase())));
+    const sortF = list => { const l = [...list]; if (S.sort === 1) l.sort((a, b) => (a.total - a.have) - (b.total - b.have)); if (S.sort === 2) l.sort((a, b) => (a.min || 999) - (b.min || 999)); return l; };
+    const cnt = id => base.filter(r => match(r, id)).length;
+    const shared = (a, b) => this.INGS[a].filter(x => this.INGS[b].includes(x)).length;
+    const mkCard = (r, desk) => {
+      const missing = r.total - r.have, pct = Math.round(r.have / r.total * 100) + '%';
+      const meta = [t(r.slot), r.protein ? t(r.protein) : ''].filter(Boolean).join(' · ').toUpperCase();
+      return { planPick: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ planIdx: r.idx }); }, simPick: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ sim: r.idx, filter: 'all', tab: r.src }); }, hasShared: S.sim != null, sharedLabel: S.sim != null ? t('shares', { n: shared(S.sim, r.idx) }) : '', name: r.title, img: r.img, time: fmtT(r.min), timeBs: r.min ? 'solid' : 'dashed', timeBg: r.min ? '#FFE14D' : 'transparent', meta, soon: r.soon, sale: desk && r.sale, pct,
+        have: missing ? t('someOnHand', { have: r.have, total: r.total, buy: missing }) : t('allOnHand', { count: r.total }), hc: missing ? '#3F3E37' : '#00753F', sh: missing ? 'none' : '5px 5px 0 #16181F' };
+    };
+    const chip = (label, count, on, pick, ml) => ({ label, count, bg: on ? '#16181F' : '#FFFDF8', fg: on ? '#F4F1EA' : '#16181F', sh: on ? '3px 3px 0 #2323FF' : 'none', pick, ml: ml || '0' });
+    const setF = id => () => this.setState({ filter: id });
+    const slotIds = this.SLOTS.map(s => 'slot:' + s);
+    const filtered = S.filter !== 'all' || !!S.protein || S.time !== 'any' || searching;
+    const mkCount = all.filter(r => r.make).length, exCount = all.filter(r => r.soon).length;
+    const opt = (label, on, pick) => ({ label, bg: on ? '#F4F1EA' : 'transparent', check: on ? '✓' : '', pick: () => { pick(); this.setState({ menu: null }); } });
+    const menu = (id, label, value, set, options) => ({ label, value, bg: set ? '#FFE14D' : '#FFFDF8', lc: set ? '#16181F' : '#5E5B52', open: S.menu === id, toggle: () => this.setState({ menu: S.menu === id ? null : id }), options });
+    const sorts = [t('sRecent'), t('sFewest'), t('sQuickest')];
+    const tmOpts = [['any', 'timeAny'], ['quick', 'timeQuick'], ['hour', 'timeHour'], ['long', 'timeLong']];
+    let deskList = sortF(base.filter(r => match(r, S.filter)));
+    if (S.sim != null) deskList = all.filter(r => r.idx !== S.sim && shared(S.sim, r.idx) > 0).sort((a, b) => shared(S.sim, b.idx) - shared(S.sim, a.idx));
+    const cnTxt = filtered ? (deskList.length === 1 ? t('matchOne') : t('matchMany', { count: deskList.length })) : (deskList.length === 1 ? t('countOne') : t('countMany', { count: deskList.length }));
+    const srcCount = id => all.filter(r => r.src === id).length;
+    const ret = {
+      setRoot: this.setRoot, showHeader: !this.props.embedded, isDesk: !P, narrow: P,
+      hintGap: '8px 12px', hintGotOrd: '1', hintGotMl: 'auto',
+      tabGap: P ? '8px' : '16px', tabsFlex: P ? '1 1 100%' : '0 0 auto', tabH: P ? '46px' : '52px', tabPad: P ? '12px' : '24px', tabFlex: P ? '1' : '0 0 auto', tabFs: P ? '17px' : '20px',
+      chipH: P ? '34px' : '38px', chipPad: P ? '12px' : '16px', chipFs: P ? '13px' : '14px', photoH: P ? '220px' : '250px',
+      pad: P ? '0 18px 40px' : '8px 40px 56px', gap: P ? '24px' : '22px', titleFs: P ? '40px' : '60px',
+      eyebrow: t('eyebrow', { count: all.length, makeable: mkCount, expiring: exCount }), titleStart: t('titleStart'), titleAccent: t('titleAccent'), newRecipe: t('newRecipe'),
+      barDir: P ? 'column' : 'row', barGap: P ? '14px' : '12px', barAi: P ? 'stretch' : 'center', barBg: P ? 'transparent' : '#FFFDF8', barBd: P ? 'none' : '2px solid #16181F', barPad: P ? '0' : '10px 10px 10px 14px', barSh: P ? 'none' : '5px 5px 0 #16181F',
+      pillBg: P ? '#FFFDF8' : 'transparent', pillBd: P ? '2px solid #16181F' : 'none', pillPad: P ? '6px 12px 6px 10px' : '0', pillSh: P ? '5px 5px 0 #16181F' : 'none',
+      btnW: P ? '100%' : 'auto', hintItems: [t('hintP1'), t('hintP2'), t('hintP3'), t('hintP4')],
+      labBg: isUrl ? '#FFE14D' : '#F4F1EA', searchLabel: isUrl ? t('import') : t('search'), q: S.q, onQ: e => this.setState({ q: e.target.value }),
+      placeholder: t('placeholder'), isUrl, importRecipe: t('importRecipe'), showPaste: !isUrl && !P, showNew: !isUrl, newLabel: t('newRecipe').replace(/^\+\s*/, ''), btnH: '40px', pasteChip: t('pasteChip'),
+      showLinkFound: isUrl, linkFound: t('linkFound'),
+      hintOn: S.hint, howItWorks: t('howItWorks'), gotIt: t('gotIt'), hint: t('hintDesk'), dismiss: () => this.setState({ hint: false }),
+      tabs: ['cookbook', 'imported'].map(id => { const on = S.tab === id; return { label: t(id), count: srcCount(id), bg: on ? '#2323FF' : '#FFFDF8', fg: on ? '#fff' : '#16181F', bbc: on ? '#2323FF' : '#16181F', cbg: on ? '#FFE14D' : '#F4F1EA', pick: () => this.setState({ tab: id, filter: 'all' }) }; }),
+      menus: [
+        menu('protein', t('protein'), S.protein ? t(S.protein) : t('anyProtein'), !!S.protein, [opt(t('anyProtein'), !S.protein, () => this.setState({ protein: '' })), ...this.PROT.map(p => opt(t(p), S.protein === p, () => this.setState({ protein: p })))]),
+        menu('time', t('time'), t(tmOpts.find(o => o[0] === S.time)[1]), S.time !== 'any', tmOpts.map(o => opt(t(o[1]), S.time === o[0], () => this.setState({ time: o[0] })))),
+        menu('sort', t('sort'), sorts[S.sort], S.sort !== 0, sorts.map((s, i) => opt(s, S.sort === i, () => this.setState({ sort: i }))))].map((mm, i) => Object.assign(mm, { dd: i === 2 ? 'right:0' : 'left:0' })),
+      allChip: chip(t('all'), cnt('all'), S.filter === 'all', setF('all')),
+      chips: [chip(t('meals'), cnt('meals'), S.filter === 'meals', setF('meals')), ...this.SLOTS.map((x, i) => chip(t(x), cnt('slot:' + x), S.filter === 'slot:' + x, setF('slot:' + x), i === 0 ? '8px' : '0')), Object.assign(chip(t('makeable'), cnt('makeable'), S.filter === 'makeable', setF('makeable')), { rule: true }), chip(t('expiring'), cnt('expiring'), S.filter === 'expiring', setF('expiring'))],
+      planLbl: t('plan'), planOpen: S.planIdx != null, planName: S.planIdx != null ? this.R[S.planIdx][0] : '', planImg: S.planIdx != null ? this.U(this.R[S.planIdx][1]) : '', planMin: S.planIdx != null ? this.R[S.planIdx][2] : 0, planSlot: S.planIdx != null ? this.R[S.planIdx][5] : '', planBuy: S.planIdx != null ? this.R[S.planIdx][3] - this.R[S.planIdx][4] : 0, planClose: () => this.setState({ planIdx: null }),
+      countText: cnTxt, filtered, clearAll: () => this.setState({ filter: 'all', protein: '', time: 'any', q: '' }), clearLabel: t('clear'),
+      showPlannerBtn: S.sim != null && !!this.props.onSimilarPlanner && !!this.FID[S.sim], toPlanner: () => this.props.onSimilarPlanner && this.props.onSimilarPlanner(this.FID[S.sim]), toPlannerLbl: t('toPlanner'), simOn: S.sim != null, simCaps: t('simCaps'), simTitle: S.sim != null ? all[S.sim].title : '', clearSim: () => this.setState({ sim: null }), clearSimLbl: t('clearSim'), similarLbl: t('similar'), deskCards: deskList.map(r => mkCard(r, true)), deskEmpty: deskList.length === 0, emptyText: filtered ? t('emptyFilters') : t('emptyNoMatch'), usesExpiring: t('usesExpiring'), onSaleLabel: t('onSale'),
+    };
+    const mealOpts = [['all', 'all'], ['meals', 'meals'], ...this.SLOTS.map(x => ['slot:' + x, x]), ['makeable', 'makeable'], ['expiring', 'expiring']];
+    const curMeal = mealOpts.find(o => o[0] === S.filter) || mealOpts[0];
+    const mealMenu = menu('meal', t('meal'), t(curMeal[1]), S.filter !== 'all', mealOpts.map(o => opt(t(o[1]) + ' · ' + cnt(o[0]), S.filter === o[0], () => this.setState({ filter: o[0] }))));
+    ret.menusPhone = [mealMenu, ...ret.menus.map(x => Object.assign({}, x))].map((mm, i) => Object.assign(mm, { dd: i % 2 ? 'right:0' : 'left:0', sh: mm.bg === '#FFE14D' ? '3px 3px 0 #16181F' : 'none' }));
+    return ret;
+  }
+}
+</script>
+</body>
+</html>

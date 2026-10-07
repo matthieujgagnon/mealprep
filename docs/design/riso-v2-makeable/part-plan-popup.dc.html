@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&display=swap" rel="stylesheet"></helmet>
+<div style="position:fixed;inset:0;z-index:200;display:flex;align-items:{{ vAlign }};justify-content:center;padding:{{ outer }};box-sizing:border-box;overflow-y:auto;font-family:'Bricolage Grotesque',sans-serif;color:#16181F">
+<div onClick="{{ close }}" style="position:fixed;inset:0;background:rgba(22,24,31,.62)"></div>
+<div style="position:relative;width:{{ modalW }};max-width:100%;background:#FFFDF8;border:2px solid #16181F;border-radius:{{ modalR }};box-shadow:8px 8px 0 #16181F;padding:{{ pad }};box-sizing:border-box;display:flex;flex-direction:column;gap:{{ gap }};margin:auto 0">
+<div onClick="{{ close }}" title="{{ closeLbl }}" style="position:absolute;top:-16px;right:-16px;width:42px;height:42px;border-radius:21px;background:#FFFDF8;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;justify-content:center;font:800 16px sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">✕</div>
+<div style="display:flex;align-items:center;gap:{{ headGap }};padding-right:18px">
+<div style="width:{{ thumb }};height:{{ thumb }};flex:none;border-radius:22px;overflow:hidden;border:2px solid #16181F;box-shadow:5px 5px 0 #2323FF;box-sizing:border-box;transform:rotate(-3deg);background:#E9E4D8"><img src="{{ img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.14em;color:#5E5B52">{{ eyebrow }}</span>
+<span style="font:800 {{ titleFs }}/1.04 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;text-wrap:balance">{{ name }}</span>
+<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ chips }}" as="k" hint-placeholder-count="3"><span style="height:22px;padding:0 10px;border-radius:11px;border:2px solid #16181F;background:{{ k.bg }};display:flex;align-items:center;font:800 11.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">{{ k.label }}</span></sc-for></div>
+</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:{{ gap }};border-top:2px dashed #BDB6A6;flex-wrap:wrap"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.14em;color:#3F3E37">{{ pickCaps }}</span>
+<div style="display:flex;align-items:center;gap:8px"><div onClick="{{ prev }}" style="width:30px;height:30px;border-radius:15px;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 14px sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">‹</div><div style="height:32px;padding:0 13px;border-radius:16px;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">{{ weekLabel }}</div><div onClick="{{ next }}" style="width:30px;height:30px;border-radius:15px;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 14px sans-serif;cursor:pointer;box-sizing:border-box" style-hover="background:#FFE14D">›</div>
+<sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="transform:rotate(-4deg);height:22px;padding:0 10px;border-radius:11px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 11.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">{{ thisWeekTag }}</span></sc-if></div></div>
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:22px;padding:{{ boardPad }};box-sizing:border-box">
+<div style="position:relative;display:grid;grid-template-columns:{{ cols }};gap:{{ cg }}">
+<div style="grid-column:7 / span 2;grid-row:1 / span 4;background:#F8F8FF;border:2px dotted #FF48B0;border-radius:16px;margin:-5px"></div>
+<sc-for list="{{ days }}" as="h" hint-placeholder-count="7"><div style="grid-column:{{ h.col }};grid-row:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;border-radius:12px;border:2px solid {{ h.bd }};background:{{ h.bg }};box-sizing:border-box;position:relative"><span style="font:500 {{ dowFs }} 'DM Mono',monospace;letter-spacing:.1em">{{ h.dow }}</span><span style="font:800 13px 'Bricolage Grotesque',sans-serif">{{ h.num }}</span></div></sc-for>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="3"><div style="display:contents">
+<div style="grid-column:1;grid-row:{{ r.row }};display:flex;align-items:center;font:800 {{ rowFs }} 'Bricolage Grotesque',sans-serif">{{ r.label }}</div>
+<sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="7"><div onClick="{{ c.pick }}" title="{{ c.title }}" style="grid-column:{{ c.col }};grid-row:{{ c.row }};position:relative;aspect-ratio:1;min-width:0;display:flex;border-radius:12px;outline:{{ c.outline }};outline-offset:2px;cursor:pointer">
+<div style="flex:1;border-radius:{{ cellR }};border:2px {{ c.bs }} {{ c.bd }};background:{{ c.bg }};box-sizing:border-box;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font:700 22px 'Bricolage Grotesque',sans-serif;color:#2323FF">
+<sc-if value="{{ c.hasImg }}" hint-placeholder-val="{{ false }}"><img src="{{ c.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:{{ c.op }}"></sc-if>
+<sc-if value="{{ c.plus }}" hint-placeholder-val="{{ false }}"><span style="position:relative">+</span></sc-if>
+<sc-if value="{{ c.isNew }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;right:3px;bottom:3px;transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:30px;padding:0 5px;font:800 9px/14px 'Bricolage Grotesque',sans-serif">{{ newTag }}</span></sc-if>
+</div></div></sc-for>
+</div></sc-for>
+</div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;border-radius:30px;border:2px solid #16181F;background:{{ stBg }};box-sizing:border-box;flex-wrap:{{ barWrap }}">
+<sc-if value="{{ stThumb }}" hint-placeholder-val="{{ false }}"><div style="width:32px;height:32px;flex:none;border-radius:9px;border:2px solid #16181F;overflow:hidden;box-sizing:border-box"><img src="{{ stImg }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div></sc-if>
+<sc-if value="{{ stDot }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:10px;background:#10C95C;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 11px sans-serif;box-sizing:border-box">✓</span></sc-if>
+<div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1"><span style="font:800 14px/1.2 'Bricolage Grotesque',sans-serif">{{ stTitle }}</span><span style="font:500 10px 'DM Mono',monospace;letter-spacing:.1em;color:#3F3E37">{{ stSub }}</span></div>
+<div onClick="{{ cta }}" style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #16181F;background:{{ ctaBg }};color:{{ ctaFg }};display:flex;align-items:center;font:800 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box" style-active="transform:translateY(1px)">{{ ctaLabel }}</div>
+</div>
+</div></div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;900px&quot;},&quot;name&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Brie and Mango Chutney Grilled Cheese&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;img&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=240&amp;q=70&amp;auto=format&amp;fit=crop&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;min&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:10,&quot;tsType&quot;:&quot;number&quot;},&quot;slot&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;breakfast&quot;,&quot;lunch&quot;,&quot;supper&quot;],&quot;default&quot;:&quot;lunch&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;buy&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2,&quot;tsType&quot;:&quot;number&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;onAdded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(p: object) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = { w: 1280, wk: 0, d: -1, m: -1, added: {}, lang: 'en' };
+  U = id => 'https://images.unsplash.com/photo-' + id + '?w=240&q=70&auto=format&fit=crop';
+  async componentDidMount() {
+    this.onR = () => this.setState({ w: window.innerWidth }); this.onR(); window.addEventListener('resize', this.onR);
+    try { const m = await import('./part-copy.js'); this.unsub = m.subscribe(() => this.setState({ lang: m.getLang() })); this.setState({ lang: m.getLang() }); } catch (e) {}
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onR); if (this.unsub) this.unsub(); clearTimeout(this.tt); }
+  render0() {}
+  renderVals() {
+    const S = this.state, P = S.w < 640, U = this.U, fr = S.lang === 'fr', L = (a, b) => (fr ? a : b), pr = this.props;
+    const IMG = { pan: U('1567620905732-2d1ec7ab7445'), tzk: U('1512621776951-a57141f2eefd'), shw: U('1546069901-ba9599a7e63c'), gg: U('1540189549336-e6e99c3679fe'), ris: U('1476124369491-e7addf5db371'), orz: U('1473093295043-cdd812d0e601') };
+    const N = { pan: L('Crêpes au babeurre', 'Buttermilk pancakes'), tzk: L('Salade de pois chiches tzatziki', 'Tzatziki chickpea salad'), shw: L('Bols de shawarma au poulet', 'Chicken shawarma bowls'), gg: L('Bol déesse verte', 'Green goddess bowl'), ris: L('Risotto aux champignons', 'Mushroom risotto'), orz: L('Orzo au poulet et citron', 'Lemon chicken orzo') };
+    const PLAN = [[null, null, 'shw'], ['pan', 'shw', null], ['pan', 'tzk', 'ris'], [null, 'gg', 'orz'], [null, null, null], [null, null, null], [null, null, null]];
+    const DOW = L(['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'], ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
+    const DF = L(['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    const SL = L(['Déjeuner', 'Dîner', 'Souper'], ['Breakfast', 'Lunch', 'Supper']);
+    const MS = L(['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'], ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
+    const dateOf = (wk, d) => new Date(2026, 9, 5 + 7 * wk + d);
+    const cur = S.wk === 0, key = (d, m) => S.wk + '-' + d + '-' + m;
+    const occ = (d, m) => S.added[key(d, m)] ? 'rc' : (cur ? PLAN[d][m] : null);
+    const mi = { breakfast: 0, lunch: 1, supper: 2 }[pr.slot];
+    let selM = S.m >= 0 ? S.m : (mi === undefined ? 1 : mi), selD = S.d;
+    if (selD < 0) { selD = 0; for (let d = 0; d < 7; d++) if (!occ(d, selM)) { selD = d; break; } }
+    const weekend = (d, m) => (d === 4 && m === 2) || (d >= 5 && m !== 1);
+    const s0 = dateOf(S.wk, 0), s1 = dateOf(S.wk, 6);
+    const weekLabel = s0.getMonth() === s1.getMonth() ? (fr ? s0.getDate() + ' – ' + s1.getDate() + ' ' + MS[s0.getMonth()].toUpperCase() : MS[s0.getMonth()] + ' ' + s0.getDate() + ' – ' + s1.getDate()) : (fr ? s0.getDate() + ' ' + MS[s0.getMonth()] + ' – ' + s1.getDate() + ' ' + MS[s1.getMonth()] : MS[s0.getMonth()] + ' ' + s0.getDate() + ' – ' + MS[s1.getMonth()] + ' ' + s1.getDate());
+    const justAdded = !!S.added[key(selD, selM)], selOcc = occ(selD, selM), slotName = DF[selD] + ' · ' + SL[selM];
+    let stBg = '#E4F6EA', stTitle = L('Case libre', 'Free slot'), stSub = slotName.toUpperCase(), stThumb = false, stImg = '', stDot = true;
+    if (justAdded) { stTitle = L('Ajouté à votre plan', 'Added to your plan'); stSub = slotName.toUpperCase() + ' · ' + weekLabel.toUpperCase(); }
+    else if (selOcc) { stBg = '#FFF4B8'; stTitle = L('Remplace ', 'Replaces ') + N[selOcc]; stSub = slotName.toUpperCase() + L(' · DÉJÀ PLANIFIÉ', ' · ALREADY PLANNED'); stThumb = true; stImg = IMG[selOcc]; stDot = false; }
+    const days = DOW.map((x, i) => { const t = cur && i === 0; return { col: i + 2, dow: t ? L("AUJ.", 'TODAY') : x, num: dateOf(S.wk, i).getDate(), bg: t ? '#FF48B0' : '#FFFDF8', bd: t ? '#16181F' : 'transparent' }; });
+    const rows = SL.map((label, m) => ({ row: m + 2, label: P ? label[0] : label, cells: DOW.map((_, d) => {
+      const o = occ(d, m), isSel = selD === d && selM === m, done = isSel && justAdded;
+      const c = { col: d + 2, row: m + 2, pick: () => this.setState({ d, m }), title: o ? (o === 'rc' ? pr.recipeName : N[o]) : DF[d] + ' · ' + SL[m].toLowerCase(), outline: isSel ? '3px dashed #2323FF' : '0 solid transparent', bs: 'dashed', bd: '#BDB6A6', bg: 'transparent', hasImg: false, img: '', op: 1, plus: false, isNew: false };
+      if (o) { c.bs = 'solid'; c.bd = '#16181F'; c.bg = '#FFFDF8'; c.hasImg = true; c.img = o === 'rc' ? pr.img : IMG[o]; }
+      if (isSel) { if (done) { c.isNew = true; } else if (o) { c.op = .3; c.plus = true; } else { c.hasImg = true; c.img = pr.img; c.op = .55; c.isNew = true; c.bs = 'solid'; c.bd = '#16181F'; c.bg = '#FFFDF8'; } }
+      return c; }) }));
+    const min = Number(pr.min) || 0, buy = Number(pr.buy) || 0, slotW = { breakfast: SL[0], lunch: SL[1], supper: SL[2] }[pr.slot];
+    const chips = [];
+    if (min) chips.push({ label: min >= 60 ? Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '') : min + ' min', bg: '#FFE14D' });
+    if (slotW) chips.push({ label: slotW.toLowerCase(), bg: '#FFFDF8' });
+    if (pr.buy !== undefined && pr.buy !== '') chips.push({ label: buy ? L(buy + ' à acheter', buy + ' to buy') : L('tout en main', 'all on hand'), bg: buy ? '#FFFDF8' : '#10C95C' });
+    const close = () => { if (pr.onClose) pr.onClose(); };
+    return {
+      close, closeLbl: L('Fermer', 'Close'), name: pr.recipeName || '', img: pr.img || '', chips,
+      vAlign: 'flex-start', outer: P ? '28px 14px' : '48px 24px', modalW: P ? '100%' : '660px', modalR: P ? '26px' : '30px', pad: P ? '18px 14px 14px' : '24px 24px 20px', gap: P ? '14px' : '18px', headGap: P ? '14px' : '20px',
+      thumb: P ? '76px' : '104px', titleFs: P ? '22px' : '30px', eyebrow: L('PLANIFIER CETTE RECETTE', 'PLAN THIS RECIPE'), pickCaps: L('CHOISISSEZ UNE CASE', 'PICK A SLOT'),
+      weekLabel, isCur: cur, thisWeekTag: L('cette semaine', 'this week'), prev: () => this.setState({ wk: S.wk - 1 }), next: () => this.setState({ wk: S.wk + 1 }),
+      boardPad: P ? '12px 8px 10px' : '16px 14px 14px', cols: P ? '22px repeat(7,minmax(0,1fr))' : '62px repeat(7,minmax(0,1fr))', cg: P ? '5px' : '8px', dowFs: P ? '9px' : '10.5px', rowFs: P ? '12px' : '12.5px', cellR: P ? '9px' : '12px', newTag: L('nouv.', 'new'),
+      days, rows, stBg, stTitle, stSub, stThumb, stImg, stDot, barWrap: P ? 'wrap' : 'nowrap',
+      ctaLabel: justAdded ? '✓ ' + L('Ajouté', 'Added') : (selOcc ? L('Remplacer · ', 'Replace · ') : L('Ajouter à ', 'Add to ')) + slotName, ctaBg: justAdded ? '#10C95C' : '#2323FF', ctaFg: justAdded ? '#16181F' : '#fff',
+      cta: () => { if (justAdded) { close(); return; } this.setState({ added: { ...S.added, [key(selD, selM)]: true }, d: selD, m: selM }); if (pr.onAdded) pr.onAdded({ week: S.wk, day: selD, meal: selM }); clearTimeout(this.tt); this.tt = setTimeout(close, 1400); }
+    };
+  }
+}
+</script>
+</body>
+</html>
