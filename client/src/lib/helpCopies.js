@@ -99,10 +99,12 @@ export const HELP_COPIES = {
   haveDot: { kind: "icon", cls: "riso-help-copy-have", glyph: "" },
 
   // Makeable
-  useInventory: { kind: "group", cls: "riso-help-copy-toggle", switch: true, items: [{ label: "makeable.useInventory" }] },
-  makeableMeals: { kind: "pill", cls: "riso-filter-chip", label: "makeable.types.meals" },
-  showSales: { kind: "group", cls: "riso-help-copy-toggle", switch: true, items: [{ label: "makeable.showSales" }] },
-  cookTonight: { kind: "pill", cls: "riso-makeable-action cook", label: "makeable.cookTonight", strong: true },
+  includeSides: { kind: "pill", cls: "riso-pill size-chip", label: "makeable.includeSides" },
+  finderReady: { kind: "pill", cls: "riso-pill size-chip", label: "finder.avail.ready" },
+  finderFew: { kind: "pill", cls: "riso-pill size-chip", label: "finder.avail.few" },
+  showSales: { kind: "pill", cls: "riso-pill size-chip", label: "makeable.showSales" },
+  tileToBuy: { kind: "pill", cls: "fnd-act buy", label: "finder.toBuyButton" },
+  tileSimilar: { kind: "pill", cls: "fnd-act", label: "finder.similar" },
 
   // Grocery
   viewTabs: {

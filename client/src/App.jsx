@@ -1,4 +1,6 @@
-import { clearDeals } from "./lib/dealsStore.js";
+import { clearDeals, useDeals } from "./lib/dealsStore.js";
+import { useFinder } from "./hooks/useFinder.js";
+import { useShowSales } from "./hooks/useShowSales.js";
 import { clearGroceryShared } from "./lib/groceryCache.js";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -36,7 +38,7 @@ import { entriesOnDay, findNextEmptySlot, isCustomNote, slotLabel, todayIndex } 
 import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
-import { WhatCanIMake } from "./components/WhatCanIMake.jsx";
+import { Makeable } from "./components/Makeable.jsx";
 import { Inventory, InventoryDragPreview, shelfOptions } from "./components/Inventory.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 import { TRASH_ID } from "./components/TrashZone.jsx";
@@ -213,6 +215,9 @@ export default function App({ user, onLogout }) {
   const [recipeEditor, setRecipeEditor] = useState(null);
   const editorDirty = useRef(false);
   const [upcomingTick, setUpcomingTick] = useState(0); // bumped when the plan changes in a week that is not on screen
+  const makeableFinder = useFinder(); // the Makeable page's search and filters; kept here so the pop-out's Similar recipes can steer them
+  const [makeableSales, toggleMakeableSales] = useShowSales();
+  const { deals } = useDeals();
   const [upcomingEntries, setUpcomingEntries] = useState([]); // every planned meal from today onward, across weeks: what the grocery list is built from
   const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items
   const [groceryOverrides, setGroceryOverrides] = useState([]); // removed rows / own quantities (GroceryItemOverride)
@@ -383,7 +388,7 @@ export default function App({ user, onLogout }) {
   // on the list -> take it off, with the shared Undo toast; off the list -> put it
   // back. Undo goes through `latestGrocery` because the list has changed by then.
   const latestGrocery = useRef({});
-  latestGrocery.current = { addToGroceryList };
+  latestGrocery.current = { addToGroceryList, removeFromGroceryList };
   async function toggleGroceryItem(name) {
     if (!isOnGroceryList(name)) {
       await addToGroceryList([name]);
@@ -393,8 +398,20 @@ export default function App({ user, onLogout }) {
     showToast(t("grocery.takenOff", { name }), () => latestGrocery.current.addToGroceryList([name]));
   }
 
+  // Makeable's À acheter: put some items on the list and say so; Undo takes those items off again.
+  async function addToGroceryListWithUndo(names) {
+    await addToGroceryList(names);
+    showToast(t("finder.listed", { count: names.length }), () => names.forEach((name) => latestGrocery.current.removeFromGroceryList(name)));
+  }
+
   // One set of grocery functions for every page that shows an ingredient's marks.
-  const grocery = { isOnList: isOnGroceryList, add: addToGroceryList, remove: removeFromGroceryList, toggle: toggleGroceryItem };
+  const grocery = {
+    isOnList: isOnGroceryList,
+    add: addToGroceryList,
+    remove: removeFromGroceryList,
+    toggle: toggleGroceryItem,
+    addWithUndo: addToGroceryListWithUndo,
+  };
 
   function handleImported(recipe) {
     setRecipes((prev) => [recipe, ...prev]);
@@ -1128,19 +1145,21 @@ export default function App({ user, onLogout }) {
         )}
 
         {tab === "makeable" && (
-          <WhatCanIMake
-            user={user}
+          <Makeable
+            finder={makeableFinder}
             recipes={recipes}
-            plannerEntries={plannerEntries}
-            onSelectRecipe={openRecipe}
-            onOpenRecipeCard={openRecipeCard}
             pantryInventory={pantryInventory}
-            customStaples={customStaples}
-            weekStart={weekStart}
-            onPlaceOnPlanner={handlePlaceRecipe}
-            isOnGroceryList={isOnGroceryList}
-            onAddToGroceryList={addToGroceryList}
-            onRemoveFromGroceryList={removeFromGroceryList}
+            pantryLocations={pantryLocations}
+            inventoryLayout={inventoryLayout}
+            haveCores={pantryHaveCores}
+            upcomingEntries={upcomingEntries}
+            grocery={grocery}
+            deals={deals}
+            showSales={makeableSales}
+            onToggleSales={toggleMakeableSales}
+            onOpenPopout={openPopout}
+            popoutId={popout?.recipeId}
+            onOpenGrocery={() => goToTab("grocery")}
           />
         )}
 
@@ -1345,10 +1364,17 @@ export default function App({ user, onLogout }) {
             haveCores={pantryHaveCores}
             plannedEntries={[...plannerEntries, ...upcomingEntries]}
             grocery={grocery}
+            deals={deals}
+            showSales={tab === "makeable" && makeableSales}
             onPlan={() => requestPlan(recipes.find((r) => r.id === popout.recipeId))}
-            onCook={() => openRecipeCard(popout.recipeId)}
+            onCook={tab === "makeable" ? undefined : () => openRecipeCard(popout.recipeId)}
             onSimilar={() => {
               setPopout(null);
+              // On Makeable, Similar recipes re-sorts that page; elsewhere it opens the Planner's Main meal.
+              if (tab === "makeable") {
+                makeableFinder.setMainMeal(popout.recipeId);
+                return;
+              }
               setPlannerMainId(popout.recipeId);
               if (tab !== "planner") {
                 setWeekStart(currentWeekStart());

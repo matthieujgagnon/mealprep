@@ -26,7 +26,7 @@ const SILENT_ATTRS = new Set([
   "key", "style", "accept", "method", "htmlFor", "viewBox", "d", "fill", "stroke", "strokeWidth", "loading",
   "width", "height", "xmlns", "points", "cx", "cy", "r", "x", "y", "x1", "x2", "y1", "y2", "pattern", "step",
   "min", "max", "lang", "dir", "draggable", "tabIndex", "enterKeyHint", "capture", "autoCapitalize", "spellCheck",
-  "referrerPolicy", "decoding", "crossOrigin", "screenKey", "tone", "kicker", "variant", "size", "mode", "value",
+  "referrerPolicy", "decoding", "crossOrigin", "screenKey", "tone", "kicker", "variant", "size", "mode", "layout", "value",
   "defaultValue", "aria-hidden", "aria-live", "aria-modal", "aria-pressed", "aria-expanded", "aria-checked",
   "aria-selected", "aria-controls", "aria-describedby", "aria-labelledby", "aria-current", "aria-haspopup",
   "aria-orientation", "aria-valuenow", "aria-valuemin", "aria-valuemax", "aria-busy", "aria-invalid",

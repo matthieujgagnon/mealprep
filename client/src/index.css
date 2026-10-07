@@ -34,613 +34,6 @@
   color-scheme: dark;
 }
 
-/* ---------- Riso Poster: Makeable screen ---------- */
-
-.riso-makeable {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 28px 40px 56px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
-  font-family: var(--riso-font-body);
-}
-
-.riso-makeable-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.riso-makeable-title {
-  margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 60px;
-  line-height: 0.95;
-  letter-spacing: -0.035em;
-}
-
-.riso-makeable-controls {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 26px;
-  box-shadow: var(--riso-shadow-ready);
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* Makeable's search, meal-type chips and SORT: reuses Recipes' search bar and chips. */
-.riso-makeable-find {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.riso-makeable-toggles {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  flex-wrap: wrap;
-}
-
-.riso-makeable-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.riso-makeable-toggle-label {
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.riso-makeable-toggle-meta {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  color: var(--riso-muted);
-}
-
-.riso-makeable-toggle-divider {
-  width: 0;
-  height: 26px;
-  border-left: 2px dashed var(--riso-dash-strong);
-}
-
-.riso-makeable-also-have {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  min-height: 44px;
-  padding: 5px 6px 5px 16px;
-  border-radius: 999px;
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-}
-
-.riso-makeable-also-have-label {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-}
-
-.riso-makeable-also-have-chip {
-  height: 32px;
-  padding: 0 8px 0 13px;
-  border-radius: 16px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.riso-makeable-also-have-chip button {
-  background: none;
-  border: none;
-  color: inherit;
-  opacity: 0.75;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 2px;
-}
-
-.riso-makeable-also-have-chip button:hover {
-  opacity: 1;
-}
-
-.riso-makeable-also-have-input {
-  flex: 1;
-  min-width: 220px;
-  height: 32px;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--riso-ink);
-  font-family: var(--riso-font-display);
-  font-weight: 500;
-  font-size: 14.5px;
-}
-
-.riso-makeable-also-have-input::placeholder {
-  color: var(--riso-muted);
-}
-
-.riso-makeable-empty {
-  font-size: 13.5px;
-  color: var(--riso-soft);
-}
-
-.riso-makeable-group {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.riso-makeable-group-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.riso-makeable-group-title {
-  margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 30px;
-  letter-spacing: -0.02em;
-}
-
-.riso-makeable-group-pill {
-  min-width: 34px;
-  height: 34px;
-  padding: 0 10px;
-  border-radius: 17px;
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 16px;
-  box-sizing: border-box;
-}
-
-.riso-makeable-group-pill.blue {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.riso-makeable-group-pill.yellow {
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-}
-
-.riso-makeable-group-pill.paper {
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-}
-
-.riso-makeable-group-note {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: var(--riso-muted);
-}
-
-.riso-makeable-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-  gap: 22px;
-}
-
-/* Photo on top, body below; the action row sits at the bottom so cards
-   in a row line up. No shadows on these cards. */
-.riso-makeable-card {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 22px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.riso-makeable-card-photo {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 180px;
-  flex: none;
-  padding: 0;
-  border: none;
-  border-bottom: 2px solid var(--riso-ink);
-  background: var(--riso-track);
-  cursor: pointer;
-}
-
-.riso-makeable-card-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.riso-makeable-ready-sticker {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  transform: rotate(5deg);
-  background: var(--riso-yellow);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font: 800 13px var(--riso-font-display);
-  color: #16181f;
-  white-space: nowrap;
-}
-
-.riso-makeable-card-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px 18px;
-}
-
-.riso-makeable-card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.riso-makeable-card-name {
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  font: 800 21px/1.15 var(--riso-font-display);
-  color: var(--riso-ink);
-  min-height: 2.3em;
-  text-wrap: pretty;
-}
-
-.riso-makeable-card-meta {
-  font: 500 11px var(--riso-font-mono);
-  letter-spacing: 0.06em;
-  color: var(--riso-muted);
-}
-
-.riso-makeable-card-uses {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 2px;
-}
-
-.riso-makeable-uses-pill {
-  background: var(--riso-hot);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 1px 9px;
-  font: 800 11.5px var(--riso-font-display);
-  color: #16181f;
-  white-space: nowrap;
-}
-
-.riso-makeable-card-uses span:last-child {
-  font-size: 12.5px;
-  color: var(--riso-soft);
-}
-
-/* You need n */
-.riso-makeable-need {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
-}
-
-.riso-makeable-need-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding-top: 12px;
-  border-top: 2px solid var(--riso-ink);
-}
-
-.riso-makeable-need-title {
-  font: 800 16px var(--riso-font-display);
-}
-
-.riso-makeable-need-count {
-  font: inherit;
-}
-
-.riso-makeable-need-hint {
-  font-size: 12.5px;
-  color: var(--riso-muted);
-}
-
-.riso-makeable-need-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.riso-makeable-need-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  border-top: 1.5px dashed var(--riso-dash);
-}
-
-.riso-makeable-need-row.more .riso-makeable-need-name {
-  color: var(--riso-muted);
-}
-
-.riso-makeable-need-name {
-  flex: 1;
-  min-width: 0;
-  font: 500 15.5px/1.25 var(--riso-font-display);
-  color: var(--riso-ink);
-}
-
-.riso-makeable-need-add {
-  height: 26px;
-  padding: 0 10px;
-  border-radius: 13px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  font: 700 12px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.riso-makeable-need-add:hover {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.riso-makeable-need-add.on {
-  background: #e4e4ff;
-  color: #16181f;
-}
-
-/* One right-aligned row of same-size actions. */
-.riso-makeable-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  margin-top: auto;
-  padding-top: 4px;
-}
-
-.riso-makeable-action {
-  height: 30px;
-  padding: 0 14px;
-  border-radius: 15px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 700 12.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.riso-makeable-action.add-all:hover {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.riso-makeable-action.plan:hover {
-  background: var(--riso-yellow);
-  color: #16181f;
-}
-
-.riso-makeable-action.done,
-.riso-makeable-action.done:hover {
-  background: #e4e4ff;
-  color: #16181f;
-}
-
-.riso-makeable-action.cook {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-/* Plan it: day + meal picker opened by a card's Plan button. */
-.riso-makeable-plan {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  background: var(--riso-canvas);
-}
-
-.riso-makeable-plan-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.riso-makeable-plan-head strong {
-  font: 800 15px var(--riso-font-display);
-}
-
-.riso-makeable-plan-head span {
-  font: 500 10px var(--riso-font-mono);
-  letter-spacing: 0.08em;
-  color: var(--riso-muted);
-}
-
-.riso-makeable-plan-days {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.riso-makeable-plan-day {
-  height: 50px;
-  min-width: 0;
-  padding: 0;
-  border: 2px solid var(--riso-ink);
-  border-radius: 12px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.riso-makeable-plan-day span {
-  font: 500 9px var(--riso-font-mono);
-}
-
-.riso-makeable-plan-day strong {
-  font: 800 16px var(--riso-font-display);
-}
-
-.riso-makeable-plan-day.today:not(.on) strong {
-  color: var(--riso-accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.riso-makeable-plan-day.on {
-  background: var(--riso-ink);
-  color: var(--riso-canvas);
-}
-
-.riso-makeable-plan-day:disabled {
-  border: 2px dashed var(--riso-dash-strong);
-  opacity: 0.55;
-  cursor: default;
-}
-
-.riso-makeable-plan-meals {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.riso-makeable-plan-meal {
-  height: 38px;
-  min-width: 0;
-  border: 2px solid var(--riso-ink);
-  border-radius: 19px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 13px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-makeable-plan-meal.on {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.riso-makeable-plan-note {
-  margin: 0;
-  min-height: 18px;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--riso-soft);
-}
-
-.riso-makeable-plan-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.riso-makeable-plan-close {
-  width: 42px;
-  height: 42px;
-  flex: none;
-  padding: 0;
-  border-radius: 21px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  color: var(--riso-ink);
-  font: 700 17px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-makeable-plan-close:hover {
-  background: var(--riso-hot);
-}
-
-.riso-makeable-plan-go {
-  flex: 1;
-  min-width: 0;
-  height: 42px;
-  border-radius: 21px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
-  font: 800 14.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-@media (max-width: 680px) {
-  .riso-makeable {
-    padding: 18px 16px 40px;
-  }
-
-  .riso-makeable-title {
-    font-size: 40px;
-  }
-
-  .riso-makeable-toggles {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .riso-makeable-toggle-divider {
-    display: none;
-  }
-}
-
 @media (max-width: 680px) {
   .riso-flyers {
     padding: 18px 16px 40px;
@@ -4020,14 +3413,13 @@ button.riso-pill:disabled {
 
 /* Stickers and pills are one-line labels - a narrow column must never
    wrap "nothing to buy!" onto two lines (design handoff v3). */
-.riso-makeable-group-pill,
 .leftover-badge,
 .riso-ends-badge,
 .riso-watch-badge,
 .riso-rc-why-sticker,
 .riso-rc-legend-sticker,
 .riso-rc-tag-chip,
-.tag-chip {
+.tag-chip{
   white-space: nowrap;
 }
 
@@ -10410,13 +9802,12 @@ button.riso-deal-detail-other:focus-visible {
 }
 
 @media (max-width: 767px) {
-  .riso-makeable-title,
   .riso-inv-title,
-  .riso-recipes-title,
-  .riso-grocery-title,
-  .riso-flyers-title,
-  .riso-planner-title,
-  .riso-home-greeting-title {
+.riso-recipes-title,
+.riso-grocery-title,
+.riso-flyers-title,
+.riso-planner-title,
+.riso-home-greeting-title{
     font-size: 38px;
     line-height: 0.95;
   }
@@ -10681,8 +10072,7 @@ button.riso-deal-detail-other:focus-visible {
 .riso-grocery,
 .riso-flyers,
 .riso-recipes,
-.riso-inv,
-.riso-makeable {
+.riso-inv{
   padding-left: 0;
   padding-right: 0;
   padding-top: 0;
@@ -17508,7 +16898,6 @@ body.no-select {
   }
 }
 
-
 .riso-sheet .fnd {
   padding-bottom: 8px;
 }
@@ -19166,7 +18555,6 @@ body.no-select {
   outline: 2px solid var(--riso-accent);
   outline-offset: 1px;
 }
-
 
 /* Cards and results carry a finger that has held still; a finger that just
    moves still scrolls the page (App.jsx keeps the page still once a drag has
@@ -21026,5 +20414,587 @@ body.no-select {
   .fnd-main-btn {
     flex: 1 1 auto;
     padding: 0 12px;
+  }
+}
+
+/* ================================================================
+   Makeable page, Riso v2 (design: docs/design/riso-v2-makeable)
+   The shared Finder as a page (layout="page"): title, search, filters, the four
+   sections, tiles with Similar recipes and À acheter, the popover under a tile,
+   the "On your list" strip, the Main meal banner. One width switch at 768px, the
+   same one every other page uses.
+   ================================================================ */
+.mk-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: var(--riso-ink);
+}
+
+.mk-title {
+  margin: 0;
+  font: 800 60px/0.95 var(--riso-font-display);
+  letter-spacing: -0.035em;
+}
+
+.mk-title .accent {
+  color: var(--riso-accent);
+}
+
+.fnd-page {
+  gap: 16px;
+}
+
+.fnd-page .fnd-searchbar {
+  padding: 6px 10px;
+}
+
+.fnd-page .fnd-searchbar input {
+  height: 44px;
+}
+
+.fnd-page .fnd-seg-btn {
+  height: 28px;
+}
+
+.fnd-page .fnd-filters .riso-pill.size-chip {
+  height: 36px;
+  border-radius: 22px;
+}
+
+.fnd-divider {
+  width: 2px;
+  height: 36px;
+  background: var(--riso-ink);
+  opacity: 0.25;
+}
+
+/* The meals-only switch sits at the end of the count line. */
+.fnd-page .includesides-toggle {
+  margin-left: auto;
+  height: 30px;
+}
+
+.fnd-page .fnd-results-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* Sections */
+.fnd-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.fnd-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fnd-sec-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fnd-sec-toggle.plain {
+  cursor: default;
+}
+
+.fnd-sec-title {
+  margin: 0;
+  font: 800 20px/1.1 var(--riso-font-display);
+}
+
+.fnd-sec-count {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 9px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 13px;
+  background: var(--riso-surface);
+  font: 800 12px var(--riso-font-display);
+}
+
+.fnd-sec-count.week {
+  background: transparent;
+  border-color: var(--riso-accent);
+}
+
+.fnd-sec-count.ready {
+  background: var(--riso-green);
+}
+
+.fnd-sec-count.few {
+  background: var(--riso-yellow);
+}
+
+.fnd-sec-rule {
+  flex: 1;
+  height: 2px;
+  background: var(--riso-ink);
+  opacity: 0.15;
+}
+
+.fnd-sec-chev {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--riso-ink);
+  transition: transform 0.15s ease;
+}
+
+.fnd-sec-chev.closed {
+  transform: rotate(-90deg);
+}
+
+.fnd-sec-desc {
+  margin: 0;
+  font: 500 13px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+/* Tiles */
+.fnd-page .fnd-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.fnd-tile {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fnd-tile > .fnd-card {
+  flex: 1;
+}
+
+.fnd-page .riso-recipe-card {
+  border-radius: 20px;
+}
+
+.fnd-page .fnd-card-photo {
+  height: 136px;
+}
+
+.fnd-page .fnd-card-time {
+  right: 6px;
+  bottom: 6px;
+}
+
+.fnd-page .fnd-card-body {
+  padding: 10px 12px 12px;
+  gap: 5px;
+}
+
+.fnd-page .riso-recipe-card-name {
+  font-size: 15px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.fnd-page .riso-recipe-card-havelabel {
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.fnd-page .fnd-card-reason {
+  font-size: 11.5px;
+  color: var(--riso-soft);
+}
+
+/* Nothing to buy and not planned this week: a pink shadow. */
+.fnd-page .fnd-card.go {
+  box-shadow: 5px 5px 0 var(--riso-hot);
+}
+
+.fnd-tile.open {
+  z-index: 60;
+}
+
+.fnd-tile.open > .fnd-card {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: 6px 6px 0 var(--riso-ink);
+}
+
+.fnd-tile.open > .fnd-card.go {
+  box-shadow: 6px 6px 0 var(--riso-hot);
+}
+
+.fnd-card-foot {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fnd-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.fnd-act {
+  height: 28px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fnd-act.buy.sale {
+  background: rgba(16, 201, 92, 0.68);
+}
+
+.fnd-act.buy.done {
+  background: var(--riso-green);
+}
+
+/* "On your list" inside a tile */
+.fnd-liststrip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.fnd-liststrip-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fnd-listchip {
+  height: 28px;
+  padding: 0 8px 0 10px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.fnd-listmore {
+  align-self: center;
+  font: 700 12px var(--riso-font-display);
+  color: var(--riso-soft);
+}
+
+.fnd-listlink {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--riso-accent);
+  font: 700 12.5px var(--riso-font-display);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The popover under a tile, and the cream scrim behind it */
+.fnd-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(244, 241, 234, 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.fnd-buypop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  margin-top: -2px;
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-top: 2px dashed var(--riso-dash-strong);
+  border-radius: 0 0 18px 18px;
+  box-shadow: 5px 5px 0 var(--riso-ink);
+}
+
+.fnd-buyrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fnd-buyrow-emoji {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 10px;
+  background: var(--riso-canvas);
+  font-size: 18px;
+}
+
+.fnd-buyrow-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.fnd-buyrow-name {
+  font: 700 13.5px var(--riso-font-display);
+}
+
+.fnd-buyrow-add {
+  flex: none;
+  height: 28px;
+  padding: 0 11px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 11.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fnd-buyrow-add.on {
+  background: var(--riso-green);
+}
+
+.fnd-buypop-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fnd-buypop-all {
+  height: 32px;
+  padding: 0 16px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font: 800 12.5px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* The Main meal banner's ✕ (every layout) and its look on the page */
+.fnd-main {
+  position: relative;
+}
+
+.fnd-main-x {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 20px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.fnd-page .fnd-main {
+  border-radius: 22px;
+}
+
+.fnd-page .fnd-main-photo {
+  width: 130px;
+}
+
+.fnd-page .fnd-main-body {
+  padding-right: 56px;
+}
+
+.fnd-page .fnd-main-groupname {
+  width: 130px;
+  font-weight: 600;
+}
+
+.fnd-page .fnd-main-title {
+  font-size: 20px;
+}
+
+@media (max-width: 767px) {
+  .mk-title {
+    font-size: 40px;
+  }
+
+  .fnd-page {
+    gap: 12px;
+  }
+
+  .fnd-page .fnd-searchbar {
+    padding: 4px 8px 4px 14px;
+    box-shadow: none;
+  }
+
+  .fnd-page .fnd-searchbar input {
+    height: 38px;
+    font-size: 14.5px;
+  }
+
+  .fnd-page .fnd-seg {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .fnd-page .fnd-seg-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 24px;
+    padding: 0 6px;
+    justify-content: center;
+    font-size: 12.5px;
+  }
+
+  .fnd-page .fnd-filters .riso-pill.size-chip {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 12.5px;
+  }
+
+  .fnd-page .includesides-toggle {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .fnd-page .fnd-countline {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+
+  .fnd-divider {
+    display: none;
+  }
+
+  .fnd-page .fnd-menus {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .fnd-page .fnd-menus .rv2-menu-wrap {
+    flex: 1;
+  }
+
+  .fnd-page .fnd-menus .rv2-drop {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .fnd-page .fnd-menus .rv2-menu {
+    left: 0;
+    right: auto;
+  }
+
+  .fnd-page .fnd-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .fnd-page .riso-recipe-card {
+    border-radius: 16px;
+  }
+
+  .fnd-page .fnd-card-photo {
+    height: 88px;
+  }
+
+  .fnd-page .fnd-card-body {
+    padding: 8px 9px 9px;
+  }
+
+  .fnd-page .riso-recipe-card-name {
+    font-size: 13px;
+  }
+
+  .fnd-card-foot {
+    padding: 0 9px 9px;
+  }
+
+  .fnd-act {
+    padding: 0 6px;
+    font-size: 11px;
+  }
+
+  .fnd-card-actions {
+    gap: 4px;
+    flex-wrap: nowrap;
+  }
+
+  /* A menu says only its name until a choice is made, like the Planner's chips. */
+  .fnd-page .fnd-menus .rv2-drop-value {
+    display: none;
+  }
+
+  .fnd-page .fnd-menus .rv2-drop.set .rv2-drop-value {
+    display: inline;
+  }
+
+  .fnd-sec-title {
+    font-size: 16px;
+  }
+
+  .fnd-buyrow-emoji {
+    display: none;
+  }
+
+  .fnd-page .fnd-main-photo {
+    width: auto;
+    height: 150px;
+  }
+
+  .fnd-page .fnd-main-body {
+    padding-right: 16px;
+  }
+
+  .fnd-page .fnd-main-groupname {
+    width: auto;
   }
 }

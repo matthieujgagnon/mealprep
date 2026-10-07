@@ -42,7 +42,7 @@ import { formatWeekday, localizePrice } from "../i18n/format.js";
 // Per-item "which store do I usually get this at" preference — new in the
 // Riso redesign (there's no server schema for it yet). Lasting-but-not-
 // critical, so it lives in localStorage the same way Makeable's "also have"
-// list does (see WhatCanIMake.jsx) rather than round-tripping to the server
+// list did on the old Makeable page rather than round-tripping to the server
 // for something this low-stakes. Hint-strip dismissal itself goes through
 // the shared per-user-per-screen mechanism (RisoControls.jsx's <HintStrip>,
 // lib/hints.js) instead of its own key.

@@ -134,7 +134,7 @@ test("every screen speaks French, with nothing left in English", async ({ page }
 
   // What can I make.
   await page.getByRole("button", { name: "Faisable", exact: true }).click();
-  await expect(page.locator(".riso-makeable-title")).toBeVisible();
+  await expect(page.locator(".mk-title")).toBeVisible();
   await expectAllFrench(page, "faisable");
 
   // Grocery list, its aisle view and store mode.

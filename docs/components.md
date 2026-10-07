@@ -23,25 +23,25 @@ Everything below is one piece used by every page that shows the same thing. The 
 | `openRecipeCard` | `App.jsx` | Opens a recipe's card on the Recipes page. |
 | Riso pills and chips | `components/RisoPills.jsx`, `lib/pills.js` | Every pill, tag and chip. |
 | Confirm dialog | `components/ConfirmDialog.jsx` | The one "are you sure?" question. |
-| Recipe finder | `components/Finder.jsx`, `hooks/useFinder.js`, `lib/finder.js` | Search, filters, Main meal and results. |
+| Recipe finder | `components/Finder.jsx`, `components/FinderTiles.jsx`, `hooks/useFinder.js`, `lib/finder.js` | Search, filters, Main meal and results (the Planner's panel, and the Makeable page). |
 | Grocery item | `components/GroceryItem.jsx` | One grocery row. |
 | Inventory item form | `components/InventoryItemForm.jsx` | Add or edit an Inventory item. |
 | Inventory confirm sheet | `components/InventoryConfirm.jsx` | Confirm anything going into Inventory (see `CLAUDE.md`). |
 
 ## Recipe pop-out
 
-`RecipePopout` is the look; `RecipePopoutHost` works out its lists. **`App.jsx` renders the one host**, so a recipe opens the same pop-out from the Planner (board cards and finder results), Recipes and Home. Makeable and the recipe card use it next.
+`RecipePopout` is the look; `RecipePopoutHost` works out its lists. **`App.jsx` renders the one host**, so a recipe opens the same pop-out from the Planner (board cards and finder results), Recipes, Home and Makeable.
 
 It shows time and servings, the meal, "Planned Wednesday", what you have, what to buy (tap to put an item on the grocery list, or take it off; see Ingredient marks), the steps, and four buttons: **Plan** (first), **Cook**, **Similar recipes** and **Open the full recipe**.
 
 Open it with `openPopout(recipeOrId, from?)` (`from` is the box of the card it grows out of). Main props:
 
-- `RecipePopoutHost`: `recipe`, `from`, `haveCores`, `plannedEntries`, `grocery` (`{ isOnList, add, remove, toggle }`), `deals` and `showSales` (optional green sale pills).
+- `RecipePopoutHost`: `recipe`, `from`, `haveCores`, `plannedEntries`, `grocery` (`{ isOnList, add, remove, toggle, addWithUndo }`), `deals` and `showSales` (optional green sale pills).
 - Buttons (each optional): `onPlan`, `onCook`, `onSimilar`, `onOpenFull`, `onClose`.
 
-In `App.jsx`: Plan calls `requestPlan`, Cook and Open the full recipe call `openRecipeCard`, Similar recipes sets `plannerMainId` and goes to the Planner.
+In `App.jsx`: Plan calls `requestPlan`, Cook and Open the full recipe call `openRecipeCard`, Similar recipes sets `plannerMainId` and goes to the Planner. **On Makeable there is no Cook, and Similar recipes sets the Main meal on Makeable itself** (`makeableFinder.setMainMeal`), with the sale pills following Makeable's "Show sales".
 
-Used by: Planner (`Finder` results, board cards on a phone), Recipes (`RecipeCard`), Home (week strip).
+Used by: Planner (`Finder` results, board cards on a phone), Recipes (`RecipeCard`), Home (week strip), Makeable (tiles).
 
 ## Ingredient marks
 
@@ -67,7 +67,7 @@ Used by: the pop-out's Plan (Planner, Recipes, Home) and the Planner finder's + 
 
 It sits above every pop-out, picker and question (z-index 500), so Undo can be pressed while one is open.
 
-Used by: Planner (add, replace, remove, copy, leftovers, a card dropped on the phone's trash strip, a phone status tap ("marked as leftovers", with Undo putting the old mark back), Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), and the grocery ✓ in Ingredient marks (taken off the list).
+Used by: Planner (add, replace, remove, copy, leftovers, a card dropped on the phone's trash strip, a phone status tap ("marked as leftovers", with Undo putting the old mark back), Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), the grocery ✓ in Ingredient marks (taken off the list) and Makeable's À acheter ("N items added to the grocery list", Undo takes them off again).
 
 ## Planner header
 
@@ -136,7 +136,7 @@ On a phone the planned meal's card shows the photo, the slot (« MER 7 · SOUPER
 - `useIncludeSides()` is the one saved setting (this browser), so every page agrees.
 - `IncludeSidesToggle` (`components/RisoControls.jsx`) is the switch, « Inclure garde-manger et accompagnements » / "Include pantry and sides".
 
-Used by: Recipes (Makeable now chip and the count line), Home (Makeable now card), Makeable (page and chips), the finder (Ready count and results).
+Used by: Recipes (Makeable now chip and the count line), Home (Makeable now card), Makeable (every section and count, with its "Include pantry and sides" switch at the end of the count line), the finder (Ready count and results).
 
 ## openRecipeCard
 
@@ -158,9 +158,17 @@ Used by: the recipe form (the new-recipe pop-up and the full-page editor) when c
 
 ## Recipe finder
 
-`Finder` is the search bar, "Cook with", filters, the Main meal banner and the results, for the Planner's panel at the bottom of the page (`layout="panel"`, on a computer and on a phone; `layout="sheet"` is for a bottom card). `useFinder()` holds what it shows. It does not hold the recipe pop-out: it asks the caller (`onOpenPopout`) and `onAdd` is the caller's. Choosing Similar recipes scrolls the Main meal banner into view.
+`Finder` is the search bar, "Cook with", filters, the Main meal banner and the results, for the Planner's panel at the bottom of the page (`layout="panel"`, on a computer and on a phone; `layout="sheet"` is for a bottom card) and for the Makeable page (`layout="page"`, below). `useFinder()` holds what it shows. It does not hold the recipe pop-out: it asks the caller (`onOpenPopout`) and `onAdd` is the caller's. Choosing Similar recipes scrolls the Main meal banner into view.
 
 **On a phone** the same markup is dressed as the design's search panel (`docs/design/riso-v2-planner-mobile-v2/`): one pill holding the box for typing (« Chercher une recette »), the target chip (« mer · Déjeuner ✕ ») and a **Browse / Close** button (`.fnd-bar-toggle`, hidden on a computer); closed, nothing else shows. Open, it shows the « AVEC… » strip (« + Cuisiner avec… »), the filters as chips in the design's order (Faisable maintenant, 1 ou 2 à acheter, Expire bientôt, Repas ▾, Protéine ▾, Rapide; a second tap on the first two turns them off, and the "All" choice is not shown), the count and the results two across. Repas, Protéine and Cuisiner avec… are the shared menus, as on a computer. The **Main meal banner** stacks on a phone: the photo as a strip on top, then the text and ingredient chips across the width, the buttons at the bottom.
+
+**Makeable page** (`layout="page"`; `components/Makeable.jsx` adds the title; design `docs/design/riso-v2-makeable/`). Same search, "With" strip, picker, filters (Repas and Protéine are the shared menus) and Main meal banner, with these differences:
+
+- **Sections** instead of one grid: Meals of the week (planned this week; closed to begin with), Ready now, One or two short, Needs a shop (`makeableSections`, with a count badge and a line of words each). A planned recipe is only in the first. The Makeable now rule (meals only) applies to every result and count, with its switch « Inclure garde-manger et accompagnements » at the end of the count line; the availability counts keep the other filters.
+- **Tiles** (`ResultCard` with a `footer`): photo and time, name, the have-bar, "Rien à acheter" or "Il manque : …", then **Similar recipes** and **À acheter** (`TileActions`). Ready and not planned = **pink shadow** (`.fnd-card.go`). À acheter is green when everything missing is on the list, lighter green when "Show sales" is on and some of it is on sale.
+- **À acheter popover** (`GroceryPopover`, under the tile, a cream scrim behind): + Ajouter / ✓ Ajouté per missing item, the real sale pill (`saleFor`, Show sales on only), Add all · N. **On your list** (`ListStrip`, inside a tile that has an item on the list) shows the items on the real grocery list that some recipe here is missing, at most six, with × (the shared take-off toast) and a link to Grocery. Everything goes through the shared `grocery` prop, so Grocery always agrees.
+- **Similar recipes** from a tile or the pop-out sets the Main meal on this page; the yellow banner has a ✕ in its corner and no Cancel.
+- Props the page adds: `plannedDays` (recipe id → day, this week), `grocery`, `deals`, `showSales`, `onToggleSales`, `onSimilar`, `onOpenGrocery`.
 
 ## Where things live in `App.jsx`
 

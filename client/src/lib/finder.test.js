@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { rankRecipesForTray } from "./plannerSuggestions.js";
 import { haveCoresFor } from "./onHand.js";
-import { core } from "./similarRecipes.js";
+import { core, findRecipesByIngredients } from "./similarRecipes.js";
+import { buildCombinedHave } from "./onHand.js";
+import { isMakeableMeal } from "./mealSlots.js";
 import {
   availabilityOf,
   categoryOf,
@@ -9,7 +11,9 @@ import {
   findRecipes,
   groupIngredients,
   haveAndBuy,
+  makeableSections,
   plannedDayOf,
+  plannedDaysThisWeek,
   saleFor,
   shelvesWithItems,
   sharedWords,
@@ -205,6 +209,53 @@ describe("haveAndBuy", () => {
     const { have, buy } = haveAndBuy(recipes[0], haveCoresFor(inventory, []));
     expect(have.map((i) => i.name)).toEqual(["Chicken thighs", "Spinach"]);
     expect(buy.map((i) => i.name)).toEqual(["Orzo", "Garlic", "Parmesan", "Lemon"]);
+  });
+});
+
+describe("the Makeable page", () => {
+  const tile = (id, slot, total, missing) => ({
+    recipe: { id, mealSlot: slot, ingredients: [] },
+    stats: { totalCount: total, missingCount: missing, matchedCount: total - missing },
+    cores: [],
+  });
+  const ranked = [tile("soup", "dinner", 3, 0), tile("rice", "side", 2, 0), tile("cake", "dessert", 2, 1), tile("tacos", "dinner", 4, 2), tile("stew", null, 5, 4), tile("empty", "dinner", 0, 0)];
+  const find = (filters = {}) => findRecipes(ranked, { makeable: true, ...filters }, new Set());
+
+  it("leaves sides, desserts and recipes with no ingredients out of every result until pantry and sides are included", () => {
+    expect(find().tiles.map((x) => x.recipe.id)).toEqual(["soup", "tacos", "stew"]);
+    expect(find().counts).toEqual({ all: 3, ready: 1, few: 1 });
+    expect(find({ includeSides: true }).tiles.map((x) => x.recipe.id)).toEqual(["soup", "rice", "cake", "tacos", "stew"]);
+  });
+
+  it("agrees with Home's Makeable now on the same Inventory", () => {
+    const { ranked: realRanked, expiringCores } = rank();
+    const { tiles, counts } = findRecipes(realRanked, { makeable: true }, new Set(expiringCores));
+    const have = buildCombinedHave(inventory, []);
+    const home = findRecipesByIngredients(have, recipes, recipes.length).filter((m) => isMakeableMeal(m.recipe));
+    const few = (m) => m.missingIngredients.length >= 1 && m.missingIngredients.length <= 2;
+    expect(counts.ready).toBe(home.filter((m) => m.missingIngredients.length === 0).length);
+    // Home never lists a recipe where nothing is on hand; the page does (a two
+    // ingredient recipe with neither is "one or two short"). Everything else matches.
+    expect(tiles.filter((x) => availabilityOf(x.stats) === "few" && x.stats.matchedCount > 0).length).toBe(home.filter(few).length);
+  });
+
+  it("plannedDaysThisWeek keeps this week's meals only, soonest day, without leftovers", () => {
+    const entry = (id, weekStart, dayOfWeek, extra = {}) => ({ recipe: { id }, weekStart, dayOfWeek, ...extra });
+    const days = plannedDaysThisWeek(
+      [entry("a", "2026-10-05", 4), entry("a", "2026-10-05", 2), entry("b", "2026-10-12", 1), entry("c", "2026-10-05", 3, { isLeftover: true })],
+      "2026-10-05"
+    );
+    expect([...days]).toEqual([["a", 2]]);
+  });
+
+  it("makeableSections puts planned recipes only in the week, most missing first, then ready, few and shop", () => {
+    const { tiles } = find();
+    const sections = makeableSections(tiles, new Map([["soup", 1], ["tacos", 2]]));
+    expect(sections.map((x) => [x.id, x.tiles.map((t) => t.recipe.id)])).toEqual([
+      ["week", ["tacos", "soup"]],
+      ["shop", ["stew"]],
+    ]);
+    expect(makeableSections(tiles, new Map()).map((x) => x.id)).toEqual(["ready", "few", "shop"]);
   });
 });
 
