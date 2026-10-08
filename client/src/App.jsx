@@ -506,6 +506,14 @@ export default function App({ user, onLogout }) {
     setStapleCategories((prev) => ({ ...prev, [core]: category }));
   }
 
+  // A deal's card on the Flyers page: Home's "Open the flyer" and the deal card's
+  // "See in Flyers" on Makeable.
+  function openFlyerDeal(deal) {
+    setFlyerDealId(deal.id);
+    setPopout(null);
+    setTab("flyers");
+  }
+
   // Single entry point for opening the recipe detail modal. sharedWith is
   // only ever passed by the "good next addition" suggestion click — every
   // other caller passes just the recipe, which naturally clears any
@@ -1159,7 +1167,9 @@ export default function App({ user, onLogout }) {
             onToggleSales={toggleMakeableSales}
             onOpenPopout={openPopout}
             popoutId={popout?.recipeId}
-            onOpenGrocery={() => goToTab("grocery")}
+            onCook={openRecipeCard}
+            onPlan={requestPlan}
+            onOpenFlyerDeal={openFlyerDeal}
           />
         )}
 
@@ -1217,10 +1227,7 @@ export default function App({ user, onLogout }) {
               setTab("collection");
             }}
             // "Open the flyer" on Proteins on sale: that deal's card on Flyers.
-            onOpenFlyerDeal={(deal) => {
-              setFlyerDealId(deal.id);
-              setTab("flyers");
-            }}
+            onOpenFlyerDeal={openFlyerDeal}
             onPickRecipeFor={(slot) => {
               setWeekStart(currentWeekStart());
               setPlannerTarget(slot);

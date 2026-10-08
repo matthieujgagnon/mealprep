@@ -40,7 +40,7 @@ const markColor = (loc) => loc.evaluate((el) => getComputedStyle(el).backgroundC
 
 async function openPopout(page, title) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.locator(".riso-recipe-card", { hasText: title }).click();
+  await page.locator(".rpc", { hasText: title }).click();
   return page.getByRole("dialog", { name: title });
 }
 

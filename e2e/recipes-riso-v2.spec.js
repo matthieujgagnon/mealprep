@@ -5,8 +5,9 @@ import { langSwitch } from "./account-menu.js";
 const prisma = new PrismaClient();
 
 // Riso v2 Recipes: the search bar with "+ New recipe" in it, the bulleted
-// "how it works" strip, the chip order, every filter and menu alone and
-// together, on a desktop and on a phone, and Home's "See them".
+// "how it works" strip, the row of chips (All, Quick, Meal ▾, Protein ▾; design:
+// docs/design/riso-v2-recipe-cards), every filter and menu alone and together,
+// the photo cards, on a desktop and on a phone, and Home's "See them".
 
 async function signUp(page) {
   await page.goto("/");
@@ -35,7 +36,7 @@ const goRecipes = async (page) => {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await expect(page.locator(".rv2-grid")).toBeVisible();
 };
-const names = (page) => page.locator(".riso-recipe-card-name");
+const names = (page) => page.locator(".rpc-title");
 const menu = (page, label) => page.getByRole("button", { name: new RegExp(`^${label}`) });
 async function choose(page, label, option) {
   await menu(page, label).click();
@@ -63,23 +64,24 @@ test.describe("on a desktop", () => {
     await expect(page.getByRole("heading", { name: "New recipe." })).toBeVisible();
   });
 
-  test("the chips run All, a rule, Meals and the meal types, a rule, Makeable now and Uses expiring", async ({ page }) => {
+  test("the chips are All, Quick, Meal and Protein; Makeable now and Uses expiring are gone", async ({ page }) => {
     await signUp(page);
     await seedRecipes(page);
     await goRecipes(page);
-    const labels = await page.locator(".rv2-chips .rv2-chip").evaluateAll((els) => els.map((e) => e.firstChild.textContent));
-    expect(labels[0]).toBe("All");
-    expect(labels[1]).toBe("Meals");
-    expect(labels.slice(-2)).toEqual(["Makeable now", "Uses expiring"]);
-    expect(labels).toContain("Breakfast");
-    expect(labels).toContain("Supper");
-    await expect(page.locator(".rv2-chips-rule")).toHaveCount(2);
-    // The rules sit where the groups change: after All, and before Makeable now.
-    const order = await page.locator(".rv2-chips").evaluate((root) =>
-      [...root.querySelectorAll(".rv2-chip, .rv2-chips-rule")].map((e) => (e.classList.contains("rv2-chips-rule") ? "|" : e.firstChild.textContent))
-    );
-    expect(order[1]).toBe("|");
-    expect(order[order.length - 3]).toBe("|");
+    const chips = page.locator(".rv2-chips");
+    await expect(chips.locator(".rv2-chip")).toHaveText(["All", "Quick"]);
+    await expect(chips.locator(".rv2-drop")).toHaveText([/^MEAL/, /^PROTEIN/]);
+    await expect(chips.getByRole("button", { name: "All", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: /Makeable now|Uses expiring/ })).toHaveCount(0);
+    // Time and Sort stay beside the tabs.
+    await expect(page.locator(".rv2-toolbar .rv2-drop")).toHaveText([/^TIME/, /^SORT/]);
+
+    // Quick is half an hour or less (the finder's rule), All puts everything back.
+    await chips.getByRole("button", { name: "Quick", exact: true }).click();
+    await expect(names(page)).toHaveCount(3); // wrap 20, salmon 30, oats 5
+    await expect(chips.getByRole("button", { name: "All", exact: true })).toHaveAttribute("aria-pressed", "false");
+    await chips.getByRole("button", { name: "All", exact: true }).click();
+    await expect(names(page)).toHaveCount(5);
   });
 
   test("Protein, Time, a meal chip and a search work alone, together, and clear together", async ({ page }) => {
@@ -92,7 +94,7 @@ test.describe("on a desktop", () => {
     await expect(names(page)).toHaveCount(3);
     await choose(page, "TIME", "Under 45 min");
     await expect(names(page)).toHaveCount(2); // the 3 h soup drops out
-    await page.getByRole("button", { name: /^Supper/ }).click();
+    await choose(page, "MEAL", /^Supper/);
     await expect(names(page)).toHaveText(["Chicken bowls"]);
     await expect(page.locator(".rv2-count")).toHaveText("1 RECIPE MATCHES");
     await page.locator(".riso-recipes-searchbar input").fill("wrap");
@@ -103,6 +105,7 @@ test.describe("on a desktop", () => {
     await expect(names(page)).toHaveCount(5);
     await expect(menu(page, "PROTEIN")).toContainText("Any protein");
     await expect(menu(page, "TIME")).toContainText("Any time");
+    await expect(menu(page, "MEAL")).not.toHaveClass(/set/);
     await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
 
     // Sort on its own: quickest first, the one with no time last is not in this set.
@@ -110,11 +113,26 @@ test.describe("on a desktop", () => {
     await expect(names(page).first()).toHaveText("Oat bowl");
   });
 
-  test("nothing is laid over a card's photo (the planned day lives in the recipe pop-out, not here)", async ({ page }) => {
+  test("a card is a 3:4 photo: meal, protein and time on top, the title at the bottom, a meal-colour line; all the same size", async ({ page }) => {
     await signUp(page);
     await seedRecipes(page);
     await goRecipes(page);
-    await expect(page.locator(".riso-recipe-card-photo *:not(img)")).toHaveCount(0);
+    const bowls = page.locator(".rpc", { hasText: "Chicken bowls" });
+    await expect(bowls.locator(".rpc-cap-meal")).toHaveText("Supper");
+    await expect(bowls.locator(".rpc-cap-protein")).toHaveText("Chicken");
+    await expect(bowls.locator(".rpc-cap-time")).toHaveText("35 MIN");
+    await expect(bowls.locator(".rpc-line")).toHaveCSS("background-color", "rgb(35, 35, 255)"); // supper is blue
+    await expect(page.locator(".rpc", { hasText: "Chicken wrap" }).locator(".rpc-line")).toHaveCSS("background-color", "rgb(255, 72, 176)"); // lunch is pink
+    await expect(page.locator(".rpc", { hasText: "Oat bowl" }).locator(".rpc-cap-protein")).toHaveCount(0); // no protein, no line
+    // The old card's pills, servings and "to buy" line are not here.
+    await expect(page.locator(".rpc .riso-pill, .rpc .rpc-buy")).toHaveCount(0);
+    // All the cards have the same size, 3:4.
+    const boxes = await page.locator(".rpc").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => [Math.round(r.width), Math.round(r.height)]));
+    expect(new Set(boxes.map((b) => b.join("x"))).size).toBe(1);
+    expect(Math.abs(boxes[0][1] / boxes[0][0] - 4 / 3)).toBeLessThan(0.02);
+    // Tapping a card opens the recipe's pop-out.
+    await bowls.click();
+    await expect(page.getByRole("dialog", { name: "Chicken bowls" })).toBeVisible();
   });
 });
 
@@ -127,7 +145,10 @@ test.describe("on a phone, in French", () => {
     await goRecipes(page);
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     await expect(names(page)).toHaveCount(5);
-    await expect(page.locator(".rv2-chips")).toHaveCount(0);
+    // The same chips as on a computer: Tout, Rapide, Repas, Protéine; two cards across.
+    await expect(page.locator(".rv2-chips .rv2-chip")).toHaveText(["Tout", "Rapide"]);
+    await expect(page.locator(".rv2-chips .rv2-drop")).toHaveText([/^REPAS/, /^PROTÉINE/]);
+    expect(await page.locator(".rv2-grid").evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(2);
 
     await choose(page, "PROTÉINE", "Poulet");
     await expect(names(page)).toHaveCount(3);
@@ -139,7 +160,7 @@ test.describe("on a phone, in French", () => {
 
     await page.getByRole("button", { name: "Effacer les filtres" }).click();
     await expect(names(page)).toHaveCount(5);
-    await expect(menu(page, "REPAS")).toContainText("Toutes");
+    await expect(menu(page, "REPAS")).not.toHaveClass(/set/);
     await choose(page, "TRI", "Les plus rapides");
     await expect(names(page).first()).toHaveText("Oat bowl");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

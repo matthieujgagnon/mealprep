@@ -5,9 +5,11 @@ import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { Pill, TimePill } from "./RisoPills.jsx";
 import { FinderPicker } from "./FinderPicker.jsx";
-import { GroceryPopover, ListStrip, SectionHeader, TileActions } from "./FinderTiles.jsx";
+import { SectionHeader } from "./FinderTiles.jsx";
+import { MakeableCard } from "./MakeableCard.jsx";
 import { PROTEINS } from "../lib/proteins.js";
 import { RECIPE_SLOTS, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { soonItemFor } from "../lib/photoCard.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
 import {
   AVAILABILITY,
@@ -29,8 +31,9 @@ import { t } from "../i18n/index.js";
 // ingredients. The Planner uses it as its bottom panel (layout="panel") and
 // inside a bottom card (layout="sheet"); Makeable is layout="page"
 // (docs/design/riso-v2-makeable/): the results are in sections (planned this
-// week, ready, one or two short, needs a shop), each tile has Similar recipes and
-// À acheter, and Show sales and the Makeable now rule apply to the whole page.
+// week, ready, one or two short, needs a shop), each one a MakeableCard
+// (docs/design/riso-v2-recipe-cards/), and Show sales and the Makeable now rule
+// apply to the whole page.
 //
 // What it shows is kept by `finder`, from useFinder(), so the screen around it
 // can steer it. The data comes in as props: the recipes, the inventory, what is
@@ -39,14 +42,11 @@ import { t } from "../i18n/index.js";
 
 const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 
-// One result: photo with the time and a round + (adds it to the plan), name,
-// the have bar and what is left to buy. Dragging it (when `draggable`) onto the
-// Planner's board puts it in a slot. Clicking it opens the pop-out. On the
-// Makeable page (`page`, `go`, `footer`) a tile with something to buy says nothing
-// about it under the bar (the À acheter popover and the pop-out list it), a tile
-// with nothing to buy and not planned this week (`go`) has a pink shadow, and
-// `footer` holds its buttons.
-function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, page = false, go = false, footer }) {
+// One result in the Planner's panel: photo with the time and a round + (adds it
+// to the plan), name, the have bar and what is left to buy. Dragging it (when
+// `draggable`) onto the Planner's board puts it in a slot. Clicking it opens the
+// pop-out. (The Makeable page draws MakeableCard instead.)
+function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
   const { recipe, stats } = tile;
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `tray-${recipe.id}`,
@@ -61,7 +61,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, page = fal
   return (
     <div
       ref={setNodeRef}
-      className={`riso-recipe-card fnd-card${nothingToBuy && !page ? " ready" : ""}${go ? " go" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
+      className={`riso-recipe-card fnd-card${nothingToBuy ? " ready" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
       {...dragProps}
     >
       <button
@@ -81,19 +81,16 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd, page = fal
               <span className="riso-recipe-card-havebar-fill" style={{ width: `${pct}%` }} />
             </span>
           )}
-          {(nothingToBuy || !page) && (
-            <span className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
-              {nothingToBuy
-                ? t("tray.nothingToBuy")
-                : stats.totalCount > 0
-                  ? t("pills.toBuy", { count: stats.missingCount })
-                  : t("tray.noIngredients")}
-            </span>
-          )}
+          <span className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
+            {nothingToBuy
+              ? t("tray.nothingToBuy")
+              : stats.totalCount > 0
+                ? t("pills.toBuy", { count: stats.missingCount })
+                : t("tray.noIngredients")}
+          </span>
           {reason && <span className="fnd-card-reason">{reason}</span>}
         </span>
       </button>
-      {footer}
       {onAdd && (
         <button
           type="button"
@@ -205,13 +202,13 @@ export function Finder({
   deals,
   showSales = false,
   onToggleSales,
-  onSimilar,
-  onOpenGrocery,
+  onCook,
+  onPlan,
+  onOpenFlyerDeal,
 }) {
   const sheet = layout === "sheet";
   const page = layout === "page";
   const [weekOpen, setWeekOpen] = useState(false); // "Meals of the week", closed to begin with
-  const [listOpenId, setListOpenId] = useState(null); // the tile whose À acheter popover is open
   const phone = useIsPhone();
   const [menu, setMenu] = useState(null); // null | "meal" | "protein"
   const [includeSides, setIncludeSides] = useIncludeSides();
@@ -273,13 +270,6 @@ export function Finder({
     };
   }, [menu]);
 
-  useEffect(() => {
-    if (!listOpenId) return undefined;
-    const onKey = (e) => e.key === "Escape" && setListOpenId(null);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [listOpenId]);
-
   const showResults = sheet || page || finder.open || finder.filtered || !!mainRecipe;
   const filtersOn = finder.filtered;
 
@@ -300,60 +290,50 @@ export function Finder({
     return null;
   }
 
-  const openRecipe = (recipe, from) => {
-    setListOpenId(null);
-    onOpenPopout(recipe, from);
-  };
+  const openRecipe = (recipe, from) => onOpenPopout(recipe, from);
 
-  // Makeable page: what each tile is missing (as the recipe writes it), the
-  // sections, and the grocery list's items that some recipe here is missing.
-  const buyNamesOf = (tile) => tile.stats.missing.map((c) => nameOf(c));
+  // Makeable page: the sections, and for each card the soonest thing it uses that
+  // goes off within 3 days (the pink strip).
   const sections = useMemo(() => (page ? makeableSections(tiles, plannedDays || new Map()) : []), [page, tiles, plannedDays]);
-  const listedNames = useMemo(() => {
-    if (!page || !grocery) return [];
-    const names = new Map();
-    for (const tile of tiles) for (const name of buyNamesOf(tile)) if (!names.has(name) && grocery.isOnList(name)) names.set(name, name);
-    return [...names.keys()];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, tiles, grocery, nameOf]);
+  const soonByRecipe = useMemo(() => {
+    const map = new Map();
+    if (!page) return map;
+    const planned = upcomingEntries || [];
+    for (const tile of tiles) map.set(tile.recipe.id, soonItemFor(tile.recipe, pantryInventory, planned, recipes));
+    return map;
+  }, [page, tiles, pantryInventory, upcomingEntries, recipes]);
 
-  function renderTile(tile, sectionId) {
-    const buy = buyNamesOf(tile);
-    const popOpen = listOpenId === tile.recipe.id;
-    const own = buy.filter((name) => grocery.isOnList(name));
-    const strip = own.length > 0 ? [...own, ...listedNames.filter((name) => !own.includes(name))] : [];
+  function renderTile(tile) {
     return (
-      <div key={tile.recipe.id} className={`fnd-tile${popOpen ? " open" : ""}`}>
-        <ResultCard
-          tile={tile}
-          reason={reasonFor(tile)}
-          isOpen={openId === tile.recipe.id || popOpen}
-          onOpen={openRecipe}
-          go={sectionId === "ready"}
-          page
-          footer={
-            <div className="fnd-card-foot">
-              <TileActions
-                buy={buy}
-                grocery={grocery}
-                deals={deals}
-                showSales={showSales}
-                popOpen={popOpen}
-                short={phone}
-                onSimilar={() => {
-                  setListOpenId(null);
-                  onSimilar(tile.recipe);
-                }}
-                onToggleBuy={() => setListOpenId(popOpen ? null : tile.recipe.id)}
-              />
-              {strip.length > 0 && <ListStrip names={strip} grocery={grocery} onOpenGrocery={onOpenGrocery} />}
-            </div>
-          }
-        />
-        {popOpen && <GroceryPopover buy={buy} grocery={grocery} deals={deals} showSales={showSales} onAdd={grocery.addWithUndo} />}
-      </div>
+      <MakeableCard
+        key={tile.recipe.id}
+        tile={tile}
+        soon={soonByRecipe.get(tile.recipe.id) || null}
+        reason={reasonFor(tile)}
+        grocery={grocery}
+        deals={deals}
+        showSales={showSales}
+        onOpen={openRecipe}
+        onCook={onCook}
+        onPlan={onPlan}
+        onOpenCirculaires={onOpenFlyerDeal}
+      />
     );
   }
+
+  // On the Makeable page on a phone the chip row pins right under the sticky app
+  // header (the same measure Inventory's shelf pill uses).
+  useEffect(() => {
+    if (!page || !phone) return undefined;
+    const header = document.querySelector(".app-header");
+    const root = finder.rootRef.current;
+    if (!header || !root) return undefined;
+    const measure = () => root.style.setProperty("--fnd-sticky-top", `${header.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [page, phone, finder.rootRef]);
 
   // Choosing Similar recipes scrolls the page so the Main meal banner is fully
   // in view, right under the board (its top below the app header).
@@ -391,7 +371,6 @@ export function Finder({
   const compact = !sheet && !page; // a computer's panel and a phone's panel have the grab bar, the hint and Browse; the sheet and the page don't
   return (
     <div ref={finder.rootRef} className={`fnd fnd-${layout}${showResults ? " is-open" : ""}`}>
-      {page && listOpenId && <div className="fnd-scrim" onClick={() => setListOpenId(null)} />}
       {targetNotice && <div className="fnd-notice">{targetNotice}</div>}
       {compact && <span className="fnd-grab" aria-hidden="true" />}
       {compact && (
@@ -487,39 +466,42 @@ export function Finder({
       </div>
 
       <div className="fnd-filters" ref={menusRef}>
-        <div className="fnd-seg" role="group" aria-label={t("finder.availAria")}>
-          {AVAILABILITY.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={`fnd-seg-btn${finder.avail === id ? " active" : ""}`}
-              aria-pressed={finder.avail === id}
-              onClick={() => finder.setAvail(compact && phone && finder.avail === id && id !== "all" ? "all" : id)}
-            >
-              <span className={`fnd-dot ${id === "all" ? "ink" : id === "ready" ? "green" : "yellow"}`} aria-hidden="true" />
-              {t(page && phone ? `finder.availShort.${id}` : `finder.avail.${id}`)}
-              <span className="fnd-seg-count">{counts[id]}</span>
-            </button>
-          ))}
+        {/* The chips are one row of their own (on the Makeable phone page it is the sticky, sideways-scrolling one); the menus stay outside it so they can open. */}
+        <div className="fnd-chips">
+          <div className="fnd-seg" role="group" aria-label={t("finder.availAria")}>
+            {AVAILABILITY.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`fnd-seg-btn${finder.avail === id ? " active" : ""}`}
+                aria-pressed={finder.avail === id}
+                onClick={() => finder.setAvail(compact && phone && finder.avail === id && id !== "all" ? "all" : id)}
+              >
+                <span className={`fnd-dot ${id === "all" ? "ink" : id === "ready" ? "green" : "yellow"}`} aria-hidden="true" />
+                {t(page && phone ? `finder.availShort.${id}` : `finder.avail.${id}`)}
+                <span className="fnd-seg-count">{counts[id]}</span>
+              </button>
+            ))}
+          </div>
+          {!page && finder.avail === "ready" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
+          <Pill size="chip" className="fnd-expiring" selected={finder.expiring} onClick={() => finder.setExpiring(!finder.expiring)}>
+            <span className="fnd-dot hot" aria-hidden="true" />
+            {t("finder.expiring")}
+          </Pill>
+          <Pill size="chip" className="fnd-quick" selected={finder.quick} onClick={() => finder.setQuick(!finder.quick)}>
+            <span className="fnd-dot ring" aria-hidden="true" />
+            {t("finder.quick")}
+          </Pill>
+          {page && (
+            <>
+              <span className="fnd-divider" aria-hidden="true" />
+              <Pill size="chip" className="fnd-sales" selected={showSales} onClick={onToggleSales}>
+                <span className="fnd-dot green" aria-hidden="true" />
+                {t("makeable.showSales")}
+              </Pill>
+            </>
+          )}
         </div>
-        {!page && finder.avail === "ready" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
-        <Pill size="chip" className="fnd-expiring" selected={finder.expiring} onClick={() => finder.setExpiring(!finder.expiring)}>
-          <span className="fnd-dot hot" aria-hidden="true" />
-          {t("finder.expiring")}
-        </Pill>
-        <Pill size="chip" className="fnd-quick" selected={finder.quick} onClick={() => finder.setQuick(!finder.quick)}>
-          <span className="fnd-dot ring" aria-hidden="true" />
-          {t("finder.quick")}
-        </Pill>
-        {page && (
-          <>
-            <span className="fnd-divider" aria-hidden="true" />
-            <Pill size="chip" className="fnd-sales" selected={showSales} onClick={onToggleSales}>
-              <span className="fnd-dot green" aria-hidden="true" />
-              {t("makeable.showSales")}
-            </Pill>
-          </>
-        )}
         <div className="fnd-menus">
           <PillMenu
             id="meal"
@@ -594,7 +576,7 @@ export function Finder({
                   {open && (
                     <>
                       <p className="fnd-sec-desc">{t(`finder.sectionsNote.${section.id}`)}</p>
-                      <div className="fnd-grid">{section.tiles.map((tile) => renderTile(tile, section.id))}</div>
+                      <div className="fnd-grid">{section.tiles.map(renderTile)}</div>
                     </>
                   )}
                 </section>

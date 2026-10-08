@@ -625,20 +625,19 @@ test("a recipe's sale pill is only for a real sale and opens the deal; on hand n
   await expect(page.locator(".riso-deal-detail")).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // Makeable: the same real deal as a green pill in the À acheter popover, only with Show sales on (remembered).
+  // Makeable: the same real deal as a green % on the pill; Show sales is on to begin with, and turning it off is remembered.
   await page.goto("/");
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  const tile = page.locator(".fnd-tile", { hasText: "Mango chicken" });
-  await tile.getByRole("button", { name: "To buy", exact: true }).click();
-  await expect(page.locator(".fnd-buyrow-sale")).toHaveCount(0);
-  await page.locator(".fnd-scrim").click({ position: { x: 5, y: 5 } });
-  await page.getByRole("button", { name: "Show sales", exact: true }).click();
-  await tile.getByRole("button", { name: "To buy", exact: true }).click();
-  await expect(page.locator(".fnd-buyrow-sale")).toHaveCount(1);
-  await expect(page.locator(".fnd-buyrow", { hasText: "Mangoes" }).locator(".fnd-buyrow-sale")).toContainText("Maxi");
+  const card = page.locator(".mkc", { hasText: "Mango chicken" });
+  const sales = page.getByRole("button", { name: "Show sales", exact: true });
+  await expect(sales).toHaveAttribute("aria-pressed", "true");
+  await expect(card.locator(".mkc-sale")).toHaveCount(1); // the mangoes only: the beans are at their regular price
+  await expect(card.locator(".mkc-pill", { hasText: "mangoes" }).locator(".mkc-sale")).toBeVisible();
+  await sales.click();
+  await expect(card.locator(".mkc-sale")).toHaveCount(0);
   await page.reload();
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Show sales", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Show sales", exact: true })).toHaveAttribute("aria-pressed", "false");
 });
 
 test("each deal says whether to buy it, and Also on sale opens the other store's card", async ({ page }) => {

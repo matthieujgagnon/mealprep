@@ -25,12 +25,8 @@ export const HELP_COPIES = {
   addProteinToList: { kind: "pill", cls: "riso-protein-add", label: "proteins.addToList" },
 
   // Recipes
-  expiringChip: { kind: "pill", cls: "riso-pill size-tag tone-pink", label: "recipes.d.usesExpiring" },
-  saleChip: { kind: "pill", cls: "riso-pill size-tag tone-green", label: "recipes.d.onSale" },
-  filterAll: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.all" },
-  filterMakeable: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.makeable" },
-  filterExpiring: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.expiring" },
-  filterMeals: { kind: "pill", cls: "riso-filter-chip", label: "recipes.filters.meals" },
+  filterAll: { kind: "pill", cls: "riso-filter-chip", label: "recipes.d.chipAll" },
+  filterQuick: { kind: "pill", cls: "riso-filter-chip", label: "finder.quick" },
   sourceCookbook: { kind: "pill", cls: "rv2-tab", label: "recipes.sources.cookbook" },
   sourceImported: { kind: "pill", cls: "rv2-tab", label: "recipes.sources.imported" },
   importRecipe: { kind: "pill", cls: "rv2-new", label: "recipes.importRecipe", strong: true },
@@ -103,8 +99,10 @@ export const HELP_COPIES = {
   finderReady: { kind: "pill", cls: "riso-pill size-chip", label: "finder.avail.ready" },
   finderFew: { kind: "pill", cls: "riso-pill size-chip", label: "finder.avail.few" },
   showSales: { kind: "pill", cls: "riso-pill size-chip", label: "makeable.showSales" },
-  tileToBuy: { kind: "pill", cls: "fnd-act buy", label: "finder.toBuyButton" },
-  tileSimilar: { kind: "pill", cls: "fnd-act", label: "finder.similar" },
+  cardCook: { kind: "pill", cls: "mkc-btn main", label: "makeable.card.cook", strong: true },
+  cardPlan: { kind: "pill", cls: "mkc-btn", label: "makeable.card.plan" },
+  cardBuy: { kind: "pill", cls: "mkc-btn main", label: "makeable.card.buy", strong: true },
+  cardAdded: { kind: "pill", cls: "mkc-btn done", label: "makeable.card.added" },
 
   // Grocery
   viewTabs: {

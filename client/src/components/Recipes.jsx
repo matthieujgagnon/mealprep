@@ -1,90 +1,65 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
-import { core, findExpiringSoonInRecipe, findSaleDeal } from "../lib/similarRecipes.js";
+import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
-import { useDeals } from "../lib/dealsStore.js";
-import { HintStrip, IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
-import { MealChip, Pill, ServesPill, TimePill } from "./RisoPills.jsx";
+import { HintStrip, PillMenu } from "./RisoControls.jsx";
+import { RecipePhotoCard } from "./RecipePhotoCard.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
-import { RecipePhoto } from "./RecipePhoto.jsx";
 import { matchesSearch } from "../lib/recipeSearch.js";
+import { QUICK_MINUTES } from "../lib/finder.js";
+import { captionTime, mealLineColor } from "../lib/photoCard.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
 import { RECIPE_SLOTS, inMealGroup, isMakeableMeal, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { TIME_FILTERS, isUrlLike, matchesTime, proteinOfRecipe, sortRecipes } from "../lib/recipesView.js";
 import { t } from "../i18n/index.js";
 
 // The Recipes page, on a phone and on a desktop (design handoff: docs/design/
-// riso-v2, "Riso v2 Recipes"). One layout for both: the search bar with
-// "+ New recipe" in it, the "how it works" strip, Cookbook / Imported tabs,
-// the Protein, Time and Sort menus, the meal chips and a grid of cards (two
-// across on a phone). Below 768px the meal chips fold into a fourth menu,
-// "Meal", and the four menus share two rows; everything else is the same.
+// riso-v2, "Riso v2 Recipes", and the cards from docs/design/riso-v2-recipe-cards/).
+// One layout for both: the search bar with "+ New recipe" in it, the "how it
+// works" strip, Cookbook / Imported tabs with the Time and Sort menus, one row of
+// chips (Tout, Rapide, Repas ▾, Protéine ▾) and a grid of photo cards (two
+// across on a phone).
 
 const SORTS = ["recent", "fewest", "quickest"];
 const SOURCES = ["cookbook", "imported"];
 const sourceOf = (recipe) => (recipe.inCookbook ? "cookbook" : "imported");
 
-// The meal chips are single-choice: the page's one `filter` (which Home's "See
-// them" also sets). "all" stands alone; then Meals and the meal types; then
-// Makeable now and Uses expiring.
+// The Meal menu is single-choice: the page's one `filter` (which Home's "See
+// them" also sets). "all" stands alone; then Meals and the meal types.
 const chip = (id, label) => ({ id, get label() { return label(); } });
 const ALL_CHIP = chip("all", () => t("recipes.filters.all"));
 const MEAL_CHIPS = [
   chip("meals", () => t("recipes.filters.meals")),
   ...RECIPE_SLOTS.map((slot) => chip(`slot:${slot.id}`, () => t(`recipes.mealTypes.${slot.id}`))),
 ];
-const EXTRA_CHIPS = ["makeable", "expiring"].map((id) => chip(id, () => t(`recipes.filters.${id}`)));
 
-// One card: the photo, the title, then what you need to pick a recipe at a
-// glance (time, servings, the meal type, the main protein, and the "on sale" /
-// "uses expiring" flags) as the shared Riso pills, and one small line at the
-// bottom: how many things to buy. Cards in a row stretch to the same height;
-// the line stays at the bottom.
-function RecipeCard({ recipe, stats, usesExpiring, onSale, onClick }) {
-  const totalTime = recipeTotalMinutes(recipe);
-  const nothingToBuy = stats.totalCount > 0 && stats.missingCount === 0;
+// One card (RecipePhotoCard, the same photo card as Makeable's): the meal, the
+// protein and the time over the top of the photo, the title over a dark gradient
+// at the bottom, and a thin line in the meal's colour. Tapping it opens the
+// recipe's pop-out. Cards are all the same size (3:4).
+function RecipeCard({ recipe, onOpen }) {
   const slot = recipeSlot(recipe);
   const protein = proteinOfRecipe(recipe);
-
+  const time = captionTime(recipeTotalMinutes(recipe));
   return (
-    <button type="button" className={`riso-recipe-card${nothingToBuy ? " ready" : ""}`} onClick={(e) => onClick(recipe, e.currentTarget.getBoundingClientRect())}>
-      <div className="riso-recipe-card-photo">
-        {recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" /> : null}
-      </div>
-      <div className="riso-recipe-card-body">
-        <div className="riso-recipe-card-name">{recipe.title}</div>
-        <div className="rv2-card-meta">
-          {totalTime > 0 ? (
-            <TimePill minutes={totalTime} />
-          ) : (
-            <Pill tone="dash">
-              <span className="riso-pill-clock" aria-hidden="true">⏱</span>
-              {t("recipes.addTime")}
-            </Pill>
-          )}
-          <ServesPill count={recipe.baseServings} />
-        </div>
-        {(slot || protein) && (
-          <div className="rv2-card-meta">
-            <MealChip mealType={slot} size="tag" />
-            {protein && <Pill size="tag">{protein.label}</Pill>}
-          </div>
-        )}
-        {(usesExpiring || onSale) && (
-          <div className="rv2-card-tags">
-            {usesExpiring && <Pill tone="pink">{t("recipes.d.usesExpiring")}</Pill>}
-            {onSale && <Pill tone="green">{t("recipes.d.onSale")}</Pill>}
-          </div>
-        )}
-        <div className="riso-recipe-card-spacer" />
-        {stats.totalCount > 0 && (
-          <div className={`rv2-card-buy${nothingToBuy ? " ready" : ""}`}>
-            {nothingToBuy ? t("recipes.nothingToBuy") : t("pills.toBuy", { count: stats.missingCount })}
-          </div>
-        )}
-      </div>
-    </button>
+    <RecipePhotoCard
+      variant="grid"
+      title={recipe.title}
+      photoUrl={recipe.photoUrl}
+      lineColor={mealLineColor(slot)}
+      openLabel={t("planner.open", { title: recipe.title })}
+      onOpen={(rect) => onOpen(recipe, rect)}
+      caption={
+        <>
+          <span className="rpc-cap-left">
+            {slot && <span className="rpc-cap-meal">{t(`recipes.mealTypes.${slot}`)}</span>}
+            {protein && <span className="rpc-cap-protein">{protein.label}</span>}
+          </span>
+          {time && <span className="rpc-cap-time">{time}</span>}
+        </>
+      }
+    />
   );
 }
 
@@ -120,13 +95,12 @@ export function Recipes({
     return count("cookbook") === 0 && count("imported") > 0 ? "imported" : "cookbook";
   });
   const [time, setTime] = useState("any");
+  const [quick, setQuick] = useState(false); // Rapide: half an hour or less, like the finder
   const [sortIndex, setSortIndex] = useState(0);
   const [menu, setMenu] = useState(null); // null | "meal" | "protein" | "time" | "sort"
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
-  const menusRef = useRef(null);
-  const { deals } = useDeals();
-  const [includeSides, setIncludeSides] = useIncludeSides();
+  const [includeSides] = useIncludeSides();
 
   const allRecipes = useMemo(() => recipes.filter((r) => !r.isPlaceholder), [recipes]);
   const query = search.trim();
@@ -134,30 +108,24 @@ export function Recipes({
 
   const haveCores = useMemo(() => new Set(buildCombinedHave(pantryInventory, customStaples).map((n) => core(n)).filter(Boolean)), [pantryInventory, customStaples]);
 
-  // What each recipe is, worked out once per change: makeable, uses expiring,
-  // on sale (a real saving on any ingredient), and its stats.
+  // What each recipe is, worked out once per change (for the count line at the top):
+  // makeable and uses expiring.
   const info = useMemo(() => {
     const map = new Map();
     for (const r of allRecipes) {
       const stats = recipeHaveStats(r, haveCores);
       map.set(r.id, {
-        stats,
         ready: stats.totalCount > 0 && stats.missingCount === 0,
         expiring: findExpiringSoonInRecipe(r, pantryInventory, plannerEntries, allRecipes, 3).size > 0,
-        onSale: (r.ingredients || []).some((i) => i?.name && findSaleDeal(i.name, deals)),
       });
     }
     return map;
-  }, [allRecipes, haveCores, pantryInventory, plannerEntries, deals]);
+  }, [allRecipes, haveCores, pantryInventory, plannerEntries]);
 
   function matchesChip(recipe, chipId) {
     switch (chipId) {
       case "all":
         return true;
-      case "makeable":
-        return info.get(recipe.id).ready && isMakeableMeal(recipe, includeSides);
-      case "expiring":
-        return info.get(recipe.id).expiring;
       case "meals":
         return inMealGroup(recipe, "meals");
       default:
@@ -168,13 +136,14 @@ export function Recipes({
   const proteinKind = PROTEINS.find((p) => p.id === protein) || null;
   const searching = query !== "" && !isUrl;
 
-  // Everything except the meal chip. The chips' counts use this, so a chip
-  // says how many you'd get by picking it with the other filters kept.
+  // Everything except the Meal menu. Its counts use this, so a choice says how
+  // many you'd get by picking it with the other filters kept.
   const beforeChip = allRecipes.filter(
     (r) =>
       sourceOf(r) === tab &&
       (!proteinKind || recipeUsesProtein(r, proteinKind)) &&
       matchesTime(r, time) &&
+      (!quick || (recipeTotalMinutes(r) > 0 && recipeTotalMinutes(r) <= QUICK_MINUTES)) &&
       (!searching || matchesSearch(r, query))
   );
   const chipCount = (chipId) => beforeChip.filter((r) => matchesChip(r, chipId)).length;
@@ -184,12 +153,20 @@ export function Recipes({
   const makeableCount = allRecipes.filter((r) => info.get(r.id).ready && isMakeableMeal(r, includeSides)).length;
   const expiringCount = allRecipes.filter((r) => info.get(r.id).expiring).length;
 
-  const filtered = filter !== "all" || !!proteinKind || time !== "any" || searching;
+  const filtered = filter !== "all" || !!proteinKind || time !== "any" || quick || searching;
+  // Tout: no meal, no protein and not Rapide (the search and the Time menu are their own).
+  const everything = filter === "all" && !proteinKind && !quick;
   function clearFilters() {
     onFilterChange("all");
     onProteinChange(null);
     setTime("any");
+    setQuick(false);
     onSearchChange("");
+  }
+  function pickEverything() {
+    onFilterChange("all");
+    onProteinChange(null);
+    setQuick(false);
   }
 
   function pickTab(id) {
@@ -197,11 +174,11 @@ export function Recipes({
     onFilterChange("all");
   }
 
-  // One menu open at a time; a click outside, or Escape, closes it.
+  // One menu open at a time; a click outside any menu, or Escape, closes it.
   useEffect(() => {
     if (!menu) return undefined;
     const onDown = (e) => {
-      if (!menusRef.current?.contains(e.target)) setMenu(null);
+      if (!e.target.closest?.(".rv2-menu-wrap")) setMenu(null);
     };
     const onKey = (e) => e.key === "Escape" && setMenu(null);
     document.addEventListener("mousedown", onDown);
@@ -211,11 +188,6 @@ export function Recipes({
       document.removeEventListener("keydown", onKey);
     };
   }, [menu]);
-
-  // The Meal menu only exists on a phone; going wide closes it.
-  useEffect(() => {
-    if (!phone) setMenu((cur) => (cur === "meal" ? null : cur));
-  }, [phone]);
 
   async function handleImportSubmit(e) {
     e.preventDefault();
@@ -230,6 +202,7 @@ export function Recipes({
       onFilterChange("all");
       onProteinChange(null);
       setTime("any");
+      setQuick(false);
       setTab("imported");
       setSortIndex(0);
       onToast(t("recipes.d.importedToast"));
@@ -240,8 +213,8 @@ export function Recipes({
     }
   }
 
-  const mealOptions = [ALL_CHIP, ...MEAL_CHIPS, ...EXTRA_CHIPS].map((c) => ({ id: c.id, label: `${c.label} · ${chipCount(c.id)}` }));
-  const currentMeal = [ALL_CHIP, ...MEAL_CHIPS, ...EXTRA_CHIPS].find((c) => c.id === filter) || ALL_CHIP;
+  const mealOptions = [ALL_CHIP, ...MEAL_CHIPS].map((c) => ({ id: c.id, label: `${c.label} · ${chipCount(c.id)}` }));
+  const currentMeal = [ALL_CHIP, ...MEAL_CHIPS].find((c) => c.id === filter) || ALL_CHIP;
   const proteinOptions = [{ id: "", label: t("recipes.d.anyProtein") }, ...PROTEINS.map((p) => ({ id: p.id, label: p.label }))];
   const timeOptions = TIME_FILTERS.map((id) => ({ id, label: t(`recipes.d.time.${id}`) }));
   const sortOptions = SORTS.map((id, i) => ({ id: String(i), label: t(`recipes.sorts.${id}`) }));
@@ -250,11 +223,10 @@ export function Recipes({
     setter(id);
     setMenu(null);
   };
-  // Protein, Time and Sort, and on a phone Meal in front of them.
-  const menus = [
-    ...(phone
-      ? [{ id: "meal", label: t("recipes.d.mealLabel"), value: currentMeal.label, options: mealOptions, selected: filter, isDefault: filter === "all", onPick: pick(onFilterChange) }]
-      : []),
+  // Repas and Protéine are chips in the row of chips (the design); Time and Sort
+  // stay beside the tabs on a computer and in two columns under them on a phone.
+  const chipMenus = [
+    { id: "meal", label: t("recipes.d.mealLabel"), value: currentMeal.label, options: mealOptions, selected: filter, isDefault: filter === "all", onPick: pick(onFilterChange), openLeft: true },
     {
       id: "protein",
       label: t("recipes.protein.label"),
@@ -263,7 +235,10 @@ export function Recipes({
       selected: protein || "",
       isDefault: !proteinKind,
       onPick: pick((id) => onProteinChange(id || null)),
+      openLeft: !phone,
     },
+  ];
+  const menus = [
     {
       id: "time",
       label: t("recipes.d.time.label"),
@@ -284,14 +259,7 @@ export function Recipes({
     },
   ];
   const menuViews = menus.map((m, i) => (
-    <PillMenu
-      key={m.id}
-      {...m}
-      phone={phone}
-      openLeft={phone && i % 2 === 0}
-      open={menu === m.id}
-      onToggle={toggleMenu}
-    />
+    <PillMenu key={m.id} {...m} phone={phone} openLeft={phone && i % 2 === 0} open={menu === m.id} onToggle={toggleMenu} />
   ));
 
   const countText = filtered
@@ -301,19 +269,6 @@ export function Recipes({
     : visible.length === 1
       ? t("recipes.d.countOne")
       : t("recipes.d.countMany", { count: visible.length });
-
-  const chipButton = (c) => (
-    <button
-      key={c.id}
-      type="button"
-      className={`riso-filter-chip rv2-chip${filter === c.id ? " active" : ""}`}
-      aria-pressed={filter === c.id}
-      onClick={() => onFilterChange(c.id)}
-    >
-      {c.label}
-      <span className="riso-filter-chip-count">{chipCount(c.id)}</span>
-    </button>
-  );
 
   return (
     <div className="riso-theme riso-recipes rv2" data-theme="light">
@@ -366,7 +321,7 @@ export function Recipes({
 
       <HintStrip
         userId={user.id}
-        screenKey="recipes-v3"
+        screenKey="recipes-v4"
         items={[t("recipes.d.hint1"), t("recipes.d.hint2"), t("recipes.d.hint3"), t("recipes.d.hint4")]}
       />
 
@@ -387,30 +342,30 @@ export function Recipes({
           ))}
         </div>
         {!phone && (
-          <div className="rv2-toolbar" ref={menusRef} role="group" aria-label={t("recipes.d.toolbarAria")}>
+          <div className="rv2-toolbar" role="group" aria-label={t("recipes.d.toolbarAria")}>
             {menuViews}
           </div>
         )}
       </div>
 
       {phone && (
-        <div className="rv2-menu-grid" ref={menusRef} role="group" aria-label={t("recipes.d.toolbarAria")}>
+        <div className="rv2-menu-grid" role="group" aria-label={t("recipes.d.toolbarAria")}>
           {menuViews}
         </div>
       )}
 
-      {!phone && (
-        <div className="rv2-chips" role="group" aria-label={t("recipes.d.mealAria")}>
-          {/* All stands on its own, then a rule, the meal types, a rule, and the two extras. */}
-          {chipButton(ALL_CHIP)}
-          <span className="rv2-chips-rule" aria-hidden="true" />
-          <div className="rv2-chips-cats">
-            {MEAL_CHIPS.map(chipButton)}
-            <span className="rv2-chips-rule inline" aria-hidden="true" />
-            {EXTRA_CHIPS.map(chipButton)}
-          </div>
-        </div>
-      )}
+      {/* The design's chips: Tout, Rapide, Repas ▾, Protéine ▾. */}
+      <div className="rv2-chips" role="group" aria-label={t("recipes.d.chipsAria")}>
+        <button type="button" className={`riso-filter-chip rv2-chip${everything ? " active" : ""}`} aria-pressed={everything} onClick={pickEverything}>
+          {t("recipes.d.chipAll")}
+        </button>
+        <button type="button" className={`riso-filter-chip rv2-chip${quick ? " active" : ""}`} aria-pressed={quick} onClick={() => setQuick(!quick)}>
+          {t("finder.quick")}
+        </button>
+        {chipMenus.map((m) => (
+          <PillMenu key={m.id} {...m} variant="chip" phone={false} open={menu === m.id} onToggle={toggleMenu} />
+        ))}
+      </div>
 
       <div className="rv2-countline">
         <span className="rv2-count" role="status">{countText}</span>
@@ -419,20 +374,12 @@ export function Recipes({
             {t("recipes.d.clearFilters")}
           </button>
         )}
-        {filter === "makeable" && <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />}
       </div>
 
       {visible.length > 0 ? (
         <div className="rv2-grid">
           {visible.map((r) => (
-            <RecipeCard
-              key={r.id}
-              recipe={r}
-              stats={info.get(r.id).stats}
-              usesExpiring={info.get(r.id).expiring}
-              onSale={info.get(r.id).onSale}
-              onClick={onSelectRecipe}
-            />
+            <RecipeCard key={r.id} recipe={r} onOpen={onSelectRecipe} />
           ))}
         </div>
       ) : (

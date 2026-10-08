@@ -245,9 +245,9 @@ test("Use it up finds recipes for those items; Makeable now counts the ones one 
   await expect(useUp).toContainText("1 recipe uses two or more of these.");
   await useUp.getByRole("button", { name: "Cook with these →" }).click();
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
-  await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
-  await expect(page.locator(".riso-recipe-card", { hasText: "Parsley pesto" })).toBeVisible();
-  await expect(page.locator(".riso-recipe-card", { hasText: "Toast" })).toHaveCount(0);
+  await expect(page.locator(".rpc-title")).toHaveCount(2);
+  await expect(page.locator(".rpc", { hasText: "Parsley pesto" })).toBeVisible();
+  await expect(page.locator(".rpc", { hasText: "Toast" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   const makeable = page.locator(".riso-home-makeable");

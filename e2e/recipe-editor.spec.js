@@ -51,10 +51,11 @@ test("a new recipe with a slot, pasted steps and a pasted ingredient list", asyn
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
 
-  await page.locator(".riso-filter-chip", { hasText: /Pantry \/ Prep/ }).click();
-  const card = page.locator(".riso-recipe-card", { hasText: "Quick pickled shallots" });
+  await page.locator(".rv2-chips").getByRole("button", { name: /^MEAL/ }).click();
+  await page.getByRole("option", { name: /^Pantry \/ Prep/ }).click();
+  const card = page.locator(".rpc", { hasText: "Quick pickled shallots" });
   await expect(card).toBeVisible();
-  await expect(card.locator(".rv2-card-meta .riso-pill").first()).toHaveText("⏱5 min");
+  await expect(card.locator(".rpc-cap-time")).toHaveText("5 MIN");
 
   const recipes = await (await page.request.get("/api/recipes")).json();
   const saved = recipes.find((r) => r.title === "Quick pickled shallots");
@@ -78,7 +79,7 @@ test("editing from the recipe card: uploaded photo, save returns to the card", a
   });
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.locator(".riso-recipe-card", { hasText: "Weeknight dal" }).click();
+  await page.locator(".rpc", { hasText: "Weeknight dal" }).click();
   await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Edit recipe" }).click();
@@ -241,7 +242,7 @@ test("a recipe typed in the pop-up saves and lands first in the list", async ({ 
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Popup pancakes");
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator(".riso-recipe-card", { hasText: "Popup pancakes" })).toBeVisible();
+  await expect(page.locator(".rpc", { hasText: "Popup pancakes" })).toBeVisible();
 });
 
 test.describe("on a phone", () => {

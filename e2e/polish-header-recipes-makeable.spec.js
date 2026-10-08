@@ -123,7 +123,7 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await row.click();
   await link.click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
-  await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
+  await expect(page.locator(".rpc-title")).toHaveCount(2);
   // A Tofu chip you can clear, not a long search.
   await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
   await expect(page.getByRole("button", { name: /^PROTEIN/ })).toContainText("Tofu");
@@ -181,7 +181,7 @@ test.describe("Proteins on sale panel on a phone", () => {
 test.describe("Recipes", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
-  test("Meals hides breakfast, sides and pantry prep; Protein, Time and Sort sit beside the tabs", async ({ page }) => {
+  test("Meals hides breakfast, sides and pantry prep; Time and Sort sit beside the tabs", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Chicken curry", "dinner", ["chicken"]);
     await recipe(page, "Lunch wrap", "lunch", ["tortilla"]);
@@ -194,8 +194,9 @@ test.describe("Recipes", () => {
     await expect(page.locator(".riso-recipes-heading-row").getByRole("button", { name: /^SORT/ })).toHaveCount(0);
     await expect(page.locator(".rv2-tabrow").getByRole("button", { name: /^SORT/ })).toBeVisible();
 
-    await page.getByRole("button", { name: /^Meals/ }).click();
-    await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Lunch wrap", "Chicken curry"]);
+    await page.getByRole("button", { name: /^MEAL/ }).click();
+    await page.getByRole("option", { name: /^Meals/ }).click();
+    await expect(page.locator(".rpc-title")).toHaveText(["Lunch wrap", "Chicken curry"]);
   });
 
   test("Cookbook and Imported are tabs with their own counts", async ({ page }) => {
@@ -209,12 +210,12 @@ test.describe("Recipes", () => {
 
     const tabs = page.getByRole("tablist", { name: "Cookbook or Imported" });
     await expect(tabs.getByRole("tab")).toHaveText([/Cookbook\s*1/, /Imported\s*1/]);
-    await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Grandma's lasagna"]);
+    await expect(page.locator(".rpc-title")).toHaveText(["Grandma's lasagna"]);
     await tabs.getByRole("tab", { name: /^Imported/ }).click();
-    await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Imported pad thai"]);
+    await expect(page.locator(".rpc-title")).toHaveText(["Imported pad thai"]);
 
     // An import can be moved to the Cookbook from its editor.
-    await page.locator(".riso-recipe-card", { hasText: "Imported pad thai" }).click();
+    await page.locator(".rpc", { hasText: "Imported pad thai" }).click();
     await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("button", { name: "Edit recipe" }).click();
@@ -228,10 +229,10 @@ test.describe("Recipes", () => {
   });
 });
 
-test.describe("Recipes meal chips", () => {
+test.describe("Recipes Meal menu", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
-  test("meal chips count what the other filters leave, switching tabs starts over at All, and Clear filters resets", async ({ page }) => {
+  test("the Meal menu counts what the other filters leave, switching tabs starts over at All, and Clear filters resets", async ({ page }) => {
     const userId = await signUp(page);
     await recipe(page, "Chicken curry", "dinner", ["chicken"], { prepTimeMinutes: 30 });
     await recipe(page, "Pasta bake", "dinner", ["pasta"], { prepTimeMinutes: 90 });
@@ -244,39 +245,47 @@ test.describe("Recipes meal chips", () => {
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
     const chips = page.locator(".rv2-chips");
-    const chip = (name) => chips.getByRole("button", { name });
+    const all = chips.getByRole("button", { name: "All", exact: true });
+    const meal = chips.getByRole("button", { name: /^MEAL/ });
+    const option = (name) => page.getByRole("option", { name });
     await expect(page.locator(".rv2-count")).toHaveText("4 RECIPES");
-    await expect(chip(/^All\s*4$/)).toBeVisible();
-    await expect(chip(/^Breakfast\s*1$/)).toBeVisible();
-    await expect(chip(/^Supper\s*2$/)).toBeVisible();
-    await expect(chip(/^Sides\s*1$/)).toBeVisible();
-    await expect(chip(/^Lunch\s*0$/)).toBeVisible();
+    await meal.click();
+    await expect(option(/^All · 4$/)).toBeVisible();
+    await expect(option(/^Breakfast · 1$/)).toBeVisible();
+    await expect(option(/^Supper · 2$/)).toBeVisible();
+    await expect(option(/^Sides · 1$/)).toBeVisible();
+    await expect(option(/^Lunch · 0$/)).toBeVisible();
 
     // Picking Supper filters the grid and the count line says so.
-    await chip(/^Supper/).click();
-    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
+    await option(/^Supper/).click();
+    await expect(page.locator(".rpc-title")).toHaveCount(2);
     await expect(page.locator(".rv2-count")).toHaveText("2 RECIPES MATCH");
+    await expect(all).toHaveAttribute("aria-pressed", "false");
 
     // A time limit changes the other chips' counts but not the one you picked.
     await page.getByRole("button", { name: /^TIME/ }).click();
     await page.getByRole("option", { name: "Under 1 hour" }).click();
-    await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Chicken curry"]);
+    await expect(page.locator(".rpc-title")).toHaveText(["Chicken curry"]);
     await expect(page.locator(".rv2-count")).toHaveText("1 RECIPE MATCHES");
-    await expect(chip(/^Supper\s*1$/)).toBeVisible();
+    await meal.click();
+    await expect(option(/^Supper · 1$/)).toBeVisible();
+    await page.keyboard.press("Escape");
 
     // Clear filters: everything back, the tab and sort stay.
     await page.getByRole("button", { name: "Clear filters" }).click();
     await expect(page.locator(".rv2-count")).toHaveText("4 RECIPES");
-    await expect(chip(/^All/)).toHaveAttribute("aria-pressed", "true");
+    await expect(all).toHaveAttribute("aria-pressed", "true");
 
     // Switching tab starts over at All.
-    await chip(/^Sides/).click();
+    await meal.click();
+    await option(/^Sides/).click();
     await page.getByRole("tab", { name: /^Imported/ }).click();
-    await expect(chip(/^All/)).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Imported pad thai"]);
+    await expect(all).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".rpc-title")).toHaveText(["Imported pad thai"]);
 
     // Nothing matches: the dashed box says so.
-    await chip(/^Breakfast/).click();
+    await meal.click();
+    await option(/^Breakfast/).click();
     await expect(page.locator(".riso-recipes-empty")).toHaveText("No recipes match these filters.");
   });
 });
@@ -295,7 +304,7 @@ test.describe("Makeable", () => {
     }
     await page.reload();
     await page.getByRole("button", { name: "Makeable", exact: true }).click();
-    const names = page.locator(".mk-page .riso-recipe-card-name");
+    const names = page.locator(".mk-page .rpc-title");
     // Makeable now counts meals only: the dessert and the side come with the switch.
     await expect(names).toHaveCount(2);
     await page.getByRole("button", { name: "Include pantry and sides" }).click();

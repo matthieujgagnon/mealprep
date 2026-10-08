@@ -114,7 +114,7 @@ test.describe("Proteins on sale, by general protein", () => {
       await expect(page.locator(".riso-recipes-searchbar input")).toHaveValue("");
       await expect(page.getByRole("button", { name: /^PROTEIN/ })).toContainText(kind);
       // The same recipes, no more and no fewer.
-      expect((await page.locator(".riso-recipe-card-name").allInnerTexts()).sort()).toEqual([...titles].sort());
+      expect((await page.locator(".rpc-title").allInnerTexts()).sort()).toEqual([...titles].sort());
       await page.getByRole("button", { name: "Home", exact: true }).click();
     }
   });
@@ -281,9 +281,9 @@ test.describe("Recipes protein filter: a sauce or stock is not the protein", () 
     await recipe(page, "Salad", ["lettuce"]);
     await page.reload();
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
-    await expect(page.locator(".riso-recipe-card").first()).toBeVisible();
+    await expect(page.locator(".rpc").first()).toBeVisible();
   }
-  const names = async (page) => (await page.locator(".riso-recipe-card-name").allInnerTexts()).sort();
+  const names = async (page) => (await page.locator(".rpc-title").allInnerTexts()).sort();
   // The Protein menu in the toolbar.
   const chooseProtein = async (page, name) => {
     await page.getByRole("button", { name: /^PROTEIN/ }).click();
@@ -310,17 +310,17 @@ test.describe("Recipes protein filter: a sauce or stock is not the protein", () 
   test("the chip clears the filter, and the filter works with the other filters", async ({ page }) => {
     await seed(page);
     await chooseProtein(page, "Chicken");
-    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(1);
+    await expect(page.locator(".rpc-title")).toHaveCount(1);
     // "Any protein" in the menu, or Clear filters, takes it off.
     await chooseProtein(page, "Any protein");
-    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(8);
+    await expect(page.locator(".rpc-title")).toHaveCount(8);
     await chooseProtein(page, "Chicken");
     await page.getByRole("button", { name: "Clear filters" }).click();
-    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(8);
+    await expect(page.locator(".rpc-title")).toHaveCount(8);
     // With a search too: both apply.
     await chooseProtein(page, "Fish");
     await page.locator(".riso-recipes-searchbar input").fill("pad");
-    await expect(page.locator(".riso-recipe-card-name")).toHaveCount(0);
+    await expect(page.locator(".rpc-title")).toHaveCount(0);
   });
 
   test("Home and the filter always agree on the count", async ({ page }) => {
@@ -338,7 +338,7 @@ test.describe("Recipes protein filter: a sauce or stock is not the protein", () 
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
     for (const kind of ["Chicken", "Fish", "Beef"]) {
       await chooseProtein(page, kind);
-      const shown = await page.locator(".riso-recipe-card-name").count();
+      const shown = await page.locator(".rpc-title").count();
       await page.getByRole("button", { name: "Home", exact: true }).click();
       await page.getByRole("button", { name: new RegExp(`^${kind}:`) }).click();
       await expect(page.locator(".riso-protein-recipes-link")).toContainText(shown === 1 ? "See your recipe with" : `See your ${shown} recipes with`);

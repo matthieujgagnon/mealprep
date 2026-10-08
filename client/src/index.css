@@ -3196,6 +3196,9 @@ input[type="date"].planner-week-picker {
   --riso-shadow-lg: 8px 8px 0 var(--riso-ink); /* hero/color blocks, recipe card, pop-ups */
   --riso-shadow-selected: 4px 4px 0 var(--riso-accent); /* selected inventory item */
   --riso-shadow-today: 4px 4px 0 var(--riso-hot); /* today's Planner column */
+  --riso-shadow-photo-card: 0 10px 24px -6px rgba(22, 24, 31, 0.35), 0 2px 6px rgba(22, 24, 31, 0.15); /* the soft shadow of the two photo cards (Recipes and Makeable) */
+  --riso-hot-line: #f5c6e0; /* the thin line under the pink "use soon" strip on a Makeable card */
+  --riso-progress-fill: #8f8fff; /* the fill of a Makeable card's ingredient bar */
 
   /* Riso v2 (Pill Study). Added next to the colours above; nothing that
      already uses a token above changed. */
@@ -4707,10 +4710,6 @@ button.riso-table-group-head:disabled {
   font-size: 10.5px;
   letter-spacing: 0.08em;
   color: var(--riso-muted);
-}
-
-.riso-recipe-card-spacer {
-  flex: 1;
 }
 
 .riso-recipe-card-havebar {
@@ -15435,26 +15434,8 @@ body.no-select {
   background: var(--riso-canvas);
 }
 
+/* Tout, Rapide, Repas ▾, Protéine ▾ (design: page-recipes-test-final) */
 .rv2-chips {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-/* A thin rule between All and the rest, as long as the first row of chips */
-.rv2-chips-rule {
-  flex: none;
-  align-self: flex-start;
-  width: 2px;
-  height: 38px;
-  border-radius: 1px;
-  background: var(--riso-dash);
-}
-
-/* The meal types and the extra chips wrap in their own block beside All */
-.rv2-chips-cats {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -15462,21 +15443,52 @@ body.no-select {
 }
 
 .rv2-chip {
-  height: 38px;
+  height: 36px;
   padding: 0 16px;
-  border-radius: 19px;
+  border-radius: 22px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13.5px;
 }
 
-.rv2-chip .riso-filter-chip-count {
-  font-size: 10.5px;
+.rv2-chip.active {
+  box-shadow: 2px 2px 0 var(--riso-accent);
 }
 
-/* The rule between the meal types and Makeable now / Uses expiring */
-.rv2-chips-rule.inline {
-  align-self: center;
-  margin: 0 6px;
+/* The two menus in that row look like the chips beside them. */
+.rv2-drop.chip {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 22px;
+  gap: 6px;
+}
+
+.rv2-drop.chip .rv2-drop-label {
+  font: 700 13.5px var(--riso-font-display);
+  letter-spacing: 0;
+  text-transform: lowercase;
+  color: var(--riso-ink);
+}
+
+.rv2-drop.chip .rv2-drop-label::first-letter {
+  text-transform: uppercase;
+}
+
+.rv2-drop.chip .rv2-drop-value {
+  display: none;
+}
+
+.rv2-drop.chip.set {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  box-shadow: 2px 2px 0 var(--riso-accent);
+}
+
+.rv2-drop.chip.set .rv2-drop-label {
+  color: var(--riso-canvas);
+}
+
+.rv2-drop.chip.set .rv2-drop-value {
+  display: inline;
 }
 
 .rv2-countline {
@@ -15501,58 +15513,14 @@ body.no-select {
   cursor: pointer;
 }
 
+/* The Recipes grid of photo cards (RecipePhotoCard, variant "grid"): 3:4 cards, all
+   the same size, with room around them for the soft shadow. */
 .rv2-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 24px;
-}
-
-.rv2-grid .riso-recipe-card {
-  border-radius: 24px;
-}
-
-.rv2-grid .riso-recipe-card-photo {
-  height: 250px;
-}
-
-.rv2-grid .riso-recipe-card-body {
-  padding: 16px 18px 18px;
-  gap: 10px;
-}
-
-.rv2-grid .riso-recipe-card-name {
-  font-size: 20px;
-  text-wrap: pretty;
-}
-
-/* Time and servings, then the meal type and protein, then (when there are
-   any) the pink and green tags, each on its own row. */
-.rv2-card-meta,
-.rv2-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-/* The one small line at the bottom of a card: "3 to buy" / "Nothing to buy". */
-.rv2-card-buy {
-  font-family: var(--riso-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--riso-muted);
-}
-
-.rv2-card-buy.ready {
-  color: var(--riso-green-text);
-}
-
-.rv2-grid .riso-recipe-card-name {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 28px;
+  align-items: stretch;
+  padding: 10px 6px 0;
 }
 
 /* A menu that opens toward the right (left column on a phone) */
@@ -15714,30 +15682,36 @@ body.no-select {
     font-size: 10px;
   }
 
-  .rv2-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .rv2-grid .riso-recipe-card {
-    border-radius: 18px;
-  }
-
-  .rv2-grid .riso-recipe-card-photo {
-    height: 120px;
-  }
-
-  .rv2-grid .riso-recipe-card-body {
-    padding: 10px 11px 12px;
+  /* Touch size for the row of chips: Tout, Rapide, Repas ▾ and Protéine ▾ fit on one line. */
+  .rv2-chips {
     gap: 6px;
   }
 
-  .rv2-grid .riso-recipe-card-name {
-    font-size: 15px;
+  .rv2-chip,
+  .rv2-drop.chip {
+    height: 40px;
+    padding: 0 14px;
   }
 
-  .rv2-card-buy {
-    font-size: 9.5px;
+  /* Two across on a phone, the same 3:4 card with a smaller title. */
+  .rv2-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 6px 2px 0;
+  }
+
+  .rv2-grid .rpc-title {
+    font-size: 16px;
+  }
+
+  .rv2-grid .rpc-scrim-bottom {
+    padding: 0 12px 12px;
+  }
+
+  .rv2-grid .rpc-caption {
+    top: 12px;
+    left: 12px;
+    right: 12px;
   }
 }
 
@@ -20570,252 +20544,18 @@ body.no-select {
   color: var(--riso-soft);
 }
 
-/* Tiles */
+/* The cards (MakeableCard): as many 310px+ columns as fit, each card its own
+   natural height and lined up at the top of its row. */
 .fnd-page .fnd-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
+  gap: 28px;
+  align-items: start;
+  padding: 10px 6px;
 }
 
-.fnd-tile {
-  position: relative;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.fnd-tile > .fnd-card {
-  flex: 1;
-}
-
-.fnd-page .riso-recipe-card {
-  border-radius: 20px;
-}
-
-.fnd-page .fnd-card-photo {
-  height: 136px;
-}
-
-.fnd-page .fnd-card-time {
-  right: 6px;
-  bottom: 6px;
-}
-
-.fnd-page .fnd-card-body {
-  padding: 10px 12px 12px;
-  gap: 5px;
-}
-
-.fnd-page .riso-recipe-card-name {
-  font-size: 15px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.fnd-page .riso-recipe-card-havelabel {
-  font-size: 11.5px;
-  line-height: 1.3;
-}
-
-.fnd-page .fnd-card-reason {
-  font-size: 11.5px;
-  color: var(--riso-soft);
-}
-
-/* Nothing to buy and not planned this week: a pink shadow. */
-.fnd-page .fnd-card.go {
-  box-shadow: 5px 5px 0 var(--riso-hot);
-}
-
-.fnd-tile.open {
-  z-index: 60;
-}
-
-.fnd-tile.open > .fnd-card {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  box-shadow: 6px 6px 0 var(--riso-ink);
-}
-
-.fnd-tile.open > .fnd-card.go {
-  box-shadow: 6px 6px 0 var(--riso-hot);
-}
-
-.fnd-card-foot {
-  padding: 0 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.fnd-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-top: 4px;
-}
-
-.fnd-act {
-  height: 28px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 12px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.fnd-act.buy.sale {
-  background: rgba(16, 201, 92, 0.68);
-}
-
-.fnd-act.buy.done {
-  background: var(--riso-green);
-}
-
-/* "On your list" inside a tile */
-.fnd-liststrip {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 8px;
-  border-top: 1.5px dashed var(--riso-dash-strong);
-}
-
-.fnd-liststrip-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.fnd-listchip {
-  height: 28px;
-  padding: 0 8px 0 10px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 12px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.fnd-listmore {
-  align-self: center;
-  font: 700 12px var(--riso-font-display);
-  color: var(--riso-soft);
-}
-
-.fnd-listlink {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--riso-accent);
-  font: 700 12.5px var(--riso-font-display);
-  text-align: left;
-  cursor: pointer;
-}
-
-/* The popover under a tile, and the cream scrim behind it */
-.fnd-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  background: rgba(244, 241, 234, 0.5);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-}
-
-.fnd-buypop {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 60;
-  margin-top: -2px;
-  padding: 12px 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-top: 2px dashed var(--riso-dash-strong);
-  border-radius: 0 0 18px 18px;
-  box-shadow: 5px 5px 0 var(--riso-ink);
-}
-
-.fnd-buyrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.fnd-buyrow-emoji {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 10px;
-  background: var(--riso-canvas);
-  font-size: 18px;
-}
-
-.fnd-buyrow-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-}
-
-.fnd-buyrow-name {
-  font: 700 13.5px var(--riso-font-display);
-}
-
-.fnd-buyrow-add {
-  flex: none;
-  height: 28px;
-  padding: 0 11px;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 800 11.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.fnd-buyrow-add.on {
-  background: var(--riso-green);
-}
-
-.fnd-buypop-foot {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.fnd-buypop-all {
-  height: 32px;
-  padding: 0 16px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: 2px 2px 0 var(--riso-ink);
-  font: 800 12.5px var(--riso-font-display);
-  cursor: pointer;
+/* The chips share one row with the menus on a computer. */
+.fnd-chips {
+  display: contents;
 }
 
 /* The Main meal banner's ✕ (every layout) and its look on the page */
@@ -20879,25 +20619,77 @@ body.no-select {
     font-size: 14.5px;
   }
 
+  /* The chip row (design: card-makeable-mobile): Tout, Faisable maintenant,
+     1 ou 2 articles and Rapide first, then Expire bientôt and Montrer les rabais;
+     one line that scrolls sideways and pins under the app header while the cards
+     go by. The Repas and Protéine menus sit under it, outside the scroller so they
+     can open. */
+  .fnd-page .fnd-filters {
+    display: contents;
+  }
+
+  .fnd-page .fnd-chips {
+    position: sticky;
+    top: var(--fnd-sticky-top, 0px);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -6px -18px;
+    padding: 6px 18px;
+    overflow-x: auto;
+    background: var(--riso-canvas);
+    scrollbar-width: none;
+  }
+
+  .fnd-page .fnd-chips::-webkit-scrollbar {
+    display: none;
+  }
+
   .fnd-page .fnd-seg {
-    width: 100%;
-    box-sizing: border-box;
+    display: contents;
   }
 
-  .fnd-page .fnd-seg-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    height: 24px;
-    padding: 0 6px;
-    justify-content: center;
-    font-size: 12.5px;
-  }
-
+  .fnd-page .fnd-seg-btn,
   .fnd-page .fnd-filters .riso-pill.size-chip {
-    flex: 1 1 0;
-    justify-content: center;
-    padding: 0 8px;
-    font-size: 12.5px;
+    flex: none;
+    box-sizing: border-box;
+    height: 40px;
+    padding: 0 16px;
+    gap: 7px;
+    border: 2px solid var(--riso-ink);
+    border-radius: 22px;
+    background: var(--riso-surface);
+    color: var(--riso-ink);
+    box-shadow: none;
+    font: 700 13.5px var(--riso-font-display);
+  }
+
+  .fnd-page .fnd-seg-btn.active,
+  .fnd-page .fnd-filters .riso-pill.is-selected {
+    background: var(--riso-ink);
+    color: var(--riso-canvas);
+    box-shadow: none;
+  }
+
+  .fnd-page .fnd-seg-btn.active .fnd-dot {
+    border-color: var(--riso-canvas);
+  }
+
+  .fnd-page .fnd-seg-count {
+    display: none;
+  }
+
+  .fnd-page .fnd-quick {
+    order: 1;
+  }
+
+  .fnd-page .fnd-expiring {
+    order: 2;
+  }
+
+  .fnd-page .fnd-sales {
+    order: 3;
   }
 
   .fnd-page .includesides-toggle {
@@ -20933,39 +20725,11 @@ body.no-select {
     right: auto;
   }
 
+  /* One card per row, full width. */
   .fnd-page .fnd-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .fnd-page .riso-recipe-card {
-    border-radius: 16px;
-  }
-
-  .fnd-page .fnd-card-photo {
-    height: 88px;
-  }
-
-  .fnd-page .fnd-card-body {
-    padding: 8px 9px 9px;
-  }
-
-  .fnd-page .riso-recipe-card-name {
-    font-size: 13px;
-  }
-
-  .fnd-card-foot {
-    padding: 0 9px 9px;
-  }
-
-  .fnd-act {
-    padding: 0 6px;
-    font-size: 11px;
-  }
-
-  .fnd-card-actions {
-    gap: 4px;
-    flex-wrap: nowrap;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 8px 2px;
   }
 
   /* A menu says only its name until a choice is made, like the Planner's chips. */
@@ -20981,10 +20745,6 @@ body.no-select {
     font-size: 16px;
   }
 
-  .fnd-buyrow-emoji {
-    display: none;
-  }
-
   .fnd-page .fnd-main-photo {
     width: auto;
     height: 150px;
@@ -20996,5 +20756,545 @@ body.no-select {
 
   .fnd-page .fnd-main-groupname {
     width: auto;
+  }
+}
+
+/* ================================================================
+   Riso v2 - the photo cards (Recipes and Makeable)
+   design: docs/design/riso-v2-recipe-cards/. One base, .rpc
+   (components/RecipePhotoCard.jsx); the Recipes card is variant "grid",
+   the Makeable card (.mkc, components/MakeableCard.jsx) is variant "panel".
+   Fonts: Bricolage Grotesque and DM Mono only.
+   ================================================================ */
+.rpc {
+  position: relative;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--riso-track);
+  box-shadow: var(--riso-shadow-photo-card);
+  font-family: var(--riso-font-display);
+  color: var(--riso-ink);
+}
+
+/* Nothing to buy: the green outline. */
+.rpc.is-ready {
+  border-color: var(--riso-green);
+}
+
+/* The photo area is the button that opens the recipe: it holds the picture, the
+   scrims, the caption and the title. */
+.rpc-open {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: var(--riso-track);
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rpc-open:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: -6px;
+  border-radius: 16px;
+}
+
+.rpc-grid {
+  aspect-ratio: 3 / 4;
+}
+
+.rpc-grid .rpc-open {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+.rpc-panel {
+  background: var(--riso-surface);
+}
+
+.rpc-panel .rpc-open {
+  flex: none;
+  height: 260px;
+}
+
+.rpc-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rpc-scrim-top {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(22, 24, 31, 0.45), rgba(22, 24, 31, 0) 22%);
+  pointer-events: none;
+}
+
+.rpc-panel .rpc-scrim-top {
+  background: linear-gradient(to bottom, rgba(22, 24, 31, 0.7), rgba(22, 24, 31, 0) 30%);
+}
+
+/* The caption over the top of the photo. On a Recipes card it has two sides: the
+   meal word (and the protein under it) on the left, the time on the right. */
+.rpc-caption {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--riso-surface);
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.rpc-cap-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rpc-cap-left > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rpc-cap-meal {
+  font-weight: 600;
+}
+
+.rpc-cap-protein {
+  opacity: 0.65;
+}
+
+.rpc-cap-time {
+  flex: none;
+  white-space: nowrap;
+}
+
+.rpc-panel .rpc-caption {
+  display: block;
+  font-weight: 600;
+  font-size: 11px;
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.rpc-scrim-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 18px 18px;
+  background: linear-gradient(to top, rgba(14, 16, 22, 0.9) 0%, rgba(14, 16, 22, 0.64) 38%, rgba(14, 16, 22, 0) 100%);
+  pointer-events: none;
+}
+
+.rpc-panel .rpc-scrim-bottom {
+  height: 52%;
+  padding: 0 16px 14px;
+  background: linear-gradient(to top, rgba(14, 16, 22, 0.9) 0%, rgba(14, 16, 22, 0.64) 40%, rgba(14, 16, 22, 0) 100%);
+}
+
+.rpc-title {
+  width: 100%;
+  font: 700 20px/1.12 var(--riso-font-display);
+  text-align: center;
+  color: var(--riso-on-accent);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rpc-panel .rpc-title {
+  -webkit-line-clamp: 3;
+}
+
+/* A thin line in the meal's colour along the bottom of a Recipes card. */
+.rpc-line {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ---------- The Makeable card: what sits under the photo ---------- */
+.mkc-soon {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-top: 2px solid var(--riso-ink);
+  background: var(--riso-hot-tint);
+  color: var(--riso-muted);
+  font: 600 12px var(--riso-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.mkc-soon-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--riso-hot-soft);
+}
+
+.mkc-soon-emoji {
+  flex: none;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mkc-soon-name {
+  color: var(--riso-ink);
+  font-weight: 700;
+}
+
+.mkc-soon-when {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mkc-panel {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 38px;
+  border-top: 2px solid var(--riso-ink);
+}
+
+.mkc-panel.has-soon {
+  border-top: 1.5px solid var(--riso-hot-line);
+}
+
+/* Only when the finder is sorting by a Main meal or Cook with. */
+.mkc-reason {
+  font: 600 12px var(--riso-font-display);
+  color: var(--riso-soft);
+}
+
+.mkc-buy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mkc-cap {
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+/* Proteins in the left column, everything else in the right one. */
+.mkc-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px 8px;
+}
+
+.mkc-cols.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mkc-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.mkc-pill {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px 0 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1.5px solid var(--riso-track);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.mkc-pill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mkc-emoji {
+  flex: none;
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* The round tick and the % mark keep their look; on a phone an invisible
+   area around each makes the tap 40px. */
+.mkc-tick,
+.mkc-sale {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mkc-tick {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--riso-dash);
+  background: var(--riso-surface);
+  font-size: 10px;
+}
+
+.mkc-tick.on {
+  background: var(--riso-green);
+  border-color: var(--riso-green);
+}
+
+.mkc-sale {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--riso-green);
+  background: var(--riso-surface);
+  font-size: 9px;
+}
+
+.mkc-sale.open {
+  background: var(--riso-green);
+}
+
+.mkc-more {
+  padding: 0 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mkc-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mkc-serves {
+  font: 500 11.5px var(--riso-font-display);
+  color: var(--riso-placeholder);
+}
+
+.mkc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.mkc-btn {
+  box-sizing: border-box;
+  height: 30px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 15px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mkc-btn.main {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.mkc-btn.done {
+  background: var(--riso-green);
+  color: var(--riso-ink);
+}
+
+.mkc-btn[aria-disabled="true"] {
+  cursor: default;
+}
+
+.mkc-salesum {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--riso-muted);
+  font: 600 11.5px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+.mkc-salemark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--riso-green);
+  color: var(--riso-ink);
+  font: 800 9px/1 var(--riso-font-display);
+}
+
+.mkc-progress {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 11px;
+  display: flex;
+  justify-content: space-between;
+  color: var(--riso-soft);
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mkc-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--riso-track);
+}
+
+.mkc-bar > div {
+  height: 100%;
+  background: var(--riso-progress-fill);
+}
+
+/* The deal card's button to the Flyers page (the shared DealDetailModal). */
+.riso-deal-detail-circulaires {
+  align-self: flex-start;
+  height: 40px;
+  padding: 0 18px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13.5px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Makeable on a phone: one card per row and touch sizes. */
+@media (max-width: 767px) {
+  .mkc-panel {
+    gap: 12px;
+    padding: 14px 14px 40px;
+  }
+
+  .mkc-buy {
+    gap: 8px;
+  }
+
+  .mkc-cols {
+    gap: 6px 10px;
+  }
+
+  .mkc-col {
+    gap: 9px;
+  }
+
+  .mkc-pill {
+    height: 40px;
+    padding: 0 12px 0 8px;
+    gap: 6px;
+    border-radius: 20px;
+  }
+
+  .mkc-tick {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .mkc-sale {
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  /* The invisible tap area: exactly 40px square around the circle, whatever its
+     border (the inset is measured from the inside of the border). */
+  .mkc-tick::after,
+  .mkc-sale::after {
+    content: "";
+    position: absolute;
+    inset: calc((40px - 100%) / -2);
+  }
+
+  .mkc-more {
+    padding: 0 14px;
+  }
+
+  .mkc-foot {
+    gap: 10px;
+  }
+
+  .mkc-btn {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 22px;
+    font-size: 14px;
   }
 }
