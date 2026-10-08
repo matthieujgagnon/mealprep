@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA}a{color:#2323FF}a:hover{color:#16181F}</style></helmet>
+<div style="min-height:100vh;background:#F4F1EA;color:#16181F;font-family:'Bricolage Grotesque',sans-serif">
+<div style="max-width:1280px;margin:0 auto;box-sizing:border-box">
+<dc-import name="part-header" active="recipes" hint-size="100%,96px"></dc-import>
+<div style="padding:8px 40px 64px;display:flex;flex-direction:column;gap:22px;box-sizing:border-box">
+<h1 style="margin:0;font:800 60px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">{{ s.title }}</h1>
+<div style="display:flex;align-items:center;gap:8px;height:52px;padding:0 8px 0 20px;border-radius:30px;border:2px solid #16181F;background:#FFFDF8;box-shadow:5px 5px 0 #16181F;box-sizing:border-box;font:500 16px 'Bricolage Grotesque',sans-serif;color:#8A8677">{{ s.search }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><span style="height:36px;padding:0 16px;border-radius:22px;border:2px solid #16181F;background:#16181F;color:#F4F1EA;display:inline-flex;align-items:center;gap:6px;font:700 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box;box-shadow:2px 2px 0 #2323FF;">{{ s.all }}</span><span style="height:36px;padding:0 16px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;color:#16181F;display:inline-flex;align-items:center;gap:6px;font:700 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box;">{{ s.quick }}</span><span style="height:36px;padding:0 16px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;color:#16181F;display:inline-flex;align-items:center;gap:6px;font:700 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box;">{{ s.meal }}</span><span style="height:36px;padding:0 16px;border-radius:22px;border:2px solid #16181F;background:#FFFDF8;color:#16181F;display:inline-flex;align-items:center;gap:6px;font:700 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box;">{{ s.protein }}</span></div>
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">{{ s.count }}</span>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:28px;align-items:stretch;padding:10px 6px 0">
+<sc-for list="{{ L }}" as="c" hint-placeholder-count="8"><div style="position:relative;aspect-ratio:3/4;min-width:0;border-radius:20px;display:flex;flex-direction:column;cursor:pointer;background:{{ c.img }};border:2px solid #16181F;box-shadow:0 10px 24px -6px rgba(22,24,31,.35),0 2px 6px rgba(22,24,31,.15);overflow:hidden"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(22,24,31,.45),rgba(22,24,31,0) 22%)"></div><div style="position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-start;color:#FFFDF8;font:500 10.5px 'DM Mono',monospace;letter-spacing:.1em"><span style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-weight:600">{{ c.meal }}</span><sc-if value="{{ c.prot }}" hint-placeholder-val="{{ true }}"><span style="opacity:.65">{{ c.prot }}</span></sc-if></span><span>{{ c.no }}</span></div><div style="position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;display:flex;color:#FFFDF8;background:linear-gradient(to top,rgba(14,16,22,.9) 0%,rgba(14,16,22,.64) 38%,rgba(14,16,22,0) 100%);height:46%;align-items:flex-end;padding:0 18px 18px"><span style="font:700 20px/1.12 'Bricolage Grotesque',sans-serif;text-align:center;text-shadow:0 1px 8px rgba(0,0,0,.45);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance;width:100%">{{ c.title }}</span></div><div style="position:absolute;left:25%;right:25%;bottom:0;height:2px;border-radius:2px 2px 0 0;background:{{ c.mc }};opacity:.55"></div></div></sc-for>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;1400px&quot;},&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;fr&quot;,&quot;en&quot;],&quot;default&quot;:&quot;fr&quot;,&quot;tsType&quot;:&quot;'fr' | 'en'&quot;,&quot;section&quot;:&quot;Language&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    var fr = (this.props.lang || 'fr') !== 'en';
+    var D = [["Bols de shawarma au poulet","Chicken shawarma bowls","1546069901-ba9599a7e63c","supper","poulet"],["Orzo au citron et au poulet","Lemon chicken orzo","1473093295043-cdd812d0e601","supper","poulet"],["Salade de pois chiches au tzatziki","Tzatziki chickpea salad","1512621776951-a57141f2eefd","lunch",""],["Soupe de haricots noirs à la mijoteuse","Slow-cooker black bean soup","1547592180-85f173990554","supper",""],["Shakshuka","Shakshuka","1525351484163-7529414344d8","breakfast",""],["Pho au bœuf à la cocotte","Pressure cooker beef pho","1569718212165-3a8278d5f624","supper","boeuf"],["Crêpes au babeurre","Buttermilk pancakes","1567620905732-2d1ec7ab7445","breakfast",""],["Bol déesse verte","Green goddess bowl","1540189549336-e6e99c3679fe","lunch",""]];
+    var MEAL = { supper: fr ? 'Souper' : 'Dinner', lunch: fr ? 'Dîner' : 'Lunch', breakfast: fr ? 'Déjeuner' : 'Breakfast' };
+    var PROT = { poulet: fr ? 'Poulet' : 'Chicken', boeuf: fr ? 'Bœuf' : 'Beef' };
+    var MC = { supper: '#2323FF', lunch: '#FF48B0', breakfast: '#FFE14D' };
+    var rots = ['-1.2deg', '0.9deg', '-0.6deg', '1.3deg'];
+    var L = D.map(function (r, i) {
+      return { title: fr ? r[0] : r[1], meal: MEAL[r[3]].toUpperCase(), prot: (PROT[r[4]] || '').toUpperCase(), no: ['35 MIN','30 MIN','15 MIN','4 H','25 MIN','45 MIN','30 MIN','15 MIN'][i], mc: MC[r[3]],
+        img: '#E9E4D8 url(https://images.unsplash.com/photo-' + r[2] + '?w=800&q=70&auto=format&fit=crop) center/cover no-repeat' };
+    });
+    return { L: L, s: fr ? { title: 'Recettes', search: 'Titre, ingrédient ou étiquette', all: 'Tout', expiring: 'Expire bientôt', quick: 'Rapide', meal: 'Repas ▾', protein: 'Protéine ▾', count: '8 RECETTES' } : { title: 'Recipes', search: 'Title, ingredient or tag', all: 'All', expiring: 'Expiring soon', quick: 'Quick', meal: 'Meal ▾', protein: 'Protein ▾', count: '8 RECIPES' } };
+  }
+}
+</script>
+</body>
+</html>

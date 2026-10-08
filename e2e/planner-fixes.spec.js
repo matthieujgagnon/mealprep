@@ -37,7 +37,7 @@ const cell = (page, day, meal) => page.locator(".riso-planner-cell").nth(MEALS.i
 test("on Recipes a card opens the pop-out with Plan first; Plan opens the slot picker, which can move to next week, and the toast has Undo", async ({ page }) => {
   await setup(page, [{ title: "Plan From Recipes", ingredients: [{ name: "zucchini" }] }]);
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.locator(".riso-recipe-card", { hasText: "Plan From Recipes" }).click();
+  await page.locator(".rpc", { hasText: "Plan From Recipes" }).click();
   const pop = page.getByRole("dialog", { name: "Plan From Recipes" });
   await expect(pop.locator(".fnd-pop-actions button")).toHaveText(["Plan", "Cook", "Similar recipes", "Open the full recipe →"]);
 
@@ -59,7 +59,7 @@ test("on Recipes a card opens the pop-out with Plan first; Plan opens the slot p
 test("the pop-out's Cook opens the recipe's card on the Recipes page, not Cook mode", async ({ page }) => {
   await setup(page, [{ title: "Cook From Home" }]);
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.locator(".riso-recipe-card", { hasText: "Cook From Home" }).click();
+  await page.locator(".rpc", { hasText: "Cook From Home" }).click();
   await page.getByRole("dialog", { name: "Cook From Home" }).getByRole("button", { name: "Cook", exact: true }).click();
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
   await expect(page.locator(".riso-rc-actions")).toBeVisible();
@@ -77,19 +77,18 @@ test("Makeable now counts meals only; Include pantry and sides brings the rest b
     await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge" } });
   }
   await page.reload();
-  await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  const chip = page.getByRole("button", { name: /^Makeable now/ });
-  await expect(chip).toContainText("2");
-  await chip.click();
-  await expect(page.locator(".riso-recipe-card-name")).toHaveCount(2);
+  await page.getByRole("button", { name: "Makeable", exact: true }).click();
+  await expect(page.locator(".mk-page .rpc-title")).toHaveCount(2);
   await page.getByRole("button", { name: "Include pantry and sides" }).click();
-  await expect(page.locator(".riso-recipe-card-name")).toHaveCount(4);
+  await expect(page.locator(".mk-page .rpc-title")).toHaveCount(4);
 
-  // The same setting is on Home (the card's count) and Makeable.
+  // The same setting is on Home (the card's count). Recipes has no Makeable now chip any more.
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.locator(".riso-home-makeable-num")).toHaveText("4");
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Makeable now/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
-  await expect(page.locator(".mk-page .riso-recipe-card-name")).toHaveCount(4);
+  await expect(page.locator(".mk-page .rpc-title")).toHaveCount(4);
 });
 
 test("while dragging, only the slot under the recipe gets a pink border and no fill", async ({ page }) => {

@@ -19,11 +19,14 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Slot card and planned-meal card | `components/PlannerCards.jsx` | The cards that open from a Planner slot: beside it on a computer, under its row on a phone (`inline`). |
 | Trash strip | `components/TrashZone.jsx` | The strip at the bottom of a phone while a Planner card is held: drop on it to remove, with Undo. |
 | Recipe photo | `components/RecipePhoto.jsx` | Every recipe photo: one that fails to load disappears, and tries again for another address. |
+| Photo card | `components/RecipePhotoCard.jsx`, `lib/photoCard.js` | The one photo card behind the Recipes card and the Makeable card. |
+| Makeable card | `components/MakeableCard.jsx` | The Makeable page's card: the photo card plus the use-soon strip, tickable pills, buttons and the ingredient bar. |
+| Deal card | `DealDetailModal` in `components/FlyerDeals.jsx`, `DealDetailHost` in `components/SaleTag.jsx` | A flyer deal up close; every tap on a sale opens this one. |
 | Makeable now rule | `lib/mealSlots.js`, `hooks/useIncludeSides.js`, `IncludeSidesToggle` | What counts as "makeable". |
 | `openRecipeCard` | `App.jsx` | Opens a recipe's card on the Recipes page. |
 | Riso pills and chips | `components/RisoPills.jsx`, `lib/pills.js` | Every pill, tag and chip. |
 | Confirm dialog | `components/ConfirmDialog.jsx` | The one "are you sure?" question. |
-| Recipe finder | `components/Finder.jsx`, `components/FinderTiles.jsx`, `hooks/useFinder.js`, `lib/finder.js` | Search, filters, Main meal and results (the Planner's panel, and the Makeable page). |
+| Recipe finder | `components/Finder.jsx`, `components/FinderTiles.jsx` (the Makeable section header), `hooks/useFinder.js`, `lib/finder.js` | Search, filters, Main meal and results (the Planner's panel, and the Makeable page). |
 | Grocery item | `components/GroceryItem.jsx` | One grocery row. |
 | Inventory item form | `components/InventoryItemForm.jsx` | Add or edit an Inventory item. |
 | Inventory confirm sheet | `components/InventoryConfirm.jsx` | Confirm anything going into Inventory (see `CLAUDE.md`). |
@@ -41,7 +44,7 @@ Open it with `openPopout(recipeOrId, from?)` (`from` is the box of the card it g
 
 In `App.jsx`: Plan calls `requestPlan`, Cook and Open the full recipe call `openRecipeCard`, Similar recipes sets `plannerMainId` and goes to the Planner. **On Makeable there is no Cook, and Similar recipes sets the Main meal on Makeable itself** (`makeableFinder.setMainMeal`), with the sale pills following Makeable's "Show sales".
 
-Used by: Planner (`Finder` results, board cards on a phone), Recipes (`RecipeCard`), Home (week strip), Makeable (tiles).
+Used by: Planner (`Finder` results, board cards on a phone), Recipes (the photo cards), Home (week strip), Makeable (the cards).
 
 ## Ingredient marks
 
@@ -128,25 +131,51 @@ On a phone the planned meal's card shows the photo, the slot (« MER 7 · SOUPER
 
 `RecipePhoto` is the `<img>` for every recipe photo (board cards, the finder, pop-out, Recipes, Home, pickers). When the picture fails it hides itself, and it remembers which address failed, so the same element given another address (a card reused for another recipe or week) tries again instead of staying hidden. Do not hide a broken photo with your own `onError`.
 
+## Photo card
+
+`RecipePhotoCard` is the one photo card behind both recipe cards (design: `docs/design/riso-v2-recipe-cards/`): a full-bleed photo (`RecipePhoto`), a dark scrim at the top for the caption, a darker one at the bottom with the title centred on it, a 2px ink outline, radius 20 and the soft shadow `--riso-shadow-photo-card`. Tapping the photo or the title calls `onOpen(rect)`, which opens the recipe's pop-out (`openPopout`). Fonts are Bricolage Grotesque and DM Mono only.
+
+- `variant="grid"`: **the Recipes card.** The whole card is the photo, 3:4, all the same size; the caption has the meal word (and the protein under it) on the left and the time on the right; a thin line in the meal's colour (`mealLineColor`: supper blue, lunch pink, breakfast yellow, nothing for sides, desserts or prep) runs along the bottom. Two across on a phone with a smaller title. Built in `Recipes.jsx` (`RecipeCard`); it has no pills, servings, "to buy" line or flags.
+- `variant="panel"`: **the Makeable card's top.** A photo 260px high with `MEAL · TIME` as its caption, and `children` under it. `ready` turns the outline green.
+
+Props: `title`, `photoUrl`, `caption`, `lineColor`, `ready`, `openLabel`, `onOpen`, `className`, `children`. A new recipe card is this base with another caption and children; do not draw a second photo card. The logic that is not drawing (the caption's time, the meal line colour, which pills show, the buttons for each state, the use-soon item) is in `lib/photoCard.js`, with tests.
+
+**Colours.** Every colour is an existing Riso token; the design's greens are the app's green (`--riso-green`, `--riso-green-text`), because green keeps its meaning (nothing to buy, on the grocery list, on sale). Added for these cards and nothing else: `--riso-shadow-photo-card` (the soft shadow), `--riso-hot-line` (the thin line under the pink strip) and `--riso-progress-fill` (the ingredient bar's fill). The rest map like this: ink `--riso-ink`, card `--riso-surface`, page `--riso-canvas`, photo fallback and bar track and pill outline `--riso-track`, tick outline `--riso-dash`, text `--riso-muted`, `--riso-soft` and `--riso-placeholder`, blue `--riso-accent`, yellow `--riso-yellow`, lunch pink `--riso-hot`, the strip's dot `--riso-hot-soft` and its fill `--riso-hot-tint`.
+
+## Makeable card
+
+`MakeableCard` (`components/MakeableCard.jsx`) is the Makeable page's card: the photo card (`variant="panel"`) with a white panel under it.
+
+- **Use-soon strip** (pink): only when something the recipe uses goes off in 3 days or less (`soonItemFor`, which follows the app's "uses expiring" rule), with the days written out: « expire dans 2 jours », « expire aujourd'hui ».
+- **To buy**: each missing ingredient is a pill with a round tick, its emoji and its name; proteins in the left column, the rest in the right one (a recipe with no protein is one column). At most four (`pickPills`), then a « +2 » pill that opens the recipe. Text size follows the name's length (`pillFontSize`: 13, 12, 10.5px). The tick adds or removes that one item through `grocery.toggle` (the shared Ingredient marks and toast with Undo). A green % on a pill is a real deal (`saleFor`), only with Show sales on; it opens the **Deal card**.
+- **Buttons** follow the situation (`cardButtons`): ready = Cook (`openRecipeCard`) + Plan (`requestPlan`, the slot picker); one or two short = To buy + Plan; needs a shop = Plan + To buy (no Cook). To buy adds what is not on the list yet through `grocery.addWithUndo` (the shared toast offers Undo; there is no Undo link on the card) and turns into a green « ✓ Ajouté » once everything missing is on the list. « N en rabais » sits at the end of the row.
+- **Bar**: `have/total INGRÉDIENTS` and `COMPLET` or `N MANQUANTS`, over a thin progress line.
+
+On a phone: one card per row, pills 40px, buttons 44px, and the tick and % keep their look with an invisible 40px tap area. Props: `tile`, `soon`, `reason`, `grocery`, `deals`, `showSales`, `onOpen`, `onCook`, `onPlan`, `onOpenCirculaires`.
+
+## Deal card
+
+`DealDetailModal` (`components/FlyerDeals.jsx`) is a flyer deal up close: photo, price, how it compares, the 6-month chart, other stores. Flyers, Grocery's deal tags, the recipe card's sale tag and a Makeable card's % all open it. `DealDetailHost` (`components/SaleTag.jsx`) is the way to open it from a place that only has the deal: it loads the price history and swaps in "also on sale" deals. The card shows its buttons only when given a handler: `onList` (add to / take off the grocery list), `onToggleWatch` and `onOpenCirculaires` (« Voir dans Circulaires → », which goes to that deal on the Flyers page, as Home's "Open the flyer" does through `openFlyerDeal` in `App.jsx`).
+
 ## Makeable now rule
 
 "Makeable now" counts **meals only**: recipes for breakfast, lunch or supper, and recipes with no type yet. Sides, snacks, desserts and pantry / prep recipes (sauces live there) are left out, unless "Include pantry and sides" is on.
 
-- `isMakeableMeal(recipe, includeSides)` and `makeableRuleOn(includeSides, narrowedToSlot)` in `lib/mealSlots.js`. When someone narrows to a left-out type themselves (the Sides chip, the Meal menu on Dessert), the rule does not apply.
+- `isMakeableMeal(recipe, includeSides)` and `makeableRuleOn(includeSides, narrowedToSlot)` in `lib/mealSlots.js`. When someone narrows to a left-out type themselves (the Meal menu on Sides or Dessert), the rule does not apply.
 - `useIncludeSides()` is the one saved setting (this browser), so every page agrees.
 - `IncludeSidesToggle` (`components/RisoControls.jsx`) is the switch, « Inclure garde-manger et accompagnements » / "Include pantry and sides".
 
-Used by: Recipes (Makeable now chip and the count line), Home (Makeable now card), Makeable (every section and count, with its "Include pantry and sides" switch at the end of the count line), the finder (Ready count and results).
+Used by: Recipes (the "makeable now" count in the line at the top; the page has no chip for it, Makeable covers that), Home (Makeable now card), Makeable (every section and count, with its "Include pantry and sides" switch at the end of the count line), the finder (Ready count and results).
 
 ## openRecipeCard
 
-`openRecipeCard(recipeOrId)` in `App.jsx` opens a recipe's card (`RecipeDetailModal`) on the Recipes page. **Every "Cook" and "Open the full recipe" goes through it**, so they all land in the same place: the planned-meal card's Cook, the pop-out's Cook and Open the full recipe, Home's Start cooking, Makeable's Cook tonight. Starting Cook mode is the button inside the card.
+`openRecipeCard(recipeOrId)` in `App.jsx` opens a recipe's card (`RecipeDetailModal`) on the Recipes page. **Every "Cook" and "Open the full recipe" goes through it**, so they all land in the same place: the planned-meal card's Cook, the pop-out's Cook and Open the full recipe, Home's Start cooking, the Makeable card's Cook. Starting Cook mode is the button inside the card.
 
 Passed down as `onOpenRecipeCard`.
 
 ## Riso pills and chips
 
-`RisoPills.jsx` holds every pill: `Pill` (sizes tag, fact, chip, badge; tones; `selected`), `TimePill`, `ServesPill`, `MealChip`, `PlannedPill`, `ToBuyPill`, `InStockPill`, `SalePill` and `CountPill`. A screen uses these instead of a new pill class. The Recipes card (`RecipeCard` in `Recipes.jsx`) is drawn only with them: `TimePill`, `ServesPill`, `MealChip`, a `Pill` for the protein and the pink / green flags, plus one small "N to buy" / "Nothing to buy" line (`.rv2-card-buy`, no have-bar). The comment block at the top of the file says which to use and what the colours mean; see `docs/design/riso-v2/`.
+`RisoPills.jsx` holds every pill: `Pill` (sizes tag, fact, chip, badge; tones; `selected`), `TimePill`, `ServesPill`, `MealChip`, `PlannedPill`, `ToBuyPill`, `InStockPill`, `SalePill` and `CountPill`. A screen uses these instead of a new pill class. The Recipes and Makeable cards are photo cards and do not use these pills (see Photo card). The comment block at the top of the file says which to use and what the colours mean; see `docs/design/riso-v2/`.
 
 ## Confirm dialog
 
@@ -165,10 +194,10 @@ Used by: the recipe form (the new-recipe pop-up and the full-page editor) when c
 **Makeable page** (`layout="page"`; `components/Makeable.jsx` adds the title; design `docs/design/riso-v2-makeable/`). Same search, "With" strip, picker, filters (Repas and Protéine are the shared menus) and Main meal banner, with these differences:
 
 - **Sections** instead of one grid: Meals of the week (planned this week; closed to begin with), Ready now, One or two short, Needs a shop (`makeableSections`, with a count badge and a line of words each). A planned recipe is only in the first. The Makeable now rule (meals only) applies to every result and count, with its switch « Inclure garde-manger et accompagnements » at the end of the count line; the availability counts keep the other filters.
-- **Tiles** (`ResultCard` with a `footer`): photo and time, name, the have-bar and "Rien à acheter" when there is nothing to buy (what is missing is only in the À acheter popover and the pop-out), then **Similar recipes** and **À acheter** (`TileActions`). Ready and not planned = **pink shadow** (`.fnd-card.go`). À acheter is green when everything missing is on the list, lighter green when "Show sales" is on and some of it is on sale.
-- **À acheter popover** (`GroceryPopover`, under the tile, a cream scrim behind): + Ajouter / ✓ Ajouté per missing item, the real sale pill (`saleFor`, Show sales on only), Add all · N. **On your list** (`ListStrip`, inside a tile that has an item on the list) shows the items on the real grocery list that some recipe here is missing, at most six, with × (the shared take-off toast) and a link to Grocery. Everything goes through the shared `grocery` prop, so Grocery always agrees.
-- **Similar recipes** from a tile or the pop-out sets the Main meal on this page; the yellow banner has a ✕ in its corner and no Cancel.
-- Props the page adds: `plannedDays` (recipe id → day, this week), `grocery`, `deals`, `showSales`, `onToggleSales`, `onSimilar`, `onOpenGrocery`.
+- **Cards** (`MakeableCard`, see Makeable card below), in a grid of columns at least 310px wide on a computer and one per row on a phone, each at its own height and lined up at the top of its row. A section's cards are the same card in four situations: ready, one or two short, needs a shop, and one short with something expiring.
+- **Similar recipes** from the pop-out sets the Main meal on this page (the card has no button for it); the yellow banner has a ✕ in its corner and no Cancel, and each card then says what it shares (`.mkc-reason`).
+- Props the page adds: `plannedDays` (recipe id → day, this week), `grocery`, `deals`, `showSales`, `onToggleSales`, `onCook`, `onPlan`, `onOpenFlyerDeal`.
+- **Phone chips.** On a phone the filter chips are one row that scrolls sideways and pins under the app header (`.fnd-chips`, `--fnd-sticky-top` measured like Inventory's shelf pill): All, Ready now, 1 or 2 short and Quick first, then Expiring soon and Show sales; the Meal and Protein menus sit under it so they can open. The count on each availability chip is not shown on a phone.
 
 ## Where things live in `App.jsx`
 

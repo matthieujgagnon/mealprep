@@ -260,10 +260,11 @@ function endsLabel(days) {
 // (lowest price seen each month) with the lowest/average/highest, any
 // storage tip, and add-to-list / watch.
 // A flyer item up close: photo, price, how it compares, its 6-month chart.
-// Used by the Flyers page and the grocery list's deal tags; `others` lists
-// the same product at other stores, and the list/watch buttons show only
-// when given a handler.
-export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others = [], postalCode, onOpenOther }) {
+// Used by the Flyers page, the grocery list's deal tags, the recipe card's sale
+// tag and the sale marks on a Makeable card (DealDetailHost in SaleTag.jsx);
+// `others` lists the same product at other stores, and the list / watch /
+// "See in Flyers" buttons show only when given a handler.
+export function DealDetailModal({ deal, onClose, onList, onToggleWatch, onOpenCirculaires, others = [], postalCode, onOpenOther }) {
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") onClose();
@@ -473,6 +474,11 @@ export function DealDetailModal({ deal, onClose, onList, onToggleWatch, others =
           <a className="riso-deal-detail-flyer" href={flyerUrl(deal.store, postalCode)} target="_blank" rel="noreferrer">
             {t("flyers.openFlyer", { store: deal.store })}
           </a>
+          {onOpenCirculaires && (
+            <button type="button" className="riso-deal-detail-circulaires" onClick={onOpenCirculaires}>
+              {t("flyers.seeInFlyers")}
+            </button>
+          )}
           {(onList || onToggleWatch) && (
             <div className="riso-deal-detail-actions">
               {onList && (

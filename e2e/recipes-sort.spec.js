@@ -28,12 +28,11 @@ test("Fewest missing sorts by items to buy, with unknown recipes last", async ({
   await page.getByRole("button", { name: /^SORT/ }).click();
   await page.getByRole("option", { name: "Fewest missing" }).click();
 
-  const names = page.locator(".riso-recipe-card-name");
+  const names = page.locator(".rpc-title");
   await expect(names).toHaveText(["Needs nothing", "Needs one", "Needs three", "No ingredients yet"]);
-  await expect(page.locator(".riso-recipe-card", { hasText: "Needs one" })).toContainText("1 to buy");
 });
 
-test("cards show the total time, and Quickest puts recipes without a time last", async ({ page }) => {
+test("cards show the total time in their caption, and Quickest puts recipes without a time last", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-time+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
@@ -53,9 +52,10 @@ test("cards show the total time, and Quickest puts recipes without a time last",
   await page.getByRole("button", { name: /^SORT/ }).click();
   await page.getByRole("option", { name: "Quickest" }).click();
 
-  await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Quick salad", "Slow braise", "No time given"]);
-  await expect(page.locator(".riso-recipe-card", { hasText: "Slow braise" }).locator(".rv2-card-meta .riso-pill").first()).toHaveText("⏱3 h");
-  await expect(page.locator(".riso-recipe-card", { hasText: "No time given" }).locator(".rv2-card-meta .riso-pill").first()).toHaveText("⏱add time");
+  await expect(page.locator(".rpc-title")).toHaveText(["Quick salad", "Slow braise", "No time given"]);
+  await expect(page.locator(".rpc", { hasText: "Slow braise" }).locator(".rpc-cap-time")).toHaveText("3 H");
+  await expect(page.locator(".rpc", { hasText: "Quick salad" }).locator(".rpc-cap-time")).toHaveText("10 MIN");
+  await expect(page.locator(".rpc", { hasText: "No time given" }).locator(".rpc-cap-time")).toHaveCount(0);
 });
 
 test("an ingredient can be a count of units", async ({ page }) => {
@@ -75,7 +75,7 @@ test("an ingredient can be a count of units", async ({ page }) => {
   await page.fill('textarea[placeholder="Describe this step"]', "Stuff them.");
   await page.getByRole("button", { name: "Save recipe" }).click();
 
-  await page.locator(".riso-recipe-card", { hasText: "Stuffed peppers" }).click();
+  await page.locator(".rpc", { hasText: "Stuffed peppers" }).click();
 
   await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await expect(page.locator(".riso-rc-ingredient-qty").first()).toHaveText("3 units");
@@ -103,7 +103,7 @@ test("any photo can be made the cover, and photos keep their order", async ({ pa
   await page.fill('input[aria-label="Ingredient"]', "beef");
   await page.fill('textarea[placeholder="Describe this step"]', "Stew it.");
   await page.getByRole("button", { name: "Save recipe" }).click();
-  await expect(page.locator(".riso-recipe-card", { hasText: "Two photo stew" })).toBeVisible();
+  await expect(page.locator(".rpc", { hasText: "Two photo stew" })).toBeVisible();
 
   const recipes = await (await page.request.get("/api/recipes")).json();
   const saved = recipes.find((r) => r.title === "Two photo stew");
@@ -123,11 +123,12 @@ test("the Side filter shows side dishes", async ({ page }) => {
 
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.getByRole("button", { name: /^Sides\s*\d+$/ }).click();
-  await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Garlic asparagus"]);
+  await page.getByRole("button", { name: /^MEAL/ }).click();
+  await page.getByRole("option", { name: /^Sides · 1$/ }).click();
+  await expect(page.locator(".rpc-title")).toHaveText(["Garlic asparagus"]);
 });
 
-test("SORT sits in the toolbar beside the tabs, and the meal chips keep their counts", async ({ page }) => {
+test("TIME and SORT sit in the toolbar beside the tabs, and the Meal menu keeps its counts", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -139,10 +140,12 @@ test("SORT sits in the toolbar beside the tabs, and the meal chips keep their co
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
-  // Protein, Time and Sort share the row with the tabs.
+  // Time and Sort share the row with the tabs; Meal and Protein are chips under it.
   const row = page.locator(".rv2-tabrow");
   await expect(row.getByRole("tab", { name: /^Cookbook\s*1$/ })).toBeVisible();
-  for (const label of [/^PROTEIN/, /^TIME/, /^SORT/]) await expect(row.getByRole("button", { name: label })).toBeVisible();
-  await expect(page.locator(".rv2-chips").getByRole("button", { name: /^Snacks\s*1$/ })).toBeVisible();
-  await expect(page.locator(".rv2-chips").getByRole("button", { name: /^Supper\s*0$/ })).toBeVisible();
+  for (const label of [/^TIME/, /^SORT/]) await expect(row.getByRole("button", { name: label })).toBeVisible();
+  await expect(row.getByRole("button", { name: /^PROTEIN/ })).toHaveCount(0);
+  await page.locator(".rv2-chips").getByRole("button", { name: /^MEAL/ }).click();
+  await expect(page.getByRole("option", { name: /^Snacks · 1$/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /^Supper · 0$/ })).toBeVisible();
 });

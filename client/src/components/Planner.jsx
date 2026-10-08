@@ -78,13 +78,17 @@ export function Planner({
   const boardRef = useRef(null);
 
   // A phone shows three days at a time: the page with today opens first (the
-  // first page for another week), and a new week starts there again.
+  // first page for another week), and a new week starts there again, without
+  // sliding. The page is reset while rendering the new week (not in an effect
+  // after it), so the board's "instant" render for a changed week already has the
+  // right page; an effect left a second render where the board slid there.
   const firstPage = () => pageOfDay(isCurrentWeek(weekStart) ? todayIndex() : 0);
   const [page, setPage] = useState(firstPage);
-  useEffect(() => {
+  const [pageWeek, setPageWeek] = useState(weekStart);
+  if (pageWeek !== weekStart) {
+    setPageWeek(weekStart);
     setPage(firstPage());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekStart]);
+  }
 
   const mainRecipe = finder.mainId ? recipes.find((r) => r.id === finder.mainId) || null : null;
 

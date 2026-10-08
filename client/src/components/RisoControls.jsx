@@ -87,13 +87,15 @@ export function HintStrip({ userId, screenKey, items, children }) {
 
 // A dropdown: label, value, ▾. Yellow when it isn't on its default option. On
 // a phone it is a full-width pill that shows only the value (the label stays
-// for screen readers). Only one is open at a time (the page keeps `open`).
-export function PillMenu({ id, label, value, options, selected, isDefault, open, phone, openLeft, onToggle, onPick }) {
+// for screen readers). With variant="chip" it is one of a row of filter chips
+// (Recipes: "Repas ▾", "Protéine ▾"): just the label and ▾, dark when set. Only
+// one is open at a time (the page keeps `open`).
+export function PillMenu({ id, label, value, options, selected, isDefault, open, phone, openLeft, variant, onToggle, onPick }) {
   return (
     <div className="rv2-menu-wrap">
       <button
         type="button"
-        className={`rv2-drop${isDefault ? "" : " set"}${phone ? " phone" : ""}`}
+        className={`rv2-drop${isDefault ? "" : " set"}${phone ? " phone" : ""}${variant === "chip" ? " chip" : ""}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => onToggle(id)}

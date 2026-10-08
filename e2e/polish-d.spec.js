@@ -39,7 +39,7 @@ const SVG = (c) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='ht
 test.describe("Recipes on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("the search pill and + New recipe stack; Cookbook and Imported share a line; Meal, Protein, Time and Sort sit in two rows; no sideways scroll", async ({ page }) => {
+  test("the search pill and + New recipe stack; Cookbook and Imported share a line; Time and Sort share a row under them and the chips (All, Quick, Meal, Protein) one more; no sideways scroll", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Chicken curry");
     const pad = await recipe(page, "Pad thai");
@@ -56,15 +56,18 @@ test.describe("Recipes on a phone", () => {
     const tabs = [await box(page.getByRole("tab", { name: /^Cookbook/ })), await box(page.getByRole("tab", { name: /^Imported/ }))];
     expect(tabs[0].top).toBe(tabs[1].top);
     expect(tabs.every((b) => b.right <= 390)).toBe(true);
-    // Four menus in two rows of two, the same size, and no chip row.
+    // Time and Sort side by side, the same size.
     const menus = [];
-    for (const name of [/^MEAL/, /^PROTEIN/, /^TIME/, /^SORT/]) menus.push(await box(page.getByRole("button", { name })));
-    expect(new Set([menus[0].top, menus[1].top]).size).toBe(1);
-    expect(new Set([menus[2].top, menus[3].top]).size).toBe(1);
-    expect(menus[2].top).toBeGreaterThan(menus[0].top);
-    expect(new Set(menus.map((m) => m.w)).size).toBe(1);
+    for (const name of [/^TIME/, /^SORT/]) menus.push(await box(page.getByRole("button", { name })));
+    expect(menus[0].top).toBe(menus[1].top);
+    expect(menus[0].w).toBe(menus[1].w);
     expect(menus.every((m) => m.right <= 390)).toBe(true);
-    await expect(page.locator(".rv2-chips")).toHaveCount(0);
+    // The chips: All, Quick, Meal and Protein on one row under them.
+    const chips = [];
+    for (const name of [/^All$/, /^Quick$/, /^MEAL/, /^PROTEIN/]) chips.push(await box(page.locator(".rv2-chips").getByRole("button", { name })));
+    expect(new Set(chips.map((c) => c.top)).size).toBe(1);
+    expect(chips[0].top).toBeGreaterThan(menus[0].top);
+    expect(chips.every((c) => c.right <= 390 && c.h >= 40)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 
@@ -75,7 +78,7 @@ test.describe("Recipes on a phone", () => {
     await recipe(page, "Fish pie");
     await goRecipes(page);
     await expect(page.locator(".riso-recipes-head")).toHaveCount(0);
-    const cards = page.locator(".riso-recipe-card");
+    const cards = page.locator(".rpc");
     await expect(cards).toHaveCount(3);
     const lefts = await cards.evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) }; }));
     expect(lefts[0].top).toBe(lefts[1].top); // two on the first row
@@ -85,7 +88,7 @@ test.describe("Recipes on a phone", () => {
     expect(lefts[0].w).toBeLessThan(200);
   });
 
-  test("the Meal menu picks a meal type and Makeable now, and a click outside closes it", async ({ page }) => {
+  test("the Meal chip picks a meal type, and a click outside closes it", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Chicken curry");
     await recipe(page, "Toast", { mealSlot: "breakfast" });
@@ -94,7 +97,7 @@ test.describe("Recipes on a phone", () => {
     await meal.click();
     await page.getByRole("option", { name: /^Breakfast/ }).click();
     await expect(meal).toContainText("Breakfast");
-    await expect(page.locator(".riso-recipe-card-name")).toHaveText(["Toast"]);
+    await expect(page.locator(".rpc-title")).toHaveText(["Toast"]);
     await meal.click();
     await expect(page.getByRole("listbox", { name: /^MEAL/ })).toBeVisible();
     await page.locator(".riso-recipes-title").click();
@@ -112,7 +115,7 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     await page.getByRole("tab", { name: /^Imported/ }).click();
     await expect(page.locator(".rv2-grid")).toContainText("Pad thai");
 
-    await page.locator(".riso-recipe-card", { hasText: "Pad thai" }).click();
+    await page.locator(".rpc", { hasText: "Pad thai" }).click();
 
     await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     // On the recipe page.
@@ -138,7 +141,7 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     await page.reload();
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     await page.getByRole("button", { name: "Recettes", exact: true }).click();
-    await page.locator(".riso-recipe-card", { hasText: "Pad thai" }).click();
+    await page.locator(".rpc", { hasText: "Pad thai" }).click();
     await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "Plus d'actions" }).click();
     await page.locator(".riso-rc-menu").getByRole("button", { name: "Ajouter à mon livre de recettes" }).click();
@@ -154,7 +157,7 @@ test.describe("Step timers", () => {
     await signUp(page);
     await recipe(page, "Boiled eggs", { instructions: ["Boil the eggs for 5 minutes.", "Serve."] });
     await goRecipes(page);
-    await page.locator(".riso-recipe-card", { hasText: "Boiled eggs" }).click();
+    await page.locator(".rpc", { hasText: "Boiled eggs" }).click();
     await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
 
     const timer = page.locator(".riso-rc-timer");
@@ -198,7 +201,7 @@ test.describe("Step timers", () => {
     await signUp(page);
     await recipe(page, "Boiled eggs", { instructions: ["Boil the eggs for 5 minutes."] });
     await goRecipes(page);
-    await page.locator(".riso-recipe-card", { hasText: "Boiled eggs" }).click();
+    await page.locator(".rpc", { hasText: "Boiled eggs" }).click();
     await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.locator(".riso-rc-timer").getByRole("button", { name: "▶ Start" }).click();
     await page.getByRole("button", { name: "Start cooking" }).click();

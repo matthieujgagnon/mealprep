@@ -15,6 +15,8 @@ import { t } from "../i18n/index.js";
 //   upcomingEntries every planned meal from today on (this week's make the first section)
 //   grocery         { isOnList, add, remove, toggle, addWithUndo }, the real grocery list
 //   deals, showSales, onToggleSales   the real Flipp deals and the Show sales switch
+//   onCook, onPlan, onOpenFlyerDeal   a card's Cook (openRecipeCard), Plan (the slot picker) and
+//                                     the deal card's "See in Flyers"
 export function Makeable({
   finder,
   recipes,
@@ -29,7 +31,9 @@ export function Makeable({
   onToggleSales,
   onOpenPopout,
   popoutId,
-  onOpenGrocery,
+  onCook,
+  onPlan,
+  onOpenFlyerDeal,
 }) {
   const plannedDays = useMemo(() => plannedDaysThisWeek(upcomingEntries, currentWeekStart()), [upcomingEntries]);
   return (
@@ -51,10 +55,11 @@ export function Makeable({
         deals={deals}
         showSales={showSales}
         onToggleSales={onToggleSales}
-        onSimilar={(recipe) => finder.setMainMeal(recipe.id)}
+        onCook={onCook}
+        onPlan={onPlan}
+        onOpenFlyerDeal={onOpenFlyerDeal}
         onOpenPopout={onOpenPopout}
         openId={popoutId}
-        onOpenGrocery={onOpenGrocery}
       />
     </div>
   );

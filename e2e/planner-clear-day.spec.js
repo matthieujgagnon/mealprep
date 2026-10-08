@@ -75,7 +75,7 @@ test.describe("desktop", () => {
     await expect(page.locator(".riso-planner-clear")).toHaveCount(1);
   });
 
-  test("Recipes cards: no have-bar, one small to-buy line, time, servings, meal type and protein; same height in a row", async ({ page }) => {
+  test("Recipes cards: photo cards with the meal, protein and time on top and the title at the bottom; all the same size", async ({ page }) => {
     await setup(page);
     await seedPlan(page);
     await post(page, "/api/recipes", { title: "Plain toast", mealSlot: "breakfast", baseServings: 1, ingredients: [{ name: "bread" }], instructions: ["Toast."] });
@@ -90,22 +90,21 @@ test.describe("desktop", () => {
     await page.reload();
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
-    const cards = page.locator(".riso-recipe-card");
+    const cards = page.locator(".rpc");
     await expect(cards).toHaveCount(3);
     await expect(page.locator(".riso-recipe-card-havebar, .riso-recipe-card-havelabel")).toHaveCount(0);
 
     const chicken = cards.filter({ hasText: "Roast chicken" });
-    await expect(chicken.locator(".riso-pill.tone-yellow")).toContainText("1 h");
-    await expect(chicken).toContainText("Serves 4");
-    await expect(chicken).toContainText("Supper");
-    await expect(chicken).toContainText(/chicken/i);
-    await expect(chicken.locator(".rv2-card-buy")).toHaveText("2 to buy");
+    await expect(chicken.locator(".rpc-cap-time")).toHaveText(/^1 H/);
+    await expect(chicken.locator(".rpc-cap-meal")).toHaveText("Supper");
+    await expect(chicken.locator(".rpc-cap-protein")).toHaveText("Chicken");
+    await expect(chicken).not.toContainText("Serves");
+    await expect(chicken).not.toContainText("to buy");
 
-    // Same height for every card in a row.
-    const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ y: Math.round(r.y), h: Math.round(r.height) })));
-    const firstRow = boxes.filter((b) => b.y === boxes[0].y);
-    expect(firstRow.length).toBeGreaterThan(1);
-    expect(new Set(firstRow.map((b) => b.h)).size).toBe(1);
+    // Every card is the same size, even with a very long title.
+    const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) })));
+    expect(boxes.filter((b) => b.y === boxes[0].y).length).toBeGreaterThan(1);
+    expect(new Set(boxes.map((b) => `${b.w}x${b.h}`)).size).toBe(1);
     await page.locator(".rv2-grid").evaluate((el) => el.scrollIntoView({ block: "start" }));
     await page.screenshot({ path: test.info().outputPath("desktop-en-recipes-cards.png") });
   });
@@ -142,7 +141,7 @@ test.describe("phone, in French", () => {
     await post(page, "/api/recipes", { title: "Pain grillé", mealSlot: "breakfast", baseServings: 1, ingredients: [{ name: "pain" }], instructions: ["Griller."] });
     await page.reload();
     await page.getByRole("button", { name: "Recettes", exact: true }).first().click();
-    const cards = page.locator(".riso-recipe-card");
+    const cards = page.locator(".rpc");
     await expect(cards).toHaveCount(2);
     const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ y: Math.round(r.y), h: Math.round(r.height), right: r.right })));
     expect(new Set(boxes.filter((b) => b.y === boxes[0].y).map((b) => b.h)).size).toBe(1);
