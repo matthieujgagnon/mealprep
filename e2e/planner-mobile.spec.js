@@ -176,6 +176,11 @@ test("cards: leftover = yellow border and tag, already have = blue border only, 
   await page.getByRole("button", { name: "Previous week" }).click();
   await expect(page.locator(".pmb-cell.past")).toHaveCount(todayIndex() * 3);
   if (todayIndex() > 0) {
+    // This week opens on the page with today (Thu–Sat or Fri–Sun later in the week), so
+    // turn back to the first page, where Monday is, the way a person would.
+    const back = stickers(page).filter({ hasText: "←" });
+    while ((await back.count()) > 0) await back.first().click();
+    await expect.poll(() => trackX(page)).toBe(0);
     await page.locator(".pmb-cell.past .pmb-empty").first().click({ force: true });
     await expect(page.locator(".pmi")).toHaveCount(0);
   }
