@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}</style></helmet>
+<div style="max-width:1280px;margin:0 auto;padding:0 {{ padX }} {{ padB }};box-sizing:border-box;color:#16181F;position:relative;z-index:20;margin-bottom:{{ mb }}">
+<div style="display:flex;flex-direction:{{ rowDir }};align-items:{{ rowAi }};justify-content:space-between;gap:{{ rowGap }}">
+<h1 style="margin:0;font:800 {{ titleFs }}/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em;white-space:nowrap">This week's <span style="color:#2323FF">menu.</span></h1>
+<div style="display:flex;align-items:center;gap:8px;padding-bottom:2px">
+<div onClick="{{ prev }}" style="width:32px;height:32px;border-radius:16px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box;flex:none" style-hover="background:#FFE14D">‹</div>
+<div style="position:relative;flex:none">
+<div onClick="{{ toggle }}" style="height:34px;padding:0 13px;border-radius:17px;border:2px solid #16181F;background:{{ dateBg }};color:{{ dateFg }};box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;gap:6px;font:800 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box;user-select:none">{{ label }}<span style="font-size:9px">{{ caret }}</span></div>
+<sc-if value="{{ open }}" hint-placeholder-val="{{ false }}"><div onClick="{{ close }}" style="position:fixed;inset:0;z-index:40"></div>
+<div style="position:absolute;z-index:50;left:{{ popLeft }};transform:{{ popTx }};top:calc(100% + 14px);width:{{ popW }};background:#FFFDF8;border:2px solid #16181F;border-radius:16px;box-shadow:5px 5px 0 #16181F;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px">
+<span style="position:absolute;top:-9px;left:{{ caretLeft }};margin-left:-8px;width:14px;height:14px;background:#FFFDF8;border-left:2px solid #16181F;border-top:2px solid #16181F;transform:rotate(45deg)"></span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<span style="font:800 28px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;white-space:nowrap">{{ monthName }} <span style="color:#2323FF">{{ year }}</span></span>
+<div style="display:flex;gap:8px">
+<div onClick="{{ mPrev }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box" style-hover="background:#FFE14D">‹</div>
+<div onClick="{{ mNext }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box" style-hover="background:#FFE14D">›</div>
+</div></div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);font:500 11px 'DM Mono',monospace;letter-spacing:.08em;color:#5E5B52;text-align:center;padding:4px 0"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+<div onMouseLeave="{{ unhover }}" style="display:flex;flex-direction:column;gap:2px"><sc-for list="{{ rows }}" as="w" hint-placeholder-count="6"><div style="display:contents"><div onClick="{{ w.pick }}" style="display:grid;grid-template-columns:repeat(7,1fr);background:{{ w.bg }};border-radius:16px;cursor:pointer;padding:2px 0"><sc-for list="{{ w.days }}" as="c" hint-placeholder-count="7"><div onMouseEnter="{{ c.enter }}" onClick="{{ c.tap }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px 0 4px"><span style="min-width:30px;height:30px;border-radius:10px;background:{{ c.bg }};border:2px solid {{ c.bd }};display:flex;align-items:center;justify-content:center;font:800 15px 'Bricolage Grotesque',sans-serif;color:{{ c.fg }};box-sizing:border-box;outline:2px solid {{ c.hl }};outline-offset:1px">{{ c.n }}</span><div style="display:flex;gap:2px"><sc-for list="{{ c.dashes }}" as="x" hint-placeholder-count="3"><span style="width:8px;height:4px;border-radius:2px;background:{{ x.bg }}"></span></sc-for></div></div></sc-for></div><sc-if value="{{ w.showHov }}" hint-placeholder-val="{{ false }}"><div style="background:#F4F1EA;border:2px solid #16181F;border-radius:16px;padding:12px;margin:4px 0 8px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px"><span style="font:800 18px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">{{ w.hvTitle }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">{{ w.hvCount }}</span></div><sc-for list="{{ w.hvSlots }}" as="m" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px"><div style="width:42px;height:42px;flex:none;border-radius:10px;border:2px {{ m.bs }} #16181F;background:{{ m.bg }};box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:500 10px 'DM Mono',monospace;color:#3F3E37">{{ m.ph }}</div><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">{{ m.slot }}</span><span style="font:800 13.5px/1.2 'Bricolage Grotesque',sans-serif;color:{{ m.fg }}">{{ m.name }}</span></div><sc-if value="{{ m.left }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;transform:rotate(-4deg);height:20px;padding:0 8px;border-radius:10px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 11px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">leftover</span></sc-if></div></sc-for><div onClick="{{ w.hvGo }}" style="height:36px;border-radius:18px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;justify-content:center;font:700 13.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">Show this week</div></div></sc-if></div></sc-for></div>
+<div style="display:flex;align-items:center;gap:16px;font:500 11px 'DM Mono',monospace;letter-spacing:.1em;color:#3F3E37;padding-top:4px"><span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:4px;border-radius:2px;background:#2323FF"></span>MEALS PLANNED</span><span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#FF48B0;border:2px solid #16181F;box-sizing:border-box"></span>TODAY</span></div>
+<div style="display:flex;gap:10px;margin-top:6px;padding-top:16px;border-top:2px dashed #BDB6A6">
+<div onClick="{{ goCur }}" style="flex:1;height:42px;border-radius:21px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box" style-hover="background:#FFE14D">Go to this week</div>
+<div onClick="{{ copy }}" style="flex:1;height:42px;border-radius:21px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;gap:8px;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box" style-hover="background:#FFE14D"><span>{{ copyIcon }}</span>{{ copyLabel }}</div>
+</div>
+<sc-if value="{{ hasHovD }}" hint-placeholder-val="{{ false }}"><div style="position:{{ hovPos }};right:{{ hovRight }};top:0;width:{{ hovW }};background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:{{ hovSh }};padding:16px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;pointer-events:{{ hovPe }}">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px"><span style="font:800 20px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">{{ hovTitle }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">{{ hovCount }}</span></div>
+<sc-for list="{{ hovSlots }}" as="m" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:12px"><div style="width:48px;height:48px;flex:none;border-radius:12px;border:2px {{ m.bs }} #16181F;background:{{ m.bg }};box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:500 10px 'DM Mono',monospace;color:#3F3E37">{{ m.ph }}</div>
+<div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">{{ m.slot }}</span><span style="font:800 14px/1.2 'Bricolage Grotesque',sans-serif;color:{{ m.fg }}">{{ m.name }}</span></div>
+<sc-if value="{{ m.left }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;transform:rotate(-4deg);height:20px;padding:0 8px;border-radius:10px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 11px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">leftover</span></sc-if></div></sc-for>
+<sc-if value="{{ P }}" hint-placeholder-val="{{ false }}"><div onClick="{{ hovGo }}" style="height:38px;border-radius:19px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;justify-content:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">Show this week</div></sc-if>
+</div></sc-if>
+</div></sc-if>
+</div>
+<div onClick="{{ next }}" style="width:32px;height:32px;border-radius:16px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:800 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;user-select:none;box-sizing:border-box;flex:none" style-hover="background:#FFE14D">›</div>
+<sc-if value="{{ isCur }}" hint-placeholder-val="{{ true }}"><span style="transform:rotate(-4deg);height:22px;padding:0 10px;border-radius:11px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 11.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">this week</span></sc-if>
+<sc-if value="{{ notCur }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCur }}" style="transform:rotate(-4deg);height:22px;padding:0 10px;border-radius:11px;border:2px solid #16181F;background:#FFE14D;display:flex;align-items:center;font:800 11.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer">↩ this week</span></sc-if>
+</div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;120px&quot;}}">
+class Component extends DCLogic {
+  state = { sel: 0, open: false, mo: 0, copied: false, hov: null, w: 1280 };
+  componentDidMount() { this.onR = () => this.setState({ w: window.innerWidth }); this.onR(); window.addEventListener('resize', this.onR); }
+  componentWillUnmount() { window.removeEventListener('resize', this.onR); }
+  renderVals() {
+    const { sel, open, mo, copied, hov, w } = this.state;
+    const P = w < 768;
+    const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const MF = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    const DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const base = new Date(2026, 9, 5), TODAY = 1;
+    const add = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+    const diff = d => Math.round((d - base) / 864e5);
+    const monOf = d => (d.getFullYear() - 2026) * 12 + d.getMonth() - 9;
+    const ws = add(base, 7 * sel), we = add(ws, 6);
+    const label = ws.getMonth() === we.getMonth() ? `${MS[ws.getMonth()]} ${ws.getDate()} – ${we.getDate()}` : `${MS[ws.getMonth()]} ${ws.getDate()} – ${MS[we.getMonth()]} ${we.getDate()}`;
+    const CR = { n: 'Buttermilk pancakes', t: '#F3D9B8' }, TZ = { n: 'Tzatziki chickpea salad', t: '#D9E5C0' }, SH = { n: 'Shakshuka', t: '#F2B8A0' }, SW = { n: 'Chicken shawarma bowls', t: '#E9D3A8' }, GG = { n: 'Green goddess bowl', t: '#BFDCB0' };
+    const MEAL = {
+      0: [CR, TZ, null],
+      1: [null, { ...SW, left: 1 }, null],
+      3: [null, GG, null],
+      5: [SH, null, null],
+      6: [null, { ...GG, left: 1 }, null]
+    };
+    const hv = o => {
+      const d = add(base, o), m = MEAL[o] || [null, null, null];
+      const title = `${DS[d.getDay()]}, ${MS[d.getMonth()]} ${d.getDate()}`, k = m.filter(Boolean).length;
+      return { title, count: k ? `${k} PLANNED` : 'NOTHING PLANNED', slots: ['BREAKFAST', 'LUNCH', 'SUPPER'].map((slot, i) => { const x = m[i]; return x ? { slot, name: x.n, left: !!x.left, bs: 'solid', bg: x.t, ph: 'photo', fg: '#16181F' } : { slot, name: '—', left: false, bs: 'dashed', bg: 'transparent', ph: '', fg: '#A8A394' }; }) };
+    };
+    const first = new Date(2026, 9 + mo, 1);
+    const lead = (first.getDay() + 6) % 7;
+    const g0 = add(first, -lead);
+    const rows = [];
+    for (let r = 0; r < 6; r++) {
+      const rs = add(g0, 7 * r), wi = Math.floor(diff(rs) / 7), inSel = wi === sel;
+      if (r === 5 && rs.getMonth() !== first.getMonth()) break;
+      const days = [];
+      for (let c = 0; c < 7; c++) {
+        const d = add(rs, c), o = diff(d), out = d.getMonth() !== first.getMonth(), m = MEAL[o] || [null, null, null];
+        days.push({
+          o, n: d.getDate(), bg: o === TODAY ? '#FF48B0' : 'transparent', bd: o === TODAY ? '#16181F' : 'transparent',
+          fg: out ? '#A8A394' : '#16181F', hl: hov === o ? '#2323FF' : 'transparent',
+          dashes: m.map(x => ({ bg: x ? (inSel ? '#16181F' : '#2323FF') : (inSel ? 'rgba(22,24,31,.18)' : '#D8D4C8') })),
+          enter: () => this.setState({ hov: o }),
+          tap: P ? (e => { e.stopPropagation(); this.setState({ hov: o }); }) : null
+        });
+      }
+      const hit = P && hov !== null && Math.floor(hov / 7) === wi && days.some(x => x.o === hov);
+      const H = hit ? hv(hov) : null;
+      rows.push({ showHov: !!hit, hvTitle: H ? H.title : '', hvCount: H ? H.count : '', hvSlots: H ? H.slots : [], hvGo: () => this.setState({ sel: wi, open: false, hov: null }), days, bg: inSel ? '#FFE14D' : 'transparent', pick: P ? (() => {}) : (() => this.setState({ sel: wi, open: false, hov: null })) });
+    }
+    let hovTitle = '', hovCount = '', hovSlots = [];
+    if (hov !== null) {
+      const d = add(base, hov), m = MEAL[hov] || [null, null, null];
+      hovTitle = `${DS[d.getDay()]}, ${MS[d.getMonth()]} ${d.getDate()}`;
+      const k = m.filter(Boolean).length;
+      hovCount = k ? `${k} PLANNED` : 'NOTHING PLANNED';
+      hovSlots = ['BREAKFAST', 'LUNCH', 'SUPPER'].map((slot, i) => {
+        const x = m[i];
+        return x ? { slot, name: x.n, left: !!x.left, bs: 'solid', bg: x.t, ph: 'photo', fg: '#16181F' }
+                 : { slot, name: '—', left: false, bs: 'dashed', bg: 'transparent', ph: '', fg: '#A8A394' };
+      });
+    }
+    const set = i => this.setState({ sel: i });
+    return {
+      label, rows, open, isCur: sel === 0, notCur: sel !== 0,
+      monthName: MF[first.getMonth()], year: first.getFullYear(),
+      caret: open ? '▲' : '▾', dateBg: open ? '#2323FF' : '#FFFDF8', dateFg: open ? '#fff' : '#16181F',
+      prev: () => set(sel - 1), next: () => set(sel + 1),
+      mPrev: () => this.setState({ mo: mo - 1 }), mNext: () => this.setState({ mo: mo + 1 }),
+      toggle: () => open ? this.setState({ open: false, hov: null }) : this.setState({ open: true, mo: monOf(ws) }),
+      close: () => this.setState({ open: false, hov: null }),
+      goCur: () => this.setState({ sel: 0, open: false, hov: null }),
+      unhover: () => this.setState({ hov: null }),
+      copy: () => { this.setState({ copied: true }); setTimeout(() => this.setState({ copied: false }), 1600); },
+      copyLabel: copied ? '✓ Copied' : 'Copy last week', copyIcon: copied ? '' : '↺',
+      hasHovD: hov !== null && !P, P, hovPos: P ? 'static' : 'absolute', hovRight: P ? 'auto' : 'calc(100% + 16px)', hovW: P ? '100%' : '280px', hovSh: P ? 'none' : '6px 6px 0 #16181F', hovPe: P ? 'auto' : 'none',
+      hovGo: () => this.setState({ sel: Math.floor((hov || 0) / 7), open: false, hov: null }),
+      padX: P ? '18px' : '40px', padB: P ? '14px' : '0', mb: P ? '0' : '-9px', rowDir: P ? 'column' : 'row', rowAi: P ? 'flex-start' : 'flex-end', rowGap: P ? '14px' : '24px', titleFs: P ? '40px' : '60px',
+      popLeft: P ? '-40px' : '50%', popTx: P ? 'none' : 'translateX(-50%)', popW: P ? 'min(350px, calc(100vw - 36px))' : '350px', caretLeft: P ? '85px' : '50%', hovTitle, hovCount, hovSlots
+    };
+  }
+}
+</script>
+</body>
+</html>

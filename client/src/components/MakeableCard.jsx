@@ -5,7 +5,7 @@ import { foodEmoji } from "../lib/dealEmoji.js";
 import { saleFor } from "../lib/finder.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
-import { captionTime, cardButtons, cardState, namesToAdd, pickPills, pillFontSize, saleCount } from "../lib/photoCard.js";
+import { cardButtons, cardCaption, cardState, haveBar, namesToAdd, pickPills, pillFontSize, saleCount } from "../lib/photoCard.js";
 import { t } from "../i18n/index.js";
 
 // The Makeable card (design: docs/design/riso-v2-recipe-cards/): the shared photo
@@ -76,7 +76,6 @@ export function MakeableCard({ tile, soon, reason, grocery, deals, showSales, on
   const onSale = saleCount(names, saleOf);
   const slot = recipeSlot(recipe);
   const meal = slot ? t(`recipes.mealTypes.${slot}`) : "";
-  const time = captionTime(recipeTotalMinutes(recipe));
   const open = (rect) => onOpen(recipe, rect);
 
   const pill = (item) => (
@@ -133,7 +132,7 @@ export function MakeableCard({ tile, soon, reason, grocery, deals, showSales, on
       ready={ready}
       title={recipe.title}
       photoUrl={recipe.photoUrl}
-      caption={[meal, time].filter(Boolean).join(" · ")}
+      caption={cardCaption(meal, recipeTotalMinutes(recipe))}
       openLabel={t("planner.open", { title: recipe.title })}
       onOpen={open}
     >
@@ -187,7 +186,7 @@ export function MakeableCard({ tile, soon, reason, grocery, deals, showSales, on
           <span>{ready ? t("makeable.card.complete") : t("makeable.card.missing", { count: stats.missingCount })}</span>
         </div>
         <div className="mkc-bar" aria-hidden="true">
-          <div style={{ width: `${stats.totalCount > 0 ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0}%` }} />
+          <div style={{ width: `${haveBar(stats).pct}%` }} />
         </div>
       </div>
       {saleInfo && (

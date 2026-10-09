@@ -128,7 +128,7 @@ test("Similar recipes scrolls the page so the Main meal banner is fully in view"
   await setup(page, [{ title: "Base Dish", ingredients: [{ name: "chicken" }, { name: "lemon" }] }, { title: "Lemon Cousin", ingredients: [{ name: "lemon" }] }]);
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.locator(".fnd-card-open", { hasText: "Base Dish" }).click();
+  await page.locator(".fnd-card .rpc-open", { hasText: "Base Dish" }).click();
   await page.getByRole("button", { name: "Similar recipes" }).click();
   const banner = page.locator(".fnd-main");
   await expect(banner).toBeVisible();

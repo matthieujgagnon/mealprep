@@ -3,13 +3,14 @@ import { useDraggable } from "@dnd-kit/core";
 import { IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
-import { Pill, TimePill } from "./RisoPills.jsx";
+import { Pill } from "./RisoPills.jsx";
 import { FinderPicker } from "./FinderPicker.jsx";
 import { SectionHeader } from "./FinderTiles.jsx";
 import { MakeableCard } from "./MakeableCard.jsx";
+import { RecipePhotoCard } from "./RecipePhotoCard.jsx";
 import { PROTEINS } from "../lib/proteins.js";
-import { RECIPE_SLOTS, recipeTotalMinutes } from "../lib/mealSlots.js";
-import { soonItemFor } from "../lib/photoCard.js";
+import { RECIPE_SLOTS, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { cardCaption, haveBar, soonItemFor } from "../lib/photoCard.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
 import {
   AVAILABILITY,
@@ -42,10 +43,15 @@ import { t } from "../i18n/index.js";
 
 const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 
-// One result in the Planner's panel: photo with the time and a round + (adds it
-// to the plan), name, the have bar and what is left to buy. Dragging it (when
-// `draggable`) onto the Planner's board puts it in a slot. Clicking it opens the
-// pop-out. (The Makeable page draws MakeableCard instead.)
+// One result in the Planner's panel: the shared photo card (RecipePhotoCard,
+// variant "finder"; design: docs/design/riso-v2-planner-search-cards/). The photo
+// has « MEAL · TIME », the name and a round + (adds it to the plan); under it an
+// info row (have/total, COMPLETE or N MISSING), what the card shares with the
+// Main meal or the Cook with picks (`reason`) when there is one, and a thin
+// progress bar. No pills, no buttons. The whole card opens the pop-out, and
+// dragging it (when `draggable`) onto the Planner's board puts it in a slot. A
+// recipe with nothing missing has the blue outline ("you have it all"). (The
+// Makeable page draws MakeableCard instead.)
 function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
   const { recipe, stats } = tile;
   const { listeners, setNodeRef, isDragging } = useDraggable({
@@ -55,55 +61,54 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
   });
   // Only the pointer listeners: the open button inside is what a keyboard reaches.
   const dragProps = draggable ? listeners : {};
-  const nothingToBuy = stats.totalCount > 0 && stats.missingCount === 0;
-  const pct = stats.totalCount > 0 ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
+  const bar = haveBar(stats);
+  const slot = recipeSlot(recipe);
+  const caption = cardCaption(slot ? t(`recipes.mealTypes.${slot}`) : "", recipeTotalMinutes(recipe));
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`riso-recipe-card fnd-card${nothingToBuy ? " ready" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
+    <RecipePhotoCard
+      variant="finder"
+      cardRef={setNodeRef}
+      className={`fnd-card${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
+      ready={bar.state === "complete"}
+      title={recipe.title}
+      photoUrl={recipe.photoUrl}
+      caption={caption}
+      openLabel={draggable ? t("tray.dragAria", { title: recipe.title }) : t("planner.open", { title: recipe.title })}
+      onOpen={(rect) => onOpen(recipe, rect)}
+      action={
+        onAdd ? (
+          <button
+            type="button"
+            className="rpc-add"
+            title={t("tray.addToPlan")}
+            aria-label={t("tray.addTitleToPlan", { title: recipe.title })}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => onAdd(recipe)}
+          >
+            +
+          </button>
+        ) : null
+      }
       {...dragProps}
     >
-      <button
-        type="button"
-        className="fnd-card-open"
-        aria-label={draggable ? t("tray.dragAria", { title: recipe.title }) : t("planner.open", { title: recipe.title })}
-        onClick={(e) => onOpen(recipe, e.currentTarget.closest(".fnd-card").getBoundingClientRect())}
-      >
-        <span className="riso-recipe-card-photo fnd-card-photo">
-          {recipe.photoUrl ? <RecipePhoto src={recipe.photoUrl} alt="" draggable="false" /> : null}
-          <TimePill minutes={recipeTotalMinutes(recipe)} className="fnd-card-time" />
+      <span className="rpc-info">
+        {bar.state === "none" ? (
+          <span>{t("tray.noIngredients")}</span>
+        ) : (
+          <>
+            <span>{bar.text}</span>
+            <span>{bar.state === "complete" ? t("makeable.card.complete") : t("makeable.card.missing", { count: bar.missing })}</span>
+          </>
+        )}
+      </span>
+      {reason && <span className="rpc-reason">{reason}</span>}
+      {bar.state !== "none" && (
+        <span className="rpc-bar" aria-hidden="true">
+          <span style={{ width: `${bar.pct}%` }} />
         </span>
-        <span className="riso-recipe-card-body fnd-card-body">
-          <span className="riso-recipe-card-name">{recipe.title}</span>
-          {stats.totalCount > 0 && (
-            <span className="riso-recipe-card-havebar" aria-hidden="true">
-              <span className="riso-recipe-card-havebar-fill" style={{ width: `${pct}%` }} />
-            </span>
-          )}
-          <span className={`riso-recipe-card-havelabel${nothingToBuy ? " ready" : ""}`}>
-            {nothingToBuy
-              ? t("tray.nothingToBuy")
-              : stats.totalCount > 0
-                ? t("pills.toBuy", { count: stats.missingCount })
-                : t("tray.noIngredients")}
-          </span>
-          {reason && <span className="fnd-card-reason">{reason}</span>}
-        </span>
-      </button>
-      {onAdd && (
-        <button
-          type="button"
-          className="fnd-card-add"
-          title={t("tray.addToPlan")}
-          aria-label={t("tray.addTitleToPlan", { title: recipe.title })}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onAdd(recipe)}
-        >
-          +
-        </button>
       )}
-    </div>
+    </RecipePhotoCard>
   );
 }
 

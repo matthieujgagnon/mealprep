@@ -394,6 +394,10 @@ test("a long press picks a planned card up and drops it on a slot (two swap); a 
   await page.keyboard.type("roast");
   const result = page.locator(".fnd-card", { hasText: "Roast chicken" }).first();
   await result.scrollIntoViewIfNeeded();
+  // The result is a tall photo card: keep its middle near the bottom of the screen so the slot it goes to is still in view, below the sticky header.
+  const box = await result.boundingBox();
+  await page.evaluate((dy) => window.scrollBy(0, dy), box.y + box.height / 2 - (page.viewportSize().height - 60));
+  await page.waitForTimeout(200);
   expect(await touchDrag(page, await center(result), await center(cells.nth(6 + 1)))).toBe(0);
   await expect.poll(async () => (await (await page.request.get(`/api/planner?week=${week}`)).json()).length).toBe(2);
   await expect(page.locator(".pm-trash")).toHaveCount(0); // a result is not a card on the board: no trash for it

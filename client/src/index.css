@@ -16468,62 +16468,13 @@ body.no-select {
   touch-action: none;
 }
 
-.fnd-card.dragging {
-  opacity: 0.35;
-}
-
-.fnd-card-open {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+/* The open button fills the card, so it takes the card's cursor (grab). */
+.fnd-card .rpc-open {
   cursor: inherit;
 }
 
-.fnd-card-photo {
-  position: relative;
-  display: block;
-  height: 140px;
-  overflow: hidden;
-}
-
-.fnd-card-time {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-}
-
-.fnd-card-body {
-  padding: 12px 14px 14px;
-  gap: 8px;
-}
-
-.fnd-card-reason {
-  font: 400 12.5px var(--riso-font-body);
-  color: var(--riso-muted);
-}
-
-.fnd-card-add {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 2px solid var(--riso-ink);
-  border-radius: 50%;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  font: 800 20px/1 var(--riso-font-display);
-  cursor: pointer;
+.fnd-card.dragging {
+  opacity: 0.35;
 }
 
 .fnd-empty {
@@ -16556,19 +16507,7 @@ body.no-select {
 
 .fnd-sheet .fnd-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.fnd-sheet .fnd-card-photo {
-  height: 96px;
-}
-
-.fnd-sheet .fnd-card-body {
-  padding: 9px 10px 11px;
-}
-
-.fnd-sheet .riso-recipe-card-name {
-  font-size: 14px;
+  gap: 10px;
 }
 
 .fnd-sheet .fnd-searchbar input {
@@ -16874,15 +16813,6 @@ body.no-select {
 
 .riso-sheet .fnd {
   padding-bottom: 8px;
-}
-
-.fnd-card-open > span,
-.fnd-card-body > span {
-  display: block;
-}
-
-.fnd-card-body .riso-recipe-card-havebar-fill {
-  display: block;
 }
 
 /* On a phone the three availability choices share the full width. */
@@ -17895,7 +17825,7 @@ body.no-select {
 .riso-slotcard-buttons {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .riso-slotcard-btn {
@@ -17931,10 +17861,17 @@ body.no-select {
   box-shadow: 3px 3px 0 var(--riso-hot);
 }
 
+/* The Note tab (design: docs/design/riso-v2-planner-search-cards/): 20px between
+   the header, the tabs and the body (.slot is the slot's card, not the planned
+   meal's), 18px between the box, the quick notes and the buttons. */
+.riso-slotcard.slot {
+  gap: 20px;
+}
+
 .riso-slotcard-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 18px;
 }
 
 .riso-slotcard-input {
@@ -17955,12 +17892,12 @@ body.no-select {
 .riso-slotcard-quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .riso-slotcard-quickpill {
   height: 34px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 2px solid var(--riso-ink);
   border-radius: 17px;
   background: var(--riso-surface);
@@ -17969,20 +17906,31 @@ body.no-select {
   cursor: pointer;
 }
 
+/* Save note and Remove note: one row, two equal 48px buttons. */
+.riso-slotcard-actions {
+  display: flex;
+  gap: 14px;
+  padding-top: 4px;
+}
+
 .riso-slotcard-save {
+  flex: 1 1 0;
+  min-width: 0;
   height: 48px;
   border: 2px solid var(--riso-ink);
   border-radius: 24px;
   background: var(--riso-track);
   color: var(--riso-muted);
-  font: 800 15px var(--riso-font-display);
+  box-shadow: var(--riso-shadow);
+  font: 800 16px var(--riso-font-display);
+  white-space: nowrap;
   cursor: default;
 }
 
+/* Blue only when the box has text. */
 .riso-slotcard-save.ready {
   background: var(--riso-accent);
   color: var(--riso-on-accent);
-  box-shadow: var(--riso-shadow);
   cursor: pointer;
 }
 
@@ -18324,11 +18272,6 @@ body.no-select {
   }
 }
 
-/* The card the pop-out came from stays in the grid, a little blurred. */
-.fnd-card.is-open {
-  filter: blur(2px);
-}
-
 /* The planned meal's card: only the preview scrolls, its buttons stay in view. */
 .riso-slotcard {
   max-height: min(660px, calc(100vh - 24px));
@@ -18426,19 +18369,30 @@ body.no-select {
   box-shadow: none;
 }
 
-/* "Remove note" in a note's editor. */
+/* "Remove note" in a note's editor: beside Save, the same size, no shadow. */
 .riso-slotcard-remove {
-  height: 40px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 48px;
   border: 2px solid var(--riso-ink);
-  border-radius: 20px;
+  border-radius: 24px;
   background: var(--riso-surface);
   color: var(--riso-ink);
-  font: 700 14px var(--riso-font-display);
+  font: 800 16px var(--riso-font-display);
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .riso-slotcard-remove:hover {
-  background: var(--riso-hot);
+  background: var(--riso-hot-tint);
+}
+
+/* Below 370px wide « Enregistrer la note » would not fit at 16px (it does from 375px). */
+@media (max-width: 369px) {
+  .riso-slotcard-save,
+  .riso-slotcard-remove {
+    font-size: 14.5px;
+  }
 }
 
 /* Similar recipes scrolls the Main meal banner to just under the app header. */
@@ -18548,22 +18502,9 @@ body.no-select {
     border-radius: 24px;
   }
 
-  .riso-planner-finder .fnd-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .riso-planner-finder .fnd-card-photo {
-    height: 100px;
-  }
-
   /* Scrolled to, the finder stops below the sticky header. */
   .riso-planner-finder .fnd {
     scroll-margin-top: 124px;
-  }
-
-  .riso-planner-finder .fnd-card-body {
-    padding: 9px 10px 11px;
   }
 
   /* The three availability choices share the full width, in French too: a
@@ -19974,6 +19915,14 @@ body.no-select {
     gap: 8px;
   }
 
+  .riso-slotcard-buttons.inline {
+    gap: 10px;
+  }
+
+  .pmi.slot {
+    gap: 20px;
+  }
+
   .pmi .riso-slotcard-btn,
   .pmi .riso-plannedcard-btn {
     flex: 1 1 0;
@@ -20012,18 +19961,6 @@ body.no-select {
 
   .pmi .riso-plannedcard-btn.base {
     background: var(--riso-yellow);
-  }
-
-  .pmi .riso-slotcard-form {
-    gap: 8px;
-  }
-
-  .pmi .riso-slotcard-input {
-    height: 44px;
-  }
-
-  .pmi .riso-slotcard-save {
-    height: 44px;
   }
 
   .pmi-rec {
@@ -20342,10 +20279,6 @@ body.no-select {
 
   .fnd-panel .fnd-with {
     padding: 12px 14px 10px;
-  }
-
-  .riso-planner-finder .fnd-card-photo {
-    height: 84px;
   }
 
   /* ---------- The Main meal banner, stacked ---------- */
@@ -20760,10 +20693,12 @@ body.no-select {
 }
 
 /* ================================================================
-   Riso v2 - the photo cards (Recipes and Makeable)
-   design: docs/design/riso-v2-recipe-cards/. One base, .rpc
+   Riso v2 - the photo cards (Recipes, Makeable and the Planner finder)
+   design: docs/design/riso-v2-recipe-cards/ and
+   docs/design/riso-v2-planner-search-cards/. One base, .rpc
    (components/RecipePhotoCard.jsx); the Recipes card is variant "grid",
-   the Makeable card (.mkc, components/MakeableCard.jsx) is variant "panel".
+   the Makeable card (.mkc, components/MakeableCard.jsx) is variant "panel",
+   the Planner finder's card (components/Finder.jsx) is variant "finder".
    Fonts: Bricolage Grotesque and DM Mono only.
    ================================================================ */
 .rpc {
@@ -20781,9 +20716,10 @@ body.no-select {
   color: var(--riso-ink);
 }
 
-/* Nothing to buy: the green outline. */
+/* Nothing to buy: the blue outline. Blue means "you already have it" everywhere
+   (the Planner's "already have" card, the blue ✓); green is the grocery list. */
 .rpc.is-ready {
-  border-color: var(--riso-green);
+  border-color: var(--riso-accent);
 }
 
 /* The photo area is the button that opens the recipe: it holds the picture, the
@@ -20950,6 +20886,161 @@ body.no-select {
   border-radius: 2px 2px 0 0;
   opacity: 0.55;
   pointer-events: none;
+}
+
+/* ---------- The Planner finder's card (variant "finder") ----------
+   design: docs/design/riso-v2-planner-search-cards/. The photo (230px, 190px on
+   a phone), then an info row, then a thin bar along the bottom; all of it, the
+   info row too, is the open button. The round + sits in the photo's corner. */
+.rpc-finder {
+  background: var(--riso-surface);
+}
+
+.rpc-finder .rpc-open {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--riso-surface); /* under the info row */
+  text-align: left;
+}
+
+.rpc-photo {
+  position: relative;
+  display: block;
+  flex: none;
+  height: 230px;
+  overflow: hidden;
+  background: var(--riso-track);
+}
+
+.rpc-finder .rpc-scrim-top {
+  background: linear-gradient(to bottom, rgba(22, 24, 31, 0.7), rgba(22, 24, 31, 0) 30%);
+}
+
+/* « MEAL · TIME », one line, with room on the right for the +. */
+.rpc-finder .rpc-caption {
+  display: block;
+  top: 12px;
+  left: 12px;
+  right: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 9.5px var(--riso-font-mono);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.rpc-finder .rpc-scrim-bottom {
+  height: 56%;
+  padding: 0 12px 10px;
+  background: linear-gradient(to top, rgba(14, 16, 22, 0.9) 0%, rgba(14, 16, 22, 0.64) 40%, rgba(14, 16, 22, 0) 100%);
+}
+
+.rpc-finder .rpc-title {
+  font-size: 16px;
+  -webkit-line-clamp: 3;
+}
+
+.rpc-info {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 12px 14px;
+  color: var(--riso-soft);
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* What the card shares with the Main meal or the Cook with picks. */
+.rpc-reason {
+  display: block;
+  margin-top: -6px;
+  padding: 0 12px 14px;
+  color: var(--riso-soft);
+  font: 600 12px var(--riso-font-display);
+}
+
+.rpc-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--riso-track);
+}
+
+.rpc-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--riso-progress-fill);
+}
+
+.rpc-add {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 3px 3px 0 var(--riso-ink);
+  font: 700 20px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* While its pop-out is open the card keeps a hard shadow in place of the soft one. */
+.rpc-finder.is-open {
+  box-shadow: 6px 6px 0 var(--riso-ink);
+}
+
+/* The Planner's panel: four across on a computer, three in a narrower window,
+   two on a phone and in the bottom card. */
+.fnd-panel .fnd-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1023px) {
+  .fnd-panel .fnd-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .fnd-panel .fnd-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+@media (max-width: 767px) {
+  .rpc-finder .rpc-photo {
+    height: 190px;
+  }
+
+  /* A 28px + that still has a 40px place to tap. */
+  .rpc-add {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  .rpc-add::after {
+    content: "";
+    position: absolute;
+    inset: -8px; /* from the inside of the 2px border: 24 + 16 = 40px */
+  }
 }
 
 /* ---------- The Makeable card: what sits under the photo ---------- */
