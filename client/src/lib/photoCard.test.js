@@ -3,7 +3,9 @@ import {
   MAX_PILLS,
   captionTime,
   cardButtons,
+  cardCaption,
   cardState,
+  haveBar,
   mealLineColor,
   namesToAdd,
   pickPills,
@@ -118,5 +120,29 @@ describe("the use-soon strip", () => {
     const inventory = [{ name: "celery", expiresAt: inDays(2) }];
     const planned = [{ recipeId: "soup", recipe: soup }];
     expect(soonItemFor(celery, inventory, planned, [celery, soup])).toBeNull();
+  });
+});
+
+describe("the caption over a photo", () => {
+  it("writes the meal and the time, either one alone, or nothing", () => {
+    expect(cardCaption("Souper", 90)).toBe("Souper · 1 H 30 MIN");
+    expect(cardCaption("", 35)).toBe("35 MIN");
+    expect(cardCaption("Dîner", 0)).toBe("Dîner");
+    expect(cardCaption("", 0)).toBe("");
+  });
+});
+
+describe("the have bar and the Planner finder card's info row", () => {
+  it("counts what you have, and says complete when nothing is missing", () => {
+    expect(haveBar({ matchedCount: 6, missingCount: 0, totalCount: 6 })).toMatchObject({ text: "6/6", pct: 100, state: "complete", missing: 0 });
+  });
+
+  it("says how many are missing and fills the bar by what you have", () => {
+    expect(haveBar({ matchedCount: 4, missingCount: 2, totalCount: 6 })).toMatchObject({ text: "4/6", pct: 67, state: "missing", missing: 2 });
+    expect(haveBar({ matchedCount: 0, missingCount: 3, totalCount: 3 })).toMatchObject({ text: "0/3", pct: 0, state: "missing" });
+  });
+
+  it("has no bar and is not complete when the recipe lists no ingredients", () => {
+    expect(haveBar({ matchedCount: 0, missingCount: 0, totalCount: 0 })).toMatchObject({ pct: 0, state: "none" });
   });
 });

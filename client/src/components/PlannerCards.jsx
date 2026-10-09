@@ -65,9 +65,9 @@ function useCloseOutside(ref, anchor, onClose, enabled = true) {
   }, [ref, anchor, onClose, enabled]);
 }
 
-function CardShell({ cardRef, style, label, caps, title, onClose, children }) {
+function CardShell({ cardRef, style, label, caps, title, className = "", onClose, children }) {
   return createPortal(
-    <div ref={cardRef} className="riso-theme riso-slotcard" data-theme="light" role="dialog" aria-label={label} style={style}>
+    <div ref={cardRef} className={`riso-theme riso-slotcard${className ? ` ${className}` : ""}`} data-theme="light" role="dialog" aria-label={label} style={style}>
       <div className="riso-slotcard-head">
         <div>
           <span className="riso-slotcard-caps">{caps}</span>
@@ -85,14 +85,14 @@ function CardShell({ cardRef, style, label, caps, title, onClose, children }) {
 
 // The card on a phone: under the slot's row, inside the board (which gives it
 // its place and the notch's position). Escape closes it.
-function InlineShell({ label, onClose, children }) {
+function InlineShell({ label, className = "", onClose, children }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="pmi" role="dialog" aria-label={label}>
+    <div className={`pmi${className ? ` ${className}` : ""}`} role="dialog" aria-label={label}>
       <span className="pmi-notch" aria-hidden="true" />
       {children}
     </div>
@@ -213,14 +213,16 @@ export function SlotCard({ slot, mealIndex, anchor, board, inline = false, inlin
               </button>
             ))}
           </div>
-          <button type="button" className={`riso-slotcard-save${canSave ? " ready" : ""}`} disabled={!canSave} onClick={save}>
-            {t("planner.saveNote")}
-          </button>
-          {note != null && (
-            <button type="button" className="riso-slotcard-remove" onClick={onRemoveNote}>
-              {t("planner.removeNote")}
+          <div className="riso-slotcard-actions">
+            <button type="button" className={`riso-slotcard-save${canSave ? " ready" : ""}`} disabled={!canSave} onClick={save}>
+              {t("planner.saveNote")}
             </button>
-          )}
+            {note != null && (
+              <button type="button" className="riso-slotcard-remove" onClick={onRemoveNote}>
+                {t("planner.removeNote")}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </>
@@ -228,7 +230,7 @@ export function SlotCard({ slot, mealIndex, anchor, board, inline = false, inlin
 
   if (inline) {
     return (
-      <InlineShell label={t("tray.addTo", { slot: slotLabel(slot) })} onClose={onClose}>
+      <InlineShell label={t("tray.addTo", { slot: slotLabel(slot) })} className="slot" onClose={onClose}>
         <div className="pmi-head">
           <span className="pmi-caps">{inlineTitle}</span>
           <button type="button" className="pmi-close" aria-label={t("common.close")} onClick={onClose}>
@@ -241,7 +243,7 @@ export function SlotCard({ slot, mealIndex, anchor, board, inline = false, inlin
   }
 
   return (
-    <CardShell cardRef={ref} style={style} label={t("tray.addTo", { slot: slotLabel(slot) })} caps={t("finder.addTo")} title={slotLabel(slot)} onClose={onClose}>
+    <CardShell cardRef={ref} style={style} label={t("tray.addTo", { slot: slotLabel(slot) })} caps={t("finder.addTo")} title={slotLabel(slot)} className="slot" onClose={onClose}>
       {body}
     </CardShell>
   );

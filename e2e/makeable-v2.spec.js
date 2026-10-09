@@ -55,7 +55,7 @@ async function openMakeable(page) {
 
 const card = (page, title) => page.locator(".mkc", { has: page.locator(".rpc-title", { hasText: title }) });
 
-test("sections by what is missing; planned recipes only in Meals of the week; nothing to buy has a green outline", async ({ page }) => {
+test("sections by what is missing; planned recipes only in Meals of the week; nothing to buy has a blue outline", async ({ page }) => {
   await signUp(page, "makeable-sections");
   const made = await seed(
     page,
@@ -87,9 +87,9 @@ test("sections by what is missing; planned recipes only in Meals of the week; no
   await expect(page.locator(".fnd-sec.week .rpc-title")).toHaveText(["Riso Planned"]);
   await expect(page.locator(".fnd-sec.ready").getByText("Riso Planned")).toHaveCount(0);
 
-  // The green outline is for nothing to buy.
+  // The blue outline ("you have it all", the same blue as the Planner's already-have cards) is for nothing to buy.
   await expect(card(page, "Riso Pancakes")).toHaveClass(/is-ready/);
-  await expect(card(page, "Riso Pancakes")).toHaveCSS("border-top-color", "rgb(16, 201, 92)");
+  await expect(card(page, "Riso Pancakes")).toHaveCSS("border-top-color", "rgb(35, 35, 255)");
   await expect(card(page, "Riso Soup")).toHaveCSS("border-top-color", "rgb(22, 24, 31)");
 
   // Include pantry and sides brings the dessert back (the same setting as every page).

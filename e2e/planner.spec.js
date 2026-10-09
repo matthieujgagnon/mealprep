@@ -138,7 +138,7 @@ test("the pop-out's Plan comes first and opens the slot picker, on the next empt
   await setup(page, [{ title: "Next Slot Stew" }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.locator(".fnd-card-open", { hasText: "Next Slot Stew" }).click();
+  await page.locator(".fnd-card .rpc-open", { hasText: "Next Slot Stew" }).click();
   const buttons = page.getByRole("dialog", { name: "Next Slot Stew" }).locator(".fnd-pop-actions button");
   await expect(buttons.first()).toHaveText("Plan");
   await buttons.first().click();
@@ -193,6 +193,7 @@ test("the card's Note tab saves typed text; a note is edited in the same card an
   await expect(input).toBeFocused();
   // Save waits for text; a quick note fills the box; the limit is 80 characters.
   await expect(card.getByRole("button", { name: "Save note" })).toBeDisabled();
+  await expect(card.getByRole("button", { name: "Remove note" })).toHaveCount(0); // nothing to remove yet
   await card.getByRole("button", { name: "Eating out" }).click();
   await expect(input).toHaveValue("Eating out");
   await input.fill("Hockey pool @ Normal");
@@ -205,6 +206,14 @@ test("the card's Note tab saves typed text; a note is edited in the same card an
   const edit = page.getByRole("dialog", { name: /^Add to / });
   await expect(edit.getByRole("textbox", { name: "Write on this slot" })).toHaveValue("Hockey pool @ Normal");
   await edit.getByRole("textbox", { name: "Write on this slot" }).fill("Work breakfast");
+  // Save note and Remove note: one row, two equal 48px buttons.
+  const save = await edit.getByRole("button", { name: "Save note" }).boundingBox();
+  const remove = await edit.getByRole("button", { name: "Remove note" }).boundingBox();
+  expect(save.height).toBe(48);
+  expect(remove.height).toBe(48);
+  expect(Math.abs(save.width - remove.width)).toBeLessThan(1);
+  expect(Math.abs(save.y - remove.y)).toBeLessThan(1);
+  expect(remove.x).toBeGreaterThan(save.x);
   await edit.getByRole("button", { name: "Save note" }).click();
   await expect(target.locator(".riso-planner-note-text")).toHaveText("Work breakfast");
 
@@ -218,6 +227,8 @@ test("the card's Note tab saves typed text; a note is edited in the same card an
   await page.getByRole("button", { name: "Remove note" }).click();
   await expect(target.locator(".riso-planner-cell-empty")).toBeVisible();
   await expect.poll(async () => (await weekEntries(page)).length).toBe(0);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(target.locator(".riso-planner-note-text")).toHaveText("Work breakfast");
 });
 
 test("emoji from the keyboard's emoji picker land on a slot's note", async ({ page }) => {
@@ -495,7 +506,7 @@ test("Open the full recipe goes to the recipe card", async ({ page }) => {
   await setup(page, [{ title: "Full Card Pie" }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.locator(".fnd-card-open", { hasText: "Full Card Pie" }).click();
+  await page.locator(".fnd-card .rpc-open", { hasText: "Full Card Pie" }).click();
   await page.getByRole("button", { name: "Open the full recipe →" }).click();
   await expect(page.getByRole("dialog", { name: /Full Card Pie/ }).or(page.locator(".riso-rc-title", { hasText: "Full Card Pie" })).first()).toBeVisible();
 });
@@ -504,7 +515,7 @@ test("what to buy in the pop-out is shared with the Grocery list", async ({ page
   await setup(page, [{ title: "Zucchini Bake", ingredients: [{ name: "zucchini" }] }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.locator(".fnd-card-open", { hasText: "Zucchini Bake" }).click();
+  await page.locator(".fnd-card .rpc-open", { hasText: "Zucchini Bake" }).click();
   const pop = page.getByRole("dialog", { name: "Zucchini Bake" });
 
   await pop.getByRole("button", { name: "Add zucchini to grocery list" }).click();
@@ -517,7 +528,7 @@ test("what to buy in the pop-out is shared with the Grocery list", async ({ page
   await page.getByRole("button", { name: /^Remove zucchini/i }).first().click();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.locator(".fnd-card-open", { hasText: "Zucchini Bake" }).click();
+  await page.locator(".fnd-card .rpc-open", { hasText: "Zucchini Bake" }).click();
   await expect(page.getByRole("dialog", { name: "Zucchini Bake" }).getByRole("button", { name: "Add zucchini to grocery list" })).toBeVisible();
 });
 
@@ -529,7 +540,7 @@ test("Main meal finds recipes sharing its ingredients, and leftovers can be plac
   ]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.locator(".fnd-card-open", { hasText: "Chicken Orzo" }).click();
+  await page.locator(".fnd-card .rpc-open", { hasText: "Chicken Orzo" }).click();
   await page.getByRole("button", { name: "Similar recipes" }).click();
 
   const banner = page.locator(".fnd-main");

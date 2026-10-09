@@ -2,10 +2,11 @@ import { availabilityOf, categoryOf, expiringItems } from "./finder.js";
 import { core, findExpiringSoonInRecipe } from "./similarRecipes.js";
 import { formatRecipeTime } from "./mealSlots.js";
 
-// The logic behind the two photo cards (components/RecipePhotoCard.jsx, the
-// Recipes card in Recipes.jsx and MakeableCard.jsx). Design:
-// docs/design/riso-v2-recipe-cards/. Plain functions so they can be tested
-// without a browser.
+// The logic behind the photo cards (components/RecipePhotoCard.jsx: the Recipes
+// card in Recipes.jsx, MakeableCard.jsx and the Planner finder's card in
+// Finder.jsx). Design: docs/design/riso-v2-recipe-cards/ and
+// docs/design/riso-v2-planner-search-cards/. Plain functions so they can be
+// tested without a browser.
 
 // The thin line at the bottom of a Recipes card: supper blue, lunch pink,
 // breakfast yellow. Any other kind of recipe (sides, desserts, prep) has none.
@@ -17,6 +18,33 @@ export function mealLineColor(slot) {
 // "35 MIN", "4 H", "1 H 15 MIN": the caption's time, or "" when there is none.
 export function captionTime(minutes) {
   return (formatRecipeTime(minutes) || "").toUpperCase();
+}
+
+// "SOUPER · 1 H 30 MIN": the caption over the photo of the Makeable card and the
+// Planner finder's card. `meal` is the meal's word in the app's language ("" when
+// the recipe has no type), `minutes` its total time.
+export function cardCaption(meal, minutes) {
+  return [meal, captionTime(minutes)].filter(Boolean).join(" · ");
+}
+
+// What the ingredient bar and the Planner finder card's info row say, from the
+// finder's stats ({ matchedCount, missingCount, totalCount }): the numbers, the
+// bar's width in percent, and which of three states the recipe is in:
+//   "none"      the recipe lists no ingredients (no bar, nothing to count)
+//   "complete"  nothing is missing
+//   "missing"   something is missing
+export function haveBar(stats) {
+  const total = stats.totalCount;
+  const have = stats.matchedCount;
+  const state = total === 0 ? "none" : stats.missingCount === 0 ? "complete" : "missing";
+  return {
+    have,
+    total,
+    missing: stats.missingCount,
+    pct: total > 0 ? Math.round((have / total) * 100) : 0,
+    state,
+    text: `${have}/${total}`,
+  };
 }
 
 // ---- Makeable card: the missing-ingredient pills ------------------------------
