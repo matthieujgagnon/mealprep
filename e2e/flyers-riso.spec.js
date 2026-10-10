@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
 
 // Regression coverage for the Flyers screen's Riso Poster "11a Weekly
@@ -32,8 +33,7 @@ async function addRecipe(page, title, ingredientName) {
   await page.fill('input[aria-label="Ingredient"]', ingredientName);
   await page.fill('input[aria-label="Quantity"]', "1");
   await page.fill('textarea[placeholder="Describe this step"]', "Cook it.");
-  await page.getByRole("button", { name: "Save recipe" }).click();
-  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+  await saveRecipe(page);
 }
 
 async function openFlyers(page) {

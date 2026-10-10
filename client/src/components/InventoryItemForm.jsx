@@ -351,7 +351,16 @@ export function InventoryItemForm({
     try {
       const created = await onAdd(buildAddPayload({ name, qtyText, unit, location: loc, category, expiresAt, photo }));
       const core = trimmed.toLowerCase();
-      if (staple !== !!isStapleFor?.(core)) onToggleStaple({ core });
+      // The form carries on only once the star is saved, so an item opened
+      // right after shows it. The item is in by now: a star that fails says so
+      // rather than reporting the add as failed (adding again would double it).
+      if (staple !== !!isStapleFor?.(core)) {
+        try {
+          await onToggleStaple({ core });
+        } catch {
+          onToast(t("inventory.form.stapleFailed", { name: trimmed }));
+        }
+      }
       setAdded((rows) => [...rows, { id: created?.id, name: trimmed, qtyText, unit, loc }]);
       onToast(t("inventory.form.toastAdded", { name: trimmed, location: labelFor[loc] || "" }));
       if (keepOpen) {
@@ -395,7 +404,9 @@ export function InventoryItemForm({
     try {
       const patch = buildEditPatch(item, { name, qtyText, unit, location: loc, expiresAt, photo });
       if (Object.keys(patch).length > 0) await onSave(item.id, patch);
-      if (staple !== !!isStaple) onToggleStaple(item);
+      // "Changes saved" and closing wait for the star too, so reopening the
+      // item shows it as saved. A failure keeps the form open with its message.
+      if (staple !== !!isStaple) await onToggleStaple(item);
       onToast(t("inventory.form.toastSaved"));
       onClose();
     } catch (err) {

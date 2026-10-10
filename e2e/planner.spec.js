@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { scrollBetween } from "./planner-drag.js";
 
 // The Riso v2 Planner: a board of 7 days by 3 meals with one shared recipe
 // finder under it (search, filters, Cook with, Main meal, the recipe pop-out).
@@ -54,13 +55,6 @@ async function slotCardFor(page, day, meal) {
   const card = page.getByRole("dialog", { name: /^Add to / });
   await expect(card).toBeVisible();
   return card;
-}
-
-// Shows the board's lower rows and the finder's first results together, so a
-// drag between them never has to scroll the page.
-async function scrollBetween(page) {
-  await page.evaluate(() => window.scrollTo(0, 530));
-  await page.waitForTimeout(300);
 }
 
 async function drag(page, from, to) {
@@ -281,10 +275,10 @@ test("dragging a recipe from the bottom panel onto a filled slot replaces it", a
   });
   await openPlanner(page);
   await page.getByRole("textbox", { name: "Title, ingredient or tag" }).fill("New Meal");
-  await scrollBetween(page);
 
   const tile = page.locator(".fnd-card", { hasText: "New Meal" });
   const target = cell(page, day, "dinner");
+  await scrollBetween(page, tile, target);
   await drag(page, tile, target);
 
   await expect(target.locator(".riso-planner-card-name")).toHaveText("New Meal");
@@ -296,10 +290,11 @@ test("dragging a recipe from the bottom panel onto an empty slot saves it there"
   await setup(page, [{ title: "Dragged Dinner" }]);
   await openPlanner(page);
   await page.getByRole("textbox", { name: "Title, ingredient or tag" }).fill("Dragged");
-  await scrollBetween(page);
 
   const day = visibleDay();
-  await drag(page, page.locator(".fnd-card", { hasText: "Dragged Dinner" }), cell(page, day, "dinner"));
+  const tile = page.locator(".fnd-card", { hasText: "Dragged Dinner" });
+  await scrollBetween(page, tile, cell(page, day, "dinner"));
+  await drag(page, tile, cell(page, day, "dinner"));
 
   await expect(cell(page, day, "dinner").locator(".riso-planner-card-name")).toHaveText("Dragged Dinner");
   await page.reload();
@@ -604,8 +599,14 @@ test("the weekend menu: days in any order, the evening before, presets, off; all
 
   // Saved: it survives a reload, and a fresh login on another device reads it too.
   await menu.getByRole("button", { name: "Sat – Sun" }).click();
-  // Every click saves, in order: wait for the last one to reach the account.
-  await expect.poll(async () => (await (await page.request.get("/api/auth/me")).json()).weekendEve).toBe(false);
+  // Every click saves, in order: wait for the last one to reach the account. The whole
+  // choice is what says it did (the evening alone was already off halfway through).
+  await expect
+    .poll(async () => {
+      const me = await (await page.request.get("/api/auth/me")).json();
+      return { weekendDays: me.weekendDays, weekendOn: me.weekendOn, weekendEve: me.weekendEve };
+    })
+    .toEqual({ weekendDays: [5, 6], weekendOn: true, weekendEve: false });
   await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await expect(page.locator(".plg")).toContainText("Weekend");
@@ -622,7 +623,7 @@ test("the weekend menu: days in any order, the evening before, presets, off; all
   await expect(page.locator(".riso-planner-weekend")).toHaveCount(0);
   await expect(page.locator(".riso-planner-weekend-off")).toHaveText("+ WEEKEND");
   await expect(page.locator(".plg")).not.toContainText("Weekend");
-  expect((await (await other.get("/api/auth/me")).json()).weekendOn).toBe(false);
+  await expect.poll(async () => (await (await other.get("/api/auth/me")).json()).weekendOn).toBe(false);
   await page.keyboard.press("Escape");
   await page.locator(".riso-planner-weekend-off").click();
   await expect(page.getByRole("dialog", { name: "WEEKEND" })).toBeVisible();
@@ -808,10 +809,11 @@ test("every way of adding ends with a message and Undo; dropping on a slot too",
   await setup(page, [{ title: "Toast Tacos" }]);
   await openPlanner(page);
   await page.getByRole("textbox", { name: "Title, ingredient or tag" }).fill("Toast");
-  await scrollBetween(page);
 
   const day = visibleDay();
-  await drag(page, page.locator(".fnd-card", { hasText: "Toast Tacos" }), cell(page, day, "dinner"));
+  const tile = page.locator(".fnd-card", { hasText: "Toast Tacos" });
+  await scrollBetween(page, tile, cell(page, day, "dinner"));
+  await drag(page, tile, cell(page, day, "dinner"));
   await expect(cell(page, day, "dinner").locator(".riso-planner-card-name")).toHaveText("Toast Tacos");
   const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const toast = page.getByRole("status").filter({ hasText: `Added to ${DAYS[day]} · Supper` });

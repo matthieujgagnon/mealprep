@@ -23,16 +23,21 @@ async function signUp(page, name = "Matt") {
 const recipe = (page, title, mealSlot, ingredients, extra = {}) =>
   page.request.post("/api/recipes", { data: { title, mealSlot, ingredients: ingredients.map((name) => ({ name })), ...extra } });
 
+// The header measures itself after the window or the language changes (it tightens one step per
+// frame until everything fits), so right after a change it can still be on its way to one row.
+// The check is repeated until it holds, and fails if it never does.
 async function oneRow(page) {
-  const header = await page.locator(".app-header").boundingBox();
-  const logo = await page.locator(".wordmark").boundingBox();
-  expect(header.height).toBeLessThan(logo.height + 70); // one row of 36px pills, not two
-  for (const sel of [".tabs", ".riso-lang-switch:visible"]) {
-    const box = await page.locator(`.app-header ${sel}`).boundingBox();
-    expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height);
-    expect(box.y).toBeLessThan(logo.y + logo.height); // beside the logo, not under it
-  }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => window.innerWidth));
+  await expect(async () => {
+    const header = await page.locator(".app-header").boundingBox();
+    const logo = await page.locator(".wordmark").boundingBox();
+    expect(header.height).toBeLessThan(logo.height + 70); // one row of 36px pills, not two
+    for (const sel of [".tabs", ".riso-lang-switch:visible"]) {
+      const box = await page.locator(`.app-header ${sel}`).boundingBox();
+      expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height);
+      expect(box.y).toBeLessThan(logo.y + logo.height); // beside the logo, not under it
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => window.innerWidth));
+  }).toPass({ timeout: 5000 });
 }
 
 test.describe("header", () => {

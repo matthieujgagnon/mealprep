@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { scrollBetween } from "./planner-drag.js";
 
 // Matt's review of the desktop Planner (#125, #126): the shared recipe pop-out
 // (Plan first, Cook), the shared slot picker with week arrows, the Makeable now
@@ -95,9 +96,10 @@ test("while dragging, only the slot under the recipe gets a pink border and no f
   await setup(page, [{ title: "Drag Me" }]);
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.getByRole("button", { name: "Browse" }).click();
-  await page.evaluate(() => window.scrollTo(0, 530));
-  const from = await page.locator(".fnd-card", { hasText: "Drag Me" }).boundingBox();
+  const tile = page.locator(".fnd-card", { hasText: "Drag Me" });
   const target = cell(page, Math.min(todayIndex(), 4), "dinner");
+  await scrollBetween(page, tile, target);
+  const from = await tile.boundingBox();
   const to = await target.boundingBox();
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();

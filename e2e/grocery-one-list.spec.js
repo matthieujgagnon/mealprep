@@ -92,6 +92,8 @@ test("a removal stays until the meals that need the item leave the plan; restori
   await page.getByRole("button", { name: "Remove Lemon", exact: true }).click();
   await expect(row(page, "Lemon")).toHaveCount(0);
   await expect(page.locator(".riso-grocery-removed")).toContainText("Lemon");
+  // Saved behind the screen's change: reloading before it lands would lose the removal.
+  await expect.poll(async () => (await (await page.request.get("/api/grocery-item-overrides")).json()).length).toBe(1);
 
   // Still off after a reload, and while one of its meals is still planned.
   await page.reload();
@@ -136,6 +138,9 @@ test("manual items, checks and store moves stay until changed, whichever days pa
   await check(page, "paper towels").click();
   await check(page, "Garlic").click();
   await expect(check(page, "Garlic")).toHaveAttribute("aria-checked", "true");
+  // The screen shows a check at once and saves it behind; reloading before the saves land would lose them.
+  const checkedCores = async () => (await (await page.request.get("/api/grocery-checked")).json()).map((c) => c.core).sort();
+  await expect.poll(async () => (await checkedCores()).length).toBe(2);
 
   await page.reload();
   await openGrocery(page);
@@ -146,8 +151,47 @@ test("manual items, checks and store moves stay until changed, whichever days pa
   await page.getByRole("button", { name: "Remove paper towels", exact: true }).click();
   await expect(row(page, "paper towels")).toHaveCount(0);
   await expect(page.locator(".riso-grocery-removed")).toHaveCount(0);
-  const checked = await (await page.request.get("/api/grocery-checked")).json();
-  expect(checked.map((c) => c.core)).toEqual(["garlic"]);
+  await expect.poll(checkedCores).toEqual(["garlic"]);
+});
+
+test("an item added while the list is still loading stays on the list", async ({ page }) => {
+  await signUp(page);
+  // The checks are held back until the test lets them through, so the list is still loading
+  // when the item is added.
+  let letThrough;
+  const gate = new Promise((resolve) => (letThrough = resolve));
+  await page.route("**/api/grocery-checked", async (route) => {
+    if (route.request().method() === "GET") await gate;
+    await route.continue();
+  });
+  await openGrocery(page);
+  await page.fill('input[placeholder="Add an item, e.g. 2 lemons"]', "paper towels");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect.poll(async () => (await (await page.request.get("/api/grocery-extra-items")).json()).map((i) => i.name)).toEqual(["paper towels"]);
+  letThrough();
+  await expect(row(page, "paper towels")).toBeVisible();
+});
+
+test("a page opened right after a change shows the change", async ({ page }) => {
+  await signUp(page);
+  await recipe(page, "Zucchini bake", [{ name: "zucchini" }]);
+  await page.reload();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.locator(".rpc", { hasText: "Zucchini bake" }).click();
+  // The save of the change is held back until the test lets it through, and the next page is
+  // opened while it is still on its way.
+  let letThrough;
+  const gate = new Promise((resolve) => (letThrough = resolve));
+  await page.route("**/api/grocery-extra-items", async (route) => {
+    if (route.request().method() === "POST") await gate;
+    await route.continue();
+  });
+  const pop = page.getByRole("dialog", { name: "Zucchini bake" });
+  await pop.getByRole("button", { name: "Add zucchini to grocery list" }).click();
+  await pop.getByRole("button", { name: "Close" }).click();
+  await openGrocery(page);
+  letThrough();
+  await expect(row(page, "Zucchini")).toBeVisible();
 });
 
 test("On sale lists what to buy first, soonest-ending first", async ({ page }) => {

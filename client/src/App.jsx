@@ -203,6 +203,7 @@ export default function App({ user, onLogout }) {
   const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
   const [inventoryLayout, setInventoryLayout] = useState([]); // section order/size/built-in names (InventorySectionLayout)
   const [loadError, setLoadError] = useState(false);
+  const [recipesLoaded, setRecipesLoaded] = useState(false); // the Recipes page picks its starting tab once they are here
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("all");
   // The Flyers deal to open as soon as that page shows ("Open the flyer" on
@@ -302,7 +303,10 @@ export default function App({ user, onLogout }) {
   function loadInitialData() {
     setLoadError(false);
     Promise.allSettled([
-      api.listRecipes().then(setRecipes),
+      api.listRecipes().then((list) => {
+        setRecipes(list);
+        setRecipesLoaded(true);
+      }),
       api.listPantryStaples().then((list) => {
         setCustomStaples(list.filter((s) => !s.excluded).map((s) => s.core));
         setExcludedStaples(list.filter((s) => s.excluded).map((s) => s.core));
@@ -940,15 +944,25 @@ export default function App({ user, onLogout }) {
       : entry.alreadyHave
       ? { isLeftover: false, alreadyHave: false }
       : { isLeftover: true, alreadyHave: false };
-    const apply = async (flags) => {
-      await api.updatePlannerEntry(entryId, flags);
+    const was = { isLeftover: !!entry.isLeftover, alreadyHave: !!entry.alreadyHave };
+    // The card changes at once, so a second tap in a row steps on from the new
+    // status; if the save fails, the card goes back to the status it had (unless
+    // a later tap has already moved it on) and the shared toast says so.
+    const apply = async (flags, before) => {
       setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...flags } : e)));
+      try {
+        await api.updatePlannerEntry(entryId, flags);
+        return true;
+      } catch {
+        const stillThere = (e) => !!e.isLeftover === flags.isLeftover && !!e.alreadyHave === flags.alreadyHave;
+        setPlannerEntries((prev) => prev.map((e) => (e.id === entryId && stillThere(e) ? { ...e, ...before } : e)));
+        showToast(t("planner.toastStatusFailed", { title: entry.recipe?.title }));
+        return false;
+      }
     };
-    await apply(next);
-    if (toast) {
-      const key = next.alreadyHave ? "toastMarkedHave" : next.isLeftover ? "toastMarkedLeftover" : "toastMarkedPlain";
-      showToast(t(`planner.${key}`, { title: entry.recipe?.title }), () => apply({ isLeftover: !!entry.isLeftover, alreadyHave: !!entry.alreadyHave }));
-    }
+    if (!(await apply(next, was)) || !toast) return;
+    const key = next.alreadyHave ? "toastMarkedHave" : next.isLeftover ? "toastMarkedLeftover" : "toastMarkedPlain";
+    showToast(t(`planner.${key}`, { title: entry.recipe?.title }), () => apply(was, next));
   }
 
   // Cook mode's "Save leftovers" (fridge): each portion becomes a leftover
@@ -1271,6 +1285,7 @@ export default function App({ user, onLogout }) {
             onImported={handleImported}
             onNewRecipe={() => openRecipeEditor(null)}
             onToast={showToast}
+            recipesLoaded={recipesLoaded}
           />
         )}
 
@@ -1422,7 +1437,12 @@ export default function App({ user, onLogout }) {
             }}
           />
         )}
-        <Toast toast={toast} onClose={() => setToast(null)} />
+        <Toast
+          toast={toast}
+          // Closes only the toast it was made for: a message's five seconds can end just as the next
+          // one is shown, and that must not take the new one away.
+          onClose={() => setToast((now) => (now && now.id === toast?.id ? null : now))}
+        />
       </div>
       <DragOverlay dropAnimation={null} modifiers={activeDragItem?.data.current?.storeDrag ? [centreAboveFinger] : undefined}>
         {activeDragItem && <DragPreview active={activeDragItem} copy={copyDrag} />}

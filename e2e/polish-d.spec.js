@@ -141,12 +141,51 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     await page.reload();
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     await page.getByRole("button", { name: "Recettes", exact: true }).click();
+    // Pad thai is an imported recipe: open that tab, as its English twin does.
+    await page.getByRole("tab", { name: /^Importées/ }).click();
     await page.locator(".rpc", { hasText: "Pad thai" }).click();
     await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "Plus d'actions" }).click();
     await page.locator(".riso-rc-menu").getByRole("button", { name: "Ajouter à mon livre de recettes" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Ajoutée à votre livre de recettes." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Déplacer vers Importées" }).first()).toBeVisible();
+  });
+});
+
+test.describe("The Recipes page's starting tab", () => {
+  // The recipes are held back until the test lets them through, so the page is
+  // open before they arrive.
+  async function openRecipesBeforeTheyArrive(page) {
+    await signUp(page);
+    const made = await recipe(page, "Pad thai");
+    await api(page, "PUT", `/api/recipes/${made.id}`, { inCookbook: false });
+    let letThrough;
+    const gate = new Promise((resolve) => (letThrough = resolve));
+    await page.route("**/api/recipes", async (route) => {
+      if (route.request().method() === "GET") await gate;
+      await route.continue();
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "Recipes", exact: true }).click();
+    await expect(page.getByRole("tab", { name: /^Cookbook/ })).toHaveAttribute("aria-selected", "true");
+    return letThrough;
+  }
+
+  test("is picked once the recipes have arrived: Imported when the Cookbook is empty", async ({ page }) => {
+    const letThrough = await openRecipesBeforeTheyArrive(page);
+    letThrough();
+    await expect(page.getByRole("tab", { name: /^Imported/ })).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(".rpc", { hasText: "Pad thai" })).toBeVisible();
+  });
+
+  test("stays where the person tapped, even if the recipes then arrive", async ({ page }) => {
+    const letThrough = await openRecipesBeforeTheyArrive(page);
+    await page.getByRole("tab", { name: /^Cookbook/ }).click();
+    letThrough();
+    await expect(page.getByRole("tab", { name: /^Imported/ })).toContainText("1");
+    // Let the page finish reacting to them (two frames), then look: it must not have moved.
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+    await expect(page.getByRole("tab", { name: /^Cookbook/ })).toHaveAttribute("aria-selected", "true");
   });
 });
 
@@ -291,13 +330,16 @@ test.describe("Button feedback", () => {
     const b = await box.boundingBox();
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await page.mouse.down();
-    await page.waitForTimeout(250);
-    const pressed = await box.evaluate((e) => getComputedStyle(e).transform);
-    await page.mouse.up();
     expect(before).toBe("none");
-    expect(pressed).not.toBe("none");
-    // Not a 0.96 shrink you'd call a jump: a matrix with a scale under 1.
-    expect(Number(pressed.match(/matrix\(([-\d.]+)/)[1])).toBeLessThan(1);
+    // Not a 0.96 shrink you'd call a jump: it eases in, to a matrix with a scale under 1.
+    await expect
+      .poll(async () => {
+        const pressed = await box.evaluate((e) => getComputedStyle(e).transform);
+        const scale = pressed.match(/matrix\(([-\d.]+)/);
+        return scale ? Number(scale[1]) : 1;
+      })
+      .toBeLessThan(1);
+    await page.mouse.up();
   });
 
   test("on a computer the whole grocery row lights up under the pointer", async ({ page }) => {
@@ -307,20 +349,29 @@ test.describe("Button feedback", () => {
     // Point at the row's empty middle: not the checkbox, not a button.
     const b = await row.locator(".riso-row-main").boundingBox();
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    await page.waitForTimeout(400);
-    const after = await row.evaluate((e) => getComputedStyle(e).backgroundColor);
-    expect(after).not.toBe(before);
+    await expect.poll(() => row.evaluate((e) => getComputedStyle(e).backgroundColor)).not.toBe(before);
   });
 
   test("checking a grocery item pops the box once", async ({ page }) => {
     await groceryWithItem(page);
     const box = page.locator(".riso-row", { has: page.getByRole("checkbox", { name: "Check off Chicken", exact: true }) }).locator(".riso-row-check");
     await expect(box).not.toHaveClass(/pop/);
+    // The pop is over in a fraction of a second, and on a busy machine the test's own steps can
+    // take longer than that. So the page writes down what the box does, as it does it: each time
+    // `pop` comes on (and which animation it has then), and each time it goes off.
+    await box.evaluate((el) => {
+      el.popLog = [];
+      let had = el.classList.contains("pop");
+      new MutationObserver(() => {
+        const has = el.classList.contains("pop");
+        if (has !== had) el.popLog.push(has ? `on: ${getComputedStyle(el).animationName}` : "off");
+        had = has;
+      }).observe(el, { attributes: true, attributeFilter: ["class"] });
+    });
     await page.getByRole("checkbox", { name: "Check off Chicken", exact: true }).click();
     await expect(box).toHaveClass(/on/);
-    await expect(box).toHaveClass(/pop/);
-    expect(await box.evaluate((e) => getComputedStyle(e).animationName)).toBe("riso-check-pop");
-    await expect(box).not.toHaveClass(/pop/, { timeout: 2000 }); // once, then it settles
+    // Once, then it settles.
+    await expect.poll(() => box.evaluate((el) => el.popLog)).toEqual(["on: riso-check-pop", "off"]);
   });
 
   test("with reduce motion on, nothing animates or transitions", async ({ page }) => {

@@ -160,7 +160,7 @@ test("a checked hand-added item leaves the list when Done shopping is pressed", 
   await confirmAdd(page);
   await expect(row(page, "paper towels")).toHaveCount(0);
   await expect(row(page, "Chicken")).toBeVisible();
-  expect(await (await page.request.get("/api/grocery-extra-items")).json()).toEqual([]);
+  await expect.poll(async () => (await page.request.get("/api/grocery-extra-items")).json()).toEqual([]);
   await page.reload();
   await openGrocery(page);
   await expect(row(page, "paper towels")).toHaveCount(0);

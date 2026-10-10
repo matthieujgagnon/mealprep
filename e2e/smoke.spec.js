@@ -53,6 +53,8 @@ test("add a pantry inventory item and mark it a staple", async ({ page }) => {
   await expect(page.getByRole("button", { name: "★ Pantry staple" })).toBeVisible();
   // The staple is part of the form: it's kept with Save changes.
   await itemForm(page).getByRole("button", { name: "Save changes" }).click();
+  // Save closes the form once the item and its star are saved; only then can the item be opened again.
+  await expect(itemForm(page)).toHaveCount(0);
   await page.getByText("canned tomatoes", { exact: true }).click();
   await expect(page.getByRole("button", { name: "★ Pantry staple" })).toBeVisible();
 });

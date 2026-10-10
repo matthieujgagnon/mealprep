@@ -140,10 +140,11 @@ test("this week's suppers: only today has the pink shadow, other planned days a 
   const strip = page.locator(".riso-home-week-strip");
   const todayCell = strip.locator(".riso-home-week-day.today");
   await expect(todayCell).toHaveCount(1);
-  expect(await shadow(todayCell)).toContain("rgb(255, 72, 176)");
   const others = strip.locator(".riso-home-week-day:not(.today):not(.empty):not(.past)");
-  const n = await others.count();
-  expect(n).toBe(planned.length - 1);
+  // The planned days arrive after the strip itself: wait for all of them, don't count what is there now.
+  const n = planned.length - 1;
+  await expect(others).toHaveCount(n);
+  expect(await shadow(todayCell)).toContain("rgb(255, 72, 176)");
   for (let i = 0; i < n; i++) {
     const sh = await shadow(others.nth(i));
     expect(sh).not.toContain("rgb(255, 72, 176)");

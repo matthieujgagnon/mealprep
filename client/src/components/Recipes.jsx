@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
 import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
@@ -79,12 +79,16 @@ export function Recipes({
   onImported,
   onNewRecipe,
   onToast,
+  recipesLoaded = true,
 }) {
   const phone = useIsPhone();
   // Start on the tab that has recipes for what is already set (Home's "See
   // them" opens a protein, a search may be set too), and on Imported when the
   // Cookbook is empty and Imported is not. The Cookbook if both have some.
-  const [tab, setTab] = useState(() => {
+  // That can only be told once the recipes have loaded: if this page opens
+  // before they arrive, it picks again when they do, unless the person has
+  // already tapped a tab by then.
+  const startingTab = () => {
     const kind = PROTEINS.find((p) => p.id === protein);
     const q = search.trim();
     const text = isUrlLike(q) ? "" : q;
@@ -93,7 +97,16 @@ export function Recipes({
         (r) => !r.isPlaceholder && sourceOf(r) === source && (!kind || recipeUsesProtein(r, kind)) && (!text || matchesSearch(r, text))
       ).length;
     return count("cookbook") === 0 && count("imported") > 0 ? "imported" : "cookbook";
-  });
+  };
+  const [tab, setTab] = useState(startingTab);
+  const tabChosen = useRef(false); // the person tapped a tab (or imported a recipe, which opens Imported)
+  const tabDecided = useRef(recipesLoaded); // the starting tab was picked from loaded recipes
+  useEffect(() => {
+    if (!recipesLoaded || tabDecided.current) return;
+    tabDecided.current = true;
+    if (!tabChosen.current) setTab(startingTab());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipesLoaded]);
   const [time, setTime] = useState("any");
   const [quick, setQuick] = useState(false); // Rapide: half an hour or less, like the finder
   const [sortIndex, setSortIndex] = useState(0);
@@ -170,6 +183,7 @@ export function Recipes({
   }
 
   function pickTab(id) {
+    tabChosen.current = true;
     setTab(id);
     onFilterChange("all");
   }
@@ -203,6 +217,7 @@ export function Recipes({
       onProteinChange(null);
       setTime("any");
       setQuick(false);
+      tabChosen.current = true;
       setTab("imported");
       setSortIndex(0);
       onToast(t("recipes.d.importedToast"));
