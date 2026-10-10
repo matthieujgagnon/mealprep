@@ -6781,6 +6781,140 @@ button.riso-table-group-head:disabled {
   }
 }
 
+/* ---------- Before you start (the prep page, design: docs/design/riso-v2-cook-mode-prep/) ----------
+   The step view's frame, rail and rows, with the prep list in the middle column and Do first
+   under the photo. The middle column scrolls when the list is long. */
+.cm-prep-col {
+  gap: 22px;
+}
+
+.cm-prep-intro {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cm-prep-intro .cm-step-count {
+  margin-bottom: 0;
+  letter-spacing: 0.12em;
+}
+
+.cm-prep-sub {
+  margin: 0;
+  font: 400 15px/1.45 var(--riso-font-body);
+  color: var(--riso-muted);
+  text-wrap: pretty;
+}
+
+/* One grid for every group, so the amounts and names line up from group to group. */
+.cm-prep-list {
+  --cm-qty-col: 80px;
+  flex: none;
+  display: grid;
+  grid-template-columns: 30px minmax(var(--cm-qty-col), max-content) minmax(0, 1fr) auto;
+  column-gap: 12px;
+}
+
+.cm-prep-list:lang(fr) {
+  --cm-qty-col: 112px;
+}
+
+.cm-prep-group {
+  display: contents;
+}
+
+.cm-prep-group + .cm-prep-group .cm-prep-head {
+  margin-top: 22px;
+}
+
+.cm-prep-head {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 6px;
+  border-bottom: 2px dotted var(--riso-dash-strong);
+}
+
+.cm-prep-group-name {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.cm-prep-group-count {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+}
+
+/* A "For this step" row (.cm-uses-row) with a how line under the name and the steps at
+   the right. */
+.cm-prep-row {
+  grid-template-columns: 30px var(--cm-qty-col) minmax(0, 1fr) auto;
+  min-height: 52px;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+
+@supports (grid-template-columns: subgrid) {
+  .cm-prep-row {
+    grid-template-columns: subgrid;
+  }
+}
+
+.cm-prep-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cm-prep-text .cm-uses-name {
+  line-height: 1.2;
+}
+
+.cm-prep-how {
+  font: 400 14px/1.35 var(--riso-font-body);
+  color: var(--riso-ink);
+  text-wrap: pretty;
+}
+
+.cm-prep-row > .cm-prep-tag {
+  justify-self: end;
+}
+
+.cm-prep-tag {
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+  white-space: nowrap;
+}
+
+/* Do first: the recipe's own preheat sentence. */
+.cm-prep-first {
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 22px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  background: var(--riso-surface);
+  box-shadow: var(--riso-shadow-card);
+}
+
+.cm-prep-first-label {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.cm-prep-first-text {
+  font: 700 20px/1.3 var(--riso-font-display);
+  text-wrap: pretty;
+}
+
 /* ---------- Finished view ---------- */
 .cm-done {
   flex: 1;
@@ -7200,6 +7334,59 @@ button.riso-table-group-head:disabled {
 
   .cm-done-title {
     font-size: 44px;
+  }
+}
+
+/* The prep page on a phone: no photo; Do first comes before the list; the steps sit on their
+   own line under the how line; the whole column scrolls between the top bar and the button. */
+@media (max-width: 767px) {
+  .cm-prep-col {
+    gap: 18px;
+  }
+
+  .cm-prep-sub {
+    font-size: 14px;
+  }
+
+  .cm-prep-list {
+    --cm-qty-col: 56px;
+    grid-template-columns: 26px minmax(var(--cm-qty-col), max-content) minmax(0, 1fr);
+    column-gap: 10px;
+  }
+
+  .cm-prep-list:lang(fr) {
+    --cm-qty-col: 76px;
+  }
+
+  .cm-prep-row {
+    grid-template-columns: 26px var(--cm-qty-col) minmax(0, 1fr);
+    min-height: 48px;
+  }
+
+  @supports (grid-template-columns: subgrid) {
+    .cm-prep-row {
+      grid-template-columns: subgrid;
+    }
+  }
+
+  .cm-prep-text .cm-uses-name {
+    font-size: 15px;
+  }
+
+  .cm-prep-how {
+    font-size: 13px;
+  }
+
+  .cm-prep-first {
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    box-shadow: none;
+  }
+
+  .cm-prep-first-text {
+    font-size: 15px;
+    line-height: 1.35;
   }
 }
 

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&amp;family=DM+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>html,body{margin:0;background:#e4e0d6}a{color:#2323ff;text-decoration:none}a:hover{color:#16181f}</style></helmet>
+<div style="padding:64px;display:flex;flex-direction:column;gap:64px;font-family:Inter,system-ui,sans-serif;color:#16181f;width:max-content;min-width:100%;box-sizing:border-box">
+  <div style="display:flex;flex-direction:column;gap:16px;width:1100px">
+    <a href="Index.dc.html" style="font:500 12px 'DM Mono',monospace;letter-spacing:0.1em">← ALL PAGES</a>
+    <span style="font:500 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">BASELINE · 05 / 12 · APPROVED DESIGN (2C)</span>
+    <h1 style="margin:0;font:800 56px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Cook mode</h1>
+    <p style="margin:0;font:400 17px/1.5 Inter,sans-serif;color:#3f3e37;max-width:760px;text-wrap:pretty">A full-screen overlay (no app header) opened from a recipe card's "Start cooking". The live code still draws the <a href="Archive - Cook Mode (live code).dc.html">earlier layout</a>.</p>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;margin-top:8px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font:600 11px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">SOURCE FILES</span>
+        <code style="font:400 13px/1.7 'DM Mono',monospace;white-space:pre-line">client/src/components/CookMode.jsx (topbar, step view, aside, done view, leftovers)
+client/src/hooks/useStepTimers.js
+client/src/index.css (.cm-*)
+client/src/i18n/en.js, fr.js (cookMode.*)</code>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font:600 11px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">NOTES</span>
+        <ul style="margin:0;padding-left:18px;font:400 14px/1.6 Inter,sans-serif;color:#3f3e37">
+          <li>Not built yet: CookMode.jsx and the .cm-* styles still draw the earlier layout.</li>
+          <li>Lines are 2px dotted in the page's pale line colour (#bdb6a6), and white in dark mode.</li>
+          <li>Step text is 34px on a computer and 19px on a phone. A new paragraph starts wherever a sentence ends.</li>
+          <li>In dark mode the timer swaps to a black card with yellow type and outline, and has no shadow.</li>
+          <li>The finished view (5.4) is the approved redesign: leftovers first, then take out of your Inventory, then a pop-up and confetti. It is clickable; its parts live in <a href="Cook Mode Finished.dc.html">Cook Mode Finished.dc.html</a>. The live code's old version is in the <a href="Archive - Cook Mode (live code).dc.html">archive</a>.</li>
+          <li>Phone: × leads the top bar; the step dots and title sit under it; the photo is a 60px strip above "Step 2 of 5"; the timer follows the ingredients; ← is a 56px square and Next fills the rest.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <sc-for list="{{ states }}" as="st" hint-placeholder-count="2">
+    <section style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1400px">
+        <span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:4px 8px;border-radius:6px">{{ st.id }}</span>
+        <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">{{ st.name }}</h2>
+        <span style="font:400 15px Inter,sans-serif;color:#5e5b52">{{ st.caption }}</span>
+      </div>
+      <div style="display:flex;gap:40px;align-items:flex-start">
+        <sc-for list="{{ st.boards }}" as="b" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:10px;flex:none">
+            <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.label }}</span>
+            <div data-screen-label="{{ b.screenLabel }}" style="position:relative;width:{{ b.w }}px;height:{{ b.h }};background:{{ b.bg }};color:{{ b.ink }};border:1px solid #bdb6a6;overflow:hidden;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif;box-sizing:border-box">
+                <div style="flex:none;display:flex;align-items:center;gap:{{ b.topGap }};padding:{{ b.topPad }};border-bottom:2px solid {{ b.rule }};background:{{ b.surface }};flex-wrap:wrap">
+                  <span style="order:{{ b.exitOrder }};width:42px;height:42px;border-radius:21px;border:2px solid {{ b.rule }};font:700 20px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">×</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:800 {{ b.recipeFs }}/1.1 'Bricolage Grotesque',sans-serif">{{ b.recipe }}</span><sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:{{ b.muted }}">{{ b.meta }}</span></sc-if></div>
+                  <sc-if value="{{ b.running }}" hint-placeholder-val="{{ false }}"><span style="height:34px;padding:0 12px;border-radius:17px;border:2px solid #16181f;background:#ffe14d;color:#16181f;font:800 13px 'Bricolage Grotesque',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;display:flex;align-items:center;box-sizing:border-box">⏱ 4:32</span></sc-if><sc-if value="{{ b.showSegs }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:6px;align-items:center;width:{{ b.segW }};order:{{ b.segOrder }}"><sc-for list="{{ b.segs }}" as="sg" hint-placeholder-count="5"><span style="flex:{{ b.segFlex }};width:{{ b.segItemW }};height:10px;border-radius:5px;border:2px solid {{ b.rule }};background:{{ sg }};box-sizing:border-box"></span></sc-for></div></sc-if>
+                  <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><span style="display:flex;align-items:center;gap:8px;font:700 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap"><span style="width:44px;height:26px;border-radius:13px;background:#2323ff;border:2px solid {{ b.rule }};position:relative;box-sizing:border-box"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:9px;background:#fffdf8;border:2px solid #16181f;box-sizing:border-box"></span></span>{{ b.keepAwake }}</span></sc-if>
+                </div>
+              <sc-if value="{{ b.step }}" hint-placeholder-val="{{ true }}">
+                  <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}"><div style="flex:none;padding:12px 18px 10px;border-bottom:{{ b.sepHead }};display:flex;flex-direction:column;gap:8px"><div style="position:relative;display:flex;justify-content:space-between;align-items:center"><span style="position:absolute;left:14px;right:14px;top:50%;height:0;margin-top:-1px;border-top:{{ b.sepRail }}"></span><sc-for list="{{ b.steps }}" as="s" hint-placeholder-count="5"><span style="position:relative;width:{{ s.dotW }};height:{{ s.dotW }};border-radius:50%;border:2px solid {{ b.rule }};background:{{ s.bg }};color:{{ s.fg }};font:800 {{ s.dotFs }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ s.mark }}</span></sc-for></div><span style="font:800 18px 'Bricolage Grotesque',sans-serif">{{ b.curTitle }}</span></div></sc-if>
+                  <div style="flex:1;min-height:0;overflow:hidden;padding:{{ b.mainPad }};display:grid;grid-template-columns:{{ b.cols }};gap:{{ b.gap }};align-items:start">
+                    <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}">
+                      <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:22px;align-self:stretch;padding-top:4px">
+                        <span style="position:absolute;top:20px;bottom:20px;left:50%;width:0;margin-left:-1px;border-left:{{ b.sepRail }}"></span>
+                        <sc-for list="{{ b.steps }}" as="s" hint-placeholder-count="5"><div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:{{ b.bg }};padding:2px 0"><span style="width:{{ s.dotW }};height:{{ s.dotW }};border-radius:50%;border:2px solid {{ b.rule }};background:{{ s.bg }};color:{{ s.fg }};font:800 {{ s.dotFs }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box;box-shadow:{{ s.sh }}">{{ s.mark }}</span><span style="max-width:84px;text-align:center;font:500 10px/1.2 'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:{{ s.labelFg }}">{{ s.title }}</span></div></sc-for>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;flex-direction:column;gap:{{ b.c2Gap }}">
+                      <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}"><div style="height:60px;flex:none;border-radius:16px;border:2px solid {{ b.rule }};background:{{ b.photoBg }}"></div></sc-if>
+                      <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.14em;color:{{ b.muted }};margin-bottom:{{ b.c2Pull }}">{{ b.stepOf }}</span>
+                      <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><h3 style="margin:0;font:800 30px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">{{ b.curTitle }}</h3></sc-if>
+                      <p style="margin:0;font:500 {{ b.textFs }}/1.32 'Bricolage Grotesque',sans-serif;letter-spacing:-0.015em;text-wrap:pretty;white-space:pre-line">{{ b.stepText }}</p>
+                      <div style="border-top:{{ b.sepTop }};padding-top:12px;display:flex;flex-direction:column"><sc-if value="{{ b.sepShort }}" hint-placeholder-val="{{ false }}"><span style="display:block;width:40px;height:3px;border-radius:2px;background:{{ b.ink }};margin-bottom:12px"></span></sc-if>
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ b.forThisStep }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ b.muted }}">{{ b.checkedOf }}</span></div>
+                        <sc-for list="{{ b.ings }}" as="i" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:30px {{ b.qtyCol }} minmax(0,1fr);align-items:center;gap:12px;min-height:{{ b.rowH }};border-bottom:{{ b.sepRow }};opacity:{{ i.op }}"><span style="width:26px;height:26px;border-radius:13px;border:2px solid {{ b.rule }};background:{{ i.dot }};color:#fff;font:700 13px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ i.check }}</span><span style="font:500 {{ b.qtyFs }} 'DM Mono',monospace;text-align:right;white-space:nowrap">{{ i.qty }}</span><span style="font:700 {{ b.ingFs }} 'Bricolage Grotesque',sans-serif;text-decoration:{{ i.deco }}">{{ i.name }}<sc-if value="{{ i.hasPrep }}" hint-placeholder-val="{{ false }}"><span style="font-weight:500;color:{{ b.muted }}">, {{ i.prep }}</span></sc-if></span></div></sc-for>
+                      </div>
+                      <sc-if value="{{ b.phoneTimer }}" hint-placeholder-val="{{ false }}"><div style="background:{{ b.tBg }};color:{{ b.tFg }};border:2px solid {{ b.tBd }};border-radius:24px;box-shadow:{{ b.tShadow }};padding:{{ b.timerPad }};display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px"><div style="display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ b.timerLabel }}</span><span style="font:800 {{ b.timerFs }}/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ b.timerTime }}</span></div><div style="display:flex;gap:6px;flex:1 0 100%"><span style="flex:1;justify-content:center;height:{{ b.tBtnH }};padding:0 18px;border-radius:26px;border:{{ b.tBtnBd }};box-sizing:border-box;background:{{ b.tBtnBg }};color:{{ b.tBtnFg }};font:800 15px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;white-space:nowrap">{{ b.timerMain }}</span><span style="height:{{ b.tBtnH }};padding:0 12px;border-radius:26px;border:2px solid {{ b.tBd }};background:{{ b.tPlusBg }};color:{{ b.tPlusFg }};font:700 14px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;white-space:nowrap;box-sizing:border-box">{{ b.plusMinute }}</span></div></div></sc-if>
+                    </div>
+                    <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:28px"><div style="height:{{ b.photo2cH }};flex:none;border-radius:20px;border:2px solid {{ b.rule }};background:{{ b.photoBg }}"></div><sc-if value="{{ b.hasTimer }}" hint-placeholder-val="{{ true }}"><div style="background:{{ b.tBg }};color:{{ b.tFg }};border:2px solid {{ b.tBd }};border-radius:24px;box-shadow:6px 6px 0 {{ b.shadow }};padding:{{ b.timerPad }};display:flex;flex-direction:column;gap:12px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ b.timerLabel }}</span><span style="font:800 {{ b.timerFs }}/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ b.timerTime }}</span><div style="display:flex;gap:8px"><span style="flex:1;height:{{ b.tBtnH }};border-radius:26px;border:{{ b.tBtnBd }};box-sizing:border-box;background:{{ b.tBtnBg }};color:{{ b.tBtnFg }};font:800 16px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;white-space:nowrap">{{ b.timerMain }}</span><span style="height:{{ b.tBtnH }};padding:0 16px;border-radius:26px;border:2px solid {{ b.tBd }};background:{{ b.tPlusBg }};color:{{ b.tPlusFg }};font:700 15px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;white-space:nowrap;box-sizing:border-box">{{ b.plusMinute }}</span></div></div></sc-if></div></sc-if>
+                  </div>
+                <div style="flex:none;background:{{ b.surface }};border-top:2px solid {{ b.rule }};padding:{{ b.botPad }};display:flex;gap:12px;align-items:center">
+                  <span style="height:{{ b.botH }};width:{{ b.prevW }};padding:0 {{ b.prevPad }};border-radius:30px;border:2px solid {{ b.rule }};font:700 17px 'Bricolage Grotesque',sans-serif;white-space:nowrap;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ b.previous }}</span>
+                  <sc-if value="{{ b.showNext }}" hint-placeholder-val="{{ true }}"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:0 8px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ b.muted }}">{{ b.upNext }}</span><span style="font:600 14px/1.35 Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.nextText }}</span></div></sc-if>
+                  <sc-if value="{{ b.hideNext }}" hint-placeholder-val="{{ false }}"><span style="flex:1"></span></sc-if>
+                  <span style="flex:{{ b.nextFlex }};height:{{ b.botH }};padding:0 30px;border-radius:30px;border:2px solid {{ b.rule }};background:#2323ff;color:#fff;font:800 18px 'Bricolage Grotesque',sans-serif;white-space:nowrap;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ b.nextStep }}</span>
+                </div>
+              </sc-if>
+<sc-if value="{{ b.prepView }}" hint-placeholder-val="{{ false }}">
+                  <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}"><div style="flex:none;padding:12px 18px 10px;border-bottom:{{ b.sepHead }};display:flex;flex-direction:column;gap:8px"><div style="position:relative;display:flex;justify-content:space-between;align-items:center"><span style="position:absolute;left:14px;right:14px;top:50%;height:0;margin-top:-1px;border-top:{{ b.sepRail }}"></span><sc-for list="{{ b.prepSteps }}" as="s" hint-placeholder-count="6"><span style="position:relative;width:{{ s.dotW }};height:{{ s.dotW }};border-radius:50%;border:2px solid {{ b.rule }};background:{{ s.bg }};color:{{ s.fg }};font:800 {{ s.dotFs }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ s.mark }}</span></sc-for></div><span style="font:800 18px 'Bricolage Grotesque',sans-serif">{{ b.prepTitle }}</span></div></sc-if>
+                  <div style="flex:1;min-height:0;overflow:hidden;padding:{{ b.mainPad }};display:grid;grid-template-columns:{{ b.cols }};gap:{{ b.gap }};align-items:start">
+                    <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}">
+                      <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:22px;align-self:stretch;padding-top:4px">
+                        <span style="position:absolute;top:20px;bottom:20px;left:50%;width:0;margin-left:-1px;border-left:{{ b.sepRail }}"></span>
+                        <sc-for list="{{ b.prepSteps }}" as="s" hint-placeholder-count="6"><div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:{{ b.bg }};padding:2px 0"><span style="width:{{ s.dotW }};height:{{ s.dotW }};border-radius:50%;border:2px solid {{ b.rule }};background:{{ s.bg }};color:{{ s.fg }};font:800 {{ s.dotFs }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box;box-shadow:{{ s.sh }}">{{ s.mark }}</span><span style="max-width:84px;text-align:center;font:500 10px/1.2 'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:{{ s.labelFg }}">{{ s.title }}</span></div></sc-for>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;flex-direction:column;gap:{{ b.prepGap }}">
+                      <div style="display:flex;flex-direction:column;gap:8px">
+                        <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ b.muted }}">{{ b.prepEyebrow }}</span>
+                        <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><h3 style="margin:0;font:800 30px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">{{ b.prepTitle }}</h3></sc-if>
+                        <p style="margin:0;font:400 {{ b.prepSubFs }}/1.45 Inter,sans-serif;color:{{ b.muted }};text-wrap:pretty">{{ b.prepSub }}</p>
+                      </div>
+                      <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid {{ b.rule }};border-radius:18px;background:{{ b.surface }};padding:12px 14px;display:flex;flex-direction:column;gap:4px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ b.firstLbl }}</span><span style="font:700 15px/1.35 'Bricolage Grotesque',sans-serif;text-wrap:pretty">{{ b.firstText }}</span></div></sc-if>
+                      <sc-for list="{{ b.prepGroups }}" as="g" hint-placeholder-count="3">
+                        <div style="display:flex;flex-direction:column">
+                          <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:{{ b.sepRow }}"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ g.name }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ b.muted }}">{{ g.count }}</span></div>
+                          <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="2"><div style="display:grid;grid-template-columns:{{ b.prepCols }};align-items:center;gap:{{ b.prepColGap }};min-height:{{ b.prepRowH }};padding:6px 0;border-bottom:{{ b.sepRow }};box-sizing:border-box"><span style="width:26px;height:26px;border-radius:13px;border:2px solid {{ b.rule }};background:{{ b.surface }};box-sizing:border-box"></span><span style="font:500 {{ b.qtyFs }} 'DM Mono',monospace;text-align:right;white-space:nowrap">{{ i.qty }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font:700 {{ b.ingFs }}/1.2 'Bricolage Grotesque',sans-serif">{{ i.name }}</span><span style="font:400 {{ b.howFs }}/1.35 Inter,sans-serif;color:{{ b.ink }};text-wrap:pretty">{{ i.how }}</span><sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ b.muted }}">{{ i.step }}</span></sc-if></span><sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ b.muted }};white-space:nowrap">{{ i.step }}</span></sc-if></div></sc-for>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:28px"><div style="height:{{ b.photo2cH }};flex:none;border-radius:20px;border:2px solid {{ b.rule }};background:{{ b.photoBg }}"></div><div style="border:2px solid {{ b.rule }};border-radius:24px;background:{{ b.surface }};box-shadow:6px 6px 0 {{ b.shadow }};padding:20px 22px;display:flex;flex-direction:column;gap:10px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ b.firstLbl }}</span><span style="font:700 20px/1.3 'Bricolage Grotesque',sans-serif;text-wrap:pretty">{{ b.firstText }}</span></div></div></sc-if>
+                  </div>
+                <div style="flex:none;background:{{ b.surface }};border-top:2px solid {{ b.rule }};padding:{{ b.botPad }};display:flex;gap:12px;align-items:center">
+                  <sc-if value="{{ b.showNext }}" hint-placeholder-val="{{ true }}"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:0 8px"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ b.muted }}">{{ b.prepUpNext }}</span><span style="font:600 14px/1.35 Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.prepNextText }}</span></div></sc-if>
+                  <span style="flex:{{ b.nextFlex }};height:{{ b.botH }};padding:0 30px;border-radius:30px;border:2px solid {{ b.rule }};background:#2323ff;color:#fff;font:800 18px 'Bricolage Grotesque',sans-serif;white-space:nowrap;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ b.prepGo }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.done }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;max-width:1100px;width:100%;margin:0 auto;padding:{{ b.donePad }};box-sizing:border-box;display:grid;grid-template-columns:{{ b.doneCols }};gap:28px;align-items:start;overflow:hidden">
+                  <div style="display:flex;flex-direction:column;gap:18px">
+                    <span style="align-self:flex-start;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:6px 14px;font:800 15px 'Bricolage Grotesque',sans-serif;background:#10c95c;box-shadow:3px 3px 0 #16181f;white-space:nowrap">{{ b.allDone }}</span>
+                    <h1 style="margin:0;font:800 {{ b.doneFs }}/0.95 'Bricolage Grotesque',sans-serif;letter-spacing:-0.035em">{{ b.readyStart }} <span style="color:#2323ff">{{ b.readyAccent }}</span></h1>
+                    <p style="margin:0;font-size:16px;line-height:1.6;color:#3f3e37">{{ b.doneCopy }}</p>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap"><span style="height:52px;padding:0 24px;border-radius:26px;border:2px solid #16181f;background:#2323ff;color:#fff;box-shadow:3px 3px 0 #16181f;font:800 16px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;box-sizing:border-box">{{ b.markCooked }}</span><span style="height:52px;padding:0 20px;border-radius:26px;border:2px solid #16181f;background:transparent;font:700 15px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;box-sizing:border-box">{{ b.backToStep1 }}</span></div>
+                  </div>
+                  <div style="background:#fffdf8;border:2px solid #16181f;border-radius:26px;box-shadow:6px 6px 0 #16181f;padding:22px;display:flex;flex-direction:column;gap:16px">
+                    <h2 style="margin:0;font:800 24px 'Bricolage Grotesque',sans-serif">{{ b.saveQ }}</h2>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font:700 15px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ b.portionsLeft }}</span><span style="display:flex;align-items:center;gap:6px;height:44px;padding:0 5px;border-radius:22px;background:#f4f1ea;border:2px solid #16181f;box-sizing:border-box"><span style="width:32px;height:32px;border-radius:16px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:700 16px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">−</span><span style="min-width:28px;text-align:center;font:800 18px 'Bricolage Grotesque',sans-serif">2</span><span style="width:32px;height:32px;border-radius:16px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:700 16px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">+</span></span></div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <sc-for list="{{ b.storage }}" as="sg" hint-placeholder-count="2"><span style="height:48px;padding:0 16px;border-radius:24px;border:2px solid #16181f;background:{{ sg.bg }};color:{{ sg.fg }};box-shadow:{{ sg.sh }};display:flex;align-items:center;justify-content:space-between;font:700 15px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ sg.label }}<span style="font:500 12px 'DM Mono',monospace;opacity:0.85">{{ sg.range }}</span></span></sc-for>
+                    </div>
+                    <p style="margin:0;font-size:13px;line-height:1.5;color:#3f3e37">{{ b.toFridge }}</p>
+                    <span style="width:100%;height:48px;padding:0 24px;border-radius:26px;border:2px solid #16181f;background:#2323ff;color:#fff;box-shadow:3px 3px 0 #16181f;font:800 16px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ b.saveLeftovers }}</span>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+  <section id="5.4" style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1400px">
+      <span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:4px 8px;border-radius:6px">5.4</span>
+      <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Finished</h2>
+      <span style="font:400 15px Inter,sans-serif;color:#5e5b52">Clickable. Pick portions and Fridge or Freezer, then Add to Inventory or No leftovers; the Inventory card wakes up. Tick or untick rows, then Remove from inventory or Not now, then Back to the app.</span>
+    </div>
+    <dc-import name="Cook Mode Finished" embedded="{{ true }}" hint-size="1760px,1500px"></dc-import>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;both&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;en&quot;,&quot;fr&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { import('./kit.js').then(k => { this.k = k; this.forceUpdate(); }); }
+  STATES = [
+    { id: '5.0', name: 'Before you start', caption: 'A new first page on every recipe: each ingredient that needs work, grouped by job (cut, measure, squeeze), with how to do it and the step that uses it. Built from the prep notes on the recipe\'s ingredients.', prep: true },
+    { id: '5.1', name: 'A step with a timer', caption: 'Step 2 of 5. The step\'s own timer waits at its length; nothing is checked yet. Keep screen on is on.' },
+    { id: '5.2', name: 'Timer running · ingredients checked', caption: 'The timer is roasting (its label follows the step\'s verb); two ingredients are ticked off. Another step\'s timer shows as the yellow chip in the top bar.', running: true },
+    { id: '5.3', name: 'Phone in dark mode', caption: 'Lines turn white; the timer becomes a black card with yellow type and no shadow.', dark: true },
+    
+  ];
+  board(k, s, bd) {
+    const L = bd.lang, P = bd.phone, t = k.tr(L), fr = L === 'fr', dark = !!s.dark;
+    const T = dark
+      ? { bg: '#000000', surface: '#111115', ink: '#f4f1ea', rule: '#26262e', muted: '#9a9aa8', shadow: '#2323ff', photoBg: 'repeating-linear-gradient(135deg,#15151b 0 12px,#1d1d25 12px 24px)' }
+      : { bg: '#f4f1ea', surface: '#fffdf8', ink: '#16181f', rule: '#16181f', muted: '#5e5b52', shadow: '#16181f', photoBg: 'repeating-linear-gradient(135deg,#e9e4d8 0 12px,#ddd6c6 12px 24px)' };
+    const line = '2px dotted ' + (dark ? '#f4f1ea' : '#bdb6a6');
+    const ingData = fr ? [['900 g', 'hauts de cuisse de poulet', 'en dés'], ['2 c. à soupe', "huile d'olive", ''], ['1 c. à soupe', 'épices shawarma', '']] : [['900 g', 'chicken thighs', 'diced'], ['2 tbsp', 'olive oil', ''], ['1 tbsp', 'shawarma spice', '']];
+    const nOn = s.running ? 2 : 0;
+    const ings = ingData.map(([qty, name, prep], i) => { const on = i < nOn; return { qty, name, prep, hasPrep: !!prep, check: on ? '✓' : '', dot: on ? '#2323ff' : T.surface, op: on ? 0.55 : 1, deco: on ? 'line-through' : 'none' }; });
+    const titles = fr ? ['Préparation', 'Rôtir', 'Sauce au yogourt', 'Réchauffer les pitas', 'Assembler'] : ['Prep', 'Roast', 'Yogurt sauce', 'Warm the pitas', 'Assemble'];
+    const steps = titles.map((title, i) => { const done = i < 1, cur = i === 1; return { title, mark: done ? '✓' : String(i + 1), bg: cur ? '#2323ff' : done ? T.ink : T.surface, fg: cur ? '#fff' : done ? T.bg : T.ink, dotW: cur ? (P ? '34px' : '44px') : (P ? '24px' : '30px'), dotFs: cur ? '15px' : '11px', sh: cur ? '3px 3px 0 ' + T.shadow : 'none', labelFg: cur ? T.ink : T.muted }; });
+    const stepText = (fr ? 'Étalez le poulet sur la plaque avec les oignons, arrosez d’huile et saupoudrez d’épices. Faites rôtir 25 minutes, en retournant à mi-cuisson.' : 'Spread the chicken on the sheet pan with the onions, drizzle with oil and sprinkle the spices. Roast for 25 minutes, turning halfway.').replace(/([.!?])\s+(?=[A-ZÀ-Ý])/g, '$1\n\n');
+    const PG = fr ? [
+      ['COUPER', [['900 g', 'Hauts de cuisse de poulet', 'En dés de 3 cm', 'ÉTAPE 2'], ['2', 'Oignons rouges', 'En quartiers', 'ÉTAPE 2'], ['3 gousses', 'Ail', 'Haché. Gardez-en 1 pour la sauce.', 'ÉTAPES 2 · 3']]],
+      ['MESURER', [['2 c. à soupe', "Huile d'olive", 'À côté de la plaque', 'ÉTAPE 2'], ['1 c. à soupe', 'Épices shawarma', "Dans un petit bol", 'ÉTAPE 2'], ['250 ml', 'Yogourt grec', 'Sorti du frigo pour qu’il ramollisse', 'ÉTAPE 3']]],
+      ['PRESSER', [['1', 'Citron', 'Pressé, pépins retirés', 'ÉTAPE 3']]],
+    ] : [
+      ['CUT', [['900 g', 'Chicken thighs', 'Dice into 3 cm pieces', 'STEP 2'], ['2', 'Red onions', 'Slice into wedges', 'STEP 2'], ['3 cloves', 'Garlic', 'Mince. Keep 1 for the sauce.', 'STEPS 2 · 3']]],
+      ['MEASURE', [['2 tbsp', 'Olive oil', 'Set beside the pan', 'STEP 2'], ['1 tbsp', 'Shawarma spice', 'In a small bowl', 'STEP 2'], ['1 cup', 'Greek yogurt', 'Take out of the fridge to soften', 'STEP 3']]],
+      ['SQUEEZE', [['1', 'Lemon', 'Juice it, seeds out', 'STEP 3']]],
+    ];
+    const prepGroups = PG.map(([name, rows]) => ({ name, count: rows.length + (fr ? (rows.length > 1 ? ' ingrédients' : ' ingrédient') : (rows.length > 1 ? ' ingredients' : ' ingredient')), items: rows.map(([qty, nm, how, step]) => ({ qty, name: nm, how, step })) }));
+    const prepSteps = [{ title: fr ? 'Avant' : 'Get ready', mark: '0', bg: '#2323ff', fg: '#fff', dotW: P ? '34px' : '44px', dotFs: '15px', sh: '3px 3px 0 ' + T.shadow, labelFg: T.ink }]
+      .concat(titles.map((title, i) => ({ title, mark: String(i + 1), bg: T.surface, fg: T.ink, dotW: P ? '24px' : '30px', dotFs: '11px', sh: 'none', labelFg: T.muted })));
+    return {
+      ...bd, ...T, prepGroups, prepSteps,
+      prepEyebrow: fr ? 'AVANT DE COMMENCER · 7 À PRÉPARER' : 'BEFORE YOU START · 7 TO PREP', prepTitle: fr ? 'Préparez tout' : 'Get everything ready',
+      prepSub: fr ? 'Faites ceci avant l’étape 1. Cochez chaque ingrédient une fois prêt.' : 'Do these before step 1. Tick each one when it’s ready.',
+      firstLbl: fr ? 'D’ABORD' : 'DO FIRST', firstText: fr ? 'Préchauffez le four à 220 °C et tapissez une plaque.' : 'Heat the oven to 220 °C (425 °F) and line a sheet pan.',
+      prepUpNext: fr ? 'ENSUITE · ÉTAPE 1 · PRÉPARATION' : 'THEN · STEP 1 · PREP', prepNextText: fr ? 'Mélangez l’huile et les épices, puis enrobez le poulet.' : 'Mix the oil and spices, then coat the chicken.',
+      prepGo: fr ? 'Commencer l’étape 1' : 'Start step 1', prepGap: P ? '18px' : '22px', prepCols: P ? '26px ' + (fr ? '76px' : '56px') + ' minmax(0,1fr)' : '30px ' + (fr ? '112px' : '80px') + ' minmax(0,1fr) auto', prepColGap: P ? '10px' : '12px', prepSubFs: P ? '14px' : '15px', prepRowH: P ? '48px' : '52px', howFs: P ? '13px' : '14px', label: bd.label + (dark ? ' · DARK' : ''), h: (s.done || s.prep) && P ? 'auto' : (P ? '844px' : '800px'), screenLabel: `${s.id} Cook mode ${bd.label}${dark ? ' dark' : ''}`,
+      desktop: !P, phone: P, step: !s.done && !s.prep, prepView: !!s.prep, done: !!s.done, running: !!s.running && !P, showSegs: false,
+      topGap: P ? '10px' : '16px', topPad: P ? '10px 18px' : '16px 40px', recipeFs: P ? '17px' : '20px', exitOrder: P ? -1 : 9,
+      recipe: 'Sheet-pan chicken shawarma', meta: `${t('cookMode.meta')} · ${t('cookMode.serves', { count: 4 })} · ${t('cookMode.minutes', { m: 45 })}`, keepAwake: t('cookMode.keepAwake'),
+      steps, curTitle: titles[1], sepHead: line, sepRail: line, sepTop: line, sepRow: line, sepShort: false,
+      mainPad: P ? '16px 18px' : '32px 40px', gap: P ? '16px' : '32px', cols: P ? 'minmax(0,1fr)' : '96px minmax(0,1fr) 340px', c2Gap: '20px', c2Pull: P ? '-12px' : '0',
+      stepOf: t('cookMode.stepOf', { n: 2, total: 5 }), textFs: P ? '19px' : '34px', stepText, forThisStep: t('cookMode.forThisStep'), checkedOf: nOn + ' / ' + ings.length, ings,
+      qtyCol: fr ? (P ? '96px' : '112px') : (P ? '62px' : '80px'), qtyFs: P ? '12px' : '14px', ingFs: P ? '15px' : '17px', rowH: P ? '40px' : '50px',
+      photo2cH: '250px', hasTimer: true, phoneTimer: P,
+      tBg: dark ? '#16181f' : '#ffe14d', tFg: dark ? '#ffe14d' : '#16181f', tBd: dark ? '#ffe14d' : '#16181f', tBtnBg: dark ? '#16181f' : '#16181f', tBtnFg: dark ? '#ffe14d' : '#ffe14d', tBtnBd: dark ? '2px solid #ffe14d' : 'none', tPlusBg: dark ? '#ffe14d' : '#fffdf8', tPlusFg: dark ? '#16181f' : '#16181f', tShadow: dark ? 'none' : '5px 5px 0 ' + T.shadow,
+      timerLabel: s.running ? t('cookMode.verbs.roast') : t('cookMode.timer'), timerTime: s.running ? '18:42' : '25:00', timerMain: s.running ? t('cookMode.pause') : t('cookMode.startTimer'), plusMinute: t('cookMode.plusMinute'),
+      timerPad: P ? '10px 14px' : '20px 22px', timerFs: P ? '34px' : '64px', tBtnH: P ? '44px' : '50px',
+      botPad: P ? '12px 18px' : '14px 40px', botH: P ? '56px' : '58px', prevW: P ? '56px' : 'auto', prevPad: P ? '0' : '24px', previous: P ? '←' : t('cookMode.previous'),
+      showNext: !P, hideNext: P, upNext: `${t('cookMode.upNext', { n: 3 })} · ${fr ? 'SAUCE AU YOGOURT' : 'YOGURT SAUCE'}`, nextText: fr ? 'Pendant la cuisson, mélangez le yogourt, l’ail et le jus de citron.' : 'While it roasts, stir the yogurt with the garlic and lemon juice.',
+      nextFlex: P ? '1' : 'none', nextStep: t('cookMode.nextStep'),
+      donePad: P ? '24px 18px 48px' : '48px 40px 64px', doneCols: P ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', doneFs: P ? '44px' : '64px',
+      allDone: t('cookMode.allDone'), readyStart: t('cookMode.readyStart'), readyAccent: t('cookMode.readyAccent'), doneCopy: t('cookMode.doneCopy'), markCooked: t('cookMode.markCooked'), backToStep1: t('cookMode.backToStep1'),
+      saveQ: t('cookMode.saveLeftoversQ'), portionsLeft: t('cookMode.portionsLeft'),
+      storage: [[t('cookMode.fridge'), t('cookMode.fridgeRange'), true], [t('cookMode.freezer'), t('cookMode.freezerRange'), false]].map(([label, range, on]) => ({ label, range, bg: on ? '#2323ff' : '#f4f1ea', fg: on ? '#fff' : '#16181f', sh: on ? '3px 3px 0 #16181f' : 'none' })),
+      toFridge: t('cookMode.toFridge', { count: 2 }), saveLeftovers: t('cookMode.saveLeftovers'),
+    };
+  }
+  renderVals() {
+    const k = this.k;
+    if (!k) return { states: [] };
+    const pref = this.props.lang || 'both';
+    return { states: this.STATES.map(s => ({ id: s.id, name: s.name, caption: s.caption, boards: k.boards(pref, s.dark ? { phoneOnly: true } : {}).map(bd => this.board(k, s, bd)) })) };
+  }
+}
+</script>
+</body>
+</html>

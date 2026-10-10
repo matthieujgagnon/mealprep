@@ -12,7 +12,7 @@ const ENGLISH = new Set(
   "of or and with the for in on fresh frozen product assorted selected bag box pack apples apple potatoes potato chicken beef pork veal lamb turkey ham cheese milk butter eggs bread breasts breast thighs legs ground lean extra sausages sausage fillets fillet steak roast shrimp salmon trout tuna cod fish tomatoes onions carrots grapes strawberries blueberries raspberries lemons pears peaches bananas pineapple mushrooms peppers lettuce cabbage celery squash zucchini spinach beans corn sweet garlic juice wine beer water coffee tea yogurt cream ice chips cookies cereal pasta rice oil sugar flour soup nuts whole sliced smoked boneless red green yellow white black large small pie pies wings cutlets mock cooked breaded strips drumsticks skewers meatballs nuggets haddock pollock halibut sirloin blade leg shank deli meats condensed evaporated chocolate cake crispy seasoned marinated boiling meat hot roasted".split(" ")
 );
 
-const fold = (text) =>
+export const fold = (text) =>
   String(text || "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -50,7 +50,7 @@ export function splitBilingual(text) {
 // Canada's averages. Only the grocery words that name or describe the
 // product are translated; anything else is left out. Longer phrases come
 // first: "pâté chinois" is shepherd's pie before "pâté" is pie.
-const PHRASES = [
+export const PHRASES = [
   ["pommes de terre", "potatoes"], ["patates douces", "sweet potatoes"], ["patates", "potatoes"],
   ["hauts de cuisses", "thighs"], ["haut de cuisse", "thigh"], ["poitrines", "breasts"], ["poitrine", "breast"],
   ["cuisses", "legs"], ["cuisse", "leg"], ["pilons", "drumsticks"], ["ailes", "wings"], ["ailles", "wings"], ["aile", "wing"],

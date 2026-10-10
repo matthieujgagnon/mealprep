@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&amp;family=DM+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>html,body{margin:0;background:#e4e0d6}a{color:#2323ff;text-decoration:none}a:hover{color:#16181f}</style></helmet>
+<div style="padding:{{ rootPad }};display:flex;flex-direction:column;gap:40px;font-family:Inter,system-ui,sans-serif;color:#16181f;width:max-content;min-width:100%;box-sizing:border-box">
+  <sc-if value="{{ standalone }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:12px;width:1100px">
+    <a href="Cook Mode.dc.html" style="font:500 12px 'DM Mono',monospace;letter-spacing:0.1em">← COOK MODE (BASELINE) · THIS VIEW IS STATE 5.4 THERE</a>
+    <span style="font:500 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">BASELINE · 05 · STATE 5.4 · APPROVED DESIGN (NOT IN THE LIVE CODE YET)</span>
+    <h1 style="margin:0;font:800 48px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Cook mode, finished view</h1>
+    <p style="margin:0;font:400 16px/1.55 Inter,sans-serif;color:#3f3e37;max-width:820px;text-wrap:pretty">What you see after the last step. Leftovers come first; the Inventory card wakes up once they are added or skipped. Both screens are clickable and stay in sync. This is the final design; it shows as state 5.4 on the Cook mode page.</p>
+    <div style="display:flex;flex-direction:column;gap:8px"><span style="font:600 11px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">SOURCE FILES</span><code style="font:400 13px/1.7 'DM Mono',monospace;white-space:pre-line">client/src/components/CookMode.jsx (done view, leftovers)
+client/src/index.css (.cm-done-*)
+New copy, not yet in client/src/i18n: see design_handoff_cook_mode/README.md</code></div>
+  </div></sc-if>
+  <section style="display:flex;flex-direction:column;gap:56px;padding-top:{{ secPt }};border-top:{{ secBt }}">
+    <sc-if value="{{ standalone }}" hint-placeholder-val="{{ true }}"><span style="font:700 12px 'DM Mono',monospace;letter-spacing:0.12em">FINISHED VIEW · COMPUTER AND PHONE</span></sc-if>
+    <div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start"><sc-for list="{{ options12 }}" as="o" hint-placeholder-count="3">
+      <div id="{{ o.id }}" style="display:flex;flex-direction:column;gap:18px">
+        <sc-if value="{{ standalone }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1720px">
+          <span style="font:700 13px 'DM Mono',monospace;letter-spacing:0.08em;background:#2323ff;color:#fff;padding:4px 10px;border-radius:999px">{{ o.id }}</span>
+          <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">{{ o.name }}</h2>
+          <span style="font:400 15px/1.5 Inter,sans-serif;color:{{ b.kMuted }};max-width:980px;text-wrap:pretty">{{ o.caption }}</span>
+        </div></sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;max-width:1760px">
+          <sc-for list="{{ o.boards }}" as="b" hint-placeholder-count="2">
+            <div style="display:flex;flex-direction:column;gap:10px;flex:none">
+              <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:{{ b.kMuted }}">{{ b.label }}</span>
+              <div data-screen-label="{{ b.screenLabel }}" style="color:{{ b.kInk }};width:{{ b.w }}px;background:{{ b.kBg }};border:1px solid {{ b.kLine }};display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden">
+                <sc-if value="{{ b.modal }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;z-index:20;background:rgba(22,24,31,0.45);display:flex;justify-content:center;align-items:flex-start;padding:{{ b.modalPad }};box-sizing:border-box">
+                  <div style="width:100%;max-width:420px;background:{{ b.kSurf }};border:2px solid {{ b.kBd }};border-radius:26px;box-shadow:6px 6px 0 {{ b.kSh }};padding:30px 26px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;box-sizing:border-box">
+                    <span style="transform:rotate(-4deg);border:2px solid {{ b.kBd }};border-radius:999px;padding:6px 16px;font:800 18px 'Bricolage Grotesque',sans-serif;background:#10c95c;box-shadow:3px 3px 0 {{ b.kSh }};color:#16181f">all done!</span>
+                    <h2 style="margin:0;font:800 28px/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Enjoy your supper</h2>
+                    <p style="margin:0;font:400 15px/1.5 Inter,sans-serif;color:{{ b.kMuted }};text-wrap:pretty">{{ b.modalText }}</p>
+                    <span onClick="{{ b.goApp }}" style="align-self:stretch;height:56px;border-radius:28px;border:2px solid {{ b.kBd }};background:#2323ff;color:#ffffff;box-shadow:3px 3px 0 {{ b.kSh }};font:800 17px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none">Back to the app</span>
+                    <span onClick="{{ b.closeModal }}" style="font:700 14px 'Bricolage Grotesque',sans-serif;color:{{ b.kMuted }};cursor:pointer">Stay on this page</span>
+                  </div>
+                </div></sc-if>
+                {{ b.confetti }}
+                <div style="flex:none;display:flex;align-items:center;gap:{{ b.topGap }};padding:{{ b.topPad }};border-bottom:2px solid {{ b.kBd }};background:{{ b.kSurf }}">
+                  <span style="order:{{ b.exitOrder }};width:42px;height:42px;border-radius:21px;border:2px solid {{ b.kBd }};font:700 20px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none">×</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:800 {{ b.recipeFs }}/1.1 'Bricolage Grotesque',sans-serif">Sheet-pan chicken shawarma</span><sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:{{ b.kMuted }}">{{ b.meta }}</span></sc-if></div>
+                </div>
+                <div style="padding:{{ b.pad5 }};display:flex;flex-direction:column;align-items:center">
+                  <div style="width:100%;max-width:{{ b.maxW }};display:flex;flex-direction:column;gap:{{ b.gap5 }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+                      <span style="transform:rotate(-4deg);border:2px solid {{ b.kBd }};border-radius:999px;padding:{{ b.stkPad }};font:800 {{ b.stkFs }} 'Bricolage Grotesque',sans-serif;background:#10c95c;box-shadow:3px 3px 0 {{ b.kSh }};color:#16181f">{{ b.allDone }}</span>
+                      <h1 style="margin:0;font:800 {{ b.h1 }}/0.95 'Bricolage Grotesque',sans-serif;letter-spacing:-0.035em">{{ b.readyStart }} <span style="color:{{ b.kAccent }}">{{ b.readyAccent }}</span></h1>
+                    </div>
+                    <div style="display:grid;grid-template-columns:{{ b.cols7 }};gap:{{ b.gap7 }};align-items:start">
+                      <div style="display:flex;flex-direction:column">
+                      <sc-if value="{{ b.lfActive }}" hint-placeholder-val="{{ true }}"><div style="background:{{ b.kSurf }};border:2px solid {{ b.kBd }};border-radius:26px;box-shadow:4px 4px 0 {{ b.kSh }};padding:{{ b.cardPad5 }};display:flex;flex-direction:column;gap:24px">
+                        <div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;flex:none;border-radius:12px;background:#2323ff;color:#ffffff;border:2px solid {{ b.kBd }};font:800 24px/1 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">+</span><h2 style="margin:0;font:800 {{ b.h2 }} 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em">Add leftovers to Inventory</h2></div>
+                        <sc-if value="{{ b.showHowLf }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;background:{{ b.kSurf }};border:2px dashed {{ b.kBd }};border-radius:18px;padding:14px 16px">
+                          <span style="flex:none;transform:rotate(-4deg);border:2px solid {{ b.kBd }};border-radius:999px;padding:6px 12px;font:800 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:#ffe14d;color:#16181f">How it works</span>
+                          <span onClick="{{ b.hideHowLf }}" style="order:1;margin-left:auto;padding:4px;min-height:32px;display:flex;align-items:center;font:600 13px 'Bricolage Grotesque',sans-serif;text-decoration:underline;cursor:pointer;box-sizing:border-box">Got it</span>
+                          <ul style="order:2;flex:1 1 100%;min-width:0;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px"><sc-for list="{{ b.howLfList }}" as="hw" hint-placeholder-count="3"><li style="display:flex;gap:10px;font:400 14px/1.45 Inter,sans-serif;color:{{ b.kInk }}"><span style="flex:none;width:6px;height:6px;margin-top:8px;border-radius:3px;background:#2323ff"></span><span style="text-wrap:pretty">{{ hw }}</span></li></sc-for></ul>
+                        </div></sc-if>
+                        <div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px Inter,sans-serif">{{ b.portionsLeft }}</span><span style="font:800 22px 'Bricolage Grotesque',sans-serif">{{ b.pOf }}</span></div><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px"><sc-for list="{{ b.tokens12 }}" as="tk" hint-placeholder-count="4"><span onClick="{{ tk.onClick }}" style="height:{{ b.tokH }};border-radius:14px;border:2px {{ tk.bs }} {{ tk.bc }};background:{{ tk.bg }};color:{{ tk.fg }};font:800 18px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer;user-select:none">{{ tk.mark }}</span></sc-for></div></div>
+                        <div style="display:flex;padding:5px 8px 8px 5px;border:2px solid {{ b.kBd }};border-radius:999px;gap:10px;background:{{ b.kWhite }}"><sc-for list="{{ b.places12 }}" as="p" hint-placeholder-count="2"><span onClick="{{ p.onClick }}" style="flex:1;height:{{ b.plH }};border-radius:999px;border:{{ p.bd }};box-sizing:border-box;background:{{ p.bg }};box-shadow:{{ p.sh }};color:{{ p.fg }};display:flex;flex-direction:{{ b.plDir }};align-items:center;justify-content:center;gap:{{ b.plGap }};line-height:1.1;font:700 {{ b.plFs }} Inter,sans-serif;white-space:nowrap;min-width:0;cursor:pointer;user-select:none">{{ p.label }}<span style="font:400 {{ b.plRs }} Inter,sans-serif;opacity:0.8;white-space:nowrap">{{ p.range }}</span></span></sc-for></div>
+                        <div style="border-radius:18px;background:{{ b.kWhite }};border:2px solid {{ b.kBd }};padding:{{ b.lfPad }};display:flex;align-items:center;gap:{{ b.lfGap }}"><span style="width:{{ b.lfPh }};height:{{ b.lfPh }};flex:none;border-radius:{{ b.lfR }};border:2px solid {{ b.kBd }};background:repeating-linear-gradient(135deg,{{ b.kPh1 }} 0 8px,{{ b.kPh2 }} 8px 16px);box-sizing:border-box"></span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px"><span style="font:800 {{ b.lfNm }}/1.2 'Bricolage Grotesque',sans-serif;text-wrap:pretty">Sheet-pan chicken shawarma</span><span style="display:flex;gap:6px 8px;align-items:center;flex-wrap:wrap"><span style="font:400 {{ b.lfSub }} Inter,sans-serif;color:{{ b.kMuted }};white-space:nowrap">{{ b.lfLine }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;background:#ffe14d;border:1.5px solid {{ b.kBd }};border-radius:999px;padding:2px 9px;color:#16181f">LEFTOVER</span></span></div></div>
+                        <div style="display:flex;flex-direction:{{ b.btnDir }};gap:10px">
+                          <span onClick="{{ b.addLf }}" style="flex:{{ b.btnFlexGo }};height:56px;border-radius:28px;border:2px solid {{ b.kBd }};background:#2323ff;color:#ffffff;box-shadow:3px 3px 0 {{ b.kSh }};font:800 {{ b.btnFs9 }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;white-space:nowrap;padding:0 14px;min-width:0;cursor:pointer;user-select:none">+ Add to Inventory</span>
+                          <span onClick="{{ b.noLf }}" style="flex:{{ b.btnFlexKeep }};height:56px;border-radius:28px;border:2px solid {{ b.kBd }};background:{{ b.kWhite }};color:{{ b.kInk }};box-shadow:none;font:700 {{ b.btnFs9 }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;white-space:nowrap;padding:0 14px;min-width:0;cursor:pointer;user-select:none">No leftovers</span>
+                        </div>
+                      </div></sc-if>
+                      <sc-if value="{{ b.lfDone }}" hint-placeholder-val="{{ false }}"><div style="background:{{ b.kSurf }};border:2px solid {{ b.kBd }};border-radius:26px;padding:{{ b.cardPad5 }};display:flex;flex-direction:column;gap:18px">
+                        <div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;flex:none;border-radius:12px;background:#e6f5ec;border:2px solid {{ b.kBd }};font:800 20px/1 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:#16181f">✓</span><h2 style="flex:1;min-width:0;margin:0;font:800 {{ b.h2 }} 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em">{{ b.lfDoneTitle }}</h2><span onClick="{{ b.undoLf }}" style="font:{{ b.uF }};color:{{ b.uC }};white-space:nowrap;cursor:pointer;height:{{ b.uH }};padding:{{ b.uPad }};border:{{ b.uB }};border-radius:{{ b.uR }};background:{{ b.uBg }};box-shadow:{{ b.uSh }};text-decoration:{{ b.uTd }};text-underline-offset:4px;text-decoration-thickness:2px;display:flex;align-items:center;box-sizing:border-box;flex:none;user-select:none">{{ b.uTxt }}</span></div>
+                        <sc-if value="{{ b.lfAdded }}" hint-placeholder-val="{{ false }}"><div style="border-radius:18px;background:{{ b.kWhite }};border:2px solid {{ b.kBd }};padding:{{ b.lfPad }};display:flex;align-items:center;gap:{{ b.lfGap }}"><span style="width:{{ b.lfPh }};height:{{ b.lfPh }};flex:none;border-radius:{{ b.lfR }};border:2px solid {{ b.kBd }};background:repeating-linear-gradient(135deg,{{ b.kPh1 }} 0 8px,{{ b.kPh2 }} 8px 16px);box-sizing:border-box"></span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px"><span style="font:800 {{ b.lfNm }}/1.2 'Bricolage Grotesque',sans-serif;text-wrap:pretty">Sheet-pan chicken shawarma</span><span style="display:flex;gap:6px 8px;align-items:center;flex-wrap:wrap"><span style="font:400 {{ b.lfSub }} Inter,sans-serif;color:{{ b.kMuted }};white-space:nowrap">{{ b.lfLine }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;background:#ffe14d;border:1.5px solid {{ b.kBd }};border-radius:999px;padding:2px 9px;color:#16181f">LEFTOVER</span></span></div></div></sc-if>
+                        <sc-if value="{{ b.lfNone }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font:400 14px/1.55 Inter,sans-serif;color:{{ b.kMuted }}">Nothing was added. Your Inventory has no leftovers from this recipe.</p></sc-if>
+                      </div></sc-if>
+                      </div>
+                      <div style="align-self:center;justify-self:center;display:flex;flex-direction:{{ b.thenDir }};align-items:center;gap:6px">
+                        <span style="height:40px;padding:0 16px;border-radius:20px;background:{{ b.kInv }};color:{{ b.kInvFg }};font:800 16px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;box-sizing:border-box">{{ b.nowLbl }}</span>
+                        <span style="font:800 22px/1 'Bricolage Grotesque',sans-serif">{{ b.thenArrow }}</span>
+                      </div>
+                      <div style="position:relative;background:{{ b.kSurf }};border:2px solid {{ b.kBd }};border-radius:26px;box-shadow:{{ b.invSh }};opacity:{{ b.invOp }};pointer-events:{{ b.invPe }};transition:opacity 200ms;padding:{{ b.cardPad5 }};display:flex;flex-direction:column;gap:22px">
+                        <div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;flex:none;border-radius:12px;background:#e6f5ec;color:#16181f;border:2px solid {{ b.kBd }};font:800 24px/1 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">−</span><h2 style="margin:0;font:800 {{ b.h2 }} 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em">Take out of your Inventory</h2></div>
+                        <sc-if value="{{ b.invActive }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:22px"><sc-if value="{{ b.showHow }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;background:{{ b.kSurf }};border:2px dashed {{ b.kBd }};border-radius:18px;padding:14px 16px">
+                          <span style="flex:none;transform:rotate(-4deg);border:2px solid {{ b.kBd }};border-radius:999px;padding:6px 12px;font:800 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:#ffe14d;color:#16181f">How it works</span>
+                          <span onClick="{{ b.hideHow }}" style="order:1;margin-left:auto;padding:4px;min-height:32px;display:flex;align-items:center;font:600 13px 'Bricolage Grotesque',sans-serif;text-decoration:underline;cursor:pointer;box-sizing:border-box">Got it</span>
+                          <ul style="order:2;flex:1 1 100%;min-width:0;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px"><sc-for list="{{ b.howList }}" as="hw" hint-placeholder-count="3"><li style="display:flex;gap:10px;font:400 14px/1.45 Inter,sans-serif;color:{{ b.kInk }}"><span style="flex:none;width:6px;height:6px;margin-top:8px;border-radius:3px;background:#2323ff"></span><span style="text-wrap:pretty">{{ hw }}</span></li></sc-for></ul>
+                        </div></sc-if>
+                        <sc-if value="{{ b.cA }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;padding:12px 14px;border-radius:16px;background:{{ b.kWhite }};border:2px solid {{ b.kBd }}"><span style="font:700 15px Inter,sans-serif;white-space:nowrap">{{ b.nSel9 }}</span><span style="font:500 13px Inter,sans-serif;color:{{ b.kMuted }};white-space:nowrap">Untick what you didn't use</span></div></sc-if>
+                        <sc-if value="{{ b.cM }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:12px;color:{{ b.kMuted }};font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase"><span>{{ b.cFracIng }}</span><span>{{ b.cStayUp }}</span></div><div style="height:4px;background:{{ b.kPh1 }};border-radius:2px;overflow:hidden"><div style="height:100%;width:{{ b.cPct }}%;background:#8f8fff;transition:width 200ms"></div></div></div></sc-if>
+                        <sc-if value="{{ b.cR }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:600 15px/1.35 Inter,sans-serif;color:{{ b.kInk }};text-wrap:pretty">{{ b.cSentence }}</span><span style="font:400 13px/1.4 Inter,sans-serif;color:{{ b.kMuted }}">Tap a row to untick what you didn't use.</span></div></sc-if>
+                        <sc-if value="{{ b.cE }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;padding-bottom:8px;border-bottom:2px dotted {{ b.kBd }}"><span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ b.kInk }}">{{ b.cEyebrow }}</span><span style="font:400 13px Inter,sans-serif;color:{{ b.kMuted }}">Untick what you didn't use</span></div></sc-if>
+                        <sc-if value="{{ b.cC }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px"><span style="height:32px;padding:0 14px;border-radius:16px;background:{{ b.kInv }};color:{{ b.kInvFg }};font:600 13px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;box-sizing:border-box">{{ b.cOut }}</span><span style="height:32px;padding:0 14px;border-radius:16px;border:2px dashed {{ b.kLine }};background:{{ b.kWhite }};color:{{ b.kMuted }};font:600 13px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;box-sizing:border-box">{{ b.cStay }}</span></div></sc-if>
+                        <div style="display:flex;flex-direction:column;gap:22px">
+                          <sc-for list="{{ b.shelves10 }}" as="sh" hint-placeholder-count="2">
+                            <div style="display:flex;flex-direction:column;gap:8px">
+                              <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:2px solid {{ b.kBd }}"><span style="font:600 13px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ b.kInk }}">{{ sh.name }}</span><span style="font:500 12px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ b.kMuted }}">{{ sh.cnt }}</span></div>
+                              <sc-if value="{{ b.vA }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;background:{{ b.kWhite }};border:2px solid {{ b.kBd }};border-radius:18px;padding:0 14px">
+                                <sc-for list="{{ sh.items }}" as="it" hint-placeholder-count="3"><div onClick="{{ it.toggle }}" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:{{ it.bt }};opacity:{{ it.op }};cursor:pointer;user-select:none"><span style="flex:none;width:28px;text-align:center;font-size:22px;line-height:1">{{ it.emoji }}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:800 16px/1.2 'Bricolage Grotesque',sans-serif;color:{{ it.nameC }};text-decoration:{{ it.strike }}">{{ it.name }}</span><span style="font:400 13px/1.35 Inter,sans-serif;color:{{ b.kMuted }}">{{ it.leftA }}</span></div><span style="flex:none;white-space:nowrap;height:{{ b.pH }};padding:0 {{ it.pPad }};border-radius:{{ b.pR }};box-sizing:border-box;border:{{ it.pB }};background:{{ it.pBg }};color:{{ it.pC }};font:{{ it.pF }};display:flex;align-items:center">{{ it.pillA }}</span><span style="flex:none;width:22px;height:22px;border-radius:6px;box-sizing:border-box;border:2px solid {{ it.boxBc }};background:{{ it.boxBg }};color:{{ it.tickC }};box-shadow:{{ it.boxSh }};display:flex;align-items:center;justify-content:center;font:800 13px/1 Inter,sans-serif">{{ it.tick }}</span></div></sc-for>
+                              </div></sc-if>
+                              <sc-if value="{{ b.vB }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:8px">
+                                <sc-for list="{{ sh.items }}" as="it" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 12px 0 14px;border-radius:14px;border:2px {{ it.bStyle }} {{ it.bc }};background:{{ it.bg }};box-sizing:border-box"><span style="flex:none;font-size:20px;line-height:1">{{ it.emoji }}</span><span style="flex:1;min-width:0;font:600 15px/1.2 Inter,sans-serif;color:{{ it.nameC }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.name }}</span><span style="flex:none;font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ b.kMuted }}">{{ it.tagB }}</span><span style="flex:none;width:22px;height:22px;border-radius:6px;box-sizing:border-box;border:2px solid {{ it.boxBc }};background:{{ it.boxBg }};color:{{ it.tickC }};box-shadow:{{ it.boxSh }};display:flex;align-items:center;justify-content:center;font:800 13px/1 Inter,sans-serif">{{ it.tick }}</span></div></sc-for>
+                              </div></sc-if>
+                              <sc-if value="{{ b.vC }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:8px">
+                                <sc-for list="{{ sh.items }}" as="it" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1.5px {{ it.bStyle }} {{ it.bcC }};background:{{ it.bgC }}"><span style="flex:none;font-size:22px;line-height:1">{{ it.emoji }}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font:600 15px/1.2 Inter,sans-serif;color:{{ it.nameC }}">{{ it.name }}</span><span style="font:500 12px 'DM Mono',monospace;color:{{ b.kMuted }}">{{ it.subC }}</span></div><span style="flex:none;width:22px;height:22px;border-radius:6px;box-sizing:border-box;border:2px solid {{ it.boxBc }};background:{{ it.boxBg }};color:{{ it.tickC }};box-shadow:{{ it.boxSh }};display:flex;align-items:center;justify-content:center;font:800 13px/1 Inter,sans-serif">{{ it.tick }}</span></div></sc-for>
+                              </div></sc-if>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex;flex-direction:{{ b.btnDir }};gap:10px">
+                          <span onClick="{{ b.removeInv }}" style="flex:{{ b.btnFlexGo }};height:56px;border-radius:28px;border:2px solid {{ b.kBd }};background:#2323ff;color:#ffffff;box-shadow:3px 3px 0 {{ b.kSh }};font:800 {{ b.btnFs9 }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;white-space:nowrap;padding:0 14px;min-width:0;cursor:pointer;user-select:none">{{ b.btnGo9 }}</span>
+                          <span onClick="{{ b.skipInv }}" style="flex:{{ b.btnFlexKeep }};height:56px;border-radius:28px;border:2px solid {{ b.kBd }};background:{{ b.kWhite }};color:{{ b.kInk }};box-shadow:none;font:700 {{ b.btnFs9 }} 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;white-space:nowrap;padding:0 14px;min-width:0;cursor:pointer;user-select:none">Not now</span>
+                        </div></div></sc-if>
+                        <sc-if value="{{ b.invDone }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;background:{{ b.kWhite }};border:2px solid {{ b.kBd }}"><span style="width:28px;height:28px;flex:none;border-radius:8px;background:#e6f5ec;border:2px solid {{ b.kBd }};font:800 15px/1 Inter,sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:#16181f">✓</span><span style="flex:1;min-width:0;font:600 15px/1.35 Inter,sans-serif">{{ b.invDoneText }}</span><span onClick="{{ b.undoInv }}" style="font:{{ b.uF }};color:{{ b.uC }};white-space:nowrap;cursor:pointer;height:{{ b.uH }};padding:{{ b.uPad }};border:{{ b.uB }};border-radius:{{ b.uR }};background:{{ b.uBg }};box-shadow:{{ b.uSh }};text-decoration:{{ b.uTd }};text-underline-offset:4px;text-decoration-thickness:2px;display:flex;align-items:center;box-sizing:border-box;flex:none;user-select:none">{{ b.uTxt }}</span></div></sc-if>
+                      </div>
+                    </div>
+                    <span style="align-self:center;height:46px;padding:0 20px;border-radius:23px;border:2px solid {{ b.kBd }};font:700 15px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;box-sizing:border-box;white-space:nowrap">← {{ b.backToStep1 }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for></div>
+  </section>
+  
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { import('./kit.js').then(k => { this.k = k; this.forceUpdate(); }); }
+  OPTIONS = [
+    { id: '1a', v: 'A', name: 'Two numbered jobs', caption: 'Two cards in order. Card 1 lists exactly what comes out of your Inventory (amount, ingredient, which shelf) above Mark as cooked. Card 2 is Save leftovers: a big portions counter, Fridge or Freezer as two tiles, the sentence saying where they go, then the button.' },
+    { id: '1b', v: 'B', name: 'Before and after', caption: 'Each ingredient shows what your Inventory has now and what it will have after (1.2 kg → 300 g). Leftovers are drawn as portion boxes out of the 4 servings, and a preview shows the item that will land on the shelf, tagged leftover.' },
+    { id: '1c', v: 'C', name: 'One job at a time', caption: 'Keeps the 2c layout: the rail is all ticked, and the bottom bar holds the next action. Shown after Mark as cooked: the Inventory job folds into a "Removed" line with Undo, and Save leftovers becomes the only thing left, with Fridge and Freezer as a radio list.' },
+  ];
+  OPTIONS2 = [
+    { id: '2a', bars: true, shelves: false, name: 'Level bars', caption: 'One centred column. Each ingredient is a ticked row with its own bar: green is what stays on the shelf, striped blue is what comes out, with "− 900 g" and "300 g left". The button says how many come out. Below, 1b\'s leftovers box, now "Add leftovers to Inventory".' },
+    { id: '2b', bars: false, shelves: true, name: 'Shelf cards', caption: 'Same centred column, but the ingredients sit on their Inventory shelves (Fridge, Pantry), drawn like the Inventory page. Each gets a blue "− 900 g" stamp and "1.2 kg → 300 g left". Same leftovers box below.' },
+  ];
+  OPTIONS12 = [
+    { id: '5.4', t: 'b', name: 'Finished', caption: 'Clickable. Pick portions and Fridge or Freezer, then Add to Inventory or No leftovers; the Inventory card wakes up. Tick or untick rows, then Remove from inventory or Not now. Undo resets each step.' },
+  ];
+  OPTIONS11 = [
+    { id: '11a', t: 'a', name: 'Plain text', caption: 'No container. The amount in mono ink, right before the box.' },
+    { id: '11b', t: 'b', name: 'Highlighter', caption: 'Yellow marker behind the amount, square corners, no border.' },
+    { id: '11c', t: 'c', name: 'Outline', caption: 'Thin ink outline on white, rounded.' },
+    { id: '11d', t: 'd', name: 'Pale green', caption: 'The leftovers green as a soft chip with a thin ink border.' },
+    { id: '11e', t: 'e', name: 'Ink', caption: 'Solid black chip, white text.' },
+  ];
+  OPTIONS10 = [
+    { id: '10a', vA: true, name: 'Quiet list', caption: 'No card per item: one row each, thin dividers, small emoji. Used rows show the amount taken out in green-ticked rows; the one not used is struck through and faded.' },
+    { id: '10b', vB: true, name: 'No amounts', caption: 'Drops amounts entirely. Used items are pale-green pills with a green tick; the one not used is a dashed, white pill marked "stays". Easiest to scan.' },
+    { id: '10c', vC: true, name: 'What is left', caption: 'Light cards with thin borders and no shadow. Each row says what stays in Inventory after cooking (1.2 kg → 300 g left), instead of what comes out.' },
+  ];
+  OPTIONS9 = [
+    { id: '9a', name: 'Inventory, now active', caption: 'What 8a turns into after Add to Inventory. Leftovers shrinks to a done card (pale-green ✓, the recipe card, Undo) and loses its shadow. "then" becomes "now", and the Inventory box takes the ink shadow and full colour. A light-blue strip at the top counts what comes out; each shelf shows its own count. The buttons mirror the leftovers box: blue "− Remove 5 items" and a white "Keep everything" for when nothing came out of Inventory.' },
+  ];
+  OPTIONS8 = [
+    { id: '8a', name: 'Item cards, green leftovers', caption: 'The take-out list now uses the Inventory page\'s own item card: the level strip on the left, the photo square, the name, the amount and the small checkbox. A ticked card gets the blue selection shadow, as when you select items on the Inventory page; the strip shows what will be left. Pitas is unticked, so it looks like a plain card and stays. Leftovers takes the app\'s green: the green-tint card, green + and portions, green Add button, as green already means fresh and kept in the app.' },
+  ];
+  OPTIONS7 = [
+    { id: '7a', name: 'Leftovers, then Inventory', caption: 'Round 5 colours are back. Leftovers comes first and is the only live box; Inventory is greyed until you add the leftovers or tap No leftovers. A "then" sits between the two. The take-out list drops the bars and the legend: each ingredient is one row with a checkbox, how much comes out, and what you had before and after in words. An unticked row (pitas) turns pale and says it stays.' },
+  ];
+  OPTIONS6 = [
+    { id: '6a', name: 'Shelves emptying', caption: 'Built from 4a. Each ingredient sits under its Inventory shelf with a checkbox. Its bar is the shelf after cooking: dark is what stays, the dashed blue part is what comes out. Untick an ingredient you did not use and its bar stays full (pitas here). Colours are the app\'s own: paper, white cards with the ink shadow, blue for Remove, the light blue of a selected pill, green for Add.' },
+  ];
+  OPTIONS5 = [
+    { id: '5a', receipt: true, name: 'Just the amounts', caption: 'No bars. Under Fridge and Pantry, each ingredient is one tall row with its name and the amount that comes out, in blue. Nothing else to read.' },
+    { id: '5b', table: true, name: 'Have, use, left', caption: 'No bars. A small table with three lined-up columns: what your Inventory has now, what this recipe uses (blue), and what will be left.' },
+    { id: '5c', tiles: true, name: 'Amount tiles', caption: 'No bars. Each ingredient is a tile with the amount that comes out in large blue type and what is left under it, grouped by shelf.' },
+  ];
+  OPTIONS4 = [
+    { id: '4a', bars4: true, full: false, name: 'Calmer colours, one bar per ingredient', caption: 'Built from 3a. Blue now only means "comes out of your Inventory": the blue end of each bar, the "− 900 g" and the Remove button. Green only means "goes into your Inventory": the portion boxes and the Add button. The rest is ink and greys. Quantities are in plain sans-serif, the bars are thinner without outlines, the card shadows are lighter, and "all done!" is bigger.' },
+  ];
+  OPTIONS3 = [
+    { id: '3a', bars3: true, full: false, name: 'Leftovers first, plainer bars', caption: 'Built from 2a. Leftovers come first (left, or on top on phone), then Remove from Inventory. Each bar is the shelf after cooking: the green part is what stays, labelled "300 g left"; the empty part is what comes out. Ingredients are grouped under Fridge and Pantry, so the row tags, the legend and the checkboxes are gone.' },
+  ];
+  board2(k, o, P) {
+    const b = this.board(k, { ...o, v: 'B' }, P);
+    const used = { 'chicken thighs': 0.75, 'red onions': 0.4, 'olive oil': 0.06, 'Greek yogurt': 0.33, 'pitas': 0.67, 'lemon': 0.25 };
+    const ings = b.ings.map(i => ({ ...i, used: used[i.name], remain: 1 - used[i.name] }));
+    const shelfList = ['FRIDGE', 'PANTRY'].map(s => { const items = ings.filter(i => i.where === s); return { name: s === 'FRIDGE' ? 'Fridge' : 'Pantry', count: '− ' + items.length + ' ITEMS', items }; });
+    const lf = !!(o.bars3 || o.bars4); const v4 = !!o.bars4;
+    if (v4) { b.tokens = b.tokens.map(t => ({ ...t, bg: t.bs === 'solid' ? '#10c95c' : 'transparent', fg: '#16181f' })); b.places = b.places.map(p => ({ ...p, fg: p.bg === '#16181f' ? '#fffdf8' : p.fg })); }
+    return { ...b, ings, shelfList: shelfList.map(s => ({ ...s, label: s.name.toUpperCase() })), ordRemove: lf ? 2 : 1, ordLeft: lf ? 1 : 2, stkPad: v4 ? (P ? '8px 18px' : '10px 24px') : '6px 14px', stkFs: v4 ? (P ? '19px' : '22px') : '15px', cardSh: v4 ? '4px 4px 0 #16181f' : '6px 6px 0 #16181f', addBg: v4 ? '#10c95c' : '#fffdf8', label: (P ? 'PHONE · 390' : 'COMPUTER · 1280') + ' · LIGHT', screenLabel: o.id + ' Finished ' + (P ? 'phone' : 'computer'), cardPad: P ? '18px' : '24px', h2: P ? '20px' : '24px', h1: P ? '44px' : '64px', pad: P ? '28px 18px 36px' : '48px 40px 56px', shelfCols: P ? 'minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1fr)', leftW: P ? '64px' : '80px', maxW: P ? '640px' : '1180px', shelfCols: 'minmax(0,1fr)' };
+  }
+  board12d(k, o, P, D) {
+    const b = this.board12(k, o, P);
+    const K = D ? { kBg: '#000000', kSurf: '#111115', kWhite: '#1b1b21', kInv: '#f4f1ea', kInvFg: '#16181f', kInk: '#f4f1ea', kMuted: '#9a9aa8', kAccent: '#2323ff', kBd: '#f4f1ea', kLine: '#3a3a44', kSh: '#2323ff', kPh1: '#15151b', kPh2: '#1d1d25' }
+      : { kBg: '#f4f1ea', kSurf: '#fffdf8', kWhite: '#ffffff', kInv: '#16181f', kInvFg: '#fffdf8', kInk: '#16181f', kMuted: '#5e5b52', kAccent: '#2323ff', kBd: '#16181f', kLine: '#bdb6a6', kSh: '#16181f', kPh1: '#e9e4d8', kPh2: '#ddd6c6' };
+    const W = c => (c === '#ffffff' || c === '#fffdf8') ? K.kWhite : c;
+    const tokens12 = b.tokens12.map(t => ({ ...t, bg: W(t.bg), bc: t.bc === '#16181f' ? K.kBd : t.bc === '#bdb6a6' ? K.kLine : t.bc, fg: t.bs === 'solid' ? '#16181f' : K.kInk }));
+    if (!D) return { ...b, ...K, tokens12, places12: b.places12.map(p => ({ ...p, bd: 'none' })), shelves10: b.shelves10.map(x => ({ ...x, items: x.items.map(i => ({ ...i, tickC: '#fffdf8', boxSh: 'none' })) })) };
+    const shelves10 = b.shelves10.map(x => ({ ...x, items: x.items.map(i => ({ ...i,
+      nameC: i.nameC === '#16181f' ? K.kInk : K.kMuted, boxBc: i.tick ? '#ffe14d' : K.kLine, boxBg: i.tick ? '#ffe14d' : W(i.boxBg), tickC: '#16181f', boxSh: i.tick ? '0 0 0 3px rgba(255,225,77,0.25)' : 'none', pC: i.pillA === 'stays' ? K.kMuted : i.pC, bt: String(i.bt).replace('#e2dccd', '#26262e') })) }));
+    const places12 = b.places12.map((p, i) => i === (this.s12 ? this.s12.place : 0)
+      ? { ...p, bg: '#2323ff', fg: '#ffffff', sh: '3px 3px 0 #000000', bd: '2px solid #ffffff' }
+      : { ...p, bg: p.bg === 'transparent' ? 'transparent' : K.kWhite, fg: K.kInk, sh: 'none', bd: 'none' });
+    return { ...b, ...K, tokens12, shelves10, places12, label: b.label.replace('LIGHT', 'DARK'), screenLabel: b.screenLabel + ' dark' };
+  }
+  board12(k, o, P) {
+    const b = this.board11(k, o, P), S = this.s12 || { lf: 'active', n: 2, place: 0, off: ['pitas'], inv: 'active' };
+    const set = p => { this.s12 = { ...S, ...p }; this.forceUpdate(); };
+    const all = b.shelves10.flatMap(x => x.items), onS = all.find(i => i.name !== 'pitas'), offS = all.find(i => i.name === 'pitas') || onS;
+    const st = ['pBg','pC','pB','pPad','pF','boxBc','boxBg','tick','op','nameC','strike'];
+    let n = 0, t = 0;
+    const shelves10 = b.shelves10.map(x => { let c = 0; const items = x.items.map(i => { const off = S.off.includes(i.name); t++; if (!off) { n++; c++; } const src = off ? offS : onS; const o2 = {}; st.forEach(f => o2[f] = src[f]);
+      return { ...i, ...o2, pillA: off ? 'stays' : '− ' + i.qty, leftA: off ? i.before + ' in Inventory' : i.after + ' left after', toggle: () => set({ off: off ? S.off.filter(z => z !== i.name) : [...S.off, i.name] }) }; });
+      return { ...x, items, cnt: c + ' / ' + items.length }; });
+    const solid = b.tokens8.find(z => z.bs === 'solid') || b.tokens8[0], dash = b.tokens8.find(z => z.bs !== 'solid') || b.tokens8[0];
+    const tokens12 = [0, 1, 2, 3].map(i => ({ ...(i < S.n ? solid : dash), mark: i < S.n ? String(i + 1) : '', onClick: () => set({ n: S.n === i + 1 ? i : i + 1 }) }));
+    const pl = b.places8, places12 = pl.map((p, i) => ({ ...p, bg: pl[i === S.place ? 0 : 1].bg, fg: pl[i === S.place ? 0 : 1].fg, sh: i === S.place ? '3px 3px 0 #2323ff' : 'none', onClick: () => set({ place: i }) }));
+    const plLabel = (pl[S.place] && pl[S.place].label) || 'Fridge', lfA = S.lf === 'active';
+    return { ...b, shelves10, tokens12, places12, nSel9: n + ' of ' + t + ' ingredients come out',
+      pOf: S.n + ' of 4', lfLine: S.n + (S.n === 1 ? ' portion · ' : ' portions · ') + plLabel,
+      lfActive: lfA, lfDone: !lfA, lfAdded: S.lf === 'added', lfNone: S.lf === 'none', lfDoneTitle: S.lf === 'added' ? 'Leftovers added' : 'No leftovers',
+      addLf: () => set({ lf: S.n ? 'added' : 'none' }), noLf: () => set({ lf: 'none' }), undoLf: () => set({ lf: 'active', inv: 'active' }),
+      nowLbl: lfA ? 'then' : 'now', invSh: lfA || S.inv !== 'active' ? 'none' : '4px 4px 0 #16181f', invOp: lfA ? '0.45' : '1', invPe: lfA ? 'none' : 'auto',
+      invActive: S.inv === 'active', invDone: S.inv !== 'active', invDoneText: S.inv === 'removed' ? n + (n === 1 ? ' ingredient' : ' ingredients') + ' taken out of your Inventory' : 'Inventory left as it was',
+      ...({
+        'Ink outline': { uF: "700 15px 'Bricolage Grotesque',sans-serif", uC: '#16181f', uH: '36px', uPad: '0 16px', uB: '2px solid #16181f', uR: '18px', uBg: '#fffdf8', uSh: '2px 2px 0 #2323ff', uTd: 'none', uTxt: 'Undo' },
+        'Underlined link': { uF: "800 16px 'Bricolage Grotesque',sans-serif", uC: '#2323ff', uH: '36px', uPad: '0 4px', uB: 'none', uR: '0', uBg: 'transparent', uSh: 'none', uTd: 'underline', uTxt: 'Undo' },
+        'Yellow tag': { uF: "500 12px 'DM Mono',monospace", uC: '#16181f', uH: '30px', uPad: '0 12px', uB: '1.5px solid #16181f', uR: '15px', uBg: '#ffe14d', uSh: 'none', uTd: 'none', uTxt: 'UNDO' },
+        'Grey pill': { uF: "700 14px 'Bricolage Grotesque',sans-serif", uC: '#16181f', uH: '34px', uPad: '0 14px', uB: 'none', uR: '17px', uBg: '#e9e4d8', uSh: 'none', uTd: 'none', uTxt: '↺ Undo' },
+      })['Ink outline'] || {},
+      howList: ['Everything this recipe used is ticked. Untick anything you skipped or swapped.', 'Remove from inventory takes those amounts off your shelves, like the 900 g of chicken thighs.', 'Makeable and your grocery list then work from what you really have left.'],
+      howLfList: ['Tap the squares to set how many portions are left.', 'Pick Fridge or Freezer. It sets how long the leftovers keep.', 'Add to Inventory saves them as a LEFTOVER item you can plan later. No leftovers skips this step.'],
+      showHowLf: !S.hideHowLf, hideHowLf: () => set({ hideHowLf: true }),
+      plGap: P ? '2px' : '8px', plFs: P ? '15px' : '15px', plRs: P ? '12px' : '12px', plH: P ? '52px' : '42px', plDir: P ? 'column' : 'row',
+      ...(() => { const cs = 'Makeable footer', stay = t - n; return { cA: cs === 'White box', cM: cs === 'Makeable footer', cR: cs === 'Recipe card sentence', cE: cs === 'Shelf eyebrow', cC: cs === 'Count chips',
+        cFracIng: n + '/' + t + ' ingredients', cStayUp: stay ? stay + ' stay' + (stay === 1 ? 's' : '') : 'all of them', cSentence: 'You are taking ' + n + ' of ' + t + ' ingredients out of your Inventory',
+        cEyebrow: n + ' OF ' + t + ' COME OUT', cOut: n + ' come out', cStay: stay + ' stay' + (stay === 1 ? 's' : ''), cPct: t ? Math.round(n / t * 100) : 0 }; })(),
+      showHow: !S.hideHow, hideHow: () => set({ hideHow: true }),
+      removeInv: () => set({ inv: 'removed', modal: true }), skipInv: () => set({ inv: 'skipped', modal: true }), undoInv: () => set({ inv: 'active', modal: false }),
+      btnFlexGo: P ? 'none' : '2 1 0%', btnFlexKeep: P ? 'none' : '1 1 0%',
+      modal: !!S.modal, modalPad: P ? '260px 20px 20px' : '200px 40px 40px', closeModal: () => set({ modal: false }),
+      modalText: S.inv === 'removed' ? 'Your Inventory is up to date: ' + n + (n === 1 ? ' ingredient' : ' ingredients') + ' taken out' + (S.lf === 'added' ? ' and ' + S.n + ' leftover portions added.' : '.') : 'Your Inventory was left as it was.',
+      goApp: () => { set({ modal: false, party: Date.now() }); clearTimeout(this.pt); this.pt = setTimeout(() => { this.s12 = { ...this.s12, party: null }; this.forceUpdate(); }, 2600); },
+      confetti: S.party ? React.createElement('div', { key: 'c' + S.party, style: { position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 30, overflow: 'hidden' }, ref: el => {
+        if (!el || el.dataset.done) return; el.dataset.done = '1';
+        const C = ['#2323ff', '#ffe14d', '#10c95c', '#ff5fa2', '#16181f'], top = P ? 470 : 420;
+        for (let i = 0; i < 110; i++) { const p = document.createElement('span'); const w = 6 + Math.random() * 6;
+          p.style.cssText = 'position:absolute;left:50%;top:' + top + 'px;width:' + w + 'px;height:' + (w * 1.6) + 'px;background:' + C[i % C.length] + ';border-radius:' + (i % 3 ? '2px' : '50%');
+          el.appendChild(p); const a = Math.random() * Math.PI * 2, v = 120 + Math.random() * (P ? 220 : 380), dx = Math.cos(a) * v, dy = Math.sin(a) * v - 160, rot = (Math.random() - 0.5) * 900;
+          p.animate([{ transform: 'translate(-50%,0) rotate(0deg)', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + rot / 2 + 'deg)', opacity: 1, offset: 0.35 }, { transform: 'translate(' + dx * 1.25 + 'px,' + (dy + 700) + 'px) rotate(' + rot + 'deg)', opacity: 0 }], { duration: 2000 + Math.random() * 500, easing: 'cubic-bezier(.15,.7,.35,1)', fill: 'forwards' }); }
+      } }) : null };
+  }
+  board11(k, o, P) {
+    const b = this.board10(k, { ...o, vA: true }, P), T = o.t;
+    const S = { a: ['transparent', '#16181f', 'none', '0', "500 13px/1 'DM Mono',monospace"], b: ['linear-gradient(176deg, transparent 22%, rgba(255,225,77,0.85) 26%, rgba(255,214,40,0.9) 80%, transparent 84%)', '#16181f', 'none', '5px', "italic 500 14px/1 'Bricolage Grotesque',sans-serif"], c: ['#ffffff', '#16181f', '1.5px solid #16181f', '8px', "700 12px/1 'Bricolage Grotesque',sans-serif"], d: ['#e6f5ec', '#16181f', '1.5px solid #16181f', '8px', "700 12px/1 'Bricolage Grotesque',sans-serif"], e: ['#16181f', '#fffdf8', 'none', '8px', "700 12px/1 'Bricolage Grotesque',sans-serif"] }[T];
+    const shelves10 = b.shelves10.map(s => ({ ...s, items: s.items.map(i => { const off = !i.check; return { ...i,
+      pBg: off ? 'transparent' : S[0], pC: off ? '#8a877d' : S[1], pB: off ? 'none' : S[2], pPad: off ? '0' : S[3], pF: off ? "500 12px/1 'DM Mono',monospace" : S[4], pillA: off ? 'stays' : i.pillA }; }) }));
+    return { ...b, shelves10, pH: T === 'b' ? '22px' : '20px', pR: T === 'b' ? '2px 8px 3px 10px' : '10px' };
+  }
+  board10(k, o, P) {
+    const b = this.board9(k, o, P);
+    const shelves10 = b.shelves8.map(s => ({ ...s, items: s.items.map((i, ix) => { const off = !i.check; return { ...i, bt: ix ? '1px solid #e2dccd' : 'none',
+      op: '1', strike: 'none', nameC: off ? '#5e5b52' : '#16181f', amtA: off ? 'Not used · stays in Inventory' : i.qty + ' used · ' + i.after + ' left', leftA: off ? i.before + ' in Inventory' : i.after + ' left after', pillA: off ? 'Stays' : '− ' + i.qty, pillBg: off ? '#ffffff' : '#2323ff', pillC: off ? '#5e5b52' : '#ffffff', pillBc: off ? '#bdb6a6' : '#16181f', qc: off ? '#8a877d' : '#16181f',
+      boxBg: off ? '#fffdf8' : '#2323ff', boxBc: off ? '#bdb6a6' : '#16181f', tick: off ? '' : '✓', bStyle: off ? 'dashed' : 'solid', bc: off ? '#bdb6a6' : '#16181f', bg: off ? '#fffdf8' : '#e6f5ec', tagB: off ? 'STAYS' : '',
+      bcC: off ? '#bdb6a6' : '#d6cfbf', bgC: off ? 'transparent' : '#fffdf8', subC: off ? i.before + ' stays' : i.before + ' → ' + i.after + ' left' }; }) }));
+    return { ...b, shelves10, btnDir: P ? 'column' : 'row', btnFlexGo: P ? 'none' : '1.4', btnFlexKeep: P ? 'none' : '1', vA: !!o.vA, vB: !!o.vB, vC: !!o.vC, btnGo9: 'Remove from inventory' };
+  }
+  board9(k, o, P) {
+    const b = this.board8(k, o, P);
+    let n = 0, t = 0;
+    const shelves8 = b.shelves8.map(s => { const c = s.items.filter(i => i.check).length; n += c; t += s.items.length;
+      return { ...s, cnt: c + ' / ' + s.items.length, items: s.items.map(i => { const off = !i.check; return { ...i, sh: off ? 'none' : '3px 3px 0 #16181f', lineBg: off ? '#bdb6a6' : '#8a877d', checkBg: off ? '#fffdf8' : '#16181f', qc: '#16181f' }; }) }; });
+    return { ...b, shelves8, nSel9: n + ' of ' + t + ' ingredients come out', itH9: P ? '80px' : '88px', btnFs9: P ? '15px' : '17px', btnGo9: '− Remove from inventory', btnKeep9: 'Keep all' };
+  }
+  board8(k, o, P) {
+    const b = this.board7(k, o, P);
+    const EMO = { 'chicken thighs': '🍗', 'hauts de cuisse de poulet': '🍗', 'Greek yogurt': '🥣', 'yogourt grec': '🥣', lemon: '🍋', citron: '🍋', 'red onions': '🧅', 'oignons rouges': '🧅', 'olive oil': '🫒', "huile d'olive": '🫒', pitas: '🫓' };
+    const shelves8 = b.shelves7.map(s => ({ ...s, items: s.items.map(i => { const off = !i.tick; const remain = Number(i.remain) || 0, used = Number(i.used) || 0; const pct = off ? 100 : Math.round(remain / Math.max(1, remain + used) * 100);
+      return { ...i, emoji: EMO[i.name] || '🥫', cardBg: '#ffffff', bc: off ? '#bdb6a6' : '#16181f', sh: off ? 'none' : '4px 4px 0 #2323ff', op: off ? '0.6' : '1', pct, lineBg: off ? '#bdb6a6' : '#2323ff', check: off ? '' : '✓', checkBg: off ? '#fffdf8' : '#2323ff' }; }) }));
+    return { ...b, shelves8, lfPad: P ? '10px 12px' : '14px', lfGap: P ? '12px' : '16px', lfPh: P ? '48px' : '68px', lfR: P ? '10px' : '14px', lfNm: P ? '16px' : '19px', lfSub: P ? '13px' : '14px', places8: b.places5.map((p, i) => ({ ...p, sh: i === 0 ? '3px 3px 0 #2323ff' : 'none' })), ph8: P ? '52px' : '60px', emo8: P ? '26px' : '30px', nm8: P ? '16px' : '18px',
+      tokens8: b.tokens5.map(t => ({ ...t, bg: t.bs === 'solid' ? '#e6f5ec' : '#ffffff', bc: t.bs === 'solid' ? '#16181f' : t.bc })) };
+  }
+  board7(k, o, P) {
+    const b = this.board5(k, o, P);
+    let n = 0;
+    const shelves7 = b.shelfList.map(s => ({ name: String(s.name).toUpperCase(), items: s.items.map(i => { const off = i.name === 'pitas'; if (!off) n++; return { ...i,
+      rowBg: off ? 'transparent' : '#fffdf8', rowBc: off ? '#d6cfbf' : '#16181f', boxBg: off ? '#fffdf8' : '#2323ff', tick: off ? '' : '✓', nameC: off ? '#5e5b52' : '#16181f',
+      qc: off ? '#5e5b52' : '#2323ff', qtyLabel: off ? 'Not used' : '− ' + i.qty, sub: off ? i.before + ' stays in Inventory' : i.before + ' → ' + i.after + ' left' }; }) }));
+    return { ...b, shelves7, nUsed: n + ' items', btnFs: P ? '15px' : '17px',
+      cols7: P ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', gap7: P ? '12px' : '18px', thenDir: P ? 'row' : 'column', thenArrow: P ? '↓' : '→' };
+  }
+  board6(k, o, P) {
+    const b = this.board5(k, o, P);
+    const shelves6 = b.shelfList.map(s => ({ name: s.name, count: '', items: s.items.map(i => { const off = i.name === 'pitas'; return { ...i, op: off ? '0.55' : '1', boxBg: off ? '#fffdf8' : '#2323ff', tick: off ? '' : '✓', qc: off ? '#5e5b52' : '#2323ff', qtyLabel: off ? 'Not used' : '− ' + i.qty, remain: off ? 1 : i.remain, used: off ? 0 : i.used, usedDisp: off ? 'none' : 'block', leftLabel: (off ? i.before : i.after) + ' left' }; }) }));
+    shelves6.forEach(s => { const n = s.items.filter(i => i.tick).length; s.count = n + ' of ' + s.items.length + ' come out'; });
+    return { ...b, shelves6, leftW: P ? '76px' : '92px',
+      tokens6: b.tokens.map(t => ({ ...t, bg: t.bs === 'solid' ? '#e4e4ff' : 'transparent' })),
+      places6: b.places.map((p, i) => ({ ...p, bg: i === 0 ? '#e4e4ff' : 'transparent', fg: '#16181f' })) };
+  }
+  board5(k, o, P) {
+    const b = this.board2(k, { ...o, bars4: true }, P);
+    return { ...b, label: (P ? 'PHONE · 390' : 'COMPUTER · 1280') + ' · LIGHT', screenLabel: o.id + ' Finished ' + (P ? 'phone' : 'computer'),
+      pad5: P ? '36px 20px 44px' : '64px 64px 72px', gap5: P ? '32px' : '44px', colGap: P ? '24px' : '40px', cardPad5: P ? '22px' : '32px', maxW: P ? '640px' : '1100px',
+      numCols: P ? '62px 66px 56px' : '72px 76px 64px',
+      tokens5: b.tokens.map(t => ({ ...t, bg: t.bs === 'solid' ? '#ffe14d' : 'transparent' })),
+      places5: b.places.map((p, i) => ({ ...p, bg: i === 0 ? '#16181f' : 'transparent', fg: i === 0 ? '#fffdf8' : '#16181f' })) };
+  }
+  board(k, o, P) {
+    const t = k.tr('en');
+    const ingData = [['900 g', 'chicken thighs', 'FRIDGE', '1.2 kg', '300 g'], ['2', 'red onions', 'PANTRY', '5', '3'], ['2 tbsp', 'olive oil', 'PANTRY', '500 ml', '470 ml'], ['1 cup', 'Greek yogurt', 'FRIDGE', '750 g', '500 g'], ['4', 'pitas', 'PANTRY', '6', '2'], ['½', 'lemon', 'FRIDGE', '2', '1½']];
+    const ings = ingData.map(([qty, name, where, before, after]) => ({ qty, name, where, before, after }));
+    const sel = o.v !== 'C' ? (on => ({ bg: on ? '#2323ff' : '#fffdf8', fg: on ? '#fff' : '#16181f', sh: on && o.v === 'A' ? '3px 3px 0 #16181f' : 'none' })) : (() => ({}));
+    const places = [[t('cookMode.fridge'), t('cookMode.fridgeRange'), true], [t('cookMode.freezer'), t('cookMode.freezerRange'), false]].map(([label, range, on]) => ({ label, range, ...sel(on), bg: o.v === 'B' ? (on ? '#16181f' : 'transparent') : sel(on).bg, fg: o.v === 'B' ? (on ? '#ffe14d' : '#16181f') : sel(on).fg, radio: on ? '#2323ff' : '#fffdf8', ring: on ? 'inset 0 0 0 4px #fffdf8' : 'none' }));
+    const tokens = [0, 1, 2, 3].map(i => { const on = i < 2; return { mark: on ? String(i + 1) : '', bg: on ? '#2323ff' : 'transparent', fg: '#fff', bs: on ? 'solid' : 'dotted', bc: on ? '#16181f' : '#bdb6a6' }; });
+    const titles = ['Prep', 'Roast', 'Yogurt sauce', 'Warm the pitas', 'Assemble'];
+    const rail = titles.map(title => ({ title, mark: '✓', bg: '#16181f', fg: '#f4f1ea', w: P ? '24px' : '30px', fs: '11px', sh: 'none', lc: '#5e5b52' })).concat([{ title: t('cookMode.allDone'), mark: '✓', bg: '#10c95c', fg: '#16181f', w: P ? '34px' : '44px', fs: '15px', sh: '3px 3px 0 #16181f', lc: '#16181f' }]);
+    return {
+      label: P ? 'PHONE · 390 · LIGHT' : 'COMPUTER · 1280 · LIGHT', screenLabel: `${o.id} Finished ${P ? 'phone' : 'computer'}`,
+      vA: o.v === 'A', vB: o.v === 'B', vC: o.v === 'C', phone: P, desktop: !P, w: P ? 390 : 1280, h: P ? 844 : 800,
+      topGap: P ? '10px' : '16px', topPad: P ? '10px 18px' : '16px 40px', recipeFs: P ? '17px' : '20px', exitOrder: P ? -1 : 9,
+      meta: `${t('cookMode.meta')} · ${t('cookMode.serves', { count: 4 })} · ${t('cookMode.minutes', { m: 45 })}`,
+      pad: P ? '22px 18px 28px' : '36px 40px 40px', g: P ? '22px' : '28px', gB: P ? '28px' : '40px', h1: P ? '44px' : '64px', h2C: P ? '22px' : '28px',
+      cols2: P ? 'minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1fr)', colsC: P ? 'minmax(0,1fr)' : '96px minmax(0,1fr)', tokH: P ? '52px' : '60px',
+      ings, places, tokens, rail,
+      allDone: t('cookMode.allDone'), readyStart: t('cookMode.readyStart'), readyAccent: t('cookMode.readyAccent'), doneCopy: t('cookMode.doneCopy'),
+      markCooked: t('cookMode.markCooked'), backToStep1: t('cookMode.backToStep1'), removed: t('cookMode.removed').replace(/^✓\s*/, ''), undo: t('common.undo'),
+      usedLine: ings.map(i => `${i.qty} ${i.name}`).join(' · '),
+      saveQ: t('cookMode.saveLeftoversQ'), portionsLeft: t('cookMode.portionsLeft'), toFridge: t('cookMode.toFridge', { count: 2 }), saveLeftovers: t('cookMode.saveLeftovers'),
+      botPad: P ? '12px 18px' : '14px 40px', backPad: P ? '0' : '24px', backLabel: P ? '←' : '← ' + t('cookMode.backToStep1'), nextFlex: P ? '1' : 'none',
+    };
+  }
+  renderVals() {
+    const k = this.k;
+    if (!k) return { options: [], rounds: [], options5: [], options6: [], options7: [], options8: [], options9: [], options10: [], options11: [], options12: [], standalone: !this.props.embedded, rootPad: this.props.embedded ? '0' : '64px', secPt: this.props.embedded ? '0' : '28px', secBt: this.props.embedded ? 'none' : '2px solid #16181f' };
+    const mk = list => list.map(o => ({ ...o, boards: [this.board2(k, o, false), this.board2(k, o, true)] }));
+    const emb = !!this.props.embedded; return { standalone: !emb, rootPad: emb ? '0' : '64px', secPt: emb ? '0' : '28px', secBt: emb ? 'none' : '2px solid #16181f', options12: this.OPTIONS12.map(o => ({ ...o, boards: [this.board12d(k, o, false, false), this.board12d(k, o, true, false), this.board12d(k, o, false, true), this.board12d(k, o, true, true)] })), options11: this.OPTIONS11.map(o => ({ ...o, boards: [this.board11(k, o, true)] })), options10: this.OPTIONS10.map(o => ({ ...o, boards: [this.board10(k, o, false), this.board10(k, o, true)] })), options9: this.OPTIONS9.map(o => ({ ...o, boards: [this.board9(k, o, false), this.board9(k, o, true)] })), options8: this.OPTIONS8.map(o => ({ ...o, boards: [this.board8(k, o, false), this.board8(k, o, true)] })), options7: this.OPTIONS7.map(o => ({ ...o, boards: [this.board7(k, o, false), this.board7(k, o, true)] })), options6: this.OPTIONS6.map(o => ({ ...o, boards: [this.board6(k, o, false), this.board6(k, o, true)] })), options5: this.OPTIONS5.map(o => ({ ...o, boards: [this.board5(k, o, false), this.board5(k, o, true)] })), rounds: [{ title: 'ROUND 4 · CALMER COLOURS, CLEARER QUANTITIES', options: mk(this.OPTIONS4) }, { title: 'ROUND 3 · LEFTOVERS FIRST, PLAINER BARS, LESS ON SCREEN', options: mk(this.OPTIONS3) }, { title: "ROUND 2 · CENTRED, 1B'S LEFTOVERS BOX, CLEARER INVENTORY REMOVAL", options: mk(this.OPTIONS2.map(x => ({ ...x, full: true }))) }], options: this.OPTIONS.map(o => ({ ...o, boards: [this.board(k, o, false), this.board(k, o, true)] })) };
+  }
+}
+</script>
+</body>
+</html>

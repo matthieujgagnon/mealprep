@@ -1,5 +1,6 @@
 import { t } from "../i18n/index.js";
 import { formatQuantity } from "./units.js";
+import { mentions, textWords } from "./ingredientMatch.js";
 
 export function stepText(step) {
   return typeof step === "string" ? step : step?.text || "";
@@ -146,17 +147,13 @@ export function scaleStepText(step, scale) {
   });
 }
 
-// Which of the recipe's ingredients this step's text actually mentions —
-// same crude word-overlap heuristic as matchRecipesForDeal
-// elsewhere in the app: a significant word (>3 letters) from the ingredient
-// name shows up in the step text. Good enough for "THIS STEP USES" pills in
-// cook mode; doesn't attempt to resolve a reference to an earlier step's
-// output ("the seasoned chickpeas from step 2") since the recipe data has
-// no structured link between steps to resolve that from.
+// Which of the recipe's ingredients this step's text actually mentions, by the one
+// matching in ingredientMatch.js (whole words, plural or singular, short names, and the
+// other language's word for a food). It doesn't try to resolve a reference to an earlier
+// step's output ("the seasoned chickpeas from step 2") since the recipe data has no
+// structured link between steps to resolve that from. Cook mode's "For this step" rows
+// and the prep page's step tags both come from this.
 export function stepIngredients(step, ingredients) {
-  const text = stepBody(step).toLowerCase();
-  return (ingredients || []).filter((ing) => {
-    const words = ing.name.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-    return words.length > 0 && words.some((w) => text.includes(w));
-  });
+  const words = textWords(stepBody(step));
+  return (ingredients || []).filter((ing) => mentions(words, ing.name));
 }
