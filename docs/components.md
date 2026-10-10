@@ -28,6 +28,7 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Confirm dialog | `components/ConfirmDialog.jsx` | The one "are you sure?" question. |
 | Recipe finder | `components/Finder.jsx`, `components/FinderTiles.jsx` (the Makeable section header), `hooks/useFinder.js`, `lib/finder.js` | Search, filters, Main meal and results (the Planner's panel, and the Makeable page). |
 | Grocery item | `components/GroceryItem.jsx` | One grocery row. |
+| Grocery saves | `request` in `api.js`, `lib/pendingSaves.js` | A read of grocery data waits for the grocery saves already sent, and is read again if a save started or ended while it was on its way, so no page shows the list as it was before a change. |
 | Inventory item form | `components/InventoryItemForm.jsx` | Add or edit an Inventory item. |
 | Inventory confirm sheet | `components/InventoryConfirm.jsx` | Confirm anything going into Inventory (see `CLAUDE.md`). |
 
@@ -66,11 +67,11 @@ Used by: the pop-out's Plan (Planner, Recipes, Home) and the Planner finder's + 
 
 ## Toast
 
-`Toast` is a dark pill at the bottom of the screen for five seconds, with Undo when the change can be taken back. **`App.jsx` keeps it**: `showToast(message, undo?)`, passed down as `onToast` (Recipes, Inventory) and `actions.toast` (Planner). Do not draw another message. Put what undoing means in `undo`.
+`Toast` is a dark pill at the bottom of the screen for five seconds, with Undo when the change can be taken back. **`App.jsx` keeps it**: `showToast(message, undo?)`, passed down as `onToast` (Recipes, Inventory) and `actions.toast` (Planner). Do not draw another message. Put what undoing means in `undo`. A toast's five seconds close only that toast (`onClose` checks its `id`), so a message shown just as the last one ends is not taken away with it.
 
 It sits above every pop-out, picker and question (z-index 500), so Undo can be pressed while one is open.
 
-Used by: Planner (add, replace, remove, copy, leftovers, a card dropped on the phone's trash strip, a phone status tap ("marked as leftovers", with Undo putting the old mark back), Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), the grocery ✓ in Ingredient marks (taken off the list) and Makeable's À acheter ("N items added to the grocery list", Undo takes them off again).
+Used by: Planner (add, replace, remove, copy, leftovers, a card dropped on the phone's trash strip, a phone status tap ("marked as leftovers", with Undo putting the old mark back; the card changes at once, and if the save fails it goes back and the Toast says so), Option-drag copies, and "Clear" on a day: one message "Tuesday cleared" whose Undo puts every meal, note and empty card back through `restoreEntry`, leftover marks included, no question first), Recipes (imported), Inventory (added, saved), the grocery ✓ in Ingredient marks (taken off the list) and Makeable's À acheter ("N items added to the grocery list", Undo takes them off again).
 
 ## Planner header
 
@@ -211,6 +212,14 @@ Used by: the recipe form (the new-recipe pop-up and the full-page editor) when c
 - **Similar recipes** from the pop-out sets the Main meal on this page (the card has no button for it); the yellow banner has a ✕ in its corner and no Cancel, and each card then says what it shares (`.mkc-reason`).
 - Props the page adds: `plannedDays` (recipe id → day, this week), `grocery`, `deals`, `showSales`, `onToggleSales`, `onCook`, `onPlan`, `onOpenFlyerDeal`.
 - **Phone chips.** On a phone the filter chips are one row that scrolls sideways and pins under the app header (`.fnd-chips`, `--fnd-sticky-top` measured like Inventory's shelf pill): All, Ready now, 1 or 2 short and Quick first, then Expiring soon and Show sales; the Meal and Protein menus sit under it so they can open. The count on each availability chip is not shown on a phone.
+
+## Grocery saves
+
+A change to the grocery list shows on screen at once and is saved in the background. A page opened right after (the Grocery tab, Store mode, the recipe pop-out's ✓) used to ask the server for the list before that save had landed, and showed the old one. So `request` in `api.js` keeps every save to a `/grocery…` address in `lib/pendingSaves.js` until it ends, and **a read of any `/grocery…` address first waits for those saves, and is read again (at most twice) if a save started or ended while it was on its way**, because that answer can be older than the change. This is built once, in the data code every page uses: a page reads the list through `api` as it always did and does nothing extra. Do not wait for saves in a page.
+
+One more piece is for a page that loads several things together and then puts them on screen (the Grocery list): `savesVersion("grocery")` changes when a save starts and when it ends. If it changed while the page was loading, the page loads again (`GroceryList.jsx`, at most twice more) instead of putting the older answers over the person's change.
+
+Used by: every `api.listGrocery…` read and every grocery save (`addGroceryExtra`, `deleteGroceryExtra`, `setGroceryOverride`, the checks, the stores).
 
 ## Where things live in `App.jsx`
 

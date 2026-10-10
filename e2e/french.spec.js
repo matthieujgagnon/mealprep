@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
 import { langSwitch } from "./account-menu.js";
 
@@ -273,7 +274,7 @@ test("a French recipe reads its measures, and meets French flyer deals", async (
   await expect(page.getByRole("textbox", { name: "Note", exact: true }).nth(2)).toHaveValue("hachées");
   await expect(page.locator('input[aria-label="Ingrédient"]').nth(3)).toHaveValue("Poitrines de poulet");
   await expect(page.locator('input[aria-label="Quantité"]').nth(0)).toHaveValue("2");
-  await page.getByRole("button", { name: "Enregistrer la recette" }).click();
+  await saveRecipe(page);
 
   // The chicken is on sale: the recipe's card says so, from the French
   // half of the flyer's name.

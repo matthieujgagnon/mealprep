@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
-const todayIndex = () => (new Date().getDay() + 6) % 7;
+const todayIndex = (now = new Date()) => (now.getDay() + 6) % 7;
 
 function mondayOf(d) {
   const x = new Date(d);
@@ -17,11 +17,17 @@ function mondayOf(d) {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 }
 
-function nextMonday() {
-  const x = new Date();
+function nextMonday(now = new Date()) {
+  const x = new Date(now);
   x.setDate(x.getDate() + 7);
   return mondayOf(x);
 }
+
+// Tests that look at the page the board opens on, or at which days are past, depend on the
+// weekday. They run on a fixed day instead (a Thursday, when the current week opens on its
+// second page and three days are past), so they give the same answer whatever day it is.
+const FIXED_NOW = new Date(2026, 9, 8, 12, 0, 0);
+const freezeToday = (page) => page.clock.setFixedTime(FIXED_NOW);
 
 async function setup(page) {
   await page.goto("/");
@@ -47,7 +53,8 @@ async function openPlanner(page) {
 }
 
 // A real touch drag (Chromium's own input pipeline, not a mouse): hold still, then move.
-async function touchDrag(page, from, to, { hold = 320, steps = 14, endHold = 0 } = {}) {
+// `during` runs while the finger is still down at the end (the finger lifts when it is done).
+async function touchDrag(page, from, to, { hold = 320, steps = 14, during } = {}) {
   const client = await page.context().newCDPSession(page);
   const send = (type, x, y) => client.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
   await page.evaluate(() => {
@@ -60,7 +67,7 @@ async function touchDrag(page, from, to, { hold = 320, steps = 14, endHold = 0 }
     await send("touchMove", from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps);
     await page.waitForTimeout(16);
   }
-  if (endHold) await page.waitForTimeout(endHold);
+  if (during) await during();
   await send("touchEnd");
   await page.waitForTimeout(500);
   return page.evaluate(() => window.__cancels);
@@ -82,6 +89,7 @@ const stickers = (page) => page.locator(".phd-sticker");
 const trackX = (page) => page.locator(".pmb-track").evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
 
 test("the board shows three days at a time; the meal names stay pinned; stickers and swipes change the page; ‹ › change the week", async ({ page }) => {
+  await freezeToday(page);
   await setup(page);
   await openPlanner(page);
   await page.getByRole("button", { name: "Next week" }).click(); // a week with no "today": it opens on Mon–Wed
@@ -132,8 +140,9 @@ test("the board shows three days at a time; the meal names stay pinned; stickers
 });
 
 test("cards: leftover = yellow border and tag, already have = blue border only, no shadow, no ✓ or ×; a note says NOTE; nothing planned is a plain card; past days are faded", async ({ page }) => {
+  await freezeToday(page);
   const recipe = await setup(page);
-  const week = nextMonday();
+  const week = nextMonday(FIXED_NOW);
   await plan(page, recipe, week, 0, "dinner");
   await plan(page, recipe, week, 1, "dinner");
   const entries = await (await page.request.get(`/api/planner?week=${week}`)).json();
@@ -174,16 +183,14 @@ test("cards: leftover = yellow border and tag, already have = blue border only, 
 
   // Past days (this week, before today) are faded and cannot be tapped open.
   await page.getByRole("button", { name: "Previous week" }).click();
-  await expect(page.locator(".pmb-cell.past")).toHaveCount(todayIndex() * 3);
-  if (todayIndex() > 0) {
-    // This week opens on the page with today (Thu–Sat or Fri–Sun later in the week), so
-    // turn back to the first page, where Monday is, the way a person would.
-    const back = stickers(page).filter({ hasText: "←" });
-    while ((await back.count()) > 0) await back.first().click();
-    await expect.poll(() => trackX(page)).toBe(0);
-    await page.locator(".pmb-cell.past .pmb-empty").first().click({ force: true });
-    await expect(page.locator(".pmi")).toHaveCount(0);
-  }
+  await expect(page.locator(".pmb-cell.past")).toHaveCount(todayIndex(FIXED_NOW) * 3);
+  // This week opens on the page with today (Thu–Sat on the fixed Thursday), so turn back
+  // to the first page, where Monday is, the way a person would.
+  const back = stickers(page).filter({ hasText: "←" });
+  while ((await back.count()) > 0) await back.first().click();
+  await expect.poll(() => trackX(page)).toBe(0);
+  await page.locator(".pmb-cell.past .pmb-empty").first().click({ force: true });
+  await expect(page.locator(".pmi")).toHaveCount(0);
 });
 
 test("an empty slot's card opens under its row and pushes the rows down; Nothing planned asks twice (ink, pink shadow); a note saves; tapping the slot again closes it", async ({ page }) => {
@@ -320,6 +327,23 @@ test("a planned meal's card: the status steps plain -> leftovers -> already have
   await expect(page.locator(".tab.active")).toHaveText("Recipes");
 });
 
+test("a status tap that cannot be saved puts the card back as it was and says so", async ({ page }) => {
+  const recipe = await setup(page);
+  await plan(page, recipe, nextMonday(), 0, "dinner");
+  await openPlanner(page);
+  await page.getByRole("button", { name: "Next week" }).click();
+  await page.route("**/api/planner/*", (route) => (route.request().method() === "PUT" ? route.fulfill({ status: 500, json: { error: "nope" } }) : route.continue()));
+
+  await page.locator(".pmb-cell .riso-planner-card").click();
+  const status = page.getByRole("dialog", { name: "Roast chicken" }).locator(".pmi-status");
+  await expect(status).toContainText("1 to buy");
+  await status.click();
+  const toast = page.getByRole("status").filter({ hasText: "That change wasn't saved. Roast chicken is back as it was." });
+  await expect(toast).toBeVisible();
+  await expect(page.locator(".pmb-cell .riso-planner-card.leftover")).toHaveCount(0);
+  await expect(status).toContainText("1 to buy");
+});
+
 test("the weekend's settings are in the calendar and match the desktop after a reload; the band is a dotted outline with an L for the evening before", async ({ page }) => {
   await setup(page);
   await openPlanner(page);
@@ -406,7 +430,12 @@ test("a long press picks a planned card up and drops it on a slot (two swap); a 
   await page.evaluate(() => scrollTo(0, 0));
   await expect(stickers(page)).toHaveText(["Thu–Sat →"]);
   const card = await center(page.locator(".pmb-cell .riso-planner-card").first());
-  await touchDrag(page, card, { x: 384, y: card.y }, { endHold: 1000, steps: 8 });
+  // The finger stays at the edge until the page has turned once (the board turns a page at 0.45 s,
+  // then again every 0.8 s while held, so a fixed time would turn two on a slow machine).
+  await touchDrag(page, card, { x: 384, y: card.y }, {
+    steps: 8,
+    during: () => expect(stickers(page)).toHaveText(["← Mon–Wed", "Fri–Sun →"]),
+  });
   await expect(stickers(page)).toHaveText(["← Mon–Wed", "Fri–Sun →"]);
   await stickers(page).first().click();
   await expect.poll(() => trackX(page)).toBe(0);

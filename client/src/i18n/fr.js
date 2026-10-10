@@ -639,6 +639,7 @@ export const fr = {
     toastMarkedLeftover: "{title} marqué comme restes",
     toastMarkedHave: "{title} marqué comme déjà en main",
     toastMarkedPlain: "Marque retirée de {title}",
+    toastStatusFailed: "Ce changement n'a pas été enregistré. {title} est revenu comme avant.",
     weekendOffWord: "non",
     weekendEveShort: "la veille au souper",
     trashHint: "Déposer ici pour retirer",
@@ -1046,6 +1047,7 @@ export const fr = {
       toastFrozen: "{name} déplacé au congélateur",
       addFailed: "Impossible de l'ajouter. Réessayez.",
       saveFailed: "Impossible d'enregistrer les modifications. Réessayez.",
+      stapleFailed: "{name} a été ajouté, mais la marque « Essentiel du garde-manger » n'a pas été enregistrée. Ouvrez l'article pour réessayer.",
     },
   },
   deals: {

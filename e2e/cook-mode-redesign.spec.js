@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { saveRecipe } from "./recipe-form.js";
 import { confirmAdd } from "./inventory-confirm.js";
 
 // Cook mode (design handoff v3): one step at a time with step segments,
@@ -27,13 +28,10 @@ async function addRecipeAndStartCooking(page, { title, servings, ingredientName,
   await page.fill('input[aria-label="Ingredient"]', ingredientName);
   await page.fill('input[aria-label="Quantity"]', "2");
   await page.fill('textarea[placeholder="Describe this step"]', steps);
-  await page.getByRole("button", { name: "Save recipe" }).click();
-  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+  await saveRecipe(page);
   await page.getByText(title, { exact: true }).click();
   await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
-  await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Start cooking" }).click();
-  await page.waitForTimeout(300);
 }
 
 test("steps navigate with Next/Previous and the step segments track position", async ({ page }) => {
@@ -209,8 +207,7 @@ test("Exit confirms before closing when a timer is running", async ({ page }) =>
     await dialog.dismiss();
   });
   await page.getByRole("button", { name: "Exit cook mode" }).click();
-  await page.waitForTimeout(200);
-  expect(dialogSeen).toBe(true);
+  await expect.poll(() => dialogSeen).toBe(true);
   await expect(page.locator(".cm-overlay")).toBeVisible();
 
   page.once("dialog", async (dialog) => {

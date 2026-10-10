@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { saveRecipe } from "./recipe-form.js";
 
 // Covers the Riso Recipe Card detail modal: the two-column desktop layout,
 // servings-scaled ingredient/step text, inline step timers, the options
@@ -26,11 +27,10 @@ async function addRecipe(page, { title, servings, steps }) {
   await page.fill('input[aria-label="Ingredient"]', "eggs");
   await page.fill('input[aria-label="Quantity"]', "2");
   await page.fill('textarea[placeholder="Describe this step"]', steps);
-  await page.getByRole("button", { name: "Save recipe" }).click();
-  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+  await saveRecipe(page);
   await page.getByText(title, { exact: true }).click();
   await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
-  await page.waitForTimeout(300);
+  await expect(page.locator(".riso-rc-modal")).toBeVisible();
 }
 
 test("servings scaling updates ingredient and step quantities, but not durations", async ({ page }) => {
@@ -70,7 +70,6 @@ test("step timer starts a countdown", async ({ page }) => {
   // The details line is sentence case too.
   await expect(page.locator(".riso-rc-meta-line")).toContainText(/Serves \d/);
   await timer.getByRole("button", { name: "▶ Start" }).click();
-  await page.waitForTimeout(1100);
   await expect(timer.locator(".riso-rc-timer-time")).toContainText("4:5");
 });
 
@@ -102,11 +101,9 @@ test("recipe notes render legibly on the light card", async ({ page }) => {
   await page.fill('input[aria-label="Quantity"]', "2");
   await page.fill('textarea[placeholder="Describe this step"]', "Serve immediately.");
   await page.fill('textarea[placeholder*="Used less salt"]', "Great with a squeeze of lemon.");
-  await page.getByRole("button", { name: "Save recipe" }).click();
-  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+  await saveRecipe(page);
   await page.getByText("Redesign Notes Test", { exact: true }).click();
   await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
-  await page.waitForTimeout(300);
 
   await expect(page.locator(".rc-notes-label")).toHaveText("Notes");
   await expect(page.locator(".rc-notes-text")).toHaveText("Great with a squeeze of lemon.");

@@ -1,10 +1,33 @@
 import { getLang, t } from "./i18n/index.js";
+import { afterSaves, noteSave, savesVersion } from "./lib/pendingSaves.js";
 
 const BASE = "/api";
+
+// The grocery list is read by many pages (Grocery, Store mode, Home, the recipe
+// pop-out's marks) while changes to it are saved in the background. Two things
+// keep a page from showing the list as it was before a change (see
+// lib/pendingSaves.js):
+//  - a read of grocery data waits for the grocery saves already sent;
+//  - a read that was on its way while a save started or ended is read again
+//    (it may be older than the change), and only the newer answer is given back.
+const areaOf = (path) => (path.startsWith("/grocery") ? "grocery" : null);
+const READ_AGAIN = 2; // at most this many more times, so a steady stream of saves cannot hold a read for ever
 
 // Every request says which language the person reads, so the server's
 // messages (errors, emails) come back in it.
 async function request(path, options = {}) {
+  const area = areaOf(path);
+  if (!area) return send(path, options);
+  if (options.method && options.method !== "GET") return noteSave(area, send(path, options));
+  for (let attempt = 0; ; attempt++) {
+    await afterSaves(area);
+    const seen = savesVersion(area);
+    const data = await send(path, options);
+    if (savesVersion(area) === seen || attempt >= READ_AGAIN) return data;
+  }
+}
+
+async function send(path, options) {
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
     ...options,

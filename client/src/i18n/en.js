@@ -639,6 +639,7 @@ export const en = {
     toastMarkedLeftover: "{title} marked as leftovers",
     toastMarkedHave: "{title} marked as already have",
     toastMarkedPlain: "Mark removed from {title}",
+    toastStatusFailed: "That change wasn't saved. {title} is back as it was.",
     weekendOffWord: "off",
     weekendEveShort: "the evening before (supper)",
     trashHint: "Drop here to remove",
@@ -1045,6 +1046,7 @@ export const en = {
       toastFrozen: "{name} moved to the freezer",
       addFailed: "That couldn't be added. Try again.",
       saveFailed: "The changes couldn't be saved. Try again.",
+      stapleFailed: "{name} was added, but the pantry staple mark wasn't saved. Open it to try again.",
     },
   },
   deals: {

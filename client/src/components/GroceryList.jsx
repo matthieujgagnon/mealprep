@@ -15,6 +15,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { groceryShared } from "../lib/groceryCache.js";
+import { afterSaves, savesVersion } from "../lib/pendingSaves.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { buildGroceryList } from "../lib/groceryList.js";
 import {
@@ -372,21 +373,32 @@ export function GroceryList({
       setOverrides(cached.overrides);
       setLoaded(true);
     }
-    Promise.allSettled([
-      api.listPlannerUpcoming(today),
-      api.listGroceryChecked(),
-      api.listGroceryExtras(),
-      api.listGroceryOverrides(),
-    ]).then((results) => {
-      if (cancelled) return;
-      const value = (i, fallback) => (results[i].status === "fulfilled" ? results[i].value : fallback);
-      setEntries(value(0, cached?.entries ?? []));
-      setCheckRows(Object.fromEntries(value(1, []).map((row) => [row.core, row])));
-      setExtraItems(value(2, []));
-      setOverrides(value(3, []));
-      setFresh(results.every((r) => r.status === "fulfilled"));
-      setLoaded(true);
-    });
+    // Something added, removed or checked while this loads (the add field is
+    // there from the start) is saved on its own, and the answers below can be
+    // older than it. So when a save started or ended during the load, load
+    // again rather than put the older list over the person's change.
+    (async () => {
+      for (let attempt = 0; ; attempt++) {
+        await afterSaves("grocery");
+        const seen = savesVersion("grocery");
+        const results = await Promise.allSettled([
+          api.listPlannerUpcoming(today),
+          api.listGroceryChecked(),
+          api.listGroceryExtras(),
+          api.listGroceryOverrides(),
+        ]);
+        if (cancelled) return;
+        if (savesVersion("grocery") !== seen && attempt < 2) continue;
+        const value = (i, fallback) => (results[i].status === "fulfilled" ? results[i].value : fallback);
+        setEntries(value(0, cached?.entries ?? []));
+        setCheckRows(Object.fromEntries(value(1, []).map((row) => [row.core, row])));
+        setExtraItems(value(2, []));
+        setOverrides(value(3, []));
+        setFresh(results.every((r) => r.status === "fulfilled"));
+        setLoaded(true);
+        return;
+      }
+    })();
     return () => {
       cancelled = true;
     };

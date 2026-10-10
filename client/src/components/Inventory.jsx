@@ -805,9 +805,9 @@ export function Inventory({
     });
   }
 
+  // Gives back the save, so a form can wait for it before it closes.
   function toggleStaple(item) {
-    if (staples.has(item.core)) onUnmarkStaple(item.core);
-    else onMarkStaple(item.core);
+    return staples.has(item.core) ? onUnmarkStaple(item.core) : onMarkStaple(item.core);
   }
 
   async function handleConsumeSelected(action) {
