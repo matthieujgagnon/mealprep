@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { GroceryItem } from "./GroceryItem.jsx";
 import { useDndMonitor } from "@dnd-kit/core";
 import { AddedSheet, ColoursSheet, DraggableRow, DropTray, LeaveSheet, StoreConfetti, StoreDropZone, StoreSticker } from "./StoreModeParts.jsx";
+import { ThemeSwitch } from "./ThemeSwitch.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
+import { useTheme } from "../hooks/useTheme.js";
 import { capitalize } from "../lib/groceryList.js";
 import { brandOf } from "../lib/flyerIngredients.js";
 import { colorOfStore, readStoreColors, writeStoreColors } from "../lib/storeColors.js";
@@ -17,26 +19,10 @@ import { getLang, t } from "../i18n/index.js";
 // to Inventory, which always goes through the Inventory confirmation (`onDone`).
 // Press and hold a row, then drag it onto another store (its section or its
 // sticker, folded or not) to file it there for good, with Undo (`onMove`, `onToast`).
+// Light or dark is the shared switch (`useTheme`, `ThemeSwitch`), the same one and the
+// same saved choice as Cook mode.
 
-const THEME_KEY = "mealprep-store-mode-theme";
 const AISLE_ORDER = ["produce", "meat", "seafood", "dairy", "deli", "bakery", "frozen", "pantry", "snacks", "drinks", "household", "other"];
-
-function readTheme() {
-  try {
-    const value = localStorage.getItem(THEME_KEY);
-    return value === "light" ? "light" : "dark";
-  } catch {
-    return "dark";
-  }
-}
-
-function writeTheme(value) {
-  try {
-    localStorage.setItem(THEME_KEY, value);
-  } catch {
-    // Private mode: the choice just isn't remembered.
-  }
-}
 
 export function StoreMode({
   rows,
@@ -53,7 +39,7 @@ export function StoreMode({
   onMove,
   onToast,
 }) {
-  const [theme, setTheme] = useState(readTheme);
+  const { theme, dark, toggle: pickTheme } = useTheme();
   const [colors, setColors] = useState(readStoreColors);
   const [flat, setFlat] = useState(false);
   const [aisle, setAisle] = useState(false);
@@ -63,7 +49,6 @@ export function StoreMode({
   const [flash, setFlash] = useState(null); // the key of the item just moved
   const [added, setAdded] = useState(0);
   const [busy, setBusy] = useState(false);
-  const dark = theme === "dark";
 
   useEffect(() => {
     // Escape closes a sheet first, and the Inventory confirmation before Store mode under it.
@@ -176,11 +161,6 @@ export function StoreMode({
     writeStoreColors({});
     setColors({});
   }
-  function pickTheme() {
-    const next = dark ? "light" : "dark";
-    setTheme(next);
-    writeTheme(next);
-  }
 
   function leave() {
     if (sendCount > 0) setSheet("leave");
@@ -213,15 +193,7 @@ export function StoreMode({
           <button type="button" className="store-mode-colours" onClick={() => setSheet("colours")}>
             {t("storeMode.colours")}
           </button>
-          <button
-            type="button"
-            className="store-mode-theme"
-            onClick={pickTheme}
-            aria-label={dark ? t("storeMode.toLight") : t("storeMode.toDark")}
-            title={dark ? t("storeMode.toLight") : t("storeMode.toDark")}
-          >
-            {dark ? "☀" : "☾"}
-          </button>
+          <ThemeSwitch dark={dark} onToggle={pickTheme} />
         </div>
 
         <div className="store-mode-summary">
