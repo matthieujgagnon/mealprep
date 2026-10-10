@@ -116,7 +116,7 @@ function stripParens(str) {
 
 // Crude singularization for grouping purposes only (display name keeps
 // whatever form was first seen) — "avocados" and "avocado" should merge.
-function singularize(word) {
+export function singularize(word) {
   // Words ending in "us" (hummus, asparagus, citrus, octopus) are singular
   // in their own right, not an "-s" plural of something — stripping the
   // final letter mangled them into nonsense ("hummus" -> "hummu") that
