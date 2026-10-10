@@ -123,13 +123,14 @@ const EN_ADVERBS = new Set("thinly finely roughly coarsely lightly freshly evenl
 const EN_JOIN = new Set(["and", "or", "then"]);
 
 // French: the masculine form without its accent, then « vous ». The other forms follow
-// (-s, -e, -es: haché, hachés, hachée, hachées).
+// (-s, -e, -es: haché, hachés, hachée, hachées). « zeste » is left out on purpose: in a
+// note it is the noun (« zeste et jus »), not « zesté ».
 const FR_BASES = {
   hache: "hachez", emince: "émincez", tranche: "tranchez", coupe: "coupez", rape: "râpez", pele: "pelez",
   epepine: "épépinez", denoyaute: "dénoyautez", pare: "parez", ecrase: "écrasez", presse: "pressez",
   concasse: "concassez", cisele: "ciselez", egoutte: "égouttez", rince: "rincez", ramolli: "ramollissez",
   fondu: "faites fondre", battu: "battez", fouette: "fouettez", tamise: "tamisez", mesure: "mesurez",
-  zeste: "zestez", decongele: "décongelez", lave: "lavez", essuye: "essuyez", epluche: "épluchez",
+  decongele: "décongelez", lave: "lavez", essuye: "essuyez", epluche: "épluchez",
   effiloche: "effilochez", equeute: "équeutez",
 };
 const FR_VERBS = {};

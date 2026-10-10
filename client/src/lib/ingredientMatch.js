@@ -24,10 +24,20 @@ const STOP = new Set(
     // colours and sizes
     "red green yellow white black brown big small medium large rouge rouges vert verte verts vertes jaune jaunes blanc blanche blancs blanches noir noire noirs noires brun gros grosse petit petite moyen moyenne " +
     // how it is bought or kept, not what it is
-    "fresh frozen cooked raw dried plain ground whole extra virgin light dark hot cold warm " +
-    "frais fraiche surgele surgelee cuit cuite cru crue seche moulu moulue entier entiere nature vierge leger fonce chaud froid tiede"
+    "fresh frozen cooked raw dried plain ground whole extra virgin light dark hot cold warm soft firm mild sharp thick thin heavy lean aged hard " +
+    "frais fraiche surgele surgelee cuit cuite cru crue seche moulu moulue entier entiere nature vierge leger fonce chaud froid tiede " +
+    // the leftovers of "all-purpose", "low-fat", "gluten-free", "store-bought", "no-salt-added"
+    "all purpose free low fat sodium reduced added store bought homemade style brand quality good quick instant ready made " +
+    "sans faible reduit maison"
   ).split(" ")
 );
+
+// A word of three letters or fewer names a food only when it is a known one ("egg", "oil",
+// "soy", « ail », « riz », or any word in the French / English pairs below) or when it is
+// the only word in the name. In "dry white wine", "all-purpose flour" or "salad mix" the
+// short words ("dry", "all", "mix") say nothing about the food and would match any step
+// that happens to use them.
+const SHORT_FOODS = new Set("soy pea yam fig nut oat rye bun gin rum ale ice bay ham egg oil cod jam tea sel ail riz vin eau jus".split(" "));
 
 // Two French foods are ordinary words once the accent goes: « thé » (tea) is the English
 // "the", and « maïs » (corn) is the French "mais" (but). They are never paired by
@@ -69,7 +79,11 @@ export function ingredientTerms(name) {
 
   const written = clean(key, true);
   const core = canonicalize(written).core || written;
-  const own = wordsOf(core).filter((w) => w.length > 1 && !STOP.has(w));
+  let own = wordsOf(core).filter((w) => w.length > 1 && !STOP.has(w));
+  if (own.length > 1) {
+    const foods = own.filter((w) => w.length > 3 || SHORT_FOODS.has(w) || PAIRS.has(w));
+    if (foods.length > 0) own = foods;
+  }
   const terms = new Set(own);
   for (const w of own) for (const p of PAIRS.get(w) || []) terms.add(p);
   for (const w of wordsOf(frenchToEnglish(written))) {

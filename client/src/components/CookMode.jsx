@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { useTheme } from "../hooks/useTheme.js";
 import { core } from "../lib/similarRecipes.js";
@@ -13,15 +13,18 @@ import {
   formatClock,
 } from "../lib/steps.js";
 import { stepParagraphText } from "../lib/stepParagraphs.js";
+import { buildPrep } from "../lib/cookPrep.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
-import { StepIngredients, StepRail, TimerCard } from "./CookModeParts.jsx";
+import { DoFirstCard, PrepList, StepIngredients, StepRail, TimerCard } from "./CookModeParts.jsx";
 import { ThemeSwitch } from "./ThemeSwitch.jsx";
 import { t } from "../i18n/index.js";
 
 // Cook mode (design: docs/design/riso-v2-cook-mode/): one step at a time, full
 // screen. On a computer three columns (the step rail, the step, the photo and timer);
-// on a phone one column under a row of step dots. The finished view at the end is
-// still the earlier one.
+// on a phone one column under a row of step dots. A recipe whose ingredients have prep
+// notes ("diced") opens on a "Before you start" page first (design:
+// docs/design/riso-v2-cook-mode-prep/, page -1 below, dot 0 on the rail); a recipe with
+// none opens on step 1. The finished view at the end is still the earlier one.
 
 function formatTotalTime(minutes) {
   if (!minutes) return null;
@@ -121,9 +124,17 @@ export function CookMode({
 }) {
   // Section headings ("Make the sauce:") aren't steps to walk through.
   const steps = (recipe.instructions || []).filter((s) => !stepIsHeading(s));
-  const [stepIndex, setStepIndex] = useState(Math.min(Math.max(startStep - 1, 0), Math.max(steps.length - 1, 0)));
+  // What the "Before you start" page lists, from the recipe's own ingredient notes. No
+  // rows means no page: Cook mode opens on step 1. Page -1 is that page.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const prep = useMemo(() => buildPrep(recipe.ingredients || [], steps), [recipe]);
+  const hasPrep = steps.length > 0 && prep.rows.length > 0;
+  const firstPage = hasPrep ? -1 : 0;
+  const [stepIndex, setStepIndex] = useState(() =>
+    hasPrep && startStep <= 1 ? -1 : Math.min(Math.max(startStep - 1, 0), Math.max(steps.length - 1, 0))
+  );
   const [finished, setFinished] = useState(false);
-  const [checked, setChecked] = useState({}); // `${stepIndex}:${name}` -> true
+  const [checked, setChecked] = useState({}); // `${stepIndex}:${name}` -> true (`prep:${name}` for one no step uses)
   const [keepAwake, setKeepAwake] = useState(true);
   const { theme, dark, toggle: toggleTheme } = useTheme();
   const [cooked, setCooked] = useState(false);
@@ -150,7 +161,23 @@ export function CookMode({
 
   function goToStep(i) {
     setFinished(false);
-    setStepIndex(Math.max(0, Math.min(steps.length - 1, i)));
+    setStepIndex(Math.max(firstPage, Math.min(steps.length - 1, i)));
+  }
+
+  // The prep page shares its ticks with "For this step": a row is ticked in every step
+  // that uses the ingredient, and shows ticked once all of them are. An ingredient no
+  // step uses has a tick of its own on this page. Nothing here touches Inventory.
+  const prepKeys = (row) =>
+    row.stepNumbers.length ? row.stepNumbers.map((n) => `${n - 1}:${row.ingredient.name}`) : [`prep:${row.ingredient.name}`];
+  const prepRowOn = (row) => prepKeys(row).every((key) => checked[key]);
+  function togglePrepRow(row) {
+    const keys = prepKeys(row);
+    const turnOn = !keys.every((key) => checked[key]);
+    setChecked((prev) => {
+      const next = { ...prev };
+      for (const key of keys) next[key] = turnOn;
+      return next;
+    });
   }
 
   function next() {
@@ -176,7 +203,7 @@ export function CookMode({
     function onKey(e) {
       if (e.target.closest?.("input, textarea")) return;
       if (e.key === "ArrowRight" && !finished) next();
-      else if (e.key === "ArrowLeft" && !finished && stepIndex > 0) goToStep(stepIndex - 1);
+      else if (e.key === "ArrowLeft" && !finished && stepIndex > firstPage) goToStep(stepIndex - 1);
       else if (e.key === " " && !finished && timerSpec) {
         e.preventDefault();
         toggleTimer();
@@ -229,7 +256,7 @@ export function CookMode({
     touchStartX.current = null;
     if (Math.abs(delta) < 50) return;
     if (delta < 0) next();
-    else if (stepIndex > 0) goToStep(stepIndex - 1);
+    else if (stepIndex > firstPage) goToStep(stepIndex - 1);
   }
 
   // Everything in Inventory that one of this recipe's ingredients uses up.
@@ -410,6 +437,63 @@ export function CookMode({
     );
   }
 
+  if (stepIndex < 0) {
+    // "Before you start": the rail (with its dot 0), the list, and the photo with Do first
+    // beside it. On a phone there is no photo and Do first comes before the list.
+    const firstStep = steps[0];
+    const firstTitle = stepTitle(firstStep);
+    const photo = recipe.photoUrl;
+    const doFirst = prep.doFirst ? <DoFirstCard text={prep.doFirst} /> : null;
+    const rail = (variant) => (
+      <StepRail steps={steps} stepIndex={stepIndex} variant={variant} onGo={goToStep} prepLabel={t("cookMode.prep.rail")} />
+    );
+    return (
+      <div className="cm-overlay riso-theme cm-step-view cm-prep-view" data-theme={theme} onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {header}
+        {isPhone && (
+          <div className="cm-phone-steps">
+            {rail("top")}
+            <div className="cm-step-title">{t("cookMode.prep.title")}</div>
+          </div>
+        )}
+        <main className="cm-main">
+          {!isPhone && rail("side")}
+
+          <div className="cm-left cm-prep-col">
+            <div className="cm-prep-intro">
+              <div className="cm-step-count">{t("cookMode.prep.eyebrow", { count: prep.rows.length })}</div>
+              {!isPhone && <h3 className="cm-step-title">{t("cookMode.prep.title")}</h3>}
+              <p className="cm-prep-sub">{t("cookMode.prep.sub")}</p>
+            </div>
+            {isPhone && doFirst}
+            <PrepList groups={prep.groups} scale={scale} phone={isPhone} isOn={prepRowOn} onToggle={togglePrepRow} />
+          </div>
+
+          {!isPhone && (
+            <aside className="cm-right">
+              <div className={`cm-photo${photo ? "" : " empty"}`}>{photo && <RecipePhoto src={photo} alt="" />}</div>
+              {doFirst}
+            </aside>
+          )}
+        </main>
+
+        <footer className="cm-bottom">
+          {!isPhone && (
+            <button type="button" className="cm-up-next" onClick={next}>
+              <span className="cm-up-next-label">
+                {firstTitle ? t("cookMode.prep.then", { title: firstTitle.toUpperCase() }) : t("cookMode.prep.thenNoTitle")}
+              </span>
+              <span className="cm-up-next-text">{stepBody(firstStep)}</span>
+            </button>
+          )}
+          <button type="button" className="cm-next" onClick={next}>
+            {t("cookMode.prep.start")}
+          </button>
+        </footer>
+      </div>
+    );
+  }
+
   const title = stepTitle(currentStep);
   const text = scale === 1 ? stepBody(currentStep) : scaleStepText(currentStep, scale);
   const image = stepImage(currentStep) || recipe.photoUrl;
@@ -447,12 +531,12 @@ export function CookMode({
       {header}
       {isPhone && (
         <div className="cm-phone-steps">
-          <StepRail steps={steps} stepIndex={stepIndex} variant="top" onGo={goToStep} />
+          <StepRail steps={steps} stepIndex={stepIndex} variant="top" onGo={goToStep} prepLabel={hasPrep ? t("cookMode.prep.rail") : undefined} />
           {title && <div className="cm-step-title">{title}</div>}
         </div>
       )}
       <main className="cm-main">
-        {!isPhone && <StepRail steps={steps} stepIndex={stepIndex} variant="side" onGo={goToStep} />}
+        {!isPhone && <StepRail steps={steps} stepIndex={stepIndex} variant="side" onGo={goToStep} prepLabel={hasPrep ? t("cookMode.prep.rail") : undefined} />}
 
         <div className="cm-left" ref={leftRef}>
           {isPhone && image && (
@@ -486,7 +570,7 @@ export function CookMode({
       </main>
 
       <footer className="cm-bottom">
-        <button type="button" className="cm-prev" aria-label={t("cookMode.previous")} disabled={stepIndex === 0} onClick={() => goToStep(stepIndex - 1)}>
+        <button type="button" className="cm-prev" aria-label={t("cookMode.previous")} disabled={stepIndex === firstPage} onClick={() => goToStep(stepIndex - 1)}>
           {isPhone ? "←" : t("cookMode.previous")}
         </button>
         {!isPhone &&

@@ -85,6 +85,29 @@ describe("mentions: words that don't say what the food is", () => {
   });
 });
 
+describe("mentions: short words in a longer name", () => {
+  it("does not match on a short word that says nothing about the food", () => {
+    expect(mentions("Dry the chicken well.", "dry white wine")).toBe(false);
+    expect(mentions("Add the wine.", "dry white wine")).toBe(true);
+    expect(mentions("Add all the vegetables.", "all-purpose flour")).toBe(false);
+    expect(mentions("Sift the flour.", "all-purpose flour")).toBe(true);
+    expect(mentions("Trim the fat.", "low-fat milk")).toBe(false);
+    expect(mentions("Pour the milk.", "low-fat milk")).toBe(true);
+    expect(mentions("Mix the sauce.", "salad mix")).toBe(false);
+    expect(mentions("Toss the salad.", "salad mix")).toBe(true);
+    expect(mentions("Add a free-range egg.", "gluten-free pasta")).toBe(false);
+  });
+
+  it("still matches a short food word, alone or beside others", () => {
+    expect(mentions("Add the soy.", "soy sauce")).toBe(true);
+    expect(mentions("Drizzle with oil.", "olive oil")).toBe(true);
+    expect(mentions("Beat the egg.", "egg noodles")).toBe(true);
+    expect(mentions("Add the bay.", "bay leaves")).toBe(true);
+    expect(mentions("Ajoutez l'huile.", "olive oil")).toBe(true);
+    expect(mentions("Ajoutez le beurre.", "butter")).toBe(true);
+  });
+});
+
 describe("ingredientTerms", () => {
   it("gives singular words with no accents, and the other language's word", () => {
     const terms = ingredientTerms("Gousses d'ail");

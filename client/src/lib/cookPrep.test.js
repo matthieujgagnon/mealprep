@@ -107,6 +107,11 @@ describe("howLine", () => {
     expect(howLine("fondu")).toBe("Faites fondre");
   });
 
+  it("leaves « zeste et jus » alone: zeste is the noun", () => {
+    expect(howLine("zeste et jus")).toBe("Zeste et jus");
+    expect(howLine("zest and juice")).toBe("Zest and juice");
+  });
+
   it("puts a French adverb after the verb", () => {
     expect(howLine("finement haché")).toBe("Hachez finement");
     expect(howLine("haché finement")).toBe("Hachez finement");

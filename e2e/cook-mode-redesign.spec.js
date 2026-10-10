@@ -5,7 +5,8 @@ import { confirmAdd } from "./inventory-confirm.js";
 // Cook mode (design 2c, docs/design/riso-v2-cook-mode): one step at a time with
 // the step rail, per-step timers that keep running across step changes,
 // tap-to-check "For this step" rows, keyboard nav, the shared light / dark
-// switch, and the finished view (Mark as cooked, Save leftovers).
+// switch, and the finished view (Mark as cooked, Save leftovers). Also the "Before you
+// start" page (docs/design/riso-v2-cook-mode-prep) a recipe with prep notes opens on.
 
 function uniqueEmail() {
   return `cook-mode+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -344,6 +345,217 @@ test("the step rail scrolls with many steps, and a very long recipe still reache
   await expect(page.getByRole("button", { name: "Finish ✓" })).toBeVisible();
 });
 
+const PREP_RECIPE = {
+  title: "Prep Page Chicken",
+  ingredients: [
+    { name: "chicken thighs", quantity: 900, unit: "g", notes: "diced" },
+    { name: "olive oil", quantity: 2, unit: "tbsp" },
+    { name: "garlic", quantity: 3, unit: "clove", notes: "minced" },
+    { name: "lemon", quantity: 1, unit: "", notes: "zest and juice" },
+    { name: "butter", quantity: 2, unit: "tbsp", notes: "room temperature" },
+    { name: "soy sauce", quantity: 2, unit: "tbsp", notes: "low sodium" },
+    { name: "salt", quantity: 1, unit: "tsp", notes: "to taste" },
+  ],
+  instructions: [
+    "Prep: Preheat the oven to 425°F. Mix the olive oil and coat the chicken.",
+    "Roast: Spread the chicken on the pan with the garlic. Roast 25 minutes.",
+    "Sauce: Stir the garlic, the lemon and the butter together.",
+  ],
+};
+
+test("a recipe with prep notes opens on Before you start: groups, how lines, step tags and Do first", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await cookFromApi(page, PREP_RECIPE);
+
+  await expect(page.locator(".cm-prep-col")).toBeVisible();
+  await expect(page.locator(".cm-prep-intro .cm-step-count")).toHaveText("BEFORE YOU START · 4 TO PREP");
+  await expect(page.locator(".cm-prep-intro .cm-step-title")).toHaveText("Get everything ready");
+
+  // Only ingredients with a prep note; "low sodium" and "to taste" are not preparation.
+  await expect(page.locator(".cm-prep-row")).toHaveCount(4);
+  await expect(page.locator(".cm-prep-group-name")).toHaveText(["CUT", "SQUEEZE / ZEST", "OTHER"]);
+  await expect(page.locator(".cm-prep-group-count")).toHaveText(["2 ingredients", "1 ingredient", "1 ingredient"]);
+  await expect(page.locator(".cm-prep-row .cm-uses-name")).toHaveText(["Chicken thighs", "Garlic", "Lemon", "Butter"]);
+  await expect(page.locator(".cm-prep-row .cm-uses-qty")).toHaveText(["900 g", "3 cloves", "1", "2 tbsp"]);
+  await expect(page.locator(".cm-prep-how")).toHaveText(["Dice", "Mince", "Zest and juice", "Room temperature"]);
+  await expect(page.locator(".cm-prep-tag")).toHaveText(["STEPS 1 · 2", "STEPS 2 · 3", "STEP 3", "STEP 3"]);
+
+  // Do first is the recipe's own sentence with both units, beside the photo.
+  await expect(page.locator(".cm-prep-first-label")).toHaveText("DO FIRST");
+  await expect(page.locator(".cm-prep-first-text")).toHaveText("Preheat the oven to 425 °F (220 °C).");
+
+  // The rail starts with a dot 0, the current one; there is no Previous; Up next previews step 1.
+  await expect(page.locator(".cm-rail-item")).toHaveCount(4);
+  await expect(page.locator(".cm-rail-item.current .cm-rail-dot")).toHaveText("0");
+  await expect(page.locator(".cm-rail-item.current .cm-rail-label")).toHaveText("Get ready");
+  await expect(page.locator(".cm-prev")).toHaveCount(0);
+  await expect(page.locator(".cm-up-next-label")).toHaveText("THEN · STEP 1 · PREP");
+  await expect(page.locator(".cm-up-next-text")).toHaveText("Preheat the oven to 425°F. Mix the olive oil and coat the chicken.");
+
+  // Start step 1 moves on; Previous (and dot 0) come back; nothing is lost.
+  await page.getByRole("button", { name: "Start step 1" }).click();
+  await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 3");
+  await expect(page.locator(".cm-rail-item.done .cm-rail-dot")).toHaveText("✓");
+  await page.getByRole("button", { name: "← Previous" }).click();
+  await expect(page.locator(".cm-prep-col")).toBeVisible();
+  await page.getByRole("button", { name: "Start step 1" }).click();
+  await page.getByRole("tab", { name: "Get ready" }).click();
+  await expect(page.locator(".cm-prep-col")).toBeVisible();
+
+  // The saved recipe is untouched.
+  const recipes = await (await page.request.get("/api/recipes")).json();
+  const saved = recipes.find((r) => r.title === PREP_RECIPE.title);
+  expect(saved.instructions).toEqual(PREP_RECIPE.instructions);
+  expect(saved.ingredients.map((i) => i.notes ?? null)).toEqual(PREP_RECIPE.ingredients.map((i) => i.notes ?? null));
+});
+
+test("ticks on the prep page are the ones in For this step, and never touch Inventory", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await cookFromApi(page, PREP_RECIPE);
+
+  const prepRow = (name) => page.locator(".cm-prep-row").filter({ hasText: name });
+  const stepRow = (name) => page.locator(".cm-uses-row").filter({ hasText: name });
+
+  // Not required: Start step 1 works with nothing ticked. Tick chicken (steps 1 and 2) and garlic (2 and 3).
+  await prepRow("Chicken thighs").click();
+  await prepRow("Garlic").click();
+  await expect(prepRow("Chicken thighs")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".cm-prep-row.on")).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Start step 1" }).click();
+  await expect(stepRow("chicken thighs")).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Next step →" }).click();
+  await expect(stepRow("chicken thighs")).toHaveAttribute("aria-pressed", "true");
+  await expect(stepRow("garlic")).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Next step →" }).click();
+  await expect(stepRow("garlic")).toHaveAttribute("aria-pressed", "true");
+
+  // Unticking it in one step leaves the prep row unticked (it is ticked only when every step has it).
+  await stepRow("garlic").click();
+  await page.getByRole("tab", { name: "Get ready" }).click();
+  await expect(prepRow("Garlic")).toHaveAttribute("aria-pressed", "false");
+  await expect(prepRow("Chicken thighs")).toHaveAttribute("aria-pressed", "true");
+  // Tapping it again ticks it in every step it is used in.
+  await prepRow("Garlic").click();
+  await expect(prepRow("Garlic")).toHaveAttribute("aria-pressed", "true");
+
+  // An ingredient no step uses keeps its tick on this page.
+  await prepRow("Butter").click();
+  await expect(prepRow("Butter")).toHaveAttribute("aria-pressed", "true");
+
+  const inventory = await (await page.request.get("/api/pantry-inventory")).json();
+  expect(inventory).toEqual([]);
+});
+
+test("a recipe with no prep notes skips the page and opens on step 1, even with a preheat step", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await cookFromApi(page, {
+    title: "No Prep Notes",
+    ingredients: [
+      { name: "soy sauce", quantity: 2, unit: "tbsp", notes: "low sodium" },
+      { name: "salt", quantity: 1, unit: "tsp", notes: "to taste" },
+      { name: "canned tomatoes", quantity: 1, unit: "can", notes: "796 ml" },
+      { name: "rice", quantity: 1, unit: "cup" },
+    ],
+    instructions: ["Bake: Preheat the oven to 400F and bake the rice.", "Serve: Plate the rice."],
+  });
+  await expect(page.locator(".cm-prep-col")).toHaveCount(0);
+  await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 2");
+  await expect(page.locator(".cm-rail-item")).toHaveCount(2);
+  await expect(page.locator(".cm-prev")).toBeDisabled();
+});
+
+test("a step 1 that is just Prep stays as it is, and the Do first card is left out when no step preheats", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await cookFromApi(page, {
+    title: "Prep Step One",
+    ingredients: [{ name: "onions", quantity: 2, unit: "", notes: "diced" }],
+    instructions: ["Prep: Dice the onions.", "Cook: Fry the onions 10 minutes."],
+  });
+  await expect(page.locator(".cm-prep-first")).toHaveCount(0);
+  await expect(page.locator(".cm-prep-tag")).toHaveText("STEPS 1 · 2");
+  await page.getByRole("button", { name: "Start step 1" }).click();
+  await expect(page.locator(".cm-step-title")).toHaveText("Prep");
+  await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 2");
+});
+
+test("the arrow keys and Escape work on the prep page", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  await cookFromApi(page, PREP_RECIPE);
+  await page.keyboard.press("ArrowLeft"); // nothing before it
+  await expect(page.locator(".cm-prep-col")).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 3");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".cm-prep-col")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".cm-overlay")).toHaveCount(0);
+});
+
+test("the prep page is light or dark with the shared switch, and a long list scrolls with the bars in place", async ({ page }) => {
+  await signUp(page, uniqueEmail());
+  const names = Array.from({ length: 18 }, (_, i) => `vegetable ${String.fromCharCode(97 + i)}`);
+  await cookFromApi(page, {
+    title: "Prep Long List",
+    ingredients: names.map((name) => ({ name, quantity: 1, unit: "", notes: "finely chopped" })),
+    instructions: ["Prep: Chop everything.", "Cook: Cook it."],
+  });
+  const overlay = page.locator(".cm-overlay");
+  await expect(overlay).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".cm-prep-first")).toHaveCount(0);
+  await expect(page.locator(".cm-photo")).toHaveCSS("background-color", "rgb(27, 27, 33)");
+  await page.getByRole("button", { name: "Light theme" }).click();
+  await expect(overlay).toHaveAttribute("data-theme", "light");
+  await expect(page.locator(".cm-prep-row").first()).toHaveCSS("border-bottom-color", "rgb(189, 182, 166)");
+
+  // 18 rows are taller than the screen: the middle column scrolls, the top and bottom bars stay.
+  const col = page.locator(".cm-prep-col");
+  const scrolls = await col.evaluate((el) => el.scrollHeight > el.clientHeight + 40);
+  expect(scrolls).toBe(true);
+  await col.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  expect(await col.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+  await expect(page.locator(".cm-prep-row").last()).toBeInViewport();
+  await expect(page.getByRole("button", { name: "Start step 1" })).toBeInViewport();
+  await expect(page.locator(".cm-topbar")).toBeInViewport();
+});
+
+test.describe("phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the prep page has no photo, Do first comes first, tags sit under the how line and a long list scrolls", async ({ page }) => {
+    await signUp(page, uniqueEmail());
+    const extra = Array.from({ length: 12 }, (_, i) => ({ name: `herb ${String.fromCharCode(97 + i)}`, quantity: 1, unit: "bunch", notes: "roughly chopped" }));
+    await cookFromApi(page, { ...PREP_RECIPE, title: "Prep Phone", ingredients: [...PREP_RECIPE.ingredients, ...extra] });
+
+    await expect(page.locator(".cm-prep-col")).toBeVisible();
+    await expect(page.locator(".cm-photo")).toHaveCount(0);
+    await expect(page.locator(".cm-phone-steps .cm-step-title")).toHaveText("Get everything ready");
+    await expect(page.locator(".cm-rail.top .cm-rail-item.current .cm-rail-dot")).toHaveText("0");
+    await expect(page.locator(".cm-prev")).toHaveCount(0);
+
+    // Do first sits above the groups; each tag is under its how line.
+    const firstTop = (await page.locator(".cm-prep-first").boundingBox()).y;
+    const listTop = (await page.locator(".cm-prep-list").boundingBox()).y;
+    expect(firstTop).toBeLessThan(listTop);
+    const row = page.locator(".cm-prep-row").filter({ hasText: "Chicken thighs" });
+    const how = (await row.locator(".cm-prep-how").boundingBox()).y;
+    const tag = (await row.locator(".cm-prep-tag").boundingBox()).y;
+    expect(tag).toBeGreaterThan(how);
+
+    // Scrolls; the button stays; nothing sideways.
+    const col = page.locator(".cm-prep-col");
+    expect(await col.evaluate((el) => el.scrollHeight > el.clientHeight + 100)).toBe(true);
+    await col.evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expect(page.locator(".cm-prep-row").last()).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Start step 1" })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+    // Start step 1 fills the width of the bar and moves on.
+    await page.getByRole("button", { name: "Start step 1" }).click();
+    await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 3");
+  });
+});
+
 test.describe("phone, in French", () => {
   test.use({ locale: "fr-CA", viewport: { width: 390, height: 844 } });
 
@@ -365,13 +577,36 @@ test.describe("phone, in French", () => {
           { name: "épices shawarma", quantity: 1.5, unit: "tbsp" },
         ],
         instructions: [
-          "Préparation: Coupez les hauts de cuisse de poulet en dés.",
+          "Préparation: Préchauffez le four à 220 °C et tapissez une plaque. Coupez les hauts de cuisse de poulet en dés.",
           "Rôtir: Étalez les hauts de cuisse de poulet sur la plaque, arrosez d'huile d'olive et saupoudrez d'épices shawarma. Faites rôtir 25 minutes, en retournant à mi-cuisson.",
           "Sauce au yogourt: Mélangez le yogourt.",
         ],
       },
       { fr: true }
     );
+    // The chicken has a prep note, so Cook mode opens on « Avant de commencer » first.
+    await expect(page.locator(".cm-prep-col")).toBeVisible();
+    await expect(page.locator(".cm-phone-steps .cm-step-title")).toHaveText("Préparez tout");
+    await expect(page.locator(".cm-prep-intro .cm-step-count")).toHaveText("AVANT DE COMMENCER · 1 À PRÉPARER");
+    await expect(page.locator(".cm-prep-group-name")).toHaveText("COUPER");
+    await expect(page.locator(".cm-prep-group-count")).toHaveText("1 ingrédient");
+    await expect(page.locator(".cm-prep-how")).toHaveText("Coupez en dés");
+    await expect(page.locator(".cm-prep-tag")).toHaveText("ÉTAPES 1 · 2");
+    await expect(page.locator(".cm-prep-first-label")).toHaveText("D'ABORD");
+    await expect(page.locator(".cm-prep-first-text")).toHaveText("Préchauffez le four à 220 °C (425 °F) et tapissez une plaque.");
+    await expect(page.locator(".cm-rail-item.current .cm-rail-dot")).toHaveText("0");
+    await expect(page.getByRole("button", { name: "Commencer l'étape 1" })).toBeVisible();
+
+    for (const theme of ["dark", "light"]) {
+      if ((await page.locator(".cm-overlay").getAttribute("data-theme")) !== theme) {
+        await page.locator(".cm-theme").click();
+      }
+      await page.locator(".cm-prep-row").first().click(); // ticked and not ticked both have to fit
+      expect(await fitProblems(page), `prep page, ${theme}`).toEqual([]);
+      await page.screenshot({ path: test.info().outputPath(`cook-fr-phone-prep-${theme}.png`) });
+      await page.locator(".cm-prep-row").first().click();
+    }
+
     await page.getByRole("tab", { name: /Étape 2/ }).click();
     await expect(page.locator(".cm-step-title")).toHaveText("Rôtir");
 
@@ -381,29 +616,39 @@ test.describe("phone, in French", () => {
       }
       await page.locator(".cm-timer-main").click(); // "Pause" / "▶ Lancer la minuterie" both have to fit
       await page.locator(".cm-uses-row").first().click();
-      const problems = await page.evaluate(() => {
-        const out = [];
-        const inside = (el, box, name) => {
-          const r = el.getBoundingClientRect();
-          const b = box.getBoundingClientRect();
-          if (r.left < b.left - 1 || r.right > b.right + 1 || r.top < b.top - 1 || r.bottom > b.bottom + 1) out.push(`${name} sticks out of its box`);
-          if (el.scrollWidth > el.clientWidth + 1) out.push(`${name} cuts its text`);
-        };
-        for (const b of document.querySelectorAll(".cm-timer button")) inside(b, document.querySelector(".cm-timer"), `timer button "${b.textContent}"`);
-        for (const b of document.querySelectorAll(".cm-bottom button")) inside(b, document.querySelector(".cm-bottom"), `bottom button "${b.textContent}"`);
-        for (const b of document.querySelectorAll(".cm-topbar button")) inside(b, document.querySelector(".cm-topbar"), `top bar button "${b.getAttribute("aria-label") || b.textContent}"`);
-        // The amount never runs under the check, and no row is wider than the column.
-        for (const row of document.querySelectorAll(".cm-uses-row")) {
-          const q = row.querySelector(".cm-uses-qty");
-          const d = row.querySelector(".cm-uses-dot");
-          if (q.scrollWidth > q.clientWidth + 1) out.push(`amount "${q.textContent}" is cut`);
-          if (q.getBoundingClientRect().left < d.getBoundingClientRect().right) out.push(`amount "${q.textContent}" runs under the check`);
-        }
-        if (document.documentElement.scrollWidth > 390) out.push("the page scrolls sideways");
-        return out;
-      });
+      const problems = await fitProblems(page);
       expect(problems, theme).toEqual([]);
       await page.screenshot({ path: test.info().outputPath(`cook-fr-phone-${theme}.png`) });
     }
   });
 });
+
+// Whether every button, amount and row fits its box at 390 px (the French words are the long ones).
+function fitProblems(page) {
+  return page.evaluate(() => {
+    const out = [];
+    const inside = (el, box, name) => {
+      const r = el.getBoundingClientRect();
+      const b = box.getBoundingClientRect();
+      if (r.left < b.left - 1 || r.right > b.right + 1 || r.top < b.top - 1 || r.bottom > b.bottom + 1) out.push(`${name} sticks out of its box`);
+      if (el.scrollWidth > el.clientWidth + 1) out.push(`${name} cuts its text`);
+    };
+    for (const b of document.querySelectorAll(".cm-timer button")) inside(b, document.querySelector(".cm-timer"), `timer button "${b.textContent}"`);
+    for (const b of document.querySelectorAll(".cm-bottom button")) inside(b, document.querySelector(".cm-bottom"), `bottom button "${b.textContent}"`);
+    for (const b of document.querySelectorAll(".cm-topbar button")) inside(b, document.querySelector(".cm-topbar"), `top bar button "${b.getAttribute("aria-label") || b.textContent}"`);
+    // The amount never runs under the check, and no row is wider than the column.
+    for (const row of document.querySelectorAll(".cm-uses-row")) {
+      const q = row.querySelector(".cm-uses-qty");
+      const d = row.querySelector(".cm-uses-dot");
+      if (q.scrollWidth > q.clientWidth + 1) out.push(`amount "${q.textContent}" is cut`);
+      if (q.getBoundingClientRect().left < d.getBoundingClientRect().right) out.push(`amount "${q.textContent}" runs under the check`);
+    }
+    // The prep page's how line and tag stay inside their row.
+    for (const el of document.querySelectorAll(".cm-prep-row .cm-prep-how, .cm-prep-row .cm-prep-tag, .cm-prep-first-text")) {
+      const box = el.closest(".cm-prep-row, .cm-prep-first");
+      if (el.getBoundingClientRect().right > box.getBoundingClientRect().right + 1) out.push(`"${el.textContent}" runs past its row`);
+    }
+    if (document.documentElement.scrollWidth > 390) out.push("the page scrolls sideways");
+    return out;
+  });
+}

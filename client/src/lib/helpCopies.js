@@ -66,6 +66,7 @@ export const HELP_COPIES = {
   keepAwake: { kind: "group", cls: "riso-help-copy-awake", switch: true, items: [{ label: "cookMode.keepAwake" }] },
   previous: { kind: "pill", cls: "cm-prev", label: "cookMode.previous" },
   nextStep: { kind: "pill", cls: "cm-next", label: "cookMode.nextStep", strong: true },
+  startStepOne: { kind: "pill", cls: "cm-next", label: "cookMode.prep.start", strong: true },
   markCooked: { kind: "pill", cls: "cm-btn primary", label: "cookMode.markCooked", strong: true },
   saveLeftovers: { kind: "pill", cls: "cm-btn primary", label: "cookMode.saveLeftovers", strong: true },
 
