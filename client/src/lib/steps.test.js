@@ -16,6 +16,21 @@ describe("stepIsHeading / stepTitle", () => {
     expect(stepTitle("Preheat the oven to 400F.")).toBeNull();
   });
 
+  it("reads a title written in French, with accents and a space before the colon", () => {
+    expect(stepTitle("Rôtir: Étalez le poulet sur la plaque.")).toBe("Rôtir");
+    expect(stepTitle("Préparation : Coupez les oignons.")).toBe("Préparation");
+    expect(stepTitle("Sauce au yogourt: Mélangez le yogourt.")).toBe("Sauce au yogourt");
+    expect(stepBody("Rôtir: Étalez le poulet.")).toBe("Étalez le poulet.");
+    expect(stepBody("Préparation : Coupez les oignons.")).toBe("Coupez les oignons.");
+    expect(stepIsHeading("Préparer la sauce :")).toBe(true);
+    expect(stepTitle("Préparer la sauce :")).toBeNull();
+  });
+
+  it("still leaves a long lead-in, a number or a time alone", () => {
+    expect(stepTitle("Bake at 350 degrees: this takes a while.")).toBeNull();
+    expect(stepTitle("Le temps de cuisson est variable selon le four utilisé : surveillez.")).toBeNull();
+  });
+
   it("strips the title prefix in stepBody but leaves untitled text untouched", () => {
     expect(stepBody("Prep: Chop the onions.")).toBe("Chop the onions.");
     expect(stepBody("Preheat the oven.")).toBe("Preheat the oven.");

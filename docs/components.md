@@ -31,6 +31,8 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Grocery saves | `request` in `api.js`, `lib/pendingSaves.js` | A read of grocery data waits for the grocery saves already sent, and is read again if a save started or ended while it was on its way, so no page shows the list as it was before a change. |
 | Inventory item form | `components/InventoryItemForm.jsx` | Add or edit an Inventory item. |
 | Inventory confirm sheet | `components/InventoryConfirm.jsx` | Confirm anything going into Inventory (see `CLAUDE.md`). |
+| Light / dark switch | `components/ThemeSwitch.jsx`, `hooks/useTheme.js`, `lib/theme.js`, the dark block in `index.css` | The round ☀ / ☾ button and the one saved choice behind it, for Store mode and Cook mode. |
+| Cook mode step view | `components/CookMode.jsx`, `components/CookModeParts.jsx` (`StepRail`, `StepIngredients`, `TimerCard`), `lib/stepParagraphs.js` | The step screen: rail, step, "For this step" rows, timer card, bottom bar. |
 
 ## Recipe pop-out
 
@@ -132,7 +134,7 @@ On a phone the planned meal's card shows the photo, the slot (« MER 7 · SOUPER
 
 ## Recipe photo
 
-`RecipePhoto` is the `<img>` for every recipe photo (board cards, the finder, pop-out, Recipes, Home, pickers). When the picture fails it hides itself, and it remembers which address failed, so the same element given another address (a card reused for another recipe or week) tries again instead of staying hidden. Do not hide a broken photo with your own `onError`.
+`RecipePhoto` is the `<img>` for every recipe photo (board cards, the finder, pop-out, Recipes, Home, pickers, Cook mode). When the picture fails it hides itself, and it remembers which address failed, so the same element given another address (a card reused for another recipe or week) tries again instead of staying hidden. Do not hide a broken photo with your own `onError`.
 
 ## Photo card
 
@@ -197,7 +199,7 @@ Passed down as `onOpenRecipeCard`.
 
 Props: `message`, `stayLabel` and `leaveLabel`, `onStay`, `onLeave`. Its classes are `riso-ask*` (`riso-confirm*` belongs to the Inventory confirmation sheet). The two buttons reuse the pop-out's `fnd-pop-btn`.
 
-Used by: the recipe form (the new-recipe pop-up and the full-page editor) when closed with something typed, and `App.jsx` when a header tab is pressed with unsaved changes. The text is `editor.leaveUnsaved` / `app.leaveUnsaved` with « Continuer à modifier » (`editor.keepEditing`) and « Abandonner » (`editor.discard`). Other confirmations still use the browser's dialog (delete recipe, remove a store, clear flyers, leave Cook mode with a timer); move them here when they are next touched.
+Used by: the recipe form (the new-recipe pop-up and the full-page editor) when closed with something typed, and `App.jsx` when a header tab is pressed with unsaved changes. The text is `editor.leaveUnsaved` / `app.leaveUnsaved` with « Continuer à modifier » (`editor.keepEditing`) and « Abandonner » (`editor.discard`). Other confirmations still use the browser's dialog (delete recipe, remove a store, clear flyers); move them here when they are next touched. Closing Cook mode with a timer running asks nothing: the timers belong to the recipe card, which keeps them, so nothing is lost.
 
 ## Recipe finder
 
@@ -220,6 +222,23 @@ A change to the grocery list shows on screen at once and is saved in the backgro
 One more piece is for a page that loads several things together and then puts them on screen (the Grocery list): `savesVersion("grocery")` changes when a save starts and when it ends. If it changed while the page was loading, the page loads again (`GroceryList.jsx`, at most twice more) instead of putting the older answers over the person's change.
 
 Used by: every `api.listGrocery…` read and every grocery save (`addGroceryExtra`, `deleteGroceryExtra`, `setGroceryOverride`, the checks, the stores).
+
+## Light / dark switch
+
+`ThemeSwitch` (`components/ThemeSwitch.jsx`) is the round ☀ / ☾ button (☀ in dark, ☾ in light; « Thème clair » / « Thème sombre » from `theme.toLight` / `theme.toDark`). It is drawn in the colour of the text around it (`.riso-theme-switch`). `useTheme()` (`hooks/useTheme.js`) gives `{ theme, dark, toggle }`: it reads the choice when a mode opens and saves it when it changes. **Store mode's top row and Cook mode's top bar both use these two and nothing else**, so there is one choice, not two: it is saved in this browser under `mealprep-theme` (`lib/theme.js`; the key Store mode used before the switch was shared, `mealprep-store-mode-theme`, is still read when the new one is not set), and **dark until someone picks light**. A pick in one is what the other opens in next. A new full-screen mode that has a light and a dark look uses them too.
+
+The dark colours are in **one block** in `index.css`, right under the `.riso-theme` tokens: `.riso-theme[data-theme="dark"]` re-maps the Riso tokens (page `--riso-canvas` #000000, cards `--riso-surface` #111115, inner boxes `--riso-track` #1b1b21, `--riso-ink` #f4f1ea, `--riso-muted` #9a9aa8, dotted lines `--riso-dash-strong` in ink, the hard shadows in blue) and gives the new tokens their dark values (`--riso-bar-line`, the `--riso-timer-*` set, and `--riso-ink-fixed`, the ink that stays dark on a yellow, green or pink fill). Do not write a dark colour anywhere else; a screen is dark when its `.riso-theme` element has `data-theme="dark"`, so an app-wide dark mode only has to set that. Cook mode does (`data-theme={theme}` on its overlay; the finished view stays `light`, with no switch, until it is rebuilt). Store mode still draws its colours from its own `--sm-*` variables and `data-sm-theme`; it can move to these tokens later.
+
+## Cook mode
+
+`CookMode` (design: `docs/design/riso-v2-cook-mode/`, step view only; the finished view is still the earlier one) is full screen, one step at a time. **On a computer** it is three columns, `96px | 1fr | 340px`: the step rail, the step, and the photo above the timer. Between 768 and 1023px the photo and timer drop under the step (the rail stays on the left and the column scrolls). **On a phone** the step dots and the step's title sit in a row under the top bar, then one column: a 60px photo strip, "STEP 2 OF 5", the step, "For this step", the timer; the bottom bar is a 56px ← and Next filling the rest. Every colour is a Riso token and the timer card has its own (`--riso-timer-*`: yellow, or in dark a black card with yellow type and no shadow); there is no colour written in the `.cm-*` styles.
+
+- **Pieces** (`CookModeParts.jsx`): `StepRail` (numbered dots joined by a dotted line: done = ink with ✓, current = blue and bigger, titles under the dots on a computer; every dot jumps to its step, and it scrolls to keep the current dot in view), `StepIngredients` (one row for each ingredient the step uses: the round check, the amount in a column that is at least 80px wide, 62px on a phone, 104 / 86px in French, and grows to the longest amount, then the name and its prep note, which is the ingredient's `notes`; "n / total" counts the checked ones) and `TimerCard` (label, time, Start / Pause, +1 min and a round ↺ that starts it over). The photo is `RecipePhoto`.
+- **Top bar:** the title and meta, the yellow chip for a timer running on another step (it jumps there; also on a phone), the shared light / dark switch (not on the finished view), Keep screen on (a computer only: on a phone the screen stays on by itself) and ×. There is no segment bar and no "← Recipe".
+- **Step text:** 34px on a computer, 19px on a phone, and it steps down a pixel at a time (to 16 / 14px) while the column does not fit, then the rows and timer tighten (`compact`, then `tight`), and only then does the column scroll. A step is split into short paragraphs for drawing by `lib/stepParagraphs.js` (`stepParagraphText`): at the end of a sentence followed by a capital, never after a number, a single letter or an abbreviation (tbsp., oz., min., env., c.à.s., ...), but always after °F or °C. It changes nothing that is saved. A step's title is a short "Word:" at the start of its text (`stepTitle`, any letters, so « Rôtir : » counts); a step with no title has a dot and no label.
+- **Last step:** Next says Finish (`cookMode.finish`) and Up next is hidden; Finish opens the finished view.
+- **Closing:** × or Escape closes it at once. The step timers belong to the recipe card (`useStepTimers` lives in `RecipeDetailModal`), so a timer carries on there and in Cook mode when it is reopened; nothing is asked.
+- **Also:** ← → (and a swipe on a touch screen) move between steps, Space starts or pauses the timer, Keep screen on holds a wake lock, amounts and the numbers in the text scale with the servings.
 
 ## Where things live in `App.jsx`
 

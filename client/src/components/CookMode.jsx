@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { formatQuantity, unitLabel } from "../lib/units.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
+import { useTheme } from "../hooks/useTheme.js";
 import { core } from "../lib/similarRecipes.js";
 import {
   stepBody,
@@ -12,7 +12,16 @@ import {
   scaleStepText,
   formatClock,
 } from "../lib/steps.js";
+import { stepParagraphText } from "../lib/stepParagraphs.js";
+import { RecipePhoto } from "./RecipePhoto.jsx";
+import { StepIngredients, StepRail, TimerCard } from "./CookModeParts.jsx";
+import { ThemeSwitch } from "./ThemeSwitch.jsx";
 import { t } from "../i18n/index.js";
+
+// Cook mode (design: docs/design/riso-v2-cook-mode/): one step at a time, full
+// screen. On a computer three columns (the step rail, the step, the photo and timer);
+// on a phone one column under a row of step dots. The finished view at the end is
+// still the earlier one.
 
 function formatTotalTime(minutes) {
   if (!minutes) return null;
@@ -116,6 +125,7 @@ export function CookMode({
   const [finished, setFinished] = useState(false);
   const [checked, setChecked] = useState({}); // `${stepIndex}:${name}` -> true
   const [keepAwake, setKeepAwake] = useState(true);
+  const { theme, dark, toggle: toggleTheme } = useTheme();
   const [cooked, setCooked] = useState(false);
   const serves = servings || recipe.baseServings || 1;
   const [portions, setPortions] = useState(Math.max(0, serves - 1));
@@ -134,7 +144,6 @@ export function CookMode({
   // a timer started there keeps running here.
   const stepKeys = (recipe.instructions || []).flatMap((s, i) => (stepIsHeading(s) ? [] : [i]));
   const timerKey = stepKeys[stepIndex];
-  const anyTimerRunning = stepTimers.anyRunning;
   const currentStep = steps[stepIndex];
   const timerSpec = currentStep ? stepTimer(currentStep) : null;
   const timer = timerSpec ? stepTimers.stateFor(timerKey, timerSpec.seconds) : null;
@@ -149,11 +158,6 @@ export function CookMode({
     else goToStep(stepIndex + 1);
   }
 
-  function handleExit() {
-    if (anyTimerRunning && !window.confirm(t("cookMode.confirmExit"))) return;
-    onExit();
-  }
-
   function toggleTimer() {
     if (timerSpec) stepTimers.toggle(timerKey, timerSpec.seconds);
   }
@@ -166,6 +170,8 @@ export function CookMode({
     stepTimers.reset(timerKey);
   }
 
+  // × and Escape close at once and ask nothing: the timers belong to the recipe card
+  // (it keeps them), so closing never loses one. A running timer carries on there.
   useEffect(() => {
     function onKey(e) {
       if (e.target.closest?.("input, textarea")) return;
@@ -174,17 +180,18 @@ export function CookMode({
       else if (e.key === " " && !finished && timerSpec) {
         e.preventDefault();
         toggleTimer();
-      } else if (e.key === "Escape") handleExit();
+      } else if (e.key === "Escape") onExit();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIndex, finished, timerSpec, anyTimerRunning, isLast]);
+  }, [stepIndex, finished, timerSpec, isLast]);
 
-  // Everything for the step - its text, what to check off, the timer -
-  // fits on the screen without scrolling: the step text starts at its full
-  // size and steps down a pixel at a time until the column fits (the timer
-  // scales with it). Only a very long step at the smallest size scrolls.
+  // Everything for the step - its text, what to check off, and on a phone the timer -
+  // fits on the screen without scrolling: the step text starts at the design's size
+  // and steps down a pixel at a time until the column fits. If it still doesn't, the
+  // rows and the timer tighten up (compact, then tight), and only then does the
+  // column scroll.
   const isPhone = useIsPhone();
   const leftRef = useRef(null);
   useLayoutEffect(() => {
@@ -192,15 +199,11 @@ export function CookMode({
     if (!el) return;
     function fit() {
       const phone = window.innerWidth < 768;
-      const overlay = el.closest(".cm-overlay");
       const overflows = () => el.scrollHeight > el.clientHeight;
-      // Tighter and tighter: smaller text; then compact pills and timer;
-      // then (on a phone) the photo makes way.
-      const stages = phone ? [[false, false], [true, false], [true, true]] : [[false, false], [true, false]];
-      for (const [compact, noPhoto] of stages) {
-        el.classList.toggle("compact", compact);
-        overlay?.classList.toggle("cm-no-photo", noPhoto);
-        let size = phone ? 24 : 36;
+      for (const stage of [0, 1, 2]) {
+        el.classList.toggle("compact", stage >= 1);
+        el.classList.toggle("tight", stage >= 2);
+        let size = phone ? 19 : 34;
         const min = phone ? 14 : 16;
         el.style.setProperty("--cm-step-size", `${size}px`);
         while (size > min && overflows()) {
@@ -217,7 +220,8 @@ export function CookMode({
   }, [stepIndex, finished, scale, steps.length, isPhone]);
 
   function onTouchStart(e) {
-    touchStartX.current = e.touches[0].clientX;
+    // A swipe along the phone's row of dots scrolls the dots; it doesn't change step.
+    touchStartX.current = e.target.closest?.(".cm-phone-steps") ? null : e.touches[0].clientX;
   }
   function onTouchEnd(e) {
     if (touchStartX.current == null || finished) return;
@@ -275,33 +279,15 @@ export function CookMode({
   const meta = [t("cookMode.meta"), t("cookMode.serves", { count: serves }), totalTime].filter(Boolean).join(" · ");
   const otherRunning = stepTimers.running.filter((r) => r.key !== timerKey && stepKeys.includes(r.key));
 
+  // One top bar for every view: the title, the other-step timer when one is running,
+  // the light / dark switch (not on the finished view, which stays light), Keep screen
+  // on (a computer only: on a phone the screen stays awake) and ×.
   const header = (
     <header className="cm-topbar">
-      <button type="button" className="cm-back" onClick={handleExit}>
-        {t("cookMode.back")}
-      </button>
       <div className="cm-title-block">
         <div className="cm-recipe-title">{recipe.title}</div>
         <div className="cm-meta">{meta}</div>
       </div>
-      {steps.length > 0 && (
-        <div className="cm-segments" role="tablist" aria-label={t("cookMode.steps")}>
-          {steps.map((s, i) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-selected={!finished && i === stepIndex}
-              aria-label={
-                stepTitle(s) ? t("cookMode.stepLabelTitle", { n: i + 1, title: stepTitle(s) }) : t("cookMode.stepLabel", { n: i + 1 })
-              }
-              title={t("cookMode.stepLabel", { n: i + 1 })}
-              className={`cm-segment${finished || i < stepIndex ? " done" : i === stepIndex ? " current" : ""}`}
-              onClick={() => goToStep(i)}
-            />
-          ))}
-        </div>
-      )}
       {otherRunning.length > 0 && (
         <button
           type="button"
@@ -312,6 +298,7 @@ export function CookMode({
           ⏱ {formatClock(otherRunning[0].remaining)}
         </button>
       )}
+      {!finished && <ThemeSwitch dark={dark} onToggle={toggleTheme} className="cm-theme" />}
       <button
         type="button"
         role="switch"
@@ -329,7 +316,7 @@ export function CookMode({
         className="cm-exit"
         aria-label={t("cookMode.exit")}
         title={t("cookMode.exit")}
-        onClick={handleExit}
+        onClick={onExit}
       >
         ×
       </button>
@@ -338,7 +325,7 @@ export function CookMode({
 
   if (steps.length === 0) {
     return (
-      <div className="cm-overlay riso-theme" onClick={(e) => e.stopPropagation()}>
+      <div className="cm-overlay riso-theme" data-theme={theme} onClick={(e) => e.stopPropagation()}>
         {header}
         <main className="cm-empty">
           <p>{t("cookMode.noSteps")}</p>
@@ -352,7 +339,7 @@ export function CookMode({
 
   if (finished) {
     return (
-      <div className="cm-overlay riso-theme" onClick={(e) => e.stopPropagation()}>
+      <div className="cm-overlay riso-theme" data-theme="light" onClick={(e) => e.stopPropagation()}>
         {header}
         <main className="cm-done">
           <div className="cm-done-left">
@@ -428,7 +415,6 @@ export function CookMode({
   const image = stepImage(currentStep) || recipe.photoUrl;
   const used = stepIngredients(currentStep, recipe.ingredients || []);
   const nextStep = !isLast ? steps[stepIndex + 1] : null;
-  const remaining = timer?.remaining;
   const timerLabel = timer?.finished
     ? t("cookMode.timeUpLabel")
     : timer?.running
@@ -441,84 +427,70 @@ export function CookMode({
     : timer?.paused
     ? t("cookMode.resume")
     : t("cookMode.startTimer");
+  const stepOf = t("cookMode.stepOf", { n: stepIndex + 1, total: steps.length });
 
-  // On a phone the timer sits under the step; on a wider screen it moves to
-  // the photo column so the step and its ingredients get the room.
+  // On a phone the timer sits under the step; on a computer it moves to the photo
+  // column, so the step and its ingredients get the room.
   const timerBlock = timerSpec ? (
-    <div className="cm-timer">
-      <div className="cm-timer-readout">
-        <span className="cm-timer-label">{timerLabel}</span>
-        <span className="cm-timer-time">{formatClock(remaining)}</span>
-      </div>
-      <div className="cm-timer-actions">
-        <button type="button" className="cm-timer-main" onClick={toggleTimer}>
-          {timerButton}
-        </button>
-        <button type="button" className="cm-timer-btn" onClick={addMinute}>
-          {t("cookMode.plusMinute")}
-        </button>
-        <button type="button" className="cm-timer-btn" onClick={resetTimer}>
-          {t("cookMode.reset")}
-        </button>
-      </div>
-    </div>
+    <TimerCard
+      label={timerLabel}
+      time={formatClock(timer?.remaining)}
+      mainLabel={timerButton}
+      onMain={toggleTimer}
+      onPlusMinute={addMinute}
+      onReset={resetTimer}
+    />
   ) : null;
 
   return (
-    <div className="cm-overlay riso-theme cm-step-view" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="cm-overlay riso-theme cm-step-view" data-theme={theme} onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {header}
+      {isPhone && (
+        <div className="cm-phone-steps">
+          <StepRail steps={steps} stepIndex={stepIndex} variant="top" onGo={goToStep} />
+          {title && <div className="cm-step-title">{title}</div>}
+        </div>
+      )}
       <main className="cm-main">
+        {!isPhone && <StepRail steps={steps} stepIndex={stepIndex} variant="side" onGo={goToStep} />}
+
         <div className="cm-left" ref={leftRef}>
-          <div className="cm-step-head">
-            <span className="cm-step-num">{stepIndex + 1}</span>
-            <div>
-              <div className="cm-step-count">{t("cookMode.stepOf", { n: stepIndex + 1, total: steps.length })}</div>
-              {title && <div className="cm-step-title">{title}</div>}
+          {isPhone && image && (
+            <div className="cm-photo strip">
+              <RecipePhoto src={image} alt="" />
             </div>
-          </div>
-          <p className="cm-step-text">{text}</p>
+          )}
+          <div className="cm-step-count">{stepOf}</div>
+          {!isPhone && title && <h3 className="cm-step-title">{title}</h3>}
+          <p className="cm-step-text">{stepParagraphText(text)}</p>
 
           {used.length > 0 && (
-            <div className="cm-uses">
-              <div className="cm-uses-head">
-                <span className="cm-uses-label">{t("cookMode.forThisStep")}</span>
-                <span className="cm-uses-hint">{t("cookMode.tapToCheck")}</span>
-              </div>
-              <div className="cm-uses-pills">
-                {used.map((ing) => {
-                  const key = `${stepIndex}:${ing.name}`;
-                  const on = !!checked[key];
-                  const qty = ing.quantity != null ? ing.quantity * scale : null;
-                  return (
-                    <button
-                      key={ing.id || ing.name}
-                      type="button"
-                      aria-pressed={on}
-                      className={`cm-uses-pill${on ? " on" : ""}`}
-                      onClick={() => setChecked((prev) => ({ ...prev, [key]: !prev[key] }))}
-                    >
-                      <span className="cm-uses-dot">{on ? "✓" : ""}</span>
-                      {qty != null && (
-                        <span className="cm-uses-qty">
-                          {formatQuantity(qty)}
-                          {ing.unit ? ` ${unitLabel(ing.unit, qty)}` : ""}
-                        </span>
-                      )}
-                      <span className="cm-uses-name">{ing.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <StepIngredients
+              items={used}
+              stepIndex={stepIndex}
+              scale={scale}
+              checked={checked}
+              onToggle={(key) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }))}
+            />
           )}
 
           {isPhone && timerBlock}
         </div>
 
-        <aside className="cm-right">
-          {!isPhone && timerBlock}
-          <div className={`cm-photo${image ? "" : " empty"}`}>{image && <img src={image} alt="" />}</div>
-          {nextStep && (
+        {!isPhone && (
+          <aside className="cm-right">
+            <div className={`cm-photo${image ? "" : " empty"}`}>{image && <RecipePhoto src={image} alt="" />}</div>
+            {timerBlock}
+          </aside>
+        )}
+      </main>
+
+      <footer className="cm-bottom">
+        <button type="button" className="cm-prev" aria-label={t("cookMode.previous")} disabled={stepIndex === 0} onClick={() => goToStep(stepIndex - 1)}>
+          {isPhone ? "←" : t("cookMode.previous")}
+        </button>
+        {!isPhone &&
+          (nextStep ? (
             <button type="button" className="cm-up-next" onClick={next}>
               <span className="cm-up-next-label">
                 {t("cookMode.upNext", { n: stepIndex + 2 })}
@@ -526,20 +498,12 @@ export function CookMode({
               </span>
               <span className="cm-up-next-text">{stepBody(nextStep)}</span>
             </button>
-          )}
-        </aside>
-      </main>
-
-      <footer className="cm-bottom">
-        <div className="cm-bottom-inner">
-          <button type="button" className="cm-prev" disabled={stepIndex === 0} onClick={() => goToStep(stepIndex - 1)}>
-            {t("cookMode.previous")}
-          </button>
-          <span className="cm-bottom-count">{t("cookMode.stepOf", { n: stepIndex + 1, total: steps.length })}</span>
-          <button type="button" className={`cm-next${isLast ? " finish" : ""}`} onClick={next}>
-            {isLast ? t("cookMode.finish") : t("cookMode.nextStep")}
-          </button>
-        </div>
+          ) : (
+            <span className="cm-bottom-spacer" />
+          ))}
+        <button type="button" className={`cm-next${isLast ? " finish" : ""}`} onClick={next}>
+          {isLast ? t("cookMode.finish") : t("cookMode.nextStep")}
+        </button>
       </footer>
     </div>
   );

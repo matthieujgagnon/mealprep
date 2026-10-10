@@ -157,6 +157,44 @@ test("a checked row fades and strikes through but never moves; the count and the
   await expect(page.locator(".store-mode-row.on")).toHaveCount(1);
 });
 
+test("Store mode and Cook mode share one light / dark choice", async ({ page }) => {
+  await signUp(page);
+  const res = await page.request.post("/api/recipes", {
+    data: { title: "Shared Theme Soup", baseServings: 2, ingredients: [{ name: "stock", quantity: 1, unit: "cup" }], instructions: ["Prep: Heat the stock."] },
+  });
+  expect(res.ok()).toBeTruthy();
+  await seedList(page); // reloads, so the recipe is there too
+
+  // Dark until someone picks light; a pick in Store mode is saved for both.
+  let mode = await openStoreMode(page);
+  await expect(mode).toHaveAttribute("data-sm-theme", "dark");
+  await mode.getByRole("button", { name: "Light theme" }).click();
+  expect(await page.evaluate(() => localStorage.getItem("mealprep-theme"))).toBe("light");
+  await mode.getByRole("button", { name: "← List" }).click();
+
+  // Cook mode opens in the choice Store mode saved...
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.getByText("Shared Theme Soup", { exact: true }).click();
+  await page.getByRole("button", { name: /Open the full recipe/ }).click();
+  await page.getByRole("button", { name: "Start cooking" }).click();
+  await expect(page.locator(".cm-overlay")).toHaveAttribute("data-theme", "light");
+
+  // ...and a pick there is the one Store mode opens in next.
+  await page.getByRole("button", { name: "Dark theme" }).click();
+  await page.getByRole("button", { name: "Exit cook mode" }).click();
+  await page.getByRole("button", { name: "Close" }).click();
+  mode = await openStoreMode(page);
+  await expect(mode).toHaveAttribute("data-sm-theme", "dark");
+});
+
+test("a choice Store mode saved before the switch was shared is still honoured", async ({ page }) => {
+  await signUp(page);
+  await seedList(page);
+  await page.evaluate(() => localStorage.setItem("mealprep-store-mode-theme", "light"));
+  const mode = await openStoreMode(page);
+  await expect(mode).toHaveAttribute("data-sm-theme", "light");
+});
+
 test("leaving: with nothing checked ← List just goes back; with items checked it asks, and adding goes through the Inventory confirmation", async ({ page }) => {
   await signUp(page);
   await seedList(page);

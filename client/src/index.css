@@ -3223,7 +3223,67 @@ input[type="date"].planner-week-picker {
   --riso-font-display: "Bricolage Grotesque", sans-serif;
   --riso-font-body: "Inter", system-ui, sans-serif;
   --riso-font-mono: "DM Mono", ui-monospace, monospace;
+
+  /* Added for Cook mode's step view (design: docs/design/riso-v2-cook-mode/). The
+     dark block below gives the ones that change in dark; the rest stay as they are. */
+  --riso-ink-fixed: #16181f; /* the ink that stays dark in dark mode: type on a yellow, green or pink fill */
+  --riso-knob: #fffdf8; /* the round knob of a switch, light in both */
+  --riso-bar-line: var(--riso-ink); /* the line under a full-screen top bar and over its bottom bar */
+  --riso-timer-bg: var(--riso-yellow); /* Cook mode's timer card: a yellow card ... */
+  --riso-timer-ink: var(--riso-ink); /* ... its type and outline ... */
+  --riso-timer-shadow-color: var(--riso-ink); /* ... and its hard shadow */
+  --riso-timer-main-bg: var(--riso-ink); /* Start / Pause on it */
+  --riso-timer-main-ink: var(--riso-yellow);
+  --riso-timer-main-line: var(--riso-ink);
+  --riso-timer-plus-bg: var(--riso-surface); /* +1 min and Reset on it */
+  --riso-timer-plus-ink: var(--riso-ink);
   color-scheme: light;
+}
+
+/* ---------- Dark ("black paper") ----------
+   The dark colours, in one place. A screen is dark when its .riso-theme element has
+   data-theme="dark"; the two full-screen modes set it from the shared switch
+   (components/ThemeSwitch.jsx, hooks/useTheme.js), and an app-wide dark mode can
+   set it the same way later. Only the colours the design gives are here: page
+   #000000, cards #111115, inner boxes #1b1b21 (--riso-track), ink #f4f1ea, muted
+   #9a9aa8, dotted lines in ink, shadows in blue. Anything the design doesn't give
+   (a second grey, the other hard shadows) is left as in light until it does. */
+.riso-theme[data-theme="dark"] {
+  --riso-canvas: #000000;
+  --riso-surface: #111115;
+  --riso-track: #1b1b21;
+  --riso-ink: #f4f1ea;
+  --riso-soft: #9a9aa8; /* the design has one muted grey */
+  --riso-muted: #9a9aa8;
+  --riso-dash-strong: #f4f1ea; /* dotted lines turn to ink */
+  --riso-shadow: 3px 3px 0 var(--riso-accent);
+  --riso-shadow-card: 6px 6px 0 var(--riso-accent);
+  --riso-bar-line: #26262e;
+  --riso-timer-bg: var(--riso-ink-fixed); /* a black card with yellow type and outline, no shadow */
+  --riso-timer-ink: var(--riso-yellow);
+  --riso-timer-shadow-color: transparent;
+  --riso-timer-main-bg: var(--riso-ink-fixed);
+  --riso-timer-main-ink: var(--riso-yellow);
+  --riso-timer-main-line: var(--riso-yellow);
+  --riso-timer-plus-bg: var(--riso-yellow);
+  --riso-timer-plus-ink: var(--riso-ink-fixed);
+  color-scheme: dark;
+}
+
+/* The shared ☀ / ☾ button (components/ThemeSwitch.jsx): Store mode's top row and
+   Cook mode's top bar. It is drawn in the colour of the text around it. */
+.riso-theme-switch {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  border: 2px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
 /* ---------- Riso v2 pills (Pill Study) ----------
@@ -6071,10 +6131,16 @@ button.riso-table-group-head:disabled {
 }
 
 /* ================================================================
-   Cook mode (design handoff v3, Riso Cook Mode.dc.html) - full screen,
-   no main nav: top bar, one step at a time, fixed bottom bar.
+   Cook mode (design 2c, docs/design/riso-v2-cook-mode/) - full screen, no main
+   nav: top bar, then on a computer three columns (step rail | step | photo and
+   timer) or on a phone a row of step dots over one column, and a bottom bar.
+   Every colour is a Riso token; the dark ones are in the dark block next to
+   them (data-theme="dark"). The finished view further down is the earlier one.
    ================================================================ */
 .cm-overlay {
+  /* The side margin: 40px, or more on a very wide screen so the bars and the
+     columns line up inside the same 1200px. */
+  --cm-gutter: max(40px, calc((100% - 1200px) / 2));
   position: fixed;
   inset: 0;
   z-index: 70;
@@ -6093,77 +6159,49 @@ button.riso-table-group-head:disabled {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 18px 40px;
-  border-bottom: 2px solid var(--riso-ink);
+  padding: 16px var(--cm-gutter);
+  border-bottom: 2px solid var(--riso-bar-line);
   background: var(--riso-surface);
-  flex-wrap: wrap;
-}
-
-.cm-back {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 20px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 14px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
 }
 
 .cm-title-block {
   flex: 1;
-  min-width: 220px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
 .cm-recipe-title {
-  font: 800 22px/1.1 var(--riso-font-display);
+  font: 800 20px/1.1 var(--riso-font-display);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .cm-meta {
   font: 500 11px var(--riso-font-mono);
   letter-spacing: 0.1em;
+  color: var(--riso-muted);
 }
 
-.cm-segments {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.cm-segment {
-  width: 44px;
-  height: 12px;
-  border-radius: 6px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  padding: 0;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.cm-segment.done {
-  background: var(--riso-ink);
-}
-
-.cm-segment.current {
-  background: var(--riso-accent);
-}
-
+/* The yellow chip for a timer running on another step (it stays yellow with dark
+   type in dark, like the design). */
 .cm-running-chip {
+  flex: none;
   height: 34px;
   padding: 0 12px;
   border-radius: 17px;
-  border: 2px solid var(--riso-ink);
+  border: 2px solid var(--riso-ink-fixed);
   background: var(--riso-yellow);
-  color: var(--riso-ink);
+  color: var(--riso-ink-fixed);
   font: 800 13px var(--riso-font-display);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .cm-awake {
@@ -6197,8 +6235,8 @@ button.riso-table-group-head:disabled {
   width: 18px;
   height: 18px;
   border-radius: 9px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
+  background: var(--riso-knob);
+  border: 2px solid var(--riso-ink-fixed);
   box-sizing: border-box;
   transition: left 0.2s;
 }
@@ -6211,195 +6249,200 @@ button.riso-table-group-head:disabled {
   left: 20px;
 }
 
+/* The shared light / dark button, at the size of the ×. */
+.cm-theme,
 .cm-exit {
+  flex: none;
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
-  color: var(--riso-ink);
-  font: 700 22px var(--riso-font-display);
-  padding: 0;
-  cursor: pointer;
   box-sizing: border-box;
 }
 
+.cm-theme {
+  color: var(--riso-ink);
+}
+
+.cm-exit {
+  background: transparent;
+  border: 2px solid var(--riso-ink);
+  color: var(--riso-ink);
+  font: 700 20px var(--riso-font-display);
+  padding: 0;
+  cursor: pointer;
+}
+
 /* ---------- Step view ---------- */
-/* The step view is one screen: top bar, the step, the bottom bar. The step
-   column fits itself to what's left (CookMode's fit effect shrinks the text);
-   the photo column shrinks its photo. */
+/* One screen: the top bar, the step, the bottom bar. The step column fits itself to
+   what is left (CookMode's fit effect steps the text down a size at a time). */
 .cm-step-view {
   overflow: hidden;
 }
 
-.cm-step-view .cm-main {
+.cm-main {
+  flex: 1;
   min-height: 0;
-  padding-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 32px var(--cm-gutter);
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 340px;
   grid-template-rows: minmax(0, 1fr);
+  gap: 32px;
   align-items: stretch;
 }
 
-.cm-step-view .cm-left {
+/* The step rail: numbered dots joined by a dotted line. */
+.cm-rail {
   min-height: 0;
   overflow-y: auto;
-  gap: 20px;
+  scrollbar-width: none;
 }
 
-.cm-step-view .cm-right {
-  min-height: 0;
-  position: static;
-}
-
-.cm-step-view .cm-photo {
-  aspect-ratio: auto;
-  flex: 1;
-  min-height: 0;
-  max-height: 520px;
-}
-
-.cm-step-view .cm-bottom {
-  position: static;
-  flex: none;
-}
-
-/* When even small text doesn't fit: a smaller step head, no hint, smaller
-   pills, a slimmer timer. */
-.cm-left.compact {
-  gap: 12px;
-}
-
-.cm-left.compact .cm-step-num {
-  width: 46px;
-  height: 46px;
-  font-size: 22px;
-  box-shadow: 2px 2px 0 var(--riso-ink);
-}
-
-.cm-left.compact .cm-step-title {
-  font-size: calc(var(--cm-step-size, 36px) * 1.25);
-}
-
-.cm-left.compact .cm-uses-hint {
+.cm-rail::-webkit-scrollbar {
   display: none;
 }
 
-.cm-left.compact .cm-step-text {
-  line-height: 1.3;
-}
-
-/* On wide screens the timer leads the photo column at a fixed size. */
-.cm-right > .cm-timer {
-  flex: none;
-}
-
-.cm-right > .cm-timer .cm-timer-time {
-  font-size: 64px;
-}
-
-.cm-left.compact .cm-uses-pill {
-  height: 38px;
-  padding: 0 12px 0 6px;
-  gap: 8px;
-}
-
-.cm-left.compact .cm-uses-dot {
-  width: 24px;
-  height: 24px;
-}
-
-.cm-left.compact .cm-uses-pills {
-  gap: 6px;
-}
-
-.cm-left.compact .cm-timer {
-  padding: 10px 16px;
-  gap: 12px;
-  box-shadow: 4px 4px 0 var(--riso-ink);
-}
-
-.cm-left.compact .cm-timer-main,
-.cm-left.compact .cm-timer-btn {
-  height: 42px;
-}
-
-/* The readout and its buttons share one row instead of wrapping. */
-.cm-left.compact .cm-timer {
-  flex-wrap: nowrap;
-}
-
-.cm-left.compact .cm-timer-readout {
-  min-width: 0;
-}
-.cm-main {
-  flex: 1;
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 36px 40px 140px;
+.cm-rail-track {
+  position: relative;
+  min-height: 100%;
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 36px;
-  align-items: start;
-}
-
-.cm-left {
+  padding-top: 4px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-}
-
-.cm-step-head {
-  display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 22px;
 }
 
-.cm-step-num {
-  width: 64px;
-  height: 64px;
-  flex: none;
-  border-radius: 32px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
+.cm-rail-track::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  bottom: 20px;
+  left: 50%;
+  width: 0;
+  margin-left: -1px;
+  border-left: 2px dotted var(--riso-dash-strong);
+}
+
+.cm-rail-item {
+  position: relative;
+  padding: 2px 0;
+  background: var(--riso-canvas);
+}
+
+.cm-rail-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cm-rail-tab:focus-visible {
+  outline: none;
+}
+
+.cm-rail-tab:focus-visible .cm-rail-dot {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 3px;
+}
+
+.cm-rail-dot {
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 800 30px var(--riso-font-display);
-  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 11px var(--riso-font-display);
+}
+
+.cm-rail-item.done .cm-rail-dot {
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+}
+
+.cm-rail-item.current .cm-rail-dot {
+  width: 44px;
+  height: 44px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  font-size: 15px;
+  box-shadow: var(--riso-shadow);
+}
+
+.cm-rail-label {
+  max-width: 84px;
+  text-align: center;
+  font: 500 10px/1.2 var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+  overflow-wrap: anywhere;
+}
+
+.cm-rail-item.current .cm-rail-label {
+  color: var(--riso-ink);
+}
+
+/* The step. */
+.cm-left {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .cm-step-count {
-  font: 500 12px var(--riso-font-mono);
+  font: 500 11px var(--riso-font-mono);
   letter-spacing: 0.14em;
+  color: var(--riso-muted);
 }
 
 .cm-step-title {
-  font: 800 30px var(--riso-font-display);
+  margin: 0;
+  font: 800 30px/1 var(--riso-font-display);
   letter-spacing: -0.02em;
 }
 
 .cm-step-text {
   margin: 0;
-  font: 500 var(--cm-step-size, 36px)/1.35 var(--riso-font-display);
-  letter-spacing: -0.01em;
+  font: 500 var(--cm-step-size, 34px) / 1.32 var(--riso-font-display);
+  letter-spacing: -0.015em;
   text-wrap: pretty;
+  white-space: pre-line; /* the blank lines between paragraphs (lib/stepParagraphs.js) */
 }
 
+/* "For this step": a dotted line over it, a count, and one row for each ingredient. */
 .cm-uses {
+  --cm-qty-col: 80px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  padding-top: 12px;
+  border-top: 2px dotted var(--riso-dash-strong);
+}
+
+/* French quantities are longer ("2 c. à soupe"). */
+.cm-uses:lang(fr) {
+  --cm-qty-col: 104px;
 }
 
 .cm-uses-head {
   display: flex;
+  justify-content: space-between;
   align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
+  margin-bottom: 4px;
 }
 
 .cm-uses-label {
@@ -6408,143 +6451,100 @@ button.riso-table-group-head:disabled {
   white-space: nowrap;
 }
 
-.cm-uses-hint {
-  font-size: 12.5px;
-  color: var(--riso-soft);
+.cm-uses-count {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
 }
 
-.cm-uses-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* The amount column is at least the width above and grows to the longest amount in
+   the list, so the names line up and nothing runs into the check. */
+.cm-uses-list {
+  display: grid;
+  grid-template-columns: 30px minmax(var(--cm-qty-col), max-content) minmax(0, 1fr);
+  column-gap: 12px;
 }
 
-.cm-uses-pill {
-  height: 48px;
-  padding: 0 16px 0 8px;
-  border-radius: 24px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  display: flex;
+.cm-uses-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 30px var(--cm-qty-col) minmax(0, 1fr);
+  column-gap: 12px;
   align-items: center;
-  gap: 10px;
+  min-height: 50px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px dotted var(--riso-dash-strong);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   user-select: none;
 }
 
-.cm-uses-pill.on {
-  background: var(--riso-canvas);
-  opacity: 0.6;
+@supports (grid-template-columns: subgrid) {
+  .cm-uses-row {
+    grid-template-columns: subgrid;
+  }
+}
+
+.cm-uses-row.on {
+  opacity: 0.55;
 }
 
 .cm-uses-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-on-accent);
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  box-sizing: border-box;
+  border-radius: 13px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-on-accent);
+  font: 700 13px var(--riso-font-display);
 }
 
-.cm-uses-pill.on .cm-uses-dot {
+.cm-uses-row.on .cm-uses-dot {
   background: var(--riso-accent);
 }
 
 .cm-uses-qty {
-  font: 500 13px var(--riso-font-mono);
+  text-align: right;
+  white-space: nowrap;
+  font: 500 14px var(--riso-font-mono);
 }
 
 .cm-uses-name {
-  font: 700 16px var(--riso-font-display);
+  font: 700 17px var(--riso-font-display);
 }
 
-.cm-uses-pill.on .cm-uses-name {
+.cm-uses-row.on .cm-uses-name {
   text-decoration: line-through;
 }
 
-.cm-timer {
-  background: var(--riso-yellow);
-  border: 2px solid var(--riso-ink);
-  border-radius: 24px;
-  box-shadow: 6px 6px 0 var(--riso-ink);
-  padding: 20px 22px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+.cm-uses-prep {
+  font-weight: 500;
+  color: var(--riso-muted);
 }
 
-.cm-timer-readout {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 180px;
-}
-
-.cm-timer-label {
-  font: 500 11px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-}
-
-.cm-timer-time {
-  font: 800 calc(var(--cm-step-size, 36px) * 2.1) / 1 var(--riso-font-display);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.cm-timer-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.cm-timer-main,
-.cm-timer-btn {
-  height: 52px;
-  border-radius: 26px;
-  white-space: nowrap;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.cm-timer-main {
-  padding: 0 24px;
-  border: none;
-  background: var(--riso-ink);
-  color: var(--riso-yellow);
-  font: 800 17px var(--riso-font-display);
-}
-
-.cm-timer-btn {
-  padding: 0 18px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 15px var(--riso-font-display);
-}
-
+/* The photo and timer column. */
 .cm-right {
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  position: sticky;
-  top: 104px;
+  gap: 28px;
 }
 
 .cm-photo {
-  aspect-ratio: 4 / 3;
-  border-radius: 26px;
+  flex: 0 1 250px;
+  min-height: 0;
+  box-sizing: border-box;
   overflow: hidden;
+  border-radius: 20px;
   border: 2px solid var(--riso-ink);
-  box-shadow: 6px 6px 0 var(--riso-ink);
   background: var(--riso-track);
 }
 
@@ -6555,58 +6555,141 @@ button.riso-table-group-head:disabled {
   display: block;
 }
 
-.cm-up-next {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 20px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: left;
-  color: var(--riso-ink);
-  cursor: pointer;
+.cm-photo.strip {
+  flex: none;
+  height: 60px;
+  border-radius: 16px;
 }
 
-.cm-up-next-label {
+/* The timer card: yellow with an ink outline and a hard shadow; in dark a black card
+   with yellow type and outline, no shadow (the --riso-timer-* tokens). */
+.cm-timer {
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px;
+  background: var(--riso-timer-bg);
+  color: var(--riso-timer-ink);
+  border: 2px solid var(--riso-timer-ink);
+  border-radius: 24px;
+  box-shadow: 6px 6px 0 var(--riso-timer-shadow-color);
+}
+
+.cm-timer-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cm-timer-label {
   font: 500 11px var(--riso-font-mono);
   letter-spacing: 0.12em;
 }
 
-.cm-up-next-text {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--riso-soft);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.cm-timer-time {
+  font: 800 64px/1 var(--riso-font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 
-.cm-bottom {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
-  background: var(--riso-surface);
-  border-top: 2px solid var(--riso-ink);
-  padding: 16px 40px;
+.cm-timer-actions {
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap; /* a long French label puts +1 min and ↺ on a second row instead of past the card */
+  gap: 8px;
 }
 
-.cm-bottom-inner {
-  width: 100%;
-  max-width: 1200px;
+.cm-timer-main,
+.cm-timer-btn {
+  height: 50px;
+  border-radius: 26px;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.cm-timer-main {
+  flex: 1 1 auto;
+  padding: 0 18px;
+  border: 2px solid var(--riso-timer-main-line);
+  background: var(--riso-timer-main-bg);
+  color: var(--riso-timer-main-ink);
+  font: 800 16px var(--riso-font-display);
+}
+
+.cm-timer-btn {
+  padding: 0 16px;
+  border: 2px solid var(--riso-timer-ink);
+  background: var(--riso-timer-plus-bg);
+  color: var(--riso-timer-plus-ink);
+  font: 700 15px var(--riso-font-display);
+}
+
+/* Reset: the round ↺ next to +1 min (named "Reset" for screen readers). */
+.cm-timer-reset {
+  width: 50px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* When even small text doesn't fit: tighter gaps and rows, a slimmer timer. */
+.cm-left.compact {
+  gap: 12px;
+}
+
+.cm-left.compact .cm-uses-row {
+  min-height: 40px;
+}
+
+.cm-left.compact .cm-timer {
+  padding: 10px 14px;
+  gap: 6px;
+}
+
+/* Tighter still, for a very long step with a lot of ingredients. */
+.cm-left.tight {
+  gap: 8px;
+}
+
+.cm-left.tight .cm-uses {
+  padding-top: 8px;
+}
+
+.cm-left.tight .cm-uses-row {
+  min-height: 28px;
+}
+
+.cm-left.tight .cm-uses-dot {
+  width: 22px;
+  height: 22px;
+}
+
+.cm-left.tight .cm-uses-name {
+  font-size: 15px;
+}
+
+.cm-left.tight .cm-uses-qty {
+  font-size: 12px;
+}
+
+/* The bottom bar: Previous, Up next (a label and one line), Next. */
+.cm-bottom {
+  flex: none;
   display: flex;
   gap: 12px;
   align-items: center;
+  box-sizing: border-box;
+  padding: 14px var(--cm-gutter) max(14px, env(safe-area-inset-bottom));
+  background: var(--riso-surface);
+  border-top: 2px solid var(--riso-bar-line);
 }
 
 .cm-prev,
 .cm-next {
-  height: 60px;
+  flex: none;
+  height: 58px;
   border-radius: 30px;
   border: 2px solid var(--riso-ink);
   white-space: nowrap;
@@ -6615,10 +6698,10 @@ button.riso-table-group-head:disabled {
 }
 
 .cm-prev {
-  padding: 0 26px;
-  background: var(--riso-surface);
+  padding: 0 24px;
+  background: transparent;
   color: var(--riso-ink);
-  font: 700 18px var(--riso-font-display);
+  font: 700 17px var(--riso-font-display);
 }
 
 .cm-prev:disabled {
@@ -6626,24 +6709,76 @@ button.riso-table-group-head:disabled {
   cursor: default;
 }
 
-.cm-bottom-count {
-  flex: 1;
-  text-align: center;
-  font: 500 12px var(--riso-font-mono);
-  letter-spacing: 0.12em;
-}
-
 .cm-next {
-  padding: 0 34px;
+  padding: 0 30px;
   background: var(--riso-accent);
   color: var(--riso-on-accent);
-  box-shadow: 4px 4px 0 var(--riso-ink);
-  font: 800 19px var(--riso-font-display);
+  font: 800 18px var(--riso-font-display);
 }
 
-.cm-next.finish {
-  background: var(--riso-green);
+.cm-up-next {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
   color: var(--riso-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cm-up-next-label {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--riso-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cm-up-next-text {
+  font: 600 14px/1.35 var(--riso-font-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cm-bottom-spacer {
+  flex: 1;
+}
+
+/* Between a phone and a wide screen the photo and timer drop under the step. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .cm-main {
+    grid-template-columns: 80px minmax(0, 1fr);
+    grid-template-rows: none;
+    overflow-y: auto;
+    align-items: start;
+  }
+
+  .cm-rail {
+    grid-row: 1 / span 2;
+  }
+
+  /* Rows take the height of what is in them, and the whole column scrolls. */
+  .cm-left {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .cm-right {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: auto;
+  }
+
+  .cm-photo {
+    flex: none;
+    height: 220px;
+  }
 }
 
 /* ---------- Finished view ---------- */
@@ -6839,158 +6974,223 @@ button.riso-table-group-head:disabled {
   text-align: center;
 }
 
-/* Phone (Riso Mobile.dc.html): photo on top, one column, 24px step text,
-   a 52px timer, and a sticky ← / full-width Next bar. */
+/* Phone: the step dots and title under the top bar, then one column - a 60px photo
+   strip, the step, "For this step", the timer - and a bottom bar with a 56px ← and
+   Next filling the rest. */
 @media (max-width: 767px) {
+  .cm-overlay {
+    --cm-gutter: 18px;
+  }
+
   .cm-topbar {
-    padding: 10px 18px;
+    padding-top: 10px;
+    padding-bottom: 10px;
     gap: 10px;
   }
 
-  .cm-back,
+  /* Keep screen on isn't shown (the screen stays awake) and the meta line is left out. */
   .cm-awake,
   .cm-meta {
     display: none;
   }
 
   .cm-exit {
-    width: 44px;
-    height: 44px;
     order: -1;
-  }
-
-  .cm-title-block {
-    min-width: 0;
   }
 
   .cm-recipe-title {
     font-size: 17px;
   }
 
-  .cm-segments {
-    width: 100%;
-    order: 3;
+  .cm-phone-steps {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 18px 10px;
+    border-bottom: 2px dotted var(--riso-dash-strong);
   }
 
-  .cm-segment {
-    flex: 1;
+  .cm-phone-steps .cm-step-title {
+    font-size: 18px;
+    line-height: normal;
+    letter-spacing: normal;
+  }
+
+  .cm-rail.top {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .cm-rail.top .cm-rail-track {
+    min-height: 0;
+    min-width: max-content;
+    padding-top: 0;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .cm-rail.top .cm-rail-track::before {
+    top: 50%;
+    bottom: auto;
+    left: 14px;
+    right: 14px;
     width: auto;
+    height: 0;
+    margin: -1px 0 0;
+    border-left: 0;
+    border-top: 2px dotted var(--riso-dash-strong);
   }
 
-  .cm-main {
-    grid-template-columns: 1fr;
-    padding: 18px 18px 120px;
-    gap: 18px;
+  .cm-rail.top .cm-rail-item {
+    padding: 0;
+    background: none;
   }
 
-  .cm-right {
-    order: -1;
-    position: static;
+  .cm-rail.top .cm-rail-dot {
+    width: 24px;
+    height: 24px;
   }
 
-  .cm-photo {
-    aspect-ratio: auto;
-    height: 200px;
-    margin: -18px -18px 0;
-    border-radius: 0;
-    border-width: 0 0 2px;
+  .cm-rail.top .cm-rail-item.current .cm-rail-dot {
+    width: 34px;
+    height: 34px;
     box-shadow: none;
   }
 
-  .cm-up-next {
-    display: none;
+  .cm-main {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px 18px;
   }
 
-  .cm-step-num {
-    width: 52px;
-    height: 52px;
-    font-size: 24px;
+  /* The column scrolls, which would cut off the timer's hard shadow: it gets a few
+     pixels of its own room at the right and the bottom. */
+  .cm-left {
+    padding: 0 8px 8px 0;
+    margin: 0 -8px -8px 0;
   }
 
-  .cm-step-title {
-    font-size: 24px;
+  .cm-step-count {
+    margin-bottom: -12px;
   }
 
   .cm-step-text {
-    font-size: var(--cm-step-size, 24px);
-    line-height: 1.4;
+    font-size: var(--cm-step-size, 19px);
+  }
+
+  .cm-uses {
+    --cm-qty-col: 62px;
+  }
+
+  .cm-uses:lang(fr) {
+    --cm-qty-col: 86px;
+  }
+
+  .cm-uses-row {
+    min-height: 40px;
+  }
+
+  .cm-left.compact .cm-uses-row {
+    min-height: 34px;
+  }
+
+  .cm-left.tight .cm-uses-row {
+    min-height: 26px;
+  }
+
+  .cm-left.tight .cm-uses-name {
+    font-size: 14px;
+  }
+
+  .cm-left.tight .cm-uses-qty {
+    font-size: 11px;
+  }
+
+  .cm-left.tight .cm-timer {
+    padding: 6px 12px;
+    gap: 4px;
+  }
+
+  .cm-left.tight .cm-timer-time {
+    font-size: 26px;
+  }
+
+  .cm-left.tight .cm-timer-main,
+  .cm-left.tight .cm-timer-btn {
+    height: 36px;
+  }
+
+  .cm-left.tight .cm-timer-reset {
+    width: 36px;
+  }
+
+  .cm-uses-qty {
+    font-size: 12px;
+  }
+
+  .cm-uses-name {
+    font-size: 15px;
+  }
+
+  /* The timer: the label and time on top, then Start / Pause filling the row with
+     +1 min and ↺ beside it. */
+  .cm-timer {
+    padding: 10px 14px;
+    gap: 6px;
+    border-radius: 24px;
+    box-shadow: 5px 5px 0 var(--riso-timer-shadow-color);
   }
 
   .cm-timer-time {
-    font-size: calc(var(--cm-step-size, 24px) * 2.1);
+    font-size: 34px;
   }
 
-  .cm-step-view .cm-main {
-    grid-template-rows: auto minmax(0, 1fr);
-    padding-bottom: 12px;
+  .cm-timer-actions {
+    gap: 6px;
   }
 
-  .cm-step-view .cm-photo {
-    flex: none;
-    height: clamp(110px, 22dvh, 200px);
+  .cm-timer-main,
+  .cm-timer-btn {
+    height: 44px;
   }
 
-  /* No step photo, or no room for one: the step gets the screen (and the
-     gap under the photo goes with it). */
-  .cm-step-view .cm-photo.empty,
-  .cm-step-view.cm-no-photo .cm-photo {
-    display: none;
-  }
-
-  .cm-step-view .cm-main {
-    row-gap: 0;
-  }
-
-  .cm-step-view:not(.cm-no-photo) .cm-right:has(.cm-photo:not(.empty)) {
-    margin-bottom: 18px;
-  }
-
-  .cm-uses-pill {
-    height: 42px;
-    padding: 0 12px 0 6px;
-    gap: 8px;
-  }
-
-  .cm-left.compact .cm-uses-pill {
-    height: 34px;
-  }
-
-  .cm-left.compact .cm-uses-pills {
-    gap: 5px;
-  }
-
-  .cm-left.compact .cm-uses-dot {
-    width: 22px;
-    height: 22px;
+  .cm-timer-main {
+    padding: 0 10px;
+    font-size: 15px;
   }
 
   .cm-timer-btn {
-    display: none;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .cm-timer-reset {
+    width: 44px;
+    padding: 0;
+    font-size: 18px;
   }
 
   .cm-bottom {
-    padding: 12px 18px;
+    padding-top: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 
-  .cm-bottom-count {
-    display: none;
+  .cm-prev,
+  .cm-next {
+    height: 56px;
   }
 
   .cm-prev {
     width: 56px;
-    height: 56px;
     padding: 0;
-    font-size: 0;
-  }
-
-  .cm-prev::before {
-    content: "←";
     font-size: 22px;
   }
 
   .cm-next {
     flex: 1;
-    height: 56px;
+    padding: 0 16px;
   }
 
   .cm-done {
@@ -14176,10 +14376,6 @@ body.no-select {
   background: var(--riso-ink);
 }
 
-.riso-help-copy .cm-prev::before {
-  content: none;
-}
-
 .riso-help-copy .riso-help-copy-body.riso-row-check {
   width: 20px;
   height: 20px;
@@ -18662,18 +18858,8 @@ body.no-select {
   font-size: 13px;
 }
 
-.store-mode-theme {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  border: 2px solid var(--sm-text);
-  background: transparent;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  box-sizing: border-box;
-}
+/* The ☀ / ☾ button is the shared ThemeSwitch (.riso-theme-switch, below the
+   tokens), drawn in the colour of this screen's text. */
 
 .store-mode-num {
   flex: none;

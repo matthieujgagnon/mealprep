@@ -59,9 +59,10 @@ export const HELP_COPIES = {
   deleteRecipe: { kind: "pill", cls: "riso-help-copy-menu danger", label: "recipeCard.deleteRecipe" },
 
   // Cook mode
-  pause: { kind: "pill", cls: "cm-timer-btn", label: "cookMode.pause" },
+  pause: { kind: "pill", cls: "cm-timer-main", label: "cookMode.pause" },
   plusMinute: { kind: "pill", cls: "cm-timer-btn", label: "cookMode.plusMinute" },
-  reset: { kind: "pill", cls: "cm-timer-btn", label: "cookMode.reset" },
+  reset: { kind: "icon", cls: "cm-timer-btn cm-timer-reset", glyph: "↺" },
+  themeSwitch: { kind: "icon", cls: "riso-theme-switch", glyph: "☾" },
   keepAwake: { kind: "group", cls: "riso-help-copy-awake", switch: true, items: [{ label: "cookMode.keepAwake" }] },
   previous: { kind: "pill", cls: "cm-prev", label: "cookMode.previous" },
   nextStep: { kind: "pill", cls: "cm-next", label: "cookMode.nextStep", strong: true },

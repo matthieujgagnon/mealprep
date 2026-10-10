@@ -14,7 +14,9 @@ export function stepImage(step) {
 // step that's *only* a label with nothing else on the line. Both can key
 // off the same "short text ending in a colon" shape without conflicting,
 // since a titled step always has more text after the colon.
-const STEP_TITLE_PREFIX = /^([A-Za-z][A-Za-z ]{1,24}):\s+(?=\S)/;
+// Letters in any language (a French recipe's "Rôtir:" or "Préparation :"), and French
+// writes a space before the colon.
+const STEP_TITLE_PREFIX = /^(\p{L}[\p{L} ]{1,24}?)[ \u00a0\u202f]?:\s+(?=\S)/u;
 
 export function stepTitle(step) {
   const m = STEP_TITLE_PREFIX.exec(stepText(step));
