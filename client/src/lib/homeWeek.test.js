@@ -59,4 +59,16 @@ describe("toUseItems", () => {
     expect(shown.map((i) => i.id)).toEqual(["ok"]);
     expect(toUseItems(undefined, daysUntil)).toEqual({ shown: [], soonest: [] });
   });
+
+  it("puts leftovers about to expire first, and searches recipes with the rest", () => {
+    const items = [
+      { id: "milk", expiresAt: at(1) },
+      { id: "chili", isLeftover: true, expiresAt: at(2) },
+      { id: "soup", isLeftover: true, expiresAt: at(20) },
+      { id: "eggs", expiresAt: at(4) },
+    ];
+    const { shown, soonest } = toUseItems(items, daysUntil);
+    expect(shown.map((i) => i.id)).toEqual(["chili", "milk", "eggs", "soup"]);
+    expect(soonest.map((i) => i.id)).toEqual(["milk", "eggs"]);
+  });
 });

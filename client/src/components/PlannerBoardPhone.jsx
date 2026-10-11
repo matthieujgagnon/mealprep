@@ -100,10 +100,11 @@ export function PlannerBoardPhone({
   onCycleState,
   onEmptyClick,
   inline,
+  leftoverItems = [],
 }) {
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
-  const staleIds = computeStaleLeftoverIds(entries);
+  const staleIds = computeStaleLeftoverIds(entries, leftoverItems);
 
   const viewportRef = useRef(null);
   const insRef = useRef(null);

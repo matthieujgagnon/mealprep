@@ -4,7 +4,7 @@ import { useIsPhone } from "../hooks/useIsPhone.js";
 import { useTheme } from "../hooks/useTheme.js";
 import { buildTakeOut } from "../lib/inventoryMatch.js";
 import { editedRow, plannedMealFor, startingPortions, takesFrom } from "../lib/cookedView.js";
-import { leftoverItem, leftoverKeepDays, FRIDGE_DAYS } from "../lib/leftovers.js";
+import { leftoverItem, leftoverKeepDays, linkableCopies, FRIDGE_DAYS } from "../lib/leftovers.js";
 import { toDateKey } from "../lib/dates.js";
 import { currentMealType } from "../lib/homeWeek.js";
 import { DoneModal, LeftoversCard, TakeOutCard } from "./CookedViewParts.jsx";
@@ -240,6 +240,7 @@ export function CookedViewHost({
   entries,
   addItem,
   setCooked,
+  linkMeals,
   runningLow,
   showToast,
   onClosed,
@@ -252,6 +253,9 @@ export function CookedViewHost({
     [open]
   );
   const entry = useMemo(() => (open ? open.entry || plannedMealFor(open.recipe.id, entries, toDateKey(new Date())) : null), [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Leftover meals already planned for this recipe: they eat from the leftovers
+  // added here, and how many there are is where the portions start.
+  const copies = useMemo(() => (open ? linkableCopies(open.recipe.id, entries, toDateKey(new Date())) : []), [open]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     session.current = {};
   }, [open]);
@@ -276,6 +280,10 @@ export function CookedViewHost({
 
   async function undoAll(s = session.current) {
     await undoInventory(s);
+    if (s.linked?.length) {
+      await linkMeals(s.linked, null);
+      s.linked = null;
+    }
     if (s.leftover) {
       const id = s.leftover.id;
       setPantryInventory((prev) => prev.filter((i) => i.id !== id));
@@ -287,7 +295,13 @@ export function CookedViewHost({
   const actions = {
     // The Leftovers card is the confirmation: the item it shows goes in as it is.
     async addLeftovers(portions, place) {
-      session.current.leftover = await addItem(leftoverItem(recipe, portions, place));
+      const item = await addItem(leftoverItem(recipe, portions, place));
+      session.current.leftover = item;
+      if (copies.length > 0) {
+        const ids = copies.map((e) => e.id);
+        await linkMeals(ids, item.id);
+        session.current.linked = ids;
+      }
     },
     async finish(takes) {
       if (takes.length > 0) {
@@ -331,7 +345,7 @@ export function CookedViewHost({
       userId={userId}
       rows={rows}
       shelfName={shelfName}
-      portionsStart={startingPortions(servings)}
+      portionsStart={startingPortions(servings, copies.length)}
       actions={actions}
       onClose={close}
       onBackToStep1={open.onBackToStep1 ? () => close({ back: true }) : null}

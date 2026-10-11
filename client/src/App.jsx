@@ -17,6 +17,7 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { getEventCoordinates } from "@dnd-kit/utilities";
 import { api } from "./api.js";
 import { dict, t } from "./i18n/index.js";
+import { formatList } from "./i18n/format.js";
 import { LanguageSwitch } from "./components/RisoControls.jsx";
 import { currentWeekStart, isPastDay, shiftWeek, toDateKey } from "./lib/dates.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
@@ -42,6 +43,7 @@ import { Makeable } from "./components/Makeable.jsx";
 import { Inventory, InventoryDragPreview, shelfOptions } from "./components/Inventory.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 import { CookedViewHost } from "./components/CookedView.jsx";
+import { leftoverTitle } from "./lib/leftovers.js";
 import { StoreConfetti } from "./components/StoreModeParts.jsx";
 import { TRASH_ID } from "./components/TrashZone.jsx";
 
@@ -332,6 +334,27 @@ export default function App({ user, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A planned leftover meal whose day has passed takes one portion off the
+  // Inventory leftovers it eats from, once (the server marks the meal); the
+  // leftovers leave Inventory at zero. The toast says so; its Undo puts the
+  // portions back (the meal stays counted, so they aren't taken again).
+  useEffect(() => {
+    api
+      .settleLeftovers(toDateKey(new Date()))
+      .then((done) => {
+        if (!done?.entryIds?.length) return;
+        api.listPantryInventory().then(setPantryInventory);
+        api.listPlanner(currentWeekStart()).then((entries) => currentWeekStart() === weekStart && setPlannerEntries(entries));
+        const list = formatList(done.meals.map((m) => m.title));
+        showToast(t("cooked.eaten", { count: done.entryIds.length, list }), async () => {
+          await api.putBackPantryItems(done.before, done.logIds);
+          setPantryInventory(await api.listPantryInventory());
+        });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setLoadError(true));
   }, [weekStart]);
@@ -558,6 +581,13 @@ export default function App({ user, onLogout }) {
     setPickerFor({ recipe });
   }
 
+  // The slot picker for Inventory leftovers (the Planner search's « Restes · ... »).
+  function requestPlanLeftover(item) {
+    const recipe = recipes.find((r) => r.id === item.recipeId);
+    setPopout(null);
+    setPickerFor({ leftover: item, recipe: { id: item.recipeId, title: leftoverTitle(item), photoUrl: recipe?.photoUrl || null } });
+  }
+
   // Keeps the recipes list AND the currently-open modal in sync after an
   // in-modal edit (currently just tags) — otherwise the tag filter bar
   // wouldn't see new tags until a full page reload.
@@ -678,7 +708,8 @@ export default function App({ user, onLogout }) {
   // item), the date is left as-is rather than guessed.
   async function handleMoveInventoryItem(itemId, newLocation) {
     const item = pantryInventory.find((i) => i.id === itemId);
-    if (!item || item.location === newLocation) return;
+    // Leftovers stay on their own shelf (they move to the fridge to thaw instead).
+    if (!item || item.isLeftover || newLocation === "leftovers" || item.location === newLocation) return;
     const targetData = item.locations?.[newLocation];
     const payload = { location: newLocation, ...(targetData ? { expiresAt: targetData.expiresAt } : {}) };
     setPantryInventory((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...payload } : i)));
@@ -744,6 +775,13 @@ export default function App({ user, onLogout }) {
       }
       // A meal or note dragged between slots: the two slots swap.
       await handleMoveEntry(entryId, slot);
+      return;
+    }
+
+    // Inventory leftovers dragged in from the finder.
+    const leftoverItem = active.data.current?.leftoverItem;
+    if (leftoverItem) {
+      await handlePlaceLeftoverItem(leftoverItem, slot);
       return;
     }
 
@@ -887,6 +925,32 @@ export default function App({ user, onLogout }) {
     announcePlacement({ entry: saved, replaced: existingNote ? null : others[0] || null }, slot);
   }
 
+  // Inventory leftovers placed on a slot (the Planner search, drag or the slot
+  // picker): a leftover meal that eats one of their portions (`leftoverItemId`),
+  // replacing what was there; nothing goes on the grocery list. Leftovers typed in
+  // by hand with no recipe go in as a note, « Restes · pizza ». The toast has Undo.
+  async function handlePlaceLeftoverItem(item, slot, week = weekStart) {
+    const inView = week === weekStart;
+    const weekEntries = inView ? plannerEntries : await api.listPlanner(week);
+    const existing = weekEntries.filter((e) => e.dayOfWeek === slot.dayOfWeek && e.mealType === slot.mealType);
+    await Promise.all(existing.map((e) => api.removeFromPlanner(e.id)));
+    let entry;
+    if (item.recipeId) {
+      entry = await api.placeOnPlanner({ recipeId: item.recipeId, weekStart: week, ...slot, isLeftover: true, leftoverItemId: item.id });
+    } else {
+      const note = await api.markSlotBlank(week, slot.dayOfWeek, slot.mealType, t("planner.leftoverNote", { name: item.name }));
+      entry = { ...note, ...(await api.updatePlannerEntry(note.id, { isLeftover: true, leftoverItemId: item.id })), recipe: note.recipe };
+    }
+    if (inView) setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), entry]);
+    else setUpcomingTick((n) => n + 1);
+    setPlannerTarget(null);
+    const recipe = recipes.find((r) => r.id === item.recipeId);
+    showToast(t("planner.leftoversAdded", { title: recipe?.title || item.name, slot: slotLabel(slot) }), async () => {
+      await dropEntry(entry.id);
+      if (existing[0]) await restoreEntry(existing[0]);
+    });
+  }
+
   // Leftovers of a recipe on an empty slot: the same recipe, flagged as a
   // leftover, so nothing from it goes on the grocery list again.
   async function handlePlaceLeftover(recipe, slot) {
@@ -987,6 +1051,15 @@ export default function App({ user, onLogout }) {
     setPlannerEntries((prev) => prev.map(apply));
     setUpcomingEntries((prev) => prev.map(apply));
     await api.updatePlannerEntry(entry.id, { cookedAt });
+  }
+
+  // The leftover meals planned ahead for a recipe eat from the leftovers its
+  // finished view adds (`leftoverItemId`), or from none again on Undo (null).
+  async function linkLeftoverMeals(ids, leftoverItemId) {
+    const apply = (e) => (ids.includes(e.id) ? { ...e, leftoverItemId } : e);
+    setPlannerEntries((prev) => prev.map(apply));
+    setUpcomingEntries((prev) => prev.map(apply));
+    await Promise.all(ids.map((id) => api.updatePlannerEntry(id, { leftoverItemId })));
   }
 
   // × or "Back to the app" also leave Cook mode; "Back to step 1" goes back into it.
@@ -1357,10 +1430,12 @@ export default function App({ user, onLogout }) {
                   cycleState: handleCycleMealState,
                   copyLastWeek: handleCopyLastWeek,
                   cooked: (entry) => openCooked({ recipe: entry.recipe, servings: entry.servings, entry }),
+                  placeLeftoverItem: (item, slot) => handlePlaceLeftoverItem(item, slot),
                 }}
                 onOpenPopout={openPopout}
                 popoutId={popout?.recipeId}
                 onRequestPlan={requestPlan}
+                onRequestPlanLeftover={requestPlanLeftover}
                 onOpenRecipeCard={openRecipeCard}
               />
             )}
@@ -1450,9 +1525,10 @@ export default function App({ user, onLogout }) {
             weekend={weekend}
             initialSlot={plannerTarget}
             onConfirm={async (slot, week) => {
-              const { recipe } = pickerFor;
+              const { recipe, leftover } = pickerFor;
               setPickerFor(null);
-              if (!(await handlePlanRecipe(recipe, slot, week))) showToast(t("app.slotsFull"));
+              if (leftover) await handlePlaceLeftoverItem(leftover, slot, week);
+              else if (!(await handlePlanRecipe(recipe, slot, week))) showToast(t("app.slotsFull"));
             }}
             onClose={() => setPickerFor(null)}
           />
@@ -1483,6 +1559,7 @@ export default function App({ user, onLogout }) {
           entries={[...plannerEntries, ...upcomingEntries]}
           addItem={handleAddPantryItem}
           setCooked={setMealCooked}
+          linkMeals={linkLeftoverMeals}
           runningLow={handleRunningLow}
           showToast={showToast}
           onClosed={handleCookedClosed}

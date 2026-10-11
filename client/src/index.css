@@ -7715,6 +7715,72 @@ button.riso-table-group-head:disabled {
   }
 }
 
+/* Leftovers in Inventory (the Leftovers shelf), the item form's Leftovers mode and
+   Home's Use it up: the yellow LEFTOVER tag, where they're kept, and thawing. */
+.inv-card-leftover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font: 500 12px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.inv-card-leftover-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+
+.inv-card-leftover .inv-card-leftover-tag {
+  margin-left: 0;
+}
+
+.inv-card-thaw {
+  align-self: flex-start;
+  margin-top: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-leftover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.riso-itemform-recipe {
+  height: 32px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 600 13px var(--riso-font-body);
+}
+
+.riso-itemform-unit.fixed {
+  display: inline-flex;
+  align-items: center;
+  font: 600 15px var(--riso-font-body);
+}
+
 /* The cooked mark on a Planner card, the planned meal's card and Home's tonight card. */
 .riso-planner-card-cooked {
   position: absolute;

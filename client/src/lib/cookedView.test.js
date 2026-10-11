@@ -87,3 +87,44 @@ describe("leftovers", () => {
     expect(startingPortions(1)).toBe(0);
   });
 });
+
+describe("one leftovers system", () => {
+  const e = (id, weekStart, dayOfWeek, extra = {}) => ({ id, weekStart, dayOfWeek, recipe: { id: "r", fridgeLifeDays: 3 }, ...extra });
+
+  it("links the leftover meals planned from today on that nothing feeds yet", async () => {
+    const { linkableCopies } = await import("./leftovers.js");
+    const entries = [
+      e("past", "2026-10-05", 1, { isLeftover: true }),
+      e("tue", "2026-10-12", 1, { isLeftover: true }),
+      e("fed", "2026-10-12", 2, { isLeftover: true, leftoverItemId: "x" }),
+      e("plain", "2026-10-12", 3),
+      e("other", "2026-10-12", 4, { isLeftover: true, recipe: { id: "o" } }),
+    ];
+    expect(linkableCopies("r", entries, "2026-10-11").map((x) => x.id)).toEqual(["tue"]);
+  });
+
+  it("warns past the use-by date of the leftovers, or past the recipe's fridge days", async () => {
+    const { leftoverIsStale } = await import("./leftovers.js");
+    const tue = e("tue", "2026-10-12", 1, { isLeftover: true }); // Tuesday the 13th
+    expect(leftoverIsStale(tue, { item: { expiresAt: "2026-10-13T20:00:00Z" } })).toBe(false);
+    expect(leftoverIsStale(tue, { item: { expiresAt: "2026-10-13T00:00:00Z" } })).toBe(false);
+    expect(leftoverIsStale(tue, { item: { expiresAt: "2026-10-12T20:00:00Z" } })).toBe(true);
+    const fri = e("fri", "2026-10-12", 4, { isLeftover: true });
+    expect(leftoverIsStale(fri, { cookedDay: 0 })).toBe(true);
+    expect(leftoverIsStale(fri, { cookedDay: 1 })).toBe(false);
+    expect(leftoverIsStale(fri, {})).toBe(false);
+  });
+
+  it("offers Inventory leftovers in the Planner search, soonest first, by name or recipe", async () => {
+    const { plannableLeftovers } = await import("./leftovers.js");
+    const items = [
+      { id: "a", isLeftover: true, name: "Chili", quantity: 2, expiresAt: "2026-10-14", recipeId: "c" },
+      { id: "b", isLeftover: true, name: "Pizza", quantity: 1, expiresAt: "2026-10-12" },
+      { id: "c", isLeftover: true, name: "Soup", quantity: 0 },
+      { id: "d", name: "Chicken", quantity: 1 },
+    ];
+    const recipes = [{ id: "c", title: "Texas chili" }];
+    expect(plannableLeftovers(items, recipes).map((x) => x.item.id)).toEqual(["b", "a"]);
+    expect(plannableLeftovers(items, recipes, "texas").map((x) => x.item.id)).toEqual(["a"]);
+  });
+});

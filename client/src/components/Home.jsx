@@ -83,7 +83,10 @@ function ToUseRow({ item }) {
       <div className="riso-useup-info">
         <div className="riso-useup-top">
           <div className="riso-useup-name-col">
-            <span className="riso-useup-name">{item.name}</span>
+            <span className="riso-useup-name">
+              {item.name}
+              {item.isLeftover && <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>}
+            </span>
             {amount && <span className="riso-useup-qty">{amount}</span>}
           </div>
           <span className={`riso-useup-badge ${tone}`}>
