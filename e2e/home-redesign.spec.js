@@ -101,9 +101,9 @@ test("an open protein links to your recipes that use it, and that opens Recipes 
 });
 
 test("Home shows the proteins on sale this week, each kind's best buy, and opens its card", async ({ page }) => {
-  // Rows: emoji, product, store · saving, price per lb; the cheapest is the
-  // "Best deal", the rest say how good a buy they are. Every kind always has
-  // a row: one with nothing this week says so.
+  // Rows: emoji, kind, how many products, the best buy's price per lb; the one
+  // whose best buy saves the most is the "Best deal", the rest say how good a
+  // buy they are. A kind with nothing this week has no row.
   await signUp(page, uniqueEmail());
   const me = await (await page.request.get("/api/auth/me")).json();
   const userId = me.user?.id ?? me.id;
@@ -133,27 +133,30 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   await expect(block).not.toContainText("pie");
   const fish = block.getByRole("button", { name: /^Fish:/ });
   await expect(fish).toContainText("$9.99/lb");
-  await expect(fish.locator(".riso-protein-verdict")).toBeVisible();
+  await expect(fish.locator(".riso-protein-verdict")).toHaveText("Stock up");
+  await expect(fish.locator(".riso-protein-best")).toHaveCount(0);
   // Nothing to compare ground beef with: it says "Can't tell yet", and it
   // still opens onto its price.
   const beef = block.getByRole("button", { name: /^Beef:/ });
   await expect(beef).toContainText("$5.97/lb");
   await expect(beef.locator(".riso-protein-verdict")).toHaveText("Can't tell yet");
-  // Every other kind has its card, saying there is no deal.
-  for (const [kind, emoji] of [["Pork", "🐖"], ["Seafood", "🦐"], ["Turkey", "🦃"], ["Lamb", "🐑"], ["Tofu", "⬜"]]) {
-    const none = block.locator(".riso-protein-card.none", { hasText: kind });
-    await expect(none).toContainText("No deal this week");
-    await expect(none).toContainText(emoji);
+  // A kind with nothing on the flyers has no row, and the rest keep the design's order.
+  for (const kind of ["Pork", "Seafood", "Turkey", "Lamb", "Tofu"]) {
+    await expect(block.getByRole("button", { name: new RegExp(`^${kind}:`) })).toHaveCount(0);
   }
-  await expect(block.locator(".riso-protein-card")).toHaveCount(8);
+  await expect(block.locator("button.riso-protein-card")).toHaveCount(3);
+  await expect(block.locator(".riso-protein-name")).toHaveText(["Chicken", "Fish", "Beef"]);
 
   await beef.click();
   await expect(beef).toHaveAttribute("aria-expanded", "true");
-  const beefProducts = block.locator(".riso-protein-product");
+  const beefProducts = block.locator(".riso-protein-pcard");
   await expect(beefProducts).toHaveCount(1);
   await expect(beefProducts.first()).toContainText("$5.97");
+  // Nothing is a real sale there, so no card gets the green shadow.
+  await expect(beefProducts.first()).not.toHaveClass(/best/);
   await page.keyboard.press("Escape");
   await expect(block.locator(".riso-protein-panel")).toHaveCount(0);
+  await expect(beef).toBeFocused();
 
   // Opening a protein lists its real sales only, blurs the rest of the page,
   // and a product opens its details.
@@ -161,46 +164,55 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   await expect(chicken).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator(".riso-protein-scrim")).toHaveCount(1);
   await expect(fish).toHaveClass(/dimmed/);
-  const products = block.locator(".riso-protein-product");
+  const products = block.locator(".riso-protein-pcard");
   await expect(products).toHaveCount(2);
   await expect(products.first()).toContainText("Chicken breasts");
   await expect(products.first()).toContainText("Super C");
   await expect(products.first().locator(".riso-protein-off")).toHaveText("43% off");
+  await expect(products.first()).toHaveClass(/best/);
   await expect(products.nth(1)).toContainText("Chicken legs");
-  await products.first().locator(".riso-protein-product-head").click();
-  const detail = products.first().locator(".riso-protein-detail");
+  await expect(products.nth(1)).not.toHaveClass(/best/);
+  await products.first().click();
+  const detail = block.locator(".riso-protein-detail");
+  await expect(detail).toContainText("Chicken breasts · Super C");
   await expect(detail).toContainText("Reg. price");
   await expect(detail).toContainText("$8.49/lb");
+  // The flyers give no end date and no Quebec average here: those two are left out, not dashes.
+  await expect(detail).not.toContainText("Ends");
+  await expect(detail).not.toContainText("Quebec average");
+  await expect(detail).not.toContainText("—");
 
   // Add to list puts the product on the grocery list, and the card says so;
-  // tapping "On list" takes it off again.
+  // tapping "On list" takes it off again (with the Undo toast).
   await detail.getByRole("button", { name: "+ Add to list" }).click();
-  await expect(detail.getByRole("button", { name: "✓ On list" })).toBeEnabled();
+  await expect(detail.getByRole("button", { name: "✓ On list" })).toBeVisible();
   await detail.getByRole("button", { name: "✓ On list" }).click();
   await expect(detail.getByRole("button", { name: "+ Add to list" })).toBeVisible();
+  await expect(page.getByText("Chicken breasts taken off your grocery list")).toBeVisible();
   await detail.getByRole("button", { name: "+ Add to list" }).click();
   await expect(detail.getByRole("button", { name: "✓ On list" })).toBeVisible();
 
-  // Esc, or tapping outside, closes it.
+  // Esc, or tapping outside, closes it and gives the row its focus back.
   await page.keyboard.press("Escape");
   await expect(page.locator(".riso-protein-scrim")).toHaveCount(0);
   await expect(block.locator(".riso-protein-panel")).toHaveCount(0);
+  await expect(chicken).toBeFocused();
   await chicken.click();
   await page.locator(".riso-protein-scrim").click({ position: { x: 5, y: 5 } });
   await expect(block.locator(".riso-protein-panel")).toHaveCount(0);
+  await expect(chicken).toBeFocused();
 
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.getByText("Chicken breasts", { exact: true }).first()).toBeVisible();
 });
 
-test("Open the flyer lands on that deal's card in Flyers, and \"On list\" takes an added product off the list", async ({ page }) => {
+test("See in Flyers lands on that deal's card in Flyers, and \"On list\" takes an added product off the list", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await seedRealDeal(page);
   const block = page.locator(".riso-home-proteins");
   await block.getByRole("button", { name: /^Chicken:/ }).click();
-  const product = block.locator(".riso-protein-product").first();
-  await product.locator(".riso-protein-product-head").click();
-  await product.getByRole("button", { name: "Open the flyer" }).click();
+  await block.locator(".riso-protein-pcard").first().click();
+  await block.locator(".riso-protein-detail").getByRole("button", { name: "See in Flyers →" }).click();
 
   await expect(page.locator(".tab.active")).toHaveText("Flyers");
   const card = page.getByRole("dialog");
@@ -213,17 +225,17 @@ test("Open the flyer lands on that deal's card in Flyers, and \"On list\" takes 
   await page.getByRole("button", { name: "Flyers", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  // Add a product, check the grocery card counts it, then undo.
+  // Add a product, check the grocery card counts it, then take it off.
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await block.getByRole("button", { name: /^Chicken:/ }).click();
-  const row = block.locator(".riso-protein-product").first();
-  await row.locator(".riso-protein-product-head").click();
+  await block.locator(".riso-protein-pcard").first().click();
+  const detail = block.locator(".riso-protein-detail");
   const count = page.locator(".home-grocery-number");
   const before = Number(await count.textContent());
-  await row.getByRole("button", { name: "+ Add to list" }).click();
+  await detail.getByRole("button", { name: "+ Add to list" }).click();
   await expect(count).toHaveText(String(before + 1));
-  await row.getByRole("button", { name: "✓ On list" }).click();
-  await expect(row.getByRole("button", { name: "+ Add to list" })).toBeVisible();
+  await detail.getByRole("button", { name: "✓ On list" }).click();
+  await expect(detail.getByRole("button", { name: "+ Add to list" })).toBeVisible();
   await expect(count).toHaveText(String(before));
 });
 

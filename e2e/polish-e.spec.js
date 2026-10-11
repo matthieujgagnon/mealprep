@@ -73,9 +73,9 @@ test.describe("Proteins on sale, by general protein", () => {
   test("one card per general protein, with its best deal, and the specific item under the name", async ({ page }) => {
     await seed(page);
     const block = page.locator(".riso-home-proteins");
-    await expect(block.locator(".riso-protein-card")).toHaveCount(8);
-    const names = await block.locator(".riso-protein-name").allInnerTexts();
-    expect(names.sort()).toEqual(["Beef", "Chicken", "Fish", "Lamb", "Pork", "Seafood", "Tofu", "Turkey"].sort());
+    // Only the kinds with something on sale have a row, in the design's order.
+    await expect(block.locator(".riso-protein-card")).toHaveCount(3);
+    await expect(block.locator(".riso-protein-name")).toHaveText(["Chicken", "Fish", "Beef"]);
 
     // Chicken: the general name as the title and how many products are on
     // sale under it; opening it lists them, the thighs (the biggest saving) first.
@@ -83,7 +83,7 @@ test.describe("Proteins on sale, by general protein", () => {
     await expect(chicken.locator(".riso-protein-name")).toHaveText("Chicken");
     await expect(chicken.locator(".riso-protein-count")).toHaveText("3 products");
     await chicken.click();
-    const products = block.locator(".riso-protein-product");
+    const products = block.locator(".riso-protein-pcard");
     await expect(products).toHaveCount(3);
     await expect(products.first()).toContainText("Chicken thighs");
     await expect(products.first()).toContainText("Super C");
@@ -93,9 +93,9 @@ test.describe("Proteins on sale, by general protein", () => {
     const fish = block.getByRole("button", { name: /^Fish:/ });
     await expect(fish.locator(".riso-protein-name")).toHaveText("Fish");
     await fish.click();
-    await expect(block.locator(".riso-protein-product").first()).toContainText("Atlantic salmon");
+    await expect(block.locator(".riso-protein-pcard").first()).toContainText("Atlantic salmon");
     await fish.click();
-    await expect(block.locator(".riso-protein-card.none", { hasText: "Pork" })).toContainText("No deal this week");
+    await expect(block.getByRole("button", { name: /^Pork:/ })).toHaveCount(0); // nothing on sale: no row
   });
 
   test("an open protein counts every recipe that uses any kind of it, and See your recipes opens a filter chip with those same recipes", async ({ page }) => {
@@ -125,8 +125,7 @@ test.describe("Proteins on sale, by general protein", () => {
     await seed(page);
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     const block = page.locator(".riso-home-proteins");
-    const names = await block.locator(".riso-protein-name").allInnerTexts();
-    expect(names.sort()).toEqual(["Agneau", "Bœuf", "Dinde", "Fruits de mer", "Poisson", "Porc", "Poulet", "Tofu"].sort());
+    await expect(block.locator(".riso-protein-name")).toHaveText(["Poulet", "Poisson", "Bœuf"]);
     await block.getByRole("button", { name: /^Poulet :/ }).click();
     await expect(page.locator(".riso-protein-recipes-link")).toHaveText("Voir vos 4 recettes avec du poulet →");
   });
