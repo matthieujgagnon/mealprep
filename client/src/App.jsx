@@ -459,15 +459,24 @@ export default function App({ user, onLogout }) {
   // The ✓ on an ingredient (recipe pop-out, planned meal's card, full recipe card):
   // on the list -> take it off, with the shared Undo toast; off the list -> put it
   // back. Undo goes through `latestGrocery` because the list has changed by then.
+  // Proteins on sale also says which flyer deal the item is for (`dealId`, kept on
+  // the row and put back by Undo) and asks to hear when the list changed
+  // (`onChanged`, after the add, the removal and the Undo), since Home keeps its
+  // own copy of the list for its grocery card.
   const latestGrocery = useRef({});
   latestGrocery.current = { addToGroceryList, removeFromGroceryList };
-  async function toggleGroceryItem(name) {
+  async function toggleGroceryItem(name, { dealId = null, onChanged } = {}) {
     if (!isOnGroceryList(name)) {
-      await addToGroceryList([name]);
+      await addToGroceryList([name], { dealId });
+      onChanged?.();
       return;
     }
     await removeFromGroceryList(name);
-    showToast(t("grocery.takenOff", { name }), () => latestGrocery.current.addToGroceryList([name]));
+    onChanged?.();
+    showToast(t("grocery.takenOff", { name }), async () => {
+      await latestGrocery.current.addToGroceryList([name], { dealId });
+      onChanged?.();
+    });
   }
 
   // Makeable's À acheter and the recipe card's "Add to grocery list": put some items on
@@ -1443,7 +1452,7 @@ export default function App({ user, onLogout }) {
               setRecipeProtein(proteinId);
               setTab("collection");
             }}
-            // "Open the flyer" on Proteins on sale: that deal's card on Flyers.
+            // "See in Flyers" on Proteins on sale: that deal's card on Flyers.
             onOpenFlyerDeal={openFlyerDeal}
             onPickRecipeFor={(slot) => {
               setWeekStart(currentWeekStart());
@@ -1451,8 +1460,7 @@ export default function App({ user, onLogout }) {
               setTab("planner");
             }}
             isOnGroceryList={isOnGroceryList}
-            onAddToGroceryList={addToGroceryList}
-            onRemoveFromGroceryList={removeFromGroceryList}
+            onToggleGroceryItem={toggleGroceryItem}
             onCooked={(entry, onMarked) => openCooked({ recipe: entry.recipe, servings: entry.servings, entry, onMarked })}
           />
         )}

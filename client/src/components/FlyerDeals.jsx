@@ -166,23 +166,30 @@ function photoHostLabel(url) {
 }
 
 // The item's own photo from the flyer; a food emoji when there isn't one or
-// it won't load.
-export function DealPhoto({ deal, size }) {
+// it won't load. `fill` makes it fill its parent (a product card's photo area,
+// whose own box sets the size) instead of a square of `size`, and its
+// placeholder is the striped paper; `emoji` is what that placeholder shows
+// instead of the food's own (a category's).
+export function DealPhoto({ deal, size, fill = false, emoji }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [deal.imageUrl]);
   const src = dealPhotoSrc(deal);
   return src && !failed ? (
     <img
-      className="riso-deal-photo"
+      className={`riso-deal-photo${fill ? " fill" : ""}`}
       src={src}
       alt=""
       loading="lazy"
       onError={() => setFailed(true)}
-      style={{ width: size, height: size }}
+      style={fill ? undefined : { width: size, height: size }}
     />
   ) : (
-    <div className="riso-deal-photo placeholder" style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }} aria-hidden="true">
-      {dealEmoji(deal)}
+    <div
+      className={`riso-deal-photo placeholder${fill ? " fill" : ""}`}
+      style={fill ? undefined : { width: size, height: size, fontSize: Math.round(size * 0.5) }}
+      aria-hidden="true"
+    >
+      {emoji ?? dealEmoji(deal)}
     </div>
   );
 }

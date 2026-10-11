@@ -227,6 +227,21 @@ describe("what a product card shows", () => {
     expect(proteinProduct(chicken({ baseline: { pct: 0 } })).qc).toEqual({ text: "near average", good: false });
   });
 
+  it("is named in French from the French half of the flyer's name, and falls back to the product's name", async () => {
+    const { setLang } = await import("../i18n/index.js");
+    setLang("fr");
+    try {
+      const p = proteinProduct(deal("Poitrines de poulet désossées Maple Leaf | Boneless chicken breasts", "meat", { matchName: "boneless chicken breasts" }));
+      expect(p.name).toMatch(/^Poitrines de poulet/);
+      expect(p.english).toBe("Chicken breasts"); // an item put on the list in English still counts
+      // A flyer with no French half has only the product's name.
+      expect(proteinProduct(deal("Whole chicken", "meat")).name).toBe("Whole chicken");
+    } finally {
+      setLang("en");
+    }
+    expect(proteinProduct(deal("Poitrines de poulet désossées | Boneless chicken breasts", "meat", { matchName: "boneless chicken breasts" })).name).toBe("Chicken breasts");
+  });
+
   it("names the product without brand or pack words", () => {
     expect(proteinProduct(deal("Maple Leaf boneless chicken thighs, 900 g", "meat")).name).toBe("Chicken thighs");
   });

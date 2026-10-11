@@ -4,9 +4,9 @@
 // "chicken's on sale". Tofu counts as a kind too. Each kind's best buy is its biggest real saving
 // (see dealVerdict / dealSavings), then its lowest price per lb.
 import { capitalize } from "./groceryList.js";
-import { daysLeft, dealSavings, dealVerdict, foldText, productText, tilePrice } from "./flyerIngredients.js";
+import { daysLeft, dealSavings, dealVerdict, foldText, frenchProductName, productText, splitBilingual, tilePrice } from "./flyerIngredients.js";
 import { parseDateKey } from "./dates.js";
-import { t } from "../i18n/index.js";
+import { getLang, t } from "../i18n/index.js";
 import { formatMoney, formatMonthDay, formatWeekday, localizePrice, perUnit } from "../i18n/format.js";
 
 const TOFU = /\btofu\b/;
@@ -267,6 +267,11 @@ export function proteinRows(deals) {
 
 // The words and numbers a product shows on its card, in the app's language.
 // A value the flyers don't really give us is null, and the card leaves it out.
+//   name          what it is called, and what goes on the grocery list: in
+//                 French the French half of the flyer's name when it gives
+//                 one (the Flyers page does the same), else the product's name
+//   english       the product's name in English: an item put on the list under
+//                 it (before the language changed) still counts as on the list
 //   amount, unit  the price, per lb / per L / each (the flyer's own text when
 //                 it couldn't be read)
 //   off           "50% off"; null when the item isn't a real sale
@@ -276,8 +281,11 @@ export function proteinRows(deals) {
 export function proteinProduct(deal) {
   const p = tilePrice(deal);
   const saving = dealSavings(deal);
+  const english = proteinName(deal);
+  const french = getLang() === "fr" ? frenchProductName(splitBilingual(deal.item).fr) : null;
   return {
-    name: proteinName(deal),
+    name: french || english,
+    english,
     store: deal.store,
     amount: p ? formatMoney(p.price) : localizePrice(deal.price),
     unit: p ? perUnit(p.basis) : "",
