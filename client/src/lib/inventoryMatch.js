@@ -264,6 +264,36 @@ function sameFood(a, b) {
   return !foodProfile(a).food && !foodProfile(b).food && fold(a).trim() === fold(b).trim();
 }
 
+// The lines behind recipeHave, with the ingredients in each: one line per food,
+// in the recipe's order, named as the recipe first writes it (a missing line, as
+// it writes the missing ingredient). Staples are not lines: they are listed
+// apart, once each, as written.
+//   lines    [{ key, name, had, ingredients }]
+//   staples  [name]
+export function recipeLines(recipe, kitchen) {
+  const lines = [];
+  const staples = [];
+  for (const ing of recipe?.ingredients || []) {
+    const name = String(ing?.name || "").trim();
+    if (!name) continue;
+    const status = ingredientHave(name, kitchen);
+    if (status === "staple") {
+      if (!staples.some((s) => sameFood(s, name))) staples.push(name);
+      continue;
+    }
+    const line = lines.find((l) => sameFood(l.written, name));
+    if (!line) lines.push({ written: name, had: status === "have", missingName: status === "have" ? null : name, ingredients: [ing] });
+    else {
+      line.ingredients.push(ing);
+      if (status !== "have" && line.had) Object.assign(line, { had: false, missingName: name });
+    }
+  }
+  return {
+    lines: lines.map((l) => ({ key: l.written.toLowerCase(), name: capitalize(l.missingName || l.written), had: l.had, ingredients: l.ingredients })),
+    staples: staples.map(capitalize),
+  };
+}
+
 // A recipe next to your Inventory, the one count every page shows ("3/5",
 // "2 missing", "2 things to buy", Ready now). One line per food, in the recipe's
 // order, named as the recipe first writes it (a missing line, as it writes the
@@ -273,17 +303,8 @@ function sameFood(a, b) {
 //   missing       the names in `buy`
 //   totalCount, matchedCount, missingCount
 export function recipeHave(recipe, kitchen) {
-  const lines = [];
-  for (const ing of recipe?.ingredients || []) {
-    const name = String(ing?.name || "").trim();
-    if (!name) continue;
-    const status = ingredientHave(name, kitchen);
-    if (status === "staple") continue;
-    const line = lines.find((l) => sameFood(l.written, name));
-    if (!line) lines.push({ written: name, had: status === "have", missingName: status === "have" ? null : name });
-    else if (status !== "have" && line.had) Object.assign(line, { had: false, missingName: name });
-  }
-  const item = (l) => ({ key: l.written.toLowerCase(), name: capitalize(l.missingName || l.written) });
+  const { lines } = recipeLines(recipe, kitchen);
+  const item = (l) => ({ key: l.key, name: l.name });
   const have = lines.filter((l) => l.had).map(item);
   const buy = lines.filter((l) => !l.had).map(item);
   return {
@@ -358,6 +379,41 @@ export function convertAmount(qty, fromUnit, toUnit) {
   if (from === to) return q;
   if (!from || !to) return null;
   return convertToUnit(q, from, to);
+}
+
+// How much a line of a recipe (recipeLines) needs at `scale`: its ingredients'
+// amounts added up in the first one's unit (weights with weights, volumes with
+// volumes, counts with counts). `quantity` is null when an ingredient gives no
+// amount or one can't be converted; `parts` keeps each amount as written then.
+export function lineNeed(ingredients = [], scale = 1) {
+  const unit = ingredients[0]?.unit || null;
+  const parts = [];
+  let quantity = 0;
+  for (const ing of ingredients) {
+    const qty = ing.quantity != null ? ing.quantity * scale : null;
+    parts.push({ quantity: qty, unit: ing.unit || null });
+    const inUnit = quantity == null ? null : convertAmount(qty, ing.unit, unit);
+    quantity = inUnit == null ? null : quantity + inUnit;
+  }
+  return { quantity: ingredients.length ? quantity : null, unit, parts };
+}
+
+// How much more of a food you would have to buy: what `need` (lineNeed) asks for
+// minus what your Inventory items that are this food, still good, hold, in the
+// need's unit. 0 when they hold enough; null when it can't be told (no amount,
+// an item with no amount, units that don't convert, nothing in Inventory).
+export function shortBy(need, name, inventory = []) {
+  if (need?.quantity == null) return null;
+  const items = matchingItems(name, inventory).filter(notExpired);
+  if (items.length === 0) return null;
+  let held = 0;
+  for (const item of items) {
+    const qty = item.quantity == null ? null : convertAmount(item.quantity, item.unit, need.unit);
+    if (qty == null) return null;
+    held += qty;
+  }
+  const rest = need.quantity - held;
+  return rest > 1e-9 ? roundAmount(rest, need.unit) : 0;
 }
 
 // Amounts in grams and millilitres are whole numbers; others keep two decimals.
