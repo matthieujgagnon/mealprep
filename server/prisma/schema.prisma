@@ -19,6 +19,11 @@ model User {
   weekendDays  Int[]    @default([5, 6]) // the days the Planner groups as the weekend (0 = Monday ... 6 = Sunday)
   weekendOn    Boolean  @default(true) // whether the Planner draws the weekend block at all
   weekendEve   Boolean  @default(true) // whether the block also takes in the supper before its first day
+  // "member" | "admin": a record of what the server last worked out from the
+  // ADMIN_EMAILS environment variable. It never makes anyone an admin on its
+  // own: only ADMIN_EMAILS does, checked on every /api/admin call (lib/admin.js).
+  role         String   @default("member")
+  lastActiveAt DateTime? // when the account last used the app, written at most every 15 minutes (lib/auth.js)
   createdAt    DateTime @default(now())
 
   sessions              Session[]

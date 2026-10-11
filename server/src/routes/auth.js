@@ -5,6 +5,7 @@ import { seedPlaceholderRecipesForUser } from "../lib/placeholders.js";
 import { sendPasswordResetEmail } from "../lib/mailer.js";
 import { fail, langOf, msg, normalizeLang } from "../lib/i18n.js";
 import { cleanWeekendDays, cleanWeekendFlag, DEFAULT_WEEKEND_DAYS } from "../lib/weekendDays.js";
+import { checkAdmin, isAdminEmail } from "../lib/admin.js";
 
 export const authRouter = Router();
 
@@ -14,7 +15,9 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 // obviously wasteful case of sending several links within the same minute.
 const RESET_REQUEST_COOLDOWN_MS = 2 * 60 * 1000;
 
-function serializeUser(user) {
+// `isAdmin` only decides whether the app shows the Admin link: the server
+// checks ADMIN_EMAILS again on every /api/admin call (lib/admin.js).
+function serializeUser(user, isAdmin = false) {
   return {
     id: user.id,
     email: user.email,
@@ -23,6 +26,7 @@ function serializeUser(user) {
     weekendDays: user.weekendDays ?? DEFAULT_WEEKEND_DAYS,
     weekendOn: user.weekendOn ?? true,
     weekendEve: user.weekendEve ?? true,
+    isAdmin,
   };
 }
 
@@ -44,6 +48,13 @@ authRouter.post("/signup", async (req, res) => {
 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
+    return res.status(409).json(fail(req, "emailTaken"));
+  }
+  // An ADMIN_EMAILS email with no account can't be claimed by signing up
+  // with it (signup doesn't verify emails). The answer is the same as for a
+  // taken email, so it doesn't tell anyone which emails are admins.
+  if (isAdminEmail(normalizedEmail)) {
+    console.warn("Signup refused: that email is in ADMIN_EMAILS but has no account. Only list emails that already have an account.");
     return res.status(409).json(fail(req, "emailTaken"));
   }
 
@@ -87,7 +98,7 @@ authRouter.post("/login", async (req, res) => {
     return res.status(401).json(fail(req, "wrongLogin"));
   }
   await createSession(res, user.id);
-  res.json(serializeUser(user));
+  res.json(serializeUser(user, await checkAdmin(user)));
 });
 
 // POST /api/auth/logout
@@ -101,7 +112,7 @@ authRouter.post("/logout", async (req, res) => {
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(401).json(fail(req, "notLoggedIn"));
-  res.json(serializeUser(user));
+  res.json(serializeUser(user, await checkAdmin(user)));
 });
 
 // PATCH /api/auth/me { locale?: "fr" | "en", weekendDays?: [0-6, ...],
@@ -129,7 +140,7 @@ authRouter.patch("/me", requireAuth, async (req, res) => {
   }
   if (Object.keys(data).length === 0) return res.status(400).json(fail(req, "badLocale"));
   const user = await prisma.user.update({ where: { id: req.userId }, data });
-  res.json(serializeUser(user));
+  res.json(serializeUser(user, await checkAdmin(user)));
 });
 
 // POST /api/auth/forgot-password { email } - always responds the same way

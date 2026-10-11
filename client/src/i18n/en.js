@@ -27,6 +27,46 @@ export const en = {
   lang: {
     label: "Language",
   },
+  admin: {
+    eyebrow: "ADMIN · PRIVATE",
+    titleStart: "Behind the",
+    titleAccent: "counter.",
+    intro: "Run the beta from here. Only admins see this page.",
+    hq: {
+      eyebrow: "PROJECT HQ",
+      title: "Your project tracker.",
+      text: "Tickets, plans and what comes next. Opens in a new tab.",
+      open: "Open HQ",
+    },
+    members: {
+      title: "Members",
+      intro: "Every account: its email, when it signed up and when it last used the app.",
+      count: { one: "{count} account", other: "{count} accounts" },
+      email: "Email",
+      signedUp: "Signed up",
+      lastActive: "Last active",
+      you: "You",
+      today: "Today",
+      yesterday: "Yesterday",
+      never: "Not yet",
+      loading: "Loading the members…",
+      error: "Couldn't load the members.",
+    },
+    invites: {
+      title: "Invite codes",
+      text: "Make codes so friends can join the beta.",
+    },
+    ai: {
+      title: "AI usage",
+      text: "See how much each account uses the AI, and set limits.",
+    },
+    soon: "Coming soon",
+    notAllowed: {
+      title: "Not allowed.",
+      text: "This page is only for the people who run the app.",
+      home: "Back to Home",
+    },
+  },
   same: {
     // Each language's own name, written the same way in both.
     langFr: "Français",
@@ -48,6 +88,8 @@ export const en = {
     // Example values the Help page draws in its button copies.
     sampleStore: "Metro",
     sampleInitial: "M",
+    // The avatar menu's link to the Admin page.
+    admin: "Admin",
   },
   auth: {
     eyebrow: "MEAL PREP",
