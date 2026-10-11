@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
 
 // The Inventory item form (design handoff: docs/design/inventory-item-form/): one form
@@ -12,6 +13,7 @@ async function setup(page) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `item-form+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
 
 // Regression coverage for a real mobile drag-and-drop bug: every existing
@@ -36,6 +37,7 @@ async function signUp(page, email) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 }

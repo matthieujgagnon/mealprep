@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // The Planner finder's results are photo cards (design:
 // docs/design/riso-v2-planner-search-cards/): « MEAL · TIME » on the photo, the
@@ -14,6 +15,7 @@ async function setup(page) {
   const email = `searchcards+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`;
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   const recipes = [

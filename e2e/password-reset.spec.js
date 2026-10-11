@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 
 // Verifies the actual reset mechanism end-to-end - not real email delivery
@@ -20,6 +21,7 @@ test("reset link sets a new password and signs out other sessions", async ({ pag
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', oldPassword);
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 
@@ -65,6 +67,7 @@ test("a used reset link can't be replayed", async ({ page }) => {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "originalpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 

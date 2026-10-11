@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // Fix batch 3: the round ✓ on an ingredient (blue = in Inventory, green = on the grocery
 // list), the Planner card borders, Option-drag leftovers and the "Confirm" tile.
@@ -23,6 +24,7 @@ async function setup(page, recipes) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `marks+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   const created = [];

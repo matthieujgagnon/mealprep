@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // The Flyers auto-import strip and its settings. The test server's Flipp
 // address refuses connections (see playwright.config.js),
@@ -11,6 +12,7 @@ async function signUpToFlyers(page) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
   await page.getByRole("button", { name: "Flyers", exact: true }).click();

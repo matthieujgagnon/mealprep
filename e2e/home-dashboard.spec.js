@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
 
 // The Home tab is now the landing page - covers the pieces that pull data
@@ -23,6 +24,7 @@ test("signing up lands on Home, not Recipes", async ({ page }) => {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
 
   await expect(page.locator(".home-page")).toBeVisible();
@@ -35,6 +37,7 @@ test("Home's empty tonight card sends you to the Planner tab to add a recipe", a
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
 
   // The tonight card should be in its empty state, with no meal planned.
@@ -54,6 +57,7 @@ test("the week strip can be switched to show next week", async ({ page }) => {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
 
   await expect(page.getByText("This week's")).toBeVisible();
@@ -70,6 +74,7 @@ test("the grocery summary and inventory cards reflect real data", async ({ page 
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
 
   // Add an inventory item expiring tomorrow.

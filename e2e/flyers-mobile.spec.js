@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 
 // The Flyers screen on a phone: an opened ingredient card's "all stores"
@@ -19,6 +20,7 @@ test("an opened card's store rows fit a phone screen without overlapping", async
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
   const signedUp = page.waitForResponse((r) => r.url().includes("/api/auth/signup") && r.ok());
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await signedUp;
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });

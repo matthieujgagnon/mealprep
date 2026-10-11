@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { accountButton } from "./account-menu.js";
@@ -40,6 +41,7 @@ async function signUp(page, email) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
 }
 
@@ -50,7 +52,7 @@ test.afterAll(async () => {
 test.describe("on a computer, in English", () => {
   test.use({ viewport: { width: 1280, height: 900 }, locale: "en-CA" });
 
-  test("an admin finds Admin in the avatar menu: HQ, Members and what's coming", async ({ page, context }) => {
+  test("an admin finds Admin in the avatar menu: HQ, Members, Invite codes and AI usage", async ({ page, context }) => {
     await adminAccount("en");
     const member = uniqueEmail("admin-members");
     await prisma.user.create({ data: { email: member, passwordHash: "x" } });
@@ -75,17 +77,20 @@ test.describe("on a computer, in English", () => {
     await popup.close();
 
     // Members: email, signup date and last active, nothing else.
-    const table = page.locator(".riso-admin-table");
+    const table = page.locator(".riso-admin-members .riso-admin-table");
     await expect(table.locator("thead th")).toHaveText(["Email", "Signed up", "Last active"]);
     const me = table.locator("tbody tr", { hasText: ADMIN });
     await expect(me.getByText("You", { exact: true })).toBeVisible();
     await expect(me.locator("td").last()).toHaveText("Today");
     await expect(table.locator("tbody tr", { hasText: member }).locator("td")).toHaveText([/\d{4}|Today/, "Not yet"]);
 
-    for (const title of ["Invite codes", "AI usage"]) {
-      const card = page.locator(".riso-admin-card", { has: page.getByRole("heading", { name: title }) });
-      await expect(card.getByText("Coming soon")).toBeVisible();
-    }
+    // Invite codes and AI usage are working sections (e2e/invites.spec.js
+    // goes through them).
+    const invites = page.locator(".riso-admin-card", { has: page.getByRole("heading", { name: "Invite codes" }) });
+    await expect(invites.getByRole("button", { name: "Make a code" })).toBeVisible();
+    const usage = page.locator(".riso-admin-card", { has: page.getByRole("heading", { name: "AI usage" }) });
+    await expect(usage.getByLabel("Readings per account per day")).toBeVisible();
+    await expect(usage.locator("tbody tr", { hasText: ADMIN })).toBeVisible();
 
     // Back goes back to where the menu was opened, at /.
     await page.goBack();
@@ -106,6 +111,10 @@ test.describe("on a computer, in English", () => {
     // The server checks for itself: 403 for a member on any /admin route...
     expect((await page.request.get("/api/admin/members")).status()).toBe(403);
     expect((await page.request.get("/api/admin/anything")).status()).toBe(403);
+    expect((await page.request.get("/api/admin/invites")).status()).toBe(403);
+    expect((await page.request.post("/api/admin/invites", { data: {} })).status()).toBe(403);
+    expect((await page.request.get("/api/admin/ai-usage")).status()).toBe(403);
+    expect((await page.request.put("/api/admin/ai-limit", { data: { limit: 9999 } })).status()).toBe(403);
     // ...and 401 for someone not logged in.
     const anonymous = await playwright.request.newContext({ baseURL: "http://localhost:4000" });
     expect((await anonymous.get("/api/admin/members")).status()).toBe(401);
@@ -136,8 +145,10 @@ test.describe("on a phone, in French", () => {
     await expect(page.getByRole("heading", { name: "Derrière le comptoir." })).toBeVisible();
     await expect(page.getByRole("link", { name: /Ouvrir le QG/ })).toHaveAttribute("target", "_blank");
     await expect(page.getByRole("heading", { name: "Membres" })).toBeVisible();
-    await expect(page.locator(".riso-admin-table tbody tr", { hasText: ADMIN }).getByText("Vous", { exact: true })).toBeVisible();
-    await expect(page.getByText("Bientôt")).toHaveCount(2);
+    await expect(page.locator(".riso-admin-members .riso-admin-table tbody tr", { hasText: ADMIN }).getByText("Vous", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Codes d'invitation" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Utilisation de l'IA" })).toBeVisible();
+    await expect(page.getByText("Bientôt")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 });

@@ -71,6 +71,11 @@ running app on Render — all free tiers.
     nobody else can claim it, and the server's log warns about a listed email with no account.
     Only this variable makes someone an admin; take an email out and that account loses Admin
     after the restart that follows the change.
+- **Inviting people:** signup needs an invite code. Open **Admin → Invite codes** in the app to
+  make one (with a note like "for Emilie", how many times it can be used and when it expires),
+  send it to the person, and switch it off when you're done. **AI usage** on the same page sets
+  how many flyer and receipt readings each account can do per day (10 to start) and shows
+  today's use. Nothing to add in Render's settings for either.
 - Click **Create Web Service**
 
 Every table that needs "no duplicates per account" enforces it with a real database
@@ -132,7 +137,8 @@ Render automatically redeploys on every push to `main`.
   npm test
   ```
 - **End-to-end tests** (a handful of real browser smoke tests — signup, add a recipe, use the
-  inventory and grocery list — against a real Postgres):
+  inventory and grocery list — against a real Postgres; signup needs an invite code, so
+  `e2e/global-setup.js` makes the tests' own code first, see `e2e/invite.js`):
   ```bash
   npm run build          # needs DATABASE_URL set, same as local dev setup above
   npx playwright install --with-deps chromium   # first time only

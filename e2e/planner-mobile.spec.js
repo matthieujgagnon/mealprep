@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // The Planner on a phone (design: docs/design/riso-v2-planner-mobile-v2): three
 // days at a time on a board that slides under the pinned meal names (pages start
@@ -34,6 +35,7 @@ async function setup(page) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `pm+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   const res = await page.request.post("/api/recipes", {
@@ -610,6 +612,7 @@ test.describe("in French", () => {
     await page.getByRole("button", { name: "S'inscrire" }).click();
     await page.fill('input[type="email"]', `fr+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
     await page.fill('input[type="password"]', "testpass123");
+    await page.fill('input[name="invite"]', E2E_INVITE);
     await page.getByRole("button", { name: "Créer un compte" }).click();
     await expect(page.locator(".tab.active")).toHaveText("Accueil");
     await page.request.post("/api/recipes", { data: { title: "Poulet rôti", baseServings: 2, ingredients: [{ name: "poulet", quantity: 500, unit: "g" }] } });
