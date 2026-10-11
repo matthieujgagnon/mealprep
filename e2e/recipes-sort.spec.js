@@ -148,7 +148,7 @@ test("TIME and SORT sit in the toolbar beside the tabs, and the Meal menu keeps 
 
   // Time and Sort share the row with the tabs; Meal and Protein are chips under it.
   const row = page.locator(".rv2-tabrow");
-  await expect(row.getByRole("tab", { name: /^Cookbook\s*1$/ })).toBeVisible();
+  await expect(row.getByRole("button", { name: /^Cookbook\s*1$/ })).toBeVisible();
   for (const label of [/^TIME/, /^SORT/]) await expect(row.getByRole("button", { name: label })).toBeVisible();
   await expect(row.getByRole("button", { name: /^PROTEIN/ })).toHaveCount(0);
   await page.locator(".rv2-chips").getByRole("button", { name: /^MEAL/ }).click();

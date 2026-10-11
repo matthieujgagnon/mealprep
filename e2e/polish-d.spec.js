@@ -55,7 +55,8 @@ test.describe("Recipes on a phone", () => {
     expect(add.top).toBeGreaterThan(pill.top + pill.h - 1);
     expect(add.w).toBe(pill.w);
     // Cookbook and Imported side by side.
-    const tabs = [await box(page.getByRole("tab", { name: /^Cookbook/ })), await box(page.getByRole("tab", { name: /^Imported/ }))];
+    const jump = page.locator(".rv2-tabs");
+    const tabs = [await box(jump.getByRole("button", { name: /^Cookbook/ })), await box(jump.getByRole("button", { name: /^Imported/ }))];
     expect(tabs[0].top).toBe(tabs[1].top);
     expect(tabs.every((b) => b.right <= 390)).toBe(true);
     // Time and Sort side by side, the same size.
@@ -114,7 +115,7 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     const made = await recipe(page, "Pad thai");
     await api(page, "PUT", `/api/recipes/${made.id}`, { inCookbook: false });
     await goRecipes(page);
-    await page.getByRole("tab", { name: /^Imported/ }).click();
+    await page.locator(".rv2-tabs").getByRole("button", { name: /^Imported/ }).click();
     await expect(page.locator(".rv2-grid")).toContainText("Pad thai");
 
     await page.locator(".rpc", { hasText: "Pad thai" }).click();
@@ -150,51 +151,14 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     await page.reload();
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     await page.getByRole("button", { name: "Recettes", exact: true }).click();
-    // Pad thai is an imported recipe: open that tab, as its English twin does.
-    await page.getByRole("tab", { name: /^Importées/ }).click();
+    // Pad thai is an imported recipe: jump to that section, as its English twin does.
+    await page.locator(".rv2-tabs").getByRole("button", { name: /^Importées/ }).click();
     await page.locator(".rpc", { hasText: "Pad thai" }).click();
     await page.getByRole("button", { name: "Plus d'actions" }).click();
     await page.getByRole("menuitem", { name: "Ajouter à mon livre de recettes" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Ajoutée à votre livre de recettes." })).toBeVisible();
     await page.getByRole("button", { name: "Plus d'actions" }).click();
     await expect(page.getByRole("menuitem", { name: "Déplacer vers Importées" })).toBeVisible();
-  });
-});
-
-test.describe("The Recipes page's starting tab", () => {
-  // The recipes are held back until the test lets them through, so the page is
-  // open before they arrive.
-  async function openRecipesBeforeTheyArrive(page) {
-    await signUp(page);
-    const made = await recipe(page, "Pad thai");
-    await api(page, "PUT", `/api/recipes/${made.id}`, { inCookbook: false });
-    let letThrough;
-    const gate = new Promise((resolve) => (letThrough = resolve));
-    await page.route("**/api/recipes", async (route) => {
-      if (route.request().method() === "GET") await gate;
-      await route.continue();
-    });
-    await page.reload();
-    await page.getByRole("button", { name: "Recipes", exact: true }).click();
-    await expect(page.getByRole("tab", { name: /^Cookbook/ })).toHaveAttribute("aria-selected", "true");
-    return letThrough;
-  }
-
-  test("is picked once the recipes have arrived: Imported when the Cookbook is empty", async ({ page }) => {
-    const letThrough = await openRecipesBeforeTheyArrive(page);
-    letThrough();
-    await expect(page.getByRole("tab", { name: /^Imported/ })).toHaveAttribute("aria-selected", "true");
-    await expect(page.locator(".rpc", { hasText: "Pad thai" })).toBeVisible();
-  });
-
-  test("stays where the person tapped, even if the recipes then arrive", async ({ page }) => {
-    const letThrough = await openRecipesBeforeTheyArrive(page);
-    await page.getByRole("tab", { name: /^Cookbook/ }).click();
-    letThrough();
-    await expect(page.getByRole("tab", { name: /^Imported/ })).toContainText("1");
-    // Let the page finish reacting to them (two frames), then look: it must not have moved.
-    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-    await expect(page.getByRole("tab", { name: /^Cookbook/ })).toHaveAttribute("aria-selected", "true");
   });
 });
 

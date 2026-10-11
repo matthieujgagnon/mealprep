@@ -206,7 +206,7 @@ test.describe("Recipes", () => {
     await expect(page.locator(".rpc-title")).toHaveText(["Lunch wrap", "Chicken curry"]);
   });
 
-  test("Cookbook and Imported are tabs with their own counts", async ({ page }) => {
+  test("Cookbook and Imported are two sections with their own counts, one under the other", async ({ page }) => {
     const userId = await signUp(page);
     await recipe(page, "Grandma's lasagna", "dinner", ["pasta"]); // by hand: Cookbook
     await prisma.recipe.create({
@@ -215,11 +215,10 @@ test.describe("Recipes", () => {
     await page.reload();
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
-    const tabs = page.getByRole("tablist", { name: "Cookbook or Imported" });
-    await expect(tabs.getByRole("tab")).toHaveText([/Cookbook\s*1/, /Imported\s*1/]);
-    await expect(page.locator(".rpc-title")).toHaveText(["Grandma's lasagna"]);
-    await tabs.getByRole("tab", { name: /^Imported/ }).click();
-    await expect(page.locator(".rpc-title")).toHaveText(["Imported pad thai"]);
+    const tabs = page.getByRole("navigation", { name: "Go to Cookbook or Imported" });
+    await expect(tabs.getByRole("button")).toHaveText([/Cookbook\s*1/, /Imported\s*1/]);
+    await expect(page.locator("#recipes-cookbook .rpc-title")).toHaveText(["Grandma's lasagna"]);
+    await expect(page.locator("#recipes-imported .rpc-title")).toHaveText(["Imported pad thai"]);
 
     // An import can be moved to the Cookbook from its editor.
     await page.locator(".rpc", { hasText: "Imported pad thai" }).click();
@@ -230,15 +229,15 @@ test.describe("Recipes", () => {
     await expect(page.locator(".riso-rc-title")).toHaveText("Imported pad thai");
     await page.keyboard.press("Escape");
     await expect(page.locator(".riso-rc-overlay")).toHaveCount(0);
-    await expect(tabs.getByRole("tab", { name: /^Cookbook/ })).toContainText("2");
-    await expect(tabs.getByRole("tab", { name: /^Imported/ })).toContainText("0");
+    await expect(tabs.getByRole("button", { name: /^Cookbook/ })).toContainText("2");
+    await expect(tabs.getByRole("button", { name: /^Imported/ })).toContainText("0");
   });
 });
 
 test.describe("Recipes Meal menu", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
-  test("the Meal menu counts what the other filters leave, switching tabs starts over at All, and Clear filters resets", async ({ page }) => {
+  test("the Meal menu counts what the other filters leave across both sections, and Clear filters resets", async ({ page }) => {
     const userId = await signUp(page);
     await recipe(page, "Chicken curry", "dinner", ["chicken"], { prepTimeMinutes: 30 });
     await recipe(page, "Pasta bake", "dinner", ["pasta"], { prepTimeMinutes: 90 });
@@ -254,9 +253,9 @@ test.describe("Recipes Meal menu", () => {
     const all = chips.getByRole("button", { name: "All", exact: true });
     const meal = chips.getByRole("button", { name: /^MEAL/ });
     const option = (name) => page.getByRole("option", { name });
-    await expect(page.locator(".rv2-count")).toHaveText("4 RECIPES");
+    await expect(page.locator(".rv2-count")).toHaveText("5 RECIPES"); // four in the Cookbook, one imported
     await meal.click();
-    await expect(option(/^All · 4$/)).toBeVisible();
+    await expect(option(/^All · 5$/)).toBeVisible();
     await expect(option(/^Breakfast · 1$/)).toBeVisible();
     await expect(option(/^Supper · 2$/)).toBeVisible();
     await expect(option(/^Sides · 1$/)).toBeVisible();
@@ -277,22 +276,25 @@ test.describe("Recipes Meal menu", () => {
     await expect(option(/^Supper · 1$/)).toBeVisible();
     await page.keyboard.press("Escape");
 
-    // Clear filters: everything back, the tab and sort stay.
+    // Clear filters: everything back, the sort stays.
     await page.getByRole("button", { name: "Clear filters" }).click();
-    await expect(page.locator(".rv2-count")).toHaveText("4 RECIPES");
+    await expect(page.locator(".rv2-count")).toHaveText("5 RECIPES");
     await expect(all).toHaveAttribute("aria-pressed", "true");
 
-    // Switching tab starts over at All.
+    // The filter applies to both sections: Sides leaves one Cookbook recipe, and the
+    // Imported section says nothing matches. Jumping to Imported keeps the filter.
     await meal.click();
     await option(/^Sides/).click();
-    await page.getByRole("tab", { name: /^Imported/ }).click();
-    await expect(all).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".rpc-title")).toHaveText(["Imported pad thai"]);
+    await expect(page.locator("#recipes-cookbook .rpc-title")).toHaveText(["Garlic rice"]);
+    await expect(page.locator("#recipes-imported .riso-recipes-empty")).toHaveText("No recipes match these filters.");
+    await page.locator(".rv2-tabs").getByRole("button", { name: /^Imported/ }).click();
+    await expect(all).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("#recipes-cookbook .rpc-title")).toHaveText(["Garlic rice"]);
 
-    // Nothing matches: the dashed box says so.
+    // Nothing matches anywhere: each section says so.
     await meal.click();
-    await option(/^Breakfast/).click();
-    await expect(page.locator(".riso-recipes-empty")).toHaveText("No recipes match these filters.");
+    await option(/^Lunch/).click();
+    await expect(page.locator(".riso-recipes-empty")).toHaveText(["No recipes match these filters.", "No recipes match these filters."]);
   });
 });
 

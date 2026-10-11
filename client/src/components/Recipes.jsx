@@ -7,6 +7,7 @@ import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { matchesSearch } from "../lib/recipeSearch.js";
 import { QUICK_MINUTES } from "../lib/finder.js";
+import { bentoLayout } from "../lib/bento.js";
 import { captionTime, mealLineColor } from "../lib/photoCard.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
 import { RECIPE_SLOTS, inMealGroup, isMakeableMeal, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
@@ -14,13 +15,17 @@ import { TIME_FILTERS, isUrlLike, matchesTime, proteinOfRecipe, sortRecipes } fr
 import { t } from "../i18n/index.js";
 
 // The Recipes page, on a phone and on a desktop (design handoff: docs/design/
-// riso-v2, "Riso v2 Recipes", and the cards from docs/design/riso-v2-recipe-cards/).
-// One layout for both: the search bar with "+ New recipe" in it, the "how it
-// works" strip, Cookbook / Imported tabs with the Time and Sort menus, one row of
-// chips (Tout, Rapide, Repas ▾, Protéine ▾) and a grid of photo cards (two
-// across on a phone).
+// riso-v2, "Riso v2 Recipes", the cards from docs/design/riso-v2-recipe-cards/ and
+// the Cookbook's bento grid from docs/design/riso-v2-recipes-bento/). One layout
+// for both: the search bar with "+ New recipe" in it, the "how it works" strip,
+// the Cookbook / Imported buttons with the Time and Sort menus, one row of chips
+// (Tout, Rapide, Repas ▾, Protéine ▾), then the two sections one under the other:
+// the Cookbook as a bento grid of photo tiles, and Imported, underneath, as the
+// plain grid of photo cards (two across on a phone). Search and every filter
+// apply to both. The two buttons scroll to their section.
 
 const SORTS = ["recent", "fewest", "quickest"];
+const SCROLL_GAP = 12; // px between the top of the screen (or the pinned header) and a section's heading after a jump
 const SOURCES = ["cookbook", "imported"];
 const sourceOf = (recipe) => (recipe.inCookbook ? "cookbook" : "imported");
 
@@ -36,14 +41,16 @@ const MEAL_CHIPS = [
 // One card (RecipePhotoCard, the same photo card as Makeable's): the meal, the
 // protein and the time over the top of the photo, the title over a dark gradient
 // at the bottom, and a thin line in the meal's colour. Tapping it opens the
-// recipe's card. Cards are all the same size (3:4).
-function RecipeCard({ recipe, onOpen }) {
+// recipe's card. An Imported card is 3:4, all the same size; a Cookbook tile
+// (`tile`, from lib/bento.js) is the same card in the bento grid's size.
+function RecipeCard({ recipe, onOpen, tile }) {
   const slot = recipeSlot(recipe);
   const protein = proteinOfRecipe(recipe);
   const time = captionTime(recipeTotalMinutes(recipe));
   return (
     <RecipePhotoCard
-      variant="grid"
+      variant={tile ? "bento" : "grid"}
+      style={tile ? { "--bento-col": `span ${tile.cols}`, "--bento-row": `span ${tile.rows}`, "--bento-title": `${tile.title}px` } : undefined}
       title={recipe.title}
       photoUrl={recipe.photoUrl}
       lineColor={mealLineColor(slot)}
@@ -77,34 +84,15 @@ export function Recipes({
   onImported,
   onNewRecipe,
   onToast,
-  recipesLoaded = true,
 }) {
   const phone = useIsPhone();
-  // Start on the tab that has recipes for what is already set (Home's "See
-  // them" opens a protein, a search may be set too), and on Imported when the
-  // Cookbook is empty and Imported is not. The Cookbook if both have some.
-  // That can only be told once the recipes have loaded: if this page opens
-  // before they arrive, it picks again when they do, unless the person has
-  // already tapped a tab by then.
-  const startingTab = () => {
-    const kind = PROTEINS.find((p) => p.id === protein);
-    const q = search.trim();
-    const text = isUrlLike(q) ? "" : q;
-    const count = (source) =>
-      recipes.filter(
-        (r) => !r.isPlaceholder && sourceOf(r) === source && (!kind || recipeUsesProtein(r, kind)) && (!text || matchesSearch(r, text))
-      ).length;
-    return count("cookbook") === 0 && count("imported") > 0 ? "imported" : "cookbook";
-  };
-  const [tab, setTab] = useState(startingTab);
-  const tabChosen = useRef(false); // the person tapped a tab (or imported a recipe, which opens Imported)
-  const tabDecided = useRef(recipesLoaded); // the starting tab was picked from loaded recipes
-  useEffect(() => {
-    if (!recipesLoaded || tabDecided.current) return;
-    tabDecided.current = true;
-    if (!tabChosen.current) setTab(startingTab());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipesLoaded]);
+  // Cookbook and Imported are two sections of one page. The two buttons above them
+  // scroll to their section, and the lit one (`tab`) is the section being looked at.
+  const [tab, setTab] = useState("cookbook");
+  const cookbookRef = useRef(null);
+  const importedRef = useRef(null);
+  const sectionRef = { cookbook: cookbookRef, imported: importedRef };
+  const [jump, setJump] = useState(null); // a section to scroll to once the page has updated (after an import)
   const [time, setTime] = useState("any");
   const [quick, setQuick] = useState(false); // Rapide: half an hour or less, like the finder
   const [sortIndex, setSortIndex] = useState(0);
@@ -149,7 +137,6 @@ export function Recipes({
   // many you'd get by picking it with the other filters kept.
   const beforeChip = allRecipes.filter(
     (r) =>
-      sourceOf(r) === tab &&
       (!proteinKind || recipeUsesProtein(r, proteinKind)) &&
       matchesTime(r, time) &&
       (!quick || (recipeTotalMinutes(r) > 0 && recipeTotalMinutes(r) <= QUICK_MINUTES)) &&
@@ -157,6 +144,8 @@ export function Recipes({
   );
   const chipCount = (chipId) => beforeChip.filter((r) => matchesChip(r, chipId)).length;
   const visible = sortRecipes(beforeChip.filter((r) => matchesChip(r, filter)), sortIndex, kitchen);
+  // The two sections, each in the order the Sort menu gave.
+  const shown = Object.fromEntries(SOURCES.map((id) => [id, visible.filter((r) => sourceOf(r) === id)]));
 
   const tabCounts = Object.fromEntries(SOURCES.map((id) => [id, allRecipes.filter((r) => sourceOf(r) === id).length]));
   const makeableCount = allRecipes.filter((r) => info.get(r.id).ready && isMakeableMeal(r, includeSides)).length;
@@ -178,11 +167,42 @@ export function Recipes({
     setQuick(false);
   }
 
-  function pickTab(id) {
-    tabChosen.current = true;
-    setTab(id);
-    onFilterChange("all");
+  // Scrolls a section's heading to just under the top of the screen: under the app's
+  // header too when that one is pinned (it is on a phone), and with no more motion
+  // than the person asked for.
+  function scrollToSection(id) {
+    const section = sectionRef[id].current;
+    if (!section) return;
+    const header = document.querySelector(".app-header");
+    const pinned = header && getComputedStyle(header).position === "sticky" ? header.getBoundingClientRect().height : 0;
+    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: Math.max(0, section.getBoundingClientRect().top + window.scrollY - pinned - SCROLL_GAP), behavior: calm ? "auto" : "smooth" });
   }
+  function pickTab(id) {
+    setTab(id);
+    scrollToSection(id);
+  }
+
+  // The lit button follows the page as it scrolls: Imported once its heading is in the
+  // top part of the screen (or the page is scrolled to the end), the Cookbook before.
+  useEffect(() => {
+    const follow = () => {
+      const imported = importedRef.current;
+      if (!imported) return;
+      const top = imported.getBoundingClientRect().top;
+      const atEnd = window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      setTab(top <= window.innerHeight * 0.35 || (atEnd && top < window.innerHeight) ? "imported" : "cookbook");
+    };
+    window.addEventListener("scroll", follow, { passive: true });
+    return () => window.removeEventListener("scroll", follow);
+  }, []);
+
+  useEffect(() => {
+    if (!jump) return;
+    pickTab(jump.id);
+    setJump(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jump]);
 
   // One menu open at a time; a click outside any menu, or Escape, closes it.
   useEffect(() => {
@@ -207,15 +227,14 @@ export function Recipes({
     try {
       const recipe = await api.importRecipe(query);
       onImported(recipe);
-      // Show the new recipe: Imported, newest first, nothing filtering it out.
+      // Show the new recipe: Imported (scrolled to), newest first, nothing filtering it out.
       onSearchChange("");
       onFilterChange("all");
       onProteinChange(null);
       setTime("any");
       setQuick(false);
-      tabChosen.current = true;
-      setTab("imported");
       setSortIndex(0);
+      setJump({ id: "imported" });
       onToast(t("recipes.d.importedToast"));
     } catch (err) {
       setImportError(err);
@@ -332,18 +351,17 @@ export function Recipes({
 
       <HintStrip
         userId={user.id}
-        screenKey="recipes-v4"
+        screenKey="recipes-v5"
         items={[t("recipes.d.hint1"), t("recipes.d.hint2"), t("recipes.d.hint3"), t("recipes.d.hint4")]}
       />
 
       <div className="rv2-tabrow">
-        <div className="rv2-tabs" role="tablist" aria-label={t("recipes.d.tabsAria")}>
+        <nav className="rv2-tabs" aria-label={t("recipes.d.tabsAria")}>
           {SOURCES.map((id) => (
             <button
               key={id}
               type="button"
-              role="tab"
-              aria-selected={tab === id}
+              aria-current={tab === id ? "true" : undefined}
               className={`rv2-tab${tab === id ? " active" : ""}`}
               onClick={() => pickTab(id)}
             >
@@ -351,7 +369,7 @@ export function Recipes({
               <span className="rv2-tab-count">{tabCounts[id]}</span>
             </button>
           ))}
-        </div>
+        </nav>
         {!phone && (
           <div className="rv2-toolbar" role="group" aria-label={t("recipes.d.toolbarAria")}>
             {menuViews}
@@ -387,19 +405,39 @@ export function Recipes({
         )}
       </div>
 
-      {visible.length > 0 ? (
-        <div className="rv2-grid">
-          {visible.map((r) => (
-            <RecipeCard key={r.id} recipe={r} onOpen={onSelectRecipe} />
-          ))}
-        </div>
-      ) : (
-        !isUrl && (
-          <p className="riso-recipes-empty">
-            {beforeChip.length === 0 && !filtered && tabCounts[tab] === 0 ? t("recipes.emptyNone") : t("recipes.d.emptyFilters")}
-          </p>
-        )
-      )}
+      {SOURCES.map((id) => {
+        const list = shown[id];
+        const layout = bentoLayout(list.length);
+        return (
+          <section key={id} id={`recipes-${id}`} ref={sectionRef[id]} className="rv2-section" aria-labelledby={`recipes-${id}-title`}>
+            <div className="rv2-section-head">
+              <h2 id={`recipes-${id}-title`} className="rv2-section-title">
+                {t(`recipes.sources.${id}`)}
+              </h2>
+              <span className="rv2-tab-count">{list.length}</span>
+            </div>
+            {list.length > 0 ? (
+              id === "cookbook" ? (
+                <div className="rv2-bento-wrap">
+                  <div className="rv2-bento">
+                    {list.map((r, i) => (
+                      <RecipeCard key={r.id} recipe={r} onOpen={onSelectRecipe} tile={layout[i]} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rv2-grid">
+                  {list.map((r) => (
+                    <RecipeCard key={r.id} recipe={r} onOpen={onSelectRecipe} />
+                  ))}
+                </div>
+              )
+            ) : (
+              !isUrl && <p className="riso-recipes-empty">{tabCounts[id] === 0 ? t(`recipes.d.${id}Empty`) : t("recipes.d.emptyFilters")}</p>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }

@@ -8,7 +8,8 @@ const prisma = new PrismaClient();
 // Riso v2 Recipes: the search bar with "+ New recipe" in it, the bulleted
 // "how it works" strip, the row of chips (All, Quick, Meal ▾, Protein ▾; design:
 // docs/design/riso-v2-recipe-cards), every filter and menu alone and together,
-// the photo cards, on a desktop and on a phone, and Home's "See them".
+// the Cookbook's photo tiles (their bento sizes are in recipes-bento.spec.js), on a
+// desktop and on a phone, and Home's "See them".
 
 async function signUp(page) {
   await page.goto("/");
@@ -36,7 +37,7 @@ async function seedRecipes(page) {
 const goRecipes = async (page) => {
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await expect(page.locator(".rv2-grid")).toBeVisible();
+  await expect(page.locator(".rv2-bento")).toBeVisible();
 };
 const names = (page) => page.locator(".rpc-title");
 const menu = (page, label) => page.getByRole("button", { name: new RegExp(`^${label}`) });
@@ -101,7 +102,9 @@ test.describe("on a desktop", () => {
     await expect(page.locator(".rv2-count")).toHaveText("1 RECIPE MATCHES");
     await page.locator(".riso-recipes-searchbar input").fill("wrap");
     await expect(names(page)).toHaveCount(0);
-    await expect(page.locator(".riso-recipes-empty")).toHaveText("No recipes match these filters.");
+    await expect(page.locator("#recipes-cookbook .riso-recipes-empty")).toHaveText("No recipes match these filters.");
+    // Nothing is imported at all, so the Imported section says that instead.
+    await expect(page.locator("#recipes-imported .riso-recipes-empty")).toHaveText("Nothing imported yet. Paste a link above to import a recipe.");
 
     await page.getByRole("button", { name: "Clear filters" }).click();
     await expect(names(page)).toHaveCount(5);
@@ -115,7 +118,7 @@ test.describe("on a desktop", () => {
     await expect(names(page).first()).toHaveText("Oat bowl");
   });
 
-  test("a card is a 3:4 photo: meal, protein and time on top, the title at the bottom, a meal-colour line; all the same size", async ({ page }) => {
+  test("a tile is a photo: meal, protein and time on top, the title at the bottom, a meal-colour line", async ({ page }) => {
     await signUp(page);
     await seedRecipes(page);
     await goRecipes(page);
@@ -128,11 +131,7 @@ test.describe("on a desktop", () => {
     await expect(page.locator(".rpc", { hasText: "Oat bowl" }).locator(".rpc-cap-protein")).toHaveCount(0); // no protein, no line
     // The old card's pills, servings and "to buy" line are not here.
     await expect(page.locator(".rpc .riso-pill, .rpc .rpc-buy")).toHaveCount(0);
-    // All the cards have the same size, 3:4.
-    const boxes = await page.locator(".rpc").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => [Math.round(r.width), Math.round(r.height)]));
-    expect(new Set(boxes.map((b) => b.join("x"))).size).toBe(1);
-    expect(Math.abs(boxes[0][1] / boxes[0][0] - 4 / 3)).toBeLessThan(0.02);
-    // Tapping a card opens the recipe card.
+    // Tapping a tile opens the recipe card.
     await bowls.click();
     await expect(page.getByRole("dialog", { name: "Chicken bowls" })).toBeVisible();
   });
@@ -147,10 +146,10 @@ test.describe("on a phone, in French", () => {
     await goRecipes(page);
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
     await expect(names(page)).toHaveCount(5);
-    // The same chips as on a computer: Tout, Rapide, Repas, Protéine; two cards across.
+    // The same chips as on a computer: Tout, Rapide, Repas, Protéine; two tiles across.
     await expect(page.locator(".rv2-chips .rv2-chip")).toHaveText(["Tout", "Rapide"]);
     await expect(page.locator(".rv2-chips .rv2-drop")).toHaveText([/^REPAS/, /^PROTÉINE/]);
-    expect(await page.locator(".rv2-grid").evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(2);
+    expect(await page.locator(".rv2-bento").evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(2);
 
     await choose(page, "PROTÉINE", "Poulet");
     await expect(names(page)).toHaveCount(3);
