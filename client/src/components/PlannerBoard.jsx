@@ -6,16 +6,20 @@ import { formatRecipeTime, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { PlannerLegend } from "./PlannerLegend.jsx";
 import { weekendLayout } from "../lib/weekend.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
+import { leftoverIsStale } from "../lib/leftovers.js";
 import { dict, t } from "../i18n/index.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
 
-// A leftover card is "stale" once more days have passed since the earliest
-// non-leftover placement of that same recipe this week than the recipe's
-// fridgeLifeDays allows. Compares day-of-week positions within one week.
-export function computeStaleLeftoverIds(entries) {
+// A leftover card is "stale" (the pink "past fridge life" sticker) once it is past
+// its keep time (lib/leftovers.js, the one rule): a leftover that eats from Inventory
+// leftovers (`items`) after their use-by date; one that doesn't yet, when more days
+// have passed since the earliest non-leftover placement of the same recipe this week
+// than the recipe keeps in the fridge (its own days, else 4).
+export function computeStaleLeftoverIds(entries, items = []) {
   const stale = new Set();
   const firstCookedDay = new Map();
+  const itemById = new Map(items.map((i) => [i.id, i]));
 
   for (const entry of entries) {
     if (entry.isLeftover) continue;
@@ -26,12 +30,9 @@ export function computeStaleLeftoverIds(entries) {
   }
 
   for (const entry of entries) {
-    if (!entry.isLeftover) continue;
-    const fridgeLifeDays = entry.recipe?.fridgeLifeDays;
-    if (!fridgeLifeDays) continue;
-    const cookedDay = firstCookedDay.get(entry.recipe?.id);
-    if (cookedDay == null) continue;
-    if (entry.dayOfWeek - cookedDay > fridgeLifeDays) stale.add(entry.id);
+    if (!entry.isLeftover || entry.cookedAt) continue;
+    const item = entry.leftoverItemId ? itemById.get(entry.leftoverItemId) : null;
+    if (leftoverIsStale(entry, { item, cookedDay: firstCookedDay.get(entry.recipe?.id) })) stale.add(entry.id);
   }
 
   return stale;
@@ -84,6 +85,7 @@ export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, on
             {isStale ? t("planner.pastFridge") : t("planner.leftover")}
           </span>
         )}
+        {entry.cookedAt && !entry.isLeftover && <span className="riso-planner-card-cooked">{t("cooked.status")}</span>}
       </div>
       <button
         type="button"
@@ -242,11 +244,12 @@ export function PlannerBoard({
   onEmptyClick,
   onWeekendMenu,
   overlay,
+  leftoverItems = [],
 }) {
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
 
-  const staleIds = computeStaleLeftoverIds(entries);
+  const staleIds = computeStaleLeftoverIds(entries, leftoverItems);
   const scrollRef = useRef(null);
   const layout = weekendLayout(weekend);
   const currentWeek = isCurrentWeek(weekStart);

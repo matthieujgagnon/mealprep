@@ -238,6 +238,18 @@ export const api = {
   // "wasted" first - see POST /pantry-inventory/consume.
   consumePantryInventoryItems: (ids, action) =>
     request("/pantry-inventory/consume", { method: "POST", body: JSON.stringify({ ids, action }) }),
+  // "Remove from inventory" after cooking: takes = [{ id, amount }] (the item's
+  // own unit, or "all"). Resolves with { before, removedIds, logIds, items }:
+  // `before` and `logIds` are what putBackPantryItems needs to undo it.
+  takeOutPantryItems: (takes) =>
+    request("/pantry-inventory/take-out", { method: "POST", body: JSON.stringify({ takes }) }),
+  // Undo of a take-out: the rows exactly as they were, same ids. Not a way of adding.
+  putBackPantryItems: (rows, logIds) =>
+    request("/pantry-inventory/put-back", { method: "POST", body: JSON.stringify({ rows, logIds }) }),
+  // One portion off the Inventory leftovers for each planned leftover meal
+  // before `today`, once. Resolves like a take-out plus { entryIds, meals }.
+  settleLeftovers: (today) =>
+    request("/pantry-inventory/leftovers/settle", { method: "POST", body: JSON.stringify({ today }) }),
 
   listPantryLocations: () => request("/pantry-locations"),
   addPantryLocation: (name) =>

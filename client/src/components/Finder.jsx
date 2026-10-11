@@ -23,6 +23,8 @@ import {
 } from "../lib/finder.js";
 import { orderedSections } from "./Inventory.jsx";
 import { RecipePhoto } from "./RecipePhoto.jsx";
+import { leftoverTitle, plannableLeftovers } from "../lib/leftovers.js";
+import { daysUntil } from "../lib/pantryInventory.js";
 import { formatList } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
 
@@ -108,6 +110,53 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
           <span style={{ width: `${bar.pct}%` }} />
         </span>
       )}
+    </RecipePhotoCard>
+  );
+}
+
+// Leftovers in Inventory, on the Planner (`onAddLeftover`): « Restes · Chili · 2
+// portions ». The same photo card as a recipe; placing one plans a leftover meal
+// that eats one of its portions, and puts nothing on the grocery list. The whole
+// card and its + add it (into the chosen slot, else the slot picker); it drags onto
+// a slot like a recipe.
+function LeftoverResultCard({ entry, draggable, onAdd }) {
+  const { item, recipe } = entry;
+  const { listeners, setNodeRef, isDragging } = useDraggable({
+    id: `leftover-${item.id}`,
+    data: { leftoverItem: item, fromTray: true },
+    disabled: !draggable,
+  });
+  const title = leftoverTitle(item);
+  const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
+  const caption = [t("cooked.leftovers.tag"), days != null ? t("finder.leftoverDays", { count: Math.max(0, days) }) : null].filter(Boolean).join(" · ");
+  return (
+    <RecipePhotoCard
+      variant="finder"
+      cardRef={setNodeRef}
+      className={`fnd-card leftover${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}`}
+      ready
+      title={title}
+      photoUrl={item.imageUrl && item.imageUrl !== "none" ? item.imageUrl : recipe?.photoUrl}
+      caption={caption}
+      openLabel={t("finder.leftoverAdd", { title })}
+      onOpen={() => onAdd(entry)}
+      action={
+        <button
+          type="button"
+          className="rpc-add"
+          title={t("tray.addToPlan")}
+          aria-label={t("finder.leftoverAdd", { title })}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onAdd(entry)}
+        >
+          +
+        </button>
+      }
+      {...(draggable ? listeners : {})}
+    >
+      <span className="rpc-info">
+        <span>{t("finder.leftoverInfo")}</span>
+      </span>
     </RecipePhotoCard>
   );
 }
@@ -202,6 +251,7 @@ export function Finder({
   onOpenPopout,
   openId = null,
   leftovers,
+  onAddLeftover,
   plannedDays,
   grocery,
   deals,
@@ -276,6 +326,12 @@ export function Finder({
   }, [menu]);
 
   const showResults = sheet || page || finder.open || finder.filtered || !!mainRecipe;
+  // On the Planner, Inventory's leftovers come first (not with a Main meal, which
+  // is about other recipes).
+  const leftoverTiles = useMemo(
+    () => (onAddLeftover && !mainRecipe ? plannableLeftovers(pantryInventory, recipes, finder.query) : []),
+    [onAddLeftover, mainRecipe, pantryInventory, recipes, finder.query]
+  );
   const filtersOn = finder.filtered;
 
   // What a card says under its bar: what it shares with the Main meal, or what
@@ -587,8 +643,11 @@ export function Finder({
                 </section>
               );
             })
-          ) : tiles.length > 0 ? (
+          ) : tiles.length > 0 || leftoverTiles.length > 0 ? (
             <div className="fnd-grid">
+              {leftoverTiles.map((entry) => (
+                <LeftoverResultCard key={entry.item.id} entry={entry} draggable={draggable} onAdd={onAddLeftover} />
+              ))}
               {tiles.map((tile) => (
                 <ResultCard
                   key={tile.recipe.id}

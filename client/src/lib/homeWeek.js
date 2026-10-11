@@ -28,12 +28,18 @@ export function useBarPct(daysLeft) {
   return Math.max(8, Math.min(96, Math.round((1 - daysLeft / 7) * 100)));
 }
 
-// The items to show in "Use it up": soonest first, only those not yet past
-// their date and inside the window. { shown, soonest } (soonest is the few
-// that "Cook with these" searches for).
+// Leftovers about to expire (this many days or fewer) come first in "Use it up":
+// they are a meal ready to eat.
+export const LEFTOVERS_FIRST_DAYS = 3;
+
+// The items to show in "Use it up": leftovers about to expire first, then
+// soonest first, only those not yet past their date and inside the window.
+// { shown, soonest } (soonest is the few that "Cook with these" searches for:
+// ingredients, not leftovers).
 export function toUseItems(items, daysUntil) {
+  const first = (i) => (i.isLeftover && daysUntil(i.expiresAt) <= LEFTOVERS_FIRST_DAYS ? 1 : 0);
   const shown = (items || [])
     .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0 && daysUntil(i.expiresAt) <= TO_USE_DAYS)
-    .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt));
-  return { shown, soonest: shown.slice(0, TO_USE_COOK) };
+    .sort((a, b) => first(b) - first(a) || new Date(a.expiresAt) - new Date(b.expiresAt));
+  return { shown, soonest: shown.filter((i) => !i.isLeftover).slice(0, TO_USE_COOK) };
 }

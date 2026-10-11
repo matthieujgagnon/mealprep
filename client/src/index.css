@@ -3199,6 +3199,9 @@ input[type="date"].planner-week-picker {
   --riso-shadow-photo-card: 0 10px 24px -6px rgba(22, 24, 31, 0.35), 0 2px 6px rgba(22, 24, 31, 0.15); /* the soft shadow of the two photo cards (Recipes and Makeable) */
   --riso-hot-line: #f5c6e0; /* the thin line under the pink "use soon" strip on a Makeable card */
   --riso-progress-fill: #8f8fff; /* the fill of a Makeable card's ingredient bar */
+  --riso-box: #ffffff; /* the white inner boxes of the finished view: the row lists, the leftover preview, the Fridge / Freezer track */
+  --riso-row-line: #e2dccd; /* the thin line between two rows in a box */
+  --riso-highlighter: linear-gradient(176deg, transparent 22%, rgba(255, 225, 77, 0.85) 26%, rgba(255, 214, 40, 0.9) 80%, transparent 84%); /* the yellow marker behind an amount that comes out */
 
   /* Riso v2 (Pill Study). Added next to the colours above; nothing that
      already uses a token above changed. */
@@ -3259,6 +3262,9 @@ input[type="date"].planner-week-picker {
   --riso-shadow: 3px 3px 0 var(--riso-accent);
   --riso-shadow-card: 6px 6px 0 var(--riso-accent);
   --riso-bar-line: #26262e;
+  --riso-box: #1b1b21; /* inner boxes */
+  --riso-row-line: #26262e; /* row dividers */
+  --riso-dash: #3a3a44; /* thin lines: an empty portion square, an unticked box */
   --riso-timer-bg: var(--riso-ink-fixed); /* a black card with yellow type and outline, no shadow */
   --riso-timer-ink: var(--riso-yellow);
   --riso-timer-shadow-color: transparent;
@@ -6915,61 +6921,6 @@ button.riso-table-group-head:disabled {
   text-wrap: pretty;
 }
 
-/* ---------- Finished view ---------- */
-.cm-done {
-  flex: 1;
-  max-width: 1100px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 48px 40px 64px;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 28px;
-  align-items: start;
-}
-
-.cm-done-left {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.cm-done-sticker {
-  align-self: flex-start;
-  transform: rotate(-4deg);
-  background: var(--riso-green);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font: 800 15px var(--riso-font-display);
-  box-shadow: var(--riso-shadow);
-  white-space: nowrap;
-}
-
-.cm-done-title {
-  margin: 0;
-  font: 800 64px/0.95 var(--riso-font-display);
-  letter-spacing: -0.035em;
-}
-
-.cm-done-title .accent {
-  color: var(--riso-accent);
-}
-
-.cm-done-copy {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--riso-soft);
-}
-
-.cm-done-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .cm-btn {
   height: 52px;
   padding: 0 20px;
@@ -7001,100 +6952,885 @@ button.riso-table-group-head:disabled {
   height: 48px;
 }
 
-.cm-leftovers {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 26px;
-  box-shadow: 6px 6px 0 var(--riso-ink);
-  padding: 22px;
+/* ---------- The finished view: "I cooked this" ----------
+   components/CookedView.jsx and CookedViewParts.jsx (design: docs/design/
+   riso-v2-cook-mode/, Cook Mode Finished). Full screen at the end of Cook mode (.ck-screen, over
+   .cm-overlay), a sheet from the Planner and Home (.ck-sheet). Every colour is a Riso
+   token; dark mode comes from the dark block. The greens here (the "all done!"
+   sticker, the portion squares, the ✓ and − badges) are celebration, the one
+   exception to "green means on your grocery list" (docs/components.md, Colours). */
+.ck-screen {
+  z-index: 80;
+}
+
+.ck-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.cm-leftovers-title {
-  margin: 0;
-  font: 800 24px var(--riso-font-display);
-}
-
-.cm-leftovers-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.cm-leftovers-label {
-  font: 700 15px var(--riso-font-display);
-  white-space: nowrap;
-}
-
-.cm-stepper {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 44px;
-  padding: 0 5px;
-  border-radius: 22px;
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px;
+  background: color-mix(in srgb, var(--riso-ink-fixed) 45%, transparent);
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
-.cm-stepper button {
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
+.ck-sheet {
+  --cm-gutter: 32px;
+  position: relative;
+  width: 100%;
+  max-width: 1180px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
   border: 2px solid var(--riso-ink);
+  border-radius: var(--riso-radius-card-lg);
+  box-shadow: var(--riso-shadow-lg);
+  overflow: hidden;
+}
+
+.ck-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.ck-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 64px 72px;
+  box-sizing: border-box;
+}
+
+.ck-inner {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+}
+
+.ck-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.ck-sticker {
+  transform: rotate(-4deg);
+  background: var(--riso-green);
+  color: var(--riso-ink-fixed);
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 10px 24px;
+  font: 800 22px var(--riso-font-display);
+  box-shadow: var(--riso-shadow);
+  white-space: nowrap;
+}
+
+.ck-sticker.small {
+  padding: 6px 16px;
+  font-size: 18px;
+}
+
+.ck-title {
+  margin: 0;
+  font: 800 64px/0.95 var(--riso-font-display);
+  letter-spacing: -0.035em;
+}
+
+.ck-title .accent {
+  color: var(--riso-accent);
+}
+
+.ck-error {
+  margin: 0;
+  text-align: center;
+  font: 600 15px var(--riso-font-body);
+  color: var(--riso-danger);
+}
+
+.ck-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.ck-card {
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: var(--riso-radius-card-lg);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  box-sizing: border-box;
+  min-width: 0;
+  transition: opacity 200ms;
+}
+
+.ck-card.live {
+  box-shadow: 4px 4px 0 var(--riso-shadow-color, var(--riso-ink));
+}
+
+.riso-theme[data-theme="dark"] .ck-card.live {
+  --riso-shadow-color: var(--riso-accent);
+}
+
+.ck-card.done {
+  gap: 18px;
+}
+
+.ck-card.dim {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.ck-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ck-badge {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 2px solid var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font: 800 24px/1 var(--riso-font-display);
+}
+
+.ck-badge.blue {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.ck-badge.green {
+  background: var(--riso-green-tint);
+  color: var(--riso-ink-fixed);
+  font-size: 20px;
+}
+
+.ck-badge.small {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.ck-card-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 800 24px var(--riso-font-display);
+  letter-spacing: -0.01em;
+}
+
+.ck-quiet {
+  margin: 0;
+  font: 400 14px/1.55 var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.ck-undo {
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
   background: var(--riso-surface);
   color: var(--riso-ink);
-  font: 700 16px var(--riso-font-display);
-  padding: 0;
+  box-shadow: 2px 2px 0 var(--riso-accent);
+  font: 700 15px var(--riso-font-display);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* The card's "How it works" is the shared hint strip; its yellow sticker keeps ink
+   type in dark, as every yellow fill does. */
+.ck-card .riso-hint-strip {
+  margin: 0;
+}
+
+.riso-theme[data-theme="dark"] .riso-hint-sticker {
+  color: var(--riso-ink-fixed);
+}
+
+.ck-portions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ck-portions-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font: 600 15px var(--riso-font-body);
+}
+
+.ck-portions-head strong {
+  font: 800 22px var(--riso-font-display);
+}
+
+.ck-squares {
+  display: grid;
+  grid-template-columns: repeat(var(--ck-squares, 4), minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ck-square {
+  height: 60px;
+  border-radius: 14px;
+  border: 2px dashed var(--riso-dash-strong);
+  background: var(--riso-box);
+  color: var(--riso-ink);
+  font: 800 18px var(--riso-font-display);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.riso-theme[data-theme="dark"] .ck-square {
+  border-color: var(--riso-dash);
+}
+
+.ck-square.on,
+.riso-theme[data-theme="dark"] .ck-square.on {
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-green-tint);
+  color: var(--riso-ink-fixed);
+}
+
+.ck-places {
+  display: flex;
+  gap: 10px;
+  padding: 5px 8px 8px 5px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-box);
+}
+
+.ck-place {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--riso-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: 700 15px/1.1 var(--riso-font-body);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.ck-place.on {
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+  box-shadow: 3px 3px 0 var(--riso-accent);
+}
+
+.riso-theme[data-theme="dark"] .ck-place.on {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  border: 2px solid var(--riso-on-accent);
+  box-shadow: 3px 3px 0 var(--riso-canvas);
+}
+
+.ck-place-range {
+  font: 400 12px var(--riso-font-body);
+  opacity: 0.8;
+}
+
+.ck-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-box);
+}
+
+.ck-preview-photo {
+  flex: none;
+  width: 68px;
+  height: 68px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: var(--riso-track);
+}
+
+.ck-preview-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ck-preview-photo.empty {
+  background: repeating-linear-gradient(135deg, var(--riso-track) 0 8px, var(--riso-surface) 8px 16px);
+}
+
+.ck-preview-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ck-preview-name {
+  font: 800 19px/1.2 var(--riso-font-display);
+  text-wrap: pretty;
+}
+
+.ck-preview-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font: 400 14px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.ck-leftover-tag {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.ck-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.ck-btn {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 56px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 28px;
+  background: var(--riso-box);
+  color: var(--riso-ink);
+  font: 700 17px var(--riso-font-display);
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.cm-stepper span {
-  min-width: 28px;
-  text-align: center;
-  font: 800 18px var(--riso-font-display);
+.ck-btn.primary {
+  flex: 2 1 0%;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow);
+  font-weight: 800;
 }
 
-.cm-storage {
+.ck-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.ck-btn.wide {
+  align-self: stretch;
+  flex: none;
+}
+
+/* "then" (or "now" once Leftovers is answered) between the two cards. */
+.ck-then {
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.ck-then-pill {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+  font: 800 16px var(--riso-font-display);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.riso-theme[data-theme="dark"] .ck-then-pill {
+  color: var(--riso-ink-fixed);
+}
+
+.ck-then-arrow {
+  font: 800 22px/1 var(--riso-font-display);
+}
+
+/* The count: the Makeable card's footer. */
+.ck-count {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.cm-storage-option {
-  height: 48px;
-  padding: 0 16px;
-  border-radius: 24px;
+.ck-count-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--riso-muted);
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ck-count-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--riso-track);
+  overflow: hidden;
+}
+
+.ck-count-bar > div {
+  height: 100%;
+  background: var(--riso-progress-fill);
+  transition: width 200ms;
+}
+
+.ck-shelves {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.ck-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ck-shelf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--riso-ink);
+  font: 600 13px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ck-shelf-head > span + span {
+  font: 500 12px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--riso-muted);
+}
+
+.ck-shelf.quiet .ck-shelf-head {
+  color: var(--riso-muted);
+  border-bottom-style: dotted;
+}
+
+.ck-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 0 14px;
   border: 2px solid var(--riso-ink);
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-box);
+}
+
+.ck-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ck-row + .ck-row {
+  border-top: 1px solid var(--riso-row-line);
+}
+
+/* A row that stays is faded; its buttons (Running low, All of it, the amount box) are not. */
+.ck-row:not(.on) > :is(.ck-row-emoji, .ck-row-main, .ck-stays, .ck-tick) {
+  opacity: 0.5;
+}
+
+.ck-row.other {
+  cursor: default;
+}
+
+.ck-row:focus-visible {
+  outline: 2px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+.ck-row-emoji {
+  flex: none;
+  width: 28px;
+  text-align: center;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.ck-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ck-row-name {
+  font: 800 16px/1.2 var(--riso-font-display);
+  overflow-wrap: anywhere;
+}
+
+.ck-row-line {
+  font: 400 13px/1.35 var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+/* The amount that comes out, as a highlighter mark; tapping it edits it. */
+.ck-highlight {
+  flex: none;
+  height: 22px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 2px 8px 3px 10px;
+  background: var(--riso-highlighter);
+  color: var(--riso-ink-fixed);
+  font: italic 500 14px/1 var(--riso-font-display);
+  white-space: nowrap;
+  cursor: text;
+}
+
+.ck-stays {
+  flex: none;
+  font: 500 12px/1 var(--riso-font-mono);
+  color: var(--riso-chip-dash);
+}
+
+.ck-amount-edit {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: default;
+}
+
+.ck-amount-sign {
+  font: 600 14px var(--riso-font-display);
+}
+
+.ck-amount-input {
+  width: 64px;
+  height: 32px;
+  padding: 0 8px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 10px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 600 15px var(--riso-font-body);
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.ck-amount-unit {
+  font: 500 13px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.ck-allofit,
+.ck-low {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 15px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ck-allofit.on {
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+}
+
+/* "On the list": green, as everything on the grocery list is. */
+.ck-low.listed {
+  border-color: var(--riso-green-text);
+  color: var(--riso-green-text);
+  cursor: default;
+}
+
+.ck-tick {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--riso-dash-strong);
+  background: var(--riso-surface);
+  color: var(--riso-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font: 800 13px/1 var(--riso-font-body);
+}
+
+.ck-row.on .ck-tick {
+  border-color: var(--riso-ink);
+  background: var(--riso-accent);
+}
+
+.riso-theme[data-theme="dark"] .ck-tick {
+  border-color: var(--riso-dash);
+  background: var(--riso-box);
+}
+
+.riso-theme[data-theme="dark"] .ck-row.on .ck-tick {
+  border-color: var(--riso-yellow);
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--riso-yellow) 25%, transparent);
+}
+
+.ck-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ck-summary-text {
+  flex: 1;
+  min-width: 0;
+  font: 600 15px/1.35 var(--riso-font-body);
+}
+
+.ck-back {
+  align-self: center;
+  height: 46px;
+  padding: 0 20px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 23px;
+  background: transparent;
+  color: var(--riso-ink);
   font: 700 15px var(--riso-font-display);
   cursor: pointer;
 }
 
-.cm-storage-option.on {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: var(--riso-shadow);
+/* The pop-up after either Inventory button. */
+.ck-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: min(200px, 22vh) 40px 40px;
+  background: color-mix(in srgb, var(--riso-ink-fixed) 45%, transparent);
+  box-sizing: border-box;
 }
 
-.cm-storage-range {
-  font: 500 12px var(--riso-font-mono);
-  opacity: 0.85;
+.ck-modal {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 30px 26px 24px;
+  text-align: center;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: var(--riso-radius-card-lg);
+  box-shadow: var(--riso-shadow-card);
+  box-sizing: border-box;
 }
 
-.cm-leftovers-line {
+.ck-modal-title {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--riso-soft);
+  font: 800 28px/1.05 var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+.ck-modal-text {
+  margin: 0;
+  font: 400 15px/1.5 var(--riso-font-body);
+  color: var(--riso-muted);
+  text-wrap: pretty;
+}
+
+.ck-link {
+  border: 0;
+  background: none;
+  color: var(--riso-muted);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* The burst after "Back to the app", over whatever page is under it. */
+.ck-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 510;
+  pointer-events: none;
+}
+
+@keyframes sm-burst {
+  0% {
+    transform: translate(-50%, 0) rotate(0deg);
+    opacity: 1;
+  }
+  35% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot-half));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx2), var(--dy2)) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+/* Leftovers in Inventory (the Leftovers shelf), the item form's Leftovers mode and
+   Home's Use it up: the yellow LEFTOVER tag, where they're kept, and thawing. */
+.inv-card-leftover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font: 500 12px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.inv-card-leftover-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font: 500 10px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+
+.inv-card-leftover .inv-card-leftover-tag {
+  margin-left: 0;
+}
+
+/* A leftover's card says more (portions, where, days left, thaw): its rows grow. */
+.inv-shelf[data-section-id="leftovers"] .inv-shelf-items {
+  grid-auto-rows: minmax(88px, auto);
+}
+
+.inv-card-thaw {
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-itemform-leftover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.riso-itemform-recipe {
+  height: 32px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 600 13px var(--riso-font-body);
+}
+
+.riso-itemform-unit.fixed {
+  display: inline-flex;
+  align-items: center;
+  font: 600 15px var(--riso-font-body);
+}
+
+/* The cooked mark on a Planner card, the planned meal's card and Home's tonight card. */
+.riso-planner-card-cooked {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 1;
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font: 500 10px/16px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.riso-plannedcard-cooked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-plannedcard-btn.cooked {
+  flex: 1;
+}
+
+.riso-plannedcard-cooked-tag,
+.riso-home-cooked {
+  flex: none;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.riso-home-cooked {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
 }
 
 .cm-empty {
@@ -7327,13 +8063,99 @@ button.riso-table-group-head:disabled {
     padding: 0 16px;
   }
 
-  .cm-done {
-    grid-template-columns: 1fr;
-    padding: 24px 18px 48px;
+}
+
+/* The finished view on a phone: one column with ↓ between the cards, buttons stacked,
+   and the sheet takes the whole screen. */
+@media (max-width: 767px) {
+  .ck-sheet-backdrop {
+    padding: 0;
   }
 
-  .cm-done-title {
+  .ck-sheet {
+    --cm-gutter: 18px;
+    min-height: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .ck-main {
+    padding: 36px 20px 44px;
+  }
+
+  .ck-inner {
+    max-width: 640px;
+    gap: 32px;
+  }
+
+  .ck-sticker {
+    padding: 8px 18px;
+    font-size: 19px;
+  }
+
+  .ck-title {
     font-size: 44px;
+  }
+
+  .ck-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .ck-then {
+    flex-direction: row;
+  }
+
+  .ck-card {
+    padding: 22px;
+  }
+
+  .ck-card-title {
+    font-size: 20px;
+  }
+
+  .ck-square {
+    height: 52px;
+  }
+
+  .ck-place {
+    height: 52px;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ck-preview {
+    padding: 10px 12px;
+    gap: 12px;
+  }
+
+  .ck-preview-photo {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+  }
+
+  .ck-preview-name {
+    font-size: 16px;
+  }
+
+  .ck-preview-line {
+    font-size: 13px;
+  }
+
+  .ck-actions {
+    flex-direction: column;
+  }
+
+  .ck-btn,
+  .ck-btn.primary {
+    flex: none;
+    font-size: 15px;
+  }
+
+  .ck-modal-backdrop {
+    padding: min(260px, 26vh) 20px 20px;
   }
 }
 
@@ -17685,6 +18507,20 @@ body.no-select {
 .plg-swatch.have {
   background: var(--riso-surface);
   border: 2.5px solid var(--riso-accent);
+}
+
+.plg-swatch.cooked {
+  height: 16px;
+  padding: 0 6px;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+  font: 500 9px var(--riso-font-mono);
+  font-style: normal;
+  letter-spacing: 0.06em;
 }
 
 .plg-swatch.leftover {

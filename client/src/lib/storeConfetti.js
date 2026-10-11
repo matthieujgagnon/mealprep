@@ -56,3 +56,40 @@ export function makeConfetti(rand = Math.random) {
 
   return { pieces, sparkles };
 }
+
+// The finished view's burst after "Back to the app" (design: Cook Mode Finished):
+// about 110 pieces in blue, yellow, green, pink and ink that burst out of the
+// middle of the screen, then fall and fade over about 2 seconds.
+const BURST_COLORS = ["#2323FF", "#FFE14D", "#10C95C", "#FF5FA2", "#16181F"];
+
+export function makeBurst(rand = Math.random) {
+  const pieces = [];
+  for (let i = 0; i < 110; i++) {
+    const w = 6 + rand() * 6;
+    const angle = rand() * Math.PI * 2;
+    const speed = 120 + rand() * 380;
+    const dx = Math.cos(angle) * speed;
+    const dy = Math.sin(angle) * speed - 160;
+    const rot = (rand() - 0.5) * 900;
+    pieces.push({
+      anim: "sm-burst",
+      top: "42%",
+      left: "50%",
+      w: `${w.toFixed(0)}px`,
+      h: `${(w * 1.6).toFixed(0)}px`,
+      bg: BURST_COLORS[i % BURST_COLORS.length],
+      radius: i % 3 ? "2px" : "50%",
+      duration: `${(2 + rand() * 0.5).toFixed(2)}s`,
+      delay: "0s",
+      vars: {
+        "--dx": `${dx.toFixed(0)}px`,
+        "--dy": `${dy.toFixed(0)}px`,
+        "--dx2": `${(dx * 1.25).toFixed(0)}px`,
+        "--dy2": `${(dy + 700).toFixed(0)}px`,
+        "--rot": `${rot.toFixed(0)}deg`,
+        "--rot-half": `${(rot / 2).toFixed(0)}deg`,
+      },
+    });
+  }
+  return { pieces, sparkles: [] };
+}

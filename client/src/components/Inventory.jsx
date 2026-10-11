@@ -5,6 +5,7 @@ import { UnitSelect } from "./UnitSelect.jsx";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
+import { leftoverExpiry, leftoverKeepDays, thawPatch } from "../lib/leftovers.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
 import { InventoryItemForm } from "./InventoryItemForm.jsx";
 import { HintStrip } from "./RisoControls.jsx";
@@ -17,11 +18,19 @@ export { ItemPhoto };
 // handoff. "Counter" is a fourth USDA location the bundled data supports
 // but this app has no dedicated shelf for yet (deferred per the handoff's
 // own note that it's optional).
+// Leftovers (LEFTOVER items: a cooked meal's portions) have a shelf of their own,
+// whether they are kept in the fridge or the freezer (lib/leftovers.js).
 const SHELF_LOCATIONS = [
   { id: "fridge", get label() { return t("locations.fridge"); } },
   { id: "freezer", get label() { return t("locations.freezer"); } },
   { id: "pantry", get label() { return t("locations.pantry"); } },
+  { id: "leftovers", get label() { return t("locations.leftovers"); } },
 ];
+
+// Which shelf an item is on: leftovers on Leftovers, everything else on its own.
+export function onShelf(item, shelfId) {
+  return shelfId === "leftovers" ? !!item.isLeftover : !item.isLeftover && item.location === shelfId;
+}
 
 // Shelves sit on a 12-column grid (Riso Inventory handoff): Fridge and
 // Freezer at half, Pantry the whole row. A width snaps to whole columns,
@@ -42,7 +51,7 @@ function spanOf(size, id) {
   if (m) return snapSpan(Number(m[1]));
   const n = LEGACY_SPAN[size] ?? parseInt(size, 10);
   if (n >= 1 && n <= 6) return snapSpan(n * 2);
-  return id === "pantry" ? GRID_COLUMNS : 6;
+  return id === "pantry" || id === "leftovers" ? GRID_COLUMNS : 6;
 }
 
 // Built-in shelves plus custom sections, in the user's saved order (anything
@@ -71,9 +80,12 @@ export function orderedSections(locations, layout) {
     });
 }
 
-// The shelves as plain { id, label } choices, in the saved order.
+// The shelves as plain { id, label } choices, in the saved order: the places a
+// thing can be kept (Leftovers is a shelf to look at, not a place to choose).
 export function shelfOptions(locations, layout) {
-  return orderedSections(locations, layout).map(({ id, label }) => ({ id, label }));
+  return orderedSections(locations, layout)
+    .filter(({ id }) => id !== "leftovers")
+    .map(({ id, label }) => ({ id, label }));
 }
 
 function layoutPayload(sections) {
@@ -303,8 +315,13 @@ function daysUntilOrNull(item) {
   return item.expiresAt ? daysUntil(item.expiresAt) : Infinity;
 }
 
-function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true }) {
+// A leftover's card says how many portions are left and where they are kept, wears
+// the yellow LEFTOVER tag, shows the recipe's photo, and in the freezer has "Move
+// to fridge to thaw" (`onThaw`).
+function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true, recipe, onThaw }) {
   const line = expiryLine(item);
+  const leftover = !!item.isLeftover;
+  const photoItem = leftover && !item.imageUrl && recipe?.photoUrl ? { ...item, imageUrl: recipe.photoUrl } : item;
 
   // Draggable onto any other shelf (see App.jsx's handleDragEnd, routed via
   // the "inv-shelf-<location>" droppable ids below). PointerSensor's
@@ -319,7 +336,7 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, 
     <div
       ref={setNodeRef}
       {...(draggable ? { ...attributes, ...listeners } : {})}
-      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}${line?.expired ? " expired" : ""}`}
+      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}${line?.expired ? " expired" : ""}${leftover ? " leftover" : ""}`}
       onClick={onSelect}
       aria-label={`${item.name}${line ? `, ${line.label}` : ""}`}
     >
@@ -329,10 +346,30 @@ function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, 
         </span>
       )}
       <div className="inv-card-body">
-        <ItemPhoto item={item} />
+        <ItemPhoto item={photoItem} />
         <div className="inv-card-main">
           <span className="inv-card-name">{item.name}</span>
           {line?.expired && <span className="inv-card-expired">{t("inventory.expiredTag")}</span>}
+          {leftover && (
+            <span className="inv-card-leftover">
+              <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>
+              <span>{t(`locations.${item.location}`)}</span>
+              {line && !line.expired && <span>{line.label}</span>}
+            </span>
+          )}
+          {leftover && item.location === "freezer" && onThaw && (
+            <button
+              type="button"
+              className="inv-card-thaw riso-press"
+              onClick={(e) => {
+                e.stopPropagation();
+                onThaw(item);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {t("inventory.thaw")}
+            </button>
+          )}
         </div>
         <CardQuantity item={item} onUpdate={onUpdate} />
         <span
@@ -522,6 +559,8 @@ function ShelfColumn({
   onSelect,
   onToggleSelect,
   draggable = true,
+  recipes = [],
+  onThaw,
   editing,
   onEdit,
   onAddHere,
@@ -636,9 +675,11 @@ function ShelfColumn({
             active={item.id === activeItemId}
             selected={selectedIds.has(item.id)}
             onSelect={() => onSelect(item.id)}
-            draggable={draggable}
+            draggable={draggable && !item.isLeftover}
             onToggleSelect={() => onToggleSelect(item.id)}
             onUpdate={onUpdate}
+            recipe={item.isLeftover ? recipes.find((r) => r.id === item.recipeId) : null}
+            onThaw={onThaw}
           />
         ))}
         {sorted.length === 0 && <div className="inv-shelf-empty">{t("inventory.dropHere")}</div>}
@@ -822,9 +863,25 @@ export function Inventory({
     setSelectedIds(new Set());
     for (const id of ids) {
       const item = items.find((i) => i.id === id);
+      if (item?.isLeftover) {
+        // Leftovers keep the leftover freezer time, from today.
+        const now = new Date();
+        const recipe = recipes.find((r) => r.id === item.recipeId);
+        if (item.location !== "freezer") await onUpdate(id, { location: "freezer", purchasedAt: now.toISOString(), expiresAt: leftoverExpiry(recipe, "freezer", now) });
+        continue;
+      }
       const freezerData = item?.locations?.freezer;
       if (freezerData) await onUpdate(id, { location: "freezer", expiresAt: freezerData.expiresAt });
     }
+  }
+
+  // "Move to fridge to thaw" on a frozen leftover: in the fridge, its days left
+  // start over with the fridge keep time; the toast has Undo.
+  async function thaw(item) {
+    const recipe = recipes.find((r) => r.id === item.recipeId);
+    const before = { location: item.location, purchasedAt: item.purchasedAt, expiresAt: item.expiresAt };
+    await onUpdate(item.id, thawPatch(recipe));
+    showToast(t("inventory.thawed", { name: item.name, count: leftoverKeepDays(recipe, "fridge") }), () => onUpdate(item.id, before));
   }
 
   const activeItem = items.find((i) => i.id === activeItemId);
@@ -1021,7 +1078,7 @@ export function Inventory({
                 className={currentShelf === loc.id ? "on" : ""}
                 onClick={() => jumpToShelf(loc.id)}
               >
-                {loc.label} <span>{items.filter((i) => i.location === loc.id).length}</span>
+                {loc.label} <span>{items.filter((i) => onShelf(i, loc.id)).length}</span>
               </button>
             ))}
           </div>
@@ -1042,8 +1099,10 @@ export function Inventory({
             <ShelfColumn
               key={loc.id}
               location={loc}
-              items={items.filter((i) => i.location === loc.id)}
+              items={items.filter((i) => onShelf(i, loc.id))}
               onUpdate={onUpdate}
+              recipes={recipes}
+              onThaw={thaw}
               activeItemId={activeItemId}
               selectedIds={selectedIds}
               onSelect={setActiveItemId}
@@ -1105,6 +1164,7 @@ export function Inventory({
           mode="add"
           sections={sections}
           defaultLocation={addLocation}
+          recipes={recipes}
           isStapleFor={(n) => staples.has(String(n).trim().toLowerCase())}
           onToggleStaple={toggleStaple}
           onAdd={onAdd}

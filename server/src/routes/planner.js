@@ -75,9 +75,11 @@ plannerRouter.get("/dates", async (req, res) => {
 });
 
 // POST /api/planner - place a recipe card onto a day + meal slot
-// body: { recipeId, weekStart, dayOfWeek (0-6), mealType ("breakfast"|"lunch"|"dinner"), servings?, isLeftover?, alreadyHave?, position? }
+// body: { recipeId, weekStart, dayOfWeek (0-6), mealType ("breakfast"|"lunch"|"dinner"), servings?, isLeftover?, alreadyHave?, position?,
+//   cookedAt?, leftoverItemId? } - the last two put a cooked meal or a planned leftover back as it was (Undo), or
+//   place Inventory leftovers (the planned meal eats one of their portions)
 plannerRouter.post("/", async (req, res) => {
-  const { recipeId, weekStart, dayOfWeek, mealType, servings, isLeftover, alreadyHave, position } = req.body;
+  const { recipeId, weekStart, dayOfWeek, mealType, servings, isLeftover, alreadyHave, position, cookedAt, leftoverItemId } = req.body;
   if (!recipeId || !weekStart || dayOfWeek === undefined || !mealType) {
     return res
       .status(400)
@@ -100,6 +102,8 @@ plannerRouter.post("/", async (req, res) => {
       isLeftover: isLeftover ?? false,
       alreadyHave: alreadyHave ?? false,
       position: position ?? 0,
+      cookedAt: cookedAt ? new Date(cookedAt) : null,
+      leftoverItemId: typeof leftoverItemId === "string" ? leftoverItemId : null,
     },
     include: { recipe: { include: { ingredients: true } } },
   });
@@ -229,9 +233,10 @@ plannerRouter.put("/:id/note", async (req, res) => {
 });
 
 // PUT /api/planner/:id - move a card (within or across weeks), change
-// planned servings, or toggle leftovers/already-have
+// planned servings, toggle leftovers/already-have, mark it cooked (`cookedAt`,
+// a date or null) or link it to Inventory leftovers (`leftoverItemId` or null)
 plannerRouter.put("/:id", async (req, res) => {
-  const { weekStart, dayOfWeek, mealType, position, servings, isLeftover, alreadyHave } = req.body;
+  const { weekStart, dayOfWeek, mealType, position, servings, isLeftover, alreadyHave, cookedAt, leftoverItemId } = req.body;
   const { count } = await prisma.plannerEntry.updateMany({
     where: { id: req.params.id, userId: req.userId },
     data: {
@@ -242,6 +247,8 @@ plannerRouter.put("/:id", async (req, res) => {
       ...(servings !== undefined && { servings }),
       ...(isLeftover !== undefined && { isLeftover }),
       ...(alreadyHave !== undefined && { alreadyHave }),
+      ...(cookedAt !== undefined && { cookedAt: cookedAt ? new Date(cookedAt) : null }),
+      ...(leftoverItemId !== undefined && { leftoverItemId: typeof leftoverItemId === "string" ? leftoverItemId : null }),
     },
   });
   if (count === 0) return res.status(404).json(fail(req, "notFound.plannerEntry"));

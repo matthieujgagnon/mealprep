@@ -69,6 +69,7 @@ export function Planner({
   onOpenPopout,
   popoutId,
   onRequestPlan,
+  onRequestPlanLeftover,
   onOpenRecipeCard,
 }) {
   const phone = useIsPhone();
@@ -175,6 +176,15 @@ export function Planner({
     else onRequestPlan(recipe);
   }
 
+  // A leftover from Inventory (the finder's « Restes · ... » cards): into the target
+  // slot, else the shared slot picker.
+  function addLeftover({ item }) {
+    if (target) {
+      actions.placeLeftoverItem(item, target);
+      onTargetChange(null);
+    } else onRequestPlanLeftover(item);
+  }
+
   async function placeLeftover(slot) {
     if (mainRecipe) await actions.placeLeftover(mainRecipe, slot);
   }
@@ -230,6 +240,7 @@ export function Planner({
       onOpenPopout={onOpenPopout}
       openId={popoutId}
       leftovers={leftovers}
+      onAddLeftover={addLeftover}
     />
   );
 
@@ -287,7 +298,17 @@ export function Planner({
         haveCores={haveCores}
         grocery={grocery}
         state={openState}
+        cooked={!!openEntry?.cookedAt}
         onCycle={() => actions.cycleState(openEntry.id, { toast: true })}
+        onCooked={
+          openEntry?.isLeftover
+            ? undefined
+            : () => {
+                const entry = openEntry;
+                close();
+                actions.cooked(entry);
+              }
+        }
         onCook={() => {
           const { recipe } = overlay.entry;
           close();
@@ -338,6 +359,7 @@ export function Planner({
       {phone ? (
         <PlannerBoardPhone
           entries={entries}
+          leftoverItems={pantryInventory}
           weekStart={weekStart}
           weekend={weekend}
           boardRef={boardRef}
@@ -356,6 +378,7 @@ export function Planner({
       ) : (
         <PlannerBoard
           entries={entries}
+          leftoverItems={pantryInventory}
           weekStart={weekStart}
           weekend={weekend}
           boardRef={boardRef}

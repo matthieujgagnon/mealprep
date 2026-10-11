@@ -213,7 +213,7 @@ test.describe("inventory on a phone", () => {
     await page.reload();
     await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-    await expect(page.locator(".inv-shelf")).toHaveCount(3); // all of them on the page at once
+    await expect(page.locator(".inv-shelf")).toHaveCount(4); // all of them on the page at once (Leftovers too)
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     const chips = page.locator(".riso-inv-shelf-pin");
     const header = await page.locator(".app-header").boundingBox();
@@ -246,7 +246,7 @@ test.describe("inventory on a computer", () => {
     }
     await page.reload();
     await page.getByRole("button", { name: "Inventory", exact: true }).click();
-    await expect(page.locator(".inv-shelf")).toHaveCount(3);
+    await expect(page.locator(".inv-shelf")).toHaveCount(4); // with Leftovers
 
     // The pill fills the width less the round +, which sits beside it.
     const pill = await page.locator(".riso-inv-shelf-switch").boundingBox();
@@ -275,7 +275,8 @@ test.describe("inventory on a computer", () => {
       })
       .toBe(true);
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await expect(page.getByRole("tab", { name: /^Pantry/ })).toHaveAttribute("aria-selected", "true");
+    // The last shelf, Leftovers, is the one reached at the bottom.
+    await expect(page.getByRole("tab", { name: /^Leftovers/ })).toHaveAttribute("aria-selected", "true");
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(page.getByRole("tab", { name: /^Fridge/ })).toHaveAttribute("aria-selected", "true");
   });

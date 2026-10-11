@@ -163,7 +163,7 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   const order = () => page.locator(".inv-shelf").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  await expect.poll(order).toEqual(["Fridge section", "Freezer section", "Pantry section"]);
+  await expect.poll(order).toEqual(["Fridge section", "Freezer section", "Pantry section", "Leftovers section"]);
   // No arrow or size buttons any more.
   await expect(page.getByRole("button", { name: /Move section earlier|Width 1\/3/ })).toHaveCount(0);
 
@@ -215,12 +215,12 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.mouse.down();
   await page.mouse.move(fb.x + 20, fb.y + fb.height / 2, { steps: 12 });
   await page.mouse.up();
-  await expect.poll(order).toEqual(["Pantry section", "Kitchen fridge section", "Freezer section"]);
+  await expect.poll(order).toEqual(["Pantry section", "Kitchen fridge section", "Freezer section", "Leftovers section"]);
 
   // The grip also moves with the arrow keys.
   await page.getByRole("button", { name: 'Move the "Freezer" section' }).focus();
   await page.keyboard.press("ArrowLeft");
-  await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section"]);
+  await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Leftovers section"]);
 
   // A new shelf is added after the others.
   await page.getByRole("button", { name: "Add a shelf" }).click();
@@ -234,7 +234,7 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect
     .poll(order)
-    .toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Garage freezer section"]);
+    .toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Leftovers section", "Garage freezer section"]);
   await expect.poll(async () => Math.round((await fridge.boundingBox()).width)).toBe(Math.round(fridgeWidth));
   await page.getByRole("button", { name: "+ Add item" }).click();
   await expect(itemForm(page).locator(".riso-itemform-loc-name")).toHaveText(["Pantry", "Freezer", "Kitchen fridge", "Garage freezer"]);

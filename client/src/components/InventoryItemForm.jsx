@@ -22,6 +22,7 @@ import {
   stepQuantity,
   useByKind,
 } from "../lib/inventoryForm.js";
+import { leftoverExpiry, leftoverKeepDays, FRIDGE_DAYS } from "../lib/leftovers.js";
 import { t } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
 
@@ -30,6 +31,10 @@ import { formatDate } from "../i18n/format.js";
 // like (Enter or "Add and next" keeps the form open); Edit mode works on a copy of
 // the item that only Save changes commits. Typing an item in here counts as
 // confirming it, so Add goes straight to Inventory (see CLAUDE.md).
+//
+// Leftovers are the same form in its Leftovers mode (the Leftovers chip, or the
+// Leftovers shelf's +, or a leftover item opened): portions, Fridge or Freezer with
+// the leftover keep times (lib/leftovers.js), and the recipe they're from, if any.
 
 function Step({ n, children }) {
   return (
@@ -169,11 +174,23 @@ export function InventoryItemForm({
 }) {
   const edit = mode === "edit";
   const labelFor = Object.fromEntries(sections.map((s) => [s.id, s.label]));
-  const startLoc = edit ? item.location : sections.some((s) => s.id === defaultLocation) ? defaultLocation : sections[0]?.id || "fridge";
+  const startLeftover = edit ? !!item.isLeftover : defaultLocation === "leftovers";
+  // The Leftovers shelf isn't a place to keep things: the shelf cards are the others.
+  const storage = sections.filter((s) => s.id !== "leftovers");
+  const startLoc = edit
+    ? item.location
+    : startLeftover
+    ? "fridge"
+    : storage.some((s) => s.id === defaultLocation)
+    ? defaultLocation
+    : storage[0]?.id || "fridge";
   const savedDate = edit && item.expiresAt ? String(item.expiresAt).slice(0, 10) : "";
   // A saved date that isn't USDA's own figure for this food is the user's date.
   const usdaDate = edit && item.locations?.[item.location]?.expiresAt ? String(item.locations[item.location].expiresAt).slice(0, 10) : null;
 
+  const [leftover, setLeftover] = useState(startLeftover);
+  const [recipeId, setRecipeId] = useState(edit ? item.recipeId || "" : "");
+  const leftoverRecipe = recipes.find((r) => r.id === recipeId) || null;
   const [name, setName] = useState(edit ? item.name : "");
   const [qtyText, setQtyText] = useState(edit ? formatFractionQuantity(item.quantity ?? 0) : "1");
   const [qtyDraft, setQtyDraft] = useState(null);
@@ -182,7 +199,9 @@ export function InventoryItemForm({
   const [locTouched, setLocTouched] = useState(false);
   const [opts, setOpts] = useState(edit ? item.locations || {} : {});
   const [category, setCategory] = useState(edit ? item.category : "Other");
-  const [expiresAt, setExpiresAt] = useState(edit ? savedDate : dateFromDays(startDays(null, startLoc).days));
+  const [expiresAt, setExpiresAt] = useState(
+    edit ? savedDate : dateFromDays(startLeftover ? leftoverKeepDays(null, startLoc) : startDays(null, startLoc).days)
+  );
   const [custom, setCustom] = useState(edit ? !!savedDate && savedDate !== usdaDate : false);
   const [staple, setStaple] = useState(edit ? !!isStaple : false);
   const [photo, setPhoto] = useState(edit ? item.imageUrl ?? null : null);
@@ -195,7 +214,7 @@ export function InventoryItemForm({
   const stapleTouched = useRef(false);
   // What the lookup needs when it comes back a moment later.
   const live = useRef({});
-  live.current = { loc, locTouched, custom };
+  live.current = { loc, locTouched, custom, leftover };
 
   // Recent foods (add mode).
   useEffect(() => {
@@ -221,13 +240,14 @@ export function InventoryItemForm({
       () => {
         if (!q) {
           setOpts({});
-          if (!live.current.custom) setExpiresAt(dateFromDays(startDays(null, live.current.loc).days));
+          if (!live.current.custom && !live.current.leftover) setExpiresAt(dateFromDays(startDays(null, live.current.loc).days));
           return;
         }
         api
           .suggestPantryExpiration(q)
           .then((res) => {
-            if (cancelled) return;
+            // Leftovers keep for the leftover times, not the USDA ones for the name.
+            if (cancelled || live.current.leftover) return;
             const locations = res.locations || {};
             setOpts(locations);
             if (res.category) setCategory(res.category);
@@ -267,7 +287,26 @@ export function InventoryItemForm({
   function chooseLocation(id) {
     setLoc(id);
     setLocTouched(true);
-    if (!custom) setExpiresAt(dateFromDays(startDays(opts[id], id).days));
+    if (!custom) setExpiresAt(dateFromDays(leftover ? leftoverKeepDays(leftoverRecipe, id) : startDays(opts[id], id).days));
+  }
+
+  // The Leftovers chip (add mode): portions in the fridge, kept the leftover time.
+  function toggleLeftover() {
+    const on = !leftover;
+    setLeftover(on);
+    setUnit(on ? "portion" : "");
+    setCategory(on ? "Deli & Prepared Foods" : "Other");
+    const place = on ? (loc === "freezer" ? "freezer" : "fridge") : loc;
+    setLoc(place);
+    if (!custom) setExpiresAt(dateFromDays(on ? leftoverKeepDays(leftoverRecipe, place) : startDays(opts[place], place).days));
+  }
+
+  // The recipe the leftovers are from: it names them, until a name is typed.
+  function chooseRecipe(id) {
+    const recipe = recipes.find((r) => r.id === id) || null;
+    setRecipeId(id);
+    if (recipe && (!name.trim() || name === leftoverRecipe?.title)) setName(recipe.title);
+    if (!custom) setExpiresAt(dateFromDays(leftoverKeepDays(recipe, loc)));
   }
 
   function useRecent(row, fillName) {
@@ -338,8 +377,21 @@ export function InventoryItemForm({
     months: t("inventory.form.tagMonths", { count: tag.count }),
   }[tag.kind];
 
-  const cards = edit ? sections.filter((s) => opts[s.id] || s.id === item.location) : sections;
-  const canFreeze = edit && !!opts.freezer && item.location !== "freezer";
+  // Leftovers go in the fridge or the freezer, with their keep times on the cards.
+  const leftoverRange = (id) =>
+    id === "freezer"
+      ? t("cookMode.freezerRange")
+      : leftoverRecipe?.fridgeLifeDays && leftoverRecipe.fridgeLifeDays !== FRIDGE_DAYS
+      ? t("cooked.leftovers.keepDays", { count: leftoverKeepDays(leftoverRecipe, "fridge") })
+      : t("cookMode.fridgeRange");
+  const cards = leftover
+    ? storage.filter((s) => s.id === "fridge" || s.id === "freezer")
+    : edit
+    ? storage.filter((s) => opts[s.id] || s.id === item.location)
+    : storage;
+  const canFreeze = edit && item.location !== "freezer" && (leftover || !!opts.freezer);
+  const canThaw = edit && leftover && item.location === "freezer";
+  const plannable = recipes.filter((r) => !r.isPlaceholder);
   const recipeCount = edit
     ? recipes.filter((r) => !r.isPlaceholder && r.ingredients?.some((i) => i.name?.toLowerCase().includes(item.name.toLowerCase()))).length
     : 0;
@@ -349,7 +401,8 @@ export function InventoryItemForm({
     setBusy(true);
     setError(null);
     try {
-      const created = await onAdd(buildAddPayload({ name, qtyText, unit, location: loc, category, expiresAt, photo }));
+      const payload = buildAddPayload({ name, qtyText, unit, location: loc, category, expiresAt, photo });
+      const created = await onAdd(leftover ? { ...payload, unit: "portion", isLeftover: true, recipeId: recipeId || null } : payload);
       const core = trimmed.toLowerCase();
       // The form carries on only once the star is saved, so an item opened
       // right after shows it. The item is in by now: a star that fails says so
@@ -362,19 +415,20 @@ export function InventoryItemForm({
         }
       }
       setAdded((rows) => [...rows, { id: created?.id, name: trimmed, qtyText, unit, loc }]);
-      onToast(t("inventory.form.toastAdded", { name: trimmed, location: labelFor[loc] || "" }));
+      onToast(t("inventory.form.toastAdded", { name: trimmed, location: (leftover ? labelFor.leftovers : labelFor[loc]) || "" }));
       if (keepOpen) {
         setName("");
         setQtyText("1");
         setQtyDraft(null);
         setUnit("");
         setPhoto(null);
-        setCategory("Other");
+        setCategory(leftover ? "Deli & Prepared Foods" : "Other");
+        setUnit(leftover ? "portion" : "");
         setOpts({});
         setCustom(false);
         qtyTouched.current = false;
         stapleTouched.current = false;
-        setExpiresAt(dateFromDays(startDays(null, loc).days));
+        setExpiresAt(dateFromDays(leftover ? leftoverKeepDays(leftoverRecipe, loc) : startDays(null, loc).days));
         nameRef.current?.focus();
       } else {
         onClose();
@@ -403,6 +457,7 @@ export function InventoryItemForm({
     setError(null);
     try {
       const patch = buildEditPatch(item, { name, qtyText, unit, location: loc, expiresAt, photo });
+      if (leftover && (recipeId || null) !== (item.recipeId || null)) patch.recipeId = recipeId || null;
       if (Object.keys(patch).length > 0) await onSave(item.id, patch);
       // "Changes saved" and closing wait for the star too, so reopening the
       // item shows it as saved. A failure keeps the form open with its message.
@@ -420,8 +475,18 @@ export function InventoryItemForm({
     setBusy(true);
     try {
       if (action === "freeze") {
-        await onSave(item.id, { location: "freezer", expiresAt: opts.freezer.expiresAt });
+        const now = new Date();
+        await onSave(
+          item.id,
+          leftover
+            ? { location: "freezer", purchasedAt: now.toISOString(), expiresAt: leftoverExpiry(leftoverRecipe, "freezer", now) }
+            : { location: "freezer", expiresAt: opts.freezer.expiresAt }
+        );
         onToast(t("inventory.form.toastFrozen", { name: item.name }));
+      } else if (action === "thaw") {
+        const now = new Date();
+        await onSave(item.id, { location: "fridge", purchasedAt: now.toISOString(), expiresAt: leftoverExpiry(leftoverRecipe, "fridge", now) });
+        onToast(t("inventory.thawed", { name: item.name, count: leftoverKeepDays(leftoverRecipe, "fridge") }));
       } else if (action === "remove") {
         await onDelete(item.id);
         onToast(t("inventory.form.toastRemoved", { name: item.name }));
@@ -437,7 +502,7 @@ export function InventoryItemForm({
   }
 
   const quick = edit ? EDIT_QUICK : ADD_QUICK;
-  const previewItem = { name: trimmed, category, imageUrl: photo };
+  const previewItem = { name: trimmed, category, imageUrl: photo || (leftover ? leftoverRecipe?.photoUrl : null) };
 
   const body = (
     <div className="riso-itemform">
@@ -483,7 +548,27 @@ export function InventoryItemForm({
                   }
                 }}
               />
-              {!trimmed && recent.length > 0 && (
+              <div className="riso-itemform-leftover">
+                <button
+                  type="button"
+                  className={`riso-itemform-chip small${leftover ? " on" : ""}`}
+                  aria-pressed={leftover}
+                  onClick={toggleLeftover}
+                >
+                  {t("inventory.form.leftovers")}
+                </button>
+                {leftover && plannable.length > 0 && (
+                  <select className="riso-itemform-recipe" aria-label={t("inventory.form.fromRecipe")} value={recipeId} onChange={(e) => chooseRecipe(e.target.value)}>
+                    <option value="">{t("inventory.form.noRecipe")}</option>
+                    {plannable.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              {!leftover && !trimmed && recent.length > 0 && (
                 <div className="riso-itemform-recent" role="group" aria-label={t("inventory.form.recentAria")}>
                   <span className="riso-itemform-recent-label">{t("inventory.form.recent")}</span>
                   {recent.map((r) => (
@@ -497,7 +582,7 @@ export function InventoryItemForm({
           )}
 
           <div className="riso-itemform-block">
-            <Step n={edit ? 1 : 2}>{edit ? t("inventory.form.stepLeft") : t("inventory.form.stepHowMuch")}</Step>
+            <Step n={edit ? 1 : 2}>{leftover ? t("inventory.form.stepPortions") : edit ? t("inventory.form.stepLeft") : t("inventory.form.stepHowMuch")}</Step>
             <div className="riso-itemform-qty">
               <button type="button" className="riso-itemform-round" aria-label={t("inventory.form.less")} onClick={() => stepQty(-1)}>
                 −
@@ -524,15 +609,19 @@ export function InventoryItemForm({
               <button type="button" className="riso-itemform-round" aria-label={t("inventory.form.more")} onClick={() => stepQty(1)}>
                 +
               </button>
-              <UnitSelect
-                className="riso-itemform-unit"
-                value={unit}
-                onChange={(u) => setUnit(u)}
-                emptyLabel={t("inventory.noMeasure")}
-                aria-label={t("inventory.measure")}
-              />
+              {leftover ? (
+                <span className="riso-itemform-unit fixed">{unitLabel("portion", qtyNum ?? 2)}</span>
+              ) : (
+                <UnitSelect
+                  className="riso-itemform-unit"
+                  value={unit}
+                  onChange={(u) => setUnit(u)}
+                  emptyLabel={t("inventory.noMeasure")}
+                  aria-label={t("inventory.measure")}
+                />
+              )}
             </div>
-            <div className="riso-itemform-quick">
+            <div className="riso-itemform-quick" style={leftover ? { display: "none" } : undefined}>
               {quick.map(([label, v]) => (
                 <button
                   key={label}
@@ -553,7 +642,8 @@ export function InventoryItemForm({
 
           <div className="riso-itemform-block">
             <Step n={edit ? 2 : 3}>
-              {edit ? t("inventory.form.stepStored") : t("inventory.form.stepWhere")} · {t("same.usda")}
+              {edit ? t("inventory.form.stepStored") : t("inventory.form.stepWhere")}
+              {leftover ? "" : ` · ${t("same.usda")}`}
             </Step>
             <div className={`riso-itemform-locs${edit ? " wide" : ""}`}>
               {cards.map((s) => (
@@ -565,7 +655,11 @@ export function InventoryItemForm({
                   onClick={() => chooseLocation(s.id)}
                 >
                   <span className="riso-itemform-loc-name">{s.label}</span>
-                  {opts[s.id] && <span className="riso-itemform-loc-range">{rangeText(opts[s.id])}</span>}
+                  {leftover ? (
+                    <span className="riso-itemform-loc-range">{leftoverRange(s.id)}</span>
+                  ) : (
+                    opts[s.id] && <span className="riso-itemform-loc-range">{rangeText(opts[s.id])}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -621,6 +715,11 @@ export function InventoryItemForm({
                     {t("inventory.freeze")}
                   </button>
                 )}
+                {canThaw && (
+                  <button type="button" className="riso-itemform-chip big freeze" onClick={() => finish("thaw")} disabled={busy}>
+                    {t("inventory.thaw")}
+                  </button>
+                )}
               </div>
               {isPhone && (
                 <button type="button" className="riso-itemform-remove" onClick={() => finish("remove")} disabled={busy}>
@@ -633,7 +732,7 @@ export function InventoryItemForm({
 
         <div className="riso-itemform-side">
           <div>
-            <div className="riso-itemform-label">{t("inventory.form.previewLabel", { location: labelFor[loc] || "" })}</div>
+            <div className="riso-itemform-label">{t("inventory.form.previewLabel", { location: (leftover ? labelFor.leftovers : labelFor[loc]) || "" })}</div>
             <div className="inv-card active riso-itemform-card" aria-hidden="true">
               {line && !line.expired && (
                 <span className="inv-card-line">
@@ -644,6 +743,7 @@ export function InventoryItemForm({
                 {trimmed || photo ? <ItemPhoto item={previewItem} /> : <span className="inv-card-photo placeholder stripes">{t("inventory.form.photo")}</span>}
                 <div className="inv-card-main">
                   <span className={`inv-card-name${trimmed ? "" : " empty"}`}>{trimmed || t("inventory.form.itemNamePlaceholder")}</span>
+                  {leftover && <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>}
                 </div>
                 <span className="inv-card-qty">
                   <span className="inv-card-qty-num">{qtyText}</span>
@@ -660,6 +760,7 @@ export function InventoryItemForm({
 
           <button
             type="button"
+            style={leftover ? { display: "none" } : undefined}
             className={`riso-itemform-staple${staple ? " on" : ""}`}
             aria-pressed={staple}
             onClick={() => {

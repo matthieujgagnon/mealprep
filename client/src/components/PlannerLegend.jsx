@@ -3,8 +3,8 @@ import { t } from "../i18n/index.js";
 // The legend under the Planner board, on every size (design:
 // docs/design/riso-v2-planner-header). What the board's cards and cells look
 // like, in this order: planned meal, ingredients on hand (blue outline),
-// leftovers (yellow tag), note, empty slot, today, and the weekend (only when
-// the board shows one).
+// leftovers (yellow tag), cooked (the ✓ tag "I cooked this" puts on a meal), note,
+// empty slot, today, and the weekend (only when the board shows one).
 export function PlannerLegend({ weekendOn }) {
   return (
     <div className="plg">
@@ -21,6 +21,12 @@ export function PlannerLegend({ weekendOn }) {
           {t("planner.leftover")}
         </i>
         {t("planner.legendLeftover")}
+      </span>
+      <span className="plg-item">
+        <i className="plg-swatch cooked" aria-hidden="true">
+          {t("cooked.status")}
+        </i>
+        {t("cooked.legend")}
       </span>
       <span className="plg-item">
         <i className="plg-swatch note" aria-hidden="true" />

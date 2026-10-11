@@ -16,11 +16,20 @@ This covers:
 - a checked grocery item's "To inventory" button
 - receipt import
 - "I have it" on a recipe's ingredient
-- leftovers saved from Cook mode
 - anything new that puts items in Inventory
 
-The one exception: typing an item into Inventory's own "Add item" form already counts as
-confirming, so it goes in directly (`handleAddPantryItem` in `App.jsx`).
+The exceptions, which count as Matt confirming:
+- Typing an item into Inventory's own "Add item" form (leftovers too, in its Leftovers mode)
+  goes in directly (`handleAddPantryItem` in `App.jsx`).
+- The Leftovers card in the finished view ("I cooked this", `components/CookedView.jsx`) is
+  the confirmation for leftovers: it shows the exact item that will be added (name, portions,
+  Fridge or Freezer, photo, the LEFTOVER tag), and "+ Add to Inventory" (« + Ajouter à
+  l'inventaire ») is the confirm. "No leftovers" adds nothing. It adds through
+  `handleAddPantryItem` (the `addItem` that `App.jsx` gives `CookedViewHost`), with no extra sheet.
+- Undo puts items back without the sheet. The Undo of "Remove from inventory" in the finished
+  view, and of a portion taken off a planned leftover, calls `api.putBackPantryItems`, which
+  restores the rows exactly as they were (same ids, amounts, shelves and dates). It only undoes
+  a removal; it is never a way of adding something new.
 
 Do not call `api.addPantryInventoryItem` or `handleAddPantryItem` from anywhere else. A new
 way of adding must call `requestInventoryAdd(drafts)` and only act on the rows it resolves

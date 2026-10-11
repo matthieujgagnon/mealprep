@@ -116,7 +116,8 @@ describe("newGroceryItemCount", () => {
     expect(newGroceryItemCount(dish, onList)).toBe(1);
   });
 
-  it("adds nothing for leftovers or food you already have", () => {
+  it("adds nothing for leftovers, food you already have or a meal already cooked", () => {
+    expect(newGroceryItemCount({ ...dish, cookedAt: "2026-10-10T18:00:00Z" }, new Set())).toBe(0);
     expect(newGroceryItemCount({ ...dish, isLeftover: true }, new Set())).toBe(0);
     expect(newGroceryItemCount({ ...dish, alreadyHave: true }, new Set())).toBe(0);
   });
