@@ -20,6 +20,14 @@ function atHour(hour) {
   return d;
 }
 
+// Wednesday of this week at noon: "today" then has days after it in the same
+// week whatever day the tests run (on a real Sunday there would be none).
+function midweekNoon() {
+  const d = new Date(`${mondayOf(new Date())}T12:00:00`);
+  d.setDate(d.getDate() + 2);
+  return d;
+}
+
 async function signUp(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -124,10 +132,11 @@ test("Use it up lists everything inside a month, soonest first, and scrolls insi
 
 test("this week's suppers: only today has the pink shadow, other planned days a black one", async ({ page }) => {
   await signUp(page);
-  await page.clock.setFixedTime(atHour(12));
+  const now = midweekNoon();
+  await page.clock.setFixedTime(now);
   const recipe = await (await page.request.post("/api/recipes", { data: { title: "Shadow soup", ingredients: [{ name: "leek" }] } })).json();
-  const weekStart = mondayOf(new Date());
-  const today = todayIndex();
+  const weekStart = mondayOf(now);
+  const today = (now.getDay() + 6) % 7;
   const planned = [];
   for (let d = 0; d < 7; d++) {
     if (d === today || d > today) {
@@ -159,7 +168,7 @@ test("this week's suppers: only today has the pink shadow, other planned days a 
   expect((await tag(todayCell)).bg).toBe("rgba(0, 0, 0, 0)");
   // It says the day name and number like the other days, not "Today".
   const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-  await expect(label(todayCell)).toHaveText(`${DAYS[today]} ${new Date().getDate()}`);
+  await expect(label(todayCell)).toHaveText(`${DAYS[today]} ${now.getDate()}`);
   const none = strip.locator(".riso-home-week-day.past, .riso-home-week-day.empty:not(.today)");
   for (let i = 0; i < (await none.count()); i++) expect(await shadow(none.nth(i))).toBe("none");
 });
