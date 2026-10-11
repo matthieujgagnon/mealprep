@@ -43,7 +43,9 @@ function AuthForm({ onAuthed }) {
   const [invite, setInvite] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [forgotSent, setForgotSent] = useState(false);
+  // After asking for a reset link: "sent" (an email went out, or would have for
+  // an email with an account) or "unavailable" (the server can't send emails).
+  const [forgotResult, setForgotResult] = useState(null);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -51,8 +53,8 @@ function AuthForm({ onAuthed }) {
     setError(null);
     try {
       if (mode === "forgot") {
-        await api.forgotPassword(email.trim());
-        setForgotSent(true);
+        const res = await api.forgotPassword(email.trim());
+        setForgotResult(res?.sent === false ? "unavailable" : "sent");
         return;
       }
       const user =
@@ -72,14 +74,16 @@ function AuthForm({ onAuthed }) {
   function switchMode(next) {
     setMode(next);
     setError(null);
-    setForgotSent(false);
+    setForgotResult(null);
   }
 
   if (mode === "forgot") {
     return (
       <AuthShell>
-        {forgotSent ? (
-          <p className="auth-hint">{t("auth.forgotSent")}</p>
+        {forgotResult ? (
+          <p className="auth-hint" role="status">
+            {t(forgotResult === "sent" ? "auth.forgotSent" : "auth.forgotUnavailable")}
+          </p>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             <Field

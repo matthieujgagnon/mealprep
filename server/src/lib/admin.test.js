@@ -41,10 +41,15 @@ describe("memberRows", () => {
     sessions: lastSignIn ? [{ createdAt: new Date(lastSignIn) }] : [],
   });
 
-  it("gives only the email, the signup date and last active", () => {
+  it("gives only the id, the email, the signup date and last active", () => {
     const [row] = memberRows([user("a@example.com", "2026-09-01", "2026-10-10")]);
-    expect(Object.keys(row).sort()).toEqual(["email", "lastActiveAt", "signedUpAt"]);
-    expect(row).toEqual({ email: "a@example.com", signedUpAt: new Date("2026-09-01"), lastActiveAt: new Date("2026-10-10") });
+    expect(Object.keys(row).sort()).toEqual(["email", "id", "lastActiveAt", "signedUpAt"]);
+    expect(row).toEqual({
+      id: "id-a@example.com",
+      email: "a@example.com",
+      signedUpAt: new Date("2026-09-01"),
+      lastActiveAt: new Date("2026-10-10"),
+    });
   });
 
   it("uses the newest sign-in until last active is recorded, and null without one", () => {

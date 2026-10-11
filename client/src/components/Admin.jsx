@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { t } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
@@ -64,6 +64,12 @@ function dayText(date) {
 function Members({ me, onForbidden }) {
   const [members, setMembers] = useState(null);
   const [error, setError] = useState(false);
+  // The reset link just made for each member (by id), shown under their row
+  // until the page closes: { url }, or { error } when it couldn't be made. It
+  // isn't kept anywhere else: pressing the button again makes a new one, which
+  // replaces it.
+  const [links, setLinks] = useState({});
+  const [busyId, setBusyId] = useState(null);
 
   function load() {
     setError(false);
@@ -76,6 +82,19 @@ function Members({ me, onForbidden }) {
       });
   }
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function makeLink(member) {
+    setBusyId(member.id);
+    try {
+      const { url } = await api.adminResetLink(member.id);
+      setLinks((all) => ({ ...all, [member.id]: { url } }));
+    } catch (err) {
+      if (err.status === 403) onForbidden();
+      else setLinks((all) => ({ ...all, [member.id]: { error: true } }));
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
     <section className="riso-admin-card riso-admin-members" aria-labelledby="admin-members-title">
@@ -102,23 +121,61 @@ function Members({ me, onForbidden }) {
               <th scope="col">{t("admin.members.email")}</th>
               <th scope="col">{t("admin.members.signedUp")}</th>
               <th scope="col">{t("admin.members.lastActive")}</th>
+              <th scope="col">
+                <span className="riso-pill-sr">{t("admin.members.actions")}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {members.map((member) => (
-              <tr key={member.email}>
-                <th scope="row" className="riso-admin-email">
-                  <span>{member.email}</span>
-                  {member.email === me && (
-                    <Pill size="tag" tone="ink">
-                      {t("admin.members.you")}
-                    </Pill>
+            {members.map((member) => {
+              const link = links[member.id];
+              return (
+                <Fragment key={member.id}>
+                  <tr>
+                    <th scope="row" className="riso-admin-email">
+                      <span>{member.email}</span>
+                      {member.email === me && (
+                        <Pill size="tag" tone="ink">
+                          {t("admin.members.you")}
+                        </Pill>
+                      )}
+                    </th>
+                    <td data-label={t("admin.members.signedUp")}>{dayText(member.signedUpAt)}</td>
+                    <td data-label={t("admin.members.lastActive")}>{dayText(member.lastActiveAt)}</td>
+                    <td className="riso-admin-actions">
+                      <button
+                        type="button"
+                        className="riso-btn small"
+                        disabled={busyId === member.id}
+                        aria-label={t("admin.members.resetLinkLabel", { email: member.email })}
+                        onClick={() => makeLink(member)}
+                      >
+                        {busyId === member.id ? t("admin.members.resetting") : t("admin.members.resetLink")}
+                      </button>
+                    </td>
+                  </tr>
+                  {link && (
+                    <tr className="riso-admin-link-row">
+                      <td colSpan={4}>
+                        {link.url ? (
+                          <div className="riso-admin-reset" role="status">
+                            <code className="riso-admin-reset-url">{link.url}</code>
+                            <div className="riso-admin-reset-foot">
+                              <span>{t("admin.members.resetReady", { email: member.email })}</span>
+                              <CopyButton text={link.url} label={t("admin.members.copyLinkLabel", { email: member.email })} />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="riso-admin-status" role="alert">
+                            {t("admin.members.resetError")}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
                   )}
-                </th>
-                <td data-label={t("admin.members.signedUp")}>{dayText(member.signedUpAt)}</td>
-                <td data-label={t("admin.members.lastActive")}>{dayText(member.lastActiveAt)}</td>
-              </tr>
-            ))}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       )}

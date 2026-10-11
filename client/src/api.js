@@ -61,6 +61,8 @@ export const api = {
   me: () => request("/auth/me").catch(() => null),
   // Admin only: the server refuses anyone else with 403.
   adminMembers: () => request("/admin/members"),
+  // A one-time reset link for a member (works once, expires in 1 hour): { url, expiresAt }.
+  adminResetLink: (id) => request(`/admin/members/${encodeURIComponent(id)}/reset-link`, { method: "POST" }),
   adminInvites: () => request("/admin/invites"),
   // { note?, maxUses, expiresInDays } -> the new code's row
   adminCreateInvite: (payload) => request("/admin/invites", { method: "POST", body: JSON.stringify(payload) }),

@@ -22,9 +22,14 @@ export default defineConfig({
       FLYER_AUTO_IMPORT: "off",
       FLIPP_BASE_URL: "http://127.0.0.1:9/flipp",
       STATCAN_WDS_URL: "http://127.0.0.1:9/wds",
-      // The admins e2e/admin.spec.js and e2e/invites.spec.js log in as (and
-      // one with no account).
-      ADMIN_EMAILS: "e2e-admin@example.com, e2e-unclaimed@example.com, e2e-invites-admin@example.com",
+      // The admins e2e/admin.spec.js, e2e/invites.spec.js and
+      // e2e/admin-reset-link.spec.js log in as (and one with no account).
+      ADMIN_EMAILS: "e2e-admin@example.com, e2e-unclaimed@example.com, e2e-invites-admin@example.com, e2e-reset-admin@example.com",
+      // Email is never set up in the tests (nothing is ever sent), whatever the
+      // machine running them has set: "Forgot password" says it can't send.
+      RESEND_API_KEY: "",
+      EMAIL_FROM: "",
+      RESET_EMAIL_FROM: "",
     },
     url: "http://localhost:4000/api/health",
     reuseExistingServer: !process.env.CI,

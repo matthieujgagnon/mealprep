@@ -74,12 +74,14 @@ export async function warnAboutAdminEmails(log = console.warn) {
   }
 }
 
-// The Members list: email, signup date and last active, nothing else. An
-// account that hasn't been back since "last active" started being recorded
-// shows its newest sign-in instead (null when it has none). Most recently
-// active first; never-seen accounts last, newest signup first.
+// The Members list: id (what the Reset link button needs), email, signup date
+// and last active, nothing else. An account that hasn't been back since "last
+// active" started being recorded shows its newest sign-in instead (null when it
+// has none). Most recently active first; never-seen accounts last, newest
+// signup first.
 export function memberRows(users) {
   const rows = users.map((user) => ({
+    id: user.id,
     email: user.email,
     signedUpAt: user.createdAt,
     lastActiveAt: user.lastActiveAt ?? user.sessions?.[0]?.createdAt ?? null,
