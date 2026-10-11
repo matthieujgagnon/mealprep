@@ -16,15 +16,20 @@ New to the code? [docs/how-it-works.md](docs/how-it-works.md) maps the stack, fo
    PORT=4000
    GEMINI_API_KEY="...your Gemini API key..."
    RESEND_API_KEY="...your Resend API key..."
+   EMAIL_FROM="Matt Mo Cookbook <noreply@your-verified-domain>"
    APP_URL="http://localhost:5173"
    ```
    `GEMINI_API_KEY` is only needed for flyer-deal extraction (uploading a flyer PDF/photo on the
    Flyers tab) and receipt import (the Inventory tab) — everything else works without it. `RESEND_API_KEY` (from
-   [resend.com](https://resend.com), free tier is enough for a handful of accounts) is only needed
-   for "forgot password" emails — without it, signup/login/using the app all still work, people
-   just can't reset a forgotten password themselves. `APP_URL` is the address the reset link in
-   that email points back to — set it to wherever the app is actually reachable (your Render URL
-   in production, `http://localhost:5173` locally).
+   [resend.com](https://resend.com), free tier is enough for a handful of accounts) and `EMAIL_FROM`
+   are only needed for "forgot password" emails, and both are needed: `EMAIL_FROM` is the address
+   the emails come from, on a domain you have verified at [resend.com/domains](https://resend.com/domains).
+   Resend's own test address only delivers to your own inbox, so the app doesn't use it: without
+   both settings, signup/login/using the app all still work, the Forgot password page says
+   "We can't send emails yet. Ask Matt for a reset link.", and an admin makes the link instead (see
+   [Resetting a password](#resetting-a-password)). `APP_URL` is the address the reset link points
+   back to — set it to wherever the app is actually reachable (your Render URL in production,
+   `http://localhost:5173` locally).
 3. Install and set up (applies the existing migration history to your database):
    ```bash
    npm install
@@ -63,7 +68,11 @@ running app on Render — all free tiers.
 - Under **Environment Variables**, add:
   - `DATABASE_URL` → your Neon connection string (same one from local dev)
   - `GEMINI_API_KEY` → only needed for flyer-deal extraction and receipt import
-  - `RESEND_API_KEY` → only needed for "forgot password" emails to work
+  - `RESEND_API_KEY` and `EMAIL_FROM` → only needed for "forgot password" emails to work, and both
+    are needed. Leave both out until you have verified a domain at Resend: until then, make reset
+    links yourself (see [Resetting a password](#resetting-a-password)). When the domain is
+    verified, set `EMAIL_FROM` to an address on it (for example
+    `Matt Mo Cookbook <noreply@your-domain>`) next to your `RESEND_API_KEY`. No code change.
   - `APP_URL` → your Render URL once you have it (e.g. `https://mattmocookbook.onrender.com`) —
     can be added/updated after the first deploy
   - `ADMIN_EMAILS` → the email(s) of the account(s) that may open the Admin page, separated by
@@ -89,6 +98,45 @@ and bookmark it (or "Add to Home Screen" for an app-like icon).
 **Free tier note:** the app "falls asleep" after 15 minutes of no traffic and takes
 20–50 seconds to wake back up on the next visit. Upgrading to a paid instance (~$7/month)
 removes this delay if it ever becomes annoying.
+
+### Resetting a password
+
+While the app can't send emails (no `EMAIL_FROM` yet), a friend who forgot their password asks
+you for a reset link. The link works once, expires after 1 hour, and signs them out of their other
+devices when they use it. Send it only to them.
+
+**The easy way (you are logged in as an admin):**
+1. Open the app, open the round button at the top right and choose **Admin**.
+2. In **Members**, press **Reset link** on their row.
+3. Press **Copy** and send them the link (a text message works). Pressing **Reset link** again
+   makes a new link and the first one stops working.
+
+**If you are locked out yourself** (you forgot your password and no admin is logged in), run the
+reset-link command. It prints a one-time link for any existing account:
+
+*From Render's Shell.* Render only has the Shell tab on paid instances (not on Free):
+1. In [render.com](https://dashboard.render.com), open your web service and click **Shell** in the left menu.
+2. Type this, with your own email, and press Enter:
+   ```
+   npm run reset-link -- you@example.com
+   ```
+3. Copy the link it prints, open it in your browser, and choose a new password.
+
+*From your own computer* (works on the Free plan). This uses the real database, so go slowly:
+1. In the project folder, run these two once: `npm install`, then `npm run prisma:generate --workspace=server`.
+2. Get two values from Render, under your service's **Environment**: `DATABASE_URL` and `APP_URL`.
+   They are secrets: don't paste them in chats or commit them.
+3. Type this, replacing the three parts, and press Enter (Mac or Linux; in Windows PowerShell set
+   each name first, for example `$env:DATABASE_URL="..."`, then run `npm run reset-link -- you@example.com`):
+   ```
+   DATABASE_URL="…your DATABASE_URL…" APP_URL="https://mattmocookbook.onrender.com" npm run reset-link -- you@example.com
+   ```
+4. Copy the link it prints, open it, and choose a new password.
+
+What it prints: one line saying the command was used (the time and the email, never the link), then
+the link. For an email with no account it prints only `No such account.` That line shows in the
+Shell window, or on your computer's screen: Render's **Logs** tab doesn't show what is run in a
+Shell. A link made in Admin → Members is written to the Logs.
 
 ### Weekly database backup
 A GitHub Action (`.github/workflows/db-backup.yml`) copies the Neon database every Sunday at

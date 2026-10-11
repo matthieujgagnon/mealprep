@@ -76,13 +76,14 @@ test.describe("on a computer, in English", () => {
     await expect(popup).toHaveURL(HQ);
     await popup.close();
 
-    // Members: email, signup date and last active, nothing else.
+    // Members: email, signup date and last active, and a Reset link button
+    // (e2e/admin-reset-link.spec.js goes through it).
     const table = page.locator(".riso-admin-members .riso-admin-table");
-    await expect(table.locator("thead th")).toHaveText(["Email", "Signed up", "Last active"]);
+    await expect(table.locator("thead th")).toHaveText(["Email", "Signed up", "Last active", "Account actions"]);
     const me = table.locator("tbody tr", { hasText: ADMIN });
     await expect(me.getByText("You", { exact: true })).toBeVisible();
-    await expect(me.locator("td").last()).toHaveText("Today");
-    await expect(table.locator("tbody tr", { hasText: member }).locator("td")).toHaveText([/\d{4}|Today/, "Not yet"]);
+    await expect(me.locator("td").nth(1)).toHaveText("Today");
+    await expect(table.locator("tbody tr", { hasText: member }).locator("td")).toHaveText([/\d{4}|Today/, "Not yet", "Reset link"]);
 
     // Invite codes and AI usage are working sections (e2e/invites.spec.js
     // goes through them).
@@ -114,6 +115,7 @@ test.describe("on a computer, in English", () => {
     expect((await page.request.get("/api/admin/invites")).status()).toBe(403);
     expect((await page.request.post("/api/admin/invites", { data: {} })).status()).toBe(403);
     expect((await page.request.get("/api/admin/ai-usage")).status()).toBe(403);
+    expect((await page.request.post("/api/admin/members/any-id/reset-link")).status()).toBe(403);
     expect((await page.request.put("/api/admin/ai-limit", { data: { limit: 9999 } })).status()).toBe(403);
     // ...and 401 for someone not logged in.
     const anonymous = await playwright.request.newContext({ baseURL: "http://localhost:4000" });

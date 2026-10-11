@@ -15932,6 +15932,62 @@ body.no-select {
   vertical-align: middle;
 }
 
+/* Members: the Reset link button in the last column, then the link just made
+   under its row in a blue outline, like a new invite code. */
+.riso-admin-table tbody td.riso-admin-actions {
+  padding-right: 0;
+  text-align: right;
+}
+
+/* Longer French labels wrap (the column heads, the button) instead of squeezing the email. */
+.riso-admin-members .riso-admin-table thead th {
+  white-space: normal;
+}
+
+/* A longer label (French) wraps onto two lines instead of squeezing the email. */
+.riso-admin-table tbody td.riso-admin-actions .riso-btn {
+  max-width: 9.5em;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.riso-admin-table tbody tr.riso-admin-link-row {
+  border-top: 0;
+}
+
+.riso-admin-table tbody tr.riso-admin-link-row td {
+  padding: 0 0 12px;
+  white-space: normal;
+}
+
+.riso-admin-reset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--riso-accent);
+  border-radius: 14px;
+  font-family: var(--riso-font-body);
+}
+
+.riso-admin-reset-url {
+  font: 600 13px var(--riso-font-mono);
+  color: var(--riso-ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.riso-admin-reset-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--riso-soft);
+}
+
 .riso-admin-denied {
   max-width: 560px;
   gap: 12px;
@@ -15998,6 +16054,31 @@ body.no-select {
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--riso-muted);
+  }
+
+  .riso-admin-table tbody td.riso-admin-actions {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    text-align: left;
+  }
+
+  .riso-admin-table tbody td.riso-admin-actions::before {
+    content: none;
+  }
+
+  .riso-admin-table tbody td.riso-admin-actions .riso-btn {
+    max-width: none;
+  }
+
+  /* The link just made: a block of its own under the account's block. */
+  .riso-admin-table tbody tr.riso-admin-link-row {
+    display: block;
+    padding: 0 0 12px;
+  }
+
+  .riso-admin-table tbody tr.riso-admin-link-row td {
+    display: block;
+    padding: 0;
   }
 }
 
