@@ -177,7 +177,6 @@ test("Store mode and Cook mode share one light / dark choice", async ({ page }) 
   // Cook mode opens in the choice Store mode saved...
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByText("Shared Theme Soup", { exact: true }).click();
-  await page.getByRole("button", { name: /Open the full recipe/ }).click();
   await page.getByRole("button", { name: "Start cooking" }).click();
   await expect(page.locator(".cm-overlay")).toHaveAttribute("data-theme", "light");
 

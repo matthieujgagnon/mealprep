@@ -117,13 +117,15 @@ test("every screen speaks French, with nothing left in English", async ({ page }
   await expect(page.getByText("Salade de pois chiches").first()).toBeVisible();
   await expectAllFrench(page, "recettes");
   await page.getByText("Salade de pois chiches").first().click();
-  // A recipe opens its pop-out first: Planifier comes first, then Cuisiner.
-  await expect(page.locator(".fnd-pop-actions button").first()).toHaveText("Planifier");
-  await expect(page.locator(".fnd-pop-actions button").nth(1)).toHaveText("Cuisiner");
-  await expectAllFrench(page, "fenetre-recette");
-  await page.getByRole("button", { name: "Ouvrir la recette complète" }).click();
-  await expect(page.locator(".riso-rc-step-row").first()).toBeVisible();
+  // A recipe opens its card in one tap: Commencer à cuisiner, then Planifier.
+  await expect(page.locator(".riso-rc-actions button").first()).toHaveText("Commencer à cuisiner");
+  await expect(page.locator(".riso-rc-actions button").nth(1)).toHaveText("Planifier");
+  await expect(page.locator(".riso-rc-step").first()).toBeVisible();
   await expectAllFrench(page, "fiche-recette");
+  await page.getByRole("button", { name: "Recettes similaires" }).click();
+  await expect(page.locator(".riso-rc-sim")).toBeVisible();
+  await expectAllFrench(page, "fiche-recette-similaires");
+  await page.getByRole("button", { name: /← Retour à/ }).click();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /nouvelle recette/i }).click();
   await expect(page.locator(".re-title")).toBeVisible();
@@ -281,7 +283,6 @@ test("a French recipe reads its measures, and meets French flyer deals", async (
   // The chicken is on sale: the recipe's card says so, from the French
   // half of the flyer's name.
   await page.getByText("Poulet au citron").first().click();
-  await page.getByRole("button", { name: "Ouvrir la recette complète" }).click();
   await expect(page.locator(".riso-sale-tag", { hasText: "Metro" }).first()).toBeVisible();
   await page.keyboard.press("Escape");
 

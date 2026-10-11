@@ -108,7 +108,7 @@ test.describe("Recipes on a phone", () => {
 });
 
 test.describe("Add to Cookbook and Move to Imported", () => {
-  test("from the recipe page and from its ⋯ menu, with no dragging", async ({ page }) => {
+  test("from the recipe card's ⋯ menu, with Undo, and no dragging", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await signUp(page);
     const made = await recipe(page, "Pad thai");
@@ -119,18 +119,25 @@ test.describe("Add to Cookbook and Move to Imported", () => {
 
     await page.locator(".rpc", { hasText: "Pad thai" }).click();
 
-    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
-    // On the recipe page.
-    await page.getByRole("button", { name: "Add to my Cookbook" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Added to your Cookbook." })).toBeVisible();
-    expect((await api(page, "GET", `/api/recipes`)).find((r) => r.id === made.id).inCookbook).toBe(true);
-    await expect(page.getByRole("button", { name: "Add to my Cookbook" })).toHaveCount(0);
-
-    // From the ⋯ menu, back the other way.
+    // From the ⋯ menu.
     await page.getByRole("button", { name: "More actions" }).click();
-    await page.locator(".riso-rc-menu").getByRole("button", { name: "Move to Imported" }).click();
+    await page.getByRole("menuitem", { name: "Add to my Cookbook" }).click();
+    const added = page.getByRole("status").filter({ hasText: "Added to your Cookbook." });
+    await expect(added).toBeVisible();
+    await expect.poll(async () => (await api(page, "GET", `/api/recipes`)).find((r) => r.id === made.id).inCookbook).toBe(true);
+
+    // The message's Undo moves it back.
+    await added.getByRole("button", { name: "Undo" }).click();
+    await expect.poll(async () => (await api(page, "GET", `/api/recipes`)).find((r) => r.id === made.id).inCookbook).toBe(false);
+
+    // And the other way, once it is in the Cookbook.
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Add to my Cookbook" }).click();
+    await expect.poll(async () => (await api(page, "GET", `/api/recipes`)).find((r) => r.id === made.id).inCookbook).toBe(true);
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Move to Imported" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Moved to Imported." })).toBeVisible();
-    expect((await api(page, "GET", `/api/recipes`)).find((r) => r.id === made.id).inCookbook).toBe(false);
+    await expect.poll(async () => (await api(page, "GET", `/api/recipes`)).find((r) => r.id === made.id).inCookbook).toBe(false);
     await page.keyboard.press("Escape");
     await expect(page.locator(".rv2-grid")).toContainText("Pad thai");
   });
@@ -146,11 +153,11 @@ test.describe("Add to Cookbook and Move to Imported", () => {
     // Pad thai is an imported recipe: open that tab, as its English twin does.
     await page.getByRole("tab", { name: /^Importées/ }).click();
     await page.locator(".rpc", { hasText: "Pad thai" }).click();
-    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "Plus d'actions" }).click();
-    await page.locator(".riso-rc-menu").getByRole("button", { name: "Ajouter à mon livre de recettes" }).click();
+    await page.getByRole("menuitem", { name: "Ajouter à mon livre de recettes" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Ajoutée à votre livre de recettes." })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Déplacer vers Importées" }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Plus d'actions" }).click();
+    await expect(page.getByRole("menuitem", { name: "Déplacer vers Importées" })).toBeVisible();
   });
 });
 
@@ -194,48 +201,47 @@ test.describe("The Recipes page's starting tab", () => {
 test.describe("Step timers", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test("tap the time to edit it; start, pause, resume and reset; Cook mode uses the edited time", async ({ page }) => {
+  test("start, pause, resume and reset on the card; Cook mode's timer card changes the time, and the card uses it", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Boiled eggs", { instructions: ["Boil the eggs for 5 minutes.", "Serve."] });
     await goRecipes(page);
     await page.locator(".rpc", { hasText: "Boiled eggs" }).click();
-    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
 
-    const timer = page.locator(".riso-rc-timer");
-    await expect(timer.locator(".riso-rc-timer-time")).toHaveText("⏱ 5:00");
+    const pill = page.locator(".riso-rc-timer-pill");
+    await expect(pill).toHaveText("▶  Start 5 min");
 
-    // Edit: 1 minute 30 seconds.
-    await timer.locator(".riso-rc-timer-time").click();
+    // Start, then pause: it stops where it is, and resumes from there.
+    await pill.click();
+    await expect(pill).toContainText(/4:5\d/, { timeout: 4000 });
+    await pill.click();
+    await expect(pill).toHaveClass(/paused/);
+    const paused = await pill.innerText();
+    await page.waitForTimeout(1300);
+    await expect(pill).toHaveText(paused);
+    await expect(pill).toHaveAttribute("aria-label", /^Resume the timer/);
+
+    // ↺ goes back to the full time.
+    await page.getByRole("button", { name: "Reset" }).click();
+    await expect(pill).toHaveText("▶  Start 5 min");
+
+    // Cook mode: tap the time to change it (1 minute 30 seconds); Cancel leaves it alone.
+    await page.getByRole("button", { name: "Start cooking" }).click();
+    await page.locator(".cm-timer-time").click();
     await expect(page.getByLabel("Minutes")).toHaveValue("5");
     await expect(page.getByLabel("Seconds")).toHaveValue("0");
+    await page.getByLabel("Minutes").fill("9");
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.locator(".cm-timer-time")).toHaveText("5:00");
+    await page.locator(".cm-timer-time").click();
     await page.getByLabel("Minutes").fill("1");
     await page.getByLabel("Seconds").fill("30");
     await page.getByRole("button", { name: "Save" }).click();
-    await expect(timer.locator(".riso-rc-timer-time")).toHaveText("⏱ 1:30");
-
-    // Cancel leaves it alone.
-    await timer.locator(".riso-rc-timer-time").click();
-    await page.getByLabel("Minutes").fill("9");
-    await page.getByRole("button", { name: "Cancel" }).click();
-    await expect(timer.locator(".riso-rc-timer-time")).toHaveText("⏱ 1:30");
-
-    // Start, then pause: it stops where it is, and resumes from there.
-    await timer.getByRole("button", { name: "▶ Start" }).click();
-    await expect(timer.locator(".riso-rc-timer-time")).toContainText(/1:2\d/, { timeout: 4000 });
-    await timer.getByRole("button", { name: "⏸ Pause" }).click();
-    const paused = await timer.locator(".riso-rc-timer-time").innerText();
-    await page.waitForTimeout(1300);
-    await expect(timer.locator(".riso-rc-timer-time")).toHaveText(paused);
-    await expect(timer.getByRole("button", { name: "▶ Resume" })).toBeVisible();
-
-    // Reset goes back to the edited time.
-    await timer.getByRole("button", { name: "Reset" }).click();
-    await expect(timer.locator(".riso-rc-timer-time")).toHaveText("⏱ 1:30");
-    await expect(timer.getByRole("button", { name: "▶ Start" })).toBeVisible();
-
-    // Cook mode shows the same edited time.
-    await page.getByRole("button", { name: "Start cooking" }).click();
     await expect(page.locator(".cm-timer-time")).toHaveText("1:30");
+
+    // The card's pill uses the new time.
+    await page.getByRole("button", { name: "Exit cook mode" }).click();
+    await expect(pill).toHaveText("▶  Start 1:30");
+    await expect(pill).toHaveAttribute("aria-label", "Start the 1:30 timer");
   });
 
   test("a timer started on the card keeps running in Cook mode", async ({ page }) => {
@@ -243,8 +249,7 @@ test.describe("Step timers", () => {
     await recipe(page, "Boiled eggs", { instructions: ["Boil the eggs for 5 minutes."] });
     await goRecipes(page);
     await page.locator(".rpc", { hasText: "Boiled eggs" }).click();
-    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
-    await page.locator(".riso-rc-timer").getByRole("button", { name: "▶ Start" }).click();
+    await page.locator(".riso-rc-timer-pill").click();
     await page.getByRole("button", { name: "Start cooking" }).click();
     await expect(page.locator(".cm-timer-time")).toHaveText(/4:5\d/, { timeout: 4000 });
     await expect(page.locator(".cm-timer-main")).toHaveText("Pause");

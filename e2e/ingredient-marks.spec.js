@@ -40,25 +40,28 @@ const place = (page, recipe, dayOfWeek, mealType, extra = {}) =>
 const weekEntries = async (page) => (await page.request.get(`/api/planner?week=${mondayOf(new Date())}`)).json();
 const markColor = (loc) => loc.evaluate((el) => getComputedStyle(el).backgroundColor);
 
-async function openPopout(page, title) {
+async function openCard(page, title) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.locator(".rpc", { hasText: title }).click();
   return page.getByRole("dialog", { name: title });
 }
 
-test("pop-out: blue ✓ in Inventory, green ✓ on the list; a tap takes it off (Undo) and puts it back", async ({ page }) => {
+test("recipe card: blue ✓ in Inventory, green ✓ on the list; a tap takes it off (Undo) and puts it back", async ({ page }) => {
   await setup(page, [{ title: "Marks Stew", ingredients: [{ name: "quokka beans" }, { name: "wombat stew" }] }]);
   await page.request.post("/api/pantry-inventory", { data: { name: "wombat stew", location: "fridge" } });
   await page.reload();
-  const pop = await openPopout(page, "Marks Stew");
+  const card = await openCard(page, "Marks Stew");
 
-  expect(await markColor(pop.locator(".fnd-pop-have .riso-pill-mark"))).toBe(BLUE);
-  const buy = pop.locator(".fnd-buy-pill", { hasText: "quokka beans" });
+  expect(await markColor(card.locator(".riso-rc-have-mark"))).toBe(BLUE);
+  await expect(card.locator(".riso-rc-have")).toContainText("Wombat stew");
+  const buy = card.locator(".riso-rc-buy", { hasText: "Quokka beans" }).locator(".riso-rc-mark");
   await expect(buy).toHaveAttribute("aria-pressed", "false");
 
   await buy.click(); // on the list: green
   await expect(buy).toHaveAttribute("aria-pressed", "true");
-  expect(await markColor(buy.locator(".riso-pill-mark"))).toBe(GREEN);
+  expect(await markColor(buy)).toBe(GREEN);
+  // Everything missing is on the list now, so the card says so instead of offering to add.
+  await expect(card.locator(".riso-rc-all-listed")).toContainText("On your grocery list.");
 
   await buy.click(); // off the list, with the shared Undo toast
   await expect(buy).toHaveAttribute("aria-pressed", "false");
@@ -70,35 +73,26 @@ test("pop-out: blue ✓ in Inventory, green ✓ on the list; a tap takes it off 
   // The Grocery page shows the same list.
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(page.getByText("quokka beans").first()).toBeVisible();
+  await expect(page.getByText("Quokka beans").first()).toBeVisible();
 });
 
-test("the full recipe card and the pop-out agree on what is on the list", async ({ page }) => {
-  await setup(page, [{ title: "Card Marks", ingredients: [{ name: "quokka beans" }, { name: "wombat stew" }] }]);
+test("the recipe card and the planned meal's card agree on what you have", async ({ page }) => {
+  const [recipe] = await setup(page, [{ title: "Card Marks", ingredients: [{ name: "quokka beans" }, { name: "wombat stew" }] }]);
   await page.request.post("/api/pantry-inventory", { data: { name: "wombat stew", location: "fridge" } });
+  const today = (new Date().getDay() + 6) % 7;
+  await place(page, recipe, today, "dinner");
   await page.reload();
-  const pop = await openPopout(page, "Card Marks");
-  await pop.getByRole("button", { name: /Open the full recipe/ }).click();
-
-  const have = page.locator(".riso-rc-ingredient-line", { hasText: "wombat stew" }).locator(".riso-rc-ingredient-dot");
-  expect(await markColor(have)).toBe(BLUE);
-  const dot = page.locator(".riso-rc-ingredient-line", { hasText: "quokka beans" }).locator(".riso-rc-ingredient-dot");
-  await expect(dot).toHaveAttribute("aria-pressed", "false");
-  await dot.click();
-  await expect(dot).toHaveAttribute("aria-pressed", "true");
-  expect(await markColor(dot)).toBe(GREEN);
-  await expect(page.locator(".riso-rc-legend")).toContainText("On your grocery list");
-
-  // Everything missing is on the list now, so the card says so instead of offering to add.
-  await expect(page.locator(".riso-rc-planned-note")).toContainText("on your grocery list");
-  await dot.click();
-  await page.getByRole("status").filter({ hasText: "taken off your grocery list" }).getByRole("button", { name: "Undo" }).click();
-  await expect(dot).toHaveAttribute("aria-pressed", "true");
-
-  // Close the card; the pop-out marks the same item green.
+  const card = await openCard(page, "Card Marks");
+  await expect(card.locator(".riso-rc-have-name")).toHaveText(["Wombat stew"]);
+  // Planned, so what it needs is on the grocery list already: green.
+  await expect(card.locator(".riso-rc-buy", { hasText: "Quokka beans" }).locator(".riso-rc-mark")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
-  const again = await openPopout(page, "Card Marks");
-  await expect(again.locator(".fnd-buy-pill", { hasText: "quokka beans" })).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "Planner", exact: true }).click();
+  await cell(page, today, "dinner").getByRole("button", { name: /Card Marks - open/ }).click();
+  const planned = page.locator(".riso-slotcard");
+  expect(await markColor(planned.locator(".ing-marks-have .riso-pill-mark"))).toBe(BLUE);
+  await expect(planned.locator(".ing-marks-buy-pill", { hasText: "Quokka beans" })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("Planner: already have is a blue border only, leftovers a yellow border only, no shadows", async ({ page }) => {

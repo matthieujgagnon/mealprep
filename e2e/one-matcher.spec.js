@@ -3,7 +3,7 @@ import { E2E_INVITE } from "./invite.js";
 
 // One matcher everywhere (lib/inventoryMatch.js): the same recipe, next to an
 // Inventory written in French, gives the same answer on Makeable, the recipe
-// pop-out, the full recipe card and the Planner (its search and the planned
+// card and the Planner (its search and the planned
 // meal's card). Salt, oil and « sel et poivre » are always had and left out of
 // the count; the garlic written twice is one line; a leftover never counts.
 
@@ -54,49 +54,38 @@ async function seed(page) {
 
 const tab = (page, name) => page.getByRole("button", { name, exact: true }).first();
 
-// Makeable, the pop-out and the full recipe card, in the language given.
-async function checkMakeablePopoutAndCard(page, L) {
+// Makeable and the recipe card it opens, in the language given.
+async function checkMakeableAndCard(page, L) {
   await tab(page, L.makeable).click();
   const card = page.locator(".fnd-sec.few .mkc", { has: page.locator(".rpc-title", { hasText: TITLE }) });
   await expect(card).toBeVisible();
   await expect(card.locator(".mkc-progress span")).toHaveText([L.fiveOfSix, L.oneMissing]);
   await expect(card.locator(".mkc-pill-name")).toHaveText([/lime/i]);
 
-  // The pop-out: five you have, the lime to buy.
+  // The recipe card, in one tap: the same numbers, five you have and the lime to buy.
   await card.locator(".rpc-title").click();
-  const pop = page.getByRole("dialog", { name: TITLE });
-  await expect(pop.locator(".fnd-pop-have .riso-pill")).toHaveCount(5);
-  await expect(pop.locator(".fnd-buy-pill")).toHaveCount(1);
-  await expect(pop.locator(".fnd-buy-pill")).toContainText(/lime/i);
-
-  // The full recipe card: the same numbers, a ✓ on everything but the lime.
-  await page.goto("/"); // the pop-out on Makeable has no Cook; open the card from Recipes
-  await tab(page, L.recipes).click();
-  await page.locator(".rpc", { hasText: TITLE }).click();
-  await page.getByRole("dialog", { name: TITLE }).getByRole("button", { name: L.openFull }).click();
-  await expect(page.locator(".riso-rc-have-label")).toHaveText(L.haveOf);
-  await expect(page.locator(".riso-rc-hero-sticker")).toHaveText(L.oneToBuy);
-  const dot = (name) => page.locator(".riso-rc-ingredient-line", { hasText: name }).locator(".riso-rc-ingredient-dot");
-  for (const name of ["chicken thighs", "garlic cloves", "minced garlic", "kosher salt", "sel et poivre", "basmati rice"]) {
-    await expect(dot(name)).toHaveClass(/have/);
-  }
-  await expect(dot("lime")).toHaveAttribute("aria-pressed", "false");
+  const rc = page.getByRole("dialog", { name: TITLE });
+  await expect(rc.locator(".riso-rc-have-head")).toContainText(L.inInventory);
+  await expect(rc.locator(".riso-rc-have")).toHaveCount(5);
+  await expect(rc.locator(".riso-rc-sticker")).toHaveText(L.oneToBuy);
+  await expect(rc.locator(".riso-rc-buy")).toHaveCount(1);
+  await expect(rc.locator(".riso-rc-buy")).toContainText(/lime/i);
+  await expect(rc.locator(".riso-rc-buy .riso-rc-mark")).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Escape");
+  await expect(rc).toHaveCount(0);
 }
 
 test.describe("on a computer, in English", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
-  test("Makeable, the pop-out, the recipe card and the Planner agree, with a French Inventory", async ({ page }) => {
+  test("Makeable, the recipe card and the Planner agree, with a French Inventory", async ({ page }) => {
     await signUp(page, { signUp: "Sign up", create: "Create account", home: "Home" });
     const recipe = await seed(page);
-    await checkMakeablePopoutAndCard(page, {
+    await checkMakeableAndCard(page, {
       makeable: "Makeable",
-      recipes: "Recipes",
-      openFull: /Open the full recipe/,
       fiveOfSix: "5/6 ingredients",
       oneMissing: "1 missing",
-      haveOf: "You have 5 of 6 in your inventory",
+      inInventory: "In your Inventory · 5",
       oneToBuy: "1 thing to buy",
     });
 
@@ -113,9 +102,9 @@ test.describe("on a computer, in English", () => {
     await tab(page, "Planner").click();
     await page.locator(".riso-planner-cell").nth(2 * 7 + day).locator(".riso-planner-card").click();
     const planned = page.getByRole("dialog", { name: TITLE });
-    await expect(planned.locator(".fnd-pop-have .riso-pill")).toHaveCount(5);
-    await expect(planned.locator(".fnd-buy-pill")).toHaveCount(1);
-    await expect(planned.locator(".fnd-buy-pill")).toContainText(/lime/i);
+    await expect(planned.locator(".ing-marks-have .riso-pill")).toHaveCount(5);
+    await expect(planned.locator(".ing-marks-buy-pill")).toHaveCount(1);
+    await expect(planned.locator(".ing-marks-buy-pill")).toContainText(/lime/i);
   });
 });
 
@@ -125,13 +114,11 @@ test.describe("on a phone, in French", () => {
   test("the same answer at 390px, with no sideways scroll", async ({ page }) => {
     await signUp(page, { signUp: "S'inscrire", create: "Créer un compte", home: "Accueil" });
     const recipe = await seed(page);
-    await checkMakeablePopoutAndCard(page, {
+    await checkMakeableAndCard(page, {
       makeable: "Faisable",
-      recipes: "Recettes",
-      openFull: /Ouvrir la recette complète/,
       fiveOfSix: "5/6 ingrédients",
       oneMissing: "1 manquant",
-      haveOf: "Vous en avez 5 sur 6 dans votre inventaire",
+      inInventory: "Dans votre inventaire · 5",
       oneToBuy: "1 article à acheter",
     });
 

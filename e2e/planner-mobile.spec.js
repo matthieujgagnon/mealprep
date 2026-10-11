@@ -326,7 +326,10 @@ test("a planned meal's card: the status steps plain -> leftovers -> already have
 
   await page.locator(".pmb-cell .riso-planner-card").click();
   await page.getByRole("dialog", { name: "Roast chicken" }).getByRole("button", { name: "Cook", exact: true }).click();
-  await expect(page.locator(".tab.active")).toHaveText("Recipes");
+  // The recipe card opens over the Planner, with Plan in its bottom bar.
+  await expect(page.locator(".riso-rc-card .riso-rc-title")).toHaveText("Roast chicken");
+  await expect(page.locator(".riso-rc-bottombar").getByRole("button", { name: "Plan", exact: true })).toBeVisible();
+  await expect(page.locator(".tab.active")).toHaveText("Planner");
 });
 
 test("a status tap that cannot be saved puts the card back as it was and says so", async ({ page }) => {

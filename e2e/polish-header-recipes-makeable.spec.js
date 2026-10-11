@@ -223,14 +223,13 @@ test.describe("Recipes", () => {
 
     // An import can be moved to the Cookbook from its editor.
     await page.locator(".rpc", { hasText: "Imported pad thai" }).click();
-    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "More actions" }).click();
-    await page.getByRole("button", { name: "Edit recipe" }).click();
+    await page.getByRole("menuitem", { name: "Edit recipe" }).click();
     await page.getByRole("radio", { name: "Cookbook" }).click();
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.locator(".riso-rc-title")).toHaveText("Imported pad thai");
     await page.keyboard.press("Escape");
-    await expect(page.locator(".modal-overlay")).toHaveCount(0);
+    await expect(page.locator(".riso-rc-overlay")).toHaveCount(0);
     await expect(tabs.getByRole("tab", { name: /^Cookbook/ })).toContainText("2");
     await expect(tabs.getByRole("tab", { name: /^Imported/ })).toContainText("0");
   });

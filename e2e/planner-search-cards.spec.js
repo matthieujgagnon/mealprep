@@ -5,7 +5,7 @@ import { E2E_INVITE } from "./invite.js";
 // docs/design/riso-v2-planner-search-cards/): « MEAL · TIME » on the photo, the
 // name over it, a round +, an info row (have/total, COMPLETE or N MISSING) and a
 // thin bar; no pills or buttons. A recipe with nothing missing has the blue
-// outline. The whole card opens the pop-out and the + still adds to a slot.
+// outline. The whole card opens the recipe card and the + still adds to a slot.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
 
@@ -66,7 +66,7 @@ test("a result is a photo card: label, info row, bar, a blue outline when comple
   expect(columns).toBe(4);
 });
 
-test("the whole card opens the pop-out, and the + adds to the next empty slot", async ({ page }) => {
+test("the whole card opens the recipe card, and the + adds to the next empty slot", async ({ page }) => {
   await setup(page);
 
   // The info row is part of the open button too.
