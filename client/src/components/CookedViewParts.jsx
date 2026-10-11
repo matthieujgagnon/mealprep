@@ -6,10 +6,10 @@ import { amountText, shelfGroups, takeOutCounts } from "../lib/cookedView.js";
 import { parseQuantityInput, unitLabel } from "../lib/units.js";
 import { dict, getLang, t } from "../i18n/index.js";
 
-// The pieces of the finished view (design: docs/design/riso-v2-cook-mode-finished/,
-// "Cook Mode Finished.dc.html"): the Leftovers card, the "Take out of your
-// Inventory" card with its rows, and the pop-up. CookedView.jsx lays them out
-// and keeps what was answered.
+// The pieces of the finished view (design: docs/design/riso-v2-cook-mode/, "Cook
+// Mode Finished.dc.html" and the README's "Finished view"): the Leftovers card,
+// the "Take out of your Inventory" card with its rows, and the pop-up.
+// CookedView.jsx lays them out and keeps what was answered.
 
 // The small Undo on a card once it is answered: an ink outline with a blue shadow.
 function UndoButton({ onClick, disabled }) {

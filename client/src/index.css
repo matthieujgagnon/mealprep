@@ -6954,7 +6954,7 @@ button.riso-table-group-head:disabled {
 
 /* ---------- The finished view: "I cooked this" ----------
    components/CookedView.jsx and CookedViewParts.jsx (design: docs/design/
-   riso-v2-cook-mode-finished/). Full screen at the end of Cook mode (.ck-screen, over
+   riso-v2-cook-mode/, Cook Mode Finished). Full screen at the end of Cook mode (.ck-screen, over
    .cm-overlay), a sheet from the Planner and Home (.ck-sheet). Every colour is a Riso
    token; dark mode comes from the dark block. The greens here (the "all done!"
    sticker, the portion squares, the ✓ and − badges) are celebration, the one
@@ -7157,9 +7157,14 @@ button.riso-table-group-head:disabled {
   white-space: nowrap;
 }
 
-/* The card's "How it works" is the shared hint strip. */
+/* The card's "How it works" is the shared hint strip; its yellow sticker keeps ink
+   type in dark, as every yellow fill does. */
 .ck-card .riso-hint-strip {
   margin: 0;
+}
+
+.riso-theme[data-theme="dark"] .riso-hint-sticker {
+  color: var(--riso-ink-fixed);
 }
 
 .ck-portions {
@@ -7743,7 +7748,13 @@ button.riso-table-group-head:disabled {
   margin-left: 0;
 }
 
+/* A leftover's card says more (portions, where, days left, thaw): its rows grow. */
+.inv-shelf[data-section-id="leftovers"] .inv-shelf-items {
+  grid-auto-rows: minmax(88px, auto);
+}
+
 .inv-card-thaw {
+  white-space: nowrap;
   align-self: flex-start;
   margin-top: 4px;
   height: 28px;

@@ -14,7 +14,7 @@ import { t } from "../i18n/index.js";
 // The finished view: "I cooked this" (« Je l'ai cuisiné »), the one screen behind
 // three doors - the last step of Cook mode (full screen, `variant="screen"`), a
 // planned meal's card on the Planner and tonight's meal on Home (a sheet over
-// the page). Design: docs/design/riso-v2-cook-mode-finished/.
+// the page). Design: docs/design/riso-v2-cook-mode/ (Cook Mode Finished).
 //
 // Leftovers come first; the Inventory card wakes up once they are added or
 // skipped. Then "Remove from inventory" takes the ticked amounts out (items at

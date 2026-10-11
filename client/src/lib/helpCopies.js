@@ -19,6 +19,7 @@ export const COPY_TOKEN = /\[\[(\w+)\]\]/g;
 export const HELP_COPIES = {
   // Home: the Tonight card, the grocery card and Proteins on sale
   startCooking: { kind: "pill", cls: "riso-btn hot", label: "home.startCooking", strong: true },
+  homeCooked: { kind: "pill", cls: "riso-btn outline-on-accent", label: "cooked.button", onAccent: true },
   swap: { kind: "pill", cls: "riso-btn outline-on-accent", label: "home.swap", onAccent: true },
   eatingOut: { kind: "pill", cls: "riso-btn outline-on-accent", label: "home.eatingOut", onAccent: true },
   openList: { kind: "pill", cls: "riso-btn ink", label: "home.openList", strong: true },
@@ -67,8 +68,13 @@ export const HELP_COPIES = {
   previous: { kind: "pill", cls: "cm-prev", label: "cookMode.previous" },
   nextStep: { kind: "pill", cls: "cm-next", label: "cookMode.nextStep", strong: true },
   startStepOne: { kind: "pill", cls: "cm-next", label: "cookMode.prep.start", strong: true },
-  markCooked: { kind: "pill", cls: "cm-btn primary", label: "cookMode.markCooked", strong: true },
-  saveLeftovers: { kind: "pill", cls: "cm-btn primary", label: "cookMode.saveLeftovers", strong: true },
+  // The finished view ("I cooked this", components/CookedView.jsx)
+  iCookedThis: { kind: "pill", cls: "cm-next", label: "cooked.button", strong: true },
+  addLeftovers: { kind: "pill", cls: "ck-btn primary", label: "cooked.leftovers.add", strong: true },
+  noLeftovers: { kind: "pill", cls: "ck-btn", label: "cooked.leftovers.none" },
+  runningLow: { kind: "pill", cls: "ck-low", label: "cooked.inventory.runningLow" },
+  removeFromInventory: { kind: "pill", cls: "ck-btn primary", label: "cooked.inventory.remove", strong: true },
+  notNow: { kind: "pill", cls: "ck-btn", label: "cooked.inventory.notNow" },
 
   // Planner
   weekPrev: { kind: "icon", cls: "riso-planner-nav-arrow", glyph: "‹" },
@@ -80,6 +86,7 @@ export const HELP_COPIES = {
   clearDay: { kind: "pill", cls: "riso-planner-clear", label: "planner.clearDay" },
   weekendTag: { kind: "pill", cls: "riso-help-copy-weekend", label: "planner.weekendTag" },
   plannedCook: { kind: "pill", cls: "riso-plannedcard-btn primary", label: "planner.cook", strong: true },
+  plannedCooked: { kind: "pill", cls: "riso-plannedcard-btn", label: "cooked.button" },
   plannedBase: { kind: "pill", cls: "riso-plannedcard-btn", label: "planner.useAsBase" },
   plannedReplace: { kind: "pill", cls: "riso-plannedcard-btn", label: "planner.replaceRecipe" },
   slotRecipe: { kind: "pill", cls: "riso-slotcard-btn recipe", label: "planner.slotRecipe", strong: true },
@@ -154,6 +161,8 @@ export const HELP_COPIES = {
   freeze: { kind: "pill", cls: "inv-action-btn", label: "inventory.freeze", dark: true },
   addShelfPill: { kind: "icon", cls: "inv-shelf-edit inv-shelf-add", glyph: "+" },
   addItemHere: { kind: "icon", cls: "inv-shelf-edit inv-shelf-add", glyph: "+" },
+  thaw: { kind: "pill", cls: "inv-card-thaw", label: "inventory.thaw" },
+  leftoversChip: { kind: "pill", cls: "riso-itemform-chip small on", label: "inventory.form.leftovers" },
   editShelf: { kind: "icon", cls: "inv-shelf-edit", glyph: "✎" },
 
   // Account, in the header
