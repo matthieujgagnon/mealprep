@@ -2,7 +2,7 @@ import { clearDeals, useDeals } from "./lib/dealsStore.js";
 import { useFinder } from "./hooks/useFinder.js";
 import { useShowSales } from "./hooks/useShowSales.js";
 import { clearGroceryShared } from "./lib/groceryCache.js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -36,7 +36,6 @@ import { weekendFrom } from "./lib/weekend.js";
 import { useIsPhone } from "./hooks/useIsPhone.js";
 import { useHeaderTightness } from "./hooks/useHeaderTightness.js";
 import { entriesOnDay, findNextEmptySlot, isCustomNote, slotLabel } from "./lib/plannerSlots.js";
-import { haveCoresFor } from "./lib/onHand.js";
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { Makeable } from "./components/Makeable.jsx";
@@ -209,6 +208,9 @@ export default function App({ user, onLogout }) {
   const [pantryInventory, setPantryInventory] = useState([]);
   const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
   const [inventoryLayout, setInventoryLayout] = useState([]); // section order/size/built-in names (InventorySectionLayout)
+  // What is on hand, for every page that says what you have of a recipe
+  // (lib/inventoryMatch.js recipeHave and ingredientHave): one object, so they all agree.
+  const kitchen = useMemo(() => ({ inventory: pantryInventory, customStaples, excludedStaples }), [pantryInventory, customStaples, excludedStaples]);
   const [loadError, setLoadError] = useState(false);
   const [recipesLoaded, setRecipesLoaded] = useState(false); // the Recipes page picks its starting tab once they are here
   const [recipeSearch, setRecipeSearch] = useState("");
@@ -1110,7 +1112,6 @@ export default function App({ user, onLogout }) {
   }
 
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
-  const pantryHaveCores = haveCoresFor(pantryInventory, customStaples);
 
   return (
     <DndContext
@@ -1280,7 +1281,7 @@ export default function App({ user, onLogout }) {
             pantryInventory={pantryInventory}
             pantryLocations={pantryLocations}
             inventoryLayout={inventoryLayout}
-            haveCores={pantryHaveCores}
+            kitchen={kitchen}
             upcomingEntries={upcomingEntries}
             grocery={grocery}
             deals={deals}
@@ -1331,6 +1332,7 @@ export default function App({ user, onLogout }) {
             customStaples={customStaples}
             excludedStaples={excludedStaples}
             pantryInventory={pantryInventory}
+            kitchen={kitchen}
             onNavigate={setTab}
             onSelectRecipe={openPopout}
             onOpenRecipeCard={openRecipeCard}
@@ -1366,8 +1368,7 @@ export default function App({ user, onLogout }) {
             key={recipeEditor.recipe?.id || "new"}
             popup={!recipeEditor.recipe}
             recipe={recipeEditor.recipe}
-            pantryInventory={pantryInventory}
-            customStaples={customStaples}
+            kitchen={kitchen}
             onSaved={handleEditorSaved}
             onCancel={handleEditorCancel}
             onDirtyChange={(d) => {
@@ -1380,8 +1381,7 @@ export default function App({ user, onLogout }) {
           <Recipes
             user={user}
             recipes={recipes}
-            pantryInventory={pantryInventory}
-            customStaples={customStaples}
+            kitchen={kitchen}
             plannerEntries={plannerEntries}
             search={recipeSearch}
             onSearchChange={setRecipeSearch}
@@ -1413,7 +1413,7 @@ export default function App({ user, onLogout }) {
                 pantryInventory={pantryInventory}
                 pantryLocations={pantryLocations}
                 inventoryLayout={inventoryLayout}
-                haveCores={pantryHaveCores}
+                kitchen={kitchen}
                 grocery={grocery}
                 target={plannerTarget}
                 onTargetChange={setPlannerTarget}
@@ -1461,7 +1461,7 @@ export default function App({ user, onLogout }) {
             allRecipes={recipes}
             plannerEntries={plannerEntries}
             pantryInventory={pantryInventory}
-            customStaples={customStaples}
+            kitchen={kitchen}
             weekStart={weekStart}
             onSelectRecipe={openRecipe}
             onRecipeUpdated={handleRecipeUpdated}
@@ -1493,7 +1493,7 @@ export default function App({ user, onLogout }) {
           <RecipePopoutHost
             recipe={recipes.find((r) => r.id === popout.recipeId) || null}
             from={popout.from}
-            haveCores={pantryHaveCores}
+            kitchen={kitchen}
             plannedEntries={[...plannerEntries, ...upcomingEntries]}
             grocery={grocery}
             deals={deals}

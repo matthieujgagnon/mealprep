@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import {
   DndContext,
@@ -21,8 +21,7 @@ import { UnitSelect } from "./UnitSelect.jsx";
 import { RECIPE_SLOTS, formatRecipeTime, slotHint } from "../lib/mealSlots.js";
 import { stepHeadingText, stepIsHeading, stepTimer } from "../lib/steps.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
-import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
-import { core } from "../lib/similarRecipes.js";
+import { recipeHave } from "../lib/inventoryMatch.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { droppedImageUrl, isImageFile, uploadPhoto } from "../lib/photoUpload.js";
 import {
@@ -205,7 +204,7 @@ function toPayload(s) {
 // `popup` draws the form as a pop-up over the page it was opened from (a
 // centred panel on a computer, a sheet sliding up on a phone) instead of a
 // full page. Used for a new recipe; editing one is still the full page.
-export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [], onSaved, onCancel, onDirtyChange, popup = false }) {
+export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange, popup = false }) {
   const isNew = !recipe;
   const [state, setState] = useState(() => initialState(recipe));
   const initialPayload = useRef(JSON.stringify(toPayload(initialState(recipe))));
@@ -544,11 +543,8 @@ export function RecipeEditor({ recipe, pantryInventory = [], customStaples = [],
   // --- preview --------------------------------------------------------
   const total = (Number(state.prep) || 0) + (Number(state.cook) || 0);
   const cover = state.photos.find((p) => p.id === state.coverId) || state.photos[0];
-  const haveCores = useMemo(
-    () => new Set(buildCombinedHave(pantryInventory, customStaples).map((n) => core(n)).filter(Boolean)),
-    [pantryInventory, customStaples]
-  );
-  const stats = recipeHaveStats({ ingredients: payload.ingredients }, haveCores);
+  // The same count as the recipe card and Makeable (lib/inventoryMatch.js).
+  const stats = recipeHave({ ingredients: payload.ingredients }, kitchen);
   const havePct = stats.totalCount ? Math.round((stats.matchedCount / stats.totalCount) * 100) : 0;
   const stepCount = payload.instructions.filter((st) => typeof st !== "string" || !st.endsWith(":")).length;
   const checks = [

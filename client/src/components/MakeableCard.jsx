@@ -66,7 +66,7 @@ export function MakeableCard({ tile, soon, reason, grocery, deals, showSales, on
   const { recipe, stats } = tile;
   const [saleName, setSaleName] = useState(null); // the missing ingredient whose deal card is open
 
-  const names = stats.missing.map((core) => tile.nameOf(core));
+  const names = stats.missing;
   const state = cardState(stats);
   const ready = state === "ready";
   const allListed = names.length > 0 && names.every((name) => grocery.isOnList(name));

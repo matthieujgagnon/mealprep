@@ -1,16 +1,18 @@
 import { core, findSaleDeal } from "./similarRecipes.js";
 import { daysUntil } from "./pantryInventory.js";
 import { capitalize } from "./groceryList.js";
+import { expiringSoon, foodKey, recipeUsesItem } from "./inventoryMatch.js";
 import { dealSavings } from "./flyerIngredients.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
 import { inMealGroup, isMakeableMeal, makeableRuleOn, recipeSlot, recipeTotalMinutes } from "./mealSlots.js";
 import { matchesSearch } from "./recipeSearch.js";
 
 // The logic behind the shared recipe finder (components/Finder.jsx): the
-// Planner's bottom panel (computer and phone) uses it today, Makeable
-// next. Plain functions so they can be tested without a browser. The ranking
-// itself stays in lib/plannerSuggestions.js (rankRecipesForTray) and what is
-// on hand in lib/onHand.js; this file filters, groups and words what they give.
+// Planner's bottom panel (computer and phone) and the Makeable page. Plain
+// functions so they can be tested without a browser. The ranking itself stays
+// in lib/plannerSuggestions.js (rankRecipesForTray) and what is on hand in
+// lib/inventoryMatch.js (recipeHave); this file filters, groups and words what
+// they give.
 
 // "Expiring soon" looks a week ahead, like the Planner's own ranking.
 export const EXPIRING_DAYS = 7;
@@ -72,21 +74,17 @@ export function groupIngredients(recipe) {
 
 // ---- Cook with: expiring items and shelves ----------------------------------
 
-// What an Inventory item is called when picking it in Cook with: its ingredient
-// core, or, for a staple (salt, most spices - the app never matches recipes on
-// those), its name as text with a "~" in front, matched against ingredient
-// names instead.
+// What an Inventory item is called when picking it in Cook with: one key per
+// food (lib/inventoryMatch.js foodKey), so « Poulet » and "Chicken" are one pick.
 function itemKey(item) {
-  return core(item.name) || `~${fold(item.name).trim()}`;
+  return foodKey(item.name);
 }
 
-// Items going off within `within` days (not already gone), soonest first, one
-// per ingredient: [{ key, name, days, item }].
+// Items going off within `within` days (not already gone, not leftovers),
+// soonest first, one per food: [{ key, name, days, item }].
 export function expiringItems(pantryInventory, within = EXPIRING_DAYS) {
   const seen = new Set();
-  return pantryInventory
-    .filter((item) => item.expiresAt && daysUntil(item.expiresAt) >= 0 && daysUntil(item.expiresAt) <= within)
-    .sort((a, b) => daysUntil(a.expiresAt) - daysUntil(b.expiresAt))
+  return expiringSoon(pantryInventory, within)
     .filter((item) => {
       const key = itemKey(item);
       if (seen.has(key)) return false;
@@ -110,9 +108,10 @@ export function shelfTone(sectionId, customIndex) {
 // it: [{ id, label, tone, items: [{ key, name, item }] }]. `sections` is what
 // orderedSections() in Inventory.jsx gives: [{ id, label, custom }], in the
 // saved order. A shelf with nothing on it is left out, and so is anything
-// already past its use-by date.
+// already past its use-by date. Leftovers are left out too: they are a meal,
+// planned from the Planner's « Restes » cards, not something to cook with.
 export function shelvesWithItems(pantryInventory, sections) {
-  const usable = pantryInventory.filter((item) => !item.expiresAt || daysUntil(item.expiresAt) >= 0);
+  const usable = pantryInventory.filter((item) => !item.isLeftover && (!item.expiresAt || daysUntil(item.expiresAt) >= 0));
   let custom = 0;
   return sections
     .map((section) => {
@@ -184,33 +183,28 @@ export function availabilityOf(stats) {
   return "shop";
 }
 
-// The Cook with picks a recipe uses: ingredient cores it has, and staple picks
-// ("~paprika") that appear in one of its ingredient names.
+// The keys of the Cook with picks ([{ key, name }]) a recipe uses, by the shared
+// matching (lib/inventoryMatch.js recipeUsesItem).
 function pickedBy(x, picks) {
-  if (picks.size === 0) return [];
-  const picked = x.cores.filter((c) => picks.has(c));
-  const names = (x.recipe.ingredients || []).map((i) => fold(i.name));
-  for (const key of picks) if (key.startsWith("~") && names.some((n) => n.includes(key.slice(1)))) picked.push(key);
-  return picked;
-}
-
-function usesAny(x, cores) {
-  return cores.size > 0 && x.cores.some((c) => cores.has(c));
+  return picks.filter((pick) => recipeUsesItem(x.recipe, pick.name)).map((pick) => pick.key);
 }
 
 // Narrows the ranked recipes by everything the finder can filter on and sorts
 // them. `filters`: query, meal ("all", "meals" or a recipe slot id), protein (a
-// protein id or ""), quick, expiring, picks (a Set of ingredient cores to cook
-// with), base (the Main meal's cores still switched on, or null), baseId,
+// protein id or ""), quick, expiring, picks (the Cook with picks: [{ key, name }]),
+// base (the Main meal's cores still switched on, or null), baseId,
 // includeSides (the Makeable now rule, see isMakeableMeal: "ready" leaves out
 // sides, desserts and pantry prep unless it is on), makeable (the Makeable
 // page: the rule applies to every result, not just "ready", and a recipe with
 // no ingredients is left out, as on Home).
+// "Expiring soon" keeps the recipes that use something going off within a week
+// (the ranked entry's `usesExpiring`).
 // Returns { tiles, counts }: counts is how many the three availability choices
 // would show with every other filter kept. Each tile is the ranked entry plus
-// `shared` (cores shared with the Main meal) and `picked` (cores from Cook with).
-export function findRecipes(ranked, filters, expiringCores) {
-  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = new Set(), base = null, baseId = null, includeSides = false, makeable = false } = filters;
+// `shared` (cores shared with the Main meal) and `picked` (keys of the Cook
+// with picks it uses).
+export function findRecipes(ranked, filters) {
+  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = [], base = null, baseId = null, includeSides = false, makeable = false } = filters;
   const ruleOn = makeableRuleOn(includeSides, meal);
   const isReady = (x) => availabilityOf(x.stats) === "ready" && (!ruleOn || isMakeableMeal(x.recipe));
   const kind = PROTEINS.find((p) => p.id === protein) || null;
@@ -223,13 +217,13 @@ export function findRecipes(ranked, filters, expiringCores) {
     .filter((x) => meal === "all" || (meal === "meals" ? inMealGroup(x.recipe, "meals") : recipeSlot(x.recipe) === meal))
     .filter((x) => !kind || recipeUsesProtein(x.recipe, kind))
     .filter((x) => !quick || (recipeTotalMinutes(x.recipe) > 0 && recipeTotalMinutes(x.recipe) <= QUICK_MINUTES))
-    .filter((x) => !expiring || usesAny(x, expiringCores))
+    .filter((x) => !expiring || x.usesExpiring)
     .map((x) => ({
       ...x,
       picked: pickedBy(x, picks),
       shared: base ? x.cores.filter((c) => base.has(c)) : [],
     }))
-    .filter((x) => picks.size === 0 || x.picked.length > 0)
+    .filter((x) => picks.length === 0 || x.picked.length > 0)
     .filter((x) => !base || x.shared.length > 0);
 
   const counts = { all: beforeAvailability.length, ready: 0, few: 0 };
@@ -248,19 +242,8 @@ export function findRecipes(ranked, filters, expiringCores) {
   // Cook with and Main meal put the most shared first; otherwise the ranking
   // (expiring food used, little to buy) already says what to show first.
   if (base) tiles.sort((a, b) => b.shared.length - a.shared.length || b.score - a.score);
-  else if (picks.size > 0) tiles.sort((a, b) => b.picked.length - a.picked.length || b.score - a.score);
+  else if (picks.length > 0) tiles.sort((a, b) => b.picked.length - a.picked.length || b.score - a.score);
   return { tiles, counts };
-}
-
-// ---- The pop-out: what you have, what to buy ----------------------------------
-
-// A recipe's ingredients split into what is on hand and what is not:
-// { have: [{ core, name }], buy: [{ core, name }] }.
-export function haveAndBuy(recipe, haveCores) {
-  const have = [];
-  const buy = [];
-  for (const item of recipeIngredientNames(recipe)) (haveCores.has(item.core) ? have : buy).push(item);
-  return { have, buy };
 }
 
 // The real flyer deal for an ingredient, as the green pill's parts, or null

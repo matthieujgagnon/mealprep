@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { InStockPill, MealChip, Pill, PlannedPill, SalePill, TimePill } from "./RisoPills.jsx";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
-import { haveAndBuy, plannedDayOf, saleFor } from "../lib/finder.js";
+import { plannedDayOf, saleFor } from "../lib/finder.js";
+import { recipeHave } from "../lib/inventoryMatch.js";
 import { stepIsHeading, stepHeadingText, stepText } from "../lib/steps.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { t } from "../i18n/index.js";
@@ -19,7 +20,7 @@ import { t } from "../i18n/index.js";
 //   RecipePopout      the look. Props:
 //     recipe        the recipe
 //     plannedDay    0 = Monday when it is planned this week or later, else null
-//     have, buy     [{ core, name }] from lib/finder.js haveAndBuy
+//     have, buy     [{ key, name }] from lib/inventoryMatch.js recipeHave
 //     isOnList(name)  whether that ingredient is on the grocery list
 //     onToggleList(name)  puts it on the list, or takes it off
 //     saleOf(name)  optional: the real flyer deal for an ingredient (lib/finder.js
@@ -27,7 +28,7 @@ import { t } from "../i18n/index.js";
 //     onPlan, onCook, onSimilar, onOpenFull   the four buttons (each optional)
 //     onClose, from (the box of the card it grows out of)
 //   RecipePopoutHost  works the lists out from the data every page already has
-//     (haveCores, plannedEntries, the grocery functions) and renders RecipePopout.
+//     (kitchen, plannedEntries, the grocery functions) and renders RecipePopout.
 //     App.jsx renders the one host, so Planner, Recipes and Home open the same pop-out.
 
 const CLOSE_MS = 300;
@@ -51,7 +52,7 @@ export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Sec
           <H className="fnd-pop-caps">{t("finder.youHave", { count: have.length })}</H>
           <div className="fnd-pop-pills fnd-pop-have">
             {have.map((item) => (
-              <InStockPill key={item.core} title={t("finder.haveTitle")}>
+              <InStockPill key={item.key} title={t("finder.haveTitle")}>
                 {item.name}
               </InStockPill>
             ))}
@@ -67,7 +68,7 @@ export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Sec
               const listed = isOnList(item.name);
               const sale = saleOf?.(item.name);
               return (
-                <span key={item.core} className="fnd-pop-buy">
+                <span key={item.key} className="fnd-pop-buy">
                   <button
                     type="button"
                     className={`riso-pill size-chip tone-yellow has-mark fnd-buy-pill${listed ? " listed" : ""}`}
@@ -244,13 +245,14 @@ export function RecipePopout({ recipe, plannedDay, have, buy, isOnList, onToggle
 }
 
 // The pop-out with its lists worked out. `recipe` may be null (then nothing shows).
-//   haveCores      what is on hand (lib/onHand.js haveCoresFor)
+//   kitchen        what is on hand: App's { inventory, customStaples, excludedStaples },
+//                  read with the shared matching (lib/inventoryMatch.js recipeHave)
 //   plannedEntries this week's and the upcoming entries, for the "Planned Wednesday" pill
 //   grocery        { isOnList, add, remove, toggle } (toggle takes an item off the list
 //                  with the Undo toast, or puts it back: App.jsx toggleGroceryItem)
 //   deals, showSales  optional: green sale pills next to the things to buy
-export function RecipePopoutHost({ recipe, from, haveCores, plannedEntries, grocery, deals, showSales = false, ...actions }) {
-  const lists = useMemo(() => (recipe ? haveAndBuy(recipe, haveCores) : { have: [], buy: [] }), [recipe, haveCores]);
+export function RecipePopoutHost({ recipe, from, kitchen, plannedEntries, grocery, deals, showSales = false, ...actions }) {
+  const lists = useMemo(() => (recipe ? recipeHave(recipe, kitchen) : { have: [], buy: [] }), [recipe, kitchen]);
   if (!recipe) return null;
   return (
     <RecipePopout

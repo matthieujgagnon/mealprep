@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
-import { core, findExpiringSoonInRecipe } from "../lib/similarRecipes.js";
-import { buildCombinedHave, recipeHaveStats } from "../lib/onHand.js";
+import { expiringItemsIn, recipeHave } from "../lib/inventoryMatch.js";
 import { HintStrip, PillMenu } from "./RisoControls.jsx";
 import { RecipePhotoCard } from "./RecipePhotoCard.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
@@ -66,8 +65,7 @@ function RecipeCard({ recipe, onOpen }) {
 export function Recipes({
   user,
   recipes,
-  pantryInventory,
-  customStaples,
+  kitchen,
   plannerEntries,
   search,
   onSearchChange,
@@ -119,21 +117,19 @@ export function Recipes({
   const query = search.trim();
   const isUrl = isUrlLike(query);
 
-  const haveCores = useMemo(() => new Set(buildCombinedHave(pantryInventory, customStaples).map((n) => core(n)).filter(Boolean)), [pantryInventory, customStaples]);
-
   // What each recipe is, worked out once per change (for the count line at the top):
   // makeable and uses expiring.
   const info = useMemo(() => {
     const map = new Map();
     for (const r of allRecipes) {
-      const stats = recipeHaveStats(r, haveCores);
+      const stats = recipeHave(r, kitchen);
       map.set(r.id, {
         ready: stats.totalCount > 0 && stats.missingCount === 0,
-        expiring: findExpiringSoonInRecipe(r, pantryInventory, plannerEntries, allRecipes, 3).size > 0,
+        expiring: expiringItemsIn(r, kitchen.inventory, plannerEntries, allRecipes, 3).length > 0,
       });
     }
     return map;
-  }, [allRecipes, haveCores, pantryInventory, plannerEntries]);
+  }, [allRecipes, kitchen, plannerEntries]);
 
   function matchesChip(recipe, chipId) {
     switch (chipId) {
@@ -160,7 +156,7 @@ export function Recipes({
       (!searching || matchesSearch(r, query))
   );
   const chipCount = (chipId) => beforeChip.filter((r) => matchesChip(r, chipId)).length;
-  const visible = sortRecipes(beforeChip.filter((r) => matchesChip(r, filter)), sortIndex, haveCores);
+  const visible = sortRecipes(beforeChip.filter((r) => matchesChip(r, filter)), sortIndex, kitchen);
 
   const tabCounts = Object.fromEntries(SOURCES.map((id) => [id, allRecipes.filter((r) => sourceOf(r) === id).length]));
   const makeableCount = allRecipes.filter((r) => info.get(r.id).ready && isMakeableMeal(r, includeSides)).length;

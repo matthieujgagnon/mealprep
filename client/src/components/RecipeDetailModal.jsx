@@ -9,8 +9,8 @@ import {
   stepTimer,
   scaleStepText,
 } from "../lib/steps.js";
-import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, findSaleDeal, findDealsFor } from "../lib/similarRecipes.js";
-import { haveItemFor, isStapleIngredient, matchingItems } from "../lib/inventoryMatch.js";
+import { findSimilarRecipes, isPerishable, findSaleDeal, findDealsFor } from "../lib/similarRecipes.js";
+import { expiringItemsIn, haveItemFor, ingredientHave, itemCovers, matchingItems, recipeHave } from "../lib/inventoryMatch.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { SaleTag } from "./SaleTag.jsx";
 import { formatQuantity, unitLabel } from "../lib/units.js";
@@ -53,7 +53,7 @@ function locationLabel(locationId) {
 // lib/inventoryMatch.js, the same as the finished view's take-out list) - used
 // to describe *where* it lives in the tap-to-open explainer.
 function findMatchedPantryItem(ing, pantryInventory) {
-  return core(ing.name) === null ? null : haveItemFor(ing.name, pantryInventory);
+  return haveItemFor(ing.name, pantryInventory);
 }
 
 // The "⋯" menu — Edit / View original / Add to Cookbook (or Move to
@@ -280,7 +280,7 @@ export function RecipeDetailModal({
   allRecipes = [],
   plannerEntries = [],
   pantryInventory = [],
-  customStaples = [],
+  kitchen = { inventory: pantryInventory },
   weekStart,
   onSelectRecipe,
   onRecipeUpdated,
@@ -351,22 +351,22 @@ export function RecipeDetailModal({
     setActivePhotoIndex(coverIndex);
   }
 
-  const expiringSoonCores = findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes);
+  const soonItems = expiringItemsIn(recipe, pantryInventory, plannerEntries, allRecipes);
 
+  // The ✓ beside each ingredient. A pantry staple counts as had; anything else
+  // needs an Inventory item that is this ingredient (lib/inventoryMatch.js:
+  // French names, plurals, varieties and cuts, never leftovers).
   function ingredientStatus(ing) {
-    const c = core(ing.name);
-    if (c === null) return "have";
-    // A pantry staple you marked counts as had; anything else needs an Inventory
-    // item that is this ingredient (lib/inventoryMatch.js: French names, plurals,
-    // varieties and cuts, never leftovers).
-    if (!isStapleIngredient(ing.name, customStaples) && !haveItemFor(ing.name, pantryInventory)) return "need";
-    if (expiringSoonCores.has(c)) return "soon";
+    const status = ingredientHave(ing.name, kitchen);
+    if (status === "need") return "need";
+    if (status === "have" && soonItems.some((item) => itemCovers(item.name, ing.name))) return "soon";
     return "have";
   }
 
   const allIngredients = recipe.ingredients || [];
-  const haveCount = allIngredients.filter((ing) => ingredientStatus(ing) !== "need").length;
-  const missingIngredients = allIngredients.filter((ing) => ingredientStatus(ing) === "need");
+  // The numbers ("You have 3 of 5", "2 things to buy") are the same count as
+  // Makeable, the pop-out and the Planner: one line per food, staples left out.
+  const counts = recipeHave(recipe, kitchen);
   // The "use soon!" key only means something when an ingredient wears it.
   const anyUseSoon = allIngredients.some((ing) => ingredientStatus(ing) === "soon");
 
@@ -432,20 +432,20 @@ export function RecipeDetailModal({
 
   // The missing ingredients that are not on the grocery list yet (the list is App's,
   // so this always agrees with Grocery and the pop-out).
-  const notOnList = missingIngredients.filter((ing) => !grocery.isOnList(ing.name));
+  const notOnList = counts.missing.filter((name) => !grocery.isOnList(name));
 
   async function handleAddMissingToGroceryList() {
     if (notOnList.length === 0 || !weekStart) return;
     setAddingMissing(true);
     try {
-      await onAddToGroceryList(notOnList.map((ing) => ing.name));
+      await onAddToGroceryList(notOnList);
     } finally {
       setAddingMissing(false);
     }
   }
 
   async function handleRemoveFromInventory(ing) {
-    if (core(ing.name) === null || !onDeletePantryItem) return;
+    if (ingredientHave(ing.name, kitchen) === "staple" || !onDeletePantryItem) return;
     const matches = matchingItems(ing.name, pantryInventory);
     for (const item of matches) {
       await onDeletePantryItem(item.id);
@@ -454,10 +454,10 @@ export function RecipeDetailModal({
 
   const stickerText = recipe.isPlaceholder
     ? null
-    : missingIngredients.length > 0
-      ? t("recipeCard.thingsToBuy", { count: missingIngredients.length })
+    : counts.missingCount > 0
+      ? t("recipeCard.thingsToBuy", { count: counts.missingCount })
       : t("recipeCard.nothingToBuy");
-  const stickerBg = missingIngredients.length > 0 ? "var(--riso-yellow)" : "var(--riso-green)";
+  const stickerBg = counts.missingCount > 0 ? "var(--riso-yellow)" : "var(--riso-green)";
 
   return (
     <div className="modal-overlay riso-theme" onClick={onClose}>
@@ -676,15 +676,15 @@ export function RecipeDetailModal({
                 </div>
               </div>
 
-              {allIngredients.length > 0 && (
+              {counts.totalCount > 0 && (
                 <div className="riso-rc-have-meter">
                   <div className="riso-rc-have-label">
-                    {t("recipeCard.haveOf", { have: haveCount, total: allIngredients.length })}
+                    {t("recipeCard.haveOf", { have: counts.matchedCount, total: counts.totalCount })}
                   </div>
                   <div className="riso-rc-have-track">
                     <div
                       className="riso-rc-have-fill"
-                      style={{ width: `${allIngredients.length ? (haveCount / allIngredients.length) * 100 : 0}%` }}
+                      style={{ width: `${(counts.matchedCount / counts.totalCount) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -746,18 +746,18 @@ export function RecipeDetailModal({
                 )}
               </div>
 
-              {missingIngredients.length > 0 && weekStart && (
+              {counts.missingCount > 0 && weekStart && (
                 notOnList.length === 0 ? (
                   <div className="riso-rc-planned-note">
                     <span className="riso-rc-planned-check">✓</span>
                     <p>
                       {plannedEntry
                         ? t("recipeCard.planned", {
-                            count: missingIngredients.length,
+                            count: counts.missingCount,
                             day: dict().days.long[plannedEntry.dayOfWeek],
                             meal: t(`meals.${plannedEntry.mealType}`).toLowerCase(),
                           })
-                        : t("recipeCard.allOnList", { count: missingIngredients.length })}{" "}
+                        : t("recipeCard.allOnList", { count: counts.missingCount })}{" "}
                       <button type="button" className="riso-rc-planned-link" onClick={() => onNavigate?.("grocery")}>
                         {t("recipeCard.viewList")}
                       </button>

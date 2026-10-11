@@ -237,48 +237,6 @@ export function suggestNextRecipes(plannerEntries, allRecipes, limit = 5) {
     .slice(0, limit);
 }
 
-// Given a list of ingredient names the user says they have on hand, ranks
-// recipes by how close they are to fully makeable right now — fewest
-// missing ingredients first. Staples (salt, oil, most spices) are assumed
-// to always be on hand and never count as missing, the same way they're
-// excluded from every other matching function here.
-export function findRecipesByIngredients(haveNames, allRecipes, limit = 30) {
-  const haveCores = new Set(haveNames.map((n) => core(n)).filter(Boolean));
-  if (haveCores.size === 0) return [];
-
-  return allRecipes
-    .filter((r) => !r.isPlaceholder)
-    .map((r) => {
-      const cores = [...recipeCores(r)];
-      if (cores.length === 0) return null;
-      const matched = cores.filter((c) => haveCores.has(c));
-      const missing = cores.filter((c) => !haveCores.has(c));
-      // Shown as the recipe writes them ("Pois chiches"), not as the
-      // matching key ("poi chich").
-      const asWritten = new Map();
-      for (const ing of r.ingredients || []) {
-        const c = core(ing.name);
-        if (c && !asWritten.has(c)) asWritten.set(c, capitalize(String(ing.name).trim()));
-      }
-      const name = (c) => asWritten.get(c) || capitalize(c);
-      return {
-        recipe: r,
-        matchedCount: matched.length,
-        totalCount: cores.length,
-        matchedIngredients: matched.map(name),
-        missingIngredients: missing.map(name),
-      };
-    })
-    .filter((m) => m && m.matchedCount > 0)
-    .sort((a, b) => {
-      if (a.missingIngredients.length !== b.missingIngredients.length) {
-        return a.missingIngredients.length - b.missingIngredients.length;
-      }
-      return b.matchedCount - a.matchedCount;
-    })
-    .slice(0, limit);
-}
-
 // Flyers name things the way a store shelf does, not the way a recipe does:
 // "Broccoli crowns," "Baby spinach," "Russet potatoes, 10 lb bag." None of
 // those qualifiers change what you'd cook with, but every one of them breaks
@@ -544,40 +502,3 @@ export function isPerishable(ingredientName) {
   return PERISHABLES.has(core(ingredientName));
 }
 
-// Cores (not display names) of this recipe's ingredients that are also in
-// pantry inventory expiring within `withinDays`, and not already covered by
-// another planned meal this week — the recipe card's "USE SOON" badge.
-// Same "not already covered elsewhere" logic as findUnusedPerishables, but
-// driven by real inventory expiry dates instead of a generic perishable
-// list, so it also catches something like rice or canned beans if that
-// particular batch happens to be expiring soon.
-export function findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes, withinDays = 3) {
-  const recipeCoresSet = recipeCores(recipe);
-  if (recipeCoresSet.size === 0) return new Set();
-
-  const now = Date.now();
-  const soonCores = new Set();
-  for (const item of pantryInventory) {
-    if (!item.expiresAt) continue;
-    const days = Math.ceil((new Date(item.expiresAt).getTime() - now) / (24 * 60 * 60 * 1000));
-    if (days > withinDays) continue;
-    const c = core(item.name);
-    if (c && recipeCoresSet.has(c)) soonCores.add(c);
-  }
-  if (soonCores.size === 0) return soonCores;
-
-  const recipeMap = new Map(allRecipes.map((r) => [r.id, r]));
-  const plannedElsewhere = new Set();
-  for (const entry of plannerEntries) {
-    if (entry.isLeftover || entry.alreadyHave) continue;
-    const other = recipeMap.get(entry.recipeId) || entry.recipe;
-    if (!other || other.id === recipe.id || other.isPlaceholder) continue;
-    for (const ing of other.ingredients || []) {
-      const c = core(ing.name);
-      if (c) plannedElsewhere.add(c);
-    }
-  }
-
-  for (const c of plannedElsewhere) soonCores.delete(c);
-  return soonCores;
-}

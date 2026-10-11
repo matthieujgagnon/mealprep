@@ -1,5 +1,7 @@
-import { availabilityOf, categoryOf, expiringItems } from "./finder.js";
-import { core, findExpiringSoonInRecipe } from "./similarRecipes.js";
+import { availabilityOf, categoryOf } from "./finder.js";
+import { expiringItemsIn } from "./inventoryMatch.js";
+import { capitalize } from "./groceryList.js";
+import { daysUntil } from "./pantryInventory.js";
 import { formatRecipeTime } from "./mealSlots.js";
 
 // The logic behind the photo cards (components/RecipePhotoCard.jsx: the Recipes
@@ -101,12 +103,11 @@ export const USE_SOON_DAYS = 3;
 
 // The soonest Inventory item this recipe uses that goes off within USE_SOON_DAYS,
 // as { name, days }, or null. It follows the app's "uses expiring" rule: food that
-// another planned meal already uses doesn't count (findExpiringSoonInRecipe).
+// another planned meal already uses doesn't count (lib/inventoryMatch.js
+// expiringItemsIn, French names too, never leftovers).
 export function soonItemFor(recipe, pantryInventory, plannedEntries, recipes) {
-  const soon = findExpiringSoonInRecipe(recipe, pantryInventory, plannedEntries, recipes, USE_SOON_DAYS);
-  if (soon.size === 0) return null;
-  const item = expiringItems(pantryInventory, USE_SOON_DAYS).find((i) => soon.has(core(i.name)));
-  return item ? { name: item.name, days: item.days } : null;
+  const [item] = expiringItemsIn(recipe, pantryInventory, plannedEntries, recipes, USE_SOON_DAYS);
+  return item ? { name: capitalize(String(item.name).trim()), days: daysUntil(item.expiresAt) } : null;
 }
 
 // ---- Makeable card: sales and the grocery list --------------------------------

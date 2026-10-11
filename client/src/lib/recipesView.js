@@ -1,4 +1,4 @@
-import { recipeHaveStats } from "./onHand.js";
+import { recipeHave } from "./inventoryMatch.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
 import { recipeTotalMinutes } from "./mealSlots.js";
 
@@ -31,11 +31,11 @@ export function matchesTime(recipe, timeId) {
 }
 
 // The Sort dropdown: 0 recently added, 1 fewest missing, 2 quickest.
-export function sortRecipes(recipes, sortIndex, haveCores) {
+export function sortRecipes(recipes, sortIndex, kitchen) {
   if (sortIndex === 1) {
     // Fewest to buy first; recipes without any ingredient list can't be
     // judged, so they go last. Ties: more of it on hand, then by name.
-    const stats = new Map(recipes.map((r) => [r.id, recipeHaveStats(r, haveCores)]));
+    const stats = new Map(recipes.map((r) => [r.id, recipeHave(r, kitchen)]));
     return [...recipes].sort((a, b) => {
       const sa = stats.get(a.id);
       const sb = stats.get(b.id);

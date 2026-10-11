@@ -1,12 +1,15 @@
-import { canonicalize, canonicalUnit, singularize, STAPLE_WORDS, SPICE_WORDS } from "./groceryList.js";
+import { canonicalize, canonicalUnit, capitalize, singularize, STAPLE_WORDS, SPICE_WORDS } from "./groceryList.js";
 import { PHRASES, fold } from "./bilingual.js";
 import { familyKey } from "./ingredientFamilies.js";
 import { convertToUnit } from "./units.js";
 import { daysUntil } from "./pantryInventory.js";
 
 // Which Inventory item a recipe ingredient is, and how much of it a cooked
-// meal takes out. One matching for the recipe card's blue ✓ and the finished
-// view's "Take out of your Inventory" list, so the two always agree.
+// meal takes out. The one matching in the app: every page that says whether you
+// have an ingredient uses it (the recipe card, Makeable, the recipe pop-out, the
+// Planner's search and meal card, Home, Recipes, the recipe form's preview), and
+// so do the finished view's "Take out of your Inventory" list, "uses expiring"
+// and Cook with, so they always agree.
 //
 // Two names are the same food when, once both are read in English:
 //   - French names count: « Poulet », « Lait 2 % », « ail », « oignons », « pommes
@@ -36,7 +39,7 @@ const KITCHEN_FR = [
   ["creme a cuisson", "cooking cream"], ["lait de coco", "coconut milk"], ["oignons verts", "green onions"], ["oignon vert", "green onion"],
   ["haricots noirs", "black beans"], ["haricots rouges", "kidney beans"], ["citron vert", "lime"], ["sauce soya", "soy sauce"],
   ["poudre d'ail", "garlic powder"], ["poudre d'oignon", "onion powder"], ["fromage feta", "feta"], ["fromage parmesan", "parmesan"],
-  ["oignon", "onion"], ["carotte", "carrot"], ["tomate", "tomato"], ["champignon", "mushroom"], ["poivron", "bell pepper"],
+  ["oignon", "onion"], ["carotte", "carrot"], ["tomate", "tomato"], ["champignon", "mushroom"], ["poivron", "bell pepper"], ["poivrons", "bell peppers"],
   ["citron", "lemon"], ["echalote", "shallot"], ["echalotes", "shallots"], ["persil", "parsley"], ["coriandre", "cilantro"],
   ["basilic", "basil"], ["gingembre", "ginger"], ["lentille", "lentil"], ["lentilles", "lentils"], ["nouilles", "noodles"],
   ["concombre", "cucumber"], ["courgette", "zucchini"], ["aubergine", "eggplant"], ["aubergines", "eggplants"], ["patate", "potato"],
@@ -46,6 +49,24 @@ const KITCHEN_FR = [
   ["pita", "pita"], ["pitas", "pitas"], ["tortilla", "tortilla"], ["tortillas", "tortillas"], ["yogourt", "yogurt"], ["yaourt", "yogurt"],
   ["bouillon", "stock"], ["poudre", "powder"], ["concentre", "paste"], ["puree", "puree"], ["vin", "wine"], ["mais", "corn"],
   ["grec", "greek"], ["grecque", "greek"], ["oignons", "onions"], ["carottes", "carrots"], ["tomates", "tomatoes"],
+  // Pantry staples and spices, so a French recipe's « sel » or « origan » is an
+  // "always have" like salt and oregano.
+  ["au gout", "to taste"], ["sel casher", "kosher salt"], ["gros sel", "coarse salt"], ["sel de mer", "sea salt"],
+  ["sel de celeri", "celery salt"], ["sel d'oignon", "onion salt"], ["poivre noir", "black pepper"], ["poivre blanc", "white pepper"],
+  ["poivre de cayenne", "cayenne pepper"], ["piment de cayenne", "cayenne pepper"], ["sel", "salt"], ["poivre", "pepper"],
+  ["huile vegetale", "vegetable oil"], ["huile de canola", "canola oil"], ["huile de cuisson", "cooking oil"], ["enduit a cuisson", "cooking spray"],
+  ["extra vierge", "extra-virgin"], ["farine tout usage", "all-purpose flour"], ["sucre brun", "brown sugar"], ["cassonade", "brown sugar"],
+  ["poudre a pate", "baking powder"], ["poudre a lever", "baking powder"], ["bicarbonate de soude", "baking soda"],
+  ["bicarbonate de sodium", "baking soda"], ["fecule de mais", "cornstarch"], ["extrait de vanille", "vanilla extract"],
+  ["sauce soja", "soy sauce"], ["paprika fume", "smoked paprika"], ["cumin moulu", "ground cumin"], ["coriandre moulue", "ground coriander"],
+  ["gingembre moulu", "ground ginger"], ["cannelle moulue", "ground cinnamon"], ["noix de muscade", "nutmeg"], ["muscade", "nutmeg"],
+  ["curcuma", "turmeric"], ["cannelle", "cinnamon"], ["origan", "oregano"], ["thym", "thyme"], ["romarin", "rosemary"],
+  ["feuilles de laurier", "bay leaves"], ["feuille de laurier", "bay leaf"], ["laurier", "bay leaf"], ["poudre de chili", "chili powder"],
+  ["assaisonnement au chili", "chili powder"], ["poudre de cari", "curry powder"], ["assaisonnement italien", "italian seasoning"],
+  ["flocons de piment", "chili flakes"], ["piment broye", "crushed red pepper"], ["piment de la jamaique", "allspice"],
+  ["anis etoile", "star anise"], ["cardamome", "cardamom"], ["graines de fenouil", "fennel seeds"], ["graines de moutarde", "mustard seeds"],
+  ["moutarde en poudre", "mustard powder"], ["cinq epices", "five spice powder"], ["seche", "dried"], ["sechee", "dried"],
+  ["seches", "dried"], ["sechees", "dried"],
 ];
 
 // "the" is English as often as it is « thé », so it is never read as tea here.
@@ -81,7 +102,7 @@ function toEnglish(name) {
 const DESCRIPTORS = new Set(
   (
     "whole skim nonfat fat-free low-fat reduced-fat unsalted salted boneless skinless bone-in skin-on lean extra-lean extra-virgin virgin " +
-    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought bell mild"
+    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought bell mild moulu moulue moulus moulues"
   ).split(" ")
 );
 // What a food was made into: not the food itself.
@@ -112,9 +133,11 @@ export function foodProfile(name) {
   if (profileCache.has(key)) return profileCache.get(key);
 
   let core = canonicalize(toEnglish(key)).core;
+  // A bell pepper is a vegetable; plain pepper is the spice.
+  const bell = core.split(" ").includes("bell");
   const words0 = core.split(" ").filter((w) => w && !DESCRIPTORS.has(w) && !LITTLE.has(w));
   core = words0.join(" ");
-  const staple = STAPLES.has(core) || STAPLES.has(familyKey(core));
+  const staple = !bell && (STAPLES.has(core) || STAPLES.has(canonicalize(core).core) || STAPLES.has(familyKey(core)));
   let joined = ` ${core} `;
   for (const [phrase, token] of COMPOUNDS) joined = joined.replace(` ${phrase} `, ` ${token} `);
   const words = joined.trim().split(" ").filter(Boolean);
@@ -175,7 +198,10 @@ export function isStapleIngredient(name, customStaples = [], excludedStaples = [
   const keys = [raw, canonicalize(raw).core, p.core];
   if (keys.some((k) => own.has(k)) || [...own].some((s) => itemCovers(s, name))) return true;
   if (keys.some((k) => off.has(k))) return false;
-  return p.staple;
+  if (p.staple) return true;
+  // "Salt and pepper", « sel et poivre, au goût »: staples written on one line.
+  const parts = raw.split(/\s*(?:,|&|\band\b|\bet\b)\s*/).filter((part) => foodProfile(part).core);
+  return parts.length > 1 && parts.every((part) => isStapleIngredient(part, customStaples, excludedStaples));
 }
 
 const isUsable = (item) => !item.isLeftover;
@@ -198,6 +224,120 @@ export function matchingItems(ingredientName, inventory = []) {
 // The first item still good that is this ingredient: what the blue ✓ shows.
 export function haveItemFor(ingredientName, inventory = []) {
   return matchingItems(ingredientName, inventory).find(notExpired) || null;
+}
+
+// ---- A recipe next to your Inventory -------------------------------------------
+//
+// `kitchen` is what App.jsx keeps once: { inventory, customStaples, excludedStaples }.
+
+const NO_ITEMS = [];
+// The answers for one Inventory, kept until it, the staples or the day change.
+const answers = new WeakMap();
+
+function answersFor(kitchen) {
+  const inventory = kitchen?.inventory || NO_ITEMS;
+  const day = new Date().toDateString();
+  let table = answers.get(inventory);
+  if (!table || table.day !== day || table.customStaples !== kitchen?.customStaples || table.excludedStaples !== kitchen?.excludedStaples) {
+    table = { day, customStaples: kitchen?.customStaples, excludedStaples: kitchen?.excludedStaples, byName: new Map() };
+    answers.set(inventory, table);
+  }
+  return table;
+}
+
+// Where one ingredient stands: "staple" (always have: salt, oil, spices, your own
+// pantry staples), "have" (an Inventory item still good is this ingredient) or
+// "need". What the recipe card's ✓ beside each ingredient shows.
+export function ingredientHave(name, kitchen) {
+  const table = answersFor(kitchen);
+  if (!table.byName.has(name)) {
+    const staple = isStapleIngredient(name, kitchen?.customStaples, kitchen?.excludedStaples);
+    table.byName.set(name, staple ? "staple" : haveItemFor(name, kitchen?.inventory || NO_ITEMS) ? "have" : "need");
+  }
+  return table.byName.get(name);
+}
+
+// Two ingredients of one recipe are the same food when each covers the other:
+// "garlic cloves" and "minced garlic" are, chicken thighs and chicken breasts are not.
+function sameFood(a, b) {
+  if (itemCovers(a, b) && itemCovers(b, a)) return true;
+  return !foodProfile(a).food && !foodProfile(b).food && fold(a).trim() === fold(b).trim();
+}
+
+// A recipe next to your Inventory, the one count every page shows ("3/5",
+// "2 missing", "2 things to buy", Ready now). One line per food, in the recipe's
+// order, named as the recipe first writes it (a missing line, as it writes the
+// missing ingredient); staples are left out (you always have them). A line is
+// had when every ingredient in it is.
+//   have, buy     [{ key, name }]
+//   missing       the names in `buy`
+//   totalCount, matchedCount, missingCount
+export function recipeHave(recipe, kitchen) {
+  const lines = [];
+  for (const ing of recipe?.ingredients || []) {
+    const name = String(ing?.name || "").trim();
+    if (!name) continue;
+    const status = ingredientHave(name, kitchen);
+    if (status === "staple") continue;
+    const line = lines.find((l) => sameFood(l.written, name));
+    if (!line) lines.push({ written: name, had: status === "have", missingName: status === "have" ? null : name });
+    else if (status !== "have" && line.had) Object.assign(line, { had: false, missingName: name });
+  }
+  const item = (l) => ({ key: l.written.toLowerCase(), name: capitalize(l.missingName || l.written) });
+  const have = lines.filter((l) => l.had).map(item);
+  const buy = lines.filter((l) => !l.had).map(item);
+  return {
+    have,
+    buy,
+    missing: buy.map((i) => i.name),
+    totalCount: lines.length,
+    matchedCount: have.length,
+    missingCount: buy.length,
+  };
+}
+
+// Whether a recipe uses an Inventory item (Cook with, "uses expiring"). A staple
+// you keep, like paprika, is also found by its name inside the recipe's
+// ("smoked paprika").
+export function recipeUsesItem(recipe, itemName) {
+  const staple = foodProfile(itemName).staple;
+  const written = fold(itemName).trim();
+  return (recipe?.ingredients || []).some(
+    (ing) => ing?.name && (itemCovers(itemName, ing.name) || (staple && written !== "" && fold(ing.name).includes(written)))
+  );
+}
+
+// One key per food, for lists that show each food once (Cook with's shelves and
+// its expiring strip): « Poulet » and "Chicken" are one.
+export function foodKey(name) {
+  const p = foodProfile(name);
+  if (!p.food) return `~${fold(name).trim()}`;
+  return [p.food, p.derived || "", [...p.cuts].sort().join("+"), [...p.kinds].sort().join("+")].join("|");
+}
+
+// Inventory items still good that go off within `withinDays` days, soonest first.
+// Leftovers are a meal, not an ingredient, and are left out.
+export function expiringSoon(inventory = [], withinDays) {
+  return inventory
+    .filter((item) => isUsable(item) && item.expiresAt && daysUntil(item.expiresAt) >= 0 && daysUntil(item.expiresAt) <= withinDays)
+    .sort((a, b) => daysUntil(a.expiresAt) - daysUntil(b.expiresAt));
+}
+
+// The app's "uses expiring" rule (the recipe card's "use soon", the Makeable
+// card's pink strip, the Recipes count): the items going off within `withinDays`
+// days that this recipe uses and no other planned meal uses already, soonest
+// first. Staples (salt, oil, spices) don't count.
+export function expiringItemsIn(recipe, inventory, plannerEntries = [], allRecipes = [], withinDays = 3) {
+  const soon = expiringSoon(inventory, withinDays).filter((item) => !foodProfile(item.name).staple && recipeUsesItem(recipe, item.name));
+  if (soon.length === 0) return soon;
+  const byId = new Map(allRecipes.map((r) => [r.id, r]));
+  const others = [];
+  for (const entry of plannerEntries) {
+    if (entry.isLeftover || entry.alreadyHave) continue;
+    const other = byId.get(entry.recipeId) || entry.recipe;
+    if (other && other.id !== recipe.id && !other.isPlaceholder) others.push(other);
+  }
+  return soon.filter((item) => !others.some((other) => recipeUsesItem(other, item.name)));
 }
 
 // A count is a count: "", "unit", "piece" and "each" are the same unit.

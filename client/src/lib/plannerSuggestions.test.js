@@ -48,15 +48,21 @@ describe("recipe ranking", () => {
     { name: "feta", expiresAt: inDays(20) },
     { name: "eggs", expiresAt: inDays(20) },
   ];
-  const haveCores = new Set(["spinach", "feta", "egg"]);
+  const kitchen = { inventory: pantryInventory, customStaples: [], excludedStaples: [] };
 
   it("stops pushing expiring food an upcoming meal already uses", () => {
-    const { unusedExpiringCores } = rankRecipesForTray({
+    const { unusedExpiring } = rankRecipesForTray({
       recipes,
       upcomingEntries: [{ recipe: recipes[0], dayOfWeek: 3, mealType: "dinner" }],
-      pantryInventory,
-      haveCores,
+      kitchen,
     });
-    expect(unusedExpiringCores).not.toContain("spinach");
+    expect(unusedExpiring.map((i) => i.name)).not.toContain("spinach");
+  });
+
+  it("counts what is on hand with the shared matching, French names included", () => {
+    const french = { inventory: [{ name: "Épinards" }, { name: "Fromage feta" }, { name: "Oeufs" }], customStaples: [], excludedStaples: [] };
+    const { ranked } = rankRecipesForTray({ recipes, upcomingEntries: [], kitchen: french });
+    const stats = Object.fromEntries(ranked.map((x) => [x.recipe.id, x.stats.missingCount]));
+    expect(stats).toEqual({ a: 0, b: 2, c: 0 });
   });
 });
