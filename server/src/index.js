@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { requireAuth } from "./lib/auth.js";
+import { requireAdmin, warnAboutAdminEmails } from "./lib/admin.js";
 import { authRouter } from "./routes/auth.js";
 import { recipesRouter } from "./routes/recipes.js";
 import { plannerRouter } from "./routes/planner.js";
@@ -24,6 +25,7 @@ import { pantryLocationsRouter } from "./routes/pantryLocations.js";
 import { watchlistRouter } from "./routes/watchlist.js";
 import { recipeImagesRouter } from "./routes/recipeImages.js";
 import { cronRouter } from "./routes/cron.js";
+import { adminRouter } from "./routes/admin.js";
 import { startFlyerScheduler } from "./lib/flyerImport.js";
 import { fail } from "./lib/i18n.js";
 
@@ -64,6 +66,10 @@ app.use("/api/pantry-locations", requireAuth, pantryLocationsRouter);
 app.use("/api/watchlist", requireAuth, watchlistRouter);
 app.use("/api/recipe-images", requireAuth, recipeImagesRouter);
 
+// Admin only: requireAdmin checks ADMIN_EMAILS on the server for every
+// /api/admin route and refuses everyone else with 403 (lib/admin.js).
+app.use("/api/admin", requireAuth, requireAdmin, adminRouter);
+
 // In production, this one server hosts both the API and the already-built
 // React app (client/dist) — one deployment, one URL, no CORS to worry about.
 // In local dev, the frontend instead runs separately via Vite (npm run dev:client),
@@ -96,4 +102,5 @@ const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
   startFlyerScheduler({ onRenamed: forgetAllDeals });
+  warnAboutAdminEmails().catch((err) => console.error("Couldn't check ADMIN_EMAILS:", err));
 });

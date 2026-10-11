@@ -4,6 +4,11 @@ import { fail } from "./i18n.js";
 
 const SESSION_COOKIE = "session";
 const SESSION_DAYS = 30;
+// "Last active" (User.lastActiveAt, shown in Admin's Members list) is written
+// at most this often per account, so using the app isn't a database write on
+// every request.
+const ACTIVE_EVERY_MS = 15 * 60 * 1000;
+const lastNoted = new Map(); // userId -> when this server last wrote it
 
 export function hashPassword(password) {
   return bcrypt.hash(password, 10);
@@ -48,5 +53,16 @@ export async function requireAuth(req, res, next) {
   }
 
   req.userId = session.userId;
+  noteActive(session.userId);
   next();
+}
+
+// Records that the account is using the app, without holding up the request.
+export function noteActive(userId, now = Date.now()) {
+  if (now - (lastNoted.get(userId) ?? -Infinity) < ACTIVE_EVERY_MS) return false;
+  lastNoted.set(userId, now);
+  prisma.user
+    .updateMany({ where: { id: userId }, data: { lastActiveAt: new Date(now) } })
+    .catch((err) => console.error("Couldn't record last active:", err));
+  return true;
 }
