@@ -29,8 +29,8 @@ import { formatList } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
 
 // The shared recipe finder (design: docs/design/riso-v2, Finder and
-// FinderSheet): a search bar, "Cook with" ingredients, filters, the results and
-// a recipe pop-out, with "Main meal" for finding recipes that share a recipe's
+// FinderSheet): a search bar, "Cook with" ingredients, filters and the results,
+// with "Main meal" for finding recipes that share a recipe's
 // ingredients. The Planner uses it as its bottom panel (layout="panel") and
 // inside a bottom card (layout="sheet"); Makeable is layout="page"
 // (docs/design/riso-v2-makeable/): the results are in sections (planned this
@@ -40,8 +40,8 @@ import { t } from "../i18n/index.js";
 //
 // What it shows is kept by `finder`, from useFinder(), so the screen around it
 // can steer it. The data comes in as props: the recipes, the inventory, what is
-// on hand and the planned meals. Opening a recipe asks the caller (`onOpenPopout`,
-// App.jsx's one recipe pop-out) and what the + does is the caller's (`onAdd`).
+// on hand and the planned meals. Opening a recipe asks the caller (`onOpenRecipe`,
+// App.jsx's one recipe card) and what the + does is the caller's (`onAdd`).
 
 const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 
@@ -50,7 +50,7 @@ const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 // has « MEAL · TIME », the name and a round + (adds it to the plan); under it an
 // info row (have/total, COMPLETE or N MISSING), what the card shares with the
 // Main meal or the Cook with picks (`reason`) when there is one, and a thin
-// progress bar. No pills, no buttons. The whole card opens the pop-out, and
+// progress bar. No pills, no buttons. The whole card opens the recipe card, and
 // dragging it (when `draggable`) onto the Planner's board puts it in a slot. A
 // recipe with nothing missing has the blue outline ("you have it all"). (The
 // Makeable page draws MakeableCard instead.)
@@ -248,7 +248,7 @@ export function Finder({
   targetNotice = null,
   onClearTarget,
   onAdd,
-  onOpenPopout,
+  onOpenRecipe,
   openId = null,
   leftovers,
   onAddLeftover,
@@ -346,7 +346,7 @@ export function Finder({
     return null;
   }
 
-  const openRecipe = (recipe, from) => onOpenPopout(recipe, from);
+  const openRecipe = (recipe, from) => onOpenRecipe(recipe, from);
 
   // Makeable page: the sections, and for each card the soonest thing it uses that
   // goes off within 3 days (the pink strip).
@@ -592,7 +592,7 @@ export function Finder({
           groups={mainGroups}
           off={finder.off}
           onToggle={finder.toggleIngredient}
-          onView={() => onOpenPopout(mainRecipe)}
+          onView={() => onOpenRecipe(mainRecipe)}
           onCancel={() => finder.setMainMeal(null)}
           leftovers={leftovers}
           page={page}

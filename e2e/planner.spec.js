@@ -3,7 +3,7 @@ import { E2E_INVITE } from "./invite.js";
 import { scrollBetween } from "./planner-drag.js";
 
 // The Riso v2 Planner: a board of 7 days by 3 meals with one shared recipe
-// finder under it (search, filters, Cook with, Main meal, the recipe pop-out).
+// finder under it (search, filters, Cook with, Main meal, the recipe card).
 // One thing per slot - placing replaces, moving swaps.
 
 test.use({ viewport: { width: 1440, height: 1100 } });
@@ -130,14 +130,12 @@ test("the card's Recipe makes the slot the search panel's target, and + puts the
   expect([entries[0].dayOfWeek, entries[0].mealType]).toEqual([day, "breakfast"]);
 });
 
-test("the pop-out's Plan comes first and opens the slot picker, on the next empty slot, supper first", async ({ page }) => {
+test("the recipe card's Plan opens the slot picker, on the next empty slot, supper first", async ({ page }) => {
   await setup(page, [{ title: "Next Slot Stew" }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
   await page.locator(".fnd-card .rpc-open", { hasText: "Next Slot Stew" }).click();
-  const buttons = page.getByRole("dialog", { name: "Next Slot Stew" }).locator(".fnd-pop-actions button");
-  await expect(buttons.first()).toHaveText("Plan");
-  await buttons.first().click();
+  await page.getByRole("dialog", { name: "Next Slot Stew" }).getByRole("button", { name: "Plan", exact: true }).click();
   await page.getByRole("dialog", { name: "Pick a slot" }).getByRole("button", { name: /^Add to / }).click();
   await expect(page.locator(".riso-planner-card-name", { hasText: "Next Slot Stew" })).toBeVisible();
 
@@ -436,15 +434,15 @@ test("clicking a filled slot opens its planned-meal card; only the × removes th
   expect(await weekEntries(page)).toHaveLength(1);
 });
 
-test("the planned-meal card's Cook opens the recipe's card on the Recipes page", async ({ page }) => {
+test("the planned-meal card's Cook opens the recipe card over the Planner", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Cook Me", instructions: ["Step one.", "Step two."] }]);
   const day = visibleDay();
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
   await openPlanner(page);
   await cell(page, day, "dinner").locator(".riso-planner-card").click();
   await page.getByRole("dialog", { name: "Cook Me" }).getByRole("button", { name: "Cook", exact: true }).click();
-  await expect(page.locator(".tab.active")).toHaveText("Recipes");
-  await expect(page.locator(".riso-rc-actions")).toBeVisible();
+  await expect(page.locator(".tab.active")).toHaveText("Planner");
+  await expect(page.locator(".riso-rc-card .riso-rc-title")).toHaveText("Cook Me");
   await expect(page.locator(".cm-topbar")).toHaveCount(0);
 });
 
@@ -499,16 +497,15 @@ test("Use as a base makes the meal the Main meal and lets empty slots take its l
   await expect(banner).toHaveCount(0);
 });
 
-test("Open the full recipe goes to the recipe card", async ({ page }) => {
+test("a search result opens the recipe card in one tap", async ({ page }) => {
   await setup(page, [{ title: "Full Card Pie" }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
   await page.locator(".fnd-card .rpc-open", { hasText: "Full Card Pie" }).click();
-  await page.getByRole("button", { name: "Open the full recipe →" }).click();
-  await expect(page.getByRole("dialog", { name: /Full Card Pie/ }).or(page.locator(".riso-rc-title", { hasText: "Full Card Pie" })).first()).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Full Card Pie" }).locator(".riso-rc-title")).toHaveText("Full Card Pie");
 });
 
-test("what to buy in the pop-out is shared with the Grocery list", async ({ page }) => {
+test("what to buy on the recipe card is shared with the Grocery list", async ({ page }) => {
   await setup(page, [{ title: "Zucchini Bake", ingredients: [{ name: "zucchini" }] }]);
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
@@ -521,7 +518,7 @@ test("what to buy in the pop-out is shared with the Grocery list", async ({ page
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.getByText(/zucchini/i).first()).toBeVisible();
 
-  // Taken off the list on the Grocery page, it shows as not added in the pop-out.
+  // Taken off the list on the Grocery page, it shows as not added on the card.
   await page.getByRole("button", { name: /^Remove zucchini/i }).first().click();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.getByRole("button", { name: "Browse" }).click();
@@ -538,7 +535,8 @@ test("Main meal finds recipes sharing its ingredients, and leftovers can be plac
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
   await page.locator(".fnd-card .rpc-open", { hasText: "Chicken Orzo" }).click();
-  await page.getByRole("button", { name: "Similar recipes" }).click();
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Plan around this" }).click();
 
   const banner = page.locator(".fnd-main");
   await expect(banner).toContainText("Main meal");

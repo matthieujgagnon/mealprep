@@ -81,8 +81,7 @@ test("an ingredient can be a count of units", async ({ page }) => {
 
   await page.locator(".rpc", { hasText: "Stuffed peppers" }).click();
 
-  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
-  await expect(page.locator(".riso-rc-ingredient-qty").first()).toHaveText("3 units");
+  await expect(page.locator(".riso-rc-buy-meta").first()).toHaveText("3 units");
 });
 
 test("any photo can be made the cover, and photos keep their order", async ({ page }) => {

@@ -612,15 +612,16 @@ test("a recipe's sale pill is only for a real sale and opens the deal; on hand n
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByText("Mango chicken", { exact: true }).click();
-  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
-  const row = (name) => page.locator(".riso-rc-ingredient").filter({ hasText: name });
-  // Chicken breasts in the fridge aren't chicken thighs.
-  await expect(row("chicken thighs").locator(".riso-rc-ingredient-dot")).not.toHaveClass(/have/);
-  await expect(row("mangoes").locator(".riso-sale-tag")).toHaveText("Maxi$1.50");
-  await expect(row("quokka beans").locator(".riso-sale-tag")).toHaveCount(0);
+  // The recipe card's To buy rows.
+  const row = (name) => page.locator(".riso-rc-buy").filter({ hasText: name });
+  // Chicken breasts in the fridge aren't chicken thighs: they are still to buy.
+  await expect(row("Chicken thighs")).toBeVisible();
+  await expect(page.locator(".riso-rc-have")).toHaveCount(0);
+  await expect(row("Mangoes").locator(".riso-sale-tag")).toHaveText("Maxi$1.50");
+  await expect(row("Quokka beans").locator(".riso-sale-tag")).toHaveCount(0);
 
   // The pill opens the deal's own card.
-  await row("mangoes").locator(".riso-sale-tag").click();
+  await row("Mangoes").locator(".riso-sale-tag").click();
   await expect(page.locator(".riso-deal-detail")).toBeVisible();
   await expect(page.locator(".riso-deal-detail-name")).toHaveText("Mangoes");
   await page.locator(".riso-deal-detail-close").click();

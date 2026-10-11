@@ -132,7 +132,7 @@ test.describe("on a desktop", () => {
     const boxes = await page.locator(".rpc").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => [Math.round(r.width), Math.round(r.height)]));
     expect(new Set(boxes.map((b) => b.join("x"))).size).toBe(1);
     expect(Math.abs(boxes[0][1] / boxes[0][0] - 4 / 3)).toBeLessThan(0.02);
-    // Tapping a card opens the recipe's pop-out.
+    // Tapping a card opens the recipe card.
     await bowls.click();
     await expect(page.getByRole("dialog", { name: "Chicken bowls" })).toBeVisible();
   });

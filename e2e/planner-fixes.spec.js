@@ -2,9 +2,9 @@ import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { scrollBetween } from "./planner-drag.js";
 
-// Matt's review of the desktop Planner (#125, #126): the shared recipe pop-out
+// Matt's review of the desktop Planner (#125, #126): the shared recipe card
 // (Plan first, Cook), the shared slot picker with week arrows, the Makeable now
-// rule, the drag highlight and Similar recipes.
+// rule, the drag highlight and Plan around this.
 
 test.use({ viewport: { width: 1440, height: 1100 } });
 
@@ -37,12 +37,12 @@ async function setup(page, recipes) {
 const weekEntries = async (page, week) => (await page.request.get(`/api/planner?week=${week}`)).json();
 const cell = (page, day, meal) => page.locator(".riso-planner-cell").nth(MEALS.indexOf(meal) * 7 + day);
 
-test("on Recipes a card opens the pop-out with Plan first; Plan opens the slot picker, which can move to next week, and the toast has Undo", async ({ page }) => {
+test("on Recipes a card opens the recipe card; its Plan opens the slot picker, which can move to next week, and the toast has Undo", async ({ page }) => {
   await setup(page, [{ title: "Plan From Recipes", ingredients: [{ name: "zucchini" }] }]);
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.locator(".rpc", { hasText: "Plan From Recipes" }).click();
   const pop = page.getByRole("dialog", { name: "Plan From Recipes" });
-  await expect(pop.locator(".fnd-pop-actions button")).toHaveText(["Plan", "Cook", "Similar recipes", "Open the full recipe →"]);
+  await expect(pop.locator(".riso-rc-actions button")).toHaveText(["Start cooking", "Plan", "Similar recipes"]);
 
   await pop.getByRole("button", { name: "Plan", exact: true }).click();
   const picker = page.getByRole("dialog", { name: "Pick a slot" });
@@ -59,13 +59,15 @@ test("on Recipes a card opens the pop-out with Plan first; Plan opens the slot p
   await expect.poll(async () => (await weekEntries(page, nextWeek)).length).toBe(0);
 });
 
-test("the pop-out's Cook opens the recipe's card on the Recipes page, not Cook mode", async ({ page }) => {
-  await setup(page, [{ title: "Cook From Home" }]);
-  await page.getByRole("button", { name: "Recipes", exact: true }).click();
-  await page.locator(".rpc", { hasText: "Cook From Home" }).click();
-  await page.getByRole("dialog", { name: "Cook From Home" }).getByRole("button", { name: "Cook", exact: true }).click();
-  await expect(page.locator(".tab.active")).toHaveText("Recipes");
-  await expect(page.locator(".riso-rc-actions")).toBeVisible();
+test("a planned meal's Cook opens the recipe card over the Planner, not Cook mode", async ({ page }) => {
+  const [recipe] = await setup(page, [{ title: "Cook From Planner" }]);
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: 0, mealType: "dinner" } });
+  await page.reload();
+  await page.getByRole("button", { name: "Planner", exact: true }).click();
+  await cell(page, 0, "dinner").getByRole("button", { name: /Cook From Planner - open/ }).click();
+  await page.locator(".riso-slotcard").getByRole("button", { name: "Cook", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Cook From Planner" })).toBeVisible();
+  await expect(page.locator(".tab.active")).toHaveText("Planner");
   await expect(page.locator(".cm-overlay")).toHaveCount(0);
 });
 
@@ -128,12 +130,14 @@ test("while dragging, only the slot under the recipe gets a pink border and no f
   await page.mouse.up();
 });
 
-test("Similar recipes scrolls the page so the Main meal banner is fully in view", async ({ page }) => {
+test("Plan around this (the recipe card's ⋯ menu) scrolls the page so the Main meal banner is fully in view", async ({ page }) => {
   await setup(page, [{ title: "Base Dish", ingredients: [{ name: "chicken" }, { name: "lemon" }] }, { title: "Lemon Cousin", ingredients: [{ name: "lemon" }] }]);
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.getByRole("button", { name: "Browse" }).click();
   await page.locator(".fnd-card .rpc-open", { hasText: "Base Dish" }).click();
-  await page.getByRole("button", { name: "Similar recipes" }).click();
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Plan around this" }).click();
+  await expect(page.getByRole("dialog", { name: "Base Dish" })).toHaveCount(0);
   const banner = page.locator(".fnd-main");
   await expect(banner).toBeVisible();
   await expect(banner).toBeInViewport({ ratio: 1 });

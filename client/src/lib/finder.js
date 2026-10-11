@@ -239,11 +239,39 @@ export function findRecipes(ranked, filters) {
   };
   const tiles = beforeAvailability.filter(wanted);
 
-  // Cook with and Main meal put the most shared first; otherwise the ranking
-  // (expiring food used, little to buy) already says what to show first.
-  if (base) tiles.sort((a, b) => b.shared.length - a.shared.length || b.score - a.score);
+  // Main meal puts the most shared first (the one similar rule, bySimilarity);
+  // Cook with the most picks used; otherwise the ranking (expiring food used,
+  // little to buy) already says what to show first.
+  if (base) tiles.sort(bySimilarity);
   else if (picks.length > 0) tiles.sort((a, b) => b.picked.length - a.picked.length || b.score - a.score);
   return { tiles, counts };
+}
+
+// ---- Similar recipes --------------------------------------------------------
+
+// The one rule for "recipes that use the same ingredients": the recipe card's
+// Similar view and its footer, and the Planner's Main meal. Most ingredients
+// shared first, then the fewest missing from your Inventory, then the quickest
+// (a recipe with no time goes after the timed ones), then the ranking.
+export function bySimilarity(a, b) {
+  const minutes = (x) => recipeTotalMinutes(x.recipe) || Infinity;
+  return (
+    b.shared.length - a.shared.length ||
+    a.stats.missingCount - b.stats.missingCount ||
+    (minutes(a) === minutes(b) ? 0 : minutes(a) < minutes(b) ? -1 : 1) ||
+    b.score - a.score
+  );
+}
+
+// The recipes that share `recipe`'s ingredients, by bySimilarity: the ranked
+// entries (rankRecipesForTray) whose cores meet the recipe's, minus the
+// ingredients left out (cores), each with `shared` (the cores it shares).
+// Every other filter is off, so the same recipes show from any page.
+export function similarTo(recipe, ranked, leftOut = []) {
+  const off = new Set(leftOut);
+  const base = new Set(recipeIngredientNames(recipe).map((i) => i.core).filter((c) => !off.has(c)));
+  if (base.size === 0) return [];
+  return findRecipes(ranked, { base, baseId: recipe.id }).tiles;
 }
 
 // The real flyer deal for an ingredient, as the green pill's parts, or null

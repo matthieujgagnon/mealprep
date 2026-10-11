@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&amp;family=DM+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>html,body{margin:0;background:#e4e0d6}a{color:#2323ff;text-decoration:none}a:hover{color:#16181f}</style></helmet>
+<div style="padding:40px;font-family:Inter,system-ui,sans-serif;color:#16181f;width:max-content;min-width:100%;box-sizing:border-box">
+<div style="display:flex;flex-direction:column;gap:16px;width:1100px;margin-bottom:40px">
+    <a href="Index.dc.html" style="font:500 12px 'DM Mono',monospace;letter-spacing:0.1em">← ALL PAGES</a>
+    <span style="font:500 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">BASELINE · 04 / 12 · APPROVED DESIGN</span>
+    <h1 style="margin:0;font:800 56px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Recipe card</h1>
+    <p style="margin:0;font:400 17px/1.5 Inter,sans-serif;color:#3f3e37;max-width:760px;text-wrap:pretty">The one recipe card every page opens (Planner, Makeable, Recipes, Home). It replaces the recipe pop-out. What the live code draws today is in the <a href="Archive - Recipe Card (live code).dc.html">recipe card archive</a> and the <a href="Archive - Recipe Popout (live code).dc.html">pop-out archive</a>.</p>
+    <ul style="margin:0;padding-left:18px;max-width:760px;font:400 14px/1.6 Inter,sans-serif;color:#3f3e37">
+      <li>Photo on the left with the receipt under it: To buy with prices, then In your Inventory with the amounts this recipe uses.</li>
+      <li>Every price is the sale price, else the flyer price, else the median (see Meal pricing.md). The receipt totals To buy, From inventory and This meal; the Prices switch hides them all.</li>
+      <li>Servings change on the receipt and rescale every amount and price. Anything you'd run short of moves to To buy.</li>
+      <li>Header: title, one fact line (time, serves, estimate, keeps), Prices bottom right, then a row of pills: Start cooking, Plan, Similar recipes, Open full recipe.</li>
+      <li>Steps use the Cook mode rail. Click a step to make it current; click again to mark it done. Timers run in place without opening Cook mode.</li>
+      <li>Notes at the bottom. Similar recipes turns the card into a list of recipes that share its ingredients (tap an ingredient to leave it out; Back returns to the recipe); the footer shows the top four.</li>
+    </ul>
+  </div>
+<div style="display:flex;gap:64px;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">COMPUTER · 1440</span>
+<div data-screen-label="Recipe card desktop" style="display:flex;flex-direction:column;width:1440px">
+    <div style="background:#8b8a86;padding:40px;box-sizing:border-box">
+      <div style="background:#fffdf8;border:2px solid #16181f;border-radius:26px;box-shadow:6px 6px 0 #16181f;overflow:hidden;display:flex;flex-direction:column">
+        <sc-if value="{{ sim5Off }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:440px minmax(0,1fr)">
+          <div style="border-right:2px solid #16181f;background:#f4f1ea;display:flex;flex-direction:column">
+            <div style="position:relative;height:340px;flex:none;border-bottom:2px solid #16181f;overflow:hidden;background:#ddd6c6">
+              <img src="https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=1000&amp;q=70&amp;auto=format&amp;fit=crop" alt="Sheet-pan chicken shawarma" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+              <span style="position:absolute;top:18px;left:18px;height:38px;padding:0 14px;border-radius:19px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;font:700 13.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">← Recipes</span>
+              <span style="position:absolute;right:16px;bottom:18px;height:26px;padding:0 9px;border-radius:13px;background:#fffdf8;border:2px solid #16181f;display:flex;align-items:center;font:500 10.5px 'DM Mono',monospace;box-sizing:border-box">1 / 3 photos</span>
+            </div>
+            <div style="padding:34px 22px 30px">
+              <div style="position:relative;background:#fffdf8;border:2px solid #16181f;border-radius:6px 6px 20px 20px;padding:24px 20px 20px;display:flex;flex-direction:column;gap:12px">
+                <span style="position:absolute;top:-20px;left:14px;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:6px 14px;font:800 15px 'Bricolage Grotesque',sans-serif;background:#ffe14d;box-shadow:3px 3px 0 #16181f;white-space:nowrap">{{ b5n }} things to buy</span>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">TO BUY · {{ b5n }}</span><span style="display:flex;align-items:center;gap:8px"><span onClick="{{ svDown5 }}" style="width:28px;height:28px;border-radius:14px;border:2px solid #16181f;display:flex;align-items:center;justify-content:center;font:800 15px/1 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer" style-hover="background:#ffe14d">−</span><span style="font:800 14px 'Bricolage Grotesque',sans-serif;min-width:78px;text-align:center">{{ sv5 }} servings</span><span onClick="{{ svUp5 }}" style="width:28px;height:28px;border-radius:14px;border:2px solid #16181f;display:flex;align-items:center;justify-content:center;font:800 15px/1 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer" style-hover="background:#ffe14d">+</span></span></div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ buy5 }}" as="i" hint-placeholder-count="2"><div style="display:flex;gap:10px;align-items:center;min-height:54px;border-bottom:2px dotted #bdb6a6"><span style="flex:none;width:26px;height:26px;border-radius:13px;border:2px solid #16181f;background:{{ i.dotBg }};font:700 13px/1 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ i.mark }}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font:800 15.5px/19px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em">{{ i.name }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.04em;color:#5e5b52">{{ i.meta }}</span></span><sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span style="font:800 15.5px 'Bricolage Grotesque',sans-serif">{{ i.price }}</span><span style="background:{{ i.srcBg }};border:1.5px solid #16181f;border-radius:999px;padding:0 6px;font:500 9.5px/15px 'DM Mono',monospace;letter-spacing:0.08em">{{ i.src }}</span></span></sc-if></div></sc-for>
+                </div>
+                <sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 15.5px 'Bricolage Grotesque',sans-serif">To buy</span><span style="font:800 17px 'Bricolage Grotesque',sans-serif">≈ {{ buyTotal5 }}</span></div></sc-if>
+                <span style="height:38px;border-radius:19px;border:2px solid #16181f;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque',sans-serif">Add to grocery list</span>
+                <div style="display:flex;flex-direction:column;margin-top:10px">
+                  <div style="display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:2px solid #16181f"><span style="width:18px;height:18px;border-radius:9px;border:2px solid #16181f;background:#2323ff;color:#fff;font:700 10px/1 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">✓</span><span style="font:800 17px 'Bricolage Grotesque',sans-serif">In your Inventory · 9</span></div>
+                  <sc-for list="{{ inv5 }}" as="i" hint-placeholder-count="9">
+                    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:38px;border-bottom:1.5px dashed #d6cfbf">
+                      <span style="min-width:0;display:flex;align-items:center;gap:8px;font:600 14.5px/1.25 'Bricolage Grotesque',sans-serif">{{ i.name }}<sc-if value="{{ i.soon }}" hint-placeholder-val="{{ false }}"><span style="transform:rotate(-4deg);background:#ff48b0;border:1.5px solid #16181f;border-radius:999px;padding:1px 7px;font:800 10.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap">Use soon!</span></sc-if></span>
+                      <span style="font:500 12px 'DM Mono',monospace;color:#3f3e37;white-space:nowrap">{{ i.use }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 14.5px 'Bricolage Grotesque',sans-serif;color:#3f3e37">From inventory</span><span style="font:700 14.5px 'Bricolage Grotesque',sans-serif;color:#3f3e37">≈ {{ invTotal5 }}</span></div>
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;border-top:2px solid #16181f"><span style="display:flex;flex-direction:column;gap:2px"><span style="font:800 18px 'Bricolage Grotesque',sans-serif">This meal</span><span style="font:500 11px 'DM Mono',monospace;color:#5e5b52">≈ {{ perServing5 }} A SERVING</span></span><span style="font:800 26px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">≈ {{ mealTotal5 }}</span></div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+          <div style="min-width:0;display:flex;flex-direction:column">
+            <div style="height:340px;flex:none;display:flex;flex-direction:column;box-sizing:border-box">
+              <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:18px 22px 0 48px"><span style="width:36px;height:36px;flex:none;border-radius:18px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">⋯</span><span style="width:36px;height:36px;flex:none;border-radius:18px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:800 18px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">×</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 48px">
+                <h2 style="margin:0;font:800 52px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Sheet-pan chicken shawarma</h2>
+                <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0;font:600 18px 'Bricolage Grotesque',sans-serif;color:#3f3e37">
+                  <span style="color:#16181f;font-weight:800">45 min</span><span style="padding:0 10px;color:#bdb6a6">·</span>
+                  <span>Serves <span style="color:#16181f;font-weight:800">{{ sv5 }}</span></span>
+                  <sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}"><span style="padding:0 10px;color:#bdb6a6">·</span><span style="background:#ffe14d;border-radius:6px;padding:0 6px;color:#16181f;font-weight:800">≈ {{ mealTotal5 }}</span><span style="padding-left:6px;font:500 12px 'DM Mono',monospace;color:#5e5b52">{{ perServing5 }} / SERVING</span></sc-if>
+                  <span style="padding:0 10px;color:#bdb6a6">·</span><span>Keeps <span style="color:#16181f;font-weight:800">3 days</span></span>
+                </div>
+              </div>
+              <div style="display:flex;flex:none;align-items:center;gap:10px;padding:0 48px 26px">
+                <span style="height:48px;padding:0 20px;border-radius:24px;border:2px solid #16181f;background:#2323ff;display:flex;align-items:center;gap:6px;box-sizing:border-box;white-space:nowrap;cursor:pointer;padding:0 26px;color:#fff;box-shadow:3px 3px 0 #16181f;font:800 16.5px 'Bricolage Grotesque',sans-serif">Start cooking</span>
+                <span style="height:48px;padding:0 20px;border-radius:24px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;gap:6px;box-sizing:border-box;white-space:nowrap;cursor:pointer;font:700 14.5px 'Bricolage Grotesque',sans-serif" style-hover="background:#f4f1ea">Plan</span>
+                <span onClick="{{ openSim5 }}" style="height:48px;padding:0 20px;border-radius:24px;border:2px solid #16181f;background:#f4f1ea;display:flex;align-items:center;gap:6px;box-sizing:border-box;white-space:nowrap;cursor:pointer;font:700 14.5px 'Bricolage Grotesque',sans-serif" style-hover="background:#ebe6da">Similar recipes</span>
+                <a href="https://www.budgetbytes.com" target="_blank" rel="noopener" style="height:48px;padding:0 20px;border-radius:24px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;gap:6px;box-sizing:border-box;white-space:nowrap;cursor:pointer;color:#16181f;font:700 14.5px 'Bricolage Grotesque',sans-serif" style-hover="background:#f4f1ea;color:#16181f">Open full recipe<span style="font-weight:800">↗</span></a>
+                <span style="flex:1"></span>
+                <span onClick="{{ togglePr5 }}" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 4px 0 12px;border-radius:16px;border:2px solid #16181f;background:#fffdf8;font:700 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer;white-space:nowrap">Prices<span style="position:relative;width:36px;height:22px;border-radius:11px;border:2px solid #16181f;background:{{ pr5Track }};box-sizing:border-box"><span style="position:absolute;top:2px;left:{{ pr5Knob }};width:14px;height:14px;border-radius:7px;border:2px solid #16181f;background:#fffdf8;box-sizing:border-box"></span></span></span>
+              </div>
+            </div>
+            <div style="border-top:2px solid #16181f;padding:24px 48px 30px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">STEPS · 4</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em;color:#2323ff">{{ stepLabel5 }}</span></div>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ steps5 }}" as="s" hint-placeholder-count="4">
+                  <div onClick="{{ s.pick }}" style="display:grid;grid-template-columns:44px minmax(0,1fr) 200px;gap:20px;cursor:pointer">
+                    <div style="display:flex;flex-direction:column;align-items:center">
+                      <span style="flex:none;width:{{ s.dotSize }};height:{{ s.dotSize }};border-radius:50%;border:2px solid #16181f;background:{{ s.dotBg }};color:{{ s.dotFg }};box-shadow:{{ s.dotShadow }};font:{{ s.dotFont }};display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ s.dot }}</span>
+                      <sc-if value="{{ s.line }}" hint-placeholder-val="{{ true }}"><span style="flex:1;min-height:14px;border-left:2px dotted #bdb6a6;margin:4px 0"></span></sc-if>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;padding:6px 0 26px;max-width:720px">
+                      <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ s.labelFg }}">{{ s.titleUp }}</span>
+                      <p style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:500;font-size:{{ s.txtFs }};line-height:1.42;color:{{ s.txtFg }};text-wrap:pretty;transition:font-size 0.15s">{{ s.text }}</p>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;padding-top:6px"><sc-if value="{{ s.hasTimer }}" hint-placeholder-val="{{ false }}"><span style="display:flex;align-items:center;gap:6px"><span onClick="{{ s.tToggle }}" title="{{ s.tTip }}" style="height:38px;padding:0 16px;border-radius:19px;border:2px solid #16181f;background:{{ s.tBg }};color:{{ s.tFg }};box-shadow:{{ s.tSh }};font:800 15px 'Bricolage Grotesque',sans-serif;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px;white-space:nowrap;box-sizing:border-box;cursor:pointer">{{ s.tLabel }}</span><sc-if value="{{ s.tStarted }}" hint-placeholder-val="{{ false }}"><span onClick="{{ s.tReset }}" title="Reset timer" style="width:38px;height:38px;border-radius:19px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer" style-hover="background:#f4f1ea">↺</span></sc-if></span></sc-if></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="margin-top:auto;border-top:2px solid #16181f;padding:20px 48px 30px;display:flex;flex-direction:column;gap:10px">
+              <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">NOTES</span>
+              <textarea placeholder="Add a note for next time" rows="3" style="width:100%;box-sizing:border-box;resize:vertical;border:2px solid #16181f;border-radius:16px;background:#f4f1ea;padding:12px 14px;font:500 16px/1.45 'Bricolage Grotesque',sans-serif;color:#16181f;outline:none"></textarea>
+            </div>
+
+          </div>
+        </div>
+        <div ref="{{ simRef }}" style="border-top:2px solid #16181f;background:{{ simBg }};padding:28px 40px 36px;display:flex;flex-direction:column;gap:18px;transition:background 0.4s">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap"><h3 style="margin:0;font:800 28px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Uses the same ingredients</h3><span style="font:400 15px Inter,sans-serif;color:#3f3e37">Cook one of these next to finish what's left.</span></div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px">
+            <sc-for list="{{ similar5 }}" as="r" hint-placeholder-count="4">
+              <div style="background:#fffdf8;border:2px solid #16181f;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:4px 4px 0 #16181f;cursor:pointer">
+                <div style="position:relative;height:170px;border-bottom:2px solid #16181f;background:#ddd6c6;overflow:hidden"><span role="img" aria-label="{{ r.name }}" style="position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;background-image:{{ r.bgImg }}"></span><span style="position:absolute;left:12px;bottom:12px;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:3px 10px;background:#ffe14d;font:500 10.5px 'DM Mono',monospace;letter-spacing:0.08em">{{ r.shared }}</span></div>
+                <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px"><span style="font:800 17px/1.2 'Bricolage Grotesque',sans-serif">{{ r.name }}</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.06em;color:#5e5b52">{{ r.meta }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+        <sc-if value="{{ sim5On }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:20px;padding:22px 40px 40px;min-height:900px;box-sizing:border-box">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span onClick="{{ closeSim5 }}" style="height:44px;padding:0 16px 0 6px;border-radius:22px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;gap:10px;font:700 14.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer" style-hover="background:#f4f1ea"><span style="width:30px;height:30px;border-radius:15px;overflow:hidden;border:1.5px solid #16181f;flex:none;background:#ddd6c6 center/cover url('https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=120&amp;q=70&amp;auto=format&amp;fit=crop')"></span>← Back to Sheet-pan chicken shawarma</span>
+            <span style="flex:1"></span>
+            <span style="width:38px;height:38px;border-radius:19px;border:2px solid #16181f;display:flex;align-items:center;justify-content:center;font:700 19px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">×</span>
+          </div>
+          <h2 style="margin:4px 0 0;font:800 44px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Similar recipes</h2>
+          <div style="display:flex;flex-direction:column;gap:10px;background:#ffe14d;border:2px solid #16181f;border-radius:20px;padding:16px 18px;box-shadow:4px 4px 0 #16181f">
+            <span style="font:800 18px/1.15 'Bricolage Grotesque',sans-serif">Uses the same ingredients as Sheet-pan chicken shawarma</span>
+            <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ simChips5 }}" as="c" hint-placeholder-count="11"><span onClick="{{ c.toggle }}" style="height:32px;padding:0 13px;border-radius:16px;border:2px solid #16181f;background:{{ c.bg }};color:{{ c.fg }};text-decoration:{{ c.deco }};display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer;white-space:nowrap">{{ c.name }}</span></sc-for></div>
+            <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;color:#3f3e37">{{ simOutNote5 }}</span>
+          </div>
+          <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ simCount5 }}</span>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px">
+            <sc-for list="{{ simCards5 }}" as="r" hint-placeholder-count="6">
+              <article style="position:relative;aspect-ratio:3 / 4;border:2px solid #16181f;border-radius:20px;overflow:hidden;background:#ddd6c6;box-shadow:0 10px 24px -6px rgba(22,24,31,0.35);cursor:pointer">
+                <span role="img" aria-label="{{ r.title }}" style="position:absolute;inset:0;background-position:center;background-size:cover;background-image:{{ r.bgImg }}"></span>
+                <span style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(22,24,31,0.45),rgba(22,24,31,0) 22%)"></span>
+                <span style="position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;color:#fffdf8;font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase"><span>{{ r.meal }}</span><span>{{ r.time }}</span></span>
+                <span style="position:absolute;left:14px;top:40px;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:3px 10px;background:#ffe14d;color:#16181f;font:500 10.5px 'DM Mono',monospace;letter-spacing:0.08em">{{ r.shared }}</span>
+                <span style="position:absolute;left:0;right:0;bottom:0;height:46%;box-sizing:border-box;display:flex;align-items:flex-end;padding:0 16px 16px;background:linear-gradient(to top,rgba(14,16,22,0.9) 0%,rgba(14,16,22,0.64) 38%,rgba(14,16,22,0) 100%)"><span style="width:100%;font:700 19px/1.12 'Bricolage Grotesque',sans-serif;text-align:center;color:#fff;text-wrap:balance">{{ r.title }}</span></span>
+              </article>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">PHONE · 390 · SCROLLS</span>
+<div data-screen-label="Recipe card phone" style="width:390px;height:844px;border:2px solid #16181f;border-radius:44px;overflow:hidden;background:#fffdf8;box-shadow:6px 6px 0 #16181f;position:relative;display:flex;flex-direction:column">
+  <sc-if value="{{ simPOff }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="position:relative;height:260px;flex:none;border-bottom:2px solid #16181f;overflow:hidden;background:#ddd6c6">
+      <img src="https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800&amp;q=70&amp;auto=format&amp;fit=crop" alt="Sheet-pan chicken shawarma" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+      <div style="position:absolute;top:52px;left:14px;right:14px;display:flex;align-items:center;gap:8px"><span style="width:40px;height:40px;flex:none;border-radius:20px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:800 17px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">←</span><span style="flex:1"></span><span style="width:40px;height:40px;flex:none;border-radius:20px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:800 17px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">⋯</span><span style="width:40px;height:40px;flex:none;border-radius:20px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:800 19px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">×</span></div>
+      <span style="position:absolute;left:16px;bottom:16px;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:5px 12px;font:800 14px 'Bricolage Grotesque',sans-serif;background:#ffe14d;box-shadow:3px 3px 0 #16181f;white-space:nowrap">{{ b5n }} things to buy</span>
+      <span style="position:absolute;right:14px;bottom:16px;height:24px;padding:0 8px;border-radius:12px;background:#fffdf8;border:2px solid #16181f;display:flex;align-items:center;font:500 10px 'DM Mono',monospace;box-sizing:border-box">1 / 3</span>
+    </div>
+    <div style="padding:20px 18px 18px;display:flex;flex-direction:column;gap:10px">
+      <h2 style="margin:0;font:800 32px/1.02 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Sheet-pan chicken shawarma</h2>
+      <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0;font:600 15.5px 'Bricolage Grotesque',sans-serif;color:#3f3e37">
+        <span style="color:#16181f;font-weight:800">45 min</span><span style="padding:0 8px;color:#bdb6a6">·</span><span>Serves <span style="color:#16181f;font-weight:800">{{ sv5 }}</span></span>
+        <sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}"><span style="padding:0 8px;color:#bdb6a6">·</span><span style="background:#ffe14d;border-radius:6px;padding:0 5px;color:#16181f;font-weight:800">≈ {{ mealTotal5 }}</span></sc-if>
+        <span style="padding:0 8px;color:#bdb6a6">·</span><span>Keeps <span style="color:#16181f;font-weight:800">3 days</span></span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <span onClick="{{ openSimP }}" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid #16181f;display:flex;align-items:center;gap:6px;font:700 13.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer;background:#f4f1ea">Similar recipes</span>
+        <a href="https://www.budgetbytes.com" target="_blank" rel="noopener" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid #16181f;display:flex;align-items:center;gap:6px;font:700 13.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap;cursor:pointer;background:#fffdf8;color:#16181f">Full recipe<span style="font-weight:800">↗</span></a>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}"><span style="font:500 10.5px 'DM Mono',monospace;color:#5e5b52">{{ perServing5 }} / SERVING</span></sc-if>
+        <span onClick="{{ togglePr5 }}" style="margin-left:auto;display:flex;align-items:center;gap:8px;height:34px;padding:0 4px 0 12px;border-radius:17px;border:2px solid #16181f;font:700 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">Prices<span style="position:relative;width:36px;height:22px;border-radius:11px;border:2px solid #16181f;background:{{ pr5Track }};box-sizing:border-box"><span style="position:absolute;top:2px;left:{{ pr5Knob }};width:14px;height:14px;border-radius:7px;border:2px solid #16181f;background:#fffdf8;box-sizing:border-box"></span></span></span>
+      </div>
+    </div>
+    <div style="border-top:2px solid #16181f;background:#f4f1ea;padding:30px 14px 22px">
+      <div style="position:relative;background:#fffdf8;border:2px solid #16181f;border-radius:6px 6px 20px 20px;padding:18px 16px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">TO BUY · {{ b5n }}</span><span style="display:flex;align-items:center;gap:6px"><span onClick="{{ svDown5 }}" style="width:32px;height:32px;border-radius:16px;border:2px solid #16181f;display:flex;align-items:center;justify-content:center;font:800 15px/1 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">−</span><span style="font:800 13.5px 'Bricolage Grotesque',sans-serif;min-width:70px;text-align:center">{{ sv5 }} servings</span><span onClick="{{ svUp5 }}" style="width:32px;height:32px;border-radius:16px;border:2px solid #16181f;display:flex;align-items:center;justify-content:center;font:800 15px/1 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">+</span></span></div>
+        <div style="display:flex;flex-direction:column"><sc-for list="{{ buy5 }}" as="i" hint-placeholder-count="2"><div style="display:flex;gap:10px;align-items:center;min-height:54px;border-bottom:2px dotted #bdb6a6"><span style="flex:none;width:26px;height:26px;border-radius:13px;border:2px solid #16181f;background:{{ i.dotBg }};font:700 13px/1 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ i.mark }}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font:800 15px/19px 'Bricolage Grotesque',sans-serif">{{ i.name }}</span><span style="font:500 10.5px 'DM Mono',monospace;color:#5e5b52">{{ i.meta }}</span></span><sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}"><span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span style="font:800 15px 'Bricolage Grotesque',sans-serif">{{ i.price }}</span><span style="background:{{ i.srcBg }};border:1.5px solid #16181f;border-radius:999px;padding:0 6px;font:500 9px/14px 'DM Mono',monospace;letter-spacing:0.08em">{{ i.src }}</span></span></sc-if></div></sc-for></div>
+        <sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 15px 'Bricolage Grotesque',sans-serif">To buy</span><span style="font:800 16px 'Bricolage Grotesque',sans-serif">≈ {{ buyTotal5 }}</span></div></sc-if>
+        <span style="height:44px;border-radius:22px;border:2px solid #16181f;display:flex;align-items:center;justify-content:center;font:700 14px 'Bricolage Grotesque',sans-serif">Add to grocery list</span>
+        <div style="display:flex;flex-direction:column;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:2px solid #16181f"><span style="width:18px;height:18px;border-radius:9px;border:2px solid #16181f;background:#2323ff;color:#fff;font:700 10px/1 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box">✓</span><span style="font:800 16px 'Bricolage Grotesque',sans-serif">In your Inventory · 9</span></div>
+          <sc-for list="{{ inv5 }}" as="i" hint-placeholder-count="9"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:38px;border-bottom:1.5px dashed #d6cfbf"><span style="min-width:0;display:flex;align-items:center;gap:8px;font:600 14px/1.25 'Bricolage Grotesque',sans-serif">{{ i.name }}<sc-if value="{{ i.soon }}" hint-placeholder-val="{{ false }}"><span style="transform:rotate(-4deg);background:#ff48b0;border:1.5px solid #16181f;border-radius:999px;padding:1px 7px;font:800 10px 'Bricolage Grotesque',sans-serif;white-space:nowrap">Use soon!</span></sc-if></span><span style="font:500 11.5px 'DM Mono',monospace;color:#3f3e37;white-space:nowrap">{{ i.use }}</span></div></sc-for>
+        </div>
+        <sc-if value="{{ pr5 }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 14px 'Bricolage Grotesque',sans-serif;color:#3f3e37">From inventory</span><span style="font:700 14px 'Bricolage Grotesque',sans-serif;color:#3f3e37">≈ {{ invTotal5 }}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:10px;border-top:2px solid #16181f"><span style="display:flex;flex-direction:column;gap:2px"><span style="font:800 17px 'Bricolage Grotesque',sans-serif">This meal</span><span style="font:500 10.5px 'DM Mono',monospace;color:#5e5b52">≈ {{ perServing5 }} A SERVING</span></span><span style="font:800 24px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">≈ {{ mealTotal5 }}</span></div>
+        </sc-if>
+      </div>
+    </div>
+    <div style="border-top:2px solid #16181f;padding:20px 18px 18px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">STEPS · 4</span><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em;color:#2323ff">{{ stepLabel5 }}</span></div>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ steps5 }}" as="s" hint-placeholder-count="4">
+          <div onClick="{{ s.pick }}" style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;cursor:pointer">
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <span style="flex:none;width:{{ s.pDot }};height:{{ s.pDot }};border-radius:50%;border:2px solid #16181f;background:{{ s.dotBg }};color:{{ s.dotFg }};box-shadow:{{ s.dotShadow }};font:{{ s.pDotFont }};display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ s.dot }}</span>
+              <sc-if value="{{ s.line }}" hint-placeholder-val="{{ true }}"><span style="flex:1;min-height:12px;border-left:2px dotted #bdb6a6;margin:4px 0"></span></sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:3px 0 20px;min-width:0">
+              <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ s.labelFg }}">{{ s.titleUp }}</span>
+              <p style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:500;font-size:{{ s.pTxtFs }};line-height:1.42;color:{{ s.txtFg }};text-wrap:pretty">{{ s.text }}</p>
+              <sc-if value="{{ s.hasTimer }}" hint-placeholder-val="{{ false }}"><span style="display:flex;align-items:center;gap:6px;margin-top:4px"><span onClick="{{ s.tToggle }}" title="{{ s.tTip }}" style="height:40px;padding:0 16px;border-radius:20px;border:2px solid #16181f;background:{{ s.tBg }};color:{{ s.tFg }};box-shadow:{{ s.tSh }};font:800 15px 'Bricolage Grotesque',sans-serif;font-variant-numeric:tabular-nums;display:flex;align-items:center;white-space:nowrap;box-sizing:border-box;cursor:pointer">{{ s.tLabel }}</span><sc-if value="{{ s.tStarted }}" hint-placeholder-val="{{ false }}"><span onClick="{{ s.tReset }}" title="Reset timer" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">↺</span></sc-if></span></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="border-top:2px solid #16181f;padding:18px 18px 22px;display:flex;flex-direction:column;gap:10px">
+      <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">NOTES</span>
+      <textarea placeholder="Add a note for next time" rows="3" style="width:100%;box-sizing:border-box;resize:vertical;border:2px solid #16181f;border-radius:16px;background:#f4f1ea;padding:12px 14px;font:500 16px/1.45 'Bricolage Grotesque',sans-serif;color:#16181f;outline:none"></textarea>
+    </div>
+    <div style="border-top:2px solid #16181f;background:#f4f1ea;padding:20px 0 24px;display:flex;flex-direction:column;gap:12px">
+      <div style="padding:0 18px;display:flex;flex-direction:column;gap:4px"><h3 style="margin:0;font:800 21px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Uses the same ingredients</h3><span style="font:400 13.5px Inter,sans-serif;color:#3f3e37">Cook one of these next to finish what's left.</span></div>
+      <div style="display:flex;gap:12px;overflow-x:auto;padding:0 18px 6px">
+        <sc-for list="{{ similar5 }}" as="r" hint-placeholder-count="4">
+          <div style="flex:none;width:200px;background:#fffdf8;border:2px solid #16181f;border-radius:18px;overflow:hidden;display:flex;flex-direction:column;box-shadow:3px 3px 0 #16181f">
+            <div style="position:relative;height:120px;border-bottom:2px solid #16181f;background:#ddd6c6;overflow:hidden"><span role="img" aria-label="{{ r.name }}" style="position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;background-image:{{ r.bgImg }}"></span><span style="position:absolute;left:10px;bottom:10px;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:2px 8px;background:#ffe14d;font:500 10px 'DM Mono',monospace;letter-spacing:0.08em">{{ r.shared }}</span></div>
+            <div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px"><span style="font:800 15px/1.2 'Bricolage Grotesque',sans-serif">{{ r.name }}</span><span style="font:500 10px 'DM Mono',monospace;color:#5e5b52">{{ r.meta }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  <div style="flex:none;display:flex;gap:10px;align-items:center;border-top:2px solid #16181f;background:#fffdf8;padding:12px 14px 26px">
+    <span style="flex:1;height:54px;border-radius:27px;border:2px solid #16181f;background:#2323ff;color:#fff;box-shadow:3px 3px 0 #16181f;display:flex;align-items:center;justify-content:center;font:800 17px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">Start cooking</span>
+    <span style="flex:none;height:54px;padding:0 20px;border-radius:27px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;font:700 15px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">Plan</span>
+  </div>
+  </sc-if>
+  <sc-if value="{{ simPOn }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;overflow-y:auto;background:#f4f1ea;padding:56px 16px 24px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:10px;background:#ffe14d;border:2px solid #16181f;border-radius:20px;padding:14px 16px;box-shadow:4px 4px 0 #16181f">
+      <span style="font:800 18px/1.2 'Bricolage Grotesque',sans-serif">Uses the same ingredients</span>
+      <span onClick="{{ closeSimP }}" style="align-self:flex-start;height:40px;padding:0 14px;border-radius:20px;border:2px solid #16181f;background:#fffdf8;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;cursor:pointer">← Back to the recipe</span>
+    </div>
+    <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.12em">{{ simCount5 }}</span>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+      <sc-for list="{{ simCards5 }}" as="r" hint-placeholder-count="6">
+        <article style="position:relative;aspect-ratio:3 / 4;border:2px solid #16181f;border-radius:18px;overflow:hidden;background:#ddd6c6">
+          <span role="img" aria-label="{{ r.title }}" style="position:absolute;inset:0;background-position:center;background-size:cover;background-image:{{ r.bgImg }}"></span>
+          <span style="position:absolute;top:10px;left:10px;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:2px 8px;background:#ffe14d;font:500 9.5px 'DM Mono',monospace;letter-spacing:0.08em">{{ r.shared }}</span>
+          <span style="position:absolute;left:0;right:0;bottom:0;height:50%;display:flex;align-items:flex-end;padding:0 10px 10px;box-sizing:border-box;background:linear-gradient(to top,rgba(14,16,22,0.9),rgba(14,16,22,0))"><span style="width:100%;font:700 15px/1.12 'Bricolage Grotesque',sans-serif;text-align:center;color:#fff;text-wrap:balance">{{ r.title }}</span></span>
+        </article>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;2040px&quot;}}">
+class Component extends DCLogic {
+  state = { open: 'buy' };
+  componentDidMount() {
+    this.tick = setInterval(() => {
+      const t = this.state.t5 || {};
+      if (!Object.values(t).some(x => x.run)) return;
+      const n = {};
+      for (const k in t) { const x = t[k]; n[k] = x.run ? (x.left <= 1 ? { left: 0, run: false, done: true } : { ...x, left: x.left - 1 }) : x; }
+      this.setState({ t5: n });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.tick); }
+  renderVals() {
+    const buy = [
+      { name: 'Cucumber', nameUp: 'CUCUMBER', sub: '1 · Metro · on your list', mark: '✓', dotBg: '#10c95c', price: '$0.99' },
+      { name: 'Fresh parsley', nameUp: 'FRESH PARSLEY', sub: '½ cup · Super C', mark: '+', dotBg: '#fffdf8', price: '$1.29' },
+    ];
+    const H = [['Chicken thighs', '900 g'], ['Plain yogurt', '1 cup'], ['Red onion', '1'], ['Garlic', '4 cloves'], ['Spinach', '2 cups', true], ['Lemon', '1'], ['Olive oil', '2 tbsp'], ['Shawarma spice', '1 tbsp'], ['Pita', '4']];
+    const have = H.map(([name, qty, soon]) => ({ name, qty, soon: !!soon, nameUp: name.toUpperCase() }));
+    const S = [
+      ['Marinate', 'Stir the yogurt, garlic, lemon juice and spices; coat the chicken and let it sit 20 minutes.', '⏱ 20 min', 0, 20, false],
+      ['Roast', 'Spread the chicken and onions on the sheet pan. Roast for 25 minutes at 425°F.', '⏱ 25 min', 20, 25, false],
+      ['Garnish', 'Slice the cucumber and chop the parsley while it roasts.', '', 26, 8, true],
+      ['Serve', 'Serve in the warm pitas with the spinach.', '', 45, 4, true],
+    ];
+    const steps = S.map(([title, text, timer, at, len, hands], i) => ({ n: i + 1, title, titleUp: title.toUpperCase(), text, timer, hasTimer: !!timer,
+      bb: i < S.length - 1 ? '1.5px dashed #bdb6a6' : 'none',
+      left: `calc(${Math.min(at, 45) / 49 * 100}% )`, width: `${len / 49 * 100}%`,
+      barBg: hands ? '#2323ff' : 'repeating-linear-gradient(135deg,#fffdf8 0 4px,#bdb6a6 4px 8px)' }));
+    const segs = [...Array(9).fill('#2323ff'), '#10c95c', '#fffdf8'];
+    const similar = ['Chicken souvlaki bowls', 'Lemon garlic chicken pitas', 'Roasted veggie wraps'];
+    const o = this.state.open;
+    const A = [['buy', 'To buy · 2', '$2.28 on sale'], ['have', 'At home · 9', '4 servings'], ['steps', 'Steps · 4', '45 min'], ['sim', 'Similar recipes', '3']];
+    const acc = A.map(([id, title, note]) => ({ title, note, sign: o === id ? '−' : '+', bg: o === id ? '#f4f1ea' : '#fffdf8',
+      openBuy: o === id && id === 'buy', openHave: o === id && id === 'have', openSteps: o === id && id === 'steps', openSim: o === id && id === 'sim',
+      toggle: () => this.setState({ open: o === id ? '' : id }) }));
+    const map = !!this.state.map, mOpen = !!this.state.menu;
+    const M = [
+      [map ? 'Steps as a list' : 'Time map', () => this.setState({ map: !map, menu: false }), !map],
+      ['Plan around this'], ['Edit recipe'], ['Open original'], ['Move to Imported'], ['Leftovers keep 3 days'], null, ['Delete recipe', null, false, true],
+    ];
+    const menu = M.map(m => m ? { divider: false, item: true, label: m[0], act: m[1] || (() => this.setState({ menu: false })), isNew: !!m[2], fg: m[3] ? '#c4123f' : '#16181f', bg: 'transparent' } : { divider: true, item: false, label: '', act: null, isNew: false, fg: '', bg: '' });
+    const USE = [['Plain yogurt', 'Garlic', 'Lemon', 'Shawarma spice', 'Olive oil', 'Chicken thighs'], ['Chicken thighs', 'Red onion'], ['Cucumber', 'Fresh parsley'], ['Pita', 'Spinach']];
+    const money = n => '$' + n.toFixed(2);
+    // 3b servings
+    const sv = this.state.sv || 4, f = sv / 4;
+    const fr = n => { const w = Math.floor(n), h = n - w >= 0.5; return w === 0 && h ? '½' : String(w) + (h ? '½' : ''); };
+    const q = (n, u) => u === 'g' ? `${n} g` : (u === 'cup' ? `${fr(n)} ${n > 1 ? 'cups' : 'cup'}` : `${fr(n)}${u ? ' ' + u : ''}`);
+    const INV = [['Chicken thighs', 900, 'g', 900], ['Plain yogurt', 1, 'cup'], ['Red onion', 1, ''], ['Garlic', 4, 'cloves'], ['Spinach', 2, 'cup', null, true], ['Lemon', 1, ''], ['Olive oil', 2, 'tbsp'], ['Shawarma spice', 1, 'tbsp'], ['Pita', 4, '', 4]];
+    const have3b = INV.map(([name, base, u, stock, soon]) => { const need = base * f, sh = stock != null && need > stock ? need - stock : 0; return { nameUp: name.toUpperCase(), qty: q(need, u), soon: !!soon, short: sh > 0, shortLabel: 'Short ' + q(sh, u) }; });
+    const cn = Math.max(1, Math.ceil(f));
+    const buy3b = [
+      { nameUp: 'CUCUMBER', sub: `${cn} · Metro · on your list`, mark: '✓', dotBg: '#10c95c', p: 0.99 * cn },
+      { nameUp: 'FRESH PARSLEY', sub: `${fr(0.5 * f)} cup · Super C`, mark: '+', dotBg: '#fffdf8', p: 1.29 },
+    ];
+    if (900 * f > 900) buy3b.push({ nameUp: 'CHICKEN THIGHS', sub: `${900 * f - 900} g more · Metro`, mark: '+', dotBg: '#fffdf8', p: (900 * f - 900) * 0.013 });
+    if (4 * f > 4) buy3b.push({ nameUp: 'PITA', sub: `${4 * f - 4} more · Metro · pack of 6`, mark: '+', dotBg: '#fffdf8', p: 2.49 });
+    buy3b.forEach(b => b.price = money(b.p));
+    const servOpts = [2, 4, 6, 8].map(n => ({ n, bg: n === sv ? '#16181f' : '#fffdf8', fg: n === sv ? '#fffdf8' : '#16181f', pick: () => this.setState({ sv: n }) }));
+    // 3c mark out
+    const out = this.state.out ?? ['Lemon'];
+    const P = { 'Chicken thighs': 11.7, 'Plain yogurt': 3.49, 'Red onion': 0.89, 'Garlic': 0.79, 'Spinach': 3.99, 'Lemon': 0.69, 'Olive oil': 8.99, 'Shawarma spice': 4.29, 'Pita': 2.49 };
+    const have3c = have.filter(h => !out.includes(h.name)).map(h => ({ ...h, markOut: () => this.setState({ out: [...out, h.name] }) }));
+    const buy3c = [...buy.map(b => ({ ...b, canUndo: false, undo: null })), ...out.map(n => ({ nameUp: n.toUpperCase(), sub: `${have.find(x => x.name === n).qty} · Metro · marked out`, mark: '+', dotBg: '#fffdf8', price: money(P[n]), canUndo: true, undo: () => this.setState({ out: out.filter(x => x !== n) }) }))];
+    const total3c = money(2.28 + out.reduce((a, n) => a + P[n], 0));
+    // 3d step → ingredients
+    const st = this.state.st ?? 0;
+    const hl = n => USE[st].includes(n) ? '#ffe14d' : 'transparent';
+    const steps3d = steps.map((s, i) => ({ ...s, bg: i === st ? '#fff6c2' : 'transparent', enter: () => this.setState({ st: i }), uses: USE[i].map(n => ({ name: n, bg: i === st ? '#ffe14d' : '#fffdf8' })) }));
+    // 3e cook mode
+    const ck = this.state.ck ?? true, cs = this.state.cs ?? 1, TIM = ['20 min', '25 min', '', ''];
+    // 4a
+    const INV4 = [
+      ['Chicken thighs', '900 g', 11.7, 'MEDIAN · $1.30 / 100 G', '1.2 kg', '300 g', 75],
+      ['Plain yogurt', '1 cup', 1.1, 'SALE · IGA · $3.29 / 750 G', '2 cups', '1 cup', 50],
+      ['Red onion', '1', 0.45, 'MEDIAN · $0.45 EACH', '3', '2', 33],
+      ['Garlic', '4 cloves', 0.4, 'MEDIAN · $0.99 / BULB', '10 cloves', '6 cloves', 40],
+      ['Spinach', '2 cups', 1.0, 'FLYER · MAXI · $3.99 / 312 G', '4 cups', '2 cups', 50, true],
+      ['Lemon', '1', 0.69, 'SALE · METRO · $0.69 EACH', '2', '1', 50],
+      ['Olive oil', '2 tbsp', 0.3, 'MEDIAN · $8.99 / 500 ML', '470 ml', '440 ml', 6],
+      ['Shawarma spice', '1 tbsp', 0.35, 'MEDIAN · $4.29 / 40 G', '40 g', '32 g', 20],
+      ['Pita', '4', 1.66, 'MEDIAN · $2.49 / 6', '6', '2', 67],
+    ];
+    const io = this.state.inv4 === undefined ? 'Chicken thighs' : this.state.inv4;
+    const inv4 = INV4.map(([name, use, p, src, stock, left, pct, soon], i) => ({ name, use, price: money(p), src, stockLabel: 'IN INVENTORY ' + stock.toUpperCase(), useLabel: 'USES ' + use.toUpperCase(), leftLabel: left.toUpperCase() + ' LEFT', pct: pct + '%', soon: !!soon,
+      open: io === name, sign: io === name ? '−' : '+', bt: i ? '2px dotted #bdb6a6' : 'none', toggle: () => this.setState({ inv4: io === name ? '' : name }) }));
+    const buy4 = [
+      { name: 'Cucumber', meta: '1 · METRO · ON YOUR LIST', src: 'SALE', srcBg: '#ffe14d', mark: '✓', dotBg: '#10c95c', price: '$0.99' },
+      { name: 'Fresh parsley', meta: '½ CUP · SUPER C', src: 'FLYER', srcBg: '#fffdf8', mark: '+', dotBg: '#fffdf8', price: '$1.29' },
+    ];
+    const invSum = INV4.reduce((a, r) => a + r[2], 0), meal = 2.28 + invSum;
+    const cur = this.state.cur4 ?? 1;
+    const steps4 = steps.map((s, i) => ({ ...s, done: i < cur, now: i === cur,
+      dot: i < cur ? '✓' : String(s.n), dotSize: i === cur ? '44px' : '30px', dotBg: i < cur ? '#16181f' : i === cur ? '#2323ff' : '#fffdf8', dotFg: i <= cur ? '#fffdf8' : '#16181f',
+      dotShadow: i === cur ? '3px 3px 0 #16181f' : 'none', dotFont: i === cur ? "800 17px 'Bricolage Grotesque',sans-serif" : "800 13px 'Bricolage Grotesque',sans-serif",
+      txtFg: i < cur ? '#5e5b52' : '#16181f', labelFg: i === cur ? '#16181f' : '#5e5b52', line: i < steps.length - 1,
+      pick: () => this.setState({ cur4: i === cur ? i + 1 : i }) }));
+    // 5a
+    const sv5 = this.state.sv5 || 4, f5 = sv5 / 4, pr5 = this.state.pr5 ?? true;
+    const INV5 = [
+      ['Chicken thighs', 900, 'g', 1200, 0.013, 'MEDIAN · $1.30 / 100 G'], ['Plain yogurt', 1, 'cup', 2, 1.1, 'SALE · IGA · $3.29 / 750 G'],
+      ['Red onion', 1, '', 3, 0.45, 'MEDIAN · $0.45 EACH'], ['Garlic', 4, 'cloves', 10, 0.1, 'MEDIAN · $0.99 / BULB'],
+      ['Spinach', 2, 'cup', 2, 0.5, 'FLYER · MAXI · $3.99 / 312 G', true], ['Lemon', 1, '', 2, 0.69, 'SALE · METRO · $0.69 EACH'],
+      ['Olive oil', 2, 'tbsp', 31, 0.15, 'MEDIAN · $8.99 / 500 ML'], ['Shawarma spice', 1, 'tbsp', 5, 0.35, 'MEDIAN · $4.29 / 40 G'],
+      ['Pita', 4, '', 6, 0.415, 'MEDIAN · $2.49 / 6'],
+    ];
+    const io5 = this.state.inv5 === undefined ? 'Chicken thighs' : this.state.inv5;
+    let invSum5 = 0;
+    const shorts5 = [];
+    const inv5 = INV5.map(([name, base, u, stock, up, src, soon], i) => {
+      const need = Math.round(base * f5 * 100) / 100, used = Math.min(need, stock), left = stock - used, sh = Math.max(0, need - stock);
+      invSum5 += used * up;
+      if (sh) shorts5.push({ name, mark: '+', dotBg: '#fffdf8', meta: `${q(sh, u).toUpperCase()} MORE · METRO`, src: 'MEDIAN', srcBg: '#fffdf8', p: name === 'Pita' ? 2.49 : sh * up });
+      const fr5 = Math.min(1, need / stock);
+      const gLeft = left > 0, gUsed = sh > 0 ? `${q(used, u)} used · short ${q(sh, u)}` : (gLeft ? `${q(need, u)} used` : `${q(need, u)} used · none left`);
+      const g = { gLeftLabel: `${q(left, u)} left`, gUsed, gHasLeft: gLeft, gK: `${Math.round((1 - fr5) * 100)} 1 0`, gU: `${Math.round(fr5 * 100)} 1 0`, gFrac: fr5 };
+      return { ...g, name, use: q(need, u), leftAfter: q(left, u) + ' left after', nowQ: q(stock, u), afterQ: q(left, u), usedUp: left <= 0, keeps: left > 0, price: money(used * up), src, soon: !!soon, short: sh > 0, shortLabel: 'Short ' + q(sh, u),
+        stockLabel: 'IN INVENTORY ' + q(stock, u).toUpperCase(), leftLabel: q(left, u).toUpperCase() + ' LEFT',
+        open: io5 === name, sign: io5 === name ? '−' : '+', bt: i ? '2px dotted #bdb6a6' : 'none', toggle: () => this.setState({ inv5: io5 === name ? '' : name }) };
+    });
+    const cn5 = Math.max(1, Math.ceil(f5));
+    const buy5 = [
+      { name: 'Cucumber', meta: `${cn5} · METRO · ON YOUR LIST`, src: 'SALE', srcBg: '#ffe14d', mark: '✓', dotBg: '#10c95c', p: 0.99 * cn5 },
+      { name: 'Fresh parsley', meta: `${fr(0.5 * f5).toUpperCase()} CUP · SUPER C`, src: 'FLYER', srcBg: '#fffdf8', mark: '+', dotBg: '#fffdf8', p: 1.29 },
+      ...shorts5,
+    ].map(b => ({ ...b, price: money(b.p) }));
+    const buySum5 = buy5.reduce((a, b) => a + b.p, 0), meal5 = buySum5 + invSum5;
+    const cur5 = this.state.cur5 ?? 1;
+    const T5 = this.state.t5 || {};
+    const mmss = n => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+    const tim5 = (i, label) => {
+      const m = parseInt(String(label).replace(/\D+/g, ''), 10) || 0, full = m * 60, x = T5[i];
+      const set = v => this.setState(s => ({ t5: { ...(s.t5 || {}), [i]: v } }));
+      const stop = e => e && e.stopPropagation && e.stopPropagation();
+      const started = !!x && (x.run || x.left < full || x.done);
+      let tLabel = `▶  Start ${m} min`, tBg = '#ffe14d', tFg = '#16181f', tSh = '2px 2px 0 #16181f', tTip = 'Start timer';
+      if (x && x.done) { tLabel = '✓  Time\u2019s up'; tBg = '#10c95c'; tSh = '3px 3px 0 #16181f'; tTip = 'Restart'; }
+      else if (x && x.run) { tLabel = `❚❚  ${mmss(x.left)}`; tBg = '#16181f'; tFg = '#ffe14d'; tSh = 'none'; tTip = 'Pause'; }
+      else if (x) { tLabel = `▶  ${mmss(x.left)}`; tBg = '#fffdf8'; tTip = 'Resume'; }
+      return { tLabel, tBg, tFg, tSh, tTip, tStarted: started,
+        tToggle: e => { stop(e); if (!x || x.done) set({ left: full, run: true }); else set({ ...x, run: !x.run }); },
+        tReset: e => { stop(e); this.setState(s => { const n = { ...(s.t5 || {}) }; delete n[i]; return { t5: n }; }); } };
+    };
+    const steps5 = steps.map((s, i) => ({ ...s,
+      dot: i < cur5 ? '✓' : String(s.n), dotSize: i === cur5 ? '44px' : '30px', dotBg: i < cur5 ? '#16181f' : i === cur5 ? '#2323ff' : '#fffdf8', dotFg: i <= cur5 ? '#fffdf8' : '#16181f',
+      dotShadow: i === cur5 ? '3px 3px 0 #16181f' : 'none', dotFont: i === cur5 ? "800 17px 'Bricolage Grotesque',sans-serif" : "800 13px 'Bricolage Grotesque',sans-serif",
+      txtFg: i < cur5 ? '#5e5b52' : '#16181f', labelFg: i === cur5 ? '#16181f' : '#5e5b52', line: i < steps.length - 1, txtFs: i === cur5 ? '24px' : '19px', pDot: i === cur5 ? '36px' : '26px', pDotFont: i === cur5 ? "800 15px 'Bricolage Grotesque',sans-serif" : "800 12px 'Bricolage Grotesque',sans-serif", pTxtFs: i === cur5 ? '19px' : '16px',
+      ...tim5(i, s.timer),
+      pick: () => this.setState({ cur5: i === cur5 ? i + 1 : i }) }));
+    const U = id => `https://images.unsplash.com/photo-${id}?w=600&q=70&auto=format&fit=crop`;
+    const SIM = [['Chicken souvlaki bowls', 8, 35, 3.95, '1666819615040-eff5e52c778a'], ['Lemon garlic chicken pitas', 7, 30, 4.4, '1626700051175-6818013e1d4f'], ['Roasted veggie wraps', 5, 40, 3.1, '1632660346941-023cc64e1252'], ['Spinach and feta pitas', 5, 20, 2.85, '1563282397-db1ac3a6bf86']];
+    const similar5 = SIM.map(([name, sh, min, ps, id]) => ({ name, img: U(id), bgImg: `url(${U(id)})`, shared: `${sh} SHARED`, meta: pr5 ? `${min} MIN · ≈ ${money(ps)} / SERVING` : `${min} MIN` }));
+    const ING5 = ['Chicken thighs', 'Plain yogurt', 'Red onion', 'Garlic', 'Spinach', 'Lemon', 'Olive oil', 'Shawarma spice', 'Pita', 'Cucumber', 'Fresh parsley'];
+    const out5 = this.state.out5 || [];
+    const SR = [
+      ['Chicken souvlaki bowls', 'Dinner', 'Chicken', 35, '1666819615040-eff5e52c778a', ['Chicken thighs', 'Plain yogurt', 'Red onion', 'Garlic', 'Lemon', 'Olive oil', 'Cucumber', 'Fresh parsley']],
+      ['Lemon garlic chicken pitas', 'Lunch', 'Chicken', 30, '1626700051175-6818013e1d4f', ['Chicken thighs', 'Garlic', 'Lemon', 'Olive oil', 'Pita', 'Spinach', 'Plain yogurt']],
+      ['Chicken shawarma salad', 'Dinner', 'Chicken', 30, '1666819604634-98dd67634148', ['Chicken thighs', 'Shawarma spice', 'Cucumber', 'Red onion', 'Lemon', 'Olive oil']],
+      ['Roasted veggie wraps', 'Lunch', 'Vegetarian', 40, '1632660346941-023cc64e1252', ['Red onion', 'Olive oil', 'Pita', 'Spinach', 'Shawarma spice']],
+      ['Spinach and feta pitas', 'Lunch', 'Vegetarian', 20, '1563282397-db1ac3a6bf86', ['Pita', 'Spinach', 'Lemon', 'Olive oil', 'Red onion']],
+      ['Tzatziki chicken skewers', 'Dinner', 'Chicken', 40, '1666819476628-2f3afb0ca147', ['Chicken thighs', 'Plain yogurt', 'Cucumber', 'Garlic', 'Lemon']],
+    ];
+    const LINE = { Dinner: '#2323ff', Lunch: '#ff48b0' };
+    const simCards5 = SR.map(([title, meal, prot, min, id, ing]) => ({ title, meal, protein: prot, time: `${min} MIN`, img: U(id), bgImg: `url(${U(id)})`, line: LINE[meal], n: ing.filter(x => !out5.includes(x)).length }))
+      .filter(r => r.n > 0).sort((a, b) => b.n - a.n).map(r => ({ ...r, shared: `${r.n} SHARED` }));
+    const simChips5 = ING5.map(name => { const off = out5.includes(name); return { name, bg: off ? '#fffdf8' : '#16181f', fg: off ? '#5e5b52' : '#fffdf8', deco: off ? 'line-through' : 'none', toggle: () => this.setState({ out5: off ? out5.filter(x => x !== name) : [...out5, name] }) }; });
+    this.simRef = this.simRef || React.createRef();
+    const goSimilar = () => {
+      const el = this.simRef.current; if (!el) return;
+      let p = el.parentElement;
+      while (p && !(p.scrollHeight > p.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(p).overflowY))) p = p.parentElement;
+      const t = p || document.scrollingElement;
+      t.scrollTo({ top: t.scrollTop + el.getBoundingClientRect().top - (p ? p.getBoundingClientRect().top : 0) - 40, behavior: 'smooth' });
+      this.setState({ simFlash: true }); clearTimeout(this.simT); this.simT = setTimeout(() => this.setState({ simFlash: false }), 1200);
+    };
+    const v5 = { sv5, pr5, togglePr5: () => this.setState({ pr5: !pr5 }), pr5Track: pr5 ? '#2323ff' : '#fffdf8', pr5Knob: pr5 ? '14px' : '2px',
+      svDown5: () => this.setState({ sv5: Math.max(2, sv5 - 2) }), svUp5: () => this.setState({ sv5: Math.min(8, sv5 + 2) }),
+      inv5, invG5: [...inv5].sort((a, b) => b.gFrac - a.gFrac), buy5, b5n: buy5.length, buyTotal5: money(buySum5), invTotal5: money(invSum5), mealTotal5: money(meal5), perServing5: money(meal5 / sv5),
+      simPOn: !!this.state.simP, simPOff: !this.state.simP, openSimP: () => this.setState({ simP: true }), closeSimP: () => this.setState({ simP: false }),
+      sim5On: !!this.state.sim5, sim5Off: !this.state.sim5, openSim5: () => this.setState({ sim5: true }), toggleSim5: () => this.setState({ sim5: !this.state.sim5 }), simBtnBg: this.state.sim5 ? '#16181f' : '#f4f1ea', simBtnFg: this.state.sim5 ? '#fffdf8' : '#16181f', closeSim5: () => this.setState({ sim5: false }),
+      simCards5, simChips5, simCount5: `${simCards5.length} RECIPES SHARE ITS INGREDIENTS`, simOutNote5: out5.length ? `${out5.length} LEFT OUT` : 'TAP AN INGREDIENT TO LEAVE IT OUT',
+      steps5, stepLabel5: cur5 >= 4 ? 'ALL DONE' : `STEP ${cur5 + 1} OF 4`, similar5, simRef: this.simRef, goSimilar, simBg: this.state.simFlash ? '#fff6c2' : '#f4f1ea' };
+    const o6 = this.state.o6 ?? { 'a:Chicken thighs': true, 'b:Chicken thighs': true, 'c:Chicken thighs': true };
+    const inv6 = opt => inv5.map((i, n) => { const k = opt + ':' + i.name, on = !!o6[k]; return { name: i.name, soon: i.soon, on, left: i.leftAfter, sep: n < inv5.length - 1, bg: on ? '#ebebff' : '#f4f1ea', toggle: () => this.setState({ o6: { ...o6, [k]: !on } }) }; });
+    const inv7 = [...inv5].sort((a, b) => (b.usedUp ? 1 : 0) - (a.usedUp ? 1 : 0)).map((i, n, arr) => ({ ...i, sep: n < arr.length - 1 }));
+    const rv7 = this.state.rv7 || 'prices';
+    const qtyBuy = ['1', '½ cup'];
+    Object.assign(v5, { inv7, inv7Done: inv7.filter(i => i.usedUp), inv7Keep: inv7.filter(i => i.keeps).map((i, n, arr) => ({ ...i, sep: n < arr.length - 1 })),
+      usedUpCount7: inv7.filter(i => i.usedUp).length,
+      rv7Prices: rv7 === 'prices', rv7Amounts: rv7 === 'amounts', buy7: buy5.map((b, n) => ({ ...b, qty: qtyBuy[n] || '' })),
+      rv7Tabs: [['amounts', 'Amounts'], ['prices', 'Prices']].map(([id, label]) => ({ label, bg: rv7 === id ? '#16181f' : 'transparent', fg: rv7 === id ? '#fffdf8' : '#16181f', pick: () => this.setState({ rv7: id }) })) });
+    const EMO = { 'Chicken thighs': ['🍗', 3], 'Plain yogurt': ['🥛', 10], 'Red onion': ['🧅', null], 'Garlic': ['🧄', null], 'Spinach': ['🥬', 2], 'Lemon': ['🍋', 12], 'Olive oil': ['🫒', null], 'Shawarma spice': ['🧂', null], 'Pita': ['🫓', 5] };
+    const tone8 = d => d == null || d >= 28 ? null : d <= 3 ? '#ff48b0' : d <= 7 ? '#ffe14d' : '#2323ff';
+    const split = s => { const m = s.match(/^(\d+) g$/); if (m && +m[1] >= 1000) return [String(+m[1] / 1000), 'kg']; const k = s.indexOf(' '); return k < 0 ? [s, ''] : [s.slice(0, k), s.slice(k + 1)]; };
+    const all8 = inv5.map(i => { const [emoji, d] = EMO[i.name]; const [num, unit] = split(i.nowQ); return { ...i, emoji, d: d ?? 99, num, unit, lineBg: tone8(d) || 'transparent', linePct: d == null || d >= 28 ? 0 : Math.max(8, Math.round((1 - d / 28) * 100)), afterLabel: i.afterQ + ' left after' }; })
+      .sort((a, b) => (b.usedUp - a.usedUp) || (a.d - b.d));
+    const RAW = Object.fromEntries(INV5.map(r => [r[0], r]));
+    const inv9 = inv5.map(i => { const r = RAW[i.name], need = r[1] * f5, stock = r[3], frac = Math.min(1, need / stock); const uc = Math.max(1, Math.round(frac * 10));
+      const [nn, nu] = split(i.nowQ), [an, au] = split(i.afterQ);
+      const same = nu.replace(/s$/, '') === au.replace(/s$/, '') || i.usedUp;
+      return { name: i.name, usedUp: i.usedUp, keeps: i.keeps, frac, nowT: same ? nn : (nn + ' ' + nu).trim(), afterT: (an + ' ' + au).trim(),
+        cells: Array.from({ length: 10 }, (_, k) => k < 10 - uc ? { bg: '#2323ff', bd: '#2323ff' } : { bg: '#ebebff', bd: '#8f8fff' }),
+        keepPct: Math.round((1 - frac) * 100) + '%', usePct: Math.round(frac * 100) + '%' }; })
+      .sort((a, b) => b.frac - a.frac);
+    const inv10 = inv5.map(i => { const r = RAW[i.name], frac = Math.min(1, (r[1] * f5) / r[3]);
+      const [hn, hu] = split(i.nowQ), [un, uu] = split(i.use), [ln, lu] = split(i.afterQ);
+      return { name: i.name, usedUp: i.usedUp, keeps: i.keeps, frac, hn, hu, un: '−' + un, uu, ln, lu, keepPct: Math.round((1 - frac) * 100) + '%', usePct: Math.round(frac * 100) + '%' }; })
+      .sort((a, b) => b.frac - a.frac).map((x, n, arr) => ({ ...x, bb: n < arr.length - 1 ? '2px dotted #bdb6a6' : 'none' }));
+    const inv11 = inv10.map(x => ({ ...x, emoji: EMO[x.name][0], have: (x.hn + ' ' + x.hu).trim(), left: x.usedUp ? '0' : (x.ln + ' ' + x.lu).trim(), uses: (x.un + ' ' + x.uu).trim(), leftFg: x.usedUp ? '#c4127a' : '#16181f' }));
+    Object.assign(v5, { inv9, inv10, inv11 });
+    const show8 = !!this.state.show8;
+    Object.assign(v5, { inv8: show8 ? all8 : all8.slice(0, 4), more8: show8 ? 'Show less' : `Show ${all8.length - 4} more`, toggle8: () => this.setState({ show8: !show8 }) });
+    const p6f = this.state.p6f ?? true;
+    Object.assign(v5, { inv6a: inv6('a'), inv6b: inv6('b'), inv6c: inv6('c'), p6fOn: p6f, p6fOff: !p6f, toggleP6f: () => this.setState({ p6f: !p6f }), p6fBg: p6f ? '#16181f' : '#fffdf8', p6fFg: p6f ? '#fffdf8' : '#16181f' });
+    const pr4 = this.state.pr4 ?? true;
+    return { ...v5, pr4, togglePr4: () => this.setState({ pr4: !pr4 }), prTrack: pr4 ? '#2323ff' : '#fffdf8', prKnobLeft: pr4 ? '18px' : '2px',
+      inv4, buy4, invTotal4: money(invSum), mealTotal4: money(meal), perServing4: money(meal / 4), steps4, stepLabel4: cur >= 4 ? 'ALL DONE' : `STEP ${cur + 1} OF 4`,
+      buy3b, have3b, servOpts, sv, b3n: buy3b.length, b3total: money(buy3b.reduce((a, b) => a + b.p, 0)),
+      have3c, buy3c, total3c, c3n: buy3c.length, c3h: have3c.length,
+      steps3d, buy3d: buy.map(b => ({ ...b, hl: hl(b.name) })), have3d: have.map(h => ({ ...h, hl: hl(h.name) })),
+      ckOn: ck, ckOff: !ck, ckN: cs + 1, ckTitleUp: S[cs][0].toUpperCase(), ckText: S[cs][1], ckHasTimer: !!TIM[cs], ckTimer: TIM[cs], ckUses: USE[cs],
+      ckDots: S.map((_, i) => i < cs ? '#16181f' : i === cs ? '#2323ff' : '#fffdf8'), ckPrevOp: cs > 0 ? 1 : 0.35,
+      ckPrev: () => cs > 0 && this.setState({ cs: cs - 1 }), ckNext: () => cs < 3 ? this.setState({ cs: cs + 1 }) : this.setState({ ck: false, cs: 0 }),
+      ckNextLabel: cs < 3 ? 'Next step →' : 'Done', ckExit: () => this.setState({ ck: false }), ckStart: () => this.setState({ ck: true, cs: 0 }),
+      buy, have, steps, segs, similar, acc, haveLine: H.map(h => h[0]).join(', ') + '.',
+      isMap: map, isList: !map, closeMap: () => this.setState({ map: false }), menuOpen: mOpen, menu,
+      toggleMenu: () => this.setState({ menu: !mOpen }), menuBtnBg: mOpen ? '#16181f' : '#fffdf8', menuBtnFg: mOpen ? '#fffdf8' : '#16181f' };
+  }
+}
+</script>
+</body>
+</html>

@@ -82,9 +82,8 @@ test("editing from the recipe card: uploaded photo, save returns to the card", a
   await page.reload();
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.locator(".rpc", { hasText: "Weeknight dal" }).click();
-  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Edit recipe" }).click();
+  await page.getByRole("menuitem", { name: "Edit recipe" }).click();
   await expect(page.getByRole("heading", { name: "Edit recipe." })).toBeVisible();
 
   await page.getByLabel("Choose photos").setInputFiles({ name: "dal.png", mimeType: "image/png", buffer: PNG });
@@ -102,7 +101,7 @@ test("editing from the recipe card: uploaded photo, save returns to the card", a
 
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator(".riso-rc-title")).toHaveText("Weeknight red dal");
-  const src = await page.locator(".riso-rc-hero-photo").getAttribute("src");
+  const src = await page.locator(".riso-rc-photo-img").getAttribute("src");
   expect(src).toMatch(/^\/api\/recipe-images\//);
   const image = await page.request.get(src);
   expect(image.status()).toBe(200);

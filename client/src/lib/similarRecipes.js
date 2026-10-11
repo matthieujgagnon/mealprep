@@ -111,48 +111,8 @@ export function recipeCores(recipe) {
   );
 }
 
-// Get the union of canonical ingredient cores across several recipes.
-function unionCores(recipes) {
-  const result = new Set();
-  for (const r of recipes) {
-    for (const c of recipeCores(r)) result.add(c);
-  }
-  return result;
-}
-
-// Returns up to `limit` other recipes ranked by how *useful* their overlap
-// with `anchorRecipes` is — not just how many ingredients they share. A
-// recipe sharing one perishable protein outranks one sharing two pantry
-// basics, since reusing the protein before it spoils is the actual value
-// here. Accepts either a single recipe or an array of recipes to plan
-// around several things — e.g. "I have chicken thighs AND a bunch of
-// avocados" — at once; the match is against the combined ingredient set.
-export function findSimilarRecipes(anchorRecipes, allRecipes, limit = 8) {
-  const anchors = Array.isArray(anchorRecipes) ? anchorRecipes : [anchorRecipes];
-  const anchorIds = new Set(anchors.map((r) => r.id));
-  const targetCores = unionCores(anchors);
-  if (targetCores.size === 0) return [];
-
-  return allRecipes
-    .filter((r) => !anchorIds.has(r.id) && !r.isPlaceholder)
-    .map((r) => {
-      const cores = recipeCores(r);
-      const sharedCores = [...cores].filter((c) => targetCores.has(c));
-      const score = sharedCores.reduce((sum, c) => sum + ingredientWeight(c), 0);
-      return {
-        recipe: r,
-        sharedCount: sharedCores.length,
-        score,
-        // Clean canonical name ("Red onion"), not the raw prep-annotated
-        // ingredient text ("Red onions, thinly sliced") — this is a display
-        // list, not a shopping line, so the prep detail is just noise here.
-        sharedIngredients: sharedCores.map((c) => capitalize(c)),
-      };
-    })
-    .filter((m) => m.sharedCount > 0)
-    .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
-    .slice(0, limit);
-}
+// Recipes that share a recipe's ingredients are found by one rule for the recipe
+// card, its footer and the Planner's Main meal: similarTo in lib/finder.js.
 
 // Computes ingredient overlap stats across the whole planned week.
 // Returns:
@@ -373,8 +333,7 @@ export function findSaleDeal(ingredientName, deals) {
 // produce, ...) shows the whole flyer, not just the parts you can already
 // cook.
 //
-// Ordering puts perishables first for the same reason findSimilarRecipes
-// weights them: a protein or produce deal is the one actually worth
+// Ordering puts perishables first (ingredientWeight): a protein or produce deal is the one actually worth
 // building a meal around, while a sale on flour is just a sale on flour.
 export function groupDealsByIngredient(deals, allRecipes, recipeLimit = 8) {
   const coreToRecipes = new Map();
@@ -495,10 +454,5 @@ export function findUnusedPerishables(recipe, plannerEntries, allRecipes) {
 
   // Perishables from this recipe NOT already used elsewhere this week
   return [...perishableInRecipe].filter((c) => !plannedElsewhere.has(c)).map(capitalize);
-}
-
-// True if an ingredient name is a perishable
-export function isPerishable(ingredientName) {
-  return PERISHABLES.has(core(ingredientName));
 }
 

@@ -2000,14 +2000,6 @@ select {
 
 /* ---------- Ingredient groups ---------- */
 
-.ingredient-group-heading {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--ink);
-  margin: 16px 0 4px;
-}
-
 .ingredient-notes {
   color: var(--ink-soft);
   font-style: italic;
@@ -2842,29 +2834,6 @@ select {
   gap: 0;
 }
 
-.shared-with-week-note {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mustard);
-  background: rgba(35, 35, 255, 0.08);
-  border-radius: 8px;
-  padding: 8px 12px;
-  margin: 0 0 12px;
-}
-
-/* ---------- Perishable indicator ---------- */
-
-.perishable-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--sage);
-  margin-left: 4px;
-  vertical-align: middle;
-  flex-shrink: 0;
-}
-
 /* ---------- Planner week navigation ---------- */
 
 .planner-week-nav {
@@ -3203,6 +3172,7 @@ input[type="date"].planner-week-picker {
   --riso-green-text: #00753f; /* green-text */
   --riso-green-tint: #e6f5ec; /* green-tint */
   --riso-danger: #c4123f; /* danger (delete text only) */
+  --riso-backdrop: rgba(22, 24, 31, 0.47); /* behind the recipe card: the design's grey page (#8b8a86) as the paper seen through it */
   --riso-shadow: 3px 3px 0 var(--riso-ink); /* buttons, active nav, stickers, round icon buttons */
   --riso-shadow-ready: 5px 5px 0 var(--riso-ink); /* "ready / nothing to buy" cards */
   --riso-shadow-lg: 8px 8px 0 var(--riso-ink); /* hero/color blocks, recipe card, pop-ups */
@@ -3497,9 +3467,7 @@ button.riso-pill:disabled {
 .leftover-badge,
 .riso-ends-badge,
 .riso-watch-badge,
-.riso-rc-why-sticker,
-.riso-rc-legend-sticker,
-.riso-rc-tag-chip,
+.riso-rc-sticker,
 .tag-chip{
   white-space: nowrap;
 }
@@ -4876,27 +4844,6 @@ button.riso-table-group-head:disabled {
   max-width: 760px;
 }
 
-.rc-notes {
-  margin-top: 14px;
-}
-
-.rc-notes-label {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--riso-muted);
-  margin: 0 0 6px;
-}
-
-.rc-notes-text {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--riso-ink);
-  white-space: pre-wrap;
-}
-
 .modal-close {
   float: right;
   background: none;
@@ -4913,11 +4860,8 @@ button.riso-table-group-head:disabled {
   padding-right: 24px;
 }
 
-/* Recipe card (read view) — dark surface like the Inventory redesign,
-   reusing its --inv-* tokens (now a shared dark-surface palette, not
-   Inventory-specific) rather than defining a second set of near-identical
-   custom properties. The Edit view (ManualRecipeForm, .wide-modal) stays
-   on the app's usual light .card - only this read view is dark. */
+/* The recipe card's full-size photo viewer (PhotoLightbox in
+   components/RecipeCardParts.jsx), above the card. */
 .rc-lightbox-overlay {
   position: fixed;
   inset: 0;
@@ -4994,38 +4938,142 @@ button.riso-table-group-head:disabled {
   font-size: 12px;
 }
 
-.riso-rc-modal {
-  max-width: 1100px;
-  width: 95vw;
-  max-height: 92vh;
+/* ================================================================
+   The recipe card (design: docs/design/riso-v2-recipe-card/), the one card
+   every page opens: components/RecipeDetailModal.jsx and its pieces in
+   components/RecipeCardParts.jsx. On a computer two columns (the photo over
+   the receipt | the header, steps and notes) with "Uses the same ingredients"
+   along the bottom; on a phone (.phone) one scrolling column and a bottom bar.
+   Every colour is a Riso token; --riso-backdrop is the design's grey page
+   (#8b8a86) as the paper seen through it.
+   ================================================================ */
+.riso-rc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
   overflow-y: auto;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 28px;
-  box-shadow: var(--riso-shadow-lg);
-  display: flex;
-  flex-direction: column;
-  font-family: var(--riso-font-body);
-  color: var(--riso-ink);
+  overscroll-behavior: contain;
+  padding: 40px;
+  background: var(--riso-backdrop);
+  animation: riso-rc-fade 180ms ease-out;
 }
 
-.riso-rc-hero {
+.riso-rc-overlay.closing {
+  animation: riso-rc-fade 220ms ease-in reverse forwards;
+}
+
+@keyframes riso-rc-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes riso-rc-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.riso-rc-card {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 1360px;
+  margin: 0 auto;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: var(--riso-radius-card-lg);
+  box-shadow: var(--riso-shadow-card);
+  overflow: hidden;
+  font-family: var(--riso-font-display);
+  color: var(--riso-ink);
+  animation: riso-rc-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.riso-rc-card.closing {
+  animation: riso-rc-in 220ms ease-in reverse forwards;
+}
+
+.riso-rc-grid {
+  display: grid;
+  grid-template-columns: 440px minmax(0, 1fr);
+}
+
+.riso-rc-left {
+  background: var(--riso-canvas);
+  border-right: 2px solid var(--riso-ink);
+  min-width: 0;
+}
+
+.riso-rc-right {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.riso-rc-spacer {
+  flex: 1;
+}
+
+.riso-rc-caps {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.riso-rc-caps.accent {
+  color: var(--riso-accent);
+}
+
+/* A round 36px button: ⋯ and × (40px over the photo on a phone). */
+.riso-rc-round {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 2px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 18px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-rc-round.on {
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+}
+
+/* ---------- The photo ---------- */
+.riso-rc-photo {
   position: relative;
   height: 340px;
   border-bottom: 2px solid var(--riso-ink);
   background: var(--riso-track);
-  flex: none;
+  overflow: hidden;
 }
 
-.riso-rc-hero-photo {
+.riso-rc-photo-img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  cursor: pointer;
+  cursor: zoom-in;
 }
 
-.riso-rc-hero-photo.placeholder {
+.riso-rc-photo-img.placeholder {
+  cursor: default;
   background: var(--riso-track);
 }
 
@@ -5033,1114 +5081,1478 @@ button.riso-table-group-head:disabled {
   position: absolute;
   top: 18px;
   left: 18px;
-  height: 40px;
+  height: 38px;
   padding: 0 16px;
-  border-radius: 20px;
-  background: var(--riso-surface);
   border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
-  display: flex;
-  align-items: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 14px;
+  border-radius: 19px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13.5px var(--riso-font-display);
   cursor: pointer;
 }
 
-.riso-rc-hero-actions {
+.riso-rc-photo-count {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  right: 14px;
+  bottom: 14px;
+  height: 26px;
+  padding: 0 10px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 13px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+/* "{n} things to buy": yellow; "Nothing to buy": blue (you have everything). */
+.riso-rc-sticker {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: var(--riso-radius-pill);
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  font: 800 15px var(--riso-font-display);
+  box-shadow: var(--riso-shadow);
+  transform: rotate(-4deg);
+  white-space: nowrap;
+}
+
+.riso-rc-sticker.ready {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+}
+
+.riso-rc-sticker.on-receipt {
+  position: absolute;
+  top: -20px;
+  left: 14px;
+}
+
+.riso-rc-sticker.on-photo {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  font-size: 14px;
+}
+
+/* ---------- The receipt ---------- */
+.riso-rc-receipt-wrap {
+  padding: 34px 22px 30px;
+}
+
+.riso-rc-receipt {
+  position: relative;
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 20px 20px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 6px 6px 20px 20px;
+}
+
+.riso-rc-receipt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
 
-.riso-rc-round-btn {
-  width: 42px;
-  height: 42px;
-  border-radius: 21px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
-  display: flex;
+.riso-rc-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.riso-rc-stepper-btn {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 18px;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 14px/1 var(--riso-font-display);
   cursor: pointer;
-  box-sizing: border-box;
+}
+
+.riso-rc-stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.riso-rc-stepper-value {
+  min-width: 78px;
+  text-align: center;
+  font: 800 14px var(--riso-font-display);
+}
+
+.riso-rc-buy-list,
+.riso-rc-have-list {
+  list-style: none;
+  margin: 0;
   padding: 0;
 }
 
+.riso-rc-buy {
+  border-bottom: 2px dotted var(--riso-dash-strong);
+}
+
+.riso-rc-buy-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+}
+
+/* The round mark: green ✓ on your grocery list, white + not (blue ✓ is Inventory). */
+.riso-rc-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-rc-mark.onlist {
+  background: var(--riso-green);
+  color: var(--riso-ink-fixed);
+}
+
+.riso-rc-buy-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-rc-buy-name {
+  font: 800 15.5px/19px var(--riso-font-display);
+}
+
+.riso-rc-buy-meta {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-rc-buy-side {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.riso-rc-row-note {
+  font-weight: 500;
+  color: var(--riso-muted);
+}
+
+.riso-rc-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.riso-rc-price-amount {
+  font: 800 15.5px var(--riso-font-display);
+}
+
+.riso-rc-source {
+  padding: 1px 6px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: var(--riso-radius-pill);
+  background: var(--riso-surface);
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+}
+
+.riso-rc-source.sale {
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+}
+
+.riso-rc-receipt-empty,
+.riso-rc-staples {
+  margin: 0;
+  font: 400 13px/1.45 var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.riso-rc-staples {
+  padding-top: 2px;
+}
+
+.riso-rc-add-all {
+  align-self: center;
+  height: 38px;
+  padding: 0 22px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-rc-all-listed {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font: 700 13px var(--riso-font-display);
+}
+
+.riso-rc-all-listed-mark {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-green);
+  color: var(--riso-ink-fixed);
+  font: 700 10px/1 var(--riso-font-display);
+}
+
+.riso-rc-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--riso-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.riso-rc-have-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--riso-ink);
+  font: 800 17px var(--riso-font-display);
+}
+
+.riso-rc-have-mark {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  font: 700 10px/1 var(--riso-font-display);
+}
+
+.riso-rc-have {
+  border-bottom: 1.5px dashed var(--riso-dash);
+}
+
+.riso-rc-have-line {
+  width: 100%;
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-rc-have-name {
+  font: 600 14.5px/1.25 var(--riso-font-display);
+}
+
+.riso-rc-have-qty {
+  font: 500 12px var(--riso-font-mono);
+  color: var(--riso-soft);
+  white-space: nowrap;
+}
+
+.riso-rc-use-soon {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: var(--riso-radius-pill);
+  background: var(--riso-hot);
+  color: var(--riso-ink-fixed);
+  font: 800 10.5px var(--riso-font-display);
+  transform: rotate(-4deg);
+  vertical-align: 1px;
+}
+
+/* What tapping a row opens: why, and what can be done. */
+.riso-rc-drawer {
+  padding: 2px 0 14px;
+}
+
+.riso-rc-drawer p {
+  margin: 0 0 10px;
+  font: 400 13px/1.45 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.riso-rc-drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-rc-drawer-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-rc-drawer-btn.primary {
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+}
+
+.riso-rc-drawer-btn.primary.added {
+  background: var(--riso-green);
+  color: var(--riso-ink-fixed);
+}
+
+/* The totals, once Meal pricing ships and Prices is on. */
+.riso-rc-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font: 800 15.5px var(--riso-font-display);
+}
+
+.riso-rc-total > span:last-child {
+  font-size: 17px;
+}
+
+.riso-rc-total.soft {
+  font: 700 14.5px var(--riso-font-display);
+  color: var(--riso-soft);
+}
+
+.riso-rc-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-rc-meal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 10px;
+  border-top: 2px solid var(--riso-ink);
+}
+
+.riso-rc-meal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: 800 18px var(--riso-font-display);
+}
+
+.riso-rc-meal-per {
+  font: 500 11px var(--riso-font-mono);
+  color: var(--riso-muted);
+}
+
+.riso-rc-meal-total {
+  font: 800 26px var(--riso-font-display);
+}
+
+/* ---------- The header (right column) ---------- */
+/* 340px, so its bottom line meets the photo's; it grows (never overflows) when a
+   long title and the buttons need more, as French can on a narrower screen. */
+.riso-rc-right .riso-rc-head {
+  min-height: 340px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.riso-rc-topbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 18px 22px 0 48px;
+}
+
+.riso-rc-titlearea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 48px;
+}
+
+.riso-rc-title {
+  margin: 0;
+  font: 800 52px/1 var(--riso-font-display);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.riso-rc-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 6px;
+  font: 600 18px var(--riso-font-display);
+  color: var(--riso-soft);
+}
+
+.riso-rc-facts b {
+  font-weight: 800;
+  color: var(--riso-ink);
+}
+
+.riso-rc-fact {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.riso-rc-fact-sep {
+  padding: 0 10px;
+  color: var(--riso-dash-strong);
+}
+
+.riso-rc-facts-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.riso-rc-facts-price mark {
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  font-weight: 800;
+}
+
+.riso-rc-facts-price small {
+  font: 500 12px var(--riso-font-mono);
+  color: var(--riso-muted);
+}
+
+.riso-rc-planned {
+  margin-left: 12px;
+}
+
+.riso-rc-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 48px 26px;
+}
+
+.riso-rc-start {
+  height: 48px;
+  padding: 0 26px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  font: 800 16.5px var(--riso-font-display);
+  box-shadow: var(--riso-shadow);
+  cursor: pointer;
+}
+
+.riso-rc-pill {
+  height: 48px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 20px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 24px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14.5px var(--riso-font-display);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-rc-pill.cream {
+  background: var(--riso-canvas);
+}
+
+.riso-rc-pill:hover,
+.riso-rc-pill:focus-visible {
+  color: var(--riso-ink);
+}
+
+/* The Prices switch (only once Meal pricing ships). */
+.riso-rc-prices {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 4px 0 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-rc-prices-track {
+  position: relative;
+  width: 36px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 11px;
+  background: var(--riso-surface);
+}
+
+.riso-rc-prices.on .riso-rc-prices-track {
+  background: var(--riso-accent);
+}
+
+.riso-rc-prices-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-knob);
+  transition: left 120ms;
+}
+
+.riso-rc-prices.on .riso-rc-prices-knob {
+  left: 14px;
+}
+
+.riso-rc-prices-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---------- The ⋯ menu ---------- */
 .riso-rc-menu-wrap {
   position: relative;
+  display: inline-flex;
 }
 
 .riso-rc-menu-catcher {
   position: fixed;
   inset: 0;
-  z-index: 55;
+  z-index: 5;
 }
 
 .riso-rc-menu {
   position: absolute;
-  top: 50px;
+  top: calc(100% + 8px);
   right: 0;
-  width: 230px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 18px;
-  padding: 6px;
-  box-shadow: var(--riso-shadow-ready);
+  z-index: 6;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 14px;
-  z-index: 56;
+  padding: 6px;
+  background: var(--riso-surface);
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
-.riso-rc-menu button,
-.riso-rc-menu a {
+.riso-rc-menu > button,
+.riso-rc-menu > a {
+  display: block;
   padding: 10px 12px;
-  border-radius: 12px;
-  cursor: pointer;
+  border: 0;
+  border-radius: 10px;
   background: none;
-  border: none;
-  text-align: left;
-  font: inherit;
   color: var(--riso-ink);
+  font: 600 14.5px var(--riso-font-display);
+  text-align: left;
   text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.riso-rc-menu button:hover,
-.riso-rc-menu a:hover {
+.riso-rc-menu > button:hover,
+.riso-rc-menu > a:hover,
+.riso-rc-menu > button:focus-visible,
+.riso-rc-menu > a:focus-visible {
   background: var(--riso-canvas);
 }
 
-.riso-rc-menu button.danger {
+.riso-rc-menu > .danger {
   color: var(--riso-danger);
 }
 
 .riso-rc-menu-divider {
-  height: 0;
-  border-top: 2px dashed var(--riso-dash);
   margin: 4px 8px;
+  border-top: 1.5px dashed var(--riso-dash);
 }
 
-.riso-rc-hero-sticker {
-  position: absolute;
-  left: 24px;
-  bottom: -18px;
-  transform: rotate(-4deg);
-  padding: 7px 14px;
-  font-size: 15px;
-  box-shadow: var(--riso-shadow);
+/* ---------- Steps ---------- */
+.riso-rc-steps {
+  border-top: 2px solid var(--riso-ink);
+  padding: 24px 48px 30px;
 }
 
-.riso-rc-photo-count {
-  position: absolute;
-  right: 18px;
-  bottom: 16px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 15px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
+.riso-rc-steps-head {
   display: flex;
-  align-items: center;
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.riso-rc-content {
-  padding: 40px 36px 36px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-.riso-rc-titlebar {
-  display: flex;
-  gap: 20px;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.riso-rc-titlebar-main {
-  flex: 1;
-  min-width: 320px;
-  display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   gap: 12px;
+  margin-bottom: 18px;
 }
 
-.riso-rc-title {
+.riso-rc-nosteps {
   margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 46px;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.riso-rc-meta-line {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  font: 600 15px var(--riso-font-display);
-  color: var(--riso-soft);
-}
-
-.riso-rc-meta-sep {
-  margin-right: 10px;
-}
-
-.riso-rc-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.riso-rc-tag-chip {
-  height: 30px;
-  padding: 0 8px 0 12px;
-  border-radius: 15px;
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.riso-rc-tag-chip button {
-  background: none;
-  border: none;
-  cursor: pointer;
+  font: 400 15px var(--riso-font-body);
   color: var(--riso-muted);
-  font-size: 14px;
-  line-height: 1;
-  padding: 2px;
-}
-
-.riso-rc-tag-chip button:hover {
-  color: var(--riso-danger);
-}
-
-.riso-rc-tag-input {
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 15px;
-  border: 2px dashed var(--riso-ink);
-  background: none;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--riso-ink);
-  width: 84px;
-  outline: none;
-}
-
-.riso-rc-tag-input:focus {
-  width: 140px;
-}
-
-/* Row one: Start cooking + Open original. Row two: Plan around this,
-   one button wide, right-aligned. */
-.riso-rc-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
-}
-
-.riso-rc-actions-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.riso-rc-actions .riso-rc-btn-secondary {
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.riso-rc-actions .riso-rc-btn-secondary:hover {
-  background: var(--riso-yellow);
-  color: #16181f;
-}
-
-.riso-rc-move-note {
-  margin: 0;
-  font: 600 13px var(--riso-font-display);
-  color: var(--riso-green-text);
-}
-
-.riso-rc-btn-primary {
-  height: 48px;
-  padding: 0 26px;
-  border-radius: 24px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
-  display: flex;
-  align-items: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 16px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.riso-rc-btn-secondary {
-  height: 48px;
-  padding: 0 20px;
-  border-radius: 24px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  display: flex;
-  align-items: center;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 15px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.riso-rc-btn-open-original {
-  height: 48px;
-  padding: 0 20px;
-  border-radius: 24px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 15px;
-  white-space: nowrap;
-  box-sizing: border-box;
-}
-
-.riso-rc-phone-tabs {
-  display: none;
-}
-
-/* Ingredients and Steps are two matching cream cards side by side
-   (Recipe Card update); they stack below about 900px. */
-.riso-rc-body {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 28px;
-  align-items: flex-start;
-}
-
-.riso-rc-ingredients-panel,
-.riso-rc-steps-wrap {
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 26px;
-  padding: 24px;
-  box-sizing: border-box;
-}
-
-.riso-rc-ingredients-panel {
-  flex: 1 1 360px;
-  min-width: min(360px, 100%);
-  max-width: 430px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.riso-rc-steps-wrap {
-  flex: 999 1 420px;
-  min-width: 0;
-}
-
-@media (max-width: 900px) {
-  .riso-rc-ingredients-panel {
-    max-width: none;
-  }
-}
-
-.riso-rc-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.riso-rc-panel-header h3 {
-  margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 28px;
-  letter-spacing: -0.02em;
-}
-
-.riso-rc-servings-stepper {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 38px;
-  padding: 0 4px;
-  border-radius: 19px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  box-sizing: border-box;
-}
-
-.riso-rc-servings-stepper button {
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  box-sizing: border-box;
-  padding: 0;
-}
-
-.riso-rc-servings-stepper span {
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 13.5px;
-  padding: 0 6px;
-  white-space: nowrap;
-}
-
-.riso-rc-have-meter {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.riso-rc-have-label {
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.riso-rc-have-track {
-  height: 14px;
-  border-radius: 7px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  overflow: hidden;
-}
-
-.riso-rc-have-fill {
-  height: 100%;
-  background: var(--riso-accent);
-  transition: width 0.25s;
-}
-
-.riso-rc-why-note {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  background: var(--riso-surface);
-  border: 2px dashed var(--riso-ink);
-  border-radius: 16px;
-  padding: 11px 13px;
-}
-
-.riso-rc-why-note p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--riso-soft);
-}
-
-.riso-rc-why-sticker {
-  flex: none;
-  transform: rotate(-4deg);
-  background: var(--riso-yellow);
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 2px 9px;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 11.5px;
-}
-
-.riso-rc-ingredient-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.riso-rc-ingredient {
-  border-top: 1.5px dashed var(--riso-dash-strong);
-}
-
-/* The ✓ circle sits beside the row button (not inside it): it has its own tap. */
-.riso-rc-ingredient-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.riso-rc-ingredient-line .riso-rc-ingredient-row {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-}
-
-.riso-rc-ingredient-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 0;
-  cursor: pointer;
-  width: 100%;
-  background: none;
-  border: none;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-}
-
-.riso-rc-ingredient-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 11px;
-  flex: none;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-on-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-/* Blue ✓ = in your Inventory. */
-.riso-rc-ingredient-dot.have {
-  background: var(--riso-accent);
-}
-
-/* The tappable dot: green ✓ = on your grocery list, "+" = to buy (tap to add). */
-.riso-rc-ingredient-dot.toggle {
-  position: relative;
-  padding: 0;
-  cursor: pointer;
-  color: var(--riso-ink);
-  font-family: inherit;
-}
-
-.riso-rc-ingredient-dot.toggle::before {
-  content: "";
-  position: absolute;
-  inset: -9px;
-}
-
-.riso-rc-ingredient-dot.toggle.onlist {
-  background: var(--riso-green);
-}
-
-.riso-rc-ingredient-name {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 14.5px;
-  line-height: 1.3;
-}
-
-.riso-rc-ingredient-note {
-  font-family: var(--riso-font-body);
-  font-size: 13px;
-  font-style: italic;
-  color: var(--riso-muted);
-}
-
-.riso-rc-use-soon-sticker {
-  transform: rotate(-4deg);
-  background: var(--riso-hot);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.riso-rc-ingredient-qty {
-  font-family: var(--riso-font-mono);
-  font-size: 12px;
-  white-space: nowrap;
-  color: var(--riso-soft);
-}
-
-.riso-rc-ingredient-explainer {
-  margin: 0 0 12px 32px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 14px;
-  padding: 11px 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.riso-rc-ingredient-explainer p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--riso-soft);
-}
-
-.riso-rc-ingredient-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.riso-rc-ing-action {
-  height: 32px;
-  padding: 0 13px;
-  border-radius: 16px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 13px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.riso-rc-ing-action.primary {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: 2px 2px 0 var(--riso-ink);
-}
-
-/* Lifts on hover, presses in on click; once added it sits flat in yellow. */
-.riso-rc-ing-action,
-.riso-rc-add-missing-btn {
-  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
-}
-
-.riso-rc-ing-action:hover:not(:disabled) {
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 var(--riso-ink);
-}
-
-.riso-rc-ing-action:active:not(:disabled) {
-  transform: translate(2px, 2px);
-  box-shadow: none;
-}
-
-.riso-rc-ing-action.added {
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  box-shadow: none;
-  cursor: default;
-}
-
-.riso-rc-add-missing-btn:hover:not(:disabled) {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--riso-ink);
-}
-
-.riso-rc-add-missing-btn:active:not(:disabled) {
-  transform: translate(3px, 3px);
-  box-shadow: none;
-}
-
-.riso-rc-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  font-size: 12px;
-  color: var(--riso-soft);
-  padding-top: 12px;
-  border-top: 1.5px dashed var(--riso-dash-strong);
-}
-
-.riso-rc-legend span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.riso-rc-legend-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  box-sizing: border-box;
-}
-
-.riso-rc-legend-dot.have {
-  background: var(--riso-accent);
-}
-
-.riso-rc-legend-dot.onlist {
-  background: var(--riso-green);
-}
-
-.riso-rc-legend-sticker {
-  background: var(--riso-hot);
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 999px;
-  padding: 0 6px;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 10px;
-}
-
-.riso-rc-add-missing-btn {
-  height: 44px;
-  border-radius: 22px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  box-shadow: var(--riso-shadow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 14.5px;
-  cursor: pointer;
-  width: 100%;
-}
-
-.riso-rc-add-missing-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.riso-rc-add-missing-btn.added {
-  opacity: 1;
-  background: var(--riso-yellow);
-  color: var(--riso-ink);
-  box-shadow: none;
-}
-
-.riso-rc-planned-note {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  background: var(--riso-surface);
-  border: 2px solid var(--riso-ink);
-  border-radius: 16px;
-  padding: 12px 14px;
-}
-
-.riso-rc-planned-check {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 12px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  box-sizing: border-box;
-}
-
-.riso-rc-planned-note p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.riso-rc-planned-link {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-  color: var(--riso-accent);
-}
-
-.riso-rc-steps-wrap {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Inside the cream Ingredients card, the track, the "why?" note and the
-   per-ingredient explainer use the soft paper colour. */
-.riso-rc-have-track,
-.riso-rc-why-note,
-.riso-rc-ingredient-explainer,
-.riso-rc-planned-note {
-  background: var(--riso-canvas);
-}
-
-.riso-rc-steps-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  padding-bottom: 10px;
-  flex-wrap: wrap;
-}
-
-.riso-rc-steps-header h3 {
-  margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 28px;
-  letter-spacing: -0.02em;
-}
-
-.riso-rc-steps-header span {
-  font-size: 13px;
-  color: var(--riso-soft);
 }
 
 .riso-rc-step-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
 }
 
-.riso-rc-step-heading {
-  padding: 10px 0;
-  font-family: var(--riso-font-mono);
-  font-size: 11.5px;
-  letter-spacing: 0.14em;
-  color: var(--riso-muted);
-  text-transform: uppercase;
-}
-
-.riso-rc-step-row {
-  display: flex;
-  gap: 18px;
-  padding: 18px 0;
-  border-top: 1.5px dashed var(--riso-dash-strong);
-  align-items: flex-start;
-}
-
-.riso-rc-step-list li:first-child {
-  border-top: none;
-}
-
-.riso-rc-step-number {
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  border: 2px solid var(--riso-ink);
-  box-shadow: 2px 2px 0 var(--riso-ink);
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 17px;
-  box-sizing: border-box;
-}
-
-.riso-rc-step-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.riso-rc-step-title {
-  font-family: var(--riso-font-mono);
-  font-weight: 500;
-  font-size: 11.5px;
-  letter-spacing: 0.14em;
-  color: var(--riso-muted);
-  text-transform: uppercase;
-}
-
-.riso-rc-step-text {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.6;
-}
-
-/* A step's timer: the time (tap it to change it), Start / Pause / Resume, and
-   Reset. Same 32px pill size as the chips. */
-.riso-rc-timer {
-  align-self: flex-start;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 3px;
-}
-
-.riso-rc-timer-time,
-.riso-rc-timer-btn {
-  height: 32px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  border-radius: 16px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 12.5px;
-  white-space: nowrap;
+.riso-rc-step {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 200px;
+  gap: 20px;
   cursor: pointer;
 }
 
-.riso-rc-timer-time {
-  background: var(--riso-yellow);
-  font-variant-numeric: tabular-nums;
-  min-width: 78px;
-  justify-content: center;
+.riso-rc-step-label {
+  padding: 4px 0 12px 64px;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
 }
 
-.riso-rc-timer-btn.primary {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
+/* The rail: Cook mode's dots joined by a dotted line. */
+.riso-rc-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.riso-rc-timer.running .riso-rc-timer-time {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.riso-rc-timer.running .riso-rc-timer-btn.primary {
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-}
-
-.riso-rc-timer.done .riso-rc-timer-time {
-  background: var(--riso-green);
-  color: var(--riso-green-text);
-}
-
-.riso-rc-timer-field {
+.riso-rc-dot {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font: 700 12.5px var(--riso-font-display);
-}
-
-.riso-rc-timer-field input {
-  width: 58px;
-  height: 32px;
-  box-sizing: border-box;
-  padding: 0 8px;
+  justify-content: center;
+  padding: 0;
   border: 2px solid var(--riso-ink);
-  border-radius: 16px;
+  border-radius: 50%;
   background: var(--riso-surface);
   color: var(--riso-ink);
-  font: 700 16px var(--riso-font-display); /* 16px: no zoom on a phone */
-  text-align: center;
+  font: 800 13px/1 var(--riso-font-display);
+  cursor: pointer;
 }
 
-.riso-rc-step-thumb {
-  width: 136px;
-  height: 96px;
-  border-radius: 14px;
-  overflow: hidden;
-  flex: none;
+.riso-rc-step.done .riso-rc-dot {
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+}
+
+.riso-rc-step.current .riso-rc-dot {
+  width: 44px;
+  height: 44px;
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  font-size: 17px;
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-rc-rail-line {
+  flex: 1;
+  min-height: 12px;
+  margin: 4px 0;
+  border-left: 2px dotted var(--riso-dash-strong);
+}
+
+.riso-rc-step-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 24px;
+}
+
+.riso-rc-step.last .riso-rc-step-text {
+  padding-bottom: 4px;
+}
+
+.riso-rc-step-title {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-rc-step.current .riso-rc-step-title {
+  color: var(--riso-ink);
+}
+
+.riso-rc-step-body {
+  max-width: 720px;
+  margin: 0;
+  font: 500 19px/1.42 var(--riso-font-display);
+  color: var(--riso-ink);
+  text-wrap: pretty;
+}
+
+.riso-rc-step.current .riso-rc-step-body {
+  font-size: 24px;
+}
+
+.riso-rc-step.done .riso-rc-step-body {
+  color: var(--riso-muted);
+}
+
+.riso-rc-step-uses {
+  max-width: 720px;
+  margin: 6px 0 0;
+  font: 500 11px/1.5 var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riso-soft);
+}
+
+.riso-rc-step-photo {
+  align-self: flex-start;
+  width: 96px;
+  height: 72px;
+  margin-top: 8px;
+  padding: 0;
   border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  overflow: hidden;
   background: var(--riso-track);
+  cursor: zoom-in;
+}
+
+.riso-rc-step-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.riso-rc-step-timer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+/* A step's timer: idle (yellow), running (ink with yellow type), paused (white),
+   done (green), and the round ↺ once started. */
+.riso-rc-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+
+.riso-rc-timer-pill {
+  height: 38px;
+  padding: 0 16px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  font: 800 15px var(--riso-font-display);
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  box-shadow: var(--riso-shadow-xs);
+  cursor: pointer;
+}
+
+.riso-rc-timer-pill.running {
+  background: var(--riso-ink);
+  color: var(--riso-yellow);
+  box-shadow: none;
+}
+
+.riso-rc-timer-pill.paused {
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+}
+
+.riso-rc-timer-pill.done {
+  background: var(--riso-green);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-rc-timer-reset {
+  width: 38px;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 0 2px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 17px/1 var(--riso-font-display);
+  cursor: pointer;
+}
+
+/* ---------- Notes ---------- */
+.riso-rc-notes {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 2px solid var(--riso-ink);
+  padding: 20px 48px 30px;
+}
+
+.riso-rc-notes textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font: 500 16px/1.45 var(--riso-font-display);
+  outline: none;
+}
+
+.riso-rc-notes textarea:focus-visible {
+  box-shadow: var(--riso-shadow-xs-accent);
+}
+
+.riso-rc-notes textarea::placeholder {
+  color: var(--riso-placeholder);
+}
+
+/* ---------- "Uses the same ingredients" (the footer) ---------- */
+.riso-rc-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-top: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  padding: 28px 40px 36px;
+}
+
+.riso-rc-strip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.riso-rc-strip-head h3 {
+  margin: 0;
+  font: 800 28px var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+.riso-rc-strip-head span {
+  font: 400 15px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.riso-rc-strip-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* The photo card's "strip" variant (components/RecipePhotoCard.jsx). */
+.rpc-strip {
+  background: var(--riso-surface);
+  box-shadow: 4px 4px 0 var(--riso-ink);
+}
+
+.rpc-strip .rpc-open {
+  display: flex;
+  flex-direction: column;
+  background: var(--riso-surface);
+  text-align: left;
+}
+
+.rpc-strip .rpc-photo {
+  height: 170px;
+  border-bottom: 2px solid var(--riso-ink);
+}
+
+.rpc-strip .rpc-scrim-top,
+.rpc-strip .rpc-scrim-bottom {
+  display: none;
+}
+
+.rpc-strip .rpc-caption {
+  top: auto;
+  right: auto;
+  left: 12px;
+  bottom: 12px;
+  text-transform: none;
+}
+
+.rpc-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 14px;
+}
+
+.rpc-strip-name {
+  font: 800 17px/1.2 var(--riso-font-display);
+  color: var(--riso-ink);
+}
+
+.rpc-strip-meta {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--riso-muted);
+}
+
+/* "{n} SHARED", the yellow sticker on a similar recipe's photo. */
+.riso-rc-shared {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 2px solid var(--riso-ink);
+  border-radius: var(--riso-radius-pill);
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  transform: rotate(-4deg);
+  white-space: nowrap;
+}
+
+/* ---------- The Similar view ---------- */
+.riso-rc-sim {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 900px;
+  box-sizing: border-box;
+  padding: 22px 40px 40px;
+  background: var(--riso-surface);
+}
+
+.riso-rc-sim-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-rc-sim-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0 18px 0 5px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14.5px var(--riso-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.riso-rc-sim-back-photo {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--riso-track);
+}
+
+.riso-rc-sim-back-photo img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.riso-rc-similar {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-top: 22px;
-  border-top: 2px solid var(--riso-ink);
-}
-
-.riso-rc-similar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.riso-rc-similar-header h3 {
+.riso-rc-sim-title {
   margin: 0;
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-  font-size: 24px;
+  font: 800 44px/1 var(--riso-font-display);
+  letter-spacing: -0.03em;
 }
 
-.riso-rc-similar-header span {
-  font-size: 13px;
-  color: var(--riso-soft);
-}
-
-.riso-rc-similar-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-}
-
-.riso-rc-similar-card {
-  background: var(--riso-canvas);
-  border: 2px solid var(--riso-ink);
-  border-radius: 18px;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-}
-
-.riso-rc-similar-card img,
-.riso-rc-similar-photo-placeholder {
-  width: 58px;
-  height: 58px;
-  border-radius: 12px;
-  overflow: hidden;
-  flex: none;
-  border: 2px solid var(--riso-ink);
-  object-fit: cover;
-  background: var(--riso-track);
-}
-
-.riso-rc-similar-info {
+.riso-rc-sim-banner {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  min-width: 0;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  background: var(--riso-yellow);
+  color: var(--riso-ink-fixed);
+  box-shadow: 4px 4px 0 var(--riso-ink);
 }
 
-.riso-rc-similar-title {
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.riso-rc-sim-banner-title {
+  margin: 0;
+  font: 800 18px/1.2 var(--riso-font-display);
 }
 
-.riso-rc-similar-shared {
-  font-family: var(--riso-font-mono);
-  font-size: 10.5px;
-  margin-top: 3px;
+.riso-rc-sim-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.riso-rc-sim-chip {
+  height: 32px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 16px;
+  background: var(--riso-ink);
+  color: var(--riso-surface);
+  font: 700 13.5px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-rc-sim-chip.off {
+  background: var(--riso-surface);
   color: var(--riso-muted);
+  text-decoration: line-through;
 }
 
-@media (max-width: 680px) {
-  .riso-rc-modal {
-    width: 100%;
-    max-height: 100%;
-    border-radius: 0;
+.riso-rc-sim-note {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+}
+
+.riso-rc-sim-back-phone {
+  height: 40px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-rc-sim-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.riso-rc-sim-card .riso-rc-shared {
+  position: absolute;
+  top: 40px;
+  left: 14px;
+  pointer-events: none;
+}
+
+.riso-rc-sim-card .rpc-title {
+  font-size: 19px;
+}
+
+/* ---------- A narrower computer ---------- */
+@media (max-width: 1180px) and (min-width: 768px) {
+  .riso-rc-overlay {
+    padding: 24px;
   }
 
-  .riso-rc-content {
-    padding: 20px 18px 24px;
+  .riso-rc-grid {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+
+  .riso-rc-topbar,
+  .riso-rc-titlearea,
+  .riso-rc-actions,
+  .riso-rc-steps,
+  .riso-rc-notes {
+    padding-left: 32px;
+    padding-right: 32px;
   }
 
   .riso-rc-title {
-    font-size: 30px;
+    font-size: 40px;
   }
 
-  .riso-rc-hero {
-    height: 220px;
+  /* The timer moves under the step's text, so the text keeps its width. */
+  .riso-rc-step {
+    grid-template-columns: 44px minmax(0, 1fr);
+    column-gap: 20px;
   }
 
-  .riso-rc-actions {
-    width: 100%;
-    align-items: stretch;
+  .riso-rc-rail {
+    grid-row: span 2;
   }
 
-  .riso-rc-actions-row {
-    justify-content: stretch;
+  .riso-rc-step-timer {
+    grid-column: 2;
+    justify-content: flex-start;
+    padding: 0 0 24px;
+    margin-top: -12px;
   }
 
-  .riso-rc-actions-row > * {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .riso-rc-phone-tabs {
-    display: flex;
-    gap: 4px;
-    background: var(--riso-canvas);
-    padding: 4px;
-    border-radius: 14px;
-    margin-bottom: 14px;
-  }
-
-  .riso-rc-phone-tabs button {
-    flex: 1;
-    height: 38px;
-    border-radius: 11px;
-    border: none;
-    background: none;
-    color: var(--riso-muted);
-    font-family: var(--riso-font-display);
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-  }
-
-  .riso-rc-phone-tabs button.active {
-    background: var(--riso-accent);
-    color: var(--riso-on-accent);
-  }
-
-  .riso-rc-body {
-    display: block;
-  }
-
-  .riso-rc-ingredients-panel {
-    margin-bottom: 16px;
-  }
-
-  .rc-phone-hidden {
+  .riso-rc-step-timer:empty {
     display: none;
   }
 
-  .riso-rc-similar-grid {
-    grid-template-columns: 1fr;
+  .riso-rc-strip-cards,
+  .riso-rc-sim-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .riso-rc-strip-cards > :nth-child(4) {
+    display: none;
+  }
+}
+
+/* ---------- A phone (390): one column, a bar fixed at the bottom ---------- */
+.riso-rc-overlay.phone {
+  padding: 0;
+  overflow: hidden;
+}
+
+.riso-rc-card.phone {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.riso-rc-card.phone .riso-rc-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.riso-rc-card.phone .riso-rc-photo {
+  height: 260px;
+}
+
+.riso-rc-photo-top {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-rc-card.phone .riso-rc-round {
+  width: 40px;
+  height: 40px;
+}
+
+.riso-rc-card.phone .riso-rc-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 18px 18px;
+}
+
+.riso-rc-card.phone .riso-rc-title {
+  font-size: 32px;
+  line-height: 1.02;
+}
+
+.riso-rc-card.phone .riso-rc-facts {
+  font-size: 15.5px;
+}
+
+.riso-rc-card.phone .riso-rc-fact-sep {
+  padding: 0 8px;
+}
+
+.riso-rc-card.phone .riso-rc-actions {
+  padding: 4px 0 0;
+  gap: 8px;
+}
+
+.riso-rc-card.phone .riso-rc-pill {
+  height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.riso-rc-card.phone .riso-rc-prices {
+  height: 34px;
+}
+
+.riso-rc-card.phone .riso-rc-receipt-wrap {
+  border-top: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  padding: 30px 14px 22px;
+}
+
+.riso-rc-card.phone .riso-rc-receipt {
+  padding: 18px 16px 16px;
+  gap: 10px;
+}
+
+.riso-rc-card.phone .riso-rc-stepper-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.riso-rc-card.phone .riso-rc-stepper-value {
+  min-width: 70px;
+}
+
+.riso-rc-card.phone .riso-rc-add-all {
+  align-self: stretch;
+  height: 44px;
+  font-size: 14px;
+}
+
+.riso-rc-card.phone .riso-rc-buy-name {
+  font-size: 15px;
+}
+
+.riso-rc-card.phone .riso-rc-have-name {
+  font-size: 14px;
+}
+
+.riso-rc-card.phone .riso-rc-steps {
+  padding: 20px 18px 18px;
+}
+
+.riso-rc-card.phone .riso-rc-step {
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.riso-rc-card.phone .riso-rc-step-label {
+  padding-left: 48px;
+}
+
+.riso-rc-card.phone .riso-rc-dot {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.riso-rc-card.phone .riso-rc-step.current .riso-rc-dot {
+  width: 36px;
+  height: 36px;
+  font-size: 15px;
+}
+
+.riso-rc-card.phone .riso-rc-step-text {
+  gap: 6px;
+  padding: 3px 0 20px;
+}
+
+.riso-rc-card.phone .riso-rc-step-body {
+  font-size: 16px;
+}
+
+.riso-rc-card.phone .riso-rc-step.current .riso-rc-step-body {
+  font-size: 19px;
+}
+
+.riso-rc-card.phone .riso-rc-step-text .riso-rc-timer {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.riso-rc-card.phone .riso-rc-timer-pill {
+  height: 40px;
+  border-radius: 20px;
+}
+
+.riso-rc-card.phone .riso-rc-timer-reset {
+  width: 40px;
+  height: 40px;
+}
+
+.riso-rc-card.phone .riso-rc-notes {
+  margin-top: 0;
+  padding: 18px 18px 22px;
+}
+
+.riso-rc-card.phone .riso-rc-strip {
+  gap: 12px;
+  padding: 20px 0 24px;
+}
+
+.riso-rc-card.phone .riso-rc-strip-head {
+  flex-direction: column;
+  padding: 0 18px;
+}
+
+.riso-rc-card.phone .riso-rc-strip-head h3 {
+  font-size: 21px;
+}
+
+.riso-rc-card.phone .riso-rc-strip-head span {
+  font-size: 13.5px;
+}
+
+.riso-rc-card.phone .riso-rc-strip-cards {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 0 18px 6px;
+}
+
+.riso-rc-card.phone .rpc-strip {
+  flex: none;
+  width: 200px;
+  border-radius: 18px;
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-rc-card.phone .rpc-strip .rpc-photo {
+  height: 120px;
+}
+
+.riso-rc-card.phone .rpc-strip-name {
+  font-size: 15px;
+}
+
+.riso-rc-bottombar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 12px));
+  border-top: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+}
+
+.riso-rc-bottombar .riso-rc-start {
+  flex: 1;
+  height: 54px;
+  border-radius: 27px;
+  font-size: 17px;
+}
+
+.riso-rc-bottombar .riso-rc-pill {
+  flex: none;
+  height: 54px;
+  border-radius: 27px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+.riso-rc-bottombar .riso-rc-pill:only-child {
+  flex: 1;
+  justify-content: center;
+}
+
+/* Similar recipes on a phone: in place of the scroll area's content. */
+.riso-rc-sim.phone {
+  position: relative;
+  min-height: 100%;
+  gap: 16px;
+  padding: 64px 16px 24px;
+  background: var(--riso-canvas);
+}
+
+.riso-rc-sim.phone .riso-rc-sim-top {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+}
+
+.riso-rc-sim.phone .riso-rc-sim-banner {
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.riso-rc-sim.phone .riso-rc-sim-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.riso-rc-sim.phone .riso-rc-sim-card {
+  border-radius: 18px;
+}
+
+.riso-rc-sim.phone .riso-rc-sim-card .riso-rc-shared {
+  top: 10px;
+  left: 10px;
+  font-size: 9.5px;
+}
+
+.riso-rc-sim.phone .riso-rc-sim-card .rpc-caption {
+  display: none;
+}
+
+.riso-rc-sim.phone .riso-rc-sim-card .rpc-title {
+  font-size: 15px;
 }
 
 .btn-sm {
@@ -6607,8 +7019,43 @@ button.riso-table-group-head:disabled {
 }
 
 .cm-timer-time {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
   font: 800 64px/1 var(--riso-font-display);
   letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* Tapping the time changes it: minutes and seconds, Save, Cancel. */
+.cm-timer-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cm-timer-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 13px var(--riso-font-display);
+  color: var(--riso-timer-ink);
+}
+
+.cm-timer-field input {
+  width: 64px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 2px solid var(--riso-timer-ink);
+  border-radius: 12px;
+  background: var(--riso-timer-plus-bg);
+  color: var(--riso-timer-plus-ink);
+  font: 800 18px var(--riso-font-display);
   font-variant-numeric: tabular-nums;
 }
 
@@ -15469,35 +15916,6 @@ body.no-select {
   font-weight: 800;
 }
 
-/* Mirrors .riso-rc-servings-stepper button. */
-.riso-help-copy-stepper {
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-surface);
-  font-family: var(--riso-font-display);
-  font-weight: 700;
-}
-
-/* Mirrors .riso-rc-phone-tabs button.active. */
-.riso-help-copy-tabs {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: 12px;
-  background: var(--riso-canvas);
-}
-
-.riso-help-copy-tabs .riso-segment {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 10px;
-  border-radius: 9px;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 11px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
 /* Mirrors the menu rows under the Recipe card's More button. */
 .riso-help-copy-menu {
   border: 2px solid var(--riso-ink);
@@ -18265,169 +18683,52 @@ body.no-select {
   }
 }
 
-/* ---------- The recipe pop-out ---------- */
-.fnd-pop-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  background: rgba(22, 24, 31, 0.5);
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
-  animation: fnd-pop-fade 0.2s ease;
-}
-
-.fnd-pop {
-  width: min(680px, 100%);
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  box-sizing: border-box;
-  padding: 22px 26px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  border: 2px solid var(--riso-ink);
-  border-radius: 28px;
-  box-shadow: var(--riso-shadow-lg);
-  animation: fnd-pop-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes fnd-pop-fade {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes fnd-pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.94) translateY(12px);
-  }
-}
-
-.fnd-pop-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.fnd-pop-title {
-  margin: 0;
-  font: 800 28px/1.1 var(--riso-font-display);
-  text-wrap: balance;
-}
-
-.fnd-pop-facts {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.fnd-pop-close {
-  flex: none;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border: 2px solid var(--riso-ink);
-  border-radius: 50%;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 18px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.fnd-pop-body {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: 22px;
-}
-
-.fnd-pop-photo {
-  align-self: start;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border: 2px solid var(--riso-ink);
-  border-radius: 18px;
-  background: var(--riso-track);
-}
-
-.fnd-pop-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.fnd-pop-info {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.fnd-pop-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.fnd-pop-caps {
+/* ---------- Ingredient marks (components/IngredientMarks.jsx) ----------
+   The "you have" and "to buy" pills in the Planner's planned-meal card. */
+.ing-marks-caps {
   margin: 0;
   font: 500 10.5px var(--riso-font-mono);
   letter-spacing: 0.12em;
 }
 
-.fnd-pop-pills {
+.ing-marks-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.fnd-pop-buy {
+.ing-marks-buy {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.fnd-buy-pill {
+.ing-marks-buy-pill {
   cursor: pointer;
 }
 
-/* On the grocery list: the mark turns to a filled ✓. */
-.fnd-buy-pill .riso-pill-mark {
+.ing-marks-buy-pill .riso-pill-mark {
   background: var(--riso-surface);
 }
 
-.fnd-buy-pill.listed .riso-pill-mark {
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-}
-
-.fnd-pop-allhere {
+.ing-marks-allhere {
   margin: 0;
   font: 700 14px var(--riso-font-display);
   color: var(--riso-green-text);
 }
 
-.fnd-pop-steps {
+/* The planned-meal card's list of steps. */
+.riso-plannedcard-steps {
   padding-top: 12px;
   border-top: 1.5px dashed var(--riso-dash-strong);
 }
 
-.fnd-pop-stepshead {
+.riso-plannedcard-stepshead {
   margin: 0;
   font: 800 17px var(--riso-font-display);
 }
 
-.fnd-pop-steplist {
+.riso-plannedcard-steplist {
   margin: 0;
   padding-left: 20px;
   display: flex;
@@ -18437,29 +18738,9 @@ body.no-select {
   color: var(--riso-soft);
 }
 
-.fnd-pop-stephead {
-  margin-left: -20px;
-  list-style: none;
-  font: 700 13.5px var(--riso-font-display);
-  color: var(--riso-ink);
-}
-
-.fnd-pop-nosteps {
-  margin: 0;
-  font: 400 13.5px var(--riso-font-body);
-  color: var(--riso-muted);
-}
-
-.fnd-pop-actions {
-  padding-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  border-top: 2px solid var(--riso-ink);
-}
-
-.fnd-pop-btn {
-  flex: 1 1 auto;
+/* The two answers of the "are you sure?" question (components/ConfirmDialog.jsx). */
+.riso-ask-btn {
+  flex: 1 1 150px;
   min-height: 46px;
   padding: 6px 16px;
   white-space: nowrap;
@@ -18471,36 +18752,10 @@ body.no-select {
   cursor: pointer;
 }
 
-.fnd-pop-btn.primary {
+.riso-ask-btn.primary {
   background: var(--riso-accent);
   color: var(--riso-on-accent);
   box-shadow: var(--riso-shadow-xs);
-}
-
-.fnd-pop-btn.soft {
-  background: var(--riso-canvas);
-  color: var(--riso-accent);
-}
-
-@media (max-width: 767px) {
-  .fnd-pop {
-    width: min(360px, 100%);
-    padding: 18px 18px 20px;
-    gap: 14px;
-  }
-
-  .fnd-pop-title {
-    font-size: 22px;
-  }
-
-  .fnd-pop-body {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-
-  .fnd-pop-photo {
-    aspect-ratio: 16 / 9;
-  }
 }
 
 .riso-sheet .fnd {
@@ -19933,49 +20188,16 @@ body.no-select {
   box-sizing: border-box;
 }
 
-/* The round ✓ says where an ingredient stands (IngredientMarks in RecipePopout.jsx):
+/* The round ✓ says where an ingredient stands (components/IngredientMarks.jsx):
    blue = in your Inventory, green = on your grocery list, white + = to buy. */
-.fnd-pop-have .riso-pill-mark {
+.ing-marks-have .riso-pill-mark {
   background: var(--riso-accent);
   color: var(--riso-on-accent);
 }
 
-.fnd-buy-pill.listed .riso-pill-mark {
+.ing-marks-buy-pill.listed .riso-pill-mark {
   background: var(--riso-green);
   color: var(--riso-ink);
-}
-
-/* The pop-out grows out of its card and returns on close (0.35s). */
-.fnd-pop {
-  animation: fnd-pop-grow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.fnd-pop.closing {
-  animation: fnd-pop-shrink 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-.fnd-pop-backdrop.closing {
-  animation: fnd-pop-unfade 0.3s ease forwards;
-}
-
-@keyframes fnd-pop-grow {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-}
-
-@keyframes fnd-pop-shrink {
-  to {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-}
-
-@keyframes fnd-pop-unfade {
-  to {
-    opacity: 0;
-  }
 }
 
 /* The planned meal's card: only the preview scrolls, its buttons stay in view. */
@@ -20153,10 +20375,6 @@ body.no-select {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.riso-ask-actions .fnd-pop-btn {
-  flex: 1 1 150px;
 }
 
 /* ---------- Planner: the quiet "Clear" under a day ---------- */

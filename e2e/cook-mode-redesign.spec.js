@@ -34,7 +34,6 @@ async function addRecipeAndStartCooking(page, { title, servings, ingredientName,
   await page.fill('textarea[placeholder="Describe this step"]', steps);
   await saveRecipe(page);
   await page.getByText(title, { exact: true }).click();
-  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.getByRole("button", { name: "Start cooking" }).click();
 }
 
@@ -137,7 +136,7 @@ test("For this step rows show scaled quantities and check off when tapped", asyn
   await page.getByRole("button", { name: "Exit cook mode" }).click();
   // 4 -> 8 servings (a clean 2x scale) via the "+" button, four clicks.
   for (let i = 0; i < 4; i++) {
-    await page.locator(".riso-rc-servings-stepper button").nth(1).click();
+    await page.getByRole("button", { name: "Increase servings" }).click();
   }
   await page.getByRole("button", { name: "Start cooking" }).click();
   await expect(page.locator(".cm-uses-qty")).toHaveText("4");
@@ -256,7 +255,7 @@ test("closing Cook mode with a timer running asks nothing, and the timer carries
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
 
   // The card's own timer for that step is still running...
-  await expect(page.locator(".riso-rc-timer-btn.primary", { hasText: "Pause" })).toBeVisible();
+  await expect(page.locator(".riso-rc-timer-pill.running")).toBeVisible();
   // ...and Cook mode picks it up where it was.
   await page.getByRole("button", { name: "Start cooking" }).click();
   await page.getByRole("tab", { name: "Step 2: Bake" }).click();
@@ -288,7 +287,6 @@ test("an hour-long timer reads in hours, and a long step with all its ingredient
     await page.goto("/");
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
     await page.getByText("Long Braise", { exact: true }).click();
-    await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
     await page.getByRole("button", { name: "Start cooking" }).click();
 
     await expect(page.locator(".cm-timer-time")).toHaveText("1:30:00");
@@ -315,7 +313,6 @@ async function cookFromApi(page, recipe, { fr = false } = {}) {
   await page.goto("/");
   await page.getByRole("button", { name: fr ? "Recettes" : "Recipes", exact: true }).click();
   await page.getByText(recipe.title, { exact: true }).click();
-  await page.getByRole("button", { name: /Open the full recipe|Ouvrir la recette complète/ }).click();
   await page.getByRole("button", { name: fr ? "Commencer à cuisiner" : "Start cooking" }).click();
   await expect(page.locator(".cm-overlay")).toBeVisible();
 }

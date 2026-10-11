@@ -16,6 +16,11 @@ import { RecipePhoto } from "./RecipePhoto.jsx";
 //                     open button, so the whole card opens the recipe. `action`
 //                     is the round + in the photo's corner: it sits next to the
 //                     button, because a button cannot hold a button.
+//   variant="strip"   the recipe card's "Uses the same ingredients" footer: a
+//                     photo of fixed height with no scrim or title on it (the
+//                     `caption` is its "{n} SHARED" sticker, at the bottom left)
+//                     and the `children` (the name and the time) under it,
+//                     inside the open button like the finder's card.
 //
 // `ready` turns the outline blue (--riso-accent: "you already have everything").
 // `caption` is the text over the top of the photo; each variant lays it out.
@@ -23,7 +28,9 @@ import { RecipePhoto } from "./RecipePhoto.jsx";
 // itself. A new recipe card is this with another caption and children, not a new
 // card.
 export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, lineColor, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
-  const finder = variant === "finder";
+  // The finder and strip cards hold their photo in a box of fixed height, with the
+  // text under it inside the button.
+  const finder = variant === "finder" || variant === "strip";
   const photo = (
     <>
       {photoUrl ? <RecipePhoto className="rpc-img" src={photoUrl} alt="" draggable="false" /> : null}

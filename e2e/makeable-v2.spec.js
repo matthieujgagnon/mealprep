@@ -7,7 +7,7 @@ import { PrismaClient } from "@prisma/client";
 // by what is missing from Inventory (planned recipes only in Meals of the week),
 // the photo card with its pink use-soon strip, tickable pills, sale marks that
 // open the shared deal card, buttons that change with the situation, À acheter and
-// the ticks on the real grocery list with Undo, and the shared pop-out and slot picker.
+// the ticks on the real grocery list with Undo, and the shared recipe card and slot picker.
 
 const prisma = new PrismaClient();
 test.use({ viewport: { width: 1280, height: 1000 } });
@@ -266,7 +266,7 @@ test("sale marks come only from real deals, open the shared deal card, and Show 
   await expect(page.getByRole("button", { name: "Show sales", exact: true })).toHaveAttribute("aria-pressed", "false");
 });
 
-test("tapping the photo or the title opens the pop-out; Cook opens the recipe card; Plan opens the slot picker", async ({ page }) => {
+test("tapping the photo or the title opens the recipe card; Cook opens it too; Plan opens the slot picker", async ({ page }) => {
   await signUp(page, "makeable-popout");
   const made = await seed(page, [["Riso Plan Dish", ["salmon"]], ["Riso Cook Dish", ["salmon", "leeks"]]], ["salmon"]);
   await openMakeable(page);
@@ -274,8 +274,10 @@ test("tapping the photo or the title opens the pop-out; Cook opens the recipe ca
   // The photo and the title are one tap target.
   await card(page, "Riso Plan Dish").locator(".rpc-open").click();
   const pop = page.getByRole("dialog", { name: "Riso Plan Dish" });
-  await expect(pop.locator(".fnd-pop-actions button")).toHaveText(["Plan", "Similar recipes", "Open the full recipe →"]);
+  await expect(pop.locator(".riso-rc-actions button")).toHaveText(["Start cooking", "Plan", "Similar recipes"]);
+  await expect(pop.locator(".riso-rc-back")).toHaveText("← Makeable");
   await page.keyboard.press("Escape");
+  await expect(pop).toHaveCount(0);
 
   // Plan on the card: the shared slot picker.
   await card(page, "Riso Plan Dish").getByRole("button", { name: "Plan", exact: true }).click();
@@ -287,13 +289,13 @@ test("tapping the photo or the title opens the pop-out; Cook opens the recipe ca
     .poll(async () => (await (await page.request.get(`/api/planner?week=${nextWeek}`)).json()).map((e) => e.recipe?.id))
     .toEqual([made["Riso Plan Dish"].id]);
 
-  // Cook on a ready card: the recipe's card on the Recipes page.
+  // Cook on a ready card: the recipe card, over this page.
   await card(page, "Riso Plan Dish").getByRole("button", { name: "Cook", exact: true }).click();
-  await expect(page.locator(".tab.active")).toHaveText("Recipes");
-  await expect(page.locator(".riso-rc-actions")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Riso Plan Dish" })).toBeVisible();
+  await expect(page.locator(".tab.active")).toHaveText("Makeable");
 });
 
-test("Similar recipes (from the pop-out) sets the base on this page; cards say what they share", async ({ page }) => {
+test("Similar recipes opens inside the recipe card, on this page", async ({ page }) => {
   await signUp(page, "makeable-similar");
   await seed(
     page,
@@ -307,19 +309,14 @@ test("Similar recipes (from the pop-out) sets the base on this page; cards say w
   await openMakeable(page);
 
   await card(page, "Riso Lemon Chicken").locator(".rpc-open").click();
-  await page.getByRole("dialog", { name: "Riso Lemon Chicken" }).getByRole("button", { name: "Similar recipes" }).click();
-  const banner = page.locator(".fnd-main");
-  await expect(banner).toContainText("Riso Lemon Chicken");
+  const dialog = page.getByRole("dialog", { name: "Riso Lemon Chicken" });
+  await dialog.getByRole("button", { name: "Similar recipes" }).click();
+  await expect(dialog.locator(".riso-rc-sim-banner-title")).toHaveText("Uses the same ingredients as Riso Lemon Chicken");
+  await expect(dialog.locator(".riso-rc-sim-card .rpc-title")).toHaveText(["Riso Lemon Fish"]);
+  await expect(dialog.locator(".riso-rc-sim-card .riso-rc-shared")).toHaveText("1 SHARED");
   await expect(page.locator(".tab.active")).toHaveText("Makeable");
-  await expect(page.locator(".fnd-results-title")).toHaveText("Recipes similar to Riso Lemon Chicken");
-  await expect(page.locator(".mkc .rpc-title")).toHaveText(["Riso Lemon Fish"]);
-  await expect(card(page, "Riso Lemon Fish").locator(".mkc-reason")).toHaveText("shares lemon");
-  await expect(banner.getByRole("button", { name: "Cancel" })).toHaveCount(0);
-
-  // The X closes it and the page is whole again.
-  await banner.getByRole("button", { name: "Close the Main meal" }).click();
-  await expect(banner).toHaveCount(0);
-  await expect(page.locator(".mkc .rpc-title")).toHaveCount(3);
+  // Makeable itself has no Main meal now: the page stays whole.
+  await expect(page.locator(".fnd-main")).toHaveCount(0);
 });
 
 test.describe("on a phone", () => {
