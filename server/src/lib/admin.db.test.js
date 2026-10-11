@@ -79,7 +79,7 @@ describe.skipIf(!dbUp)("/api/admin", () => {
     const asAdmin = await call("/api/admin/members", { cookie: adminCookie });
     expect(asAdmin.status).toBe(200);
     const row = asAdmin.data.members.find((m) => m.email === adminEmail);
-    expect(Object.keys(row).sort()).toEqual(["email", "lastActiveAt", "signedUpAt"]);
+    expect(Object.keys(row).sort()).toEqual(["email", "id", "lastActiveAt", "signedUpAt"]);
 
     expect((await call("/api/admin/members", { cookie: memberCookie })).status).toBe(403);
     expect((await call("/api/admin/anything-else", { cookie: memberCookie })).status).toBe(403);

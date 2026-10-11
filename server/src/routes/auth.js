@@ -2,7 +2,8 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword, createSession, destroySession, requireAuth } from "../lib/auth.js";
 import { seedPlaceholderRecipesForUser } from "../lib/placeholders.js";
-import { sendPasswordResetEmail } from "../lib/mailer.js";
+import { emailStatus, sendPasswordResetEmail } from "../lib/mailer.js";
+import { createResetToken, resetUrlFor } from "../lib/resetLink.js";
 import { fail, langOf, msg, normalizeLang } from "../lib/i18n.js";
 import { cleanWeekendDays, cleanWeekendFlag, DEFAULT_WEEKEND_DAYS } from "../lib/weekendDays.js";
 import { checkAdmin, isAdminEmail } from "../lib/admin.js";
@@ -10,11 +11,20 @@ import { INVITE_MESSAGE_KEYS, InviteError, inviteProblem, redeemInvite } from ".
 
 export const authRouter = Router();
 
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 // Guards against a rapid double-click (or a deliberate spam-click) filling
 // someone's inbox with reset emails - not a real rate limit, just avoids the
 // obviously wasteful case of sending several links within the same minute.
+// It counts emails that were actually sent: kept in memory (a restart clears
+// it, which only lets one repeat through), not read off the unused links in the
+// database, because a link made in Admin is an unused link too and must not
+// stop the email.
 const RESET_REQUEST_COOLDOWN_MS = 2 * 60 * 1000;
+const lastResetEmailAt = new Map(); // account id -> when its last reset email went out
+
+function rememberResetEmail(userId, now = Date.now()) {
+  for (const [id, at] of lastResetEmailAt) if (now - at >= RESET_REQUEST_COOLDOWN_MS) lastResetEmailAt.delete(id);
+  lastResetEmailAt.set(userId, now);
+}
 
 // `isAdmin` only decides whether the app shows the Admin link: the server
 // checks ADMIN_EMAILS again on every /api/admin call (lib/admin.js).
@@ -179,43 +189,58 @@ authRouter.patch("/me", requireAuth, async (req, res) => {
   res.json(serializeUser(user, await checkAdmin(user)));
 });
 
-// POST /api/auth/forgot-password { email } - always responds the same way
-// whether or not the email has an account, so this can't be used to check
-// which emails are registered. Mailing the link (rather than returning it
-// in the response) is what actually proves the requester owns that inbox.
+// POST /api/auth/forgot-password { email } - answers { sent, message }. It
+// never says "sent" unless an email really went out, and the answer never
+// depends on which emails have an account:
+//  - If email can't be sent at all (no Resend key or sender address, or a send
+//    failed in the last few minutes, see lib/mailer.js) the answer is
+//    { sent: false } for every email typed, decided before any account is looked
+//    at, and the server logs why.
+//  - Otherwise the answer is { sent: true } whether or not the email has an
+//    account. Mailing the link (rather than returning it in the response) is
+//    what actually proves the requester owns that inbox.
+//  - If the send itself fails, the server logs Resend's reason, removes the link
+//    it just made, and answers { sent: false }. That is the one answer that
+//    needs a real account (only a real send can fail); the failure is
+//    remembered for a few minutes so the next people get the same answer
+//    whichever email they type.
 authRouter.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   if (!email || !email.trim()) {
     return res.status(400).json(fail(req, "emailRequired"));
   }
 
-  const genericResponse = () =>
-    res.json({ message: msg(req, "resetSent") });
+  const sentResponse = () => res.json({ sent: true, message: msg(req, "resetSent") });
+  const unavailableResponse = () => res.json({ sent: false, message: msg(req, "emailUnavailable") });
 
-  const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-  if (!user) return genericResponse();
-
-  const recent = await prisma.passwordResetToken.findFirst({
-    where: { userId: user.id, usedAt: null, createdAt: { gt: new Date(Date.now() - RESET_REQUEST_COOLDOWN_MS) } },
-  });
-  if (recent) return genericResponse();
-
-  const token = await prisma.passwordResetToken.create({
-    data: { userId: user.id, expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
-  });
-
-  const appUrl = process.env.APP_URL || "http://localhost:5173";
-  const resetUrl = `${appUrl}/reset-password?token=${token.id}`;
-
-  try {
-    await sendPasswordResetEmail(user.email, resetUrl, user.locale || langOf(req));
-  } catch (err) {
-    console.error("Failed to send password reset email:", err.message);
-    // Still a generic response - a delivery failure shouldn't tell an
-    // outside caller anything about which emails exist.
+  const status = emailStatus();
+  if (status !== "ready") {
+    console.error(
+      status === "notSetUp"
+        ? "Password reset email not sent: email isn't set up. The server needs both RESEND_API_KEY and EMAIL_FROM."
+        : "Password reset email not sent: the email service failed a few minutes ago, so it isn't being tried again yet."
+    );
+    return unavailableResponse();
   }
 
-  genericResponse();
+  const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+  if (!user) return sentResponse();
+
+  const lastSent = lastResetEmailAt.get(user.id);
+  if (lastSent && Date.now() - lastSent < RESET_REQUEST_COOLDOWN_MS) return sentResponse();
+
+  const token = await createResetToken(user.id);
+
+  try {
+    await sendPasswordResetEmail(user.email, resetUrlFor(token.id, { req }), user.locale || langOf(req));
+  } catch (err) {
+    console.error("Failed to send password reset email:", err.message);
+    await prisma.passwordResetToken.delete({ where: { id: token.id } }).catch(() => {});
+    return unavailableResponse();
+  }
+
+  rememberResetEmail(user.id);
+  sentResponse();
 });
 
 // POST /api/auth/reset-password { token, password } - the actual password

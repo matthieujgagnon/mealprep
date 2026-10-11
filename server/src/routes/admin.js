@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { memberRows } from "../lib/admin.js";
+import { makeAdminResetLink } from "../lib/resetLink.js";
 import { fail } from "../lib/i18n.js";
 import { cleanInviteInput, expiryDate, generateCode, inviteRow } from "../lib/invites.js";
 import {
@@ -18,11 +19,12 @@ import {
 // before it runs.
 export const adminRouter = Router();
 
-// GET /api/admin/members - every account's email, signup date and last
+// GET /api/admin/members - every account's id, email, signup date and last
 // active (see memberRows in lib/admin.js). No other personal data.
 adminRouter.get("/members", async (req, res) => {
   const users = await prisma.user.findMany({
     select: {
+      id: true,
       email: true,
       createdAt: true,
       lastActiveAt: true,
@@ -30,6 +32,20 @@ adminRouter.get("/members", async (req, res) => {
     },
   });
   res.json({ members: memberRows(users) });
+});
+
+// POST /api/admin/members/:id/reset-link - a one-time link for that account to
+// choose a new password: it works once, expires in an hour and replaces any
+// link the account hadn't used yet (lib/resetLink.js). It is the same reset page
+// and rules as the emailed link, for when email can't be sent. The link is in the
+// answer only; it is not stored anywhere an admin can read it back, and the log
+// says who it was made for, never the link.
+adminRouter.post("/members/:id/reset-link", async (req, res) => {
+  const member = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, email: true } });
+  if (!member) return res.status(404).json(fail(req, "notFound.member"));
+  const { url, expiresAt } = await makeAdminResetLink(member.id, { req });
+  console.log(`Admin ${req.userId} made a reset link for ${member.email}.`);
+  res.status(201).json({ url, expiresAt });
 });
 
 // GET /api/admin/invites - every invite code, newest first: the code, its

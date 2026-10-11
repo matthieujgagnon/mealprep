@@ -13,6 +13,7 @@
     "setup": "npm install && npm run prisma:generate --workspace=server && npm run prisma:migrate --workspace=server",
     "build": "npm run prisma:generate --workspace=server && npm run prisma:deploy --workspace=server && npm run build --workspace=client",
     "start": "npm run start --workspace=server",
+    "reset-link": "node server/src/scripts/resetLink.js",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
