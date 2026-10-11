@@ -6,6 +6,7 @@ import { sendPasswordResetEmail } from "../lib/mailer.js";
 import { fail, langOf, msg, normalizeLang } from "../lib/i18n.js";
 import { cleanWeekendDays, cleanWeekendFlag, DEFAULT_WEEKEND_DAYS } from "../lib/weekendDays.js";
 import { checkAdmin, isAdminEmail } from "../lib/admin.js";
+import { INVITE_MESSAGE_KEYS, InviteError, inviteProblem, redeemInvite } from "../lib/invites.js";
 
 export const authRouter = Router();
 
@@ -30,17 +31,33 @@ function serializeUser(user, isAdmin = false) {
   };
 }
 
-// POST /api/auth/signup { email, password, name? } - creates an account.
+// POST /api/auth/signup { email, password, name?, inviteCode } - creates an
+// account. The app is invite-only: signup needs a code Matt made in Admin
+// (lib/invites.js) that is switched on, has uses left and hasn't expired, and
+// spends one of its uses. The one exception is the very first account on an
+// empty database (a new install, a local one): there is nobody yet to make a
+// code, and no admin until that account exists. Accounts that already exist
+// are not asked for anything: login doesn't use codes.
 // The very first account ever created automatically inherits every
 // pre-existing row (userId still null, from this app's single-user era,
 // before accounts existed) rather than leaving that data stranded and
 // invisible to everyone - see the backfill below. Every signup after that
 // just starts empty, same as any normal new account.
 authRouter.post("/signup", async (req, res) => {
-  const { email, password, name } = req.body;
+  const { email, password, name, inviteCode } = req.body;
   if (!email || !email.trim() || !password) {
     return res.status(400).json(fail(req, "emailPasswordRequired"));
   }
+
+  const isFirstUser = (await prisma.user.count()) === 0;
+  // The code comes before anything that says something about the email (is it
+  // taken? is it an admin's?), so a visitor without a code learns nothing
+  // about who has an account.
+  if (!isFirstUser) {
+    const problem = await inviteProblem(prisma, inviteCode);
+    if (problem) return res.status(403).json(fail(req, INVITE_MESSAGE_KEYS[problem]));
+  }
+
   if (password.length < 8) {
     return res.status(400).json(fail(req, "passwordTooShort"));
   }
@@ -58,11 +75,30 @@ authRouter.post("/signup", async (req, res) => {
     return res.status(409).json(fail(req, "emailTaken"));
   }
 
-  const isFirstUser = (await prisma.user.count()) === 0;
   const passwordHash = await hashPassword(password);
-  const user = await prisma.user.create({
-    data: { email: normalizedEmail, name: name?.trim() || null, passwordHash, locale: normalizeLang(req.body.locale) || langOf(req) },
-  });
+  let user;
+  try {
+    // Spending the code and making the account are one step: if the account
+    // can't be made, the code keeps its use.
+    user = await prisma.$transaction(async (tx) => {
+      const invite = isFirstUser ? null : await redeemInvite(tx, inviteCode);
+      return tx.user.create({
+        data: {
+          email: normalizedEmail,
+          name: name?.trim() || null,
+          passwordHash,
+          locale: normalizeLang(req.body.locale) || langOf(req),
+          inviteCodeId: invite?.id ?? null,
+        },
+      });
+    });
+  } catch (err) {
+    // Another signup took the code's last use a moment ago.
+    if (err instanceof InviteError) return res.status(403).json(fail(req, INVITE_MESSAGE_KEYS[err.reason]));
+    // The same email signed up between the check above and now.
+    if (err.code === "P2002") return res.status(409).json(fail(req, "emailTaken"));
+    throw err;
+  }
 
   if (isFirstUser) {
     await prisma.$transaction([

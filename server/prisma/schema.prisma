@@ -11,20 +11,24 @@ datasource db {
 // list/flyer deals are entirely their own — no data is shared between
 // accounts (see the userId field on every other model below).
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String      @id @default(cuid())
+  email        String      @unique
   name         String?
   passwordHash String
   locale       String? // "fr" | "en": the app's language for this account (and its emails); null until first chosen
-  weekendDays  Int[]    @default([5, 6]) // the days the Planner groups as the weekend (0 = Monday ... 6 = Sunday)
-  weekendOn    Boolean  @default(true) // whether the Planner draws the weekend block at all
-  weekendEve   Boolean  @default(true) // whether the block also takes in the supper before its first day
+  weekendDays  Int[]       @default([5, 6]) // the days the Planner groups as the weekend (0 = Monday ... 6 = Sunday)
+  weekendOn    Boolean     @default(true) // whether the Planner draws the weekend block at all
+  weekendEve   Boolean     @default(true) // whether the block also takes in the supper before its first day
   // "member" | "admin": a record of what the server last worked out from the
   // ADMIN_EMAILS environment variable. It never makes anyone an admin on its
   // own: only ADMIN_EMAILS does, checked on every /api/admin call (lib/admin.js).
-  role         String   @default("member")
+  role         String      @default("member")
   lastActiveAt DateTime? // when the account last used the app, written at most every 15 minutes (lib/auth.js)
-  createdAt    DateTime @default(now())
+  // The invite code the account signed up with (null for accounts made before
+  // invite codes, and for the very first account on an empty database).
+  inviteCodeId String?
+  inviteCode   InviteCode? @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
 
   sessions              Session[]
   passwordResetTokens   PasswordResetToken[]
@@ -46,6 +50,9 @@ model User {
   watchlistItems        WatchlistItem[]
   recipeImages          RecipeImage[]
   flyerSettings         FlyerSettings?
+  aiUsage               AiUsage[]
+
+  @@index([inviteCodeId])
 }
 
 // A logged-in session, looked up by the id stored in the browser's httpOnly
@@ -492,4 +499,40 @@ model PriceBaseline {
   month     String // "YYYY-MM" of that latest price
   history   String   @default("[]") // JSON [{ month, price }] oldest first, up to 12 months
   updatedAt DateTime @updatedAt
+}
+
+// A code that lets one person (or a few) sign up while the app is invite-only.
+// Matt makes them in Admin (routes/admin.js); signup spends one use of one
+// (routes/auth.js, lib/invites.js). A code works while it is switched on, has
+// uses left and hasn't expired.
+model InviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique // "K7M2-QX9P": letters and digits without look-alikes, stored in capitals
+  note      String? // Matt's reminder of who it is for, e.g. "for Emilie"
+  maxUses   Int       @default(1) // 1 = single-use
+  usedCount Int       @default(0)
+  expiresAt DateTime? // null = never expires
+  active    Boolean   @default(true) // false = switched off
+  createdAt DateTime  @default(now())
+
+  users User[]
+}
+
+// How many Gemini-backed actions (flyer file reading, receipt reading) an
+// account has used on one day. `day` is the Quebec calendar day, "2026-10-11",
+// so the count starts again at local midnight (lib/aiLimit.js).
+model AiUsage {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day    String
+  count  Int    @default(0)
+
+  @@id([userId, day])
+}
+
+// App-wide settings Matt can change in Admin. One row, id "app"; no row means
+// every setting has its default (lib/aiLimit.js).
+model AppSettings {
+  id           String @id @default("app")
+  aiDailyLimit Int // Gemini-backed actions per account per day; 0 pauses them
 }
