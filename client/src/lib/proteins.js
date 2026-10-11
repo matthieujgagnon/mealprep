@@ -4,8 +4,10 @@
 // "chicken's on sale". Tofu counts as a kind too. Each kind's best buy is its biggest real saving
 // (see dealVerdict / dealSavings), then its lowest price per lb.
 import { capitalize } from "./groceryList.js";
-import { dealSavings, dealVerdict, foldText, productText, tilePrice } from "./flyerIngredients.js";
+import { daysLeft, dealSavings, dealVerdict, foldText, productText, tilePrice } from "./flyerIngredients.js";
+import { parseDateKey } from "./dates.js";
 import { t } from "../i18n/index.js";
+import { formatMoney, formatMonthDay, formatWeekday, localizePrice, perUnit } from "../i18n/format.js";
 
 const TOFU = /\btofu\b/;
 
@@ -218,25 +220,93 @@ export function proteinsOnSale(deals) {
   });
 }
 
-// Home's list: every kind, always, in the order shown. `status` says what
-// each has this week:
+// The order of the rows on Home (Matt's design). PROTEINS keeps its own order
+// for Recipes' protein filter; this is only how the card lists them.
+export const PROTEIN_CARD_ORDER = ["chicken", "seafood", "fish", "beef", "pork", "tofu", "turkey", "lamb-veal"];
+
+// How big a deal's saving reads on its pill ("50% off"): the number the
+// cards compare when they pick the Best deal, so two pills that read the
+// same are a tie.
+const shownPct = (deal) => Math.round((dealSavings(deal)?.pct ?? 0) * 100);
+
+// Home's list: a row for each kind that has something to show this week, in
+// PROTEIN_CARD_ORDER. A kind with nothing on the flyers, or only prices not
+// worth it, has no row at all. `status` says what each has:
 //   deal   - something really on sale (`best`, with `onSale` the others)
 //   unsure - on a flyer, but nothing to say if it's a good price (tofu has
 //            no Quebec average and flyers rarely print a regular price)
-//   none   - nothing on the flyers, or only prices not worth it
-// `products` is what opens under a card: the real sales for a deal, the
-// priced items we can't judge yet for an unsure kind, nothing for none.
-// Deals come first (best buy first), then the unsure ones, then the kinds
-// with nothing, in PROTEINS order.
+// `products` is what opens under a row: the real sales for a deal, the
+// priced items we can't judge yet for an unsure kind, best first.
+// `bestDeal` is true on one row: the deal whose best buy has the biggest
+// real saving (the sale % on its pill), then the lowest price per lb.
 export function proteinRows(deals) {
   const found = new Map(proteinsOnSale(deals).map((k) => [k.protein.id, k]));
-  const rows = PROTEINS.map((protein, order) => {
-    const k = found.get(protein.id);
-    if (k?.best) return { protein, order, status: "deal", best: k.best, onSale: k.onSale, products: k.onSale, all: k.all };
+  const rows = [];
+  for (const id of PROTEIN_CARD_ORDER) {
+    const protein = PROTEINS.find((p) => p.id === id);
+    const k = found.get(id);
+    if (k?.best) {
+      rows.push({ protein, status: "deal", best: k.best, onSale: k.onSale, products: k.onSale, all: k.all, bestDeal: false });
+      continue;
+    }
     const unsure = (k?.all || []).filter((d) => dealVerdict(d)?.key === "unknown");
-    if (unsure.length > 0) return { protein, order, status: "unsure", best: unsure[0], onSale: [], products: unsure, all: k.all };
-    return { protein, order, status: "none", best: null, onSale: [], products: [], all: k?.all || [] };
-  });
-  const group = { deal: 0, unsure: 1, none: 2 };
-  return rows.sort((a, b) => group[a.status] - group[b.status] || (a.best && b.best ? compareProteinDeals(a.best, b.best) : 0) || a.order - b.order);
+    if (unsure.length > 0) {
+      rows.push({ protein, status: "unsure", best: unsure[0], onSale: [], products: unsure, all: k.all, bestDeal: false });
+    }
+  }
+  let winner = null;
+  for (const row of rows) {
+    if (row.status !== "deal") continue;
+    const pct = shownPct(row.best);
+    const perLb = rank(row.best).perLb;
+    if (!winner || pct > winner.pct || (pct === winner.pct && perLb < winner.perLb)) winner = { row, pct, perLb };
+  }
+  if (winner) winner.row.bestDeal = true;
+  return rows;
+}
+
+// The words and numbers a product shows on its card, in the app's language.
+// A value the flyers don't really give us is null, and the card leaves it out.
+//   amount, unit  the price, per lb / per L / each (the flyer's own text when
+//                 it couldn't be read)
+//   off           "50% off"; null when the item isn't a real sale
+//   regular       the flyer's regular price on the same footing as the price
+//   ends          today, tomorrow, the weekday, or the date after that
+//   qc            Quebec's average (Statistics Canada): { text, good }
+export function proteinProduct(deal) {
+  const p = tilePrice(deal);
+  const saving = dealSavings(deal);
+  return {
+    name: proteinName(deal),
+    store: deal.store,
+    amount: p ? formatMoney(p.price) : localizePrice(deal.price),
+    unit: p ? perUnit(p.basis) : "",
+    off: saving ? t("proteins.offPct", { pct: shownPct(deal) }) : null,
+    regular: deal.regularPrice && p && deal.unitPrice ? `${formatMoney(deal.regularPrice * (p.price / deal.unitPrice))}${perUnit(p.basis)}` : null,
+    ends: endsText(deal.validUntil),
+    qc: quebecText(deal),
+  };
+}
+
+// "today", "tomorrow", then the weekday for the rest of the week, then the
+// date. Nothing when the flyer prints no end or it has already ended.
+function endsText(validUntil) {
+  if (!validUntil) return null;
+  const key = String(validUntil).slice(0, 10);
+  const days = daysLeft(key);
+  if (days == null || days < 0) return null;
+  if (days === 0) return t("proteins.endsToday");
+  if (days === 1) return t("proteins.endsTomorrow");
+  const date = parseDateKey(key);
+  return days <= 6 ? formatWeekday(date) : formatMonthDay(date);
+}
+
+// How the price sits against Quebec's average, when a matching product has
+// one: "−45%", "+12%" or "near average". Green only for the good side.
+function quebecText(deal) {
+  const pct = deal.baseline?.pct;
+  if (pct == null) return null;
+  if (pct <= -1) return { text: t("proteins.qcLess", { pct: Math.abs(pct) }), good: true };
+  if (pct >= 1) return { text: t("proteins.qcMore", { pct }), good: false };
+  return { text: t("proteins.qcNear"), good: false };
 }
