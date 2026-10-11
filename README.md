@@ -66,6 +66,11 @@ running app on Render — all free tiers.
   - `RESEND_API_KEY` → only needed for "forgot password" emails to work
   - `APP_URL` → your Render URL once you have it (e.g. `https://mattmocookbook.onrender.com`) —
     can be added/updated after the first deploy
+  - `ADMIN_EMAILS` → the email(s) of the account(s) that may open the Admin page, separated by
+    commas. **Only list an email that already has an account**: signup refuses a listed email, so
+    nobody else can claim it, and the server's log warns about a listed email with no account.
+    Only this variable makes someone an admin; take an email out and that account loses Admin
+    after the restart that follows the change.
 - Click **Create Web Service**
 
 Every table that needs "no duplicates per account" enforces it with a real database

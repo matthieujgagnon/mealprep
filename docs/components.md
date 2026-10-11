@@ -38,6 +38,8 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Finished view ("I cooked this") | `components/CookedView.jsx` (`CookedView`, `CookedViewHost`), `components/CookedViewParts.jsx`, `lib/cookedView.js` | The one view after cooking, behind three doors: the end of Cook mode, a planned meal's card, Home's tonight card. Leftovers, then Take out of your Inventory, then the pop-up. |
 | Ingredient-to-Inventory matching | `lib/inventoryMatch.js` | **The one matcher.** Which Inventory item a recipe ingredient is (both languages, varieties, cuts, never leftovers), what a recipe has and lacks (`recipeHave`), "uses expiring", Cook with, and how much a cooked meal takes out. Every page that says "have it or not" uses it. |
 | Leftovers | `lib/leftovers.js`, the Leftovers shelf in `components/Inventory.jsx`, `LeftoverResultCard` in `components/Finder.jsx` | One leftovers system: the LEFTOVER item, its keep times, planning it, the past-fridge-life rule. |
+| Account menu | `accountActions` in `App.jsx` | The avatar circle's menu: the name, Help, Admin (admins only) and Log out, on a computer and on a phone. |
+| Admin page | `components/Admin.jsx`, `lib/admin.js` (client), `server/src/lib/admin.js` | The admin-only page at `/admin`: Project HQ, Members, and Invite codes and AI usage to come. Built from the shared pieces, no new pill or button. |
 | Confetti | `StoreConfetti` in `components/StoreModeParts.jsx`, `lib/storeConfetti.js` | Store mode's celebration, and with `burst` the finished view's. |
 
 ## Recipe pop-out
@@ -289,6 +291,21 @@ One leftovers system. A **LEFTOVER item** is an Inventory item with `isLeftover`
 - **Planner:** the search's leftover cards (see Planner finder card) plan a leftover meal with `leftoverItemId` (a recipe meal, or a note « Restes · pizza » for leftovers with no recipe); the yellow border and tag as before, nothing on the grocery list. Leftover meals planned ahead (round button, Option-drag, Place leftovers) are linked when the recipe's leftovers are added. The "past fridge life" sticker uses `leftoverIsStale`: after the leftovers' use-by date when linked, else more days after the meal than the recipe keeps.
 - **A day passes:** when the app opens, `POST /pantry-inventory/leftovers/settle` takes one portion off for each linked leftover meal before today, once (the meal gets `cookedAt`); leftovers at zero leave. The toast says so; Undo puts the portions back.
 - **Home:** Use it up lists leftovers with 3 days or less first (`toUseItems`), with the LEFTOVER tag; Cook with these searches the other items.
+
+## Account menu
+
+The avatar circle at the right of the header opens one small menu, on a computer and on a phone: the account's name, then the buttons in `accountActions` (`App.jsx`): Help, **Admin** (only when the server says the account is an admin, `user.isAdmin` from `/api/auth/me`) and Log out, always last. A new entry is added to that list, nowhere else. The button of the page that is open is filled ink (`aria-current="page"`).
+
+## Admin page
+
+`components/Admin.jsx` is the one admin page, at the address `/admin` (the only page with its own address: `App.jsx` opens it when the app starts at `/admin`, and moves the address between `/admin` and `/` as the page opens and closes, so Back and Forward work). It is Riso v2 like Home and Recipes, light: the Recipes heading (`riso-recipes-heading`, `riso-eyebrow`, `riso-recipes-title`), cards like Help's (`riso-admin-card`), and only shared pieces inside: `riso-btn` (`hot` on the blue Project HQ block, `primary` for Back to Home), `Pill` (ink "You", pink sticker "Coming soon") and `CountPill` (blue, the number of members). There is no ☀ / ☾ switch (it is not a dark-mode page, like Home and Recipes) and no Toast (nothing on it can be undone).
+
+- **Project HQ:** a link that opens the HQ artifact in a new tab (`target="_blank"`, `rel="noopener noreferrer"`).
+- **Members:** `GET /api/admin/members`, every account's email, signup date and last active, nothing else, most recently active first. Dates read Today, Yesterday or the date (`dayKind` in `lib/admin.js`); "Not yet" when there is none. On a phone each account is a block: the email, then the two dates under small labels.
+- **Invite codes** and **AI usage:** dashed cards with a "Coming soon" pill, for the next ticket.
+- **Not allowed:** anyone who isn't an admin and opens `/admin` sees « Accès refusé. » / "Not allowed." and Back to Home, also when the server answers 403.
+
+**Who is an admin.** Only the server decides, and only from the `ADMIN_EMAILS` environment variable (emails separated by commas, compared trimmed and lowercased on both sides): `server/src/lib/admin.js`. `User.role` records the last check and **never makes anyone an admin on its own**. Every `/api/admin` route is mounted behind `requireAuth` and `requireAdmin` in `server/src/index.js`, so a route added there is guarded too: 401 when not logged in, 403 when not an admin. Signup refuses an email listed in `ADMIN_EMAILS` (it answers as for a taken email), because signup doesn't verify emails: a listed email with no account could otherwise be claimed by whoever signs up with it. So only list emails that already have an account; the server logs a warning at startup for each listed email that has none.
 
 ## Where things live in `App.jsx`
 
