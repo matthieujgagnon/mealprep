@@ -8,7 +8,7 @@ import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { currentMealType, makeableNow, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
-import { useDeals } from "../lib/dealsStore.js";
+import { refreshDeals, useDeals } from "../lib/dealsStore.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
 import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
@@ -114,8 +114,7 @@ export function Home({
   onOpenFlyerDeal,
   onPickRecipeFor,
   isOnGroceryList = () => false,
-  onAddToGroceryList,
-  onRemoveFromGroceryList,
+  onToggleGroceryItem,
   onCooked,
 }) {
   const weekStart = currentWeekStart();
@@ -130,7 +129,7 @@ export function Home({
   const [checkRows, setCheckRows] = useState({});
   const [extraItems, setExtraItems] = useState([]);
   const [groceryOverrides, setGroceryOverrides] = useState([]);
-  const { deals } = useDeals();
+  const { deals, loaded: dealsLoaded, failed: dealsFailed } = useDeals();
 
   // The week strip can look ahead to next week without disturbing the
   // "tonight" card or the grocery card above, which are always about the
@@ -201,18 +200,14 @@ export function Home({
   const showMakeable = readyNow.length > 0 || nearly.length > 0;
 
   // Proteins on sale adds a deal's product to the grocery list, or takes it
-  // off again; the grocery card above follows.
+  // off again (the shared toggle: Undo toast included); the grocery card above
+  // follows, after the add, the removal and the Undo.
   function refreshGrocery() {
     api.listGroceryExtras().then(setExtraItems).catch(() => {});
     api.listGroceryOverrides().then(setGroceryOverrides).catch(() => {});
   }
-  async function addToList(names, opts) {
-    await onAddToGroceryList?.(names, opts);
-    refreshGrocery();
-  }
-  async function removeFromList(name) {
-    await onRemoveFromGroceryList?.(name);
-    refreshGrocery();
+  function toggleOnList(name, { dealId } = {}) {
+    return onToggleGroceryItem?.(name, { dealId, onChanged: refreshGrocery });
   }
 
   const groceryItems = buildGroceryList(upcomingEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
@@ -574,13 +569,15 @@ export function Home({
       <div className={`riso-home-bottom-row${showMakeable ? " three" : ""}`}>
         <ProteinsOnSale
           deals={deals}
+          loaded={dealsLoaded}
+          failed={dealsFailed}
+          onRetry={refreshDeals}
           recipes={recipes}
           onNavigate={onNavigate}
           onFindProtein={onFindProtein}
           onOpenFlyer={onOpenFlyerDeal}
           isOnGroceryList={isOnGroceryList}
-          onAddToList={addToList}
-          onRemoveFromList={removeFromList}
+          onToggleOnList={toggleOnList}
         />
 
         {showMakeable && (

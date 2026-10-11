@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}.nos::-webkit-scrollbar{display:none}</style></helmet>
+<header ref="{{ setRoot }}" style="position:{{ pos }};top:0;z-index:50;display:flex;align-items:center;justify-content:{{ jc }};gap:{{ gap }};flex-wrap:wrap;padding:{{ pad }};margin-bottom:{{ mb }};border-bottom:{{ bb }};box-sizing:border-box;background:#F4F1EA;color:#16181F;font-family:'Bricolage Grotesque',sans-serif">
+<h1 style="flex:none;margin:0;font:800 {{ logoFs }}/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:#16181F;white-space:nowrap">matt mo <span style="background:#FF48B0;color:#16181F;padding:{{ wmPad }};border-radius:{{ wmRad }}">cookbook</span></h1>
+<nav class="nos" aria-label="{{ navLabel }}" style="order:{{ navOrder }};flex:{{ navFlex }};min-width:0;display:flex;gap:{{ navGap }};margin:{{ navMargin }};padding:{{ navPad }};overflow-x:{{ navOx }};scrollbar-width:none">
+<sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="7"><div onClick="{{ tb.go }}" style="flex:none;height:{{ tabH }};padding:0 {{ tabPad }};border-radius:{{ tabRad }};background:{{ tb.bg }};color:{{ tb.fg }};border:2px solid {{ tb.bd }};box-shadow:{{ tb.sh }};display:flex;align-items:center;font:{{ tabW }} {{ tabFs }} 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box;user-select:none">{{ tb.label }}</div></sc-for>
+</nav>
+<div style="order:2;margin-left:auto;display:flex;align-items:center;gap:8px">
+<div role="group" aria-label="{{ langLabel }}" style="display:inline-flex;flex:none;border:2px solid #16181F;border-radius:30px;overflow:hidden;background:#FFFDF8">
+<sc-for list="{{ langs }}" as="l" hint-placeholder-count="2"><div onClick="{{ l.pick }}" title="{{ l.title }}" style="padding:{{ langPad }};min-height:{{ langMinH }};display:flex;align-items:center;font:600 {{ langFs }}/1 'DM Mono',monospace;letter-spacing:.08em;cursor:pointer;background:{{ l.bg }};color:{{ l.fg }};box-sizing:border-box;user-select:none">{{ l.label }}</div></sc-for>
+</div>
+<div ref="{{ setMenuWrap }}" style="position:relative">
+<div onClick="{{ toggleMenu }}" aria-label="{{ accountLabel }}" style="width:36px;height:36px;border-radius:18px;background:#FFE14D;border:2px solid #16181F;color:#16181F;display:flex;align-items:center;justify-content:center;font:800 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box;user-select:none">{{ initial }}</div>
+<sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:0;top:44px;z-index:60;min-width:180px;background:#FFFDF8;border:2px solid #16181F;border-radius:16px;box-shadow:5px 5px 0 #16181F;padding:12px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box"><span style="position:absolute;top:-9px;right:12px;width:14px;height:14px;background:#FFFDF8;border-left:2px solid #16181F;border-top:2px solid #16181F;transform:rotate(45deg)"></span>
+<span style="font:500 14px Inter,system-ui,sans-serif;color:#3F3E37;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ userName }}</span>
+<div onClick="{{ goHelp }}" style="background:{{ helpBg }};color:{{ helpFg }};border:2px solid #16181F;border-radius:8px;padding:6px 10px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:center" style-hover="background:#E9E4D8">{{ helpLabel }}</div>
+<div onClick="{{ logOut }}" style="background:#FFFDF8;color:#16181F;border:2px solid #16181F;border-radius:8px;padding:6px 10px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:center" style-hover="background:#E9E4D8">{{ logOutLabel }}</div>
+</div></sc-if>
+</div>
+</div>
+</header>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;260px&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;home&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;recipes&quot;,&quot;planner&quot;,&quot;makeable&quot;,&quot;grocery&quot;,&quot;flyers&quot;,&quot;inventory&quot;,&quot;help&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Header&quot;},&quot;userName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Matthieu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Header&quot;},&quot;onNavigate&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(key: string) =&gt; void&quot;},&quot;onLogOut&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = { w: typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1280, menu: false };
+  KEYS = ['home', 'recipes', 'planner', 'makeable', 'grocery', 'flyers', 'inventory'];
+  async componentDidMount() {
+    const m = await import('./part-copy.js');
+    this.m = m;
+    this.unsub = m.subscribe(() => this.forceUpdate());
+    this.onDoc = e => { if (this.menuWrap && !this.menuWrap.contains(e.target)) this.setState({ menu: false }); };
+    document.addEventListener('pointerdown', this.onDoc);
+    this.forceUpdate();
+  }
+  componentWillUnmount() {
+    if (this.unsub) this.unsub();
+    if (this.ro) this.ro.disconnect();
+    document.removeEventListener('pointerdown', this.onDoc);
+  }
+  setRoot = el => {
+    if (this.ro) this.ro.disconnect();
+    if (!el) return;
+    const upd = () => { const w = Math.round(el.getBoundingClientRect().width); if (w && w !== this.state.w) this.setState({ w }); };
+    upd();
+    this.ro = new ResizeObserver(upd);
+    this.ro.observe(el);
+  };
+  setMenuWrap = el => { this.menuWrap = el; };
+  renderVals() {
+    const m = this.m, t = m ? m.t : () => '', lang = m ? m.getLang() : 'en';
+    const W = this.state.w, P = W < 768, T = W < 1024;
+    const sq = Math.max(0, Math.min(141, 1165 - W)) * (W >= 1024 && W < 1280 ? 1 : 0);
+    const active = this.props.active || 'home', nav = this.props.onNavigate || (() => {});
+    const name = this.props.userName || 'Matthieu';
+    const gap = P ? 0 : 20 - sq * 0.0567;
+    return {
+      setRoot: this.setRoot, setMenuWrap: this.setMenuWrap,
+      pos: P ? 'sticky' : 'relative', jc: P ? 'space-between' : 'flex-start',
+      gap: gap + 'px', pad: P ? '8px 18px 0' : '24px 40px', mb: P ? '18px' : '24px', bb: P ? '2px solid #16181F' : 'none',
+      logoFs: (P ? 21 : 28 - sq * 0.0284) + 'px', wmPad: P ? '0 6px' : '0 8px', wmRad: P ? '5px' : '6px',
+      navOrder: T ? '3' : '1', navFlex: T ? '1 1 100%' : '0 0 auto', navGap: (P ? 6 : 4 - sq * 0.0142) + 'px',
+      navMargin: P ? '8px -18px 0' : '0', navPad: P ? '2px 18px 12px' : '0', navOx: P ? 'auto' : 'visible',
+      tabH: P ? '40px' : '36px', tabPad: (P ? 16 : 14 - sq * 0.0426) + 'px', tabRad: P ? '20px' : '18px', tabFs: P ? '14.5px' : '14px', tabW: P ? '700' : '500',
+      langPad: P ? '0 11px' : '6px 9px', langMinH: P ? '32px' : '0', langFs: P ? '12px' : '11px',
+      navLabel: t('nav.label'), langLabel: t('lang.label'), accountLabel: t('app.account'),
+      helpLabel: t('app.help'), logOutLabel: t('app.logOut'),
+      helpBg: active === 'help' ? '#16181F' : '#FFFDF8', helpFg: active === 'help' ? '#F4F1EA' : '#16181F',
+      userName: name, initial: name.charAt(0).toUpperCase(),
+      menuOpen: this.state.menu, toggleMenu: () => this.setState(s => ({ menu: !s.menu })),
+      goHelp: () => { this.setState({ menu: false }); nav('help'); },
+      logOut: () => { this.setState({ menu: false }); (this.props.onLogOut || (() => {}))(); },
+      tabs: this.KEYS.map(k => { const on = active === k; return { label: t('nav.' + k), bg: on ? '#2323FF' : P ? '#FFFDF8' : 'transparent', fg: on ? '#fff' : '#16181F', bd: on || P ? '#16181F' : 'transparent', sh: on ? '3px 3px 0 #16181F' : 'none', go: () => nav(k) }; }),
+      langs: ['fr', 'en'].map(c => { const on = lang === c; return { label: t('lang.' + c), title: t(c === 'fr' ? 'lang.langFr' : 'lang.langEn'), bg: on ? '#16181F' : 'transparent', fg: on ? '#F4F1EA' : '#16181F', pick: () => m && m.setLang(c) }; }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   PROTEINS,
+  PROTEIN_CARD_ORDER,
   ingredientIsProtein,
   isSeasoningIngredient,
   mentionsTofu,
   proteinOf,
+  proteinProduct,
   proteinRows,
   proteinsOnSale,
   recipeUsesProtein,
@@ -81,19 +83,69 @@ describe("recipes that use a protein", () => {
 describe("Home's protein rows", () => {
   const ids = (rows) => rows.map((r) => r.protein.id);
 
-  it("lists every kind even with no flyers at all, each saying nothing this week", () => {
-    const rows = proteinRows([]);
-    expect(ids(rows)).toEqual(PROTEINS.map((p) => p.id));
-    expect(rows.every((r) => r.status === "none" && r.best === null)).toBe(true);
-    expect(ids(proteinRows(undefined))).toHaveLength(PROTEINS.length);
+  it("has no rows with no flyers at all", () => {
+    expect(proteinRows([])).toEqual([]);
+    expect(proteinRows(undefined)).toEqual([]);
   });
 
-  it("puts a real deal first and keeps the kinds with nothing after it", () => {
-    const rows = proteinRows([deal("Boneless chicken breast", "meat", { regularPrice: 5.99, unitPrice: 3.99, unitBasis: "lb" })]);
-    expect(rows[0]).toMatchObject({ status: "deal" });
-    expect(rows[0].protein.id).toBe("chicken");
-    expect(rows).toHaveLength(PROTEINS.length);
-    expect(rows.slice(1).every((r) => r.status === "none")).toBe(true);
+  it("is the design's order and names every kind once", () => {
+    expect([...PROTEIN_CARD_ORDER].sort()).toEqual(PROTEINS.map((p) => p.id).sort());
+    expect(PROTEIN_CARD_ORDER).toEqual(["chicken", "seafood", "fish", "beef", "pork", "tofu", "turkey", "lamb-veal"]);
+  });
+
+  it("hides a kind with nothing on sale, and keeps the design's order whatever the savings", () => {
+    const sale = (item, aisle, regular, price) => deal(item, aisle, { regularPrice: regular, unitPrice: price, unitBasis: "lb" });
+    const rows = proteinRows([
+      sale("Pork loin", "meat", 8.99, 2.99), // 67% off
+      sale("Atlantic salmon", "seafood", 14.99, 13.99), // 7% off
+      sale("Boneless chicken breast", "meat", 5.99, 3.99),
+      deal("Lean ground beef", "meat", { unitPrice: 6.99, unitBasis: "lb", regularPrice: 6.99 }), // a normal price: not a sale
+    ]);
+    expect(ids(rows)).toEqual(["chicken", "fish", "pork"]);
+    expect(rows.every((r) => r.status === "deal")).toBe(true);
+  });
+
+  it("puts a kind we can't judge yet in its place among the deals", () => {
+    const rows = proteinRows([
+      deal("Firm tofu", "other"),
+      deal("Pork loin", "meat", { regularPrice: 8.99, unitPrice: 2.99, unitBasis: "lb" }),
+      deal("Whole turkey", "meat", { regularPrice: 6.99, unitPrice: 3.49, unitBasis: "lb" }),
+    ]);
+    expect(rows.map((r) => [r.protein.id, r.status])).toEqual([
+      ["pork", "deal"],
+      ["tofu", "unsure"],
+      ["turkey", "deal"],
+    ]);
+  });
+
+  describe("the Best deal row", () => {
+    const sale = (item, aisle, regular, price, extra = {}) => deal(item, aisle, { id: item, regularPrice: regular, unitPrice: price, unitBasis: "lb", ...extra });
+    const bestDealIds = (rows) => rows.filter((r) => r.bestDeal).map((r) => r.protein.id);
+
+    it("goes to the row whose best buy has the biggest real saving, not the lowest price", () => {
+      const rows = proteinRows([
+        sale("Whole chicken", "meat", 3.49, 1.99), // 43% off and the cheapest per lb
+        sale("Striploin steak", "meat", 19.99, 9.99), // 50% off
+        sale("Pork loin", "meat", 5.99, 3.99), // 33% off
+      ]);
+      expect(bestDealIds(rows)).toEqual(["beef"]);
+    });
+
+    it("breaks a tie on the % the pills read by the lowest price per lb", () => {
+      // 49.6% and 50.4% both read "50% off"
+      const rows = proteinRows([
+        sale("Striploin steak", "meat", 19.84, 10.0),
+        sale("Pork loin", "meat", 5.04, 2.5),
+      ]);
+      expect(bestDealIds(rows)).toEqual(["pork"]);
+    });
+
+    it("is on one row only, and never a kind we can't judge yet", () => {
+      const rows = proteinRows([deal("Firm tofu", "other"), sale("Pork loin", "meat", 8.99, 2.99), sale("Whole turkey", "meat", 6.99, 3.49)]);
+      expect(rows.filter((r) => r.bestDeal)).toHaveLength(1);
+      expect(rows.find((r) => r.protein.id === "tofu").bestDeal).toBe(false);
+      expect(proteinRows([deal("Firm tofu", "other")]).some((r) => r.bestDeal)).toBe(false);
+    });
   });
 
   it("shows this week's tofu even when nothing says if the price is good", () => {
@@ -114,7 +166,7 @@ describe("Home's protein rows", () => {
     expect(tofu.products.map((d) => d.item).sort()).toEqual(["Firm tofu, 454 g", "Smoked tofu, 350 g"]);
     const chicken = rows.find((r) => r.protein.id === "chicken");
     expect(chicken.products).toEqual(chicken.onSale);
-    expect(rows.find((r) => r.protein.id === "beef").products).toEqual([]);
+    expect(rows.find((r) => r.protein.id === "beef")).toBeUndefined();
   });
 
   it("gives a tofu with a real saving the deal row", () => {
@@ -126,6 +178,72 @@ describe("Home's protein rows", () => {
   it("lamb has its own emoji, and so does every other kind", () => {
     expect(PROTEINS.find((p) => p.id === "lamb-veal").emoji).toBe("🐑");
     expect(PROTEINS.every((p) => p.emoji)).toBe(true);
+  });
+});
+
+describe("what a product card shows", () => {
+  const today = () => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+  const keyIn = (days) => {
+    const d = today();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const chicken = (extra = {}) => deal("Boneless chicken thighs", "meat", { id: "t", unitPrice: 3.99, unitBasis: "lb", ...extra });
+
+  it("gives the price, the sale % and the regular price from the flyer", () => {
+    const p = proteinProduct(chicken({ regularPrice: 7.98 }));
+    expect(p).toMatchObject({ store: "Metro", amount: "$3.99", unit: "/lb", off: "50% off", regular: "$7.98/lb" });
+  });
+
+  it("leaves out everything the flyers don't really give", () => {
+    const p = proteinProduct(chicken());
+    expect(p.off).toBeNull();
+    expect(p.regular).toBeNull();
+    expect(p.ends).toBeNull();
+    expect(p.qc).toBeNull();
+  });
+
+  it("puts the regular price on the same footing as the price (a pack price per lb, an each price each)", () => {
+    const p = proteinProduct(chicken({ unitPrice: 4, unitBasis: "lb", comparePrice: 2, compareBasis: "lb", regularPrice: 8 }));
+    expect(p).toMatchObject({ amount: "$2.00", regular: "$4.00/lb" });
+    expect(proteinProduct(deal("Firm tofu", "other", { unitPrice: 2.49, regularPrice: 3.99 }))).toMatchObject({ unit: " ea", regular: "$3.99 ea" });
+  });
+
+  it("says when the sale ends: today, tomorrow, the weekday, then the date; nothing once it has ended", () => {
+    expect(proteinProduct(chicken({ validUntil: keyIn(0) })).ends).toBe("today");
+    expect(proteinProduct(chicken({ validUntil: keyIn(1) })).ends).toBe("tomorrow");
+    const weekday = new Intl.DateTimeFormat("en-CA", { weekday: "long" }).format(new Date(keyIn(3) + "T12:00:00"));
+    expect(proteinProduct(chicken({ validUntil: keyIn(3) })).ends).toBe(weekday);
+    expect(proteinProduct(chicken({ validUntil: keyIn(9) })).ends).toMatch(/^[A-Z][a-z]{2} \d{1,2}$/);
+    expect(proteinProduct(chicken({ validUntil: keyIn(-1) })).ends).toBeNull();
+  });
+
+  it("compares with Quebec's average only when a matching product has one, green only when it is lower", () => {
+    expect(proteinProduct(chicken({ baseline: { pct: -45 } })).qc).toEqual({ text: "−45%", good: true });
+    expect(proteinProduct(chicken({ baseline: { pct: 12 } })).qc).toEqual({ text: "+12%", good: false });
+    expect(proteinProduct(chicken({ baseline: { pct: 0 } })).qc).toEqual({ text: "near average", good: false });
+  });
+
+  it("is named in French from the French half of the flyer's name, and falls back to the product's name", async () => {
+    const { setLang } = await import("../i18n/index.js");
+    setLang("fr");
+    try {
+      const p = proteinProduct(deal("Poitrines de poulet désossées Maple Leaf | Boneless chicken breasts", "meat", { matchName: "boneless chicken breasts" }));
+      expect(p.name).toMatch(/^Poitrines de poulet/);
+      expect(p.english).toBe("Chicken breasts"); // an item put on the list in English still counts
+      // A flyer with no French half has only the product's name.
+      expect(proteinProduct(deal("Whole chicken", "meat")).name).toBe("Whole chicken");
+    } finally {
+      setLang("en");
+    }
+    expect(proteinProduct(deal("Poitrines de poulet désossées | Boneless chicken breasts", "meat", { matchName: "boneless chicken breasts" })).name).toBe("Chicken breasts");
+  });
+
+  it("names the product without brand or pack words", () => {
+    expect(proteinProduct(deal("Maple Leaf boneless chicken thighs, 900 g", "meat")).name).toBe("Chicken thighs");
   });
 });
 
@@ -167,7 +285,7 @@ describe("one general protein for every specific item", () => {
     ]);
     expect(rows.filter((r) => r.protein.id === "chicken")).toHaveLength(1);
     expect(rows.filter((r) => r.protein.id === "fish")).toHaveLength(1);
-    expect(rows).toHaveLength(PROTEINS.length);
+    expect(rows).toHaveLength(2);
     const chicken = rows.find((r) => r.protein.id === "chicken");
     expect(chicken.best.item).toBe("Chicken thighs"); // the biggest saving
     expect(chicken.all).toHaveLength(3); // the others are "Also on sale"

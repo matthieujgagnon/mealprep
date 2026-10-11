@@ -156,15 +156,18 @@ There is one card per product, with each store's price side by side (`client/src
 
 ## The dashboard: proteins on sale this week
 
-Home's old "On sale" box showed the first three flyer rows, whatever they were (waffles, deodorant, wine). It now shows **Proteins on sale**, one row per kind (`client/src/lib/proteins.js`):
+Home's old "On sale" box showed the first three flyer rows, whatever they were (waffles, deodorant, wine). It now shows **Proteins on sale**: a row for each kind that has something on this week's flyers (`client/src/lib/proteins.js`), always in the same order:
 
 - Chicken
+- Seafood
+- Fish
 - Beef
 - Pork
-- Fish
-- Seafood
+- Tofu
 - Turkey
 - Lamb
+
+A kind with nothing on sale has no row.
 
 **Which items count.** Only plain cuts from the meat and fish aisles. Pies, burgers, nuggets, sausages, ham, bacon, deli meats, cooked or breaded items, soups and pet food are left out.
 
@@ -173,11 +176,13 @@ Home's old "On sale" box showed the first three flyer rows, whatever they were (
 **Each row shows** the kind's best buy:
 
 - the biggest verdict first, then the biggest saving, then the lowest price per lb;
-- its store and price per lb;
-- the verdict;
-- how many other items of that kind are really on sale.
+- its price per lb;
+- the verdict (Stock up, Buy, or Can't tell yet when there is nothing to compare the price with);
+- how many items of that kind are really on sale.
 
-A kind with nothing really on sale says so. Tapping a row opens that deal's card, with the kind's other items under "Also on sale".
+**Best deal.** One row says it, in place of its verdict: the row whose best buy has the biggest real saving, worked out the same way as the sale % on its pill (`dealSavings`). Two rows that read the same % are separated by the lower price per lb.
+
+**Opening a row** shows every product on sale in that kind as a card, best buy first: its photo, name, store, price and sale %. A kind with only "Can't tell yet" prices shows those, with no sale %. Tapping a product shows what the flyers really say about it: the regular price (the flyer's own, per lb like the price), when the sale ends, and how the price compares with Quebec's average (Statistics Canada). Anything the flyers don't give is left out, not shown as a dash. "See in Flyers →" opens that deal's card on the Flyers page.
 
 ## Checking it against a live week
 

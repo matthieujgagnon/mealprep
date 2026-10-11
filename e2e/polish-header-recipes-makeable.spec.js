@@ -104,9 +104,9 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   const proteins = page.locator(".riso-home-proteins");
   await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ })).toBeVisible();
   await expect(proteins.getByRole("button", { name: /Tofu: Firm tofu at Metro/ }).locator(".riso-protein-emoji")).toHaveText("⬜"); // its own emoji, not the beans
-  // Every kind has a row; the ones with nothing this week say so.
-  await expect(proteins.locator(".riso-protein-card")).toHaveCount(8);
-  await expect(proteins.locator(".riso-protein-card.none", { hasText: "Chicken" })).toContainText("No deal this week");
+  // A kind with nothing this week has no row.
+  await expect(proteins.locator(".riso-protein-card")).toHaveCount(1);
+  await expect(proteins.getByRole("button", { name: /^Chicken:/ })).toHaveCount(0);
 
   // Opening it shows the link with the count of recipes Recipes then lists.
   const row = proteins.locator("button.riso-protein-card", { hasText: "Tofu" }); // the same card in either language
@@ -141,7 +141,9 @@ test("Home shows a tofu deal that has no regular price, and Tofu says so when it
   const userId = await signUp(page, "Matt");
   await page.reload();
   const proteins = page.locator(".riso-home-proteins");
-  await expect(proteins.locator(".riso-protein-card.none", { hasText: "Tofu" })).toContainText("No deal this week");
+  // No flyer deals at all: no rows, one calm line.
+  await expect(proteins.locator(".riso-protein-card")).toHaveCount(0);
+  await expect(proteins).toContainText("No flyer deals loaded yet.");
   // Smoked tofu with nothing to compare it with is still this week's tofu.
   await prisma.flyerDeal.create({
     data: { userId, store: "IGA", source: "IGA", category: "protein", item: "Smoked tofu, 350 g", matchName: "smoked tofu", price: "$2.99", unitPrice: 2.99, unitBasis: "each", isCurrent: true, createdAt: new Date() },
@@ -152,11 +154,11 @@ test("Home shows a tofu deal that has no regular price, and Tofu says so when it
   await expect(tofu).toBeVisible();
   await expect(tofu).toContainText("$3.87/lb"); // 350 g at $2.99, per lb like the rest
   await expect(tofu).toContainText("Can't tell yet");
-  await expect(proteins.locator(".riso-protein-card")).toHaveCount(8);
+  await expect(proteins.locator(".riso-protein-card")).toHaveCount(1);
   await tofu.click();
   await expect(tofu).toHaveAttribute("aria-expanded", "true");
-  await expect(proteins.locator(".riso-protein-product")).toHaveCount(1);
-  await expect(proteins.locator(".riso-protein-product").first()).toContainText("Smoked tofu");
+  await expect(proteins.locator(".riso-protein-pcard")).toHaveCount(1);
+  await expect(proteins.locator(".riso-protein-pcard").first()).toContainText("Smoked tofu");
 });
 
 test.describe("Proteins on sale panel on a phone", () => {
