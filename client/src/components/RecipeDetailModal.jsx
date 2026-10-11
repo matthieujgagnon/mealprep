@@ -9,15 +9,15 @@ import {
   stepTimer,
   scaleStepText,
 } from "../lib/steps.js";
-import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, coversIngredient, findSaleDeal, findDealsFor } from "../lib/similarRecipes.js";
+import { findSimilarRecipes, findExpiringSoonInRecipe, isPerishable, core, findSaleDeal, findDealsFor } from "../lib/similarRecipes.js";
+import { haveItemFor, isStapleIngredient, matchingItems } from "../lib/inventoryMatch.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { SaleTag } from "./SaleTag.jsx";
 import { formatQuantity, unitLabel } from "../lib/units.js";
-import { daysUntil, formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
+import { formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { CookMode } from "./CookMode.jsx";
 import { StepTimer } from "./StepTimer.jsx";
 import { useStepTimers } from "../hooks/useStepTimers.js";
-import { buildCombinedHave } from "../lib/onHand.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { formatRecipeTime } from "../lib/mealSlots.js";
 import { isPastDay } from "../lib/dates.js";
@@ -49,12 +49,11 @@ function locationLabel(locationId) {
   return LOCATIONS.find((l) => l.id === locationId)?.label || locationId;
 }
 
-// The first non-expired inventory item matching this ingredient's core —
-// used only to describe *where* it lives in the tap-to-open explainer.
+// The Inventory item still good that is this ingredient (the shared matching in
+// lib/inventoryMatch.js, the same as the finished view's take-out list) - used
+// to describe *where* it lives in the tap-to-open explainer.
 function findMatchedPantryItem(ing, pantryInventory) {
-  const c = core(ing.name);
-  if (c === null) return null;
-  return pantryInventory.find((item) => coversIngredient(item.name, ing.name) && (!item.expiresAt || daysUntil(item.expiresAt) >= 0)) || null;
+  return core(ing.name) === null ? null : haveItemFor(ing.name, pantryInventory);
 }
 
 // The "⋯" menu — Edit / View original / Add to Cookbook (or Move to
@@ -353,14 +352,15 @@ export function RecipeDetailModal({
     setActivePhotoIndex(coverIndex);
   }
 
-  const combinedHave = buildCombinedHave(pantryInventory, customStaples);
-  const haveCores = new Set(combinedHave.map((n) => core(n)).filter(Boolean));
   const expiringSoonCores = findExpiringSoonInRecipe(recipe, pantryInventory, plannerEntries, allRecipes);
 
   function ingredientStatus(ing) {
     const c = core(ing.name);
     if (c === null) return "have";
-    if (!haveCores.has(c) || !combinedHave.some((n) => coversIngredient(n, ing.name))) return "need";
+    // A pantry staple you marked counts as had; anything else needs an Inventory
+    // item that is this ingredient (lib/inventoryMatch.js: French names, plurals,
+    // varieties and cuts, never leftovers).
+    if (!isStapleIngredient(ing.name, customStaples) && !haveItemFor(ing.name, pantryInventory)) return "need";
     if (expiringSoonCores.has(c)) return "soon";
     return "have";
   }
@@ -446,9 +446,8 @@ export function RecipeDetailModal({
   }
 
   async function handleRemoveFromInventory(ing) {
-    const c = core(ing.name);
-    if (c === null || !onDeletePantryItem) return;
-    const matches = pantryInventory.filter((item) => core(item.name) === c);
+    if (core(ing.name) === null || !onDeletePantryItem) return;
+    const matches = matchingItems(ing.name, pantryInventory);
     for (const item of matches) {
       await onDeletePantryItem(item.id);
     }

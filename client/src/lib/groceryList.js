@@ -76,7 +76,7 @@ const UNIT_ALIASES = {
   tub: "tub", tubs: "tub",
 };
 
-function canonicalUnit(unit) {
+export function canonicalUnit(unit) {
   if (!unit) return "";
   const lower = unit.toLowerCase().replace(/\.$/, "");
   return UNIT_ALIASES[lower] || lower;
