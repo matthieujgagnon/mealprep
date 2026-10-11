@@ -9,6 +9,11 @@ import { RecipePhoto } from "./RecipePhoto.jsx";
 //
 //   variant="grid"    the Recipes card: the whole card is the photo, 3:4, a thin
 //                     meal-colour line (`lineColor`) along the bottom.
+//   variant="bento"   the Cookbook's tile (design: docs/design/riso-v2-recipes-bento/): the
+//                     same card as "grid", but it takes its size from the grid it sits in. The
+//                     caller passes `style` with --bento-col and --bento-row (a grid span, for
+//                     example "span 2") and --bento-title (the title's px size); the CSS uses
+//                     them on a wide page and ignores them below it (see lib/bento.js).
 //   variant="panel"   the Makeable card: a photo of fixed height and, under it,
 //                     whatever the caller passes as children (the white panel).
 //   variant="finder"  the Planner finder's card: a photo of fixed height and the

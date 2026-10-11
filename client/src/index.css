@@ -23303,3 +23303,110 @@ body.no-select {
     font-size: 14px;
   }
 }
+
+/* ================================================================
+   Recipes: Cookbook and Imported as two sections, the Cookbook as a
+   bento grid (design: docs/design/riso-v2-recipes-bento/).
+   The Cookbook's tiles are the shared photo card, variant "bento"
+   (components/RecipePhotoCard.jsx); the span and the title size of each
+   one come from lib/bento.js as --bento-col, --bento-row and --bento-title.
+   Imported keeps the plain 3:4 grid of cards (.rv2-grid).
+   ================================================================ */
+.rv2-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rv2-section + .rv2-section {
+  margin-top: 28px;
+}
+
+/* A heading and its count, on a rule like the one under the two buttons. */
+.rv2-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--riso-ink);
+}
+
+.rv2-section-title {
+  margin: 0;
+  font: 800 28px/1 var(--riso-font-display);
+  letter-spacing: -0.02em;
+}
+
+/* The width switch measures the grid's own box (a container query), not the
+   window: the page has 40px of padding each side, so 1020px of grid is the
+   design's 1100px. Narrower than that every tile is the same size. */
+.rv2-bento-wrap {
+  container-type: inline-size;
+}
+
+.rv2-bento {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  grid-auto-rows: 340px;
+  gap: 28px;
+  padding: 10px 6px 0;
+}
+
+.rpc-bento .rpc-open {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+.rpc-bento .rpc-title {
+  font-size: 20px;
+  -webkit-line-clamp: 3;
+}
+
+@container (min-width: 1020px) {
+  .rv2-bento {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 300px;
+  }
+
+  .rpc-bento {
+    grid-column: var(--bento-col);
+    grid-row: var(--bento-row);
+  }
+
+  .rpc-bento .rpc-title {
+    font-size: var(--bento-title);
+  }
+}
+
+/* A phone: two across, 3:4 like the Imported cards, with a smaller title. */
+@media (max-width: 767px) {
+  .rv2-section-title {
+    font-size: 24px;
+  }
+
+  .rv2-bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    gap: 14px;
+    padding: 6px 2px 0;
+  }
+
+  .rpc-bento {
+    aspect-ratio: 3 / 4;
+  }
+
+  .rpc-bento .rpc-title {
+    font-size: 16px;
+  }
+
+  .rpc-bento .rpc-scrim-bottom {
+    padding: 0 12px 12px;
+  }
+
+  .rpc-bento .rpc-caption {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+  }
+}
