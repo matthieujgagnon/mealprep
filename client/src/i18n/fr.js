@@ -28,6 +28,46 @@ export const fr = {
   lang: {
     label: "Langue",
   },
+  admin: {
+    eyebrow: "ADMIN · PRIVÉ",
+    titleStart: "Derrière le",
+    titleAccent: "comptoir.",
+    intro: "Gérez la bêta d'ici. Seuls les admins voient cette page.",
+    hq: {
+      eyebrow: "QG DU PROJET",
+      title: "Votre suivi de projet.",
+      text: "Les tâches, les plans et la suite. S'ouvre dans un nouvel onglet.",
+      open: "Ouvrir le QG",
+    },
+    members: {
+      title: "Membres",
+      intro: "Chaque compte : son courriel, sa date d'inscription et sa dernière visite dans l'appli.",
+      count: { one: "{count} compte", other: "{count} comptes" },
+      email: "Courriel",
+      signedUp: "Inscription",
+      lastActive: "Dernière visite",
+      you: "Vous",
+      today: "Aujourd'hui",
+      yesterday: "Hier",
+      never: "Pas encore",
+      loading: "Chargement des membres…",
+      error: "Impossible de charger les membres.",
+    },
+    invites: {
+      title: "Codes d'invitation",
+      text: "Créez des codes pour que des amis puissent se joindre à la bêta.",
+    },
+    ai: {
+      title: "Utilisation de l'IA",
+      text: "Voyez combien chaque compte utilise l'IA, et fixez des limites.",
+    },
+    soon: "Bientôt",
+    notAllowed: {
+      title: "Accès refusé.",
+      text: "Cette page est réservée aux personnes qui gèrent l'appli.",
+      home: "Retour à l'accueil",
+    },
+  },
   same: {
     langFr: "Français",
     langEn: "English",
@@ -48,6 +88,8 @@ export const fr = {
     // Exemples que la page d'aide dessine dans ses copies de boutons.
     sampleStore: "Metro",
     sampleInitial: "M",
+    // Le lien du menu de l'avatar vers la page Admin.
+    admin: "Admin",
   },
   auth: {
     eyebrow: "PLANIFICATION DES REPAS",

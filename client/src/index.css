@@ -15595,6 +15595,244 @@ body.no-select {
   }
 }
 
+/* ---------- Admin: the admin-only page (components/Admin.jsx) ----------
+   Riso v2 like Home and Recipes: the Recipes heading, Help-style cards, a
+   blue Project HQ block like Home's top card, and the shared pills. On a
+   computer Members takes the wide left column and the three small cards
+   stack on the right; on a phone everything is one column, HQ first. */
+
+.riso-admin {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-admin-intro {
+  margin: -8px 0 0;
+  max-width: 60ch;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  grid-template-areas:
+    "members hq"
+    "members invites"
+    "members ai";
+  grid-template-rows: auto auto 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.riso-admin-hq {
+  grid-area: hq;
+}
+
+.riso-admin-members {
+  grid-area: members;
+}
+
+.riso-admin-invites {
+  grid-area: invites;
+}
+
+.riso-admin-ai {
+  grid-area: ai;
+}
+
+.riso-admin-card {
+  min-width: 0;
+  background: var(--riso-surface);
+  border: var(--riso-border) solid var(--riso-ink);
+  border-radius: 22px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-admin-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-admin-card-title {
+  margin: 0;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.riso-admin-card-text {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+/* Project HQ: the blue block, white text, a pink button. */
+.riso-admin-hq {
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: var(--riso-shadow-card);
+}
+
+.riso-admin-hq .riso-eyebrow {
+  margin: 0;
+}
+
+.riso-admin-hq .riso-admin-card-text {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.riso-admin-hq .riso-btn {
+  align-self: flex-start;
+  margin-top: 6px;
+  text-decoration: none;
+}
+
+/* Invite codes and AI usage: empty for now, so a dashed outline. */
+.riso-admin-soon {
+  border-style: dashed;
+  border-color: var(--riso-dash-strong);
+  background: transparent;
+}
+
+.riso-admin-status {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--riso-muted);
+}
+
+.riso-admin-table {
+  width: 100%;
+  margin-top: 6px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.riso-admin-table thead th {
+  padding: 0 12px 8px 0;
+  border-bottom: var(--riso-border) solid var(--riso-ink);
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.riso-admin-table tbody tr + tr {
+  border-top: 1px dashed var(--riso-dash-strong);
+}
+
+.riso-admin-table tbody th,
+.riso-admin-table tbody td {
+  padding: 12px 12px 12px 0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.riso-admin-table tbody td {
+  font: 400 13px var(--riso-font-mono);
+  color: var(--riso-soft);
+  white-space: nowrap;
+}
+
+.riso-admin-email {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.riso-admin-email .riso-pill {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.riso-admin-denied {
+  max-width: 560px;
+  gap: 12px;
+}
+
+.riso-admin-denied .riso-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+@media (max-width: 767px) {
+  .riso-admin {
+    padding: 18px 16px 40px;
+    gap: 16px;
+  }
+
+  .riso-admin-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "hq" "members" "invites" "ai";
+    grid-template-rows: none;
+    gap: 16px;
+  }
+
+  .riso-admin-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+
+  .riso-admin-card-title {
+    font-size: 23px;
+  }
+
+  /* Members on a phone: one block per account, the email on its own line,
+     then the two dates side by side under their small labels. */
+  .riso-admin-table thead {
+    display: none;
+  }
+
+  .riso-admin-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 12px;
+    padding: 12px 0;
+  }
+
+  .riso-admin-table tbody th {
+    grid-column: 1 / -1;
+    padding: 0 0 6px;
+  }
+
+  .riso-admin-table tbody td {
+    padding: 0;
+    white-space: normal;
+  }
+
+  .riso-admin-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--riso-muted);
+  }
+}
+
 /* ================================================================
    The Inventory item form: Add item and Edit item (design handoff:
    docs/design/inventory-item-form/README.md). One form, two modes.

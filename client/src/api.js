@@ -39,6 +39,7 @@ async function send(path, options) {
     err.needsManualEntry = data?.needsManualEntry;
     err.reason = data?.reason ?? null;
     err.code = data?.code ?? null;
+    err.status = res.status;
     throw err;
   }
   return data;
@@ -57,6 +58,8 @@ export const api = {
   // callers only need a yes/no, not a thrown exception on the expected
   // first-load case of nobody being logged in yet.
   me: () => request("/auth/me").catch(() => null),
+  // Admin only: the server refuses anyone else with 403.
+  adminMembers: () => request("/admin/members"),
   forgotPassword: (email) =>
     request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resetPassword: (token, password) =>

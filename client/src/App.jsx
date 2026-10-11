@@ -23,6 +23,8 @@ import { currentWeekStart, isPastDay, shiftWeek, toDateKey } from "./lib/dates.j
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore, newGroceryItemCount, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { Help } from "./components/Help.jsx";
+import { Admin } from "./components/Admin.jsx";
+import { ADMIN_PATH, isAdminPath } from "./lib/admin.js";
 import { Home } from "./components/Home.jsx";
 import { RecipeEditor } from "./components/RecipeEditor.jsx";
 import { Recipes } from "./components/Recipes.jsx";
@@ -151,7 +153,10 @@ function centreAboveFinger({ activatorEvent, draggingNodeRect, transform }) {
 }
 
 export default function App({ user, onLogout }) {
-  const [tab, setTab] = useState("home"); // "home" | "collection" | "planner" | ... | "help" (not in the nav: opened from the account area)
+  // "home" | "collection" | "planner" | ... | "help" and "admin" (not in the
+  // nav: opened from the account area). Admin is the one page with its own
+  // address (/admin), so opening that address opens it.
+  const [tab, setTab] = useState(() => (isAdminPath(window.location.pathname) ? "admin" : "home"));
   const isPhone = useIsPhone();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
@@ -176,6 +181,21 @@ export default function App({ user, onLogout }) {
       document.removeEventListener("keydown", onKey);
     };
   }, [avatarMenuOpen]);
+  // The address follows the Admin page: /admin while it is open, / otherwise.
+  // Back and Forward move between the two.
+  useEffect(() => {
+    if (isAdminPath(window.location.pathname) !== (tab === "admin")) {
+      window.history.pushState(null, "", tab === "admin" ? ADMIN_PATH : "/");
+    }
+  }, [tab]);
+  useEffect(() => {
+    const onPop = () => {
+      if (isAdminPath(window.location.pathname)) setTab("admin");
+      else setTab((current) => (current === "admin" ? "home" : current));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   // The phone nav is a horizontally scrolling pill row - keep the active pill
   // on screen when the tab changes from elsewhere (e.g. Home's "Open list →").
   useEffect(() => {
@@ -498,16 +518,21 @@ export default function App({ user, onLogout }) {
 
   async function handleLogout() {
     await api.logout();
+    if (isAdminPath(window.location.pathname)) window.history.replaceState(null, "", "/");
     clearDeals();
     clearGroceryShared();
     onLogout();
   }
 
   // What the account area offers besides the language switch and the name.
-  // Shown in the avatar menu. A new entry (the Admin link) shows up there by
-  // being added here.
+  // Shown in the avatar menu. A new entry shows up there by being added here.
+  // Admin is only offered to an admin (`user.isAdmin`, from the server); the
+  // server still checks every /api/admin call itself.
   const accountActions = [
     { id: "help", label: t("app.help"), current: tab === "help", onSelect: () => goToTab("help") },
+    ...(user.isAdmin
+      ? [{ id: "admin", label: t("same.admin"), current: tab === "admin", onSelect: () => goToTab("admin") }]
+      : []),
     { id: "logout", label: t("app.logOut"), onSelect: handleLogout },
   ];
 
@@ -1249,6 +1274,7 @@ export default function App({ user, onLogout }) {
         )}
 
         {tab === "help" && <Help />}
+        {tab === "admin" && <Admin user={user} onHome={() => goToTab("home")} />}
 
         {inventoryAsk && (
           <InventoryConfirmSheet
