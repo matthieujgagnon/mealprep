@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { TimePill } from "./RisoPills.jsx";
-import { IngredientMarks } from "./RecipePopout.jsx";
+import { IngredientMarks } from "./IngredientMarks.jsx";
 import { recipeHave } from "../lib/inventoryMatch.js";
 import { formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { stepIsHeading, stepText } from "../lib/steps.js";
@@ -338,9 +338,9 @@ export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, in
         </div>
         <IngredientMarks have={have} buy={buy} isOnList={grocery.isOnList} onToggleList={grocery.toggle} headingTag="h4" />
         {steps.length > 0 && (
-          <section className="fnd-pop-steps">
-            <h4 className="fnd-pop-stepshead">{t("finder.steps", { count: numbered.length })}</h4>
-            <ol className="fnd-pop-steplist">
+          <section className="riso-plannedcard-steps">
+            <h4 className="riso-plannedcard-stepshead">{t("finder.steps", { count: numbered.length })}</h4>
+            <ol className="riso-plannedcard-steplist">
               {steps.map((step, i) =>
                 stepIsHeading(step) ? null : (
                   <li key={i} value={(n += 1)}>

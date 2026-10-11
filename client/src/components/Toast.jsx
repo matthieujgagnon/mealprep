@@ -26,9 +26,10 @@ export function Toast({ toast, onClose }) {
           type="button"
           className="riso-toast-undo"
           onClick={() => {
-            const undo = toast.undo;
+            // Undo first, then close: a toast that leaves without Undo runs its
+            // `onGone` (App.jsx showToast), which Undo has to come before.
+            toast.undo();
             onClose();
-            undo();
           }}
         >
           {t("common.undo")}

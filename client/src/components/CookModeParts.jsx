@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatQuantity, unitLabel } from "../lib/units.js";
-import { stepTitle } from "../lib/steps.js";
+import { clockParts, formatClock, secondsFromParts, stepTitle } from "../lib/steps.js";
 import { t } from "../i18n/index.js";
 
 // The pieces of Cook mode's step view (design: docs/design/riso-v2-cook-mode/) and its
@@ -162,15 +162,93 @@ export function DoFirstCard({ text }) {
   );
 }
 
+// The time of a step's timer, changed by hand: minutes and seconds, Save or Cancel
+// (Escape cancels too). `total` is the length now, in seconds.
+function TimerTimeForm({ total, onSave, onCancel }) {
+  const start = clockParts(total);
+  const [fields, setFields] = useState({ minutes: String(start.minutes), seconds: String(start.seconds) });
+  function save(e) {
+    e.preventDefault();
+    const seconds = secondsFromParts(fields.minutes, fields.seconds);
+    if (seconds > 0) onSave(seconds);
+    else onCancel();
+  }
+  return (
+    <form
+      className="cm-timer-edit"
+      onSubmit={save}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation(); // closes this, not Cook mode
+          onCancel();
+        }
+      }}
+    >
+      <label className="cm-timer-field">
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          max="5940"
+          autoFocus
+          aria-label={t("steps.minutesField")}
+          value={fields.minutes}
+          onChange={(e) => setFields((f) => ({ ...f, minutes: e.target.value }))}
+        />
+        <span aria-hidden="true">{t("steps.minAbbr")}</span>
+      </label>
+      <label className="cm-timer-field">
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          max="59"
+          aria-label={t("steps.secondsField")}
+          value={fields.seconds}
+          onChange={(e) => setFields((f) => ({ ...f, seconds: e.target.value }))}
+        />
+        <span aria-hidden="true">{t("steps.secAbbr")}</span>
+      </label>
+      <button type="submit" className="cm-timer-main">
+        {t("common.save")}
+      </button>
+      <button type="button" className="cm-timer-btn" onClick={onCancel}>
+        {t("common.cancel")}
+      </button>
+    </form>
+  );
+}
+
 // The step's timer: yellow in light, a black card with yellow type in dark. Its label
 // says what is happening ("ROASTING…"), then the time, then Start / Pause with +1 min
-// and a round ↺ that starts it over.
-export function TimerCard({ label, time, mainLabel, onMain, onPlusMinute, onReset }) {
+// and a round ↺ that starts it over. Tapping the time changes how long it is
+// (`total`, in seconds; `onSetTime(seconds)`), for this step on the recipe card too.
+export function TimerCard({ label, time, total, mainLabel, onMain, onPlusMinute, onReset, onSetTime }) {
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <div className="cm-timer">
+        <div className="cm-timer-readout">
+          <span className="cm-timer-label">{label}</span>
+        </div>
+        <TimerTimeForm
+          total={total}
+          onSave={(seconds) => {
+            onSetTime(seconds);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </div>
+    );
+  }
   return (
     <div className="cm-timer">
       <div className="cm-timer-readout">
         <span className="cm-timer-label">{label}</span>
-        <span className="cm-timer-time">{time}</span>
+        <button type="button" className="cm-timer-time" aria-label={t("steps.editTime", { time: formatClock(total) })} title={t("steps.editTimeTitle")} onClick={() => setEditing(true)}>
+          {time}
+        </button>
       </div>
       <div className="cm-timer-actions">
         <button type="button" className="cm-timer-main" onClick={onMain}>

@@ -1,427 +1,285 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
-import {
-  stepImage,
-  stepIsHeading,
-  stepHeadingText,
-  stepTitle,
-  stepBody,
-  stepTimer,
-  scaleStepText,
-} from "../lib/steps.js";
-import { findSimilarRecipes, isPerishable, findSaleDeal, findDealsFor } from "../lib/similarRecipes.js";
-import { expiringItemsIn, haveItemFor, ingredientHave, itemCovers, matchingItems, recipeHave } from "../lib/inventoryMatch.js";
+import { stepImage, stepIsHeading } from "../lib/steps.js";
+import { findDealsFor, findSaleDeal } from "../lib/similarRecipes.js";
+import { expiringItemsIn, ingredientHave, matchingItems } from "../lib/inventoryMatch.js";
+import { plannedDayOf, recipeIngredientNames, similarTo } from "../lib/finder.js";
+import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
+import { MEAL_PRICING_READY, cardSteps, groceryItemOf, receiptTotals, recipeReceipt, stepServings } from "../lib/recipeCard.js";
+import { loadStorePrefs, namedStoreFor, storeSetup } from "../lib/groceryStores.js";
+import { groceryCore } from "../lib/groceryDedupe.js";
+import { groceryShared } from "../lib/groceryCache.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { SaleTag } from "./SaleTag.jsx";
-import { formatQuantity, unitLabel } from "../lib/units.js";
-import { formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
-import { CookMode } from "./CookMode.jsx";
-import { StepTimer } from "./StepTimer.jsx";
-import { useStepTimers } from "../hooks/useStepTimers.js";
-import { RecipePhoto } from "./RecipePhoto.jsx";
 import { formatRecipeTime } from "../lib/mealSlots.js";
-import { isPastDay } from "../lib/dates.js";
-import { dict, t } from "../i18n/index.js";
-import { formatList } from "../i18n/format.js";
+import { formatMoney } from "../i18n/format.js";
+import { useStepTimers } from "../hooks/useStepTimers.js";
+import { useIsPhone } from "../hooks/useIsPhone.js";
+import { CookMode } from "./CookMode.jsx";
+import { PlannedPill } from "./RisoPills.jsx";
+import { BuySticker, OptionsMenu, PhotoLightbox, PricesSwitch, Receipt, SimilarStrip, SimilarView, StepList } from "./RecipeCardParts.jsx";
+import { t } from "../i18n/index.js";
 
-// Ingredients are already sorted by position server-side, and group
-// assignment happened in that same order, so same-group ingredients are
-// already adjacent — just cluster consecutive runs.
-function clusterByGroup(ingredients) {
-  const clusters = [];
-  for (const ing of ingredients) {
-    const last = clusters[clusters.length - 1];
-    if (last && last.group === ing.group) {
-      last.items.push(ing);
-    } else {
-      clusters.push({ group: ing.group, items: [ing] });
-    }
-  }
-  return clusters;
-}
+// The recipe card (design: docs/design/riso-v2-recipe-card/): the one card every
+// page opens (Recipes, the Planner, Makeable, Home and Grocery), over the page it
+// was opened from. App.jsx renders it once (`openRecipeCard`).
+//
+// On a computer: the photo with the receipt under it on the left (To buy, In your
+// Inventory), and on the right the title, the fact line, Start cooking / Plan /
+// Similar recipes / Open full recipe ↗, the steps on Cook mode's rail and Notes;
+// "Uses the same ingredients" runs along the bottom. On a phone: one column that
+// scrolls, with Start cooking and Plan in a bar fixed at the bottom.
+//
+// Similar recipes swaps the card's content for the Similar view; ← Back puts the
+// recipe back as it was (servings, current step, running timers and the Prices
+// setting all live up here and are never reset by it).
+//
+// Prices wait for Meal pricing (lib/recipeCard.js MEAL_PRICING_READY): until it
+// ships no $ amount and no Prices switch show.
+//
+// Props:
+//   recipe, from (the box of the card it grows out of), backLabel (the page it was
+//   opened from: "← Planner"), onClose
+//   allRecipes, plannedEntries (this week's and the upcoming entries, for the
+//   "Planned Wednesday" pill and "use soon"), upcomingEntries (from today on, for
+//   the similar search's ranking), kitchen (App's { inventory, customStaples,
+//   excludedStaples }), grocery (App's one { isOnList, add, toggle, addWithUndo })
+//   onSelectRecipe(recipe)   another recipe's card (Similar, the footer)
+//   onPlan(recipe)           the shared slot picker
+//   onPlanAround(recipe)     the Planner's Main meal (the ⋯ menu)
+//   onEdit(recipe), onDelete(recipe) (App deletes it with the toast's Undo),
+//   onRecipeUpdated(updated), onRequestInventoryAdd (the confirmation sheet),
+//   onDeletePantryItem, onFinishCooking, onNavigate(tab), onToast(message, undo?)
 
-
-function formatMinutes(totalMinutes) {
-  return formatRecipeTime(Math.round(totalMinutes));
-}
-
-function locationLabel(locationId) {
-  return LOCATIONS.find((l) => l.id === locationId)?.label || locationId;
-}
-
-// The Inventory item still good that is this ingredient (the shared matching in
-// lib/inventoryMatch.js, the same as the finished view's take-out list) - used
-// to describe *where* it lives in the tap-to-open explainer.
-function findMatchedPantryItem(ing, pantryInventory) {
-  return haveItemFor(ing.name, pantryInventory);
-}
-
-// The "⋯" menu — Edit / View original / Add to Cookbook (or Move to
-// Imported) / Leftovers keep… / Delete. A
-// transparent full-screen catcher behind the menu closes it on any
-// outside click, simpler than tracking a ref and a document-level
-// listener for what's only ever open a few seconds at a time.
-function OptionsMenu({ onEdit, onDelete, onEditLeftoverDays, onMove, inCookbook, fridgeLifeDays, sourceUrl, onClose }) {
-  return (
-    <>
-      <div className="riso-rc-menu-catcher" onClick={onClose} />
-      <div className="riso-rc-menu">
-        <button type="button" onClick={onEdit}>
-          {t("recipeCard.editRecipe")}
-        </button>
-        {sourceUrl && (
-          <a href={sourceUrl} target="_blank" rel="noreferrer">
-            {t("recipeCard.viewOriginal")}
-          </a>
-        )}
-        <button type="button" onClick={onMove}>
-          {inCookbook ? t("recipeCard.moveToImported") : t("recipeCard.addToCookbook")}
-        </button>
-        <button type="button" onClick={onEditLeftoverDays}>
-          {t("recipeCard.leftoversKeep", {
-            days: fridgeLifeDays ? t("recipeCard.days", { count: fridgeLifeDays }) : t("recipeCard.notSet"),
-          })}
-        </button>
-        <div className="riso-rc-menu-divider" />
-        <button type="button" className="danger" onClick={onDelete}>
-          {t("recipeCard.deleteRecipe")}
-        </button>
-      </div>
-    </>
-  );
-}
-
-// The full-size photo viewer: ← → flip through the photos, Escape (or the
-// ×, or a click outside the photo) closes it - and only it, not the recipe.
-function PhotoLightbox({ photos, index, onIndex, onClose }) {
-  const url = photos[index];
-  useEffect(() => {
-    function onKey(e) {
-      const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-      if (e.key !== "Escape" && !step) return;
-      // Caught on the way down, before the recipe card's own Escape.
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.key === "Escape") onClose();
-      else if (photos.length > 1) onIndex((index + step + photos.length) % photos.length);
-    }
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [index, photos.length, onIndex, onClose]);
-
-  return (
-    <div className="rc-lightbox-overlay" role="dialog" aria-label={t("recipeCard.photos")} onClick={onClose}>
-      <button
-        type="button"
-        className="rc-lightbox-close"
-        onClick={onClose}
-        aria-label={t("recipeCard.closePhotos")}
-        title={t("recipeCard.closeEsc")}
-      >
-        ×
-      </button>
-      {photos.length > 1 && (
-        <button
-          type="button"
-          className="rc-lightbox-arrow left"
-          onClick={(e) => {
-            e.stopPropagation();
-            onIndex((index - 1 + photos.length) % photos.length);
-          }}
-          aria-label={t("recipeCard.prevPhoto")}
-        >
-          ‹
-        </button>
-      )}
-      <img src={url} alt="" className="rc-lightbox-photo" onClick={(e) => e.stopPropagation()} />
-      {photos.length > 1 && (
-        <button
-          type="button"
-          className="rc-lightbox-arrow right"
-          onClick={(e) => {
-            e.stopPropagation();
-            onIndex((index + 1) % photos.length);
-          }}
-          aria-label={t("recipeCard.nextPhoto")}
-        >
-          ›
-        </button>
-      )}
-      {photos.length > 1 && (
-        <span className="rc-lightbox-count">
-          {index + 1} / {photos.length}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function StepRow({ step, number, scale, stepKey, stepTimers }) {
-  if (stepIsHeading(step)) {
-    return <li className="riso-rc-step-heading">{stepHeadingText(step)}</li>;
-  }
-
-  const title = stepTitle(step);
-  const body = scale === 1 ? stepBody(step) : scaleStepText(step, scale);
-  const image = stepImage(step);
-  const timer = stepTimer(step);
-
-  return (
-    <li className="riso-rc-step-row">
-      <span className="riso-rc-step-number">{number}</span>
-      <div className="riso-rc-step-content">
-        {title && <div className="riso-rc-step-title">{title}</div>}
-        <p className="riso-rc-step-text">{body}</p>
-        {timer && <StepTimer timerKey={stepKey} seconds={timer.seconds} stepTimers={stepTimers} />}
-      </div>
-      {image && <img src={image} alt="" className="riso-rc-step-thumb" />}
-    </li>
-  );
-}
-
-function IngredientRow({
-  ing,
-  status,
-  deal,
-  saleOthers,
-  scaledQty,
-  isOpen,
-  onToggle,
-  onList,
-  onToggleList,
-  onRequestInventoryAdd,
-  onRemoveFromInventory,
-  onNavigate,
-  pantryInventory,
-}) {
-  const have = status !== "need";
-  const matched = have ? findMatchedPantryItem(ing, pantryInventory) : null;
-  const where = (matched ? locationLabel(matched.location) : t("recipeCard.inventory")).toLowerCase();
-
-  let why;
-  if (status === "need") {
-    why = onList ? t("recipeCard.whyOnList") : t("recipeCard.whyNeed");
-  } else if (status === "soon") {
-    const expiry = matched?.expiresAt ? formatExpiry(matched.expiresAt).toLowerCase() : t("recipeCard.soon");
-    why = t("recipeCard.whySoon", { where, expiry });
-  } else {
-    why = t("recipeCard.whyHave", { where });
-  }
-
-  return (
-    <div className="riso-rc-ingredient">
-      <div className="riso-rc-ingredient-line">
-        {have ? (
-          // Blue ✓: in your Inventory (it follows Inventory by itself).
-          <span className="riso-rc-ingredient-dot have" aria-hidden="true" onClick={onToggle}>
-            ✓
-          </span>
-        ) : (
-          // Green ✓: on your grocery list; empty +: not on it. Tapping either toggles the list.
-          <button
-            type="button"
-            className={`riso-rc-ingredient-dot toggle${onList ? " onlist" : ""}`}
-            aria-pressed={onList}
-            aria-label={onList ? t("finder.takeOffListAria", { name: ing.name }) : t("makeable.addToList", { name: ing.name })}
-            title={onList ? t("finder.onListTitle") : t("makeable.addToListTitle")}
-            onClick={() => onToggleList(ing.name)}
-          >
-            {onList ? "✓" : "+"}
-          </button>
-        )}
-        <button type="button" className="riso-rc-ingredient-row" aria-expanded={isOpen} onClick={onToggle}>
-          <span className="riso-rc-ingredient-name">
-            {ing.name}
-            {ing.notes && <span className="riso-rc-ingredient-note"> {ing.notes}</span>}
-            {isPerishable(ing.name) && <span className="perishable-dot" title={t("recipeCard.perishable")} />}
-          </span>
-          {status === "soon" && <span className="riso-rc-use-soon-sticker">{t("recipeCard.useSoon")}</span>}
-          {status === "need" && <SaleTag deal={deal} others={saleOthers} />}
-          <span className="riso-rc-ingredient-qty">
-            {scaledQty != null
-              ? `${formatQuantity(scaledQty)}${ing.unit ? " " + unitLabel(ing.unit, scaledQty) : ""}`
-              : unitLabel(ing.unit)}
-          </span>
-        </button>
-      </div>
-      {isOpen && (
-        <div className="riso-rc-ingredient-explainer">
-          <p>{why}</p>
-          <div className="riso-rc-ingredient-actions">
-            {status === "need" ? (
-              <>
-                <button type="button" className={`riso-rc-ing-action primary${onList ? " added" : ""}`} onClick={() => onToggleList(ing.name)}>
-                  {onList ? t("recipeCard.takeOffList") : t("recipeCard.addOne")}
-                </button>
-                <button type="button" className="riso-rc-ing-action" onClick={() => onRequestInventoryAdd([{ ref: ing.name, name: ing.name }], { title: t("inventoryConfirm.haveItTitle") })}>
-                  {t("recipeCard.haveIt")}
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="riso-rc-ing-action" onClick={() => onRemoveFromInventory(ing)}>
-                  {t("recipeCard.outOfIt")}
-                </button>
-                <button type="button" className="riso-rc-ing-action" onClick={() => onNavigate?.("inventory")}>
-                  {t("recipeCard.openInventory")}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+const CLOSE_MS = 220;
+// Overlays that open above the card and close with their own Escape.
+const ABOVE_CARD = ".riso-picker-backdrop, .riso-confirm-overlay, .rc-lightbox-overlay, .riso-deal-backdrop, .riso-ask-backdrop, .ck-sheet-backdrop, .ck-screen";
+const NOTE_SAVE_MS = 900;
 
 export function RecipeDetailModal({
   recipe,
-  onClose,
+  from = null,
+  backLabel,
+  onClose: close,
   allRecipes = [],
-  plannerEntries = [],
-  pantryInventory = [],
-  kitchen = { inventory: pantryInventory },
-  weekStart,
+  plannedEntries = [],
+  upcomingEntries = [],
+  kitchen,
+  grocery,
   onSelectRecipe,
-  onRecipeUpdated,
+  onPlan,
+  onPlanAround,
   onEdit,
   onDelete,
-  onPlanAround,
+  onRecipeUpdated,
   onRequestInventoryAdd,
   onDeletePantryItem,
-  onAddToGroceryList,
-  grocery, // { isOnList(name), toggle(name) } from App: the one grocery list every page reads
-  onFinishCooking, // (recipe, servings, { onBackToStep1, onExitCook }): "I cooked this" at the end of Cook mode opens App's finished view
+  onFinishCooking,
   onNavigate,
-  sharedWithWeek, // ingredient names reused from this week's plan — only set when opened from a "good next addition" suggestion
+  onToast,
 }) {
-  const defaultServings = recipe.baseServings || 4;
-  const [servings, setServings] = useState(defaultServings);
+  const phone = useIsPhone();
+  const { deals } = useDeals();
+  const inventory = kitchen?.inventory || [];
+  const baseServings = recipe.baseServings || 4;
+
+  const [servings, setServings] = useState(baseServings);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [similarOpen, setSimilarOpen] = useState(false);
+  const [leftOut, setLeftOut] = useState([]);
+  // Prices on or off. Saved per account by the Meal pricing ticket; until then the
+  // switch is not shown and this never changes.
+  const [showPrices, setShowPrices] = useState(true);
   const [cookModeOn, setCookModeOn] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [brokenPhotos, setBrokenPhotos] = useState(new Set());
-  const [tagInput, setTagInput] = useState("");
-  const [phoneTab, setPhoneTab] = useState("ingredients");
-  const [addingMissing, setAddingMissing] = useState(false);
-  const [openIngredientKey, setOpenIngredientKey] = useState(null);
-  const [moveNote, setMoveNote] = useState(null); // "cookbook" | "imported" | "error" once a move is done
-  const [moving, setMoving] = useState(false);
-  const { deals } = useDeals();
-  // Shared with Cook mode: a time edited or a timer started here carries over.
+  const [openRow, setOpenRow] = useState(null);
+  const [photoIndex, setPhotoIndex] = useState(null);
+  const [lightbox, setLightbox] = useState(null); // { photos, index }
+  const [brokenPhotos, setBrokenPhotos] = useState(() => new Set());
+  const [closing, setClosing] = useState(false);
+  const [origin, setOrigin] = useState(null);
+  // Shared with Cook mode: a time changed there, or a timer started here, carries over.
   const stepTimers = useStepTimers({ title: recipe.title, recipeId: recipe.id });
 
+  const cardRef = useRef(null);
+  const closeRef = useRef(null);
+  const scrollRef = useRef(null);
 
   const scale = servings / (recipe.baseServings || 1);
-  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
-  const ingredientClusters = clusterByGroup(recipe.ingredients);
-  const similar = findSimilarRecipes(recipe, allRecipes, 4);
+  const pricesOn = MEAL_PRICING_READY && showPrices;
 
-  // Step photos live in the steps below, not the hero gallery — the same
-  // image otherwise showed up twice (see the design handoff's own note on
-  // this). Falls back to the single legacy photoUrl for older recipes that
-  // predate the multi-photo gallery.
-  const stepImageUrls = new Set((recipe.instructions || []).map(stepImage).filter(Boolean));
-  const rawGallery = recipe.photos?.length ? recipe.photos : recipe.photoUrl ? [recipe.photoUrl] : [];
-  const gallery = [...new Set(rawGallery)].filter((u) => !stepImageUrls.has(u) && !brokenPhotos.has(u));
-  const heroPhoto = gallery[activePhotoIndex] ?? gallery[0] ?? null;
+  // ---- Closing, Escape, focus ---------------------------------------------------
+  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  function onClose() {
+    if (closing) return;
+    if (reduced) return close();
+    setClosing(true);
+    setTimeout(close, CLOSE_MS);
+  }
+  const latest = useRef({});
+  latest.current = { onClose, menuOpen, cookModeOn };
 
-  // Open on the cover photo (photoUrl), wherever it sits in the gallery.
-  const coverIndex = Math.max(0, gallery.indexOf(recipe.photoUrl));
+  // The card grows out of the card that was tapped (and shrinks back into it).
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el || !from) return;
+    const box = el.getBoundingClientRect();
+    setOrigin(`${from.left + from.width / 2 - box.left}px ${from.top + from.height / 2 - box.top}px`);
+  }, [from]);
 
-  // Escape closes the card; ← → flip the cover photo (the photo viewer
-  // handles its own keys while it's open). Typing in a field is left alone.
   useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === "Escape") return onClose();
-      if (lightboxOpen || gallery.length < 2) return;
+    function onKey(e) {
+      const now = latest.current;
+      if (now.cookModeOn || document.querySelector(ABOVE_CARD)) return;
+      if (e.key === "Escape") {
+        if (now.menuOpen) setMenuOpen(false);
+        else now.onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    const previous = document.activeElement;
+    closeRef.current?.focus({ preventScroll: true });
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previous?.focus?.({ preventScroll: true });
+    };
+  }, []);
+
+  // ---- Photos ---------------------------------------------------------------------
+  // Step photos live in the steps, not in the gallery (the same picture would show
+  // twice). Older recipes have only photoUrl.
+  const gallery = useMemo(() => {
+    const inSteps = new Set((recipe.instructions || []).map(stepImage).filter(Boolean));
+    const raw = recipe.photos?.length ? recipe.photos : recipe.photoUrl ? [recipe.photoUrl] : [];
+    return [...new Set(raw)].filter((u) => !inSteps.has(u) && !brokenPhotos.has(u));
+  }, [recipe.photos, recipe.photoUrl, recipe.instructions, brokenPhotos]);
+  // It opens on the cover photo (photoUrl), wherever it sits in the gallery.
+  const shownIndex = photoIndex ?? Math.max(0, gallery.indexOf(recipe.photoUrl));
+  const heroPhoto = gallery[shownIndex] ?? gallery[0] ?? null;
+
+  // ← → flip the cover photo (not while typing a note, or with the viewer open).
+  useEffect(() => {
+    function onKey(e) {
+      if (lightbox || gallery.length < 2 || similarOpen || cookModeOn) return;
       if (e.target.closest?.("input, textarea, select, [contenteditable='true']")) return;
       const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-      if (step) setActivePhotoIndex((i) => (i + step + gallery.length) % gallery.length);
+      if (step) setPhotoIndex((i) => ((i ?? shownIndex) + step + gallery.length) % gallery.length);
     }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gallery.length, lightboxOpen]);
-  const coverKey = `${recipe.id}|${coverIndex}`;
-  const [seenCoverKey, setSeenCoverKey] = useState(null);
-  if (seenCoverKey !== coverKey) {
-    setSeenCoverKey(coverKey);
-    setActivePhotoIndex(coverIndex);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [gallery.length, lightbox, similarOpen, cookModeOn, shownIndex]);
+
+  const openGallery = () => heroPhoto && setLightbox({ photos: gallery, index: shownIndex });
+
+  // ---- The receipt ----------------------------------------------------------------
+  const soonItems = useMemo(() => expiringItemsIn(recipe, inventory, plannedEntries, allRecipes), [recipe, inventory, plannedEntries, allRecipes]);
+  const receipt = useMemo(() => recipeReceipt(recipe, kitchen, servings, { soonItems }), [recipe, kitchen, servings, soonItems]);
+  const totals = pricesOn ? receiptTotals(receipt.buy, receipt.have, servings) : null;
+
+  // The store each thing to buy is filed under on the Grocery page (the same rule:
+  // lib/groceryStores.js), from your stores, your per-item choices and the flyers.
+  const [sections, setSections] = useState(() => groceryShared.sections || []);
+  useEffect(() => {
+    if (groceryShared.sections) return undefined;
+    let cancelled = false;
+    api
+      .listGrocerySections()
+      .then((rows) => !cancelled && setSections(rows || []))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const storeSet = useMemo(() => storeSetup(sections, deals), [sections, deals]);
+  const storePrefs = useMemo(loadStorePrefs, []);
+  const dealOf = (row) => findSaleDeal(row.name, deals);
+  const dealsOf = (row) => findDealsFor(row.name, deals);
+  const storeOf = (row) => namedStoreFor(groceryCore(row.name), findDealsFor(row.name, deals)[0] || null, storeSet, storePrefs);
+
+  // A row's mark: on the list -> off (the shared toast has Undo); off -> on, with
+  // how much more for a food you're short of.
+  function toggleRow(row) {
+    if (grocery.isOnList(row.name)) grocery.toggle(row.name);
+    else grocery.add([groceryItemOf(row)]);
   }
 
-  const soonItems = expiringItemsIn(recipe, pantryInventory, plannerEntries, allRecipes);
-
-  // The ✓ beside each ingredient. A pantry staple counts as had; anything else
-  // needs an Inventory item that is this ingredient (lib/inventoryMatch.js:
-  // French names, plurals, varieties and cuts, never leftovers).
-  function ingredientStatus(ing) {
-    const status = ingredientHave(ing.name, kitchen);
-    if (status === "need") return "need";
-    if (status === "have" && soonItems.some((item) => itemCovers(item.name, ing.name))) return "soon";
-    return "have";
+  // "I'm out of this": the Inventory items that are this food leave Inventory.
+  async function outOfIt(row) {
+    if (!onDeletePantryItem || ingredientHave(row.name, kitchen) === "staple") return;
+    for (const item of matchingItems(row.name, inventory)) await onDeletePantryItem(item.id);
+    setOpenRow(null);
   }
 
-  const allIngredients = recipe.ingredients || [];
-  // The numbers ("You have 3 of 5", "2 things to buy") are the same count as
-  // Makeable, the pop-out and the Planner: one line per food, staples left out.
-  const counts = recipeHave(recipe, kitchen);
-  // The "use soon!" key only means something when an ingredient wears it.
-  const anyUseSoon = allIngredients.some((ing) => ingredientStatus(ing) === "soon");
+  // "I have it": the Inventory confirmation sheet; nothing is added before it is confirmed.
+  function haveIt(row) {
+    const draft = { ref: row.name, name: row.name };
+    if (row.short && row.need.quantity != null) Object.assign(draft, { quantity: row.need.quantity, unit: row.need.unit });
+    onRequestInventoryAdd?.([draft], { title: t("inventoryConfirm.haveItTitle") });
+  }
 
-  // Already scheduled in the currently-viewed week, today or later: the
-  // grocery list covers every planned meal from today on, so the "already
-  // on your grocery list" copy is only true for those.
-  const plannedEntry = weekStart
-    ? plannerEntries.find((e) => e.recipe?.id === recipe.id && !e.recipe?.isPlaceholder && !isPastDay(weekStart, e.dayOfWeek))
-    : null;
+  // ---- Steps ------------------------------------------------------------------------
+  const steps = useMemo(() => cardSteps(recipe.instructions || []), [recipe.instructions]);
+  const stepCount = steps.filter((s) => !s.heading).length;
+  const canCook = (recipe.instructions || []).some((s) => !stepIsHeading(s));
 
-  async function addTag() {
-    const tag = tagInput.trim().toLowerCase();
-    if (!tag || (recipe.tags || []).includes(tag)) {
-      setTagInput("");
-      return;
+  // ---- Similar recipes ----------------------------------------------------------
+  const ranked = useMemo(() => rankRecipesForTray({ recipes: allRecipes, upcomingEntries, kitchen }).ranked, [allRecipes, upcomingEntries, kitchen]);
+  const chips = useMemo(() => recipeIngredientNames(recipe), [recipe]);
+  const footerTiles = useMemo(() => similarTo(recipe, ranked).slice(0, 4), [recipe, ranked]);
+  const similarTiles = useMemo(() => (similarOpen ? similarTo(recipe, ranked, leftOut) : []), [similarOpen, recipe, ranked, leftOut]);
+  const toggleChip = (core) => setLeftOut((prev) => (prev.includes(core) ? prev.filter((c) => c !== core) : [...prev, core]));
+  // The Similar view and the recipe each start at the top (the phone's scroll
+  // area, or the computer's overlay).
+  const toTop = () => (scrollRef.current || cardRef.current?.parentElement)?.scrollTo?.(0, 0);
+  function openSimilar() {
+    setSimilarOpen(true);
+    toTop();
+  }
+  function closeSimilar() {
+    setSimilarOpen(false);
+    toTop();
+  }
+
+  // ---- Notes (saved with the recipe, a moment after typing stops) ------------------
+  const [note, setNote] = useState(recipe.notes || "");
+  const savedNote = useRef(recipe.notes || "");
+  const noteTimer = useRef(null);
+  const latestNote = useRef(note);
+  latestNote.current = note;
+  async function saveNote() {
+    clearTimeout(noteTimer.current);
+    const text = latestNote.current;
+    if (text.trim() === savedNote.current.trim()) return;
+    savedNote.current = text;
+    try {
+      const updated = await api.updateRecipe(recipe.id, { notes: text.trim() });
+      onRecipeUpdated?.(updated);
+    } catch {
+      savedNote.current = "";
+      onToast?.(t("recipeCard.noteFailed"));
     }
-    const updated = await api.updateRecipe(recipe.id, { tags: [...(recipe.tags || []), tag] });
-    onRecipeUpdated?.(updated);
-    setTagInput("");
   }
+  const saveNoteRef = useRef(saveNote);
+  saveNoteRef.current = saveNote;
+  // Closing the card saves what was typed.
+  useEffect(() => () => saveNoteRef.current(), []);
 
-  async function removeTag(tag) {
-    const updated = await api.updateRecipe(recipe.id, {
-      tags: (recipe.tags || []).filter((t) => t !== tag),
-    });
-    onRecipeUpdated?.(updated);
-  }
-
-  function handleDeleteClick() {
+  // ---- The ⋯ menu -------------------------------------------------------------------
+  async function moveRecipe() {
     setMenuOpen(false);
-    if (window.confirm(t("recipeCard.confirmDelete", { title: recipe.title }))) {
-      onDelete?.(recipe.id);
-    }
-  }
-
-  // Add to Cookbook / Move to Imported: no dragging, the same on phone and
-  // desktop. The recipe keeps everything else; only where it lives changes.
-  async function handleMove() {
-    setMenuOpen(false);
-    if (moving) return;
     const toCookbook = !recipe.inCookbook;
-    setMoving(true);
-    setMoveNote(null);
     try {
       const updated = await api.updateRecipe(recipe.id, { inCookbook: toCookbook });
       onRecipeUpdated?.(updated);
-      setMoveNote(toCookbook ? "cookbook" : "imported");
+      onToast?.(t(`recipeCard.moveNote.${toCookbook ? "cookbook" : "imported"}`), async () => {
+        const back = await api.updateRecipe(recipe.id, { inCookbook: !toCookbook });
+        onRecipeUpdated?.(back);
+      });
     } catch {
-      setMoveNote("error");
-    } finally {
-      setMoving(false);
+      onToast?.(t("recipeCard.moveNote.error"));
     }
   }
 
-  function handleEditLeftoverDays() {
+  function editLeftoverDays() {
     setMenuOpen(false);
     const input = window.prompt(t("recipeCard.promptLeftovers"), recipe.fridgeLifeDays ?? "");
     if (input === null) return;
@@ -430,407 +288,306 @@ export function RecipeDetailModal({
     api.updateRecipe(recipe.id, { fridgeLifeDays: days }).then((updated) => onRecipeUpdated?.(updated));
   }
 
-  // The missing ingredients that are not on the grocery list yet (the list is App's,
-  // so this always agrees with Grocery and the pop-out).
-  const notOnList = counts.missing.filter((name) => !grocery.isOnList(name));
+  // ---- Pieces both layouts share -------------------------------------------------------
+  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+  const plannedDay = plannedDayOf(recipe.id, plannedEntries);
+  const buyCount = receipt.buy.length;
 
-  async function handleAddMissingToGroceryList() {
-    if (notOnList.length === 0 || !weekStart) return;
-    setAddingMissing(true);
-    try {
-      await onAddToGroceryList(notOnList);
-    } finally {
-      setAddingMissing(false);
-    }
-  }
-
-  async function handleRemoveFromInventory(ing) {
-    if (ingredientHave(ing.name, kitchen) === "staple" || !onDeletePantryItem) return;
-    const matches = matchingItems(ing.name, pantryInventory);
-    for (const item of matches) {
-      await onDeletePantryItem(item.id);
-    }
-  }
-
-  const stickerText = recipe.isPlaceholder
-    ? null
-    : counts.missingCount > 0
-      ? t("recipeCard.thingsToBuy", { count: counts.missingCount })
-      : t("recipeCard.nothingToBuy");
-  const stickerBg = counts.missingCount > 0 ? "var(--riso-yellow)" : "var(--riso-green)";
-
-  return (
-    <div className="modal-overlay riso-theme" onClick={onClose}>
-      <div className="riso-rc-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="riso-rc-hero">
-          {heroPhoto ? (
-            <img
-              src={heroPhoto}
-              alt={recipe.title}
-              className="riso-rc-hero-photo"
-              onClick={() => setLightboxOpen(true)}
-              onError={() => setBrokenPhotos((prev) => new Set(prev).add(heroPhoto))}
-            />
-          ) : (
-            <div className="riso-rc-hero-photo placeholder" />
-          )}
-          <button type="button" className="riso-rc-back" onClick={onClose}>
-            {t("recipeCard.back")}
-          </button>
-          <div className="riso-rc-hero-actions">
-            {!recipe.isPlaceholder && (
-              <div className="riso-rc-menu-wrap">
-                <button
-                  type="button"
-                  className="riso-rc-round-btn"
-                  aria-label={t("recipeCard.moreActions")}
-                  title={t("recipeCard.more")}
-                  onClick={() => setMenuOpen((o) => !o)}
-                >
-                  ⋯
-                </button>
-                {menuOpen && (
-                  <OptionsMenu
-                    onEdit={() => {
-                      setMenuOpen(false);
-                      onEdit?.(recipe);
-                    }}
-                    onDelete={handleDeleteClick}
-                    onEditLeftoverDays={handleEditLeftoverDays}
-                    onMove={handleMove}
-                    inCookbook={!!recipe.inCookbook}
-                    fridgeLifeDays={recipe.fridgeLifeDays}
-                    sourceUrl={recipe.sourceUrl}
-                    onClose={() => setMenuOpen(false)}
-                  />
-                )}
-              </div>
+  const factLine = (
+    <div className="riso-rc-facts">
+      {[
+        totalTime > 0 && <b key="time">{formatRecipeTime(totalTime)}</b>,
+        <span key="serves">
+          {t("recipeCard.servesPrefix")} <b>{servings}</b>
+        </span>,
+        pricesOn && totals?.priced > 0 && (
+          <span key="price" className="riso-rc-facts-price">
+            <mark>{t("recipeCard.estimate", { price: formatMoney(totals.meal) })}</mark>
+            {!phone && totals.perServing != null && <small>{t("recipeCard.perServing", { price: formatMoney(totals.perServing) })}</small>}
+          </span>
+        ),
+        recipe.fridgeLifeDays ? (
+          <span key="keeps">
+            {t("recipeCard.keepsPrefix")} <b>{t("recipeCard.days", { count: recipe.fridgeLifeDays })}</b>
+          </span>
+        ) : null,
+      ]
+        .filter(Boolean)
+        .map((part, i) => (
+          <span key={i} className="riso-rc-fact">
+            {i > 0 && (
+              <span className="riso-rc-fact-sep" aria-hidden="true">
+                ·
+              </span>
             )}
-            <button
-              type="button"
-              className="riso-rc-round-btn"
-              title={t("recipeCard.closeEsc")}
-              aria-label={t("recipeCard.close")}
-              onClick={onClose}
-            >
-              ×
-            </button>
-          </div>
-          {stickerText && (
-            <span className="riso-sticker riso-rc-hero-sticker" style={{ background: stickerBg }}>
-              {stickerText}
-            </span>
-          )}
-          {gallery.length > 1 && (
-            <button
-              type="button"
-              className="riso-rc-photo-count"
-              title={t("recipeCard.openPhotos")}
-              onClick={() => setLightboxOpen(true)}
-            >
-              {t("recipeCard.photoCount", { n: activePhotoIndex + 1, total: gallery.length })}
-            </button>
-          )}
+            {part}
+          </span>
+        ))}
+      {plannedDay != null && <PlannedPill dayOfWeek={plannedDay} className="riso-rc-planned" />}
+    </div>
+  );
+
+  const menuButton = !recipe.isPlaceholder && (
+    <span className="riso-rc-menu-wrap">
+      <button type="button" className={`riso-rc-round${menuOpen ? " on" : ""}`} aria-label={t("recipeCard.moreActions")} aria-expanded={menuOpen} title={t("recipeCard.more")} onClick={() => setMenuOpen((o) => !o)}>
+        ⋯
+      </button>
+      {menuOpen && (
+        <OptionsMenu
+          recipe={recipe}
+          onPlanAround={
+            onPlanAround &&
+            (() => {
+              setMenuOpen(false);
+              onPlanAround(recipe);
+            })
+          }
+          onEdit={() => {
+            setMenuOpen(false);
+            onEdit?.(recipe);
+          }}
+          onMove={moveRecipe}
+          onLeftoverDays={editLeftoverDays}
+          onDelete={() => {
+            setMenuOpen(false);
+            onDelete?.(recipe);
+          }}
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
+    </span>
+  );
+  const closeButton = (
+    <button ref={closeRef} type="button" className="riso-rc-round" aria-label={t("recipeCard.close")} title={t("recipeCard.closeEsc")} onClick={onClose}>
+      ×
+    </button>
+  );
+
+  const startCooking = canCook && (
+    <button type="button" className="riso-rc-start" onClick={() => setCookModeOn(true)}>
+      {t("recipeCard.startCooking")}
+    </button>
+  );
+  const planButton = onPlan && !recipe.isPlaceholder && (
+    <button type="button" className="riso-rc-pill" onClick={() => onPlan(recipe)}>
+      {t("finder.plan")}
+    </button>
+  );
+  const similarButton = (
+    <button type="button" className="riso-rc-pill cream" onClick={openSimilar}>
+      {t("finder.similar")}
+    </button>
+  );
+  const sourceSite = recipe.sourceUrl ? safeHost(recipe.sourceUrl) : null;
+  const fullRecipeButton = recipe.sourceUrl && (
+    <a className="riso-rc-pill" href={recipe.sourceUrl} target="_blank" rel="noreferrer" title={sourceSite ? t("recipeCard.opensInTab", { site: sourceSite }) : undefined}>
+      {phone ? t("recipeCard.fullRecipe") : t("recipeCard.openFullRecipe")}
+    </a>
+  );
+  const pricesSwitch = MEAL_PRICING_READY && <PricesSwitch on={showPrices} onToggle={() => setShowPrices((on) => !on)} />;
+
+  const sticker = !recipe.isPlaceholder && <BuySticker count={buyCount} className={phone ? "on-photo" : "on-receipt"} />;
+
+  const photo = (
+    <div className="riso-rc-photo">
+      {heroPhoto ? (
+        <img src={heroPhoto} alt={recipe.title} className="riso-rc-photo-img" onClick={openGallery} onError={() => setBrokenPhotos((prev) => new Set(prev).add(heroPhoto))} />
+      ) : (
+        <div className="riso-rc-photo-img placeholder" />
+      )}
+      {phone ? (
+        <div className="riso-rc-photo-top">
+          <button type="button" className="riso-rc-round" aria-label={t("recipeCard.backTo", { page: backLabel })} onClick={onClose}>
+            ←
+          </button>
+          <span className="riso-rc-spacer" />
+          {menuButton}
+          {closeButton}
         </div>
+      ) : (
+        <button type="button" className="riso-rc-back" onClick={onClose}>
+          {t("recipeCard.back", { page: backLabel })}
+        </button>
+      )}
+      {phone && sticker}
+      {gallery.length > 1 && (
+        <button type="button" className="riso-rc-photo-count" title={t("recipeCard.openPhotos")} onClick={openGallery}>
+          {phone ? t("same.fraction", { n: shownIndex + 1, total: gallery.length }) : t("recipeCard.photoCount", { n: shownIndex + 1, total: gallery.length })}
+        </button>
+      )}
+    </div>
+  );
 
-        {lightboxOpen && heroPhoto && (
-          <PhotoLightbox
-            photos={gallery}
-            index={activePhotoIndex}
-            onIndex={setActivePhotoIndex}
-            onClose={() => setLightboxOpen(false)}
-          />
-        )}
+  const receiptNode = (
+    <Receipt
+      receipt={receipt}
+      servings={servings}
+      onStepServings={(delta) => setServings((s) => stepServings(s, delta))}
+      sticker={phone ? null : sticker}
+      grocery={grocery}
+      storeOf={storeOf}
+      dealOf={dealOf}
+      dealsOf={dealsOf}
+      pricesOn={pricesOn}
+      totals={totals}
+      openKey={openRow}
+      onOpenRow={(key) => setOpenRow((prev) => (prev === key ? null : key))}
+      onToggleRow={toggleRow}
+      onAddAll={(rows) => grocery.addWithUndo(rows.map(groceryItemOf))}
+      onViewList={() => onNavigate?.("grocery")}
+      onHaveIt={haveIt}
+      onOutOfIt={outOfIt}
+      onOpenInventory={() => onNavigate?.("inventory")}
+    />
+  );
 
-        <div className="riso-rc-content">
-          {sharedWithWeek?.length > 0 && (
-            <p className="shared-with-week-note">
-              {t("recipeCard.reuses", { count: sharedWithWeek.length, items: formatList(sharedWithWeek) })}
-            </p>
-          )}
+  const stepsNode = (
+    <StepList
+      steps={steps}
+      current={currentStep}
+      total={stepCount}
+      onCurrent={setCurrentStep}
+      recipe={recipe}
+      scale={scale}
+      stepTimers={stepTimers}
+      phone={phone}
+      onPhoto={(url) => setLightbox({ photos: [url], index: 0 })}
+    />
+  );
 
-          <div className="riso-rc-titlebar">
-            <div className="riso-rc-titlebar-main">
+  const notesNode = (
+    <section className="riso-rc-notes">
+      <label className="riso-rc-caps" htmlFor={`rc-notes-${recipe.id}`}>
+        {t("recipeCard.notes")}
+      </label>
+      <textarea
+        id={`rc-notes-${recipe.id}`}
+        rows={3}
+        value={note}
+        placeholder={t("recipeCard.notePlaceholder")}
+        onChange={(e) => {
+          setNote(e.target.value);
+          clearTimeout(noteTimer.current);
+          noteTimer.current = setTimeout(() => saveNoteRef.current(), NOTE_SAVE_MS);
+        }}
+        onBlur={() => saveNoteRef.current()}
+      />
+    </section>
+  );
+
+  const footer = <SimilarStrip tiles={footerTiles} onOpen={(match) => onSelectRecipe?.(match)} />;
+
+  const similarView = similarOpen && (
+    <SimilarView
+      recipe={recipe}
+      chips={chips}
+      leftOut={leftOut}
+      onToggleChip={toggleChip}
+      tiles={similarTiles}
+      onOpen={(match) => onSelectRecipe?.(match)}
+      onBack={closeSimilar}
+      onClose={onClose}
+      phone={phone}
+    />
+  );
+
+  // ---- Layouts ----------------------------------------------------------------------
+  const content = phone ? (
+    <>
+      <div className="riso-rc-scroll" ref={scrollRef}>
+        {similarOpen ? (
+          similarView
+        ) : (
+          <>
+            {photo}
+            <header className="riso-rc-head">
               <h1 className="riso-rc-title">{recipe.title}</h1>
-              {!recipe.isPlaceholder && (
-                <div className="riso-rc-meta-line">
-                  {[
-                    totalTime > 0 && formatMinutes(totalTime),
-                    t("recipeCard.serves", { count: recipe.baseServings || defaultServings }),
-                    recipe.fridgeLifeDays && t("recipeCard.keepsDays", { count: recipe.fridgeLifeDays }),
-                    recipe.sourceUrl && t("recipeCard.from", { site: new URL(recipe.sourceUrl).hostname.replace(/^www\./, "") }),
-                  ]
-                    .filter(Boolean)
-                    .map((part, i) => (
-                      <span key={i}>
-                        {i > 0 && <span className="riso-rc-meta-sep">·</span>}
-                        {part}
-                      </span>
-                    ))}
+              {factLine}
+              <div className="riso-rc-actions">
+                {similarButton}
+                {fullRecipeButton}
+              </div>
+              {pricesSwitch && (
+                <div className="riso-rc-prices-row">
+                  {totals?.perServing != null && <span className="riso-rc-caps">{t("recipeCard.perServing", { price: formatMoney(totals.perServing) })}</span>}
+                  {pricesSwitch}
                 </div>
               )}
-              <div className="riso-rc-tags">
-                {(recipe.tags || []).map((tag) => (
-                  <span key={tag} className="riso-rc-tag-chip">
-                    {tag}
-                    <button aria-label={t("recipeCard.removeTag", { tag })} onClick={() => removeTag(tag)}>
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <input
-                  className="riso-rc-tag-input"
-                  type="text"
-                  placeholder={t("recipeCard.addTag")}
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === ",") {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                  onBlur={() => tagInput.trim() && addTag()}
-                />
-              </div>
+            </header>
+            <div className="riso-rc-receipt-wrap">{receiptNode}</div>
+            {stepsNode}
+            {notesNode}
+            {footer}
+          </>
+        )}
+      </div>
+      {!similarOpen && (startCooking || planButton) && (
+        <div className="riso-rc-bottombar">
+          {startCooking}
+          {planButton}
+        </div>
+      )}
+    </>
+  ) : similarOpen ? (
+    similarView
+  ) : (
+    <>
+      <div className="riso-rc-grid">
+        <div className="riso-rc-left">
+          {photo}
+          <div className="riso-rc-receipt-wrap">{receiptNode}</div>
+        </div>
+        <div className="riso-rc-right">
+          <header className="riso-rc-head">
+            <div className="riso-rc-topbar">
+              {menuButton}
+              {closeButton}
+            </div>
+            <div className="riso-rc-titlearea">
+              <h1 className="riso-rc-title">{recipe.title}</h1>
+              {factLine}
             </div>
             <div className="riso-rc-actions">
-              <div className="riso-rc-actions-row">
-                {recipe.instructions?.length > 0 && (
-                  <button type="button" className="riso-rc-btn-primary" onClick={() => setCookModeOn(true)}>
-                    {t("recipeCard.startCooking")}
-                  </button>
-                )}
-                {recipe.sourceUrl && (
-                  <a
-                    href={recipe.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={t("recipeCard.opensInTab", { site: new URL(recipe.sourceUrl).hostname.replace(/^www\./, "") })}
-                    className="riso-rc-btn-open-original"
-                  >
-                    {t("recipeCard.openOriginal")}
-                  </a>
-                )}
-              </div>
-              {onPlanAround && !recipe.isPlaceholder && (
-                <button
-                  type="button"
-                  className="riso-rc-btn-secondary"
-                  onClick={() => {
-                    onPlanAround(recipe);
-                    onClose();
-                  }}
-                >
-                  {t("recipeCard.planAround")}
-                </button>
-              )}
-              {!recipe.isPlaceholder && (
-                <>
-                  <button type="button" className="riso-rc-btn-secondary" disabled={moving} onClick={handleMove}>
-                    {recipe.inCookbook ? t("recipeCard.moveToImported") : t("recipeCard.addToCookbook")}
-                  </button>
-                  {moveNote && (
-                    <p className="riso-rc-move-note" role="status">
-                      {t(`recipeCard.moveNote.${moveNote}`)}
-                    </p>
-                  )}
-                </>
-              )}
+              {startCooking}
+              {planButton}
+              {similarButton}
+              {fullRecipeButton}
+              <span className="riso-rc-spacer" />
+              {pricesSwitch}
             </div>
-          </div>
-
-          <div className="riso-rc-phone-tabs">
-            <button
-              type="button"
-              className={phoneTab === "ingredients" ? "active" : ""}
-              onClick={() => setPhoneTab("ingredients")}
-            >
-              {t("recipeCard.ingredientsTab", { count: allIngredients.length })}
-            </button>
-            <button
-              type="button"
-              className={phoneTab === "steps" ? "active" : ""}
-              onClick={() => setPhoneTab("steps")}
-            >
-              {t("recipeCard.stepsTab", { count: recipe.instructions?.length || 0 })}
-            </button>
-          </div>
-
-          <div className="riso-rc-body">
-            <aside className={`riso-rc-ingredients-panel${phoneTab === "steps" ? " rc-phone-hidden" : ""}`}>
-              <div className="riso-rc-panel-header">
-                <h3>{t("recipeCard.ingredients")}</h3>
-                <div className="riso-rc-servings-stepper">
-                  <button
-                    type="button"
-                    onClick={() => setServings((s) => Math.max(1, s - 1))}
-                    aria-label={t("recipeCard.decreaseServings")}
-                  >
-                    −
-                  </button>
-                  <span>{t("recipeCard.servings", { count: servings })}</span>
-                  <button type="button" onClick={() => setServings((s) => s + 1)} aria-label={t("recipeCard.increaseServings")}>
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {counts.totalCount > 0 && (
-                <div className="riso-rc-have-meter">
-                  <div className="riso-rc-have-label">
-                    {t("recipeCard.haveOf", { have: counts.matchedCount, total: counts.totalCount })}
-                  </div>
-                  <div className="riso-rc-have-track">
-                    <div
-                      className="riso-rc-have-fill"
-                      style={{ width: `${(counts.matchedCount / counts.totalCount) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="riso-rc-why-note">
-                <span className="riso-rc-why-sticker">{t("recipeCard.why")}</span>
-                <p>{t("recipeCard.whyNote")}</p>
-              </div>
-
-              <div className="riso-rc-ingredient-list">
-                {ingredientClusters.map((cluster, ci) => (
-                  <div key={ci}>
-                    {cluster.group && <p className="ingredient-group-heading">{cluster.group}</p>}
-                    {cluster.items.map((ing) => {
-                      const key = ing.id || ing.name;
-                      const scaledQty = ing.quantity != null ? ing.quantity * scale : null;
-                      return (
-                        <IngredientRow
-                          key={key}
-                          ing={ing}
-                          status={ingredientStatus(ing)}
-                          deal={findSaleDeal(ing.name, deals)}
-                          saleOthers={findDealsFor(ing.name, deals)}
-                          scaledQty={scaledQty}
-                          isOpen={openIngredientKey === key}
-                          onToggle={() => setOpenIngredientKey((prev) => (prev === key ? null : key))}
-                          onList={grocery.isOnList(ing.name)}
-                          onToggleList={grocery.toggle}
-                          onRequestInventoryAdd={onRequestInventoryAdd}
-                          onRemoveFromInventory={handleRemoveFromInventory}
-                          onNavigate={onNavigate}
-                          pantryInventory={pantryInventory}
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-
-              <div className="riso-rc-legend">
-                <span>
-                  <span className="riso-rc-legend-dot have" />
-                  {t("recipeCard.inInventory")}
-                </span>
-                <span>
-                  <span className="riso-rc-legend-dot onlist" />
-                  {t("recipeCard.onGroceryList")}
-                </span>
-                <span>
-                  <span className="riso-rc-legend-dot" />
-                  {t("recipeCard.needToBuy")}
-                </span>
-                {anyUseSoon && (
-                  <span>
-                    <span className="riso-rc-legend-sticker">{t("recipeCard.useSoon")}</span>
-                    {t("recipeCard.expiresSoon")}
-                  </span>
-                )}
-              </div>
-
-              {counts.missingCount > 0 && weekStart && (
-                notOnList.length === 0 ? (
-                  <div className="riso-rc-planned-note">
-                    <span className="riso-rc-planned-check">✓</span>
-                    <p>
-                      {plannedEntry
-                        ? t("recipeCard.planned", {
-                            count: counts.missingCount,
-                            day: dict().days.long[plannedEntry.dayOfWeek],
-                            meal: t(`meals.${plannedEntry.mealType}`).toLowerCase(),
-                          })
-                        : t("recipeCard.allOnList", { count: counts.missingCount })}{" "}
-                      <button type="button" className="riso-rc-planned-link" onClick={() => onNavigate?.("grocery")}>
-                        {t("recipeCard.viewList")}
-                      </button>
-                    </p>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="riso-rc-add-missing-btn"
-                    onClick={handleAddMissingToGroceryList}
-                    disabled={addingMissing}
-                  >
-                    {addingMissing ? t("recipeCard.adding") : t("recipeCard.addMissing", { count: notOnList.length })}
-                  </button>
-                )
-              )}
-            </aside>
-
-            <div className={`riso-rc-steps-wrap${phoneTab === "ingredients" ? " rc-phone-hidden" : ""}`}>
-              {recipe.instructions?.length > 0 && (
-                <>
-                  <div className="riso-rc-steps-header">
-                    <h3>{t("recipeCard.steps")}</h3>
-                    <span>{t("recipeCard.stepsNote")}</span>
-                  </div>
-                  <ol className="riso-rc-step-list">
-                    {(() => {
-                      let stepNumber = 0;
-                      return recipe.instructions.map((step, i) => {
-                        if (!stepIsHeading(step)) stepNumber++;
-                        return (
-                          <StepRow key={i} step={step} number={stepIsHeading(step) ? null : stepNumber} scale={scale} stepKey={i} stepTimers={stepTimers} />
-                        );
-                      });
-                    })()}
-                  </ol>
-                </>
-              )}
-
-              {recipe.notes && (
-                <div className="rc-notes">
-                  <p className="rc-notes-label">{t("recipeCard.notes")}</p>
-                  <p className="rc-notes-text">{recipe.notes}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {similar.length > 0 && (
-            <div className="riso-rc-similar">
-              <div className="riso-rc-similar-header">
-                <h3>{t("recipeCard.similarTitle")}</h3>
-                <span>{t("recipeCard.similarNote")}</span>
-              </div>
-              <div className="riso-rc-similar-grid">
-                {similar.map(({ recipe: match, sharedCount }) => (
-                  <button key={match.id} type="button" className="riso-rc-similar-card" onClick={() => onSelectRecipe?.(match)}>
-                    {match.photoUrl ? (
-                      <RecipePhoto src={match.photoUrl} alt="" />
-                    ) : (
-                      <div className="riso-rc-similar-photo-placeholder" />
-                    )}
-                    <span className="riso-rc-similar-info">
-                      <span className="riso-rc-similar-title">{match.title}</span>
-                      <span className="riso-rc-similar-shared">{t("recipeCard.shared", { count: sharedCount })}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          </header>
+          {stepsNode}
+          {notesNode}
         </div>
       </div>
+      {footer}
+    </>
+  );
+
+  return (
+    <div className={`riso-theme riso-rc-overlay${phone ? " phone" : ""}${closing ? " closing" : ""}`} data-theme="light" onClick={onClose}>
+      <div
+        ref={cardRef}
+        className={`riso-rc-card${phone ? " phone" : ""}${similarOpen ? " similar" : ""}${closing ? " closing" : ""}`}
+        style={origin ? { transformOrigin: origin } : undefined}
+        role="dialog"
+        aria-modal="true"
+        aria-label={recipe.title}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {content}
+      </div>
+      {lightbox && (
+        <PhotoLightbox
+          photos={lightbox.photos}
+          index={lightbox.index}
+          onIndex={(index) => {
+            setLightbox((lb) => ({ ...lb, index }));
+            if (lightbox.photos === gallery) setPhotoIndex(index);
+          }}
+          onClose={() => setLightbox(null)}
+        />
+      )}
       {cookModeOn && (
         <CookMode
           recipe={recipe}
@@ -842,4 +599,12 @@ export function RecipeDetailModal({
       )}
     </div>
   );
+}
+
+function safeHost(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }

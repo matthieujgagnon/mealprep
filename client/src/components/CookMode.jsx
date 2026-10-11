@@ -378,6 +378,8 @@ export function CookMode({
     <TimerCard
       label={timerLabel}
       time={formatClock(timer?.remaining)}
+      total={timer?.total}
+      onSetTime={(seconds) => stepTimers.setDuration(timerKey, seconds)}
       mainLabel={timerButton}
       onMain={toggleTimer}
       onPlusMinute={addMinute}

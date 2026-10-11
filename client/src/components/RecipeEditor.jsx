@@ -177,7 +177,13 @@ function initialState(recipe) {
     rows: ingredientsToRows(recipe?.ingredients),
     steps: instructionsToSteps(recipe?.instructions),
     notes: recipe?.notes || "",
+    tags: (recipe?.tags || []).join(", "),
   };
+}
+
+// "Shrimp, summer" -> ["shrimp", "summer"]: lowercase, each once.
+function tagsOf(text) {
+  return [...new Set(text.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
 }
 
 function toPayload(s) {
@@ -198,6 +204,7 @@ function toPayload(s) {
     ingredients: rowsToIngredients(s.rows),
     instructions: stepsToInstructions(s.steps),
     notes: s.notes.trim() || null,
+    tags: tagsOf(s.tags),
   };
 }
 
@@ -652,6 +659,11 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
                 <span className="re-help">{t("editor.homeHelp")}</span>
               </div>
             )}
+            <label className="re-field">
+              <span className="re-label">{t("editor.tagsLabel")}</span>
+              <input className="re-pill-input" value={state.tags} onChange={(e) => set({ tags: e.target.value })} placeholder={t("editor.tagsPlaceholder")} />
+              <span className="re-help">{t("editor.tagsHelp")}</span>
+            </label>
           </section>
 
           {/* 2. Photos */}

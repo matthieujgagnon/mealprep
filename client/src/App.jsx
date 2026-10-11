@@ -32,7 +32,6 @@ import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { Planner } from "./components/Planner.jsx";
 import { Toast } from "./components/Toast.jsx";
 import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
-import { RecipePopoutHost } from "./components/RecipePopout.jsx";
 import { SlotPicker } from "./components/SlotPicker.jsx";
 import { weekendFrom } from "./lib/weekend.js";
 import { useIsPhone } from "./hooks/useIsPhone.js";
@@ -152,6 +151,22 @@ function centreAboveFinger({ activatorEvent, draggingNodeRect, transform }) {
   };
 }
 
+// The page a recipe card was opened over, for its "← Planner" (the card opens
+// over the page you are on and closes back to it).
+const PAGE_LABELS = {
+  home: "app.nav.home",
+  collection: "app.nav.recipes",
+  planner: "app.nav.planner",
+  makeable: "app.nav.makeable",
+  grocery: "app.nav.grocery",
+  flyers: "app.nav.flyers",
+  inventory: "app.nav.inventory",
+  help: "app.help",
+};
+function pageLabel(tab) {
+  return t(PAGE_LABELS[tab] || "app.nav.recipes");
+}
+
 export default function App({ user, onLogout }) {
   // "home" | "collection" | "planner" | ... | "help" and "admin" (not in the
   // nav: opened from the account area). Admin is the one page with its own
@@ -204,13 +219,10 @@ export default function App({ user, onLogout }) {
   const [recipes, setRecipes] = useState([]);
   const [plannerEntries, setPlannerEntries] = useState([]);
   const [weekStart, setWeekStart] = useState(currentWeekStart()); // Monday, "YYYY-MM-DD" — which week the Planner and Grocery List tabs are showing
-  const [activeRecipe, setActiveRecipe] = useState(null);
-  // Ingredient names shared with the current week's plan, when the open
-  // recipe was opened from a "good next addition" suggestion — null the
-  // rest of the time. Set alongside activeRecipe by openRecipe() below.
-  const [activeRecipeSharedWith, setActiveRecipeSharedWith] = useState(null);
-  // The shared recipe pop-out (one for every page): { recipeId, from } or null.
-  const [popout, setPopout] = useState(null);
+  // The recipe card open over the page (components/RecipeDetailModal.jsx, one for
+  // every page): { id, from } (`from` is the box of the card it grows out of) or null.
+  const [openCard, setOpenCard] = useState(null);
+  const cardRecipe = openCard ? recipes.find((r) => r.id === openCard.id) || null : null;
   // The shared slot picker: { recipe } while it is open.
   const [pickerFor, setPickerFor] = useState(null);
   const [plannerMainId, setPlannerMainId] = useState(null); // a recipe to open the Planner's finder on as its Main meal ("Plan around this")
@@ -245,10 +257,17 @@ export default function App({ user, onLogout }) {
   const [recipeEditor, setRecipeEditor] = useState(null);
   const editorDirty = useRef(false);
   const [upcomingTick, setUpcomingTick] = useState(0); // bumped when the plan changes in a week that is not on screen
-  const makeableFinder = useFinder(); // the Makeable page's search and filters; kept here so the pop-out's Similar recipes can steer them
+  const makeableFinder = useFinder(); // the Makeable page's search and filters; kept here so they stay when you leave the page and come back
   const [makeableSales, toggleMakeableSales] = useShowSales();
   const { deals } = useDeals();
   const [upcomingEntries, setUpcomingEntries] = useState([]); // every planned meal from today onward, across weeks: what the grocery list is built from
+  // Recipes deleted a moment ago whose toast (with Undo) is still showing: they are
+  // still on the server, so a planner read leaves their meals out until then.
+  const deletingIds = useRef(new Set());
+  const withoutDeleting = (rows) => (deletingIds.current.size ? rows.filter((e) => !deletingIds.current.has(e.recipeId)) : rows);
+  // This week's meals and every one from today on: the recipe card's "Planned
+  // Wednesday" and "Use soon!".
+  const allPlanned = useMemo(() => [...plannerEntries, ...upcomingEntries], [plannerEntries, upcomingEntries]);
   const [plannerExtraItems, setPlannerExtraItems] = useState([]); // manually-added grocery items
   const [groceryOverrides, setGroceryOverrides] = useState([]); // removed rows / own quantities (GroceryItemOverride)
   const [isDragActive, setIsDragActive] = useState(false);
@@ -378,7 +397,7 @@ export default function App({ user, onLogout }) {
   }, []);
 
   useEffect(() => {
-    api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setLoadError(true));
+    api.listPlanner(weekStart).then((rows) => setPlannerEntries(withoutDeleting(rows))).catch(() => setLoadError(true));
   }, [weekStart]);
 
   // What's on the grocery list: the upcoming meals, hand-added items and
@@ -387,7 +406,7 @@ export default function App({ user, onLogout }) {
   // de-duplication below.
   useEffect(() => {
     const today = toDateKey(new Date());
-    api.listPlannerUpcoming(today).then(setUpcomingEntries).catch(() => setUpcomingEntries([]));
+    api.listPlannerUpcoming(today).then((rows) => setUpcomingEntries(withoutDeleting(rows))).catch(() => setUpcomingEntries([]));
     api.listGroceryExtras().then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
     api.listGroceryOverrides().then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
   }, [tab, plannerEntries, upcomingTick]);
@@ -400,12 +419,15 @@ export default function App({ user, onLogout }) {
 
   // Adds only what isn't already on the list (from a planned recipe
   // or added earlier), so tapping "+ Add all" twice, or adding an item a
-  // planned recipe already needs, never makes a duplicate row.
-  async function addToGroceryList(names, { dealId = null } = {}) {
+  // planned recipe already needs, never makes a duplicate row. Each item is a
+  // name, or { name, quantity, unit } to say how much (the recipe card's
+  // "400 g more" for a food you're short of).
+  async function addToGroceryList(items, { dealId = null } = {}) {
     const seen = new Set(groceryCores);
     const removedRows = removedRecipeRows(upcomingEntries, groceryOverrides);
     const created = [];
-    for (const name of names) {
+    for (const item of items) {
+      const { name, quantity = null, unit = null } = typeof item === "string" ? { name: item } : item;
       const c = groceryCore(name);
       if (seen.has(c)) continue;
       seen.add(c);
@@ -415,7 +437,7 @@ export default function App({ user, onLogout }) {
         await setGroceryOverride(removedRows.get(c), { removed: false });
         continue;
       }
-      created.push(await api.addGroceryExtra({ name, quantity: null, unit: null, ...(dealId && { dealId }) }));
+      created.push(await api.addGroceryExtra({ name, quantity, unit, ...(dealId && { dealId }) }));
     }
     if (created.length > 0) setPlannerExtraItems((prev) => [...prev, ...created]);
   }
@@ -452,9 +474,11 @@ export default function App({ user, onLogout }) {
     showToast(t("grocery.takenOff", { name }), () => latestGrocery.current.addToGroceryList([name]));
   }
 
-  // Makeable's À acheter: put some items on the list and say so; Undo takes those items off again.
-  async function addToGroceryListWithUndo(names) {
-    await addToGroceryList(names);
+  // Makeable's À acheter and the recipe card's "Add to grocery list": put some items on
+  // the list (names, or { name, quantity, unit }) and say so; Undo takes them off again.
+  async function addToGroceryListWithUndo(items) {
+    await addToGroceryList(items);
+    const names = items.map((item) => (typeof item === "string" ? item : item.name));
     showToast(t("finder.listed", { count: names.length }), () => names.forEach((name) => latestGrocery.current.removeFromGroceryList(name)));
   }
 
@@ -473,7 +497,7 @@ export default function App({ user, onLogout }) {
 
   function openRecipeEditor(recipe) {
     editorDirty.current = false;
-    setActiveRecipe(null);
+    setOpenCard(null);
     setRecipeEditor({ recipe: recipe || null });
     setTab("collection");
   }
@@ -509,14 +533,42 @@ export default function App({ user, onLogout }) {
     setTab(next);
   }
 
-  async function handleDeleteRecipe(id) {
-    await api.deleteRecipe(id);
+  // Delete recipe (the recipe card's ⋯ menu): Undo, not a question. The recipe and
+  // its planned meals leave every page at once and the toast offers Undo; it is
+  // deleted for good only once the toast is gone (after its five seconds, when
+  // another message replaces it, or when the page is left or you log out). Undo
+  // puts it back where it was. If the delete fails, it comes back and the toast says so.
+  function handleDeleteRecipe(recipe) {
+    const id = recipe.id;
+    const at = recipes.findIndex((r) => r.id === id);
+    deletingIds.current.add(id);
+    setOpenCard(null);
     setRecipes((prev) => prev.filter((r) => r.id !== id));
     setPlannerEntries((prev) => prev.filter((e) => e.recipeId !== id));
     setUpcomingEntries((prev) => prev.filter((e) => e.recipeId !== id));
+    function putBack() {
+      deletingIds.current.delete(id);
+      setRecipes((prev) => (prev.some((r) => r.id === id) ? prev : [...prev.slice(0, Math.max(0, at)), recipe, ...prev.slice(Math.max(0, at))]));
+      api.listPlanner(latestWeekStart.current).then(setPlannerEntries).catch(() => {});
+      setUpcomingTick((n) => n + 1);
+    }
+    showToast(t("recipeCard.deleted", { title: recipe.title }), putBack, {
+      onGone: () =>
+        api
+          .deleteRecipe(id, { keepalive: true })
+          .then(() => deletingIds.current.delete(id))
+          .catch(() => {
+            putBack();
+            showToast(t("recipeCard.deleteFailed", { title: recipe.title }));
+          }),
+    });
   }
+  const latestWeekStart = useRef(weekStart);
+  latestWeekStart.current = weekStart;
 
   async function handleLogout() {
+    // A recipe deleted a moment ago (its toast still showing) is deleted for good first.
+    await settleToast(toastRef.current);
     await api.logout();
     if (isAdminPath(window.location.pathname)) window.history.replaceState(null, "", "/");
     clearDeals();
@@ -569,49 +621,36 @@ export default function App({ user, onLogout }) {
   // "See in Flyers" on Makeable.
   function openFlyerDeal(deal) {
     setFlyerDealId(deal.id);
-    setPopout(null);
+    setOpenCard(null);
     setTab("flyers");
   }
 
-  // Single entry point for opening the recipe detail modal. sharedWith is
-  // only ever passed by the "good next addition" suggestion click — every
-  // other caller passes just the recipe, which naturally clears any
-  // leftover context from a previous suggestion-opened recipe.
-  function openRecipe(recipe, sharedWith) {
-    setActiveRecipe(recipe);
-    setActiveRecipeSharedWith(sharedWith || null);
+  // The recipe card for a recipe (null closes it), with nothing to grow out of.
+  function openRecipe(recipe) {
+    setOpenCard(recipe ? { id: recipe.id, from: null } : null);
   }
 
-  // Every "Cook" and "Open the full recipe" goes through here, so they all land
-  // on the same thing: the recipe's card on the Recipes page. The pop-out and
-  // anything open on top of the page closes first.
-  function openRecipeCard(recipeOrId) {
-    const recipe = typeof recipeOrId === "string" ? recipes.find((r) => r.id === recipeOrId) : recipeOrId;
-    if (!recipe) return;
-    setPopout(null);
+  // Every recipe opens here, in one tap, from every page (a Recipes card, a Planner
+  // search result or meal's Cook, Makeable, Home, Grocery's By recipe): the one
+  // recipe card, over the page you are on. `from` is the box of the card it grows
+  // out of. A slot picker still open closes first.
+  function openRecipeCard(recipeOrId, from = null) {
+    const id = typeof recipeOrId === "string" ? recipeOrId : recipeOrId?.id;
+    if (!id) return;
     setPickerFor(null);
-    if (tab !== "collection") goToTab("collection");
-    openRecipe(recipe);
+    setOpenCard({ id, from });
   }
 
-  // The one recipe pop-out (Plan, Cook, Similar recipes, the to-buy toggles).
-  // `from` is the box of the card it grows out of.
-  function openPopout(recipeOrId, from = null) {
-    const recipeId = typeof recipeOrId === "string" ? recipeOrId : recipeOrId?.id;
-    setPopout(recipeId ? { recipeId, from } : null);
-  }
-
-  // The one slot picker: "Plan" in the pop-out and the finder's + (when no slot
-  // is chosen) open it. It starts on the chosen target slot, else the next empty one.
+  // The one slot picker: the recipe card's Plan and the finder's + (when no slot
+  // is chosen) open it, above the card. It starts on the chosen target slot, else
+  // the next empty one.
   function requestPlan(recipe) {
-    setPopout(null);
     setPickerFor({ recipe });
   }
 
   // The slot picker for Inventory leftovers (the Planner search's « Restes · ... »).
   function requestPlanLeftover(item) {
     const recipe = recipes.find((r) => r.id === item.recipeId);
-    setPopout(null);
     setPickerFor({ leftover: item, recipe: { id: item.recipeId, title: leftoverTitle(item), photoUrl: recipe?.photoUrl || null } });
   }
 
@@ -620,7 +659,6 @@ export default function App({ user, onLogout }) {
   // wouldn't see new tags until a full page reload.
   function handleRecipeUpdated(updated) {
     setRecipes((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
-    setActiveRecipe((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
   }
 
   async function handleAddPantryItem(item) {
@@ -863,9 +901,44 @@ export default function App({ user, onLogout }) {
   }
 
   // ---- The one toast, with Undo, at the bottom of every page ----
-  function showToast(message, undo) {
-    setToast({ id: Date.now() + Math.random(), message, undo });
+  // The one toast. `undo` puts the change back; `onGone` runs when the toast
+  // leaves without Undo being pressed: after its five seconds, when another message
+  // replaces it, when the page is left, or on logout (a recipe deleted with Undo is
+  // deleted for good then).
+  const toastRef = useRef(null);
+  function settleToast(old) {
+    if (!old || old.settled) return undefined;
+    old.settled = true;
+    return old.onGone?.();
   }
+  function showToast(message, undo, { onGone } = {}) {
+    const next = { id: Date.now() + Math.random(), message, onGone };
+    if (undo)
+      next.undo = () => {
+        next.settled = true;
+        return undo();
+      };
+    settleToast(toastRef.current);
+    toastRef.current = next;
+    setToast(next);
+  }
+  function closeToast(closing) {
+    if (toastRef.current && toastRef.current.id === closing?.id) {
+      settleToast(toastRef.current);
+      toastRef.current = null;
+    }
+    // Closes only the toast it was made for: a message's five seconds can end just as
+    // the next one is shown, and that must not take the new one away.
+    setToast((now) => (now && now.id === closing?.id ? null : now));
+  }
+  useEffect(() => {
+    const leave = () => settleToast(toastRef.current);
+    window.addEventListener("pagehide", leave);
+    return () => {
+      window.removeEventListener("pagehide", leave);
+      leave();
+    };
+  }, []);
 
   // A meal put back as it was (a removed one, or the one a new meal replaced):
   // the same recipe or note in the same slot, with its leftover and
@@ -1067,7 +1140,6 @@ export default function App({ user, onLogout }) {
   // meal to mark cooked; from Cook mode the view finds it (plannedMealFor).
   function openCooked({ recipe, servings, entry = null, variant = "sheet", onBackToStep1, onExitCook, onMarked }) {
     if (!recipe) return;
-    setPopout(null);
     setCookedOpen({ key: Date.now(), recipe, servings: servings || recipe.baseServings || 1, entry, variant, onBackToStep1, onExitCook, onMarked });
   }
 
@@ -1313,8 +1385,8 @@ export default function App({ user, onLogout }) {
             deals={deals}
             showSales={makeableSales}
             onToggleSales={toggleMakeableSales}
-            onOpenPopout={openPopout}
-            popoutId={popout?.recipeId}
+            onOpenRecipe={openRecipeCard}
+            openRecipeId={openCard?.id}
             onCook={openRecipeCard}
             onPlan={requestPlan}
             onOpenFlyerDeal={openFlyerDeal}
@@ -1360,7 +1432,7 @@ export default function App({ user, onLogout }) {
             pantryInventory={pantryInventory}
             kitchen={kitchen}
             onNavigate={setTab}
-            onSelectRecipe={openPopout}
+            onSelectRecipe={openRecipeCard}
             onOpenRecipeCard={openRecipeCard}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
@@ -1415,7 +1487,7 @@ export default function App({ user, onLogout }) {
             onFilterChange={setRecipeFilter}
             protein={recipeProtein}
             onProteinChange={setRecipeProtein}
-            onSelectRecipe={openPopout}
+            onSelectRecipe={openRecipeCard}
             onImported={handleImported}
             onNewRecipe={() => openRecipeEditor(null)}
             onToast={showToast}
@@ -1458,8 +1530,8 @@ export default function App({ user, onLogout }) {
                   cooked: (entry) => openCooked({ recipe: entry.recipe, servings: entry.servings, entry }),
                   placeLeftoverItem: (item, slot) => handlePlaceLeftoverItem(item, slot),
                 }}
-                onOpenPopout={openPopout}
-                popoutId={popout?.recipeId}
+                onOpenRecipe={openRecipeCard}
+                openRecipeId={openCard?.id}
                 onRequestPlan={requestPlan}
                 onRequestPlanLeftover={requestPlanLeftover}
                 onOpenRecipeCard={openRecipeCard}
@@ -1476,71 +1548,48 @@ export default function App({ user, onLogout }) {
             stapleCategories={stapleCategories}
             onRequestInventoryAdd={requestInventoryAdd}
             onToast={showToast}
+            // A By recipe heading names a planned recipe: open its card.
+            onOpenRecipe={(title) => {
+              const planned = upcomingEntries.find((e) => e.recipe?.title === title && !e.recipe.isPlaceholder)?.recipe;
+              const recipe = planned || recipes.find((r) => r.title === title);
+              if (recipe) openRecipeCard(recipe.id);
+            }}
           />
         )}
 
-        {activeRecipe && (
+        {cardRecipe && (
           <RecipeDetailModal
-            recipe={activeRecipe}
-            sharedWithWeek={activeRecipeSharedWith}
-            onClose={() => openRecipe(null)}
+            key={cardRecipe.id}
+            recipe={cardRecipe}
+            from={openCard.from}
+            backLabel={pageLabel(tab)}
+            onClose={() => setOpenCard(null)}
             allRecipes={recipes}
-            plannerEntries={plannerEntries}
-            pantryInventory={pantryInventory}
+            plannedEntries={allPlanned}
+            upcomingEntries={upcomingEntries}
             kitchen={kitchen}
-            weekStart={weekStart}
-            onSelectRecipe={openRecipe}
-            onRecipeUpdated={handleRecipeUpdated}
-            onEdit={openRecipeEditor}
-            onDelete={async (id) => {
-              await handleDeleteRecipe(id);
-              openRecipe(null);
-            }}
+            grocery={grocery}
+            onSelectRecipe={(recipe) => openRecipeCard(recipe)}
+            onPlan={requestPlan}
             onPlanAround={(recipe) => {
               // Opens the Planner's finder on this recipe as its Main meal:
               // recipes that share its ingredients.
               setPlannerMainId(recipe.id);
-              openRecipe(null);
+              setOpenCard(null);
               setWeekStart(currentWeekStart());
-              setTab("planner");
+              goToTab("planner");
             }}
+            onEdit={openRecipeEditor}
+            onDelete={handleDeleteRecipe}
+            onRecipeUpdated={handleRecipeUpdated}
             onRequestInventoryAdd={requestInventoryAdd}
             onDeletePantryItem={handleDeletePantryItem}
-            onAddToGroceryList={addToGroceryList}
-            grocery={grocery}
             onFinishCooking={(recipe, servings, hooks) => openCooked({ recipe, servings, variant: "screen", ...hooks })}
-            onNavigate={(t) => {
-              openRecipe(null);
-              setTab(t);
+            onNavigate={(next) => {
+              setOpenCard(null);
+              goToTab(next);
             }}
-          />
-        )}
-        {popout && (
-          <RecipePopoutHost
-            recipe={recipes.find((r) => r.id === popout.recipeId) || null}
-            from={popout.from}
-            kitchen={kitchen}
-            plannedEntries={[...plannerEntries, ...upcomingEntries]}
-            grocery={grocery}
-            deals={deals}
-            showSales={tab === "makeable" && makeableSales}
-            onPlan={() => requestPlan(recipes.find((r) => r.id === popout.recipeId))}
-            onCook={tab === "makeable" ? undefined : () => openRecipeCard(popout.recipeId)}
-            onSimilar={() => {
-              setPopout(null);
-              // On Makeable, Similar recipes re-sorts that page; elsewhere it opens the Planner's Main meal.
-              if (tab === "makeable") {
-                makeableFinder.setMainMeal(popout.recipeId);
-                return;
-              }
-              setPlannerMainId(popout.recipeId);
-              if (tab !== "planner") {
-                setWeekStart(currentWeekStart());
-                goToTab("planner");
-              }
-            }}
-            onOpenFull={() => openRecipeCard(popout.recipeId)}
-            onClose={() => setPopout(null)}
+            onToast={showToast}
           />
         )}
         {pickerFor && (
@@ -1595,12 +1644,7 @@ export default function App({ user, onLogout }) {
             <StoreConfetti key={burst} burst />
           </div>
         )}
-        <Toast
-          toast={toast}
-          // Closes only the toast it was made for: a message's five seconds can end just as the next
-          // one is shown, and that must not take the new one away.
-          onClose={() => setToast((now) => (now && now.id === toast?.id ? null : now))}
-        />
+        <Toast toast={toast} onClose={() => closeToast(toast)} />
       </div>
       <DragOverlay dropAnimation={null} modifiers={activeDragItem?.data.current?.storeDrag ? [centreAboveFinger] : undefined}>
         {activeDragItem && <DragPreview active={activeDragItem} copy={copyDrag} />}

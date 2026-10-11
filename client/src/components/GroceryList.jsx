@@ -28,6 +28,7 @@ import {
 } from "../lib/groceryChecks.js";
 import { staleOverrideKeys } from "../lib/groceryDedupe.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
+import { ANY_STORE, STORE_PREF_KEY, loadStorePrefs, storeFor, storeSetup } from "../lib/groceryStores.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { parseDateKey, toDateKey } from "../lib/dates.js";
 import { brandOf, dealSavings } from "../lib/flyerIngredients.js";
@@ -40,16 +41,8 @@ import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
 import { formatWeekday, localizePrice } from "../i18n/format.js";
 
-// Per-item "which store do I usually get this at" preference — new in the
-// Riso redesign (there's no server schema for it yet). Lasting-but-not-
-// critical, so it lives in localStorage the same way Makeable's "also have"
-// list did on the old Makeable page rather than round-tripping to the server
-// for something this low-stakes. Hint-strip dismissal itself goes through
-// the shared per-user-per-screen mechanism (RisoControls.jsx's <HintStrip>,
-// lib/hints.js) instead of its own key.
-const STORE_PREF_KEY = "mealprep-grocery-store-pref";
-const DEFAULT_STORE = "Metro";
-const ANY_STORE = "Any store"; // unfiled items with no sale, once you've made stores of your own
+// Which store an item is filed under, and the per-item store choice kept in this
+// browser, are lib/groceryStores.js: the recipe card names the same store.
 
 // What a store is called on screen: your own and flyer stores by their
 // name, the catch-all bucket in the app's language.
@@ -75,15 +68,6 @@ function endsLabel(key, left) {
   if (left === 0) return t("grocery.endsToday");
   if (left === 1) return t("grocery.endsTomorrow");
   return t("grocery.endsOn", { day: formatWeekday(parseDateKey(key), "short") });
-}
-
-function loadStorePrefs() {
-  try {
-    const raw = localStorage.getItem(STORE_PREF_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
 }
 
 // Free-text "2 lemons" -> { name: "lemons", quantity: 2 }. Deliberately
@@ -259,6 +243,7 @@ export function GroceryList({
   stapleCategories,
   onRequestInventoryAdd,
   onToast,
+  onOpenRecipe, // (recipe title): the recipe's card, from a By recipe heading
 }) {
   // Deals and stores decide which store each item sits in, so the list
   // waits for both (see `ready` below) - drawing it before they arrived
@@ -520,29 +505,18 @@ export function GroceryList({
   // Your own stores (in your order) plus any store with a flyer deal. Items
   // you haven't filed land in the first flyer store - or, with no flyers,
   // in "Any store" once you've made stores of your own.
-  const flyerStores = [...new Set(deals.map((d) => d.store).filter(Boolean))];
-  const fallbackStore = flyerStores[0] || (sections.length > 0 ? ANY_STORE : DEFAULT_STORE);
-  const storeOrder = (() => {
-    const seen = sections.map((s) => s.name);
-    for (const store of flyerStores) if (!seen.includes(store)) seen.push(store);
-    if (!seen.includes(fallbackStore)) seen.unshift(fallbackStore);
-    return seen;
-  })();
+  const storeSet = storeSetup(sections, deals);
+  const { storeOrder } = storeSet;
   const sectionByName = new Map(sections.map((s) => [s.name, s]));
-  const assignedStore = new Map(sections.flatMap((s) => (s.assignments || []).map((a) => [a.core, s.name])));
 
   // A manual "move to another store" tap always wins once set — otherwise
   // tapping the chip on a sale item would look like it did nothing, since
   // the sale would keep re-claiming the item back every render. Absent an
   // explicit preference, sale beats default store.
   function storeForItem(item, deal) {
-    const assigned = assignedStore.get(item.core);
-    if (assigned) return assigned;
-    const pref = storePrefs[item.core];
-    if (pref && storeOrder.includes(pref)) return pref;
-    if (deal?.store) return deal.store;
-    return fallbackStore;
+    return storeFor(item.core, deal, { ...storeSet, storePrefs });
   }
+
 
   function persistStorePrefs(next) {
     setStorePrefs(next);
@@ -1013,7 +987,14 @@ export function GroceryList({
             groups.map((group) => (
               <section key={group.key} className="riso-group">
                 <div className="riso-group-head" style={{ background: "var(--riso-canvas)" }}>
-                  <p className="riso-group-name">{group.label}</p>
+                  {/* By recipe: the recipe's name opens its card. */}
+                  {view === "recipe" && group.name !== MANUAL_GROUP_LABEL && onOpenRecipe ? (
+                    <button type="button" className="riso-group-name as-button" title={t("grocery.openRecipe")} onClick={() => onOpenRecipe(group.name)}>
+                      {group.label}
+                    </button>
+                  ) : (
+                    <p className="riso-group-name">{group.label}</p>
+                  )}
                   <span className="riso-group-count">{group.count}</span>
                 </div>
                 {group.sorted.map((row) => (

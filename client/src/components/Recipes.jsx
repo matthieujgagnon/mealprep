@@ -36,7 +36,7 @@ const MEAL_CHIPS = [
 // One card (RecipePhotoCard, the same photo card as Makeable's): the meal, the
 // protein and the time over the top of the photo, the title over a dark gradient
 // at the bottom, and a thin line in the meal's colour. Tapping it opens the
-// recipe's pop-out. Cards are all the same size (3:4).
+// recipe's card. Cards are all the same size (3:4).
 function RecipeCard({ recipe, onOpen }) {
   const slot = recipeSlot(recipe);
   const protein = proteinOfRecipe(recipe);

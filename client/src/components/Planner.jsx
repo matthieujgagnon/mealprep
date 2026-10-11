@@ -26,14 +26,14 @@ import { t } from "../i18n/index.js";
 // (`TrashZone`) takes the bottom of the screen.
 //
 // App.jsx owns the planner's data and what changes it (so the board and every
-// other tab stay in step), and the pieces every page shares: the recipe pop-out,
+// other tab stay in step), and the pieces every page shares: the recipe card,
 // the slot picker and the toast. This component owns what is on screen here:
 // the finder, the cards that open beside a slot, the weekend menu and the
 // leftovers mode. Only one overlay is open at a time: `overlay` is
 //   { type: "slot", slot, el, mealIndex, note, entryId }  an empty slot's card (or a note's, to edit)
 //   { type: "planned", entry, slot, el, mealIndex }       a planned meal's card
 //   { type: "weekend" }                                   the weekend menu
-// and the shared recipe pop-out and slot picker (App.jsx) are above them.
+// and the shared recipe card and slot picker (App.jsx) are above them.
 //
 //   actions.placeRecipe(recipe, slot?)  puts a recipe in `slot`, else the target
 //                                       slot, else the next empty one; resolves
@@ -44,9 +44,9 @@ import { t } from "../i18n/index.js";
 //   actions.cycleState(id, { toast })  plain -> leftovers -> already have -> plain; with
 //                                       `toast` the shared toast says it, with Undo (a phone),
 //   actions.copyLastWeek()  fills the empty slots from last week; resolves with how many it copied
-//   onOpenPopout(recipe, from?)  opens the shared recipe pop-out
+//   onOpenRecipe(recipe, from?)  opens the shared recipe card
 //   onRequestPlan(recipe)        opens the shared slot picker
-//   onOpenRecipeCard(recipeId)   "Cook": the recipe's card on the Recipes page
+//   onOpenRecipeCard(recipeId)   "Cook": the recipe's card
 
 export function Planner({
   user,
@@ -66,8 +66,8 @@ export function Planner({
   initialMainId,
   onInitialMainConsumed,
   actions,
-  onOpenPopout,
-  popoutId,
+  onOpenRecipe,
+  openRecipeId,
   onRequestPlan,
   onRequestPlanLeftover,
   onOpenRecipeCard,
@@ -111,7 +111,7 @@ export function Planner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // "Similar recipes" (from any pop-out) and "Plan around this" on a recipe card
+  // "Plan around this" (the recipe card's ⋯ menu)
   // arrive with a Main meal to open the finder on.
   useEffect(() => {
     if (initialMainId) {
@@ -139,10 +139,10 @@ export function Planner({
     if (!mainRecipe) setLeftoverMode(false);
   }, [mainRecipe]);
 
-  // One overlay at a time: the recipe pop-out opening closes the others.
+  // One overlay at a time: the recipe card opening closes the others.
   useEffect(() => {
-    if (popoutId) setOverlay(null);
-  }, [popoutId]);
+    if (openRecipeId) setOverlay(null);
+  }, [openRecipeId]);
 
   // The meals from today on: what the finder's ranking counts as already planned.
   const upcomingPlanner = useMemo(
@@ -237,8 +237,8 @@ export function Planner({
       targetNotice={replacing ? t("finder.replaces", { title: replacing }) : null}
       onClearTarget={() => onTargetChange(null)}
       onAdd={add}
-      onOpenPopout={onOpenPopout}
-      openId={popoutId}
+      onOpenRecipe={onOpenRecipe}
+      openId={openRecipeId}
       leftovers={leftovers}
       onAddLeftover={addLeftover}
     />

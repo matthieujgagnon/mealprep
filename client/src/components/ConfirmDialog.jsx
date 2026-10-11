@@ -62,10 +62,10 @@ export function ConfirmDialog({ message, stayLabel, leaveLabel, onStay, onLeave 
       <div ref={boxRef} className="riso-ask" role="alertdialog" aria-modal="true" aria-label={message} onClick={(e) => e.stopPropagation()}>
         <p className="riso-ask-message">{message}</p>
         <div className="riso-ask-actions">
-          <button ref={stayRef} type="button" className="fnd-pop-btn primary" onClick={onStay}>
+          <button ref={stayRef} type="button" className="riso-ask-btn primary" onClick={onStay}>
             {stayLabel}
           </button>
-          <button type="button" className="fnd-pop-btn" onClick={onLeave}>
+          <button type="button" className="riso-ask-btn" onClick={onLeave}>
             {leaveLabel}
           </button>
         </div>

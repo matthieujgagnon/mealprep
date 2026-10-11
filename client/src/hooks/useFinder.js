@@ -3,8 +3,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 // What the shared recipe finder (components/Finder.jsx) is showing: the search,
 // the filters, the Cook with picks and the Main meal. It lives in a hook so the
 // screen around the finder can steer it too: the Planner focuses the search when
-// an empty slot's card says "Recipe". The recipe pop-out is not kept here:
-// App.jsx keeps the one pop-out for every page.
+// an empty slot's card says "Recipe". The recipe card is not kept here:
+// App.jsx keeps the one card for every page.
 export function useFinder() {
   const [query, setQuery] = useState("");
   const [avail, setAvail] = useState("all"); // all | ready | few

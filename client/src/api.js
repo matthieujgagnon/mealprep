@@ -84,7 +84,9 @@ export const api = {
     request("/recipes", { method: "POST", body: JSON.stringify(payload) }),
   updateRecipe: (id, payload) =>
     request(`/recipes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  deleteRecipe: (id) => request(`/recipes/${id}`, { method: "DELETE" }),
+  // `keepalive` lets the delete finish when the page is being left (a recipe deleted
+  // with Undo is deleted for good when its toast goes, which can be on leaving).
+  deleteRecipe: (id, { keepalive = false } = {}) => request(`/recipes/${id}`, { method: "DELETE", keepalive }),
   // Reads a recipe link without saving it (the editor's Re-import).
   scrapeRecipe: (url) =>
     request("/recipes/scrape", { method: "POST", body: JSON.stringify({ url }) }),
