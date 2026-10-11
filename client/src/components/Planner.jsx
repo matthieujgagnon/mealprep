@@ -59,7 +59,7 @@ export function Planner({
   pantryInventory,
   pantryLocations,
   inventoryLayout,
-  haveCores,
+  kitchen,
   grocery,
   target,
   onTargetChange,
@@ -229,7 +229,7 @@ export function Planner({
       pantryInventory={pantryInventory}
       pantryLocations={pantryLocations}
       inventoryLayout={inventoryLayout}
-      haveCores={haveCores}
+      kitchen={kitchen}
       upcomingEntries={upcomingPlanner}
       draggable
       target={target}
@@ -295,7 +295,7 @@ export function Planner({
         key={`${overlay.slot.dayOfWeek}-${overlay.slot.mealType}-${overlay.entry.id}`}
         {...cardProps}
         recipe={overlay.entry.recipe}
-        haveCores={haveCores}
+        kitchen={kitchen}
         grocery={grocery}
         state={openState}
         cooked={!!openEntry?.cookedAt}

@@ -239,7 +239,7 @@ export function Finder({
   pantryInventory,
   pantryLocations,
   inventoryLayout,
-  haveCores,
+  kitchen,
   upcomingEntries,
   layout = "panel",
   draggable = false,
@@ -269,11 +269,7 @@ export function Finder({
   const [includeSides, setIncludeSides] = useIncludeSides();
   const menusRef = useRef(null);
 
-  const { ranked, expiringCores, nameOf } = useMemo(
-    () => rankRecipesForTray({ recipes, upcomingEntries, pantryInventory, haveCores }),
-    [recipes, upcomingEntries, pantryInventory, haveCores]
-  );
-  const expiringSet = useMemo(() => new Set(expiringCores), [expiringCores]);
+  const { ranked, nameOf } = useMemo(() => rankRecipesForTray({ recipes, upcomingEntries, kitchen }), [recipes, upcomingEntries, kitchen]);
   const expiring = useMemo(() => expiringItems(pantryInventory), [pantryInventory]);
   const shelves = useMemo(
     () => shelvesWithItems(pantryInventory, orderedSections(pantryLocations, inventoryLayout)),
@@ -300,14 +296,13 @@ export function Finder({
           quick: finder.quick,
           expiring: finder.expiring,
           includeSides,
-          picks: pickedKeys,
+          picks: finder.picks,
           base,
           baseId: mainRecipe?.id || null,
           makeable: page,
-        },
-        expiringSet
+        }
       ),
-    [page, ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, includeSides, pickedKeys, base, mainRecipe, expiringSet]
+    [page, ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, includeSides, finder.picks, base, mainRecipe]
   );
 
   // A menu closes on a click outside it, or Escape.
@@ -344,7 +339,7 @@ export function Finder({
         ? t("finder.sharesNames", { names: formatList(names.map(lowerFirst)) })
         : t("finder.sharesCount", { count });
     }
-    if (pickedKeys.size > 0 && tile.picked.length > 0) {
+    if (finder.picks.length > 0 && tile.picked.length > 0) {
       const pickNames = new Map(finder.picks.map((p) => [p.key, p.name]));
       return t("tray.uses", { names: formatList(tile.picked.map((c) => lowerFirst(pickNames.get(c) || nameOf(c)))) });
     }

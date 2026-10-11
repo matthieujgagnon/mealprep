@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildTakeOut, convertAmount, haveItemFor, isStapleIngredient, itemCovers, matchingItems } from "./inventoryMatch.js";
+import {
+  buildTakeOut,
+  convertAmount,
+  expiringItemsIn,
+  foodKey,
+  haveItemFor,
+  ingredientHave,
+  isStapleIngredient,
+  itemCovers,
+  matchingItems,
+  recipeHave,
+  recipeUsesItem,
+} from "./inventoryMatch.js";
 
 const future = (days) => new Date(Date.now() + days * 86400000).toISOString();
 
@@ -27,6 +39,10 @@ describe("itemCovers", () => {
     ["Œufs", "large eggs"],
     ["oignons verts", "scallions"],
     ["Huile d'olive", "extra-virgin olive oil"],
+    ["Poivrons", "red bell pepper"],
+    ["bell peppers", "red bell pepper"],
+    ["Sel", "kosher salt"],
+    ["Poivre noir", "black pepper"],
   ])("%s covers %s", (have, ingredient) => {
     expect(itemCovers(have, ingredient)).toBe(true);
   });
@@ -45,6 +61,8 @@ describe("itemCovers", () => {
     ["black pepper", "red bell pepper"],
     ["lemons", "lemon juice"],
     ["milk", "buttermilk"],
+    ["Poivrons", "black pepper"],
+    ["bell pepper", "pepper"],
   ])("%s does not cover %s", (have, ingredient) => {
     expect(itemCovers(have, ingredient)).toBe(false);
   });
@@ -71,6 +89,126 @@ describe("isStapleIngredient", () => {
     expect(isStapleIngredient("chicken thighs")).toBe(false);
     expect(isStapleIngredient("basmati rice", ["riz basmati"])).toBe(true);
     expect(isStapleIngredient("sugar", [], ["sugar"])).toBe(false);
+  });
+});
+
+describe("French pantry staples", () => {
+  it.each([
+    "sel", "sel casher", "gros sel", "poivre", "poivre noir", "poivre noir moulu", "huile végétale", "huile d'olive extra vierge",
+    "farine tout usage", "sucre", "cassonade", "sucre brun", "poudre à pâte", "bicarbonate de soude", "fécule de maïs",
+    "extrait de vanille", "vinaigre", "sauce soja", "origan", "origan séché", "thym", "romarin", "cannelle", "muscade",
+    "curcuma", "cumin moulu", "paprika fumé", "feuilles de laurier", "poudre de chili",
+  ])("« %s » is an always-have, like its English name", (name) => {
+    expect(isStapleIngredient(name)).toBe(true);
+  });
+
+  it("reads salt and pepper written on one line, in both languages", () => {
+    expect(isStapleIngredient("sel et poivre")).toBe(true);
+    expect(isStapleIngredient("Sel et poivre, au goût")).toBe(true);
+    expect(isStapleIngredient("salt and pepper")).toBe(true);
+    expect(isStapleIngredient("salt & pepper, to taste")).toBe(true);
+    // Not when one of them is food, or a staple you took off the list.
+    expect(isStapleIngredient("salt and lime")).toBe(false);
+    expect(isStapleIngredient("sel et poivre", [], ["salt"])).toBe(false);
+  });
+
+  it("keeps food as food: bell peppers, fresh coriander, butter and garlic are not staples", () => {
+    for (const name of ["Poivrons", "poivron rouge", "bell pepper", "Coriandre fraîche", "beurre", "ail", "miel", "pâtes"]) {
+      expect(isStapleIngredient(name)).toBe(false);
+    }
+  });
+});
+
+describe("a recipe next to your Inventory", () => {
+  const recipe = {
+    id: "garlic-chicken",
+    ingredients: [
+      { name: "boneless skinless chicken thighs" },
+      { name: "garlic cloves" },
+      { name: "kosher salt" },
+      { name: "yellow onion" },
+      { name: "minced garlic" },
+      { name: "basmati rice" },
+      { name: "olive oil" },
+      { name: "salt and pepper" },
+      { name: "fresh cilantro" },
+      { name: "lime" },
+    ],
+  };
+  const kitchen = (names, extra = {}) => ({ inventory: names.map((name) => (typeof name === "string" ? { name } : name)), customStaples: [], excludedStaples: [], ...extra });
+  const english = kitchen(["Chicken thighs", "Garlic", "Onion", "Rice", "Cilantro"]);
+  const french = kitchen(["Hauts de cuisse de poulet", "Ail", "Oignons", "Riz", "Coriandre"]);
+
+  it.each([
+    ["English", english],
+    ["French", french],
+  ])("one line per food, staples left out, the same with an %s Inventory", (_, k) => {
+    const have = recipeHave(recipe, k);
+    expect(have.have.map((i) => i.name)).toEqual(["Boneless skinless chicken thighs", "Garlic cloves", "Yellow onion", "Basmati rice", "Fresh cilantro"]);
+    expect(have.buy.map((i) => i.name)).toEqual(["Lime"]);
+    expect(have).toMatchObject({ totalCount: 6, matchedCount: 5, missingCount: 1, missing: ["Lime"] });
+  });
+
+  it("gives each ingredient its ✓: staple, have or need", () => {
+    expect(ingredientHave("kosher salt", french)).toBe("staple");
+    expect(ingredientHave("sel", french)).toBe("staple");
+    expect(ingredientHave("garlic cloves", french)).toBe("have");
+    expect(ingredientHave("lime", french)).toBe("need");
+  });
+
+  it("never counts leftovers, food past its date, or a different cut", () => {
+    const k = kitchen([
+      { name: "Chicken curry (leftovers)", isLeftover: true },
+      { name: "Garlic", expiresAt: future(-1) },
+      "Chicken breasts",
+    ]);
+    const have = recipeHave(recipe, k);
+    expect(have.have).toEqual([]);
+    expect(have.missing).toContain("Boneless skinless chicken thighs");
+    expect(have.missing).toContain("Garlic cloves");
+  });
+
+  it("a line with one ingredient missing is missing, named after that ingredient", () => {
+    const twoCuts = { ingredients: [{ name: "chicken" }, { name: "chicken thighs" }] };
+    expect(recipeHave(twoCuts, kitchen(["Chicken breasts"])).missing).toEqual(["Chicken thighs"]);
+    expect(recipeHave(twoCuts, kitchen(["Chicken thighs"])).missingCount).toBe(0);
+  });
+
+  it("leaves your own staples out, and counts a staple you took off the list", () => {
+    expect(recipeHave(recipe, kitchen([], { customStaples: ["lime"] })).missing).not.toContain("Lime");
+    const sugar = { ingredients: [{ name: "sugar" }, { name: "butter" }] };
+    expect(recipeHave(sugar, kitchen([])).totalCount).toBe(1);
+    expect(recipeHave(sugar, kitchen([], { excludedStaples: ["sugar"] })).missing).toEqual(["Sugar", "Butter"]);
+  });
+
+  it("follows Inventory as it changes", () => {
+    const k = kitchen(["Ail"]);
+    expect(ingredientHave("lime", k)).toBe("need");
+    const next = { ...k, inventory: [...k.inventory, { name: "Limes" }] };
+    expect(ingredientHave("lime", next)).toBe("have");
+  });
+});
+
+describe("Cook with and uses expiring", () => {
+  it("a picked item finds the recipes that use it; a staple also by its name in the recipe's", () => {
+    expect(recipeUsesItem({ ingredients: [{ name: "chicken thighs" }] }, "Poulet")).toBe(true);
+    expect(recipeUsesItem({ ingredients: [{ name: "chicken thighs" }] }, "Chicken breasts")).toBe(false);
+    expect(recipeUsesItem({ ingredients: [{ name: "smoked paprika" }] }, "Paprika")).toBe(true);
+    expect(foodKey("Poulet")).toBe(foodKey("chicken"));
+  });
+
+  it("lists the expiring items a recipe uses that no other planned meal uses, French names too, never leftovers", () => {
+    const soup = { id: "soup", ingredients: [{ name: "chicken thighs" }, { name: "spinach" }] };
+    const pie = { id: "pie", ingredients: [{ name: "spinach" }] };
+    const inventory = [
+      { name: "Poulet", expiresAt: future(2) },
+      { name: "Épinards", expiresAt: future(1) },
+      { name: "Chicken soup (leftovers)", isLeftover: true, expiresAt: future(1) },
+      { name: "Riz", expiresAt: future(30) },
+    ];
+    expect(expiringItemsIn(soup, inventory, [], [soup, pie]).map((i) => i.name)).toEqual(["Épinards", "Poulet"]);
+    // The pie, already planned, uses the spinach: only the chicken is left to use up.
+    expect(expiringItemsIn(soup, inventory, [{ recipe: pie }], [soup, pie]).map((i) => i.name)).toEqual(["Poulet"]);
   });
 });
 

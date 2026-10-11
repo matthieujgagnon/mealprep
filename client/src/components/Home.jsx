@@ -3,13 +3,11 @@ import { api } from "../api.js";
 import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
 import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
 import { applyChecks } from "../lib/groceryChecks.js";
-import { findRecipesByIngredients, findSaleDeal } from "../lib/similarRecipes.js";
-import { isMakeableMeal } from "../lib/mealSlots.js";
+import { findSaleDeal } from "../lib/similarRecipes.js";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { daysUntil } from "../lib/pantryInventory.js";
-import { buildCombinedHave } from "../lib/onHand.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
-import { currentMealType, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
+import { currentMealType, makeableNow, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
@@ -107,6 +105,7 @@ export function Home({
   customStaples,
   excludedStaples,
   pantryInventory,
+  kitchen,
   onNavigate,
   onSelectRecipe,
   onOpenRecipeCard,
@@ -193,13 +192,10 @@ export function Home({
 
   const restaurantRecipe = recipes.find((r) => r.isPlaceholder && r.title === RESTAURANT_TITLE);
 
-  const combinedHave = buildCombinedHave(pantryInventory, customStaples);
-  const makeableResults = combinedHave.length > 0 ? findRecipesByIngredients(combinedHave, recipes, recipes.length) : [];
-  // The same Makeable now rule and setting as Recipes and Makeable: meals only.
+  // The same count as Makeable and the recipe card, and the same Makeable now
+  // rule and setting as Recipes and Makeable: meals only.
   const [includeSides] = useIncludeSides();
-  const countable = makeableResults.filter((m) => isMakeableMeal(m.recipe, includeSides));
-  const readyNow = countable.filter((m) => m.missingIngredients.length === 0);
-  const nearly = countable.filter((m) => m.missingIngredients.length > 0 && m.missingIngredients.length <= 2);
+  const { results: makeableResults, ready: readyNow, nearly } = makeableNow(recipes, kitchen, includeSides);
   // Makeable now is optional: with nothing ready and nothing one or two
   // items away it steps aside, and Proteins on sale takes its place.
   const showMakeable = readyNow.length > 0 || nearly.length > 0;
@@ -240,7 +236,7 @@ export function Home({
   // A written note ("Hockey pool @ Normal") or eating out - nothing to cook.
   const tonightIsNote = !!tonightEntry?.recipe?.isPlaceholder;
   const tonightMatch = tonightEntry ? makeableResults.find((m) => m.recipe.id === tonightEntry.recipe.id) : null;
-  const tonightAllHave = !!tonightMatch && tonightMatch.missingIngredients.length === 0;
+  const tonightAllHave = !!tonightMatch && tonightMatch.missingCount === 0;
 
   function mealFor(dayIndex, mealType) {
     return stripEntries.find((e) => e.dayOfWeek === dayIndex && e.mealType === mealType && !isBlankMarker(e));
@@ -339,7 +335,7 @@ export function Home({
                     ? tonightAllHave
                       ? t("home.haveAll", { count: tonightMatch.totalCount })
                       : t("home.haveSome", {
-                          have: tonightMatch.totalCount - tonightMatch.missingIngredients.length,
+                          have: tonightMatch.matchedCount,
                           total: tonightMatch.totalCount,
                         })
                     : tonightEntry.recipe.ingredients?.length

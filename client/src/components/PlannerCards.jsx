@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { TimePill } from "./RisoPills.jsx";
 import { IngredientMarks } from "./RecipePopout.jsx";
-import { haveAndBuy } from "../lib/finder.js";
+import { recipeHave } from "../lib/inventoryMatch.js";
 import { formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { stepIsHeading, stepText } from "../lib/steps.js";
 import { slotLabel } from "../lib/plannerSlots.js";
@@ -277,10 +277,10 @@ function statusText(state, buyCount) {
 // (`onCycle`) steps it plain -> leftovers -> already have -> plain (a computer
 // has the round ✓ on the card for that).
 // "I cooked this" (`onCooked`) opens the finished view; `cooked` says it was.
-export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, inlineTitle, recipe, haveCores, grocery, state = "none", cooked = false, onCycle, onCook, onCooked, onBase, onReplace, onClose }) {
+export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, inlineTitle, recipe, kitchen, grocery, state = "none", cooked = false, onCycle, onCook, onCooked, onBase, onReplace, onClose }) {
   const { ref, style } = useBesideSlot({ anchor: inline ? null : anchor, board, mealIndex }, [recipe?.id]);
   useCloseOutside(ref, anchor, onClose, !inline);
-  const { have, buy } = haveAndBuy(recipe, haveCores);
+  const { have, buy } = recipeHave(recipe, kitchen);
   const steps = (recipe.instructions || []).filter((s) => stepText(s).trim());
   const numbered = steps.filter((s) => !stepIsHeading(s));
   const slotName = recipeSlot(recipe);

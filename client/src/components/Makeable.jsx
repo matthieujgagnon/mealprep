@@ -23,7 +23,7 @@ export function Makeable({
   pantryInventory,
   pantryLocations,
   inventoryLayout,
-  haveCores,
+  kitchen,
   upcomingEntries,
   grocery,
   deals,
@@ -48,7 +48,7 @@ export function Makeable({
         pantryInventory={pantryInventory}
         pantryLocations={pantryLocations}
         inventoryLayout={inventoryLayout}
-        haveCores={haveCores}
+        kitchen={kitchen}
         upcomingEntries={upcomingEntries}
         plannedDays={plannedDays}
         grocery={grocery}

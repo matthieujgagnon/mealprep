@@ -41,7 +41,7 @@ Inventory in both languages (`client/src/i18n/en.js` and `fr.js`, and the button
 
 ## Reuse what exists
 
-Before building any new piece of UI, check [docs/components.md](docs/components.md) and reuse or extend what is there. Never build a second version of something that exists: one recipe pop-out, one slot picker, one toast, one week calendar, one "Makeable now" rule, one `openRecipeCard`, one set of Riso pills. If a shared piece almost fits, extend it and update its entry in `docs/components.md` in the same change.
+Before building any new piece of UI, check [docs/components.md](docs/components.md) and reuse or extend what is there. Never build a second version of something that exists: one recipe pop-out, one slot picker, one toast, one week calendar, one "Makeable now" rule, one Inventory matcher (`lib/inventoryMatch.js`: every "have it or not" goes through it), one `openRecipeCard`, one set of Riso pills. If a shared piece almost fits, extend it and update its entry in `docs/components.md` in the same change.
 
 ## Language
 

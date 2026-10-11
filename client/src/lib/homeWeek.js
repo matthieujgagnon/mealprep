@@ -1,4 +1,26 @@
-// Small rules behind Home's week strip and "To use" card.
+// Small rules behind Home's week strip, "To use" and Makeable now cards.
+
+import { recipeHave } from "./inventoryMatch.js";
+import { isMakeableMeal } from "./mealSlots.js";
+
+// Home's Makeable now card: every recipe next to your Inventory, with the same
+// count as Makeable, the recipe card and the pop-out (lib/inventoryMatch.js
+// recipeHave), leaving out the ones with nothing on hand. `ready` has nothing
+// missing and `nearly` one or two; both follow the Makeable now rule (meals
+// only unless pantry and sides are included). `results` also has the rest, for
+// tonight's card ("You have 3 of 5").
+export function makeableNow(recipes, kitchen, includeSides) {
+  const results = recipes
+    .filter((recipe) => !recipe.isPlaceholder)
+    .map((recipe) => ({ recipe, ...recipeHave(recipe, kitchen) }))
+    .filter((m) => m.totalCount > 0 && m.matchedCount > 0);
+  const countable = results.filter((m) => isMakeableMeal(m.recipe, includeSides));
+  return {
+    results,
+    ready: countable.filter((m) => m.missingCount === 0),
+    nearly: countable.filter((m) => m.missingCount > 0 && m.missingCount <= 2),
+  };
+}
 
 // The meal that is "on" right now, for the all-meals week strip: breakfast
 // before 10, lunch before 15, supper after. (Planner meal types: the supper
