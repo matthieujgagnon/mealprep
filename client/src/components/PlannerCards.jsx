@@ -249,6 +249,19 @@ export function SlotCard({ slot, mealIndex, anchor, board, inline = false, inlin
   );
 }
 
+// "I cooked this" on a planned meal: it always opens the finished view; once the
+// meal is cooked the card says so beside it.
+function CookedButton({ cooked, title, onClick }) {
+  return (
+    <div className="riso-plannedcard-cooked">
+      <button type="button" className="riso-plannedcard-btn cooked" aria-label={t("cooked.buttonAria", { title })} onClick={onClick}>
+        {t("cooked.button")}
+      </button>
+      {cooked && <span className="riso-plannedcard-cooked-tag">{t("cooked.status")}</span>}
+    </div>
+  );
+}
+
 // What a planned meal's status line says on a phone: leftovers and already have
 // win; otherwise how much there is to buy.
 function statusText(state, buyCount) {
@@ -263,7 +276,8 @@ function statusText(state, buyCount) {
 // "leftover" or "have") says what the meal is marked as, and tapping the status
 // (`onCycle`) steps it plain -> leftovers -> already have -> plain (a computer
 // has the round ✓ on the card for that).
-export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, inlineTitle, recipe, haveCores, grocery, state = "none", onCycle, onCook, onBase, onReplace, onClose }) {
+// "I cooked this" (`onCooked`) opens the finished view; `cooked` says it was.
+export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, inlineTitle, recipe, haveCores, grocery, state = "none", cooked = false, onCycle, onCook, onCooked, onBase, onReplace, onClose }) {
   const { ref, style } = useBesideSlot({ anchor: inline ? null : anchor, board, mealIndex }, [recipe?.id]);
   useCloseOutside(ref, anchor, onClose, !inline);
   const { have, buy } = haveAndBuy(recipe, haveCores);
@@ -308,6 +322,7 @@ export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, in
             {t("planner.replaceShort")}
           </button>
         </div>
+        {onCooked && <CookedButton cooked={cooked} title={recipe.title} onClick={onCooked} />}
       </InlineShell>
     );
   }
@@ -347,6 +362,7 @@ export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, in
         <button type="button" className="riso-plannedcard-btn" onClick={onReplace}>
           {t("planner.replaceRecipe")}
         </button>
+        {onCooked && <CookedButton cooked={cooked} title={recipe.title} onClick={onCooked} />}
       </div>
     </CardShell>
   );

@@ -291,8 +291,7 @@ export function RecipeDetailModal({
   onDeletePantryItem,
   onAddToGroceryList,
   grocery, // { isOnList(name), toggle(name) } from App: the one grocery list every page reads
-  onConsumePantryItems,
-  onPlanLeftovers,
+  onFinishCooking, // (recipe, servings, { onBackToStep1, onExitCook }): "I cooked this" at the end of Cook mode opens App's finished view
   onNavigate,
   sharedWithWeek, // ingredient names reused from this week's plan — only set when opened from a "good next addition" suggestion
 }) {
@@ -837,10 +836,7 @@ export function RecipeDetailModal({
           recipe={recipe}
           servings={servings}
           onExit={() => setCookModeOn(false)}
-          onRequestInventoryAdd={onRequestInventoryAdd}
-          pantryInventory={pantryInventory}
-          onConsumePantryItems={onConsumePantryItems}
-          onPlanLeftovers={onPlanLeftovers}
+          onFinish={(served, hooks) => onFinishCooking?.(recipe, served, { ...hooks, onExitCook: () => setCookModeOn(false) })}
           stepTimers={stepTimers}
         />
       )}

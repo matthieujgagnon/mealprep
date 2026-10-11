@@ -114,6 +114,7 @@ export function Home({
   isOnGroceryList = () => false,
   onAddToGroceryList,
   onRemoveFromGroceryList,
+  onCooked,
 }) {
   const weekStart = currentWeekStart();
   const todayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
@@ -325,7 +326,10 @@ export function Home({
                 <div className="riso-home-hero-photo placeholder" aria-hidden="true" />
               )}
               <div className="riso-home-hero-info">
-                <div className="riso-eyebrow on-accent">{t(hero.eyebrow)}</div>
+                <div className="riso-eyebrow on-accent">
+                  {t(hero.eyebrow)}
+                  {tonightEntry.cookedAt && <span className="riso-home-cooked">{t("cooked.status")}</span>}
+                </div>
                 <h2 className="riso-home-hero-title">{tonightEntry.recipe.title}</h2>
                 <p className="riso-home-hero-blurb">
                   {tonightMatch
@@ -347,6 +351,20 @@ export function Home({
                   >
                     {t("home.startCooking")}
                   </button>
+                  {onCooked && !tonightEntry.isLeftover && (
+                    <button
+                      type="button"
+                      className="riso-btn outline-on-accent"
+                      aria-label={t("cooked.buttonAria", { title: tonightEntry.recipe.title })}
+                      onClick={() =>
+                        onCooked(tonightEntry, (id, cookedAt) =>
+                          setPlannerEntries((prev) => prev.map((e) => (e.id === id ? { ...e, cookedAt } : e)))
+                        )
+                      }
+                    >
+                      {t("cooked.button")}
+                    </button>
+                  )}
                   <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
                     {t("home.swap")}
                   </button>

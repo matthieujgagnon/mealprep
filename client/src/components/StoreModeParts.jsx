@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import { colorOfStore, parseColor, textOn } from "../lib/storeColors.js";
-import { makeConfetti } from "../lib/storeConfetti.js";
+import { makeBurst, makeConfetti } from "../lib/storeConfetti.js";
 import { t } from "../i18n/index.js";
 
 // The small pieces of Store mode (design: docs/design/riso-v2-store-mode): the
@@ -206,8 +206,9 @@ export function ColoursSheet({ stores, colors, dark, storeLabel, onColor, onRese
 }
 
 // Over the whole screen, never in the way of a tap. Made fresh each time it starts.
-export function StoreConfetti() {
-  const { pieces, sparkles } = useMemo(() => makeConfetti(), []);
+// Store mode's celebration, or with `burst` the finished view's (lib/storeConfetti.js).
+export function StoreConfetti({ burst = false }) {
+  const { pieces, sparkles } = useMemo(() => (burst ? makeBurst() : makeConfetti()), [burst]);
   return (
     <div className="store-mode-confetti" aria-hidden="true" data-testid="store-confetti">
       {pieces.map((p, i) => (
@@ -222,7 +223,8 @@ export function StoreConfetti() {
             height: p.h,
             background: p.bg,
             borderRadius: p.radius,
-            animation: `${p.anim} ${p.duration} ${p.delay} ease-out forwards`,
+            animation: `${p.anim} ${p.duration} ${p.delay} ${burst ? "cubic-bezier(.15,.7,.35,1)" : "ease-out"} forwards`,
+            ...p.vars,
           }}
         />
       ))}

@@ -84,6 +84,7 @@ export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, on
             {isStale ? t("planner.pastFridge") : t("planner.leftover")}
           </span>
         )}
+        {entry.cookedAt && !entry.isLeftover && <span className="riso-planner-card-cooked">{t("cooked.status")}</span>}
       </div>
       <button
         type="button"

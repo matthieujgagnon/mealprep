@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { useTheme } from "../hooks/useTheme.js";
-import { core } from "../lib/similarRecipes.js";
 import {
   stepBody,
   stepImage,
@@ -24,7 +23,8 @@ import { t } from "../i18n/index.js";
 // on a phone one column under a row of step dots. A recipe whose ingredients have prep
 // notes ("diced") opens on a "Before you start" page first (design:
 // docs/design/riso-v2-cook-mode-prep/, page -1 below, dot 0 on the rail); a recipe with
-// none opens on step 1. The finished view at the end is still the earlier one.
+// none opens on step 1. The last step's "I cooked this" opens the finished view
+// (components/CookedView.jsx, which App.jsx shows over Cook mode).
 
 function formatTotalTime(minutes) {
   if (!minutes) return null;
@@ -57,30 +57,6 @@ function runningLabel(text) {
   const hit = TIMER_VERBS.find(([, re]) => re.test(lower));
   return `${t(`cookMode.verbs.${hit ? hit[0] : "running"}`)}…`;
 }
-
-// USDA FoodKeeper guidance for cooked leftovers.
-const LEFTOVER_STORAGE = [
-  {
-    id: "fridge",
-    days: 4,
-    get label() {
-      return t("cookMode.fridge");
-    },
-    get range() {
-      return t("cookMode.fridgeRange");
-    },
-  },
-  {
-    id: "freezer",
-    days: 75,
-    get label() {
-      return t("cookMode.freezer");
-    },
-    get range() {
-      return t("cookMode.freezerRange");
-    },
-  },
-];
 
 function useWakeLock(enabled) {
   const lockRef = useRef(null);
@@ -115,10 +91,7 @@ export function CookMode({
   recipe,
   servings,
   onExit,
-  onRequestInventoryAdd,
-  pantryInventory = [],
-  onConsumePantryItems,
-  onPlanLeftovers,
+  onFinish,
   stepTimers,
   startStep = 1,
 }) {
@@ -133,16 +106,12 @@ export function CookMode({
   const [stepIndex, setStepIndex] = useState(() =>
     hasPrep && startStep <= 1 ? -1 : Math.min(Math.max(startStep - 1, 0), Math.max(steps.length - 1, 0))
   );
+  // True while the finished view (App's, over this) is open after "I cooked this".
   const [finished, setFinished] = useState(false);
   const [checked, setChecked] = useState({}); // `${stepIndex}:${name}` -> true (`prep:${name}` for one no step uses)
   const [keepAwake, setKeepAwake] = useState(true);
   const { theme, dark, toggle: toggleTheme } = useTheme();
-  const [cooked, setCooked] = useState(false);
   const serves = servings || recipe.baseServings || 1;
-  const [portions, setPortions] = useState(Math.max(0, serves - 1));
-  const [storage, setStorage] = useState("fridge");
-  const [savedTo, setSavedTo] = useState(null);
-  const [saving, setSaving] = useState(false);
   const touchStartX = useRef(null);
 
   useWakeLock(keepAwake);
@@ -180,9 +149,15 @@ export function CookMode({
     });
   }
 
+  // The last step's "I cooked this" opens the finished view. "Back to step 1"
+  // there comes back here; × and "Back to the app" close Cook mode too.
   function next() {
-    if (isLast) setFinished(true);
-    else goToStep(stepIndex + 1);
+    if (!isLast) {
+      goToStep(stepIndex + 1);
+      return;
+    }
+    setFinished(true);
+    onFinish?.(serves, { onBackToStep1: () => goToStep(0) });
   }
 
   function toggleTimer() {
@@ -259,56 +234,13 @@ export function CookMode({
     else if (stepIndex > firstPage) goToStep(stepIndex - 1);
   }
 
-  // Everything in Inventory that one of this recipe's ingredients uses up.
-  const usedInventoryIds = (() => {
-    const cores = new Set((recipe.ingredients || []).map((i) => core(i.name)).filter(Boolean));
-    return pantryInventory.filter((item) => cores.has(core(item.name))).map((item) => item.id);
-  })();
-
-  async function markCooked() {
-    if (cooked) return;
-    if (usedInventoryIds.length > 0) await onConsumePantryItems?.(usedInventoryIds, "consumed");
-    setCooked(true);
-  }
-
-  async function saveLeftovers() {
-    if (portions <= 0 || savedTo) return;
-    const option = LEFTOVER_STORAGE.find((o) => o.id === storage);
-    setSaving(true);
-    try {
-      // Opens the Inventory confirmation: nothing is saved (or planned)
-      // unless it's confirmed.
-      const added = await onRequestInventoryAdd?.(
-        [
-          {
-            ref: "leftovers",
-            name: t("cookMode.leftoversName", { title: recipe.title }),
-            quantity: portions,
-            unit: "portion",
-            location: storage,
-            category: "Deli & Prepared Foods",
-            expiresAt: new Date(
-              Date.now() + (storage === "fridge" ? recipe.fridgeLifeDays || option.days : option.days) * 86400000
-            ).toISOString(),
-          },
-        ],
-        { title: t("inventoryConfirm.leftoversTitle") }
-      );
-      if (!added?.length) return;
-      if (storage === "fridge") await onPlanLeftovers?.(recipe, portions);
-      setSavedTo(option.label);
-    } finally {
-      setSaving(false);
-    }
-  }
-
   const totalTime = formatTotalTime((recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0));
   const meta = [t("cookMode.meta"), t("cookMode.serves", { count: serves }), totalTime].filter(Boolean).join(" · ");
   const otherRunning = stepTimers.running.filter((r) => r.key !== timerKey && stepKeys.includes(r.key));
 
   // One top bar for every view: the title, the other-step timer when one is running,
-  // the light / dark switch (not on the finished view, which stays light), Keep screen
-  // on (a computer only: on a phone the screen stays awake) and ×.
+  // the light / dark switch, Keep screen on (a computer only: on a phone the screen
+  // stays awake) and ×.
   const header = (
     <header className="cm-topbar">
       <div className="cm-title-block">
@@ -325,7 +257,7 @@ export function CookMode({
           ⏱ {formatClock(otherRunning[0].remaining)}
         </button>
       )}
-      {!finished && <ThemeSwitch dark={dark} onToggle={toggleTheme} className="cm-theme" />}
+      <ThemeSwitch dark={dark} onToggle={toggleTheme} className="cm-theme" />
       <button
         type="button"
         role="switch"
@@ -359,79 +291,6 @@ export function CookMode({
           <button type="button" className="cm-btn primary" onClick={onExit}>
             {t("cookMode.backToRecipe")}
           </button>
-        </main>
-      </div>
-    );
-  }
-
-  if (finished) {
-    return (
-      <div className="cm-overlay riso-theme" data-theme="light" onClick={(e) => e.stopPropagation()}>
-        {header}
-        <main className="cm-done">
-          <div className="cm-done-left">
-            <span className="cm-done-sticker">{t("cookMode.allDone")}</span>
-            <h2 className="cm-done-title">
-              {t("cookMode.readyStart")} <span className="accent">{t("cookMode.readyAccent")}</span>
-            </h2>
-            <p className="cm-done-copy">{t("cookMode.doneCopy")}</p>
-            <div className="cm-done-actions">
-              <button type="button" className={`cm-btn${cooked ? "" : " primary"}`} onClick={markCooked} disabled={cooked}>
-                {cooked ? t("cookMode.removed") : t("cookMode.markCooked")}
-              </button>
-              <button type="button" className="cm-btn" onClick={() => goToStep(0)}>
-                {t("cookMode.backToStep1")}
-              </button>
-            </div>
-          </div>
-
-          <section className="cm-leftovers" aria-label={t("cookMode.saveLeftoversLabel")}>
-            <h3 className="cm-leftovers-title">{t("cookMode.saveLeftoversQ")}</h3>
-            <div className="cm-leftovers-row">
-              <span className="cm-leftovers-label">{t("cookMode.portionsLeft")}</span>
-              <div className="cm-stepper">
-                <button type="button" aria-label={t("cookMode.fewer")} onClick={() => { setPortions((n) => Math.max(0, n - 1)); setSavedTo(null); }}>
-                  −
-                </button>
-                <span aria-live="polite">{portions}</span>
-                <button type="button" aria-label={t("cookMode.more")} onClick={() => { setPortions((n) => n + 1); setSavedTo(null); }}>
-                  +
-                </button>
-              </div>
-            </div>
-            <div className="cm-storage">
-              {LEFTOVER_STORAGE.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  aria-pressed={storage === o.id}
-                  className={`cm-storage-option${storage === o.id ? " on" : ""}`}
-                  onClick={() => {
-                    setStorage(o.id);
-                    setSavedTo(null);
-                  }}
-                >
-                  <span>{o.label}</span>
-                  <span className="cm-storage-range">{o.range}</span>
-                </button>
-              ))}
-            </div>
-            <p className="cm-leftovers-line">
-              {portions === 0
-                ? t("cookMode.nothingLeft")
-                : storage === "fridge"
-                ? t("cookMode.toFridge", { count: portions })
-                : t("cookMode.toFreezer", { count: portions })}
-            </p>
-            <button
-              type="button"
-              className={`cm-btn wide${savedTo ? "" : " primary"}`}
-              onClick={saveLeftovers}
-              disabled={saving || portions === 0 || !!savedTo}
-            >
-              {savedTo ? t("cookMode.savedTo", { place: savedTo }) : t("cookMode.saveLeftovers")}
-            </button>
-          </section>
         </main>
       </div>
     );
@@ -586,7 +445,7 @@ export function CookMode({
             <span className="cm-bottom-spacer" />
           ))}
         <button type="button" className={`cm-next${isLast ? " finish" : ""}`} onClick={next}>
-          {isLast ? t("cookMode.finish") : t("cookMode.nextStep")}
+          {isLast ? t("cooked.button") : t("cookMode.nextStep")}
         </button>
       </footer>
     </div>

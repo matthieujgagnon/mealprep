@@ -5,7 +5,8 @@ import { confirmAdd } from "./inventory-confirm.js";
 // Cook mode (design 2c, docs/design/riso-v2-cook-mode): one step at a time with
 // the step rail, per-step timers that keep running across step changes,
 // tap-to-check "For this step" rows, keyboard nav, the shared light / dark
-// switch, and the finished view (Mark as cooked, Save leftovers). Also the "Before you
+// switch, and the finished view after "I cooked this" (leftovers, taking the amounts
+// out of Inventory, Undo; components/CookedView.jsx). Also the "Before you
 // start" page (docs/design/riso-v2-cook-mode-prep) a recipe with prep notes opens on.
 
 function uniqueEmail() {
@@ -62,8 +63,8 @@ test("steps navigate with Next/Previous and the step rail tracks position", asyn
   // A dot jumps straight to its step; Up next goes forward one.
   await page.getByRole("tab", { name: "Step 3: Assemble" }).click();
   await expect(page.locator(".cm-step-title")).toHaveText("Assemble");
-  // The last step: Next says Finish, and there is no Up next.
-  await expect(page.getByRole("button", { name: "Finish ✓" })).toBeVisible();
+  // The last step: Next says I cooked this, and there is no Up next.
+  await expect(page.getByRole("button", { name: "I cooked this" })).toBeVisible();
   await expect(page.locator(".cm-up-next")).toHaveCount(0);
   await page.getByRole("tab", { name: "Step 1: Prep" }).click();
   await page.locator(".cm-up-next").click();
@@ -140,7 +141,7 @@ test("For this step rows show scaled quantities and check off when tapped", asyn
   await expect(page.locator(".cm-uses-qty")).toHaveText("4");
 });
 
-test("finishing shows Supper's ready; leftovers go to Inventory and the Planner", async ({ page }) => {
+test("I cooked this opens the finished view; the Leftovers card adds a LEFTOVER item and plans nothing by itself", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await addRecipeAndStartCooking(page, {
     title: "Cook Mode Finish Test",
@@ -150,53 +151,82 @@ test("finishing shows Supper's ready; leftovers go to Inventory and the Planner"
   });
 
   await page.getByRole("button", { name: "Next step →" }).click();
-  await page.getByRole("button", { name: "Finish ✓" }).click();
-  await expect(page.getByRole("heading", { name: "Supper's ready." })).toBeVisible();
+  await page.getByRole("button", { name: "I cooked this" }).click();
+  await expect(page.locator(".ck-screen")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /ready\.$/ })).toBeVisible();
 
-  const portions = page.locator(".cm-stepper span");
-  await expect(portions).toHaveText("3"); // serves 4, minus tonight's
-  await page.getByRole("button", { name: "Fewer portions" }).click();
-  await expect(portions).toHaveText("2");
-  await expect(page.locator(".cm-leftovers-line")).toContainText('show up as "leftover" in the Planner');
+  // Serves 4, minus tonight's: 3 of 4. Tapping the second square sets 2.
+  await expect(page.locator(".ck-portions-head strong")).toHaveText("3 of 4");
+  await page.getByRole("button", { name: "2 portions left" }).click();
+  await expect(page.locator(".ck-portions-head strong")).toHaveText("2 of 4");
+  await expect(page.locator(".ck-preview-line").first()).toContainText("2 portions · Fridge");
+  // The Inventory card waits for Leftovers to be answered.
+  await expect(page.getByRole("button", { name: "Remove from inventory" })).toBeDisabled();
 
-  await page.getByRole("button", { name: "Save leftovers" }).click();
-  await confirmAdd(page); // nothing goes into Inventory until it is confirmed
-  await expect(page.getByRole("button", { name: "✓ Saved to Fridge" })).toBeDisabled();
+  // The card is the confirmation: no other sheet opens.
+  await page.getByRole("button", { name: "+ Add to Inventory" }).click();
+  await expect(page.getByRole("heading", { name: "Leftovers added" })).toBeVisible();
+  await expect(page.locator(".riso-confirm")).toHaveCount(0);
+  const items = await (await page.request.get("/api/pantry-inventory")).json();
+  const leftover = items.find((i) => i.isLeftover);
+  expect(leftover).toMatchObject({ name: "Cook Mode Finish Test", quantity: 2, unit: "portion", location: "fridge" });
 
-  await page.getByRole("button", { name: "Exit cook mode" }).click();
-  await page.getByRole("button", { name: "Close" }).click();
-  await page.getByRole("button", { name: "Inventory", exact: true }).click();
-  await expect(page.getByText("Cook Mode Finish Test (leftovers)")).toBeVisible();
-
+  // Nothing is planned by itself any more: leftovers are planned from the Planner.
   const d = new Date();
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   const week = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const entries = await (await page.request.get(`/api/planner?week=${week}`)).json();
-  const today = (new Date().getDay() + 6) % 7;
-  const expected = Math.min(2, Math.max(0, Math.min(6, today + 3) - today));
-  const leftovers = entries.filter((e) => e.isLeftover && e.mealType === "lunch");
-  expect(leftovers).toHaveLength(expected);
+  expect(entries.filter((e) => e.isLeftover)).toHaveLength(0);
 });
 
-test("Mark as cooked takes the recipe's ingredients out of Inventory", async ({ page }) => {
+test("I cooked this takes the ticked amounts out of Inventory, and Undo puts them back", async ({ page }) => {
   await signUp(page, uniqueEmail());
-  await page.request.post("/api/pantry-inventory", { data: { name: "eggs", location: "fridge" } });
-  await page.request.post("/api/pantry-inventory", { data: { name: "butter", location: "fridge" } });
+  await page.request.post("/api/pantry-inventory", { data: { name: "Œufs", quantity: 6, unit: "unit", location: "fridge" } });
+  await page.request.post("/api/pantry-inventory", { data: { name: "butter", quantity: 250, unit: "g", location: "fridge" } });
   await page.reload();
-  await addRecipeAndStartCooking(page, {
+  await cookFromApi(page, {
     title: "Cook Mode Cooked Test",
-    servings: "2",
-    ingredientName: "eggs",
-    steps: "Prep: Whisk the eggs.\nServe: Plate and serve.",
+    baseServings: 2,
+    ingredients: [
+      { name: "eggs", quantity: 2, unit: "" },
+      { name: "butter", quantity: 1, unit: "tbsp" },
+      { name: "chives", quantity: 1, unit: "bunch" },
+    ],
+    instructions: ["Prep: Whisk the eggs.", "Serve: Plate and serve."],
   });
 
   await page.getByRole("button", { name: "Next step →" }).click();
-  await page.getByRole("button", { name: "Finish ✓" }).click();
-  await page.getByRole("button", { name: "Mark as cooked" }).click();
-  await expect(page.getByRole("button", { name: "✓ Removed from Inventory" })).toBeDisabled();
+  await page.getByRole("button", { name: "I cooked this" }).click();
+  await page.getByRole("button", { name: "No leftovers" }).click();
 
-  const items = await (await page.request.get("/api/pantry-inventory")).json();
-  expect(items.map((i) => i.name)).toEqual(["butter"]);
+  // « Œufs » is the eggs (French names count); a tablespoon of butter can't be grams, so it asks.
+  const eggs = page.getByRole("checkbox", { name: "Take Œufs out of your Inventory" });
+  await expect(eggs).toHaveAttribute("aria-checked", "true");
+  await expect(eggs).toContainText("− 2");
+  await expect(eggs).toContainText("4 left after");
+  const butter = page.getByRole("checkbox", { name: "Take butter out of your Inventory" });
+  await expect(butter).toHaveAttribute("aria-checked", "false");
+  await expect(butter).toContainText("How much did you use?");
+  await expect(page.locator(".ck-shelf", { hasText: "NOT IN YOUR INVENTORY" })).toContainText("chives");
+
+  // Tapping the amount edits it.
+  await page.getByRole("button", { name: "Change how much Œufs you used" }).click();
+  await page.getByRole("textbox", { name: /How much Œufs you used/ }).fill("3");
+  await page.keyboard.press("Enter");
+  await expect(eggs).toContainText("3 left after");
+
+  await page.getByRole("button", { name: "Remove from inventory" }).click();
+  await expect(page.getByRole("dialog", { name: /^Enjoy your/ })).toContainText("1 ingredient taken out");
+  let stock = await (await page.request.get("/api/pantry-inventory")).json();
+  expect(stock.map((i) => `${i.name} ${i.quantity}`).sort()).toEqual(["butter 250", "Œufs 3"]);
+
+  await page.getByRole("button", { name: "Back to the app" }).click();
+  await expect(page.locator(".cm-overlay")).toHaveCount(0);
+  await page.locator(".riso-toast").getByRole("button", { name: "Undo" }).click();
+  await expect(async () => {
+    stock = await (await page.request.get("/api/pantry-inventory")).json();
+    expect(stock.map((i) => `${i.name} ${i.quantity}`).sort()).toEqual(["butter 250", "Œufs 6"]);
+  }).toPass();
 });
 
 test("closing Cook mode with a timer running asks nothing, and the timer carries on on the recipe card", async ({ page }) => {
@@ -271,7 +301,7 @@ test("an hour-long timer reads in hours, and a long step with all its ingredient
     expect(fits).toBe(true);
     // The last ingredient and the Next button are both on screen.
     await expect(page.locator(".cm-uses-row").last()).toBeInViewport({ ratio: 1 });
-    await expect(page.getByRole("button", { name: /Finish|Next step/ })).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole("button", { name: /I cooked this|Next step/ })).toBeInViewport({ ratio: 1 });
     await page.getByRole("button", { name: "Exit cook mode" }).click();
   }
 });
@@ -301,7 +331,7 @@ test("a long step is drawn in short paragraphs, never split after an abbreviatio
   expect(recipes.find((r) => r.title === "Cook Mode Paragraphs").instructions).toEqual([saved]);
 });
 
-test("Cook mode opens dark like Store mode; the shared ☀ / ☾ switch changes it and the choice is kept; the finished view stays light", async ({ page }) => {
+test("Cook mode opens dark like Store mode; the shared ☀ / ☾ switch changes it and the choice is kept, the finished view too", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await cookFromApi(page, { title: "Cook Mode Theme", ingredients: [{ name: "rice", quantity: 1, unit: "cup" }], instructions: ["Prep: Rinse the rice.", "Serve: Plate the rice."] });
 
@@ -321,16 +351,18 @@ test("Cook mode opens dark like Store mode; the shared ☀ / ☾ switch changes 
   await page.getByRole("button", { name: "Start cooking" }).click();
   await expect(overlay).toHaveAttribute("data-theme", "light");
 
-  // The finished view is still the earlier one, light, and has no switch.
+  // The finished view follows the same choice, and has the switch too.
   await page.getByRole("button", { name: "Dark theme" }).click();
   await expect(overlay).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Next step →" }).click();
-  await page.getByRole("button", { name: "Finish ✓" }).click();
-  await expect(page.getByRole("heading", { name: "Supper's ready." })).toBeVisible();
-  await expect(overlay).toHaveAttribute("data-theme", "light");
-  await expect(page.locator(".riso-theme-switch")).toHaveCount(0);
-  await page.getByRole("button", { name: "Back to step 1" }).click();
-  await expect(overlay).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "I cooked this" }).click();
+  const finished = page.locator(".ck-screen");
+  await expect(finished).toHaveAttribute("data-theme", "dark");
+  await expect(finished).toHaveCSS("background-color", "rgb(0, 0, 0)");
+  await finished.getByRole("button", { name: "Light theme" }).click();
+  await expect(finished).toHaveAttribute("data-theme", "light");
+  await finished.getByRole("button", { name: /Back to step 1/ }).click();
+  await expect(page.locator(".cm-step-count")).toHaveText("STEP 1 OF 2");
 });
 
 test("the step rail scrolls with many steps, and a very long recipe still reaches every step", async ({ page }) => {
@@ -342,7 +374,7 @@ test("the step rail scrolls with many steps, and a very long recipe still reache
   await expect(page.locator(".cm-step-count")).toHaveText("STEP 16 OF 16");
   // The current dot is brought into view even though the rail has more dots than room.
   await expect(page.locator(".cm-rail-item.current")).toBeInViewport();
-  await expect(page.getByRole("button", { name: "Finish ✓" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "I cooked this" })).toBeVisible();
 });
 
 const PREP_RECIPE = {

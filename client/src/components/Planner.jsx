@@ -287,7 +287,17 @@ export function Planner({
         haveCores={haveCores}
         grocery={grocery}
         state={openState}
+        cooked={!!openEntry?.cookedAt}
         onCycle={() => actions.cycleState(openEntry.id, { toast: true })}
+        onCooked={
+          openEntry?.isLeftover
+            ? undefined
+            : () => {
+                const entry = openEntry;
+                close();
+                actions.cooked(entry);
+              }
+        }
         onCook={() => {
           const { recipe } = overlay.entry;
           close();

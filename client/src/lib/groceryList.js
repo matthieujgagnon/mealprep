@@ -270,7 +270,8 @@ export function buildGroceryList(
   for (const core of excludedStaples) staplesSet.delete(core.toLowerCase());
 
   for (const entry of plannerEntries) {
-    if (entry.isLeftover || entry.alreadyHave) continue; // reusing food, or already have what's needed — don't re-buy it
+    // Reusing food, already having what's needed, or already cooked: nothing to buy.
+    if (entry.isLeftover || entry.alreadyHave || entry.cookedAt) continue;
     const recipe = entry.recipe;
     if (!recipe) continue;
     const base = recipe.baseServings || 1;
