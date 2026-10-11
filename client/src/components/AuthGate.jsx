@@ -40,6 +40,7 @@ function AuthForm({ onAuthed }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [invite, setInvite] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [forgotSent, setForgotSent] = useState(false);
@@ -57,7 +58,7 @@ function AuthForm({ onAuthed }) {
       const user =
         mode === "login"
           ? await api.login(email.trim(), password)
-          : await api.signup(email.trim(), password, name.trim());
+          : await api.signup(email.trim(), password, name.trim(), invite.trim());
       // The language on screen while signing in becomes the account's.
       api.saveLocale(getLang()).catch(() => {});
       onAuthed({ ...user, locale: getLang() });
@@ -122,6 +123,25 @@ function AuthForm({ onAuthed }) {
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
+        {mode === "signup" && (
+          <>
+            <Field
+              label={t("auth.inviteCode")}
+              className="riso-auth-code"
+              type="text"
+              name="invite"
+              value={invite}
+              onChange={(e) => setInvite(e.target.value)}
+              placeholder={t("same.inviteExample")}
+              required
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={24}
+            />
+            <p className="auth-hint">{t("auth.inviteHint")}</p>
+          </>
+        )}
         {mode === "signup" && (
           <Field
             label={t("auth.name")}
