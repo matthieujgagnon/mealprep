@@ -3,6 +3,8 @@ import { prisma } from "../lib/prisma.js";
 import { suggestExpiration, suggestAllLocations, suggestCategory, suggestLocation, CATEGORIES } from "../lib/foodkeeper.js";
 import { fail } from "../lib/i18n.js";
 import { mergeRecent } from "../lib/recentItems.js";
+import { planTakeOut, portionsDue, validTakes } from "../lib/inventoryTakeOut.js";
+import { upcomingWhere } from "../lib/upcomingMeals.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -19,9 +21,24 @@ const LOCATIONS = ["pantry", "fridge", "freezer"];
 // by every route below that returns an item, not just the list, so a
 // freshly added or edited item has these fields immediately rather than
 // only after the next full reload.
+// Leftovers keep for the time they were given when saved or moved to the fridge
+// (the recipe's own fridge life, or the freezer's), so that is their bar.
 function enrichItem(item) {
   const locations = suggestAllLocations(item.name, item.purchasedAt);
-  return { ...item, locations, shelfLifeDays: locations[item.location]?.defaultDays ?? null };
+  const kept =
+    item.isLeftover && item.expiresAt
+      ? Math.max(1, Math.round((new Date(item.expiresAt) - new Date(item.purchasedAt)) / 86400000))
+      : null;
+  return { ...item, locations, shelfLifeDays: kept ?? locations[item.location]?.defaultDays ?? null };
+}
+
+// A leftover's recipe must be one of this user's own. undefined = not given;
+// null = none; false = not theirs.
+async function leftoverRecipeId(userId, value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const recipe = await prisma.recipe.findFirst({ where: { id: String(value), userId }, select: { id: true } });
+  return recipe ? recipe.id : false;
 }
 
 // A built-in location (fridge/pantry/freezer) or one of the user's own
@@ -96,13 +113,15 @@ function photoUrl(value) {
 // client - nothing here needs the fuller ingredient-parser canonicalization
 // the grocery list uses.
 pantryInventoryRouter.post("/", async (req, res) => {
-  const { name, quantity, unit, expiresAt, category } = req.body;
+  const { name, quantity, unit, expiresAt, category, isLeftover } = req.body;
   if (!name || !name.trim()) return res.status(400).json(fail(req, "required", { fields: "name" }));
   if (category !== undefined && !CATEGORIES.includes(category)) {
     return res.status(400).json(fail(req, "mustBeOneOf", { field: "category", options: CATEGORIES.join(", ") }));
   }
   const imageUrl = photoUrl(req.body.imageUrl);
   if (imageUrl === false) return res.status(400).json(fail(req, "imageUrlInvalid"));
+  const recipeId = await leftoverRecipeId(req.userId, req.body.recipeId);
+  if (recipeId === false) return res.status(404).json(fail(req, "notFound.recipe"));
 
   const location = (await resolveLocation(req.userId, req.body.location)) || suggestLocation(name);
   const purchasedAt = req.body.purchasedAt ? new Date(req.body.purchasedAt) : new Date();
@@ -122,6 +141,8 @@ pantryInventoryRouter.post("/", async (req, res) => {
       purchasedAt,
       expiresAt: resolvedExpiresAt,
       imageUrl: imageUrl ?? null,
+      isLeftover: isLeftover === true,
+      recipeId: recipeId ?? null,
     },
   });
   res.status(201).json(enrichItem(item));
@@ -158,6 +179,12 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
     if (imageUrl === false) return res.status(400).json(fail(req, "imageUrlInvalid"));
     data.imageUrl = imageUrl;
   }
+  if (req.body.isLeftover !== undefined) data.isLeftover = req.body.isLeftover === true;
+  if (req.body.recipeId !== undefined) {
+    const recipeId = await leftoverRecipeId(req.userId, req.body.recipeId);
+    if (recipeId === false) return res.status(404).json(fail(req, "notFound.recipe"));
+    data.recipeId = recipeId;
+  }
 
   const result = await prisma.pantryInventoryItem.updateMany({
     where: { id: req.params.id, userId: req.userId },
@@ -166,6 +193,109 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   if (result.count === 0) return res.status(404).json(fail(req, "notFound.item"));
   const item = await prisma.pantryInventoryItem.findFirst({ where: { id: req.params.id, userId: req.userId } });
   res.json(enrichItem(item));
+});
+
+// Takes amounts out of the user's items in one go (lib/inventoryTakeOut.js):
+// lowers what is left, and logs then removes what reaches zero, as "Used up"
+// does. Resolves with what Undo needs: `before` (every changed row exactly as
+// it was), `removedIds`, `logIds` (the log lines written for them) and the
+// changed items as they are now (`items`).
+async function takeOut(userId, takes) {
+  const items = await prisma.pantryInventoryItem.findMany({
+    where: { id: { in: [...new Set(takes.map((t) => t.id))] }, userId },
+  });
+  const { updates, removes } = planTakeOut(items, takes);
+  const touched = new Set([...removes, ...updates.map((u) => u.id)]);
+  const removed = items.filter((i) => removes.includes(i.id));
+  const logIds = [];
+  await prisma.$transaction(async (tx) => {
+    for (const item of removed) {
+      const log = await tx.pantryConsumptionLog.create({
+        data: { userId, name: item.name, core: item.core, category: item.category, action: "consumed" },
+      });
+      logIds.push(log.id);
+    }
+    for (const { id, quantity } of updates) await tx.pantryInventoryItem.update({ where: { id }, data: { quantity } });
+    if (removes.length > 0) await tx.pantryInventoryItem.deleteMany({ where: { id: { in: removes }, userId } });
+  });
+  const after = new Map(updates.map((u) => [u.id, u.quantity]));
+  return {
+    before: items.filter((i) => touched.has(i.id)),
+    removedIds: removes,
+    logIds,
+    items: items.filter((i) => after.has(i.id)).map((i) => enrichItem({ ...i, quantity: after.get(i.id) })),
+  };
+}
+
+// POST /api/pantry-inventory/take-out { takes: [{ id, amount }] } - "Remove from
+// inventory" on the finished view: each amount is in the item's own unit, or
+// "all". Responds as takeOut() above.
+pantryInventoryRouter.post("/take-out", async (req, res) => {
+  if (!validTakes(req.body.takes)) return res.status(400).json(fail(req, "takeOutAmounts"));
+  res.json(await takeOut(req.userId, req.body.takes));
+});
+
+// POST /api/pantry-inventory/put-back { rows, logIds? } - Undo for a take-out:
+// puts each row back exactly as it was (same id, amount, shelf, dates, photo),
+// whether it was lowered or removed, and drops the "used up" log lines the
+// take-out wrote. This only undoes; it is not a way of adding new things.
+pantryInventoryRouter.post("/put-back", async (req, res) => {
+  const { rows, logIds } = req.body;
+  if (!Array.isArray(rows)) return res.status(400).json(fail(req, "mustBeArray", { field: "rows" }));
+  const restored = [];
+  for (const row of rows) {
+    if (!row || typeof row.id !== "string" || !String(row.name || "").trim()) continue;
+    const existing = await prisma.pantryInventoryItem.findUnique({ where: { id: row.id } });
+    if (existing && existing.userId !== req.userId) continue;
+    const imageUrl = photoUrl(row.imageUrl);
+    const recipeId = await leftoverRecipeId(req.userId, row.recipeId ?? null);
+    const data = {
+      name: String(row.name).trim(),
+      core: String(row.name).trim().toLowerCase(),
+      category: CATEGORIES.includes(row.category) ? row.category : "other",
+      quantity: typeof row.quantity === "number" ? row.quantity : null,
+      unit: row.unit || null,
+      location: (await resolveLocation(req.userId, row.location)) || "pantry",
+      purchasedAt: row.purchasedAt ? new Date(row.purchasedAt) : new Date(),
+      expiresAt: row.expiresAt ? new Date(row.expiresAt) : null,
+      imageUrl: imageUrl === false ? null : imageUrl ?? null,
+      isLeftover: row.isLeftover === true,
+      recipeId: recipeId || null,
+    };
+    const item = existing
+      ? await prisma.pantryInventoryItem.update({ where: { id: row.id }, data })
+      : await prisma.pantryInventoryItem.create({
+          data: { ...data, id: row.id, userId: req.userId, ...(row.createdAt && { createdAt: new Date(row.createdAt) }) },
+        });
+    restored.push(enrichItem(item));
+  }
+  if (Array.isArray(logIds) && logIds.length > 0) {
+    await prisma.pantryConsumptionLog.deleteMany({ where: { id: { in: logIds.map(String) }, userId: req.userId } });
+  }
+  res.json(restored);
+});
+
+// POST /api/pantry-inventory/leftovers/settle { today: "YYYY-MM-DD" } - each
+// planned leftover meal (linked to Inventory leftovers) whose day is before
+// `today` takes one portion off those leftovers, once: the meal is marked with
+// `cookedAt`. Leftovers at zero portions leave Inventory. Responds as takeOut()
+// plus `entryIds` (the meals marked) and `meals` ([{ title, count }]) for the
+// message; Undo is put-back plus clearing `cookedAt` on those meals.
+pantryInventoryRouter.post("/leftovers/settle", async (req, res) => {
+  const upcoming = upcomingWhere(req.body.today);
+  if (!upcoming) return res.status(400).json(fail(req, "required", { fields: "today (YYYY-MM-DD)" }));
+  const entries = await prisma.plannerEntry.findMany({
+    where: { userId: req.userId, isLeftover: true, leftoverItemId: { not: null }, cookedAt: null, NOT: upcoming },
+    include: { recipe: { select: { title: true } } },
+  });
+  if (entries.length === 0) return res.json({ entryIds: [], meals: [], before: [], removedIds: [], logIds: [], items: [] });
+  const takes = portionsDue(entries);
+  const result = await takeOut(req.userId, takes);
+  const entryIds = entries.map((e) => e.id);
+  await prisma.plannerEntry.updateMany({ where: { id: { in: entryIds }, userId: req.userId }, data: { cookedAt: new Date() } });
+  const counts = new Map();
+  for (const e of entries) counts.set(e.recipe.title, (counts.get(e.recipe.title) || 0) + 1);
+  res.json({ ...result, entryIds, meals: [...counts].map(([title, count]) => ({ title, count })) });
 });
 
 // POST /api/pantry-inventory/consume { ids: [...], action: "consumed" | "wasted" } -

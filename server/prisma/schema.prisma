@@ -99,6 +99,7 @@ model Recipe {
 
   ingredients    Ingredient[]
   plannerEntries PlannerEntry[]
+  leftoverItems  PantryInventoryItem[]
 
   @@index([userId])
 }
@@ -262,22 +263,22 @@ model GroceryItemOverride {
 // source replaces that source's rows outright, since a new upload
 // supersedes the old one rather than adding to it.
 model FlyerDeal {
-  id         String   @id @default(cuid())
-  userId     String? // nullable only pre-backfill - see Recipe.userId
-  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store      String // the actual store this item's price is from (e.g. "Metro") - extracted per-item for a multi-store roundup image, or just the upload's source for a normal single-store flyer
-  source     String? // identifies the flyer/upload this deal came from - the name typed on upload (e.g. "Metro"), or "Flipp" for the weekly import; re-uploading with the same source supersedes its previous deals (see isCurrent below), independent of the per-item store above. Null for rows from before this field existed - falls back to store for those.
-  category   String // "protein" | "produce" | "dairy" | "bakery" | "staple" | "other"
-  item       String // displayed exactly as printed on the flyer, in whatever language that is
-  matchName  String? // item translated to plain English grocery terms (e.g. "brocoli" -> "broccoli"), for matching against recipe ingredient names; null for rows from before this field existed, or when extraction didn't provide one — falls back to item
-  price      String // display string as printed on the flyer, e.g. "$4.99/lb"
-  unitPrice  Float? // price/quantity reduced to a single number in unitBasis's unit (e.g. "2 for $5" -> 2.5, "900g for $1.99" -> converted to price per lb) — null when extraction couldn't confidently reduce the printed price to one comparable number
-  unitBasis  String? // "lb" | "each" | "L" — the unit unitPrice is expressed in, so deals are only ever compared within the same basis; null alongside a null unitPrice
-  validUntil String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
+  id           String   @id @default(cuid())
+  userId       String? // nullable only pre-backfill - see Recipe.userId
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store        String // the actual store this item's price is from (e.g. "Metro") - extracted per-item for a multi-store roundup image, or just the upload's source for a normal single-store flyer
+  source       String? // identifies the flyer/upload this deal came from - the name typed on upload (e.g. "Metro"), or "Flipp" for the weekly import; re-uploading with the same source supersedes its previous deals (see isCurrent below), independent of the per-item store above. Null for rows from before this field existed - falls back to store for those.
+  category     String // "protein" | "produce" | "dairy" | "bakery" | "staple" | "other"
+  item         String // displayed exactly as printed on the flyer, in whatever language that is
+  matchName    String? // item translated to plain English grocery terms (e.g. "brocoli" -> "broccoli"), for matching against recipe ingredient names; null for rows from before this field existed, or when extraction didn't provide one — falls back to item
+  price        String // display string as printed on the flyer, e.g. "$4.99/lb"
+  unitPrice    Float? // price/quantity reduced to a single number in unitBasis's unit (e.g. "2 for $5" -> 2.5, "900g for $1.99" -> converted to price per lb) — null when extraction couldn't confidently reduce the printed price to one comparable number
+  unitBasis    String? // "lb" | "each" | "L" — the unit unitPrice is expressed in, so deals are only ever compared within the same basis; null alongside a null unitPrice
+  validUntil   String? // "YYYY-MM-DD" flyer end date, if printed; null if not stated
   regularPrice Float? // the usual price the flyer itself states ("Save $2.00", "Reg. $6.99"), in the same unit as unitPrice - null when it doesn't say
-  imageUrl   String? // this item's own photo on the flyer, when the source provides one per item (the Flipp import) — null for manually-uploaded flyers, which show the whole uploaded page instead (see FlyerUpload)
-  isCurrent  Boolean  @default(true) // true = still on the active flyer for its source; a re-upload/re-import under the same source flips its previous rows to false instead of deleting them, so price history accumulates over time rather than being wiped every week. GET /api/deals (and anything showing "what's on sale now") filters to isCurrent: true; a superseded row is kept only so later price-history features (6-month low/high, "is this a real deal") have real data to compare against.
-  createdAt  DateTime @default(now())
+  imageUrl     String? // this item's own photo on the flyer, when the source provides one per item (the Flipp import) — null for manually-uploaded flyers, which show the whole uploaded page instead (see FlyerUpload)
+  isCurrent    Boolean  @default(true) // true = still on the active flyer for its source; a re-upload/re-import under the same source flips its previous rows to false instead of deleting them, so price history accumulates over time rather than being wiped every week. GET /api/deals (and anything showing "what's on sale now") filters to isCurrent: true; a superseded row is kept only so later price-history features (6-month low/high, "is this a real deal") have real data to compare against.
+  createdAt    DateTime @default(now())
 
   @@index([userId, store])
   @@index([userId, source])
@@ -337,6 +338,9 @@ model PantryInventoryItem {
   purchasedAt DateTime  @default(now())
   expiresAt   DateTime? // suggested from the bundled USDA FoodKeeper data at add-time, or set/edited by the user - null means no suggestion was available and none was typed in
   imageUrl    String? // the item's photo on its Inventory card: an upload (/api/recipe-images/...) or a link; null shows a food emoji instead
+  isLeftover  Boolean   @default(false) // a LEFTOVER item: a cooked meal kept in portions (quantity, unit "portion") on the Leftovers shelf, in the fridge or freezer (`location`). Never matched to a recipe ingredient, and can be planned on the Planner
+  recipeId    String? // the recipe the leftovers are from (their name and photo, and what the Planner places); null for leftovers added by hand
+  recipe      Recipe?   @relation(fields: [recipeId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
 
   // Unlike RecipeCategory/PantryStaple/etc., this one is genuinely meant to
@@ -356,19 +360,21 @@ model PantryInventoryItem {
 // pre-existing PlannerEntry (the old single permanent template) lands on
 // this one week, which becomes its first real week once this ships.
 model PlannerEntry {
-  id          String   @id @default(cuid())
-  userId      String? // nullable only pre-backfill - see Recipe.userId
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekStart   String   @default("2026-08-31")
-  dayOfWeek   Int // 0 = Monday ... 6 = Sunday
-  mealType    String   @default("dinner") // "breakfast" | "lunch" | "dinner"
-  recipeId    String
-  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  servings    Int? // override servings for this planned meal; falls back to recipe.baseServings
-  isLeftover  Boolean  @default(false) // true = reusing food from another planned meal; excluded from grocery list
-  alreadyHave Boolean  @default(false) // true = already have what this meal needs on hand (e.g. breakfast staples); excluded from grocery list, same as a leftover, but for a different reason
-  position    Int      @default(0) // order within the day+mealType slot
-  createdAt   DateTime @default(now())
+  id             String    @id @default(cuid())
+  userId         String? // nullable only pre-backfill - see Recipe.userId
+  user           User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart      String    @default("2026-08-31")
+  dayOfWeek      Int // 0 = Monday ... 6 = Sunday
+  mealType       String    @default("dinner") // "breakfast" | "lunch" | "dinner"
+  recipeId       String
+  recipe         Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  servings       Int? // override servings for this planned meal; falls back to recipe.baseServings
+  isLeftover     Boolean   @default(false) // true = reusing food from another planned meal; excluded from grocery list
+  alreadyHave    Boolean   @default(false) // true = already have what this meal needs on hand (e.g. breakfast staples); excluded from grocery list, same as a leftover, but for a different reason
+  position       Int       @default(0) // order within the day+mealType slot
+  cookedAt       DateTime? // when "I cooked this" was confirmed for this meal, or, for a planned leftover, when its portion came off the Inventory leftovers; a cooked meal adds nothing to the grocery list
+  leftoverItemId String? // the Inventory leftovers (PantryInventoryItem with isLeftover) this planned leftover eats from. A plain id, not a relation: the item leaves Inventory at zero portions and Undo puts it back with the same id, so the link must survive
+  createdAt      DateTime  @default(now())
 
   @@index([userId, weekStart])
 }
