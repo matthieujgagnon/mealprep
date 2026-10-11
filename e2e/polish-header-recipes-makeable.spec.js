@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import { accountButton, langSwitch } from "./account-menu.js";
 
@@ -14,6 +15,7 @@ async function signUp(page, name = "Matt") {
   await page.fill('input[placeholder="e.g. Matt"]', name);
   await page.fill('input[type="email"]', `polish+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   const me = await (await page.request.get("/api/auth/me")).json();

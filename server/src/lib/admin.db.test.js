@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "./prisma.js";
 import { requireAuth } from "./auth.js";
 import { requireAdmin } from "./admin.js";
+import { generateCode } from "./invites.js";
 import { authRouter } from "../routes/auth.js";
 import { adminRouter } from "../routes/admin.js";
 
@@ -25,6 +26,7 @@ describe.skipIf(!dbUp)("/api/admin", () => {
   let server;
   let base;
   let savedAdminEmails;
+  let invite; // signup needs a code: one that lets every test account in
   const created = [];
 
   async function call(path, { cookie, method = "GET", body } = {}) {
@@ -37,7 +39,7 @@ describe.skipIf(!dbUp)("/api/admin", () => {
   }
 
   async function account(email, extra = {}) {
-    const res = await call("/api/auth/signup", { method: "POST", body: { email, password: "longenough1" } });
+    const res = await call("/api/auth/signup", { method: "POST", body: { email, password: "longenough1", inviteCode: invite.code } });
     expect(res.status).toBe(201);
     const user = await prisma.user.update({ where: { email }, data: extra });
     created.push(user.id);
@@ -46,6 +48,7 @@ describe.skipIf(!dbUp)("/api/admin", () => {
 
   beforeAll(async () => {
     savedAdminEmails = process.env.ADMIN_EMAILS;
+    invite = await prisma.inviteCode.create({ data: { code: generateCode(), maxUses: 10 } });
     const app = express();
     app.use(cookieParser());
     app.use(express.json());
@@ -61,6 +64,7 @@ describe.skipIf(!dbUp)("/api/admin", () => {
     process.env.ADMIN_EMAILS = savedAdminEmails ?? "";
     if (savedAdminEmails === undefined) delete process.env.ADMIN_EMAILS;
     await prisma.user.deleteMany({ where: { id: { in: created } } });
+    await prisma.inviteCode.delete({ where: { id: invite.id } });
     await new Promise((resolve) => server.close(resolve));
     await prisma.$disconnect();
   });
@@ -100,7 +104,7 @@ describe.skipIf(!dbUp)("/api/admin", () => {
 
   it("refuses to sign up a listed email that has no account, like a taken email", async () => {
     process.env.ADMIN_EMAILS = ghostEmail;
-    const res = await call("/api/auth/signup", { method: "POST", body: { email: `  ${ghostEmail.toUpperCase()} `, password: "longenough1" } });
+    const res = await call("/api/auth/signup", { method: "POST", body: { email: `  ${ghostEmail.toUpperCase()} `, password: "longenough1", inviteCode: invite.code } });
     expect(res.status).toBe(409);
     expect(res.cookie).toBeUndefined();
     expect(await prisma.user.findUnique({ where: { email: ghostEmail } })).toBeNull();

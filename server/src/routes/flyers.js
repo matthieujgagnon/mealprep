@@ -13,6 +13,7 @@ import {
   updateSettings,
 } from "../lib/flyerImport.js";
 import { fail, langOf, msg } from "../lib/i18n.js";
+import { aiLimitFailure, callGemini, takeAiUse } from "../lib/aiLimit.js";
 
 export const flyersRouter = Router();
 
@@ -104,9 +105,15 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
     return res.status(400).json(fail(req, "fileType"));
   }
 
+  // The daily limit on Gemini readings (lib/aiLimit.js). Taken here, after the
+  // file passed the checks above, so a request that never reaches Gemini
+  // doesn't use one up.
+  const use = await takeAiUse(req.userId);
+  if (!use.ok) return res.status(429).json(aiLimitFailure(req, use));
+
   try {
     const client = new GoogleGenAI({});
-    const response = await client.models.generateContent({
+    const response = await callGemini(use, () => client.models.generateContent({
       model: "gemini-3.6-flash",
       contents: [
         {
@@ -134,7 +141,7 @@ flyersRouter.post("/upload", upload.single("file"), async (req, res) => {
         responseMimeType: "application/json",
         responseJsonSchema: DEALS_SCHEMA,
       },
-    });
+    }));
 
     const parsed = JSON.parse(response.text);
     if (!parsed || !Array.isArray(parsed.deals)) {

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 
 // The Makeable page, Riso v2 (designs: docs/design/riso-v2-makeable and, for the
@@ -23,6 +24,7 @@ async function signUp(page, tag) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible();
   return email;

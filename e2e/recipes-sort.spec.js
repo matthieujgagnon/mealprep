@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // "Fewest missing" puts what you can make with the least shopping first.
 
@@ -9,6 +10,7 @@ test("Fewest missing sorts by items to buy, with unknown recipes last", async ({
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-sort+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 
@@ -37,6 +39,7 @@ test("cards show the total time in their caption, and Quickest puts recipes with
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-time+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 
@@ -63,6 +66,7 @@ test("an ingredient can be a count of units", async ({ page }) => {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-unit+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 
@@ -86,6 +90,7 @@ test("any photo can be made the cover, and photos keep their order", async ({ pa
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-photo+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 
@@ -116,6 +121,7 @@ test("the Side filter shows side dishes", async ({ page }) => {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-side+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   await page.request.post("/api/recipes", { data: { title: "Garlic asparagus", mealSlot: "side", ingredients: [{ name: "asparagus" }] } });
@@ -134,6 +140,7 @@ test("TIME and SORT sit in the toolbar beside the tabs, and the Meal menu keeps 
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `recipes-chips+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
   await page.request.post("/api/recipes", { data: { title: "Chips and dip", mealSlot: "snack", ingredients: [{ name: "chips" }] } });

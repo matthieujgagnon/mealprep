@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
 import { langSwitch } from "./account-menu.js";
@@ -61,6 +62,7 @@ async function signUpInFrench(page) {
   await page.getByRole("button", { name: "S'inscrire" }).click();
   await page.fill('input[type="email"]', `fr+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Créer un compte" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Accueil");
 }

@@ -5,6 +5,8 @@ import { defineConfig } from "@playwright/test";
 // tests" section.
 export default defineConfig({
   testDir: "./e2e",
+  // Makes the invite code every test account signs up with (e2e/invite.js).
+  globalSetup: "./e2e/global-setup.js",
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -20,8 +22,9 @@ export default defineConfig({
       FLYER_AUTO_IMPORT: "off",
       FLIPP_BASE_URL: "http://127.0.0.1:9/flipp",
       STATCAN_WDS_URL: "http://127.0.0.1:9/wds",
-      // The admins e2e/admin.spec.js logs in as (and one with no account).
-      ADMIN_EMAILS: "e2e-admin@example.com, e2e-unclaimed@example.com",
+      // The admins e2e/admin.spec.js and e2e/invites.spec.js log in as (and
+      // one with no account).
+      ADMIN_EMAILS: "e2e-admin@example.com, e2e-unclaimed@example.com, e2e-invites-admin@example.com",
     },
     url: "http://localhost:4000/api/health",
     reuseExistingServer: !process.env.CI,

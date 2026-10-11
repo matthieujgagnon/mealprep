@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { cancelAdd, confirmAdd } from "./inventory-confirm.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -17,6 +18,7 @@ async function signUp(page) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', `store-mode+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 }
@@ -492,6 +494,7 @@ test.describe("in French", () => {
     await page.getByRole("button", { name: "S'inscrire" }).click();
     await page.fill('input[type="email"]', `store-mode-fr+${Date.now()}@example.com`);
     await page.fill('input[type="password"]', "testpass123");
+    await page.fill('input[name="invite"]', E2E_INVITE);
     await page.getByRole("button", { name: "Créer un compte" }).click();
     await expect(page.locator(".tab.active")).toHaveText("Accueil");
     await seedList(page);
@@ -528,6 +531,7 @@ test.describe("in French", () => {
     await page.getByRole("button", { name: "S'inscrire" }).click();
     await page.fill('input[type="email"]', `store-mode-fr-drag+${Date.now()}@example.com`);
     await page.fill('input[type="password"]', "testpass123");
+    await page.fill('input[name="invite"]', E2E_INVITE);
     await page.getByRole("button", { name: "Créer un compte" }).click();
     await expect(page.locator(".tab.active")).toHaveText("Accueil");
     await seedList(page);

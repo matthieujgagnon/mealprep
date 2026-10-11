@@ -369,6 +369,18 @@ select {
   box-shadow: 3px 3px 0 var(--riso-accent);
 }
 
+/* The invite code: capitals, spaced out, like the code it is. */
+.riso-auth-field input.riso-auth-code {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--riso-font-mono);
+  font-weight: 700;
+}
+
+.riso-auth-field input.riso-auth-code::placeholder {
+  text-transform: none;
+}
+
 .auth-hint {
   margin: -10px 0 0;
   font-size: 13px;
@@ -15624,13 +15636,18 @@ body.no-select {
 .riso-admin-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
-  grid-template-areas:
-    "members hq"
-    "members invites"
-    "members ai";
-  grid-template-rows: auto auto 1fr;
   gap: 20px;
   align-items: start;
+}
+
+/* Two stacks on a computer: Members and AI usage on the left, Project HQ and
+   Invite codes on the right. On a phone the stacks dissolve and the four cards
+   follow each other in one column (see the phone rules below). */
+.riso-admin-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .riso-admin-hq {
@@ -15705,11 +15722,159 @@ body.no-select {
   text-decoration: none;
 }
 
-/* Invite codes and AI usage: empty for now, so a dashed outline. */
-.riso-admin-soon {
-  border-style: dashed;
-  border-color: var(--riso-dash-strong);
-  background: transparent;
+/* Invite codes: the make-a-code form, then the codes. The labelled fields are
+   Flyers' import settings fields (riso-import-field), made full width. */
+.riso-admin-card .riso-import-field input {
+  width: 100%;
+}
+
+.riso-admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+  padding-bottom: 16px;
+  border-bottom: var(--riso-border) solid var(--riso-ink);
+}
+
+.riso-admin-choices .riso-segmented {
+  display: flex;
+  width: 100%;
+}
+
+.riso-admin-choices .riso-segmented button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.riso-admin-make {
+  align-self: flex-start;
+}
+
+.riso-admin-codes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.riso-admin-code {
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-admin-code + .riso-admin-code {
+  border-top: 1px dashed var(--riso-dash-strong);
+}
+
+/* The code just made: a blue outline for as long as the page is open. */
+.riso-admin-code.fresh {
+  margin: 0 -10px;
+  padding: 14px 8px;
+  border: 2px solid var(--riso-accent);
+  border-radius: 14px;
+}
+
+.riso-admin-code.fresh + .riso-admin-code {
+  border-top: none;
+}
+
+.riso-admin-code-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.riso-admin-code-text {
+  font: 700 21px var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+
+.riso-admin-code[data-state="used"] .riso-admin-code-text,
+.riso-admin-code[data-state="expired"] .riso-admin-code-text,
+.riso-admin-code[data-state="off"] .riso-admin-code-text {
+  color: var(--riso-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.riso-admin-code-note {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.riso-admin-code-note.empty {
+  font-weight: 400;
+  color: var(--riso-muted);
+}
+
+.riso-admin-code-meta {
+  display: flex;
+  gap: 4px 14px;
+  flex-wrap: wrap;
+  font: 400 12.5px var(--riso-font-mono);
+  color: var(--riso-soft);
+}
+
+.riso-admin-code-joined {
+  font-size: 13px;
+  color: var(--riso-soft);
+  overflow-wrap: anywhere;
+}
+
+.riso-admin-code-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* AI usage: the daily limit, then each account's use today. */
+.riso-admin-limit {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.riso-admin-limit .riso-import-field input {
+  width: 120px;
+}
+
+.riso-admin-saved {
+  align-self: center;
+  font: 700 13px var(--riso-font-mono);
+  color: var(--riso-green-text);
+}
+
+.riso-admin-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--riso-muted);
+}
+
+.riso-admin-subtitle {
+  margin: 10px 0 0;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-admin-usage tbody td {
+  white-space: nowrap;
+}
+
+.riso-admin-usage .riso-admin-used {
+  margin-right: 8px;
 }
 
 .riso-admin-status {
@@ -15786,8 +15951,11 @@ body.no-select {
   .riso-admin-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "hq" "members" "invites" "ai";
-    grid-template-rows: none;
     gap: 16px;
+  }
+
+  .riso-admin-col {
+    display: contents;
   }
 
   .riso-admin-card {

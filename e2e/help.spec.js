@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { accountButton, langSwitch, openHelp } from "./account-menu.js";
 
 // The Help screen: reachable from the header on a computer and from the
@@ -28,6 +29,7 @@ async function signUp(page, lang) {
   await page.getByRole("button", { name: word.signUp }).click();
   await page.fill('input[type="email"]', `help+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: word.create }).click();
   await expect(page.locator(".tab.active")).toHaveText(word.home);
 }

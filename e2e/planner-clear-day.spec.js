@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // Fix batch 4: "Clear" under a day on the Planner (desktop and phone), and the
 // quieter Recipes cards (no have-bar, one small "to buy" line, more recipe info).
@@ -17,6 +18,7 @@ async function setup(page, lang) {
   await page.getByRole("button", { name: /^(Sign up|Créer un compte|S'inscrire)$/ }).click();
   await page.fill('input[type="email"]', `clear+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.locator("form button[type=submit], form .riso-btn").last().click();
   await expect(page.locator(".tab.active")).toBeVisible();
 }

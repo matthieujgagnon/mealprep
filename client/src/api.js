@@ -46,8 +46,9 @@ async function send(path, options) {
 }
 
 export const api = {
-  signup: (email, password, name) =>
-    request("/auth/signup", { method: "POST", body: JSON.stringify({ email, password, name, locale: getLang() }) }),
+  // Signing up needs an invite code (Admin makes them).
+  signup: (email, password, name, inviteCode) =>
+    request("/auth/signup", { method: "POST", body: JSON.stringify({ email, password, name, inviteCode, locale: getLang() }) }),
   // The account's language ("fr" | "en").
   saveLocale: (locale) => request("/auth/me", { method: "PATCH", body: JSON.stringify({ locale }) }),
   saveWeekend: (weekend) => request("/auth/me", { method: "PATCH", body: JSON.stringify(weekend) }),
@@ -60,6 +61,14 @@ export const api = {
   me: () => request("/auth/me").catch(() => null),
   // Admin only: the server refuses anyone else with 403.
   adminMembers: () => request("/admin/members"),
+  adminInvites: () => request("/admin/invites"),
+  // { note?, maxUses, expiresInDays } -> the new code's row
+  adminCreateInvite: (payload) => request("/admin/invites", { method: "POST", body: JSON.stringify(payload) }),
+  adminSetInviteActive: (id, active) =>
+    request(`/admin/invites/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ active }) }),
+  // The daily limit on flyer and receipt reading, and each account's use today.
+  adminAiUsage: () => request("/admin/ai-usage"),
+  adminSetAiLimit: (limit) => request("/admin/ai-limit", { method: "PUT", body: JSON.stringify({ limit }) }),
   forgotPassword: (email) =>
     request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resetPassword: (token, password) =>

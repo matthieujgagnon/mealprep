@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
 
 // Covers the shelves + edit panel + select-and-act Inventory redesign:
@@ -14,6 +15,7 @@ async function signUp(page, email) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
 }
@@ -284,6 +286,7 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   const email = `inv-cards+${Date.now()}@example.com`;
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
   const day = 86400000;
@@ -379,6 +382,7 @@ test("the amount can be changed right on the card, without opening the item", as
   const email = `inv-qty+${Date.now()}@example.com`;
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
   const add = (data) => page.request.post("/api/pantry-inventory", { data: { location: "fridge", ...data } });

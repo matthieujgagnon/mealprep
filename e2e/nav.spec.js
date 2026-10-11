@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // The header nav regressed twice: first the active pill's 3px hard shadow
 // was sliced off along its bottom edge (the tab row was a scroll container,
@@ -12,6 +13,7 @@ async function signUp(page, email = `nav+${Date.now()}-${Math.floor(Math.random(
   await page.getByRole("button", { name: "Sign up" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 }

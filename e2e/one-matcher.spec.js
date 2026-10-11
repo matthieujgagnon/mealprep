@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { E2E_INVITE } from "./invite.js";
 
 // One matcher everywhere (lib/inventoryMatch.js): the same recipe, next to an
 // Inventory written in French, gives the same answer on Makeable, the recipe
@@ -33,6 +34,7 @@ async function signUp(page, { signUp: signUpLabel, create, home }) {
   await page.getByRole("button", { name: signUpLabel }).click();
   await page.fill('input[type="email"]', `matcher+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
   await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: create }).click();
   await expect(page.locator(".tab.active")).toHaveText(home);
 }
