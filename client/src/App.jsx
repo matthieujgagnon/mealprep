@@ -244,7 +244,6 @@ export default function App({ user, onLogout }) {
   // (lib/inventoryMatch.js recipeHave and ingredientHave): one object, so they all agree.
   const kitchen = useMemo(() => ({ inventory: pantryInventory, customStaples, excludedStaples }), [pantryInventory, customStaples, excludedStaples]);
   const [loadError, setLoadError] = useState(false);
-  const [recipesLoaded, setRecipesLoaded] = useState(false); // the Recipes page picks its starting tab once they are here
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("all");
   // The Flyers deal to open as soon as that page shows ("Open the flyer" on
@@ -351,10 +350,7 @@ export default function App({ user, onLogout }) {
   function loadInitialData() {
     setLoadError(false);
     Promise.allSettled([
-      api.listRecipes().then((list) => {
-        setRecipes(list);
-        setRecipesLoaded(true);
-      }),
+      api.listRecipes().then(setRecipes),
       api.listPantryStaples().then((list) => {
         setCustomStaples(list.filter((s) => !s.excluded).map((s) => s.core));
         setExcludedStaples(list.filter((s) => s.excluded).map((s) => s.core));
@@ -1491,7 +1487,6 @@ export default function App({ user, onLogout }) {
             onImported={handleImported}
             onNewRecipe={() => openRecipeEditor(null)}
             onToast={showToast}
-            recipesLoaded={recipesLoaded}
           />
         )}
 
