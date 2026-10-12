@@ -24,6 +24,13 @@ async function setup(page, lang) {
 }
 
 const post = (page, url, data) => page.request.post(url, { data }).then((r) => r.json());
+// A recipe in the Imported section (new recipes go to the Cookbook).
+async function postImported(page, data) {
+  const made = await post(page, "/api/recipes", data);
+  await page.request.put(`/api/recipes/${made.id}`, { data: { inCookbook: false } });
+  return made;
+}
+const rects = (cards) => cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), right: r.right })));
 const weekEntries = async (page, week) => (await page.request.get(`/api/planner?week=${week}`)).json();
 
 async function seedPlan(page) {
@@ -77,7 +84,7 @@ test.describe("desktop", () => {
     await expect(page.locator(".riso-planner-clear")).toHaveCount(1);
   });
 
-  test("Recipes cards: photo cards with the meal, protein and time on top and the title at the bottom; all the same size", async ({ page }) => {
+  test("Recipes cards: photo cards with the meal, protein and time on top and the title at the bottom; the Cookbook's first tile is the big one, Imported cards are all the same size", async ({ page }) => {
     await setup(page);
     await seedPlan(page);
     await post(page, "/api/recipes", { title: "Plain toast", mealSlot: "breakfast", baseServings: 1, ingredients: [{ name: "bread" }], instructions: ["Toast."] });
@@ -89,11 +96,20 @@ test.describe("desktop", () => {
       ingredients: [{ name: "beef" }],
       instructions: ["Cook."],
     });
+    await postImported(page, { title: "Imported soup", mealSlot: "lunch", baseServings: 2, ingredients: [{ name: "carrot" }], instructions: ["Simmer."] });
+    await postImported(page, {
+      title: "An imported recipe with a very long title that goes on and on and on across several lines of the card",
+      mealSlot: "dinner",
+      baseServings: 4,
+      ingredients: [{ name: "beef" }],
+      instructions: ["Cook."],
+    });
     await page.reload();
     await page.getByRole("button", { name: "Recipes", exact: true }).click();
 
-    const cards = page.locator(".rpc");
+    const cards = page.locator("#recipes-cookbook .rpc");
     await expect(cards).toHaveCount(3);
+    await expect(page.locator("#recipes-imported .rpc")).toHaveCount(2);
     await expect(page.locator(".riso-recipe-card-havebar, .riso-recipe-card-havelabel")).toHaveCount(0);
 
     const chicken = cards.filter({ hasText: "Roast chicken" });
@@ -103,11 +119,23 @@ test.describe("desktop", () => {
     await expect(chicken).not.toContainText("Serves");
     await expect(chicken).not.toContainText("to buy");
 
-    // Every card is the same size, even with a very long title.
-    const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) })));
-    expect(boxes.filter((b) => b.y === boxes[0].y).length).toBeGreaterThan(1);
-    expect(new Set(boxes.map((b) => `${b.w}x${b.h}`)).size).toBe(1);
-    await page.locator(".rv2-grid").evaluate((el) => el.scrollIntoView({ block: "start" }));
+    // The Cookbook is a bento grid (PR #150): mixed tile sizes on purpose, and the
+    // first tile is the big one, top left, whatever the titles.
+    const tiles = await rects(cards);
+    const [big, ...rest] = tiles;
+    expect(new Set(tiles.map((b) => `${b.w}x${b.h}`)).size).toBeGreaterThan(1);
+    for (const b of rest) {
+      expect(big.w * big.h).toBeGreaterThan(b.w * b.h);
+      expect(big.h).toBeGreaterThan(b.h);
+    }
+    expect(big.x).toBe(Math.min(...tiles.map((b) => b.x)));
+    expect(big.y).toBe(Math.min(...tiles.map((b) => b.y)));
+
+    // Imported keeps the plain cards: every one the same size, even with a very long title.
+    const imported = await rects(page.locator("#recipes-imported .rpc"));
+    expect(imported.filter((b) => b.y === imported[0].y).length).toBeGreaterThan(1);
+    expect(new Set(imported.map((b) => `${b.w}x${b.h}`)).size).toBe(1);
+    await page.locator(".rv2-bento").evaluate((el) => el.scrollIntoView({ block: "start" }));
     await page.screenshot({ path: test.info().outputPath("desktop-en-recipes-cards.png") });
   });
 });
@@ -115,7 +143,7 @@ test.describe("desktop", () => {
 test.describe("phone, in French", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
-  test("« Vider » sits under the day's supper; the Recipes cards stay the same height", async ({ page }) => {
+  test("« Vider » sits under the day's supper; the Recipes tiles and cards are all the same size on the phone", async ({ page }) => {
     await setup(page, "fr");
     const { week, today } = await seedPlan(page);
     await page.reload();
@@ -141,14 +169,21 @@ test.describe("phone, in French", () => {
     await expect.poll(async () => (await weekEntries(page, week)).filter((e) => e.dayOfWeek === today).length).toBe(3);
 
     await post(page, "/api/recipes", { title: "Pain grillé", mealSlot: "breakfast", baseServings: 1, ingredients: [{ name: "pain" }], instructions: ["Griller."] });
+    await postImported(page, { title: "Soupe importée", mealSlot: "lunch", baseServings: 2, ingredients: [{ name: "carotte" }], instructions: ["Mijoter."] });
+    await postImported(page, { title: "Salade importée", mealSlot: "lunch", baseServings: 2, ingredients: [{ name: "laitue" }], instructions: ["Mélanger."] });
     await page.reload();
     await page.getByRole("button", { name: "Recettes", exact: true }).first().click();
-    const cards = page.locator(".rpc");
+    const cards = page.locator("#recipes-cookbook .rpc");
     await expect(cards).toHaveCount(2);
-    const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ y: Math.round(r.y), h: Math.round(r.height), right: r.right })));
-    expect(new Set(boxes.filter((b) => b.y === boxes[0].y).map((b) => b.h)).size).toBe(1);
-    expect(Math.max(...boxes.map((b) => b.right))).toBeLessThanOrEqual(390);
-    await page.locator(".rv2-grid").evaluate((el) => el.scrollIntoView({ block: "start" }));
+    await expect(page.locator("#recipes-imported .rpc")).toHaveCount(2);
+    // On the phone every Cookbook tile is the same size (two across), and so is every Imported card.
+    const boxes = await rects(cards);
+    expect(boxes.filter((b) => b.y === boxes[0].y).length).toBe(2);
+    expect(new Set(boxes.map((b) => `${b.w}x${b.h}`)).size).toBe(1);
+    const importedBoxes = await rects(page.locator("#recipes-imported .rpc"));
+    expect(new Set(importedBoxes.map((b) => `${b.w}x${b.h}`)).size).toBe(1);
+    expect(Math.max(...boxes.map((b) => b.right), ...importedBoxes.map((b) => b.right))).toBeLessThanOrEqual(390);
+    await page.locator(".rv2-bento").evaluate((el) => el.scrollIntoView({ block: "start" }));
     await page.screenshot({ path: test.info().outputPath("phone-fr-recipes-cards.png") });
   });
 });
