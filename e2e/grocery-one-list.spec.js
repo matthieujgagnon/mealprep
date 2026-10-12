@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDay } from "./quebec-day.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -209,7 +210,7 @@ test("On sale lists what to buy first, soonest-ending first", async ({ page }) =
   const base = { userId: user.id, source: "Flipp", category: "produce", isCurrent: true };
   await prisma.flyerDeal.createMany({
     data: [
-      { ...base, store: "Maxi", item: "Lemons", matchName: "lemons", price: "$0.50", unitPrice: 0.5, unitBasis: "each", regularPrice: 0.99, validUntil: key(new Date()) },
+      { ...base, store: "Maxi", item: "Lemons", matchName: "lemons", price: "$0.50", unitPrice: 0.5, unitBasis: "each", regularPrice: 0.99, validUntil: quebecDay(new Date()) },
       { ...base, store: "Metro", category: "staple", item: "Barilla spaghetti, 900 g", matchName: "spaghetti", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, validUntil: plusDays(thisWeek, 9) },
     ],
   });

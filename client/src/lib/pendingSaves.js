@@ -8,6 +8,28 @@
 // A screen that loads several things together can also ask whether anything was
 // saved while it was loading (`savesVersion` changes when a save starts and
 // when it ends), and load again if so.
+//
+// The "grocery" area is everything the grocery list is made of: its own rows,
+// the planned meals it is built from (any Planner save: placing, moving,
+// removing, noting, copying) and the recipes those meals use (a recipe edited
+// or deleted). `saveArea` and `readArea` say which request belongs to it.
+export const GROCERY = "grocery";
+
+// The area a save (a request that is not a GET) can change, or null.
+export function saveArea(path, method) {
+  if (path.startsWith("/grocery") || path.startsWith("/planner")) return GROCERY;
+  // Only a recipe saved or deleted by its id: reading a link (/recipes/scrape)
+  // or a pasted list (/recipes/parse-ingredients) saves nothing and can be slow.
+  if ((method === "PUT" || method === "DELETE") && /^\/recipes\/[^/?]+$/.test(path)) return GROCERY;
+  return null;
+}
+
+// The area a read must wait for, or null: the grocery data itself and the
+// upcoming meals the list is built from.
+export function readArea(path) {
+  return path.startsWith("/grocery") || path.startsWith("/planner/upcoming") ? GROCERY : null;
+}
+
 const inFlight = new Map(); // area -> Set of promises that settle when a save ends
 const versions = new Map(); // area -> number
 

@@ -392,8 +392,19 @@ export default function App({ user, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `plannerLoadedWeek` is the week whose meals have arrived (or failed to), so the
+  // slot picker knows `plannerEntries` are the shown week's and not the last one's.
+  const [plannerLoadedWeek, setPlannerLoadedWeek] = useState(null);
   useEffect(() => {
-    api.listPlanner(weekStart).then((rows) => setPlannerEntries(withoutDeleting(rows))).catch(() => setLoadError(true));
+    let stale = false; // the week was changed again before this one arrived
+    api
+      .listPlanner(weekStart)
+      .then((rows) => !stale && setPlannerEntries(withoutDeleting(rows)))
+      .catch(() => !stale && setLoadError(true))
+      .finally(() => !stale && setPlannerLoadedWeek(weekStart));
+    return () => {
+      stale = true;
+    };
   }, [weekStart]);
 
   // What's on the grocery list: the upcoming meals, hand-added items and
@@ -1600,6 +1611,7 @@ export default function App({ user, onLogout }) {
             recipe={pickerFor.recipe}
             weekStart={weekStart}
             entries={plannerEntries}
+            loaded={plannerLoadedWeek === weekStart}
             weekend={weekend}
             initialSlot={plannerTarget}
             onConfirm={async (slot, week) => {

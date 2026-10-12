@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { fail } from "./i18n.js";
+import { quebecDay } from "./quebecDay.js";
 
 // A daily limit on the actions that call Gemini, per account: reading a flyer
 // file (routes/flyers.js) and reading a receipt (routes/receipts.js). Each
@@ -12,13 +13,9 @@ export const DEFAULT_AI_DAILY_LIMIT = 10;
 export const MAX_AI_DAILY_LIMIT = 1000;
 
 // "Today" is the Quebec calendar day, not the server's (UTC), so the count
-// starts again at local midnight.
-const TIME_ZONE = "America/Toronto";
-const dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
-
+// starts again at local midnight (lib/quebecDay.js, the app's one Quebec day).
 export function aiDay(now = new Date()) {
-  const part = (type) => dayFormat.formatToParts(now).find((p) => p.type === type).value;
-  return `${part("year")}-${part("month")}-${part("day")}`;
+  return quebecDay(now);
 }
 
 // The limit Matt chose, or the default when he never has.

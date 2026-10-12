@@ -1,4 +1,5 @@
 import { t } from "../i18n/index.js";
+import { addDays, quebecDay, expiryDay } from "./quebecDay.js";
 
 // Leftovers are one thing everywhere: a LEFTOVER item in Inventory (portions of
 // a cooked meal, on the Leftovers shelf, in the fridge or the freezer) that the
@@ -16,9 +17,10 @@ export function leftoverKeepDays(recipe, place) {
   return recipe?.fridgeLifeDays || FRIDGE_DAYS;
 }
 
-// The use-by date of leftovers put in `place` at `from`.
+// The use-by day of leftovers put in `place` at `from`: a Quebec calendar day
+// ("2026-10-16", lib/quebecDay.js), the same one whatever the hour it is put away.
 export function leftoverExpiry(recipe, place, from = new Date()) {
-  return new Date(from.getTime() + leftoverKeepDays(recipe, place) * 86400000).toISOString();
+  return addDays(quebecDay(from), leftoverKeepDays(recipe, place));
 }
 
 // The Inventory item the Leftovers card adds: what its preview shows is what is
@@ -67,7 +69,7 @@ export function linkableCopies(recipeId, entries, todayKey) {
 // the fridge (`cookedDay`, that meal's day in the same week).
 export function leftoverIsStale(entry, { item, cookedDay } = {}) {
   if (!entry.isLeftover) return false;
-  if (item?.expiresAt) return entryDate(entry) > String(item.expiresAt).slice(0, 10);
+  if (item?.expiresAt) return entryDate(entry) > expiryDay(item.expiresAt);
   if (cookedDay == null) return false;
   return entry.dayOfWeek - cookedDay > leftoverKeepDays(entry.recipe, "fridge");
 }
@@ -89,5 +91,5 @@ export function plannableLeftovers(items, recipes, query = "") {
       const text = `${item.name} ${recipe?.title || ""}`.toLowerCase();
       return words.every((w) => text.includes(w));
     })
-    .sort((a, b) => String(a.item.expiresAt || "9").localeCompare(String(b.item.expiresAt || "9")));
+    .sort((a, b) => (expiryDay(a.item.expiresAt) || "9").localeCompare(expiryDay(b.item.expiresAt) || "9"));
 }

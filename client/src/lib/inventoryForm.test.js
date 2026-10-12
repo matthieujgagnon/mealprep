@@ -14,7 +14,7 @@ import {
   useByKind,
 } from "./inventoryForm.js";
 
-const TODAY = new Date(2026, 9, 4); // Oct 4, 2026
+const TODAY = new Date("2026-10-04T16:00:00Z"); // noon on Oct 4, 2026 in Quebec
 
 describe("dates and days", () => {
   it("goes between days from today and a date", () => {
@@ -23,6 +23,14 @@ describe("dates and days", () => {
     expect(daysFromDate("2026-10-18", TODAY)).toBe(14);
     expect(daysFromDate("2026-10-03", TODAY)).toBe(-1);
     expect(daysFromDate("", TODAY)).toBeNull();
+  });
+
+  it("today is the Quebec day, at 9 a.m., 3 p.m. and 11 p.m. alike", () => {
+    // 11 p.m. on Oct 12 in Quebec is already Oct 13 in UTC.
+    for (const now of ["2026-10-12T13:00:00Z", "2026-10-12T19:00:00Z", "2026-10-13T03:00:00Z"]) {
+      expect(dateFromDays(4, new Date(now))).toBe("2026-10-16");
+      expect(daysFromDate("2026-10-16", new Date(now))).toBe(4);
+    }
   });
 });
 
@@ -37,7 +45,10 @@ describe("how long a food lasts", () => {
 
   it("says which sentence goes under the chips", () => {
     expect(useByKind({ days: null, custom: false, usda: true })).toBe("none");
-    expect(useByKind({ days: 0, custom: false, usda: true })).toBe("expired");
+    expect(useByKind({ days: -1, custom: false, usda: true })).toBe("expired");
+    // The use-by day itself is not expired yet.
+    expect(useByKind({ days: 0, custom: false, usda: true })).toBe("usda");
+    expect(useByKind({ days: 0, custom: true, usda: true })).toBe("custom");
     expect(useByKind({ days: 5, custom: true, usda: true })).toBe("custom");
     expect(useByKind({ days: 5, custom: false, usda: true })).toBe("usda");
     expect(useByKind({ days: 5, custom: false, usda: false })).toBe("rough");
@@ -71,7 +82,8 @@ describe("the amount", () => {
 describe("the preview", () => {
   it("tags how soon it expires", () => {
     expect(expiryTag(null)).toEqual({ kind: "none", tone: "none" });
-    expect(expiryTag(0)).toEqual({ kind: "expired", tone: "hot" });
+    expect(expiryTag(-1)).toEqual({ kind: "expired", tone: "hot" });
+    expect(expiryTag(0)).toEqual({ kind: "today", tone: "hot" });
     expect(expiryTag(1)).toEqual({ kind: "tomorrow", tone: "hot" });
     expect(expiryTag(2)).toEqual({ kind: "days", count: 2, tone: "hot" });
     expect(expiryTag(7)).toEqual({ kind: "days", count: 7, tone: "warn" });
@@ -83,7 +95,8 @@ describe("the preview", () => {
   it("draws the line like the shelf card: fuller as it nears, pink, yellow, blue, none from 28 days", () => {
     expect(lineForDays(null)).toBeNull();
     expect(lineForDays(28)).toBeNull();
-    expect(lineForDays(0)).toEqual({ expired: true });
+    expect(lineForDays(-1)).toEqual({ expired: true });
+    expect(lineForDays(0)).toEqual({ height: "100%", color: "pink" }); // the use-by day: full, not expired
     expect(lineForDays(14)).toEqual({ height: "50%", color: "blue" });
     expect(lineForDays(3)).toEqual({ height: "89%", color: "pink" });
     expect(lineForDays(7)).toEqual({ height: "75%", color: "yellow" });

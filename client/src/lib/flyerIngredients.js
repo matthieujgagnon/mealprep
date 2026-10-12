@@ -5,6 +5,7 @@
 // brand, size or filler words, decides which ingredient a product is.
 import { canonicalize, capitalize } from "./groceryList.js";
 import { splitBilingual } from "./bilingual.js";
+import { daysBetween, quebecDay } from "./quebecDay.js";
 import { getLang, locale, t } from "../i18n/index.js";
 import { formatDayRange, localizePrice } from "../i18n/format.js";
 
@@ -309,14 +310,11 @@ export function rangePosition(deal) {
   return Math.max(0, Math.min(1, (cur - low) / (high - low)));
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+// Days from today to the "2026-10-15" day a flyer ends (null without one), in
+// Quebec days like every other count of days left (lib/quebecDay.js).
 export function daysLeft(validUntil, today = new Date()) {
-  if (!validUntil) return null;
-  const [y, m, d] = String(validUntil).split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const end = Date.UTC(y, m - 1, d);
-  const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.round((end - start) / DAY_MS);
+  const key = String(validUntil || "");
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? daysBetween(quebecDay(today), key) : null;
 }
 
 // Every ingredient on this week's flyers. `store` keeps only that store's

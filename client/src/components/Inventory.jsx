@@ -178,14 +178,16 @@ function Modal({ title, onClose, children }) {
 // 4-week scale, filling up from the bottom as it nears (nearly full the day
 // before, at least 8% so it stays visible), pink within 3 days, yellow
 // within a week, blue after that. No line from 28 days on, with no date,
-// or once expired (the Expired tag says it).
+// or once expired (the Expired tag says it). The use-by day itself is not
+// expired: its label says it expires today (the app's own `expiry.today`).
 function expiryLine(item) {
   if (!item.expiresAt) return null;
   const d = daysUntil(item.expiresAt);
   const line = lineForDays(d);
   if (!line) return null;
   if (line.expired) return { expired: true, label: t("inventory.expired") };
-  return { ...line, label: d === 1 ? t("inventory.useByTomorrow") : t("inventory.daysLeft", { count: d }) };
+  const label = d === 0 ? t("expiry.today").toLowerCase() : d === 1 ? t("inventory.useByTomorrow") : t("inventory.daysLeft", { count: d });
+  return { ...line, label };
 }
 
 // The card's amount and its measure: tap it to change them right there
@@ -293,7 +295,7 @@ export function InventoryDragPreview({ item }) {
   const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
   return (
     <div className="riso-theme inv-drag-preview" data-theme="light">
-      <div className={`inv-card${daysUntilOrNull(item) <= 0 ? " expired" : ""}`}>
+      <div className={`inv-card${daysUntilOrNull(item) < 0 ? " expired" : ""}`}>
         <div className="inv-card-body">
           <ItemPhoto item={item} />
           <div className="inv-card-main">
@@ -885,9 +887,9 @@ export function Inventory({
   }
 
   const activeItem = items.find((i) => i.id === activeItemId);
-  // "Soon" is 1 to 3 days; expired items are counted on their own.
-  const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 1 && daysUntil(i.expiresAt) <= 3).length;
-  const expiredCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 0).length;
+  // "Soon" is today to 3 days; expired items (a day before today or earlier) are counted on their own.
+  const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0 && daysUntil(i.expiresAt) <= 3).length;
+  const expiredCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) < 0).length;
 
   // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed) and the user's own
   // custom sections, in the user's order, with their names and sizes.

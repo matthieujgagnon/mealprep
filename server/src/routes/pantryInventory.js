@@ -5,6 +5,7 @@ import { fail } from "../lib/i18n.js";
 import { mergeRecent } from "../lib/recentItems.js";
 import { planTakeOut, portionsDue, validTakes } from "../lib/inventoryTakeOut.js";
 import { upcomingWhere } from "../lib/upcomingMeals.js";
+import { keptDays } from "../lib/quebecDay.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -25,10 +26,7 @@ const LOCATIONS = ["pantry", "fridge", "freezer"];
 // (the recipe's own fridge life, or the freezer's), so that is their bar.
 function enrichItem(item) {
   const locations = suggestAllLocations(item.name, item.purchasedAt);
-  const kept =
-    item.isLeftover && item.expiresAt
-      ? Math.max(1, Math.round((new Date(item.expiresAt) - new Date(item.purchasedAt)) / 86400000))
-      : null;
+  const kept = item.isLeftover ? keptDays(item.purchasedAt, item.expiresAt) : null;
   return { ...item, locations, shelfLifeDays: kept ?? locations[item.location]?.defaultDays ?? null };
 }
 

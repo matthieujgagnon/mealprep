@@ -1,24 +1,27 @@
 import { getLang, t } from "./i18n/index.js";
-import { afterSaves, noteSave, savesVersion } from "./lib/pendingSaves.js";
+import { afterSaves, noteSave, readArea, saveArea, savesVersion } from "./lib/pendingSaves.js";
 
 const BASE = "/api";
 
 // The grocery list is read by many pages (Grocery, Store mode, Home, the recipe
-// pop-out's marks) while changes to it are saved in the background. Two things
-// keep a page from showing the list as it was before a change (see
-// lib/pendingSaves.js):
-//  - a read of grocery data waits for the grocery saves already sent;
+// card's marks) while changes to it are saved in the background: its own rows,
+// the Planner's meals it is built from, and the recipes those meals use. Two
+// things keep a page from showing the list as it was before a change (see
+// lib/pendingSaves.js, which says which requests those are):
+//  - a read of grocery data or of upcoming meals waits for the saves already sent;
 //  - a read that was on its way while a save started or ended is read again
 //    (it may be older than the change), and only the newer answer is given back.
-const areaOf = (path) => (path.startsWith("/grocery") ? "grocery" : null);
 const READ_AGAIN = 2; // at most this many more times, so a steady stream of saves cannot hold a read for ever
 
 // Every request says which language the person reads, so the server's
 // messages (errors, emails) come back in it.
 async function request(path, options = {}) {
-  const area = areaOf(path);
+  if (options.method && options.method !== "GET") {
+    const saves = saveArea(path, options.method);
+    return saves ? noteSave(saves, send(path, options)) : send(path, options);
+  }
+  const area = readArea(path);
   if (!area) return send(path, options);
-  if (options.method && options.method !== "GET") return noteSave(area, send(path, options));
   for (let attempt = 0; ; attempt++) {
     await afterSaves(area);
     const seen = savesVersion(area);

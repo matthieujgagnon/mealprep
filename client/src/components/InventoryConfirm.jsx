@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { parseQuantityInput } from "../lib/units.js";
+import { expiryDay } from "../lib/quebecDay.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { t } from "../i18n/index.js";
 
@@ -28,7 +29,7 @@ function toRow(draft) {
     quantity: draft.quantity != null ? String(draft.quantity) : "",
     unit: draft.unit || "",
     location: draft.location || "",
-    expiresAt: draft.expiresAt ? String(draft.expiresAt).slice(0, 10) : "",
+    expiresAt: expiryDay(draft.expiresAt) || "",
     category: draft.category || null,
     // What the person typed wins over a later suggestion.
     locationTouched: !!draft.location,
@@ -55,7 +56,7 @@ function ConfirmRow({ row, sections, onChange }) {
           const now = latest.current;
           const patch = {};
           if (!now.location && location) patch.location = location;
-          if (!now.dateTouched) patch.expiresAt = expiresAt ? expiresAt.slice(0, 10) : "";
+          if (!now.dateTouched) patch.expiresAt = expiryDay(expiresAt) || "";
           if (category) patch.category = category;
           if (Object.keys(patch).length > 0) onChange(patch);
         })

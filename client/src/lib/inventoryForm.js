@@ -1,5 +1,6 @@
 import { formatFractionQuantity, parseQuantityInput } from "./units.js";
 import { formatDayRange } from "../i18n/format.js";
+import { addDays, daysBetween, quebecDay, expiryDay } from "./quebecDay.js";
 
 // The logic behind the Inventory item form (Add item and Edit item), kept apart
 // from the screen so it can be tested. Design: docs/design/inventory-item-form/.
@@ -25,22 +26,17 @@ export const USE_BY_CHIPS = [
 export const ADD_QUICK = [["¼", 1 / 4], ["⅓", 1 / 3], ["½", 1 / 2], ["¾", 3 / 4], ["1", 1], ["2", 2], ["6", 6], ["12", 12]];
 export const EDIT_QUICK = [["¼", 1 / 4], ["⅓", 1 / 3], ["½", 1 / 2], ["⅔", 2 / 3], ["¾", 3 / 4], ["1", 1]];
 
-const pad = (n) => String(n).padStart(2, "0");
-
-// "2026-10-18" for the day that many days from today (local time).
+// "2026-10-18" for the day that many days from today. Today is the Quebec day
+// (lib/quebecDay.js), whatever this device's clock says.
 export function dateFromDays(days, today = new Date()) {
-  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return addDays(quebecDay(today), days);
 }
 
 // How many days from today a "2026-10-18" date is (negative once it has passed);
 // null for no date or a bad one.
 export function daysFromDate(dateStr, today = new Date()) {
-  const m = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
-  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.round((target - start) / 86400000);
+  const m = String(dateStr || "").match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? daysBetween(quebecDay(today), m[1]) : null;
 }
 
 // The use-by days a shelf starts with: USDA's middle figure for this food on
@@ -73,10 +69,13 @@ export function commitQuantity(typed, previous) {
 
 // The tag under the preview card: how soon it expires, and its colour.
 //   tone: none (no date), hot (2 days or less, or expired), warn (a week or less), plain
+// The use-by day itself is not expired yet: 0 days is "today", and only a day
+// before today (below 0) is expired.
 export function expiryTag(days) {
   if (days == null) return { kind: "none", tone: "none" };
   const tone = days <= 2 ? "hot" : days <= 7 ? "warn" : "plain";
-  if (days <= 0) return { kind: "expired", tone };
+  if (days < 0) return { kind: "expired", tone };
+  if (days === 0) return { kind: "today", tone };
   if (days <= 1) return { kind: "tomorrow", tone };
   if (days < 60) return { kind: "days", count: days, tone };
   return { kind: "months", count: Math.round(days / 30), tone };
@@ -84,11 +83,12 @@ export function expiryTag(days) {
 
 // The line down a card's left edge (the same as on the shelf): how close the date
 // is on a 4-week scale, filling up as it nears, pink within 3 days, yellow within
-// a week, blue after. None from 28 days on or with no date; expired has its own tag.
+// a week, blue after. None from 28 days on or with no date; expired (before the
+// use-by day) has its own tag. On the use-by day itself the line is full and pink.
 export const LINE_DAYS = 28;
 export function lineForDays(days) {
   if (days == null || days >= LINE_DAYS) return null;
-  if (days <= 0) return { expired: true };
+  if (days < 0) return { expired: true };
   const color = days <= 3 ? "pink" : days <= 7 ? "yellow" : "blue";
   return { height: `${Math.max(8, Math.round((1 - days / LINE_DAYS) * 100))}%`, color };
 }
@@ -96,7 +96,7 @@ export function lineForDays(days) {
 // Which sentence goes under the use-by chips.
 export function useByKind({ days, custom, usda }) {
   if (days == null) return "none";
-  if (days <= 0) return "expired";
+  if (days < 0) return "expired";
   if (custom) return "custom";
   return usda ? "usda" : "rough";
 }
@@ -125,7 +125,7 @@ export function buildEditPatch(item, draft) {
   if (quantity != null && Math.round(quantity * 1000) / 1000 !== (item.quantity ?? null)) patch.quantity = Math.round(quantity * 1000) / 1000;
   if ((draft.unit || null) !== (item.unit || null)) patch.unit = draft.unit || null;
   if (draft.location !== item.location) patch.location = draft.location;
-  const saved = item.expiresAt ? String(item.expiresAt).slice(0, 10) : "";
+  const saved = expiryDay(item.expiresAt) || "";
   if ((draft.expiresAt || "") !== saved) patch.expiresAt = draft.expiresAt || null;
   if ((draft.photo ?? null) !== (item.imageUrl ?? null)) patch.imageUrl = draft.photo ?? null;
   return patch;

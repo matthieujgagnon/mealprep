@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { addDays, quebecDay } from "./quebec-day.js";
 import { langSwitch } from "./account-menu.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -14,12 +15,8 @@ const prisma = new PrismaClient();
 // unit-tested in lib/proteins.test.js; the older checks (the recipes link, the
 // Best deal, "Can't tell yet") are in home-redesign.spec.js and polish-e.spec.js.
 
-const pad = (n) => String(n).padStart(2, "0");
-const dateIn = (days) => {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+// A flyer's end day is a Quebec day, so "in N days" is counted from the Quebec day (e2e/quebec-day.js).
+const dateIn = (days) => addDays(quebecDay(new Date()), days);
 
 async function signUp(page) {
   await page.goto("/");

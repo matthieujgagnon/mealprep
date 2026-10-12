@@ -33,7 +33,7 @@ function ItemPill({ item, picked, onToggle, days }) {
       {days != null && (
         <>
           <span className="fnd-item-rule" aria-hidden="true" />
-          <span className="fnd-item-days">{t("finder.daysLeft", { days })}</span>
+          <span className="fnd-item-days">{days === 0 ? t("days.today") : t("finder.daysLeft", { days })}</span>
         </>
       )}
       {picked && (
