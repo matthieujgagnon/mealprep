@@ -1,5 +1,6 @@
 import { formatFractionQuantity, parseQuantityInput } from "./units.js";
 import { formatDayRange } from "../i18n/format.js";
+import { addDays, daysBetween, quebecDay, expiryDay } from "./quebecDay.js";
 
 // The logic behind the Inventory item form (Add item and Edit item), kept apart
 // from the screen so it can be tested. Design: docs/design/inventory-item-form/.
@@ -25,22 +26,17 @@ export const USE_BY_CHIPS = [
 export const ADD_QUICK = [["¼", 1 / 4], ["⅓", 1 / 3], ["½", 1 / 2], ["¾", 3 / 4], ["1", 1], ["2", 2], ["6", 6], ["12", 12]];
 export const EDIT_QUICK = [["¼", 1 / 4], ["⅓", 1 / 3], ["½", 1 / 2], ["⅔", 2 / 3], ["¾", 3 / 4], ["1", 1]];
 
-const pad = (n) => String(n).padStart(2, "0");
-
-// "2026-10-18" for the day that many days from today (local time).
+// "2026-10-18" for the day that many days from today. Today is the Quebec day
+// (lib/quebecDay.js), whatever this device's clock says.
 export function dateFromDays(days, today = new Date()) {
-  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return addDays(quebecDay(today), days);
 }
 
 // How many days from today a "2026-10-18" date is (negative once it has passed);
 // null for no date or a bad one.
 export function daysFromDate(dateStr, today = new Date()) {
-  const m = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
-  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.round((target - start) / 86400000);
+  const m = String(dateStr || "").match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? daysBetween(quebecDay(today), m[1]) : null;
 }
 
 // The use-by days a shelf starts with: USDA's middle figure for this food on
@@ -125,7 +121,7 @@ export function buildEditPatch(item, draft) {
   if (quantity != null && Math.round(quantity * 1000) / 1000 !== (item.quantity ?? null)) patch.quantity = Math.round(quantity * 1000) / 1000;
   if ((draft.unit || null) !== (item.unit || null)) patch.unit = draft.unit || null;
   if (draft.location !== item.location) patch.location = draft.location;
-  const saved = item.expiresAt ? String(item.expiresAt).slice(0, 10) : "";
+  const saved = expiryDay(item.expiresAt) || "";
   if ((draft.expiresAt || "") !== saved) patch.expiresAt = draft.expiresAt || null;
   if ((draft.photo ?? null) !== (item.imageUrl ?? null)) patch.imageUrl = draft.photo ?? null;
   return patch;

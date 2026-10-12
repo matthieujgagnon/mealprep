@@ -118,6 +118,14 @@ export function findNextEmptySlot(entries, weekStart) {
   return emptyUpcomingSlots(entries, weekStart)[0] || null;
 }
 
+// The slot the slot picker is on. What the person chose (or the target slot it
+// opened with) always wins. Otherwise it is the next empty slot, which can only
+// be known once the week's meals have loaded (`loaded`); until then it is the
+// first upcoming slot, and the picker holds its confirm button.
+export function pickerSlot({ picked, entries, weekStart, loaded }) {
+  return picked || (loaded ? findNextEmptySlot(entries, weekStart) : null) || upcomingSlots(weekStart)[0];
+}
+
 // True when a written note is only emoji ("🥗", "🍕🍺"), so the card can
 // show it big like a picture; any letter or digit keeps it normal text.
 const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|\u200d|\ufe0f|\s)+$/u;

@@ -16,6 +16,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { groceryShared } from "../lib/groceryCache.js";
 import { afterSaves, savesVersion } from "../lib/pendingSaves.js";
+import { daysBetween, quebecDay } from "../lib/quebecDay.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { buildGroceryList } from "../lib/groceryList.js";
 import {
@@ -55,12 +56,9 @@ function aisleLabel(id) {
   return t(`aisles.${id || "other"}`);
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+// Days from today to a "2026-10-15" day, in Quebec days like every other count of days left.
 function daysUntilKey(key) {
-  const today = new Date();
-  const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  const d = parseDateKey(key);
-  return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - start) / DAY_MS);
+  return daysBetween(quebecDay(), key);
 }
 // "ends today", "ends tomorrow", "ends Wed"
 function endsLabel(key, left) {
@@ -249,9 +247,10 @@ export function GroceryList({
   // waits for both (see `ready` below) - drawing it before they arrived
   // put items in "Any store" for a moment, then moved them.
   const { deals: allDeals, loaded: dealsLoaded } = useDeals();
-  // The deals still running today.
+  // The deals still running today: a flyer ends on a Quebec day, like the "ends today" it shows.
   const today = toDateKey(new Date());
-  const deals = useMemo(() => allDeals.filter((d) => !d.validUntil || d.validUntil >= today), [allDeals, today]);
+  const dealsDay = quebecDay();
+  const deals = useMemo(() => allDeals.filter((d) => !d.validUntil || d.validUntil >= dealsDay), [allDeals, dealsDay]);
   // Every planned meal from today onward, across all weeks: the list is built
   // from these, so a meal drops off the list once its day has passed.
   const [entries, setEntries] = useState([]);

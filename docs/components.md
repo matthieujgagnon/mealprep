@@ -8,7 +8,7 @@ Everything below is one piece used by every page that shows the same thing. The 
 | --- | --- | --- |
 | Recipe card | `components/RecipeDetailModal.jsx`, `components/RecipeCardParts.jsx`, `lib/recipeCard.js` | The one card every page opens for a recipe, in one tap: receipt, steps and timers, Similar recipes, Notes. |
 | Ingredient marks | the recipe card's receipt, `components/IngredientMarks.jsx` (the planned-meal card), `grocery.toggle` in `App.jsx` | The round ✓ on an ingredient: blue = in Inventory, green = on the grocery list. |
-| Slot picker | `components/SlotPicker.jsx` | The mini week where you choose a day and meal. |
+| Slot picker | `components/SlotPicker.jsx`, `pickerSlot` in `lib/plannerSlots.js` | The mini week where you choose a day and meal. It starts on the next empty slot once the week has loaded. |
 | Toast | `components/Toast.jsx` | The one message with Undo. |
 | Planner header | `components/PlannerHeader.jsx` | The title on its own line, the week controls (‹, date pill, ›; the "this week" sticker on a computer, the page stickers on a phone) and the calendar they open. |
 | Week calendar | `components/WeekCalendar.jsx` | The month calendar the date pill opens, with the day preview and "Copy last week"; on a phone a panel that also holds the weekend's settings. |
@@ -31,7 +31,8 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Confirm dialog | `components/ConfirmDialog.jsx` | The one "are you sure?" question. |
 | Recipe finder | `components/Finder.jsx`, `components/FinderTiles.jsx` (the Makeable section header), `hooks/useFinder.js`, `lib/finder.js` | Search, filters, Main meal and results (the Planner's panel, and the Makeable page). |
 | Grocery item | `components/GroceryItem.jsx` | One grocery row. |
-| Grocery saves | `request` in `api.js`, `lib/pendingSaves.js` | A read of grocery data waits for the grocery saves already sent, and is read again if a save started or ended while it was on its way, so no page shows the list as it was before a change. |
+| Pending saves | `request` in `api.js`, `lib/pendingSaves.js` | A read of grocery data or of upcoming meals waits for the saves already sent (grocery, any Planner save, a recipe edit or delete), and is read again if a save started or ended while it was on its way, so no page shows the list as it was before a change. |
+| Quebec day | `lib/quebecDay.js` (client), `server/src/lib/quebecDay.js` | The one Quebec calendar day: today, a use-by date's day and the days left (`daysUntil`) are counted in it, not in hours or in the device's or server's clock. |
 | Inventory item form | `components/InventoryItemForm.jsx` | Add or edit an Inventory item. |
 | Inventory confirm sheet | `components/InventoryConfirm.jsx` | Confirm anything going into Inventory (see `CLAUDE.md`, and its exceptions: Inventory's own form, the finished view's Leftovers card, Undo). |
 | Light / dark switch | `components/ThemeSwitch.jsx`, `hooks/useTheme.js`, `lib/theme.js`, the dark block in `index.css` | The round ☀ / ☾ button and the one saved choice behind it, for Store mode, Cook mode and its finished view. |
@@ -40,7 +41,7 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Ingredient-to-step matching | `stepIngredients` in `lib/steps.js`, `lib/ingredientMatch.js` | Which ingredients a step's text mentions. "For this step" and the prep page's step tags both use it, so they always agree. |
 | Finished view ("I cooked this") | `components/CookedView.jsx` (`CookedView`, `CookedViewHost`), `components/CookedViewParts.jsx`, `lib/cookedView.js` | The one view after cooking, behind three doors: the end of Cook mode, a planned meal's card, Home's tonight card. Leftovers, then Take out of your Inventory, then the pop-up. |
 | Ingredient-to-Inventory matching | `lib/inventoryMatch.js` | **The one matcher.** Which Inventory item a recipe ingredient is (both languages, varieties, cuts, never leftovers), what a recipe has and lacks (`recipeHave`), "uses expiring", Cook with, and how much a cooked meal takes out. Every page that says "have it or not" uses it. |
-| Leftovers | `lib/leftovers.js`, the Leftovers shelf in `components/Inventory.jsx`, `LeftoverResultCard` in `components/Finder.jsx` | One leftovers system: the LEFTOVER item, its keep times, planning it, the past-fridge-life rule. |
+| Leftovers | `lib/leftovers.js`, the Leftovers shelf in `components/Inventory.jsx`, `LeftoverResultCard` in `components/Finder.jsx` | One leftovers system: the LEFTOVER item, its keep times (a use-by Quebec day), planning it, the past-fridge-life rule. |
 | Account menu | `accountActions` in `App.jsx` | The avatar circle's menu: the name, Help, Admin (admins only) and Log out, on a computer and on a phone. |
 | Admin page | `components/Admin.jsx`, `lib/admin.js` (client), `server/src/lib/admin.js` | The admin-only page at `/admin`: Project HQ, Members (with a Reset link button on each), Invite codes (make, list, switch off) and AI usage (the daily limit and each member's use today). Built from the shared pieces, no new pill or button. |
 | Confetti | `StoreConfetti` in `components/StoreModeParts.jsx`, `lib/storeConfetti.js` | Store mode's celebration, and with `burst` the finished view's. |
@@ -76,9 +77,9 @@ Every place that lists a recipe's ingredients marks each one with the same round
 
 ## Slot picker
 
-`SlotPicker` is a small week (7 days by breakfast, lunch, supper) to choose where a recipe goes, with ‹ › to move between weeks, a "Free slot / Replaces ..." line and the confirm button. **`App.jsx` opens it with `requestPlan(recipe)`**, so Plan works the same from any page. It opens on the week the Planner last showed, on the slot chosen as the target if there is one, else the next empty slot. Confirming calls `handlePlanRecipe(recipe, slot, week)`, which places the recipe and shows the toast.
+`SlotPicker` is a small week (7 days by breakfast, lunch, supper) to choose where a recipe goes, with ‹ › to move between weeks, a "Free slot / Replaces ..." line and the confirm button. **`App.jsx` opens it with `requestPlan(recipe)`**, so Plan works the same from any page. It opens on the week the Planner last showed, on the slot chosen as the target if there is one, else the next empty slot. **The week can arrive after the picker opens** (a slow phone), so the starting slot is not chosen once at the start: `pickerSlot` gives what the person picked (or the target) if there is one, else the next empty slot once `loaded`, else the first upcoming slot. Until the week has loaded the grid shows no meals and the confirm button is held, because the picker doesn't yet know what is free (a meal placed on an unseen one would sit on top of it); when it arrives the picker moves to the next empty slot unless the person has already tapped one. `App.jsx` says when it is loaded (`plannerLoadedWeek`). Confirming calls `handlePlanRecipe(recipe, slot, week)`, which places the recipe and shows the toast.
 
-Props: `recipe`, `weekStart`, `entries` (that week's), `weekend`, `initialSlot`, `onConfirm(slot, week)`, `onClose`.
+Props: `recipe`, `weekStart`, `entries` (that week's), `loaded` (whether `entries` are that week's yet), `weekend`, `initialSlot`, `onConfirm(slot, week)`, `onClose`.
 
 Used by: the recipe card's Plan (from every page; the picker opens above the card) and the Planner finder's + when no slot is chosen.
 
@@ -254,13 +255,28 @@ Used by: the recipe form (the new-recipe pop-up and the full-page editor) when c
 - Props the page adds: `plannedDays` (recipe id → day, this week), `grocery`, `deals`, `showSales`, `onToggleSales`, `onCook`, `onPlan`, `onOpenFlyerDeal`.
 - **Phone chips.** On a phone the filter chips are one row that scrolls sideways and pins under the app header (`.fnd-chips`, `--fnd-sticky-top` measured like Inventory's shelf pill): All, Ready now, 1 or 2 short and Quick first, then Expiring soon and Show sales; the Meal and Protein menus sit under it so they can open. The count on each availability chip is not shown on a phone.
 
-## Grocery saves
+## Pending saves
 
-A change to the grocery list shows on screen at once and is saved in the background. A page opened right after (the Grocery tab, Store mode, the recipe card's ✓) used to ask the server for the list before that save had landed, and showed the old one. So `request` in `api.js` keeps every save to a `/grocery…` address in `lib/pendingSaves.js` until it ends, and **a read of any `/grocery…` address first waits for those saves, and is read again (at most twice) if a save started or ended while it was on its way**, because that answer can be older than the change. This is built once, in the data code every page uses: a page reads the list through `api` as it always did and does nothing extra. Do not wait for saves in a page.
+A change shows on screen at once and is saved in the background. A page opened right after (the Grocery tab, Store mode, the recipe card's ✓) used to ask the server for the data before that save had landed, and showed the old one. So `request` in `api.js` keeps every save that can change the grocery list in `lib/pendingSaves.js` until it ends, and **a read of grocery data or of upcoming meals first waits for those saves, and is read again (at most twice) if a save started or ended while it was on its way**, because that answer can be older than the change. This is built once, in the data code every page uses: a page reads through `api` as it always did and does nothing extra. Do not wait for saves in a page.
+
+What the grocery list is made of, which is what counts (`saveArea` and `readArea` in `lib/pendingSaves.js` say which request is which, with tests):
+
+- **Saves:** every `/grocery…` change; **every Planner save** (`/planner…`: placing, moving, removing, noting, copying, marking a meal; the grocery list is built from the planned meals, so a read right after planning a meal must see it); and a recipe **edited or deleted by its id** (`PUT` or `DELETE /recipes/:id`: its ingredients are on the list through the meals that use it). A recipe link being read (`/recipes/scrape`) or a pasted list (`/recipes/parse-ingredients`) saves nothing and can be slow, so it is not one.
+- **Reads that wait:** every `/grocery…` read and `GET /planner/upcoming` (`api.listPlannerUpcoming`, which Grocery, Home and `App.jsx` read the meals from). The Planner's own week (`GET /planner?week=`) does not wait.
 
 One more piece is for a page that loads several things together and then puts them on screen (the Grocery list): `savesVersion("grocery")` changes when a save starts and when it ends. If it changed while the page was loading, the page loads again (`GroceryList.jsx`, at most twice more) instead of putting the older answers over the person's change.
 
-Used by: every `api.listGrocery…` read and every grocery save (`addGroceryExtra`, `deleteGroceryExtra`, `setGroceryOverride`, the checks, the stores), including Home's Proteins on sale (its Add to list, and Home's grocery card reading again after it).
+Used by: every `api.listGrocery…` read, every grocery save (`addGroceryExtra`, `deleteGroceryExtra`, `setGroceryOverride`, the checks, the stores), every Planner save (`placeOnPlanner`, `removeFromPlanner`, `updatePlannerEntry`, `markSlotBlank`, `setPlannerEntryNote`, `copyPlannerWeek`), `updateRecipe` and `deleteRecipe`, including Home's Proteins on sale (its Add to list, and Home's grocery card reading again after it).
+
+## Quebec day
+
+A date the app shows or counts is a day in Quebec, not a moment on the device's clock or the server's (UTC): at 11 p.m. in Quebec it is already the next day in UTC. `lib/quebecDay.js` is the one rule (`America/Toronto`); `server/src/lib/quebecDay.js` is the same code for the server (the AI limit's "today", the leftover keep-time bar), and `server/src/lib/quebecDay.test.js` checks the two agree. Do not count days with `Date.now()` or the device's date.
+
+- `quebecDay(moment)` is the Quebec day ("2026-10-12"); `addDays`, `daysBetween` do the arithmetic on days.
+- **A use-by date is a day** (`expiryDay`). A day typed or picked is sent as "2026-10-16" and the database keeps it as midnight UTC, and that is the day it says (so dates already saved read right). Any other moment (a USDA shelf life worked out from a time) is the Quebec day it falls on. Never cut a saved date with `slice(0, 10)`: that is the UTC day.
+- **Days left** is `daysUntil` (`lib/pantryInventory.js`): Quebec calendar days from today, 0 on the use-by day itself, the same at 9 a.m. and 11 p.m. Inventory, Home, Makeable, the finder, the recipe card, Flyers (`daysLeft` for a flyer's end day) and Grocery's sale days (and which flyer deals are still running there) all count it. On the use-by day itself the count is 0, so Inventory's card shows Expired from that morning, as the add form already did.
+- **Today in the Inventory form** is the Quebec day (`dateFromDays`, `daysFromDate`), so the use-by chips ("3 days", "1 week") land on the right day on any device.
+- Leftovers: `leftoverExpiry` gives the use-by day for `fridgeLifeDays` or 4 days from the Quebec day it is put away.
 
 ## Light / dark switch
 
@@ -313,7 +329,7 @@ The answers are kept per Inventory (a `WeakMap` on the array) until it, the stap
 
 ## Leftovers
 
-One leftovers system. A **LEFTOVER item** is an Inventory item with `isLeftover` (and `recipeId`, the recipe it came from, none when typed in by hand), counted in portions (unit `portion`), kept in the fridge or the freezer (`location`), on Inventory's **Leftovers** shelf (a built-in shelf, `onShelf`; it is a shelf to look at, so `shelfOptions` leaves it out). `lib/leftovers.js` has the one set of keep times (the recipe's `fridgeLifeDays` or 4 in the fridge, 75 in the freezer) used by the finished view, the Planner's warning, thawing (`thawPatch`) and the item form's Leftovers mode.
+One leftovers system. A **LEFTOVER item** is an Inventory item with `isLeftover` (and `recipeId`, the recipe it came from, none when typed in by hand), counted in portions (unit `portion`), kept in the fridge or the freezer (`location`), on Inventory's **Leftovers** shelf (a built-in shelf, `onShelf`; it is a shelf to look at, so `shelfOptions` leaves it out). `lib/leftovers.js` has the one set of keep times (the recipe's `fridgeLifeDays` or 4 in the fridge, 75 in the freezer) used by the finished view, the Planner's warning, thawing (`thawPatch`) and the item form's Leftovers mode. **The use-by is a Quebec calendar day** (see Quebec day): `leftoverExpiry` gives the day, the days left on the card count Quebec days, and `leftoverIsStale` compares the meal's day with the use-by day.
 
 - **Inventory:** a leftover's card shows the recipe's photo, the LEFTOVER tag, Fridge or Freezer and the days left; frozen ones have "Move to fridge to thaw" (Undo). They don't drag between shelves. "+" on the Leftovers shelf (or the Leftovers chip in the add form) adds leftovers by hand: portions, Fridge or Freezer, and an optional recipe.
 - **Planner:** the search's leftover cards (see Planner finder card) plan a leftover meal with `leftoverItemId` (a recipe meal, or a note « Restes · pizza » for leftovers with no recipe); the yellow border and tag as before, nothing on the grocery list. Leftover meals planned ahead (round button, Option-drag, Place leftovers) are linked when the recipe's leftovers are added. The "past fridge life" sticker uses `leftoverIsStale`: after the leftovers' use-by date when linked, else more days after the meal than the recipe keeps.

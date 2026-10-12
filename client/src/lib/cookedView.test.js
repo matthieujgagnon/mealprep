@@ -75,9 +75,9 @@ describe("leftovers", () => {
       location: "freezer",
       isLeftover: true,
       recipeId: "r",
-      expiresAt: "2026-12-24T18:00:00.000Z",
+      expiresAt: "2026-12-24", // a Quebec day, not a moment
     });
-    expect(thawPatch(recipe, now)).toEqual({ location: "fridge", purchasedAt: now.toISOString(), expiresAt: "2026-10-13T18:00:00.000Z" });
+    expect(thawPatch(recipe, now)).toEqual({ location: "fridge", purchasedAt: now.toISOString(), expiresAt: "2026-10-13" });
   });
 
   it("start on one less than the servings cooked, or the planned leftover meals", () => {

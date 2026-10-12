@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { formatDayLabel, formatWeekLabel, isPastDay, shiftWeek } from "../lib/dates.js";
-import { MEAL_TYPES, findNextEmptySlot, isCustomNote, isEmojiOnly, isNoteEntry, slotKey, slotLabel, upcomingSlots } from "../lib/plannerSlots.js";
+import { MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, pickerSlot, slotKey, slotLabel } from "../lib/plannerSlots.js";
 import { weekendLayout } from "../lib/weekend.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { dict, t } from "../i18n/index.js";
@@ -17,13 +17,19 @@ import { dict, t } from "../i18n/index.js";
 //   recipe        the recipe being placed
 //   weekStart     the week it opens on (the one the Planner last showed)
 //   entries       that week's entries (a slot holds one thing); other weeks are read here
+//   loaded        whether `entries` are that week's yet (the week can arrive after the picker opens)
 //   weekend       the account's weekend: its slots are tinted
 //   initialSlot   the slot to start on (the chosen target), else the next empty one
 //   onConfirm(slot, week), onClose
-export function SlotPicker({ recipe, weekStart, entries, weekend, initialSlot, onConfirm, onClose }) {
+//
+// Until the week has loaded the picker doesn't know what is free, so it shows
+// the grid empty and holds the confirm button; it picks its starting slot when
+// the week arrives, unless the person has already chosen one.
+export function SlotPicker({ recipe, weekStart, entries, loaded = true, weekend, initialSlot, onConfirm, onClose }) {
   const [week, setWeek] = useState(weekStart);
   const [otherEntries, setOtherEntries] = useState(null); // the entries of `week` when it is not `weekStart`
-  const [slot, setSlot] = useState(() => initialSlot || findNextEmptySlot(entries, weekStart) || upcomingSlots(weekStart)[0]);
+  const [picked, setPicked] = useState(initialSlot || null); // the slot chosen by the person, or the target it opened with
+  const slot = pickerSlot({ picked, entries, weekStart, loaded });
   const names = dict().days.short;
   const layout = useMemo(() => weekendLayout(weekend), [weekend]);
 
@@ -50,8 +56,8 @@ export function SlotPicker({ recipe, weekStart, entries, weekend, initialSlot, o
     };
   }, [week, weekStart]);
 
-  const shown = week === weekStart ? entries : otherEntries || [];
-  const loading = week !== weekStart && otherEntries === null;
+  const shown = week === weekStart ? (loaded ? entries : []) : otherEntries || [];
+  const loading = week === weekStart ? !loaded : otherEntries === null;
   const bySlot = new Map(shown.map((e) => [slotKey(e.dayOfWeek, e.mealType), e]));
   const taken = bySlot.get(slotKey(slot.dayOfWeek, slot.mealType));
   const takenTitle = taken ? (taken.recipe?.isPlaceholder ? (isCustomNote(taken) ? taken.recipe.title : t("planner.blankName")) : taken.recipe.title) : null;
@@ -106,7 +112,7 @@ export function SlotPicker({ recipe, weekStart, entries, weekend, initialSlot, o
                     className={`riso-picker-cell${entry ? " filled" : ""}${on ? " on" : ""}${layout.isWeekendSlot(day, mealIndex) ? " weekend" : ""}${isPastDay(week, day) ? " past" : ""}`}
                     aria-pressed={on}
                     aria-label={`${slotLabel({ dayOfWeek: day, mealType: meal.id })}${entry ? `: ${entry.recipe?.title || ""}` : ""}`}
-                    onClick={() => setSlot({ dayOfWeek: day, mealType: meal.id })}
+                    onClick={() => setPicked({ dayOfWeek: day, mealType: meal.id })}
                   >
                     {entry && !isNoteEntry(entry) && entry.recipe.photoUrl && <RecipePhoto src={entry.recipe.photoUrl} alt="" />}
                     {note && isEmojiOnly(note) && <span className="riso-picker-emoji">{note}</span>}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { addDays, quebecDay } from "./quebecDay.js";
 import {
   PROTEINS,
   PROTEIN_CARD_ORDER,
@@ -182,15 +183,8 @@ describe("Home's protein rows", () => {
 });
 
 describe("what a product card shows", () => {
-  const today = () => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  };
-  const keyIn = (days) => {
-    const d = today();
-    d.setDate(d.getDate() + days);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
+  // The flyer's end day is a Quebec day, so today is the Quebec day (lib/quebecDay.js).
+  const keyIn = (days) => addDays(quebecDay(), days);
   const chicken = (extra = {}) => deal("Boneless chicken thighs", "meat", { id: "t", unitPrice: 3.99, unitBasis: "lb", ...extra });
 
   it("gives the price, the sale % and the regular price from the flyer", () => {

@@ -1,4 +1,5 @@
 import { t } from "../i18n/index.js";
+import { daysFromToday } from "./quebecDay.js";
 
 // Shared between Inventory.jsx (full CRUD UI) and the Makeable page (the
 // read-mostly checklist + filters on Makeable) - previously duplicated
@@ -38,9 +39,10 @@ export const LOCATIONS = ["fridge", "pantry", "freezer"].map((id) => ({
   },
 }));
 
+// Days left until a date, in Quebec calendar days (lib/quebecDay.js): 0 on the
+// day itself, 1 the day before, negative after. The one count every page uses.
 export function daysUntil(dateStr) {
-  const ms = new Date(dateStr).getTime() - Date.now();
-  return Math.ceil(ms / (24 * 60 * 60 * 1000));
+  return daysFromToday(new Date(dateStr));
 }
 
 export function formatExpiry(expiresAt) {

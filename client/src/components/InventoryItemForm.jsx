@@ -23,6 +23,7 @@ import {
   useByKind,
 } from "../lib/inventoryForm.js";
 import { leftoverExpiry, leftoverKeepDays, FRIDGE_DAYS } from "../lib/leftovers.js";
+import { expiryDay } from "../lib/quebecDay.js";
 import { t } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
 
@@ -184,9 +185,9 @@ export function InventoryItemForm({
     : storage.some((s) => s.id === defaultLocation)
     ? defaultLocation
     : storage[0]?.id || "fridge";
-  const savedDate = edit && item.expiresAt ? String(item.expiresAt).slice(0, 10) : "";
+  const savedDate = edit ? expiryDay(item.expiresAt) || "" : "";
   // A saved date that isn't USDA's own figure for this food is the user's date.
-  const usdaDate = edit && item.locations?.[item.location]?.expiresAt ? String(item.locations[item.location].expiresAt).slice(0, 10) : null;
+  const usdaDate = edit ? expiryDay(item.locations?.[item.location]?.expiresAt) : null;
 
   const [leftover, setLeftover] = useState(startLeftover);
   const [recipeId, setRecipeId] = useState(edit ? item.recipeId || "" : "");

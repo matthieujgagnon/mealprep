@@ -45,7 +45,7 @@ describe("ingredientKeyOf", () => {
 });
 
 describe("buildIngredients", () => {
-  const today = new Date(2026, 9, 1);
+  const today = new Date("2026-10-01T16:00:00Z"); // noon on Oct 1 in Quebec
   const deals = [
     deal(1, "Metro", "Bananas | bananes", 0.89, "lb", { validUntil: "2026-10-03" }),
     deal(2, "Super C", "Bananas", 0.79, "lb", { imageUrl: "https://x/b.jpg" }),

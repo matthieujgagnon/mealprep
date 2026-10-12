@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { saveRecipe } from "./recipe-form.js";
 
 // The recipe editor (design handoff: Riso Recipe Editor.dc.html). A new recipe
 // opens as a pop-up over the Recipes page; editing one is the full page.
@@ -50,8 +51,7 @@ test("a new recipe with a slot, pasted steps and a pasted ingredient list", asyn
   await expect(page.locator(".re-total strong")).toHaveText("5 min");
   await expect(page.locator(".re-unsaved")).toHaveText("UNSAVED CHANGES");
 
-  await page.getByRole("button", { name: "Save recipe" }).click();
-  await expect(page.getByRole("heading", { name: "Your recipes." })).toBeVisible();
+  await saveRecipe(page);
 
   await page.locator(".rv2-chips").getByRole("button", { name: /^MEAL/ }).click();
   await page.getByRole("option", { name: /^Pantry \/ Prep/ }).click();

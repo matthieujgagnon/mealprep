@@ -1,0 +1,74 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { leftoverExpiry, leftoverIsStale, leftoverItem, plannableLeftovers, thawPatch } from "./leftovers.js";
+import { buildAddPayload, dateFromDays } from "./inventoryForm.js";
+import { daysUntil } from "./pantryInventory.js";
+import { quebecDay } from "./quebecDay.js";
+
+afterEach(() => vi.useRealTimers());
+
+// 9 a.m., 3 p.m. and 11 p.m. in Quebec on Oct 12, 2026. At 11 p.m. it is already Oct 13 in UTC.
+const TIMES = [
+  ["9 a.m.", "2026-10-12T13:00:00Z"],
+  ["3 p.m.", "2026-10-12T19:00:00Z"],
+  ["11 p.m.", "2026-10-13T03:00:00Z"],
+];
+const recipe = { id: "r", title: "Shawarma", fridgeLifeDays: 3 };
+
+describe("a leftover's use-by is a Quebec calendar day", () => {
+  it.each(TIMES)("put away at %s for the fridge's 4 days, it expires on the 16th", (_label, iso) => {
+    const now = new Date(iso);
+    expect(leftoverExpiry({}, "fridge", now)).toBe("2026-10-16");
+    expect(leftoverExpiry(recipe, "fridge", now)).toBe("2026-10-15");
+    expect(leftoverExpiry({}, "freezer", now)).toBe("2026-12-26");
+    expect(thawPatch({}, now)).toMatchObject({ location: "fridge", expiresAt: "2026-10-16" });
+    expect(leftoverItem({ ...recipe, fridgeLifeDays: 0 }, 2, "fridge", now).expiresAt).toBe("2026-10-16");
+  });
+
+  it.each(TIMES)("added by hand at %s, the saved date shows 4 days left, then 3, 2, 1 and 0 on the day", (_label, iso) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(iso));
+    // The Inventory form picks the date from Quebec's today and the server keeps a bare date as midnight UTC.
+    const payload = buildAddPayload({ name: "Pizza", qtyText: "1", unit: "portion", location: "fridge", category: "Other", expiresAt: dateFromDays(4) });
+    const saved = new Date(payload.expiresAt).toISOString();
+    expect(daysUntil(saved)).toBe(4);
+    // Each Quebec day later (at the same hour), one day fewer: 0 on the 16th itself, then past.
+    for (const [later, left] of [[1, 3], [2, 2], [3, 1], [4, 0], [5, -1]]) {
+      vi.setSystemTime(new Date(new Date(iso).getTime() + later * 86400000));
+      expect(daysUntil(saved)).toBe(left);
+    }
+  });
+
+  it("a leftover from the finished view keeps the same Quebec day however late it is put away", () => {
+    const evening = leftoverItem({ id: "r", title: "Chili" }, 3, "fridge", new Date("2026-10-13T03:00:00Z"));
+    expect(evening.expiresAt).toBe("2026-10-16");
+    expect(quebecDay(new Date("2026-10-13T03:00:00Z"))).toBe("2026-10-12");
+  });
+});
+
+describe("leftoverIsStale", () => {
+  const entry = (weekStart, dayOfWeek) => ({ isLeftover: true, weekStart, dayOfWeek, recipe: { fridgeLifeDays: 4 } });
+
+  it("is late only when the meal's day comes after the use-by day", () => {
+    const item = { expiresAt: "2026-10-16" };
+    expect(leftoverIsStale(entry("2026-10-12", 4), { item })).toBe(false); // Fri Oct 16, the use-by day itself
+    expect(leftoverIsStale(entry("2026-10-12", 5), { item })).toBe(true); // Sat Oct 17
+  });
+
+  it("reads a use-by moment late in the Quebec evening as that Quebec day, not the next UTC day", () => {
+    // 11 p.m. on Oct 16 in Quebec is 03:00 on Oct 17 in UTC.
+    const item = { expiresAt: "2026-10-17T03:00:00.000Z" };
+    expect(leftoverIsStale(entry("2026-10-12", 4), { item })).toBe(false); // Oct 16
+    expect(leftoverIsStale(entry("2026-10-12", 5), { item })).toBe(true); // Oct 17: the 17th is already past the 16th
+  });
+});
+
+describe("plannableLeftovers", () => {
+  it("lists the soonest use-by day first, whether the date is a day or a moment", () => {
+    const items = [
+      { id: "a", name: "Pizza", isLeftover: true, quantity: 1, expiresAt: "2026-10-16T00:00:00.000Z" },
+      { id: "b", name: "Chili", isLeftover: true, quantity: 2, expiresAt: "2026-10-17T03:00:00.000Z" }, // the 16th, 11 p.m. in Quebec
+      { id: "c", name: "Soup", isLeftover: true, quantity: 1, expiresAt: "2026-10-15T00:00:00.000Z" },
+    ];
+    expect(plannableLeftovers(items, []).map((r) => r.item.id)).toEqual(["c", "a", "b"]);
+  });
+});

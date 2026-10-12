@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { afterSaves, noteSave, savesVersion } from "./pendingSaves.js";
+import { GROCERY, afterSaves, noteSave, readArea, saveArea, savesVersion } from "./pendingSaves.js";
 
 // A save we can finish (or fail) when we choose.
 function later() {
@@ -68,5 +68,36 @@ describe("pendingSaves", () => {
     save.done();
     await afterSaves("f");
     expect(savesVersion("f")).not.toBe(started);
+  });
+});
+
+describe("which requests the grocery list is made of", () => {
+  it("a Planner save, a recipe edit and a recipe delete are saves the grocery list waits for", () => {
+    expect(saveArea("/grocery-extra-items", "POST")).toBe(GROCERY);
+    expect(saveArea("/planner", "POST")).toBe(GROCERY);
+    expect(saveArea("/planner/abc", "PUT")).toBe(GROCERY);
+    expect(saveArea("/planner/abc", "DELETE")).toBe(GROCERY);
+    expect(saveArea("/planner/blank", "POST")).toBe(GROCERY);
+    expect(saveArea("/planner/copy-week", "POST")).toBe(GROCERY);
+    expect(saveArea("/planner/abc/note", "PUT")).toBe(GROCERY);
+    expect(saveArea("/recipes/abc", "PUT")).toBe(GROCERY);
+    expect(saveArea("/recipes/abc", "DELETE")).toBe(GROCERY);
+  });
+
+  it("anything else is not, including reading a recipe link, which saves nothing and can be slow", () => {
+    expect(saveArea("/recipes/scrape", "POST")).toBeNull();
+    expect(saveArea("/recipes/parse-ingredients", "POST")).toBeNull();
+    expect(saveArea("/recipes/import", "POST")).toBeNull();
+    expect(saveArea("/recipes", "POST")).toBeNull();
+    expect(saveArea("/pantry-inventory", "POST")).toBeNull();
+    expect(saveArea("/auth/me", "PATCH")).toBeNull();
+  });
+
+  it("the grocery data and the upcoming meals wait for those saves; the rest of the Planner and Recipes don't", () => {
+    expect(readArea("/grocery-checked")).toBe(GROCERY);
+    expect(readArea("/planner/upcoming?from=2026-10-12")).toBe(GROCERY);
+    expect(readArea("/planner?week=2026-10-12")).toBeNull();
+    expect(readArea("/planner/dates?from=a&to=b")).toBeNull();
+    expect(readArea("/recipes")).toBeNull();
   });
 });

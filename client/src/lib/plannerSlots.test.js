@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PHONE_PAGE_STARTS, canClearDay, entriesOnDay, pageOfDay, slotLabel, weekendDaysLabel, weekendRuns } from "./plannerSlots.js";
+import { PHONE_PAGE_STARTS, canClearDay, entriesOnDay, pageOfDay, pickerSlot, slotLabel, weekendDaysLabel, weekendRuns } from "./plannerSlots.js";
 import { currentWeekStart, shiftWeek } from "./dates.js";
 import { setLang } from "../i18n/index.js";
 
@@ -71,5 +71,38 @@ describe("the phone board's pages", () => {
 
   it("opens on the first page that has the day in it", () => {
     expect([0, 1, 2, 3, 4, 5, 6].map(pageOfDay)).toEqual([0, 0, 0, 1, 1, 1, 2]);
+  });
+});
+
+describe("pickerSlot (where the slot picker starts)", () => {
+  // A week that isn't this one, so every day counts and the order is dinner, lunch, breakfast.
+  const weekStart = "2030-01-07";
+  const planned = [
+    { dayOfWeek: 0, mealType: "dinner" },
+    { dayOfWeek: 0, mealType: "lunch" },
+  ];
+
+  it("is the next empty slot once the week has loaded", () => {
+    expect(pickerSlot({ picked: null, entries: planned, weekStart, loaded: true })).toEqual({ dayOfWeek: 0, mealType: "breakfast" });
+  });
+
+  it("moves to the next empty slot when the week arrives after the picker opened", () => {
+    // Opened before the week arrived: it doesn't know what is free, so the first upcoming slot.
+    const before = pickerSlot({ picked: null, entries: [], weekStart, loaded: false });
+    expect(before).toEqual({ dayOfWeek: 0, mealType: "dinner" });
+    // The week arrives with that slot taken: the picker follows to the next empty one.
+    expect(pickerSlot({ picked: null, entries: planned, weekStart, loaded: true })).toEqual({ dayOfWeek: 0, mealType: "breakfast" });
+  });
+
+  it("never replaces a slot the person chose, or the target it opened with", () => {
+    const chosen = { dayOfWeek: 3, mealType: "lunch" };
+    expect(pickerSlot({ picked: chosen, entries: planned, weekStart, loaded: false })).toBe(chosen);
+    expect(pickerSlot({ picked: chosen, entries: planned, weekStart, loaded: true })).toBe(chosen);
+  });
+
+  it("falls back to the first upcoming slot when the week is full", () => {
+    const all = [];
+    for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) for (const mealType of ["breakfast", "lunch", "dinner"]) all.push({ dayOfWeek, mealType });
+    expect(pickerSlot({ picked: null, entries: all, weekStart, loaded: true })).toEqual({ dayOfWeek: 0, mealType: "dinner" });
   });
 });
