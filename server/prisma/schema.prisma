@@ -224,6 +224,11 @@ model GroceryCheckedItem {
   // checked. Kept for those rows: true with no `bought` means everything the
   // row needed was bought. New rows leave it false.
   inInventory Boolean  @default(false)
+  // The checkbox's third step: a checked item waiting to go into Inventory
+  // (the store's "+ Add N to inventory"). Only means something while the row
+  // is checked; unchecking, Done shopping and the store's button clear it.
+  // False on every row from before the three steps: those read as bought.
+  queued      Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   // Real unique constraint - see RecipeCategory's @@unique comment above.

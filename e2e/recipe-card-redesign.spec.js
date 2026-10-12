@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // The recipe card (design: docs/design/riso-v2-recipe-card/), the one card every
 // page opens in one tap: the receipt (To buy, In your Inventory), servings that
@@ -50,7 +51,6 @@ const SHAWARMA = {
   ],
 };
 
-const DAY = 86400000;
 async function seed(page, { recipes = [SHAWARMA], inventory = [], onList = [] } = {}) {
   const made = [];
   for (const r of recipes) {
@@ -59,7 +59,7 @@ async function seed(page, { recipes = [SHAWARMA], inventory = [], onList = [] } 
   }
   for (const [name, quantity, unit, days] of inventory) {
     await page.request.post("/api/pantry-inventory", {
-      data: { name, quantity, unit, ...(days != null && { expiresAt: new Date(Date.now() + days * DAY).toISOString() }) },
+      data: { name, quantity, unit, ...(days != null && { expiresAt: quebecDayIn(days) }) }, // in n Quebec days
     });
   }
   for (const name of onList) await page.request.post("/api/grocery-extra-items", { data: { name, quantity: null, unit: null } });

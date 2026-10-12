@@ -14,17 +14,21 @@ import { t } from "../i18n/index.js";
 // them can be changed or the row switched off. Cancel adds nothing. (Typing
 // an item into Inventory's own add form already counts as confirming.)
 //
-// `drafts`: [{ ref, name, quantity?, unit?, location?, expiresAt?, category? }].
+// `drafts`: [{ ref, name, quantity?, unit?, location?, expiresAt?, category?, on? }].
 // `ref` is handed back for each row that was added. A missing shelf or
 // use-by date is filled in from the USDA FoodKeeper suggestion, and stays
-// editable.
+// editable. A draft with `on: false` starts switched off (Done shopping: the
+// items bought ✓ but not queued for Inventory), and can be switched on.
+// `confirmNone`: the button's words when every row is off, for a caller that
+// can be confirmed with nothing added (Done shopping, which still clears the
+// cart); without it the button waits for a row.
 
 let rowId = 0;
 function toRow(draft) {
   return {
     id: ++rowId,
     ref: draft.ref,
-    on: true,
+    on: draft.on !== false,
     name: draft.name || "",
     quantity: draft.quantity != null ? String(draft.quantity) : "",
     unit: draft.unit || "",
@@ -132,7 +136,7 @@ function ConfirmRow({ row, sections, onChange }) {
   );
 }
 
-export function InventoryConfirmSheet({ drafts, sections, title, intro, onConfirm, onCancel }) {
+export function InventoryConfirmSheet({ drafts, sections, title, intro, confirmNone, onConfirm, onCancel }) {
   const [rows, setRows] = useState(() => drafts.map(toRow));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -151,7 +155,7 @@ export function InventoryConfirmSheet({ drafts, sections, title, intro, onConfir
   }
 
   async function confirm() {
-    if (count === 0 || saving) return;
+    if ((count === 0 && !confirmNone) || saving) return;
     setSaving(true);
     setError(null);
     try {
@@ -208,8 +212,8 @@ export function InventoryConfirmSheet({ drafts, sections, title, intro, onConfir
           <button type="button" className="btn subtle" onClick={onCancel} disabled={saving}>
             {t("common.cancel")}
           </button>
-          <button type="button" className="btn primary riso-confirm-go" onClick={confirm} disabled={saving || count === 0}>
-            {saving ? t("inventoryConfirm.adding") : t("inventoryConfirm.confirm", { count })}
+          <button type="button" className="btn primary riso-confirm-go" onClick={confirm} disabled={saving || (count === 0 && !confirmNone)}>
+            {saving ? t("inventoryConfirm.adding") : count === 0 && confirmNone ? confirmNone : t("inventoryConfirm.confirm", { count })}
           </button>
         </div>
       </div>

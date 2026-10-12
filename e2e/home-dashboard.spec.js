@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // The Home tab is now the landing page - covers the pieces that pull data
 // from elsewhere in the app (planner, grocery list, inventory) rather than
@@ -83,7 +84,7 @@ test("the grocery summary and inventory cards reflect real data", async ({ page 
   await expect(page.getByText("cilantro", { exact: true })).toBeVisible();
 
   await page.getByText("cilantro", { exact: true }).click();
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const tomorrow = quebecDayIn(1); // a Quebec day: from 8 p.m. the UTC date of "now + 24 h" is already the day after
   await itemForm(page).getByLabel("Use-by date").fill(tomorrow);
   await itemForm(page).getByRole("button", { name: "Save changes" }).click();
   await expect(itemForm(page)).toHaveCount(0);

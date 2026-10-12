@@ -12,7 +12,22 @@ import { formatAmount } from "./groceryList.js";
 // snapshot still needs buying for.
 //
 // `rows` below are the server's saved rows (GroceryCheckedItem), keyed by
-// the list row's key: { covered, bought, inInventory }.
+// the list row's key: { covered, bought, inInventory, queued }.
+//
+// The checkbox has three steps (design: docs/design/riso-v2-grocery, §1), and
+// each tap moves it on by one, back to the start after the last:
+//   TO_BUY  not checked
+//   BOUGHT  checked ✓: in the cart, "I got it, don't track it"
+//   QUEUED  checked +: in the cart and waiting to go into Inventory
+// Bought and queued are both "checked" (a `covered` amount); `queued` only
+// tells them apart, so every check from before the three steps reads as bought.
+// (The saved row's `bought` is something else: what Done shopping took off the list.)
+export const TO_BUY = 0;
+export const BOUGHT = 1;
+export const QUEUED = 2;
+
+// The step after `step`: to buy -> bought -> queued -> to buy.
+export const nextStep = (step) => (step + 1) % 3;
 
 const EPS = 0.001;
 
@@ -112,13 +127,15 @@ function rowAmounts(row) {
 // more than was checked or bought shows only the extra, unchecked.
 //   - `items`: the rows from buildGroceryList
 //   - `rows`: key -> saved row
-// Returns { items, checked, bought }: the rows to show (each with `parts` set
-// to what's left, `needParts` the whole need, `toBuy` what a check would
-// cover, `extra` true when `parts` is only the extra), the keys checked, and
-// the rows that left the list as bought.
+// Returns { items, checked, queued, bought }: the rows to show (each with
+// `parts` set to what's left, `needParts` the whole need, `toBuy` what a check
+// would cover, `extra` true when `parts` is only the extra), the keys checked
+// (bought or queued: in the cart), the checked keys that are queued for
+// Inventory, and the rows that left the list as bought.
 export function applyChecks(items, rows) {
   const shown = [];
   const checked = {};
+  const queued = {};
   const bought = [];
   for (const item of items) {
     const amounts = rowAmounts(rows[item.key]);
@@ -130,6 +147,7 @@ export function applyChecks(items, rows) {
     const left = amounts.covered ? uncoveredParts(item.parts, item.usedIn, [amounts.bought, amounts.covered]) : toBuy;
     const isChecked = !!amounts.covered && left.length === 0;
     if (isChecked) checked[item.key] = true;
+    if (isChecked && rows[item.key]?.queued) queued[item.key] = true;
     shown.push({
       ...item,
       needParts: item.parts,
@@ -138,7 +156,13 @@ export function applyChecks(items, rows) {
       extra: !isChecked && !!(amounts.bought || amounts.covered) && left.some((p) => p.quantity != null),
     });
   }
-  return { items: shown, checked, bought };
+  return { items: shown, checked, queued, bought };
+}
+
+// Where a row is on the checkbox's three steps.
+export function stepOf(key, checked, queued) {
+  if (!checked[key]) return TO_BUY;
+  return queued[key] ? QUEUED : BOUGHT;
 }
 
 // What checking a row covers: everything it still needs to buy.
@@ -146,13 +170,14 @@ export function checkSnapshot(item) {
   return snapshotOf(item.toBuy ?? item.parts, item.usedIn);
 }
 
-// `rows` with one row's check set (a snapshot) or cleared (null). A row left
+// `rows` with one row's check set (a snapshot, bought or with `queued` queued
+// for Inventory) or cleared (null, which clears the queued step too). A row left
 // with nothing - not checked, nothing bought - is dropped.
-export function setCovered(rows, key, covered) {
+export function setCovered(rows, key, covered, queued = false) {
   const next = { ...rows };
   const row = rows[key];
-  if (covered) next[key] = { bought: null, inInventory: false, ...row, covered };
-  else if (row && (row.bought || row.inInventory)) next[key] = { ...row, covered: null };
+  if (covered) next[key] = { bought: null, inInventory: false, ...row, covered, queued: !!queued };
+  else if (row && (row.bought || row.inInventory)) next[key] = { ...row, covered: null, queued: false };
   else delete next[key];
   return next;
 }

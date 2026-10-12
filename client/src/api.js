@@ -180,15 +180,18 @@ export const api = {
   clearGroceryOverrides: (keys) =>
     request("/grocery-item-overrides/clear", { method: "POST", body: JSON.stringify({ keys }) }),
 
-  // The list's saved rows: [{ core, covered, bought, inInventory }] - what
-  // each check covers and what "Done shopping" has bought.
+  // The list's saved rows: [{ core, covered, bought, inInventory, queued }] -
+  // what each check covers, whether it is queued for Inventory, and what
+  // "Done shopping" has bought.
   listGroceryChecked: () => request("/grocery-checked"),
-  checkGroceryItem: (core, covered) =>
-    request("/grocery-checked", { method: "POST", body: JSON.stringify({ core, covered }) }),
+  // A check: bought ✓, or with `queued` queued for Inventory +.
+  checkGroceryItem: (core, covered, queued = false) =>
+    request("/grocery-checked", { method: "POST", body: JSON.stringify({ core, covered, queued }) }),
   uncheckGroceryItem: (core) => request(`/grocery-checked/${encodeURIComponent(core)}`, { method: "DELETE" }),
   clearGroceryChecked: () => request("/grocery-checked", { method: "DELETE" }),
-  // Checked items sent to Inventory: items is [{ core, bought }]. The bought
-  // amounts leave the list; hand-added items are deleted.
+  // Checked items that leave the list as bought (the ones confirmed into
+  // Inventory, and with Done shopping the rest of the cart): items is
+  // [{ core, bought }]. The bought amounts leave the list; hand-added items are deleted.
   markGroceryInInventory: (items) =>
     request("/grocery-checked/in-inventory", { method: "POST", body: JSON.stringify({ items }) }),
   // Keeps the saved rows true to the plan (see tidyChecks).

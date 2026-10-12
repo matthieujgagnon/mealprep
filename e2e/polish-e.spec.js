@@ -147,25 +147,26 @@ test.describe("The recipes an item is for, in Grocery", () => {
     await page.request.post("/api/grocery-extra-items", { data: { name: "paper towels", quantity: 1 } });
     await page.reload();
     await page.getByRole("button", { name: "Grocery", exact: true }).first().click();
-    await expect(page.locator(".riso-row").first()).toBeVisible();
+    await expect(page.locator(".riso-group .riso-row").first()).toBeVisible();
   }
-  // A row by its item's name, in either language.
-  const rowFor = (page, name) => page.locator(".riso-row").filter({ has: page.locator(".riso-row-name", { hasText: new RegExp(`^${name}$`, "i") }) });
+  // A row of the list by its item's name, in either language (How it works' demo row is a grocery row too).
+  const rowFor = (page, name) => page.locator(".riso-group .riso-row").filter({ has: page.locator(".riso-row-name", { hasText: new RegExp(`^${name}$`, "i") }) });
 
   test.describe("on a computer", () => {
     test.use({ viewport: { width: 1280, height: 1000 } });
 
-    test("shows the recipes under each item, '+1' past two, and nothing for an item you added", async ({ page }) => {
+    test("shows the recipes under each item, the first and '+2' for three, and nothing for an item you added", async ({ page }) => {
       await seed(page);
-      // Three recipes use onion: the first two and "+1".
+      // Three recipes use onion: the first and "+2".
       const onion = rowFor(page, "Onion").locator(".riso-row-recipes");
-      await expect(onion.locator(".riso-row-recipes-names")).toHaveText("Tacos, Chili with a really long name that goes on and on");
-      await expect(onion.locator(".riso-row-recipes-more")).toHaveText("+1");
+      await expect(onion.locator(".riso-row-recipes-names")).toHaveText("Tacos");
+      await expect(onion.locator(".riso-row-recipes-more")).toHaveText("+2");
       // One recipe: just its name; no "+".
       await expect(rowFor(page, "Tomato").locator(".riso-row-recipes")).toHaveText("Tacos");
       await expect(rowFor(page, "Carrot").locator(".riso-row-recipes-more")).toHaveCount(0);
-      // A hand-added item shows nothing: no meta line at all.
+      // A hand-added item has no recipes: its meta line only says Added by you.
       await expect(rowFor(page, "Paper towels").locator(".riso-row-recipes")).toHaveCount(0);
+      await expect(rowFor(page, "Paper towels").locator(".riso-row-mine")).toHaveText("Added by you");
       // The recipes sit on the meta line under the item's name, left-aligned with it, in a
       // different (monospace) font and a lighter gray than the name.
       const rowOnion = rowFor(page, "Onion");
@@ -204,7 +205,7 @@ test.describe("The recipes an item is for, in Grocery", () => {
 
     test("every row and the number to buy are the same size, with or without recipes", async ({ page }) => {
       await seed(page);
-      const sizes = await page.locator(".riso-row").evaluateAll((els) =>
+      const sizes = await page.locator(".riso-group .riso-row").evaluateAll((els) =>
         els.map((e) => {
           const r = e.getBoundingClientRect();
           const qty = e.querySelector(".riso-row-qty").getBoundingClientRect();
@@ -214,7 +215,7 @@ test.describe("The recipes an item is for, in Grocery", () => {
       expect(sizes.length).toBeGreaterThanOrEqual(4);
       expect(new Set(sizes).size, sizes.join(" ")).toBe(1);
       expect(sizes[0].startsWith("68x")).toBe(true); // the desktop row height of the design
-      // The "+1" is always fully there, and the names end in an ellipsis when short of room.
+      // The "+2" is always fully there, and the names end in an ellipsis when short of room.
       const names = rowFor(page, "Onion").locator(".riso-row-recipes-names");
       expect(await names.evaluate((e) => getComputedStyle(e).textOverflow)).toBe("ellipsis");
       await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toBeVisible();
@@ -223,7 +224,7 @@ test.describe("The recipes an item is for, in Grocery", () => {
     test("the recipes line is in the aisle and recipe views too", async ({ page }) => {
       await seed(page);
       await page.getByRole("button", { name: "By aisle" }).click();
-      await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toHaveText("+1");
+      await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toHaveText("+2");
       await page.getByRole("button", { name: "By recipe" }).click();
       await expect(rowFor(page, "Tomato").first().locator(".riso-row-recipes")).toHaveText("Tacos");
     });
@@ -235,16 +236,16 @@ test.describe("The recipes an item is for, in Grocery", () => {
     test("rows keep one height, and Store mode rows too (name and number only)", async ({ page }) => {
       await seed(page);
       await langSwitch(page).getByRole("button", { name: "Français" }).click();
-      await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toHaveText("+1");
-      const heights = await page.locator(".riso-row").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+      await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toHaveText("+2");
+      const heights = await page.locator(".riso-group .riso-row").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       expect(new Set(heights).size, heights.join(" ")).toBe(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
       for (const n of ["Onion", "Carrot", "Tomato"]) {
         const nm = rowFor(page, n).locator(".riso-row-name");
         expect(await nm.evaluate((e) => e.scrollWidth <= e.clientWidth + 2), n).toBe(true);
       }
-      // The long recipe name is cut off, the "+1" is not.
-      const names = rowFor(page, "Onion").locator(".riso-row-recipes-names");
+      // The long recipe name is cut off, and a "+2" never is.
+      const names = rowFor(page, "Carrot").locator(".riso-row-recipes-names");
       expect(await names.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
       await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toBeVisible();
 

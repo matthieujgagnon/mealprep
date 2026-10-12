@@ -3,6 +3,7 @@ import { E2E_INVITE } from "./invite.js";
 import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
 import { langSwitch } from "./account-menu.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 const prisma = new PrismaClient();
 
@@ -54,7 +55,8 @@ function mondayOf(d) {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 }
 
-const inDays = (n) => new Date(Date.now() + n * 864e5 + 3600e3).toISOString();
+// A use-by day n Quebec days from today ("2026-10-15"): days left are Quebec days.
+const inDays = (n) => quebecDayIn(n);
 
 async function signUpInFrench(page) {
   await page.goto("/");
@@ -144,7 +146,7 @@ test("every screen speaks French, with nothing left in English", async ({ page }
 
   // Grocery list, its aisle view and store mode.
   await page.getByRole("button", { name: "Épicerie", exact: true }).click();
-  await expect(page.locator(".riso-row").first()).toBeVisible();
+  await expect(page.locator(".riso-group .riso-row").first()).toBeVisible();
   await expectAllFrench(page, "epicerie");
   await page.getByRole("button", { name: "Par rayon" }).click();
   await expect(page.locator(".riso-group-name").first()).toBeVisible();
@@ -287,14 +289,15 @@ test("a French recipe reads its measures, and meets French flyer deals", async (
   await page.keyboard.press("Escape");
 
   // + Liste on the flyer card puts the French name on the grocery list,
-  // with its Metro deal tag.
+  // in the Metro store, with its sale price.
   await page.getByRole("button", { name: "Circulaires", exact: true }).click();
   const card = page.locator(".riso-ing-card", { hasText: "Poitrines de poulet désossées" });
   await card.locator(".riso-ing-main").click();
   await card.getByRole("button", { name: /Ajouter Poitrines de poulet désossées/ }).click();
   await page.getByRole("button", { name: "Épicerie", exact: true }).click();
-  const row = page.locator(".riso-row", { hasText: "Poitrines de poulet désossées" });
+  const row = page.locator(".riso-group .riso-row", { hasText: "Poitrines de poulet désossées" });
   await expect(row).toBeVisible();
-  await expect(row.locator(".riso-row-deal")).toContainText("Metro");
+  await expect(page.getByRole("region", { name: "Magasin Metro" })).toContainText("Poitrines de poulet désossées");
+  await expect(row.locator(".riso-row-deal")).toContainText("$");
 });
 

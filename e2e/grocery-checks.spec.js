@@ -7,7 +7,9 @@ const prisma = new PrismaClient();
 
 // A check covers the amount the row showed when it was checked, and "Done
 // shopping" clears checks: bought amounts leave the list, and a meal added
-// later that needs more shows only the extra, unchecked.
+// later that needs more shows only the extra, unchecked. The box has three
+// steps (to buy, bought ✓, queued +): `queue` taps it twice, so Done shopping's
+// sheet starts with that item ticked.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
 
@@ -43,6 +45,11 @@ const openGrocery = (page) => page.getByRole("button", { name: "Grocery", exact:
 const modeRow = (page, name) =>
   page.getByRole("dialog", { name: "Store mode" }).locator(".store-mode-row", { has: page.locator(".store-mode-name", { hasText: new RegExp(`^${name}$`) }) });
 const doneButton = (page, count) => page.getByRole("button", { name: `Done shopping · add ${count} to inventory` });
+const queue = async (page, name) => {
+  await check(page, name).click();
+  await check(page, name).click();
+  await expect(row(page, name)).toHaveAttribute("data-step", "2");
+};
 
 // A roast (500 g chicken, rice) on Monday, and a soup (200 g more chicken) ready to add.
 async function setup(page) {
@@ -63,7 +70,7 @@ test("Done shopping takes the bought items off the list; a later meal shows only
   await expect(row(page, "Chicken")).toContainText("500 g");
 
   // Only the chicken is checked: it goes, the rice stays.
-  await check(page, "Chicken").click();
+  await queue(page, "Chicken");
   await doneButton(page, 1).click();
   await confirmAdd(page);
   await expect(row(page, "Chicken")).toHaveCount(0);
@@ -79,7 +86,7 @@ test("Done shopping takes the bought items off the list; a later meal shows only
   await expect(row(page, "Chicken")).not.toContainText("700");
 
   // Buying that leaves the list again, and Inventory got both trips.
-  await check(page, "Chicken").click();
+  await queue(page, "Chicken");
   await expect(row(page, "Chicken")).toContainText("200 g");
   await doneButton(page, 1).click();
   await confirmAdd(page);
@@ -94,12 +101,12 @@ test("Done shopping takes the bought items off the list; a later meal shows only
 
 test("everything bought empties the list and says so, also on Home", async ({ page }) => {
   await setup(page);
-  await check(page, "Chicken").click();
-  await check(page, "Rice").click();
+  await queue(page, "Chicken");
+  await queue(page, "Rice");
   await doneButton(page, 2).click();
   await confirmAdd(page);
   await expect(page.locator(".riso-grocery-cart-done")).toBeVisible();
-  await expect(page.locator(".riso-empty")).toHaveText("Groceries done ✓ Everything's in your Inventory.");
+  await expect(page.locator(".riso-empty")).toHaveText("Groceries done ✓ Nothing left to buy.");
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.locator(".riso-home-grocery")).toContainText("Groceries done ✓");
 });
@@ -129,8 +136,8 @@ test("a check without Done shopping covers what it showed: more needed later sho
 
 test("unchecking clears the check, and a row that was bought keeps what was bought", async ({ page }) => {
   const { soup } = await setup(page);
-  await check(page, "Rice").click();
-  await check(page, "Rice").click();
+  // Bought, queued, then back on the list.
+  for (let i = 0; i < 3; i++) await check(page, "Rice").click();
   await expect(check(page, "Rice")).toHaveAttribute("aria-checked", "false");
   await page.reload();
   await openGrocery(page);
@@ -138,14 +145,13 @@ test("unchecking clears the check, and a row that was bought keeps what was boug
 
   // Bought chicken, then a meal that needs more: checking and unchecking the
   // extra leaves the bought 500 g bought.
-  await check(page, "Chicken").click();
+  await queue(page, "Chicken");
   await doneButton(page, 1).click();
   await confirmAdd(page);
   await place(page, soup.id, 2);
   await page.reload();
   await openGrocery(page);
-  await check(page, "Chicken").click();
-  await check(page, "Chicken").click();
+  for (let i = 0; i < 3; i++) await check(page, "Chicken").click();
   await expect(check(page, "Chicken")).toHaveAttribute("aria-checked", "false");
   await expect(row(page, "Chicken")).toContainText("+200 g");
   await page.reload();
@@ -157,7 +163,7 @@ test("a checked hand-added item leaves the list when Done shopping is pressed", 
   await setup(page);
   await page.fill('input[placeholder="Add an item, e.g. 2 lemons"]', "paper towels");
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await check(page, "paper towels").click();
+  await queue(page, "paper towels");
   await doneButton(page, 1).click();
   await confirmAdd(page);
   await expect(row(page, "paper towels")).toHaveCount(0);
@@ -176,8 +182,10 @@ test("a check made before amounts were saved still works, and is saved with its 
   await prisma.groceryCheckedItem.create({ data: { userId: user.id, core: "rice", inInventory: true } });
   await page.reload();
   await openGrocery(page);
-  // The old check still shows checked; the item "Done shopping" had already sent is bought.
+  // The old check still shows checked, as bought ✓ (it was made before the box
+  // had three steps); the item "Done shopping" had already sent is bought.
   await expect(check(page, "Chicken")).toHaveAttribute("aria-checked", "true");
+  await expect(row(page, "Chicken")).toHaveAttribute("data-step", "1");
   await expect(row(page, "Rice")).toHaveCount(0);
   await expect
     .poll(async () => (await (await page.request.get("/api/grocery-checked")).json()).find((c) => c.core === "chicken")?.covered)
@@ -193,7 +201,7 @@ test("a check made before amounts were saved still works, and is saved with its 
 
 test("a bought item is forgotten once no planned meal needs it", async ({ page }) => {
   await setup(page);
-  await check(page, "Chicken").click();
+  await queue(page, "Chicken");
   await doneButton(page, 1).click();
   await confirmAdd(page);
   await expect(row(page, "Chicken")).toHaveCount(0);
@@ -217,6 +225,8 @@ test.describe("on a phone", () => {
     await modeRow(page, "Chicken").click();
     await mode.getByRole("button", { name: "← List" }).click();
     await mode.getByRole("button", { name: "Add to inventory" }).click();
+    // Bought in Store mode, so it starts unticked: tick it to track it.
+    await page.locator(".riso-confirm").getByLabel("Include Chicken").check();
     await confirmAdd(page);
     await mode.getByRole("button", { name: "Back to the list" }).click();
     await expect(modeRow(page, "Chicken")).toHaveCount(0);

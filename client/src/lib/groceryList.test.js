@@ -92,9 +92,9 @@ describe("recipesLine: the recipes an item is for", () => {
     expect(recipesLine(["Tacos", "Chili"])).toMatchObject({ names: "Tacos, Chili", more: 0 });
   });
 
-  it("with more than two, shows the first two and how many more", () => {
-    expect(recipesLine(["Tacos", "Chili", "Soup"])).toMatchObject({ names: "Tacos, Chili", more: 1 });
-    expect(recipesLine(["A", "B", "C", "D", "E"])).toMatchObject({ names: "A, B", more: 3, all: "A, B, C, D, E" });
+  it("with three or more, shows the first and how many more (LENTIL SALAD +2)", () => {
+    expect(recipesLine(["Tacos", "Chili", "Soup"])).toMatchObject({ names: "Tacos", more: 2 });
+    expect(recipesLine(["A", "B", "C", "D", "E"])).toMatchObject({ names: "A", more: 4, all: "A, B, C, D, E" });
   });
 
   it("shows nothing for an item you added yourself", () => {

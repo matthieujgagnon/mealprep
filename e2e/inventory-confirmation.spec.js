@@ -6,7 +6,7 @@ import { cancelAdd, confirmAdd } from "./inventory-confirm.js";
 const prisma = new PrismaClient();
 
 // Nothing reaches Inventory without Matt confirming it first: Done shopping
-// and a row's "+ Inventory" (Grocery), a receipt, and what the sheet shows.
+// and a store's "+ Add N to inventory" (Grocery), a receipt, and what the sheet shows.
 // Plus the grocery rows: a flyer item opens its deal, a brand shows under the
 // name, and every row is the same size.
 
@@ -30,20 +30,27 @@ const goToGrocery = async (page) => {
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
 };
-// A grocery row, and the checkbox in it: only the checkbox checks the item off.
-const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
-const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
+// A grocery row, and the checkbox in it: only the checkbox checks the item off
+// (the list's rows: How it works' demo row is one too).
+const check = (page, name) => page.locator(".riso-group").getByRole("checkbox", { name: `Check off ${name}`, exact: true });
+const row = (page, name) => page.locator(".riso-group .riso-row").filter({ has: page.getByRole("checkbox", { name: `Check off ${name}`, exact: true }) });
+// Two taps on the box: queued for Inventory (+).
+const queue = async (page, name) => {
+  await check(page, name).click();
+  await check(page, name).click();
+  await expect(row(page, name)).toHaveAttribute("data-step", "2");
+};
 
-test("a checked item's + Inventory opens the sheet for that item; cancel adds nothing, confirm adds what was edited", async ({ page }) => {
+test("a store's + Add N to inventory opens the sheet for its queued items; cancel adds nothing, confirm adds what was edited", async ({ page }) => {
   await signUp(page);
   await addExtra(page, { name: "Kale", quantity: 2 });
   await addExtra(page, { name: "Rice" });
   await goToGrocery(page);
-  await expect(page.getByRole("button", { name: /^\+ Inventory$/ })).toHaveCount(0); // only checked rows have it
+  await expect(page.locator(".riso-group-foot")).toHaveCount(0); // only a store with something queued has it
 
-  await check(page, "Kale").click();
-  await check(page, "Rice").click();
-  await page.getByRole("button", { name: "Add Kale to Inventory" }).click();
+  await queue(page, "Kale");
+  await check(page, "Rice").click(); // bought, not queued
+  await page.getByRole("button", { name: "+ Add 1 to inventory" }).click();
 
   const sheet = page.locator(".riso-confirm");
   await expect(sheet.locator(".riso-confirm-row")).toHaveCount(1); // just that one item
@@ -54,9 +61,9 @@ test("a checked item's + Inventory opens the sheet for that item; cancel adds no
 
   await cancelAdd(page);
   expect(await inventory(page)).toHaveLength(0); // nothing added
-  await expect(check(page, "Kale")).toHaveAttribute("aria-checked", "true"); // the list is as it was
+  await expect(row(page, "Kale")).toHaveAttribute("data-step", "2"); // the list is as it was
 
-  await page.getByRole("button", { name: "Add Kale to Inventory" }).click();
+  await page.getByRole("button", { name: "+ Add 1 to inventory" }).click();
   await sheet.getByLabel("Amount of Kale").fill("3");
   await sheet.getByLabel("Shelf for Kale").selectOption("freezer");
   await sheet.getByLabel("Use-by date for Kale").fill("2031-01-15");
@@ -67,16 +74,16 @@ test("a checked item's + Inventory opens the sheet for that item; cancel adds no
   expect(items[0]).toMatchObject({ name: "Kale", quantity: 3, location: "freezer" });
   expect(items[0].expiresAt).toMatch(/^2031-01-15/);
   await expect(row(page, "Kale")).toHaveCount(0); // it left the list
-  await expect(row(page, "Rice")).toBeVisible(); // the other checked item stayed
+  await expect(row(page, "Rice")).toHaveAttribute("data-step", "1"); // the bought item stayed in the cart
 });
 
-test("Done shopping lists every checked item; a row switched off stays on the list", async ({ page }) => {
+test("Done shopping lists every item in the cart; only what's ticked goes in, and the whole cart leaves the list", async ({ page }) => {
   await signUp(page);
   await addExtra(page, { name: "Oats" });
   await addExtra(page, { name: "Honey" });
   await goToGrocery(page);
-  await check(page, "Oats").click();
-  await check(page, "Honey").click();
+  await queue(page, "Oats");
+  await queue(page, "Honey");
   await page.getByRole("button", { name: "Done shopping · add 2 to inventory" }).click();
 
   const sheet = page.locator(".riso-confirm");
@@ -87,7 +94,8 @@ test("Done shopping lists every checked item; a row switched off stays on the li
   await confirmAdd(page);
 
   expect((await inventory(page)).map((i) => i.name)).toEqual(["Oats"]);
-  await expect(check(page, "Honey")).toHaveAttribute("aria-checked", "true");
+  // The shop is over: Honey was bought, just not tracked.
+  await expect(row(page, "Honey")).toHaveCount(0);
 });
 
 test("a receipt goes through the same sheet, and cancelling it adds nothing", async ({ page }) => {
@@ -154,13 +162,13 @@ test.describe("grocery rows", () => {
 
   test("the brand shows under the name, and every row is the same height with no name cut", async ({ page }) => {
     await seed(page, await signUp(page));
-    const bacon = page.locator(".riso-row", { hasText: "Bacon" });
+    const bacon = page.locator(".riso-group .riso-row", { hasText: "Bacon" });
     await expect(bacon.locator(".riso-row-brand")).toHaveText("Maple Leaf");
     // An item with no brand has no brand line at all.
-    await expect(page.locator(".riso-row", { hasText: "Soap" }).locator(".riso-row-brand")).toHaveCount(0);
+    await expect(page.locator(".riso-group .riso-row", { hasText: "Soap" }).locator(".riso-row-brand")).toHaveCount(0);
 
     const sizes = async () => {
-      const boxes = await page.locator(".riso-row").evaluateAll((els) =>
+      const boxes = await page.locator(".riso-group .riso-row").evaluateAll((els) =>
         els.map((e) => {
           const b = e.getBoundingClientRect();
           const name = e.querySelector(".riso-row-name");
@@ -174,11 +182,11 @@ test.describe("grocery rows", () => {
     };
     await sizes();
 
-    // The same on a phone, and with one row checked ("+ Inventory" joins the row).
+    // The same on a phone, and with one row queued ("→ INVENTORY" joins the row).
     await page.setViewportSize({ width: 390, height: 844 });
     await sizes();
-    await check(page, "Soap").click();
-    await expect(page.getByRole("button", { name: "Add Soap to Inventory" })).toBeVisible();
+    await queue(page, "Soap");
+    await expect(row(page, "Soap").locator(".riso-row-queued")).toBeVisible();
     await sizes();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });

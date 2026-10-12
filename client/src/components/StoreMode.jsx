@@ -13,10 +13,13 @@ import { getLang, t } from "../i18n/index.js";
 // The list while you shop (design: docs/design/riso-v2-store-mode, "Store
 // Mode"): one scrolling list in a section for each store, each under a coloured
 // sticker that folds it away, with a big count and a progress bar above it, light
-// or dark. Tapping a row checks it off, and it stays where it is. All turns the
+// or dark. Tapping a row puts it in the cart (bought ✓) or takes it out, and it
+// stays where it is; a row queued for Inventory on the Grocery page shows + (the
+// checkbox's third step), and a tap takes it out of the cart too. All turns the
 // stores off (one list), Aisle groups by section of the store, Hide done takes
-// the checked ones out of view. Leaving with items checked asks about adding them
-// to Inventory, which always goes through the Inventory confirmation (`onDone`).
+// the checked ones out of view. Leaving with items checked asks about Done
+// shopping, which always goes through the Inventory confirmation (`onDone`):
+// what to track is chosen there, at the till.
 // Press and hold a row, then drag it onto another store (its section or its
 // sticker, folded or not) to file it there for good, with Undo (`onMove`, `onToast`).
 // Light or dark is the shared switch (`useTheme`, `ThemeSwitch`), the same one and the
@@ -28,6 +31,7 @@ export function StoreMode({
   rows,
   stores,
   checked,
+  queued = {},
   onToggle,
   onDone,
   onClose,
@@ -167,16 +171,19 @@ export function StoreMode({
     else onClose();
   }
 
-  // Adding opens the Inventory confirmation; cancelling it leaves the sheet as it was.
+  // Done shopping opens the Inventory confirmation; cancelling it leaves the
+  // sheet as it was. Once confirmed the cart leaves the list: with something
+  // added, a sheet says so; with nothing added ("Done, add nothing"), back to Grocery.
   async function addChecked() {
     if (busy) return;
-    const count = sendCount;
     setBusy(true);
     try {
-      if (await onDone()) {
+      const count = await onDone();
+      if (count == null) return;
+      if (count > 0) {
         setAdded(count);
         setSheet("added");
-      }
+      } else onClose();
     } finally {
       setBusy(false);
     }
@@ -263,6 +270,7 @@ export function StoreMode({
                       variant="store"
                       item={row.item}
                       checked={!!checked[row.item.key]}
+                      queued={!!queued[row.item.key]}
                       deal={row.deal}
                       brand={brandOf(row.deal || row.flyerDeal)}
                       onToggle={() => onToggle(row.item.key)}

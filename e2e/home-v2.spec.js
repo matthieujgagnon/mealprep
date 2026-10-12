@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // Riso v2 Home: the card that follows the day, the week strip's shadows and
 // scroll, To use, and Makeable now stepping aside.
@@ -105,12 +106,12 @@ test("Use it up lists everything inside a month, soonest first, and scrolls insi
     const name = `Item ${String(d).padStart(2, "0")}`;
     names.push(name);
     await page.request.post("/api/pantry-inventory", {
-      data: { name, location: "fridge", expiresAt: new Date(Date.now() + d * 86400000 + 3600000).toISOString() },
+      data: { name, location: "fridge", expiresAt: quebecDayIn(d) }, // in d Quebec days, as the Inventory form saves it
     });
   }
   // Past the month: not listed.
   await page.request.post("/api/pantry-inventory", {
-    data: { name: "Rice flour", location: "pantry", expiresAt: new Date(Date.now() + 40 * 86400000).toISOString() },
+    data: { name: "Rice flour", location: "pantry", expiresAt: quebecDayIn(40) },
   });
   await page.reload();
   const card = page.locator(".riso-home-useup");

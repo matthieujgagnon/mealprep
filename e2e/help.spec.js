@@ -112,8 +112,11 @@ test.describe("desktop, English", () => {
     const grocery = page.locator("#help-grocery");
     await expect(grocery.locator("li", { hasText: "Choose a view" }).locator(".riso-segmented")).toHaveText("By storeBy aisleBy recipe");
     await expect(grocery.locator("li", { hasText: "Press" }).locator(".riso-grocery-store-btn")).toContainText("I'm at the store");
-    await expect(grocery.locator("li", { hasText: "A checked item shows" }).locator(".riso-row-toinv")).toHaveText("+ Inventory");
-    await expect(grocery.locator("li", { hasText: "Press Done shopping" })).toContainText("Done shopping · add 3 to inventory to send every checked item");
+    await expect(grocery.locator("li", { hasText: "When a store has queued items" }).locator(".riso-group-foot-btn")).toHaveText("+ Add 2 to inventory");
+    await expect(grocery.locator("li", { hasText: "Press Done shopping" })).toContainText("Done shopping · add 3 to inventory when you've finished");
+    // The box's three steps are drawn as they look: empty, ✓ and +.
+    const steps = grocery.locator("li", { hasText: "has three steps" }).locator(".riso-row-check");
+    await expect(steps).toHaveText(["", "✓", "+"]);
     // An icon is hidden from screen readers; a labelled copy is just words.
     await expect(page.locator("#help-planner .riso-planner-nav-arrow").first()).toHaveAttribute("aria-hidden", "true");
     await expect(page.locator("#help-recipes li", { hasText: "press" }).locator(".riso-help-copy").first()).not.toHaveAttribute("aria-hidden", /.*/);

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // Covers the shelves + edit panel + select-and-act Inventory redesign:
 // items grouped into Fridge/Freezer/Pantry columns, an edit panel opened by
@@ -289,13 +290,13 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await page.fill('input[name="invite"]', E2E_INVITE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
-  const day = 86400000;
   const add = (data) => page.request.post("/api/pantry-inventory", { data });
-  await add({ name: "Bbq sauce", location: "fridge", quantity: 0.25, unit: "cup", expiresAt: new Date(Date.now() - 3 * day).toISOString() });
-  await add({ name: "Cilantro", location: "fridge", quantity: 1, unit: "bunch", expiresAt: new Date(Date.now() + 2 * day).toISOString() });
-  await add({ name: "Greek yogurt", location: "fridge", quantity: 500, unit: "g", expiresAt: new Date(Date.now() + 6 * day).toISOString() });
-  await add({ name: "Eggs", location: "fridge", quantity: 8, expiresAt: new Date(Date.now() + 14 * day).toISOString() });
-  await add({ name: "Basmati rice", location: "pantry", quantity: 2, unit: "kg", expiresAt: new Date(Date.now() + 600 * day).toISOString() });
+  // Use-by days n Quebec days from today, as the Inventory form saves them.
+  await add({ name: "Bbq sauce", location: "fridge", quantity: 0.25, unit: "cup", expiresAt: quebecDayIn(-3) });
+  await add({ name: "Cilantro", location: "fridge", quantity: 1, unit: "bunch", expiresAt: quebecDayIn(2) });
+  await add({ name: "Greek yogurt", location: "fridge", quantity: 500, unit: "g", expiresAt: quebecDayIn(6) });
+  await add({ name: "Eggs", location: "fridge", quantity: 8, expiresAt: quebecDayIn(14) });
+  await add({ name: "Basmati rice", location: "pantry", quantity: 2, unit: "kg", expiresAt: quebecDayIn(600) });
   await add({ name: "Xylo widget", location: "pantry", category: "Other", expiresAt: null });
   // Only an uploaded photo or a web link is kept as a photo.
   const bad = await add({ name: "Odd", imageUrl: "javascript:alert(1)" });

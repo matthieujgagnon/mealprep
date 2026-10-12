@@ -17,3 +17,8 @@ export function addDays(key, days) {
 
 // A use-by day is saved as a bare date, which the database keeps as midnight UTC.
 export const asSavedDay = (key) => `${key}T00:00:00.000Z`;
+
+// The use-by (or sale end) day n Quebec days from today, as the Inventory form
+// saves one ("2026-10-15"). Days left are counted in Quebec days, so a date made
+// from the machine clock ("now + 2 days") lands on another day near midnight.
+export const quebecDayIn = (n, at = Date.now()) => addDays(quebecDay(at), n);

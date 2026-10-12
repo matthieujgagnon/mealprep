@@ -109,11 +109,13 @@ export const HELP_COPIES = {
   dealTag: { kind: "deal" },
   grip: { kind: "icon", cls: "riso-group-grip", glyph: "⠿" },
   rowCheck: { kind: "icon", cls: "riso-row-check", glyph: "" },
+  rowBought: { kind: "icon", cls: "riso-row-check on", glyph: "✓" },
+  rowQueued: { kind: "icon", cls: "riso-row-check on queued", glyph: "+" },
+  addQueued: { kind: "pill", cls: "riso-group-foot-btn", label: "grocery.addQueued", vars: { count: 2 }, strong: true },
   rowRemove: { kind: "icon", cls: "riso-row-delete", glyph: "×" },
   removedChip: { kind: "removed" },
   share: { kind: "pill", cls: "riso-grocery-share", label: "grocery.share" },
   atStore: { kind: "atStore" },
-  toInventory: { kind: "pill", cls: "riso-row-toinv", label: "grocery.toInventory" },
   doneShopping: { kind: "pill", cls: "riso-grocery-cart-btn", label: "grocery.doneShopping", vars: { count: 3 }, strong: true },
 
   // Flyers
@@ -167,7 +169,7 @@ export function copyKeys(copy) {
   const keys = [];
   if (copy.label) keys.push(copy.label);
   for (const item of copy.items || []) keys.push(item.label);
-  if (copy.kind === "deal") keys.push("same.sampleStore", "help.sample.price");
+  if (copy.kind === "deal") keys.push("help.sample.price");
   if (copy.kind === "removed") keys.push("help.sample.item");
   if (copy.kind === "atStore") keys.push("grocery.atStore", "grocery.bigMode");
   if (copy.kind === "lang") keys.push("lang.label", "same.fr", "same.en");

@@ -29,21 +29,22 @@ const toJson = (snapshot) => (snapshot ? snapshot : Prisma.DbNull);
 const normalizeCore = (core) => (typeof core === "string" ? core.trim().toLowerCase() : "");
 
 // GET /api/grocery-checked - every row the list has saved: what each check
-// covers and what "Done shopping" has bought. One list for all planned
-// meals, so no week.
+// covers, whether it is queued for Inventory (the checkbox's third step) and
+// what "Done shopping" has bought. One list for all planned meals, so no week.
 groceryCheckedRouter.get("/", async (req, res) => {
   const rows = await prisma.groceryCheckedItem.findMany({
     where: { userId: req.userId },
-    select: { core: true, covered: true, bought: true, inInventory: true },
+    select: { core: true, covered: true, bought: true, inInventory: true, queued: true },
   });
   res.json(rows);
 });
 
 // POST /api/grocery-checked/in-inventory { items: [{ core, bought }] } - the
-// one place checked items go to Inventory from. `bought` is the amount now in
-// Inventory: it leaves the list, and the check that covered it is cleared.
-// A hand-added item (key "extra-<id>") is simply deleted: there is no meal to
-// remember it for.
+// one place checked items leave the list as bought: the ones confirmed into
+// Inventory (a store's "+ Add N to inventory", Done shopping) and, with Done
+// shopping, the rest of the cart. `bought` is the amount bought: it leaves the
+// list, and the check that covered it is cleared (queued too). A hand-added
+// item (key "extra-<id>") is simply deleted: there is no meal to remember it for.
 groceryCheckedRouter.post("/in-inventory", async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items)) {
@@ -69,7 +70,7 @@ groceryCheckedRouter.post("/in-inventory", async (req, res) => {
       prisma.groceryCheckedItem.upsert({
         where: { userId_core: { userId: req.userId, core } },
         create: { userId: req.userId, core, bought: toJson(bought) },
-        update: { bought: toJson(bought), covered: Prisma.DbNull, inInventory: false },
+        update: { bought: toJson(bought), covered: Prisma.DbNull, inInventory: false, queued: false },
       })
     );
   }
@@ -91,10 +92,12 @@ groceryCheckedRouter.post("/tidy", async (req, res) => {
   for (const row of set) {
     const core = normalizeCore(row?.core);
     if (!core) continue;
+    const covered = cleanSnapshot(row.covered);
     ops.push(
       prisma.groceryCheckedItem.updateMany({
         where: { userId: req.userId, core },
-        data: { covered: toJson(cleanSnapshot(row.covered)), bought: toJson(cleanSnapshot(row.bought)), inInventory: false },
+        // A row whose check is trimmed away is no longer queued either.
+        data: { covered: toJson(covered), bought: toJson(cleanSnapshot(row.bought)), inInventory: false, ...(covered ? {} : { queued: false }) },
       })
     );
   }
@@ -106,32 +109,34 @@ groceryCheckedRouter.post("/tidy", async (req, res) => {
   res.status(204).send();
 });
 
-// POST /api/grocery-checked { core, covered } - check an item off, covering
-// the amount it shows right now. Checking it again replaces that amount (a
-// row whose need grew is checked for the new total).
+// POST /api/grocery-checked { core, covered, queued } - check an item off,
+// covering the amount it shows right now: bought ✓, or with `queued: true`
+// queued for Inventory +. Checking it again replaces that amount (a row whose
+// need grew is checked for the new total) and the step.
 groceryCheckedRouter.post("/", async (req, res) => {
-  const { core, covered } = req.body;
+  const { core, covered, queued } = req.body;
   const normalized = normalizeCore(core);
   if (!normalized) {
     return res.status(400).json(fail(req, "required", { fields: "core" }));
   }
   const snapshot = cleanSnapshot(covered);
+  const step = queued === true;
 
   await prisma.groceryCheckedItem.upsert({
     where: { userId_core: { userId: req.userId, core: normalized } },
-    create: { userId: req.userId, core: normalized, covered: toJson(snapshot) },
-    update: { covered: toJson(snapshot) },
+    create: { userId: req.userId, core: normalized, covered: toJson(snapshot), queued: step },
+    update: { covered: toJson(snapshot), queued: step },
   });
-  res.status(201).json({ core: normalized });
+  res.status(201).json({ core: normalized, queued: step });
 });
 
-// Removes the "checked" part of rows. A row that also remembers a purchase
-// stays for that; one with nothing left is deleted.
+// Removes the "checked" part of rows (and so the queued step). A row that
+// also remembers a purchase stays for that; one with nothing left is deleted.
 async function uncheck(where) {
   await prisma.$transaction([
     prisma.groceryCheckedItem.updateMany({
       where: { ...where, OR: [{ bought: { not: Prisma.DbNull } }, { inInventory: true }] },
-      data: { covered: Prisma.DbNull },
+      data: { covered: Prisma.DbNull, queued: false },
     }),
     prisma.groceryCheckedItem.deleteMany({
       where: { ...where, bought: { equals: Prisma.DbNull }, inInventory: false },

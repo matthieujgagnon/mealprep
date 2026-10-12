@@ -1,7 +1,8 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findNextEmptySlot, upcomingSlots } from "./plannerSlots.js";
 import { rankRecipesForTray } from "./plannerSuggestions.js";
 import { currentWeekStart, shiftWeek } from "./dates.js";
+import { addDays, quebecDay } from "./quebecDay.js";
 
 const recipe = (id, title, names, extra = {}) => ({
   id,
@@ -10,7 +11,9 @@ const recipe = (id, title, names, extra = {}) => ({
   ...extra,
 });
 
-const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString();
+// A use-by date n Quebec days from today ("2026-10-16"), the way the Inventory
+// form saves one: days left are counted in Quebec calendar days.
+const inDays = (n) => addDays(quebecDay(), n);
 
 afterEach(() => vi.useRealTimers());
 
@@ -43,18 +46,28 @@ describe("recipe ranking", () => {
     recipe("b", "Chicken tacos", ["chicken thighs", "tortillas"]),
     recipe("c", "Omelette", ["eggs"]),
   ];
-  const pantryInventory = [
-    { name: "spinach", expiresAt: inDays(2) },
-    { name: "feta", expiresAt: inDays(20) },
-    { name: "eggs", expiresAt: inDays(20) },
-  ];
-  const kitchen = { inventory: pantryInventory, customStaples: [], excludedStaples: [] };
+  // A fixed clock: 11:30 p.m. in Quebec on Oct 14, 2026, already Oct 15 in UTC.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T03:30:00Z"));
+  });
+  const kitchen = () => ({
+    inventory: [
+      { name: "spinach", expiresAt: inDays(2) },
+      { name: "feta", expiresAt: inDays(20) },
+      { name: "eggs", expiresAt: inDays(20) },
+    ],
+    customStaples: [],
+    excludedStaples: [],
+  });
 
   it("stops pushing expiring food an upcoming meal already uses", () => {
+    // Spinach goes off in 2 days: it is pushed until a meal uses it.
+    expect(rankRecipesForTray({ recipes, upcomingEntries: [], kitchen: kitchen() }).unusedExpiring.map((i) => i.name)).toEqual(["spinach"]);
     const { unusedExpiring } = rankRecipesForTray({
       recipes,
       upcomingEntries: [{ recipe: recipes[0], dayOfWeek: 3, mealType: "dinner" }],
-      kitchen,
+      kitchen: kitchen(),
     });
     expect(unusedExpiring.map((i) => i.name)).not.toContain("spinach");
   });

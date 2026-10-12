@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
-import { quebecDay } from "./quebec-day.js";
+import { quebecDay, quebecDayIn } from "./quebec-day.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -211,7 +211,7 @@ test("On sale lists what to buy first, soonest-ending first", async ({ page }) =
   await prisma.flyerDeal.createMany({
     data: [
       { ...base, store: "Maxi", item: "Lemons", matchName: "lemons", price: "$0.50", unitPrice: 0.5, unitBasis: "each", regularPrice: 0.99, validUntil: quebecDay(new Date()) },
-      { ...base, store: "Metro", category: "staple", item: "Barilla spaghetti, 900 g", matchName: "spaghetti", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, validUntil: plusDays(thisWeek, 9) },
+      { ...base, store: "Metro", category: "staple", item: "Barilla spaghetti, 900 g", matchName: "spaghetti", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, validUntil: quebecDayIn(9) },
     ],
   });
   await page.reload();
@@ -222,24 +222,23 @@ test("On sale lists what to buy first, soonest-ending first", async ({ page }) =
   await expect(sale.locator(".riso-grocery-sale-row").first()).toContainText("Lemon");
   await expect(sale.locator(".riso-grocery-sale-row").first()).toContainText("ends today");
   await expect(sale.locator(".riso-grocery-sale-row").nth(1)).toContainText("43% off");
-  // Both tags are one solid green pill: store, a divider, then the price.
+  // Each sale price is a green dot, the price (dotted underline) and ›; it turns
+  // light green under the pointer.
   const tag = row(page, "Lemon").locator(".riso-row-deal");
-  await expect(tag).toHaveText("Maxi$0.50");
+  await expect(tag).toHaveText("$0.50›");
   const look = await tag.evaluate((el) => {
-    const store = el.querySelector(".riso-row-deal-store");
     const price = el.querySelector(".riso-row-deal-price");
-    const bg = (n) => getComputedStyle(n).backgroundColor;
     return {
-      pill: bg(el),
-      storeBg: bg(store),
-      priceBg: bg(price),
+      pill: getComputedStyle(el).backgroundColor,
+      dot: getComputedStyle(el.querySelector(".riso-row-deal-dot")).backgroundColor,
       priceFont: getComputedStyle(price).fontFamily,
-      spacing: getComputedStyle(price).letterSpacing,
+      underline: getComputedStyle(price).textDecorationStyle,
     };
   });
-  expect(look.storeBg).toBe("rgba(0, 0, 0, 0)");
-  expect(look.priceBg).toBe("rgba(0, 0, 0, 0)");
-  expect(look.pill).not.toBe("rgba(0, 0, 0, 0)");
+  expect(look.pill).toBe("rgba(0, 0, 0, 0)");
+  expect(look.dot).toBe("rgb(16, 201, 92)");
   expect(look.priceFont).toMatch(/mono/i); // the design sets the price in DM Mono
-  expect(look.spacing).toBe("normal");
+  expect(look.underline).toBe("dotted");
+  await tag.hover();
+  await expect.poll(() => tag.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(201, 245, 218)");
 });
