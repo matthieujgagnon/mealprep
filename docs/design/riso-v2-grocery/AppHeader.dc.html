@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&amp;family=DM+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>html,body{margin:0;background:#f4f1ea}a{color:#2323ff;text-decoration:none}a:hover{color:#16181f}</style></helmet>
+<header style="position:relative;z-index:50;display:flex;align-items:center;justify-content:{{ jc }};gap:{{ gap }};flex-wrap:wrap;padding:{{ pad }};border-bottom:{{ bb }};background:#f4f1ea;color:#16181f;box-sizing:border-box;width:100%">
+  <h1 style="flex:none;margin:0;font:800 {{ logoFs }}/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16181f;white-space:nowrap">matt mo <span style="background:#ff48b0;color:#16181f;padding:{{ wmPad }};border-radius:{{ wmRad }}">cookbook</span></h1>
+  <nav style="order:{{ navOrder }};flex:{{ navFlex }};min-width:0;display:flex;gap:{{ navGap }};margin:{{ navMargin }};padding:{{ navPad }};overflow:hidden">
+    <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="7">
+      <div style="flex:none;height:{{ tabH }};padding:0 {{ tabPad }};border-radius:{{ tabRad }};background:{{ tb.bg }};color:{{ tb.fg }};border:2px solid {{ tb.bd }};box-shadow:{{ tb.sh }};display:flex;align-items:center;font:{{ tabW }} {{ tabFs }} 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">{{ tb.label }}</div>
+    </sc-for>
+  </nav>
+  <div style="order:2;margin-left:auto;display:flex;align-items:center;gap:8px">
+    <div style="display:inline-flex;flex:none;border:2px solid #16181f;border-radius:999px;overflow:hidden;background:#fffdf8">
+      <sc-for list="{{ langs }}" as="l" hint-placeholder-count="2">
+        <div style="padding:{{ langPad }};min-height:{{ langMinH }};display:flex;align-items:center;font:600 {{ langFs }}/1 'DM Mono',monospace;letter-spacing:0.08em;background:{{ l.bg }};color:{{ l.fg }};box-sizing:border-box">{{ l.label }}</div>
+      </sc-for>
+    </div>
+    <div style="position:relative">
+      <div style="width:36px;height:36px;border-radius:18px;background:#ffe14d;border:2px solid #16181f;color:#16181f;display:flex;align-items:center;justify-content:center;font:800 14px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ initial }}</div>
+      <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;right:0;top:44px;z-index:60;min-width:180px;background:#fffdf8;border:2px solid #16181f;border-radius:16px;box-shadow:3px 3px 0 #16181f;padding:12px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box">
+          <span style="font:500 14px Inter,system-ui,sans-serif;color:#3f3e37;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ userName }}</span>
+          <div style="background:{{ helpBg }};color:{{ helpFg }};border:2px solid #16181f;border-radius:8px;padding:6px 10px;font:600 12px Inter,system-ui,sans-serif;text-align:center">{{ helpLabel }}</div>
+          <div style="background:#fffdf8;color:#16181f;border:2px solid #16181f;border-radius:8px;padding:6px 10px;font:600 12px Inter,system-ui,sans-serif;text-align:center">{{ logOutLabel }}</div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</header>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;200px&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;home&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;recipes&quot;,&quot;planner&quot;,&quot;makeable&quot;,&quot;grocery&quot;,&quot;flyers&quot;,&quot;inventory&quot;,&quot;help&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;en&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;fr&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;phone&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;menuOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;userName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Matthieu&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  KEYS = ['home', 'recipes', 'planner', 'makeable', 'grocery', 'flyers', 'inventory'];
+  componentDidMount() { import('./kit.js').then(k => { this.k = k; this.forceUpdate(); }); }
+  renderVals() {
+    const k = this.k, lang = this.props.lang || 'en', P = !!this.props.phone;
+    const t = k ? k.tr(lang) : () => '';
+    const active = this.props.active || 'home', name = this.props.userName || 'Matthieu';
+    return {
+      jc: P ? 'space-between' : 'flex-start', gap: P ? '0' : '20px', pad: P ? '8px 18px 0' : '24px 40px', bb: P ? '2px solid #16181f' : 'none',
+      logoFs: P ? '21px' : '28px', wmPad: P ? '0 6px' : '0 8px', wmRad: P ? '5px' : '6px',
+      navOrder: P ? '3' : '1', navFlex: P ? '1 1 100%' : '0 0 auto', navGap: P ? '6px' : '4px',
+      navMargin: P ? '8px -18px 0' : '0', navPad: P ? '2px 18px 12px' : '0 3px 3px 0',
+      tabH: P ? '40px' : '36px', tabPad: P ? '16px' : '14px', tabRad: '18px', tabFs: P ? '14.5px' : '14px', tabW: P ? '700' : '500',
+      langPad: P ? '0 11px' : '6px 9px', langMinH: P ? '32px' : '0', langFs: P ? '12px' : '11px',
+      initial: name.charAt(0).toUpperCase(), userName: name, menuOpen: !!this.props.menuOpen,
+      helpLabel: t('app.help'), logOutLabel: t('app.logOut'),
+      helpBg: active === 'help' ? '#16181f' : '#fffdf8', helpFg: active === 'help' ? '#f4f1ea' : '#16181f',
+      tabs: this.KEYS.map(key => { const on = active === key; return { label: t('app.nav.' + key), bg: on ? '#2323ff' : P ? '#fffdf8' : 'transparent', fg: on ? '#fff' : '#16181f', bd: on || P ? '#16181f' : 'transparent', sh: on ? '3px 3px 0 #16181f' : 'none' }; }),
+      langs: ['fr', 'en'].map(c => { const on = lang === c; return { label: c.toUpperCase(), bg: on ? '#16181f' : 'transparent', fg: on ? '#f4f1ea' : '#16181f' }; }),
+    };
+  }
+}
+</script>
+</body>
+</html>
