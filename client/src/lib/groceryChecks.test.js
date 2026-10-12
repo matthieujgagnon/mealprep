@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildGroceryList } from "./groceryList.js";
-import { amountLabel, applyChecks, boughtSnapshot, checkSnapshot, snapshotOf, tidyChecks } from "./groceryChecks.js";
+import { BOUGHT, QUEUED, TO_BUY, amountLabel, applyChecks, boughtSnapshot, checkSnapshot, nextStep, setCovered, snapshotOf, stepOf, tidyChecks } from "./groceryChecks.js";
 
 const meal = (title, ingredients) => ({ recipe: { title, baseServings: 4, ingredients }, servings: 4 });
 const chicken = (grams, title = "Roast") => meal(title, [{ name: "chicken", quantity: grams, unit: "g" }]);
@@ -153,5 +153,45 @@ describe("hand-added items", () => {
     const grown = applyChecks(extra(5), rows);
     expect(grown.checked).toEqual({});
     expect(amountLabel(grown.items[0])).toBe("+3");
+  });
+});
+
+describe("the checkbox's three steps", () => {
+  it("goes to buy -> bought -> queued -> to buy", () => {
+    expect([TO_BUY, BOUGHT, QUEUED].map(nextStep)).toEqual([BOUGHT, QUEUED, TO_BUY]);
+  });
+
+  it("reads a check from before the three steps as bought", () => {
+    const items = listFor(chicken(500));
+    const rows = check(items, {}, "chicken");
+    const result = applyChecks(items, rows);
+    expect(result.queued).toEqual({});
+    expect(stepOf("chicken", result.checked, result.queued)).toBe(BOUGHT);
+  });
+
+  it("a queued row is checked and queued; unchecking clears both", () => {
+    const items = listFor(chicken(500));
+    const item = one(applyChecks(items, {}).items, "chicken");
+    const queuedRows = setCovered({}, "chicken", checkSnapshot(item), true);
+    const queued = applyChecks(items, queuedRows);
+    expect(queued.checked).toEqual({ chicken: true });
+    expect(stepOf("chicken", queued.checked, queued.queued)).toBe(QUEUED);
+    const cleared = setCovered(queuedRows, "chicken", null);
+    expect(cleared).toEqual({});
+    expect(stepOf("chicken", applyChecks(items, cleared).checked, {})).toBe(TO_BUY);
+  });
+
+  it("a queued row whose meal grows comes back to buy, not queued", () => {
+    const first = listFor(chicken(500));
+    const rows = setCovered({}, "chicken", checkSnapshot(one(applyChecks(first, {}).items, "chicken")), true);
+    const grown = applyChecks(listFor(chicken(500), chicken(200, "Soup")), rows);
+    expect(grown.checked).toEqual({});
+    expect(grown.queued).toEqual({});
+  });
+
+  it("keeps what was bought when a row is unchecked", () => {
+    const items = listFor(chicken(500));
+    const rows = { chicken: { covered: snapshotOf([{ quantity: 200, unit: "g" }]), bought: snapshotOf([{ quantity: 300, unit: "g" }]), inInventory: false, queued: true } };
+    expect(setCovered(rows, "chicken", null).chicken).toMatchObject({ covered: null, queued: false, bought: rows.chicken.bought });
   });
 });
