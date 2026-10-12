@@ -238,6 +238,8 @@ export const en = {
     nextWeek: "Next week",
     dinnersOnly: "Suppers only",
     allMeals: "All meals",
+    screen: "Screen {n}",
+    screensLabel: "Home screens",
     stripShort: { breakfast: "B", lunch: "L", dinner: "S" },
     planMeal: "Plan {meal} for {day}",
     plan: "+ plan",
@@ -1537,6 +1539,7 @@ export const en = {
         title: "Home",
         lines: [
           "Home shows your day at a glance.",
+          "Home is two screens. The first has your day, the groceries and the week; the second has Proteins on sale, Makeable now and Use it up. Scroll down, or tap a dot on the right edge, to reach the other one. When the window is tall enough for both screens, the page snaps from one to the other; on a phone it scrolls freely, and the dots still show where you are and jump when you tap them.",
           "The top card follows the day: This morning · Breakfast until 10, Today · Lunch until 3, then Tonight · Supper. It shows the meal planned for it and how many of its ingredients you have. Use [[startCooking]], [[swap]] or [[eatingOut]]. Once it's cooked, [[homeCooked]] opens the finished view (see Cook mode), and the card then says ✓ Cooked. A written meal or eating out has nothing to cook, and a day you marked as no meal says so.",
           "If nothing is planned for that meal, pick a recipe from there, or choose [[eatingOut]].",
           "The pink grocery card shows how many things are left to buy, how many are in the cart and how many of them are really on sale this week. [[openList]] takes you to it.",

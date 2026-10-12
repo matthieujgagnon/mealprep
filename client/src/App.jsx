@@ -1266,7 +1266,7 @@ export default function App({ user, onLogout }) {
       // targets don't register reliably."
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
-      <div className={`app${isDragActive ? " dnd-active" : ""}`}>
+      <div className={`app${tab === "home" ? " is-home" : ""}${isDragActive ? " dnd-active" : ""}`}>
         <header ref={headerRef} className={`app-header riso-theme${headerLevel >= 1 ? " is-tight" : ""}${headerLevel >= 2 ? " is-tighter" : ""}`}>
           <h1 className="wordmark">
             matt mo <span>cookbook</span>

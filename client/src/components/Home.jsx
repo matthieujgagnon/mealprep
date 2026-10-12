@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
 import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
@@ -8,6 +8,7 @@ import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { currentMealType, makeableNow, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
+import { activeScreen, screensFit } from "../lib/homeScreens.js";
 import { refreshDeals, useDeals } from "../lib/dealsStore.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
@@ -168,6 +169,56 @@ export function Home({
       today && strip.scrollWidth > strip.clientWidth ? today.offsetLeft - (strip.clientWidth - today.offsetWidth) / 2 : 0;
   }, [stripWeekOffset, allMeals]);
 
+  // Home is one scroller holding two screens (design:
+  // docs/design/riso-v2-home-two-screens/). The dots light the screen that has
+  // passed halfway; a tap scrolls to it (smoothly, unless the person asked for
+  // less motion: the scroller's own CSS decides). The scroller only snaps while
+  // both screens fit it. In a screen taller than the window (a phone, a short
+  // window) a snap point is a wall that an ordinary swipe bounces back from, so
+  // it moves freely there. A fresh Home always starts at the top: screen 1.
+  const scrollerRef = useRef(null);
+  const screen1Ref = useRef(null);
+  const screen2Ref = useRef(null);
+  const [screen, setScreen] = useState(0);
+  const [snap, setSnap] = useState(false);
+
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    const first = screen1Ref.current;
+    const second = screen2Ref.current;
+    if (!scroller || !first || !second) return undefined;
+    let frame = 0;
+    const lightDot = () => {
+      frame = 0;
+      setScreen(
+        activeScreen({ scrollTop: scroller.scrollTop, clientHeight: scroller.clientHeight, screen2Top: second.offsetTop })
+      );
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(lightDot);
+    };
+    // The sizes move when the window does and when a card's data arrives.
+    const measure = () => {
+      setSnap(screensFit({ clientHeight: scroller.clientHeight, screenHeights: [first.offsetHeight, second.offsetHeight] }));
+      lightDot();
+    };
+    measure();
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(scroller);
+    observer?.observe(first);
+    observer?.observe(second);
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      observer?.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  function goToScreen(index) {
+    scrollerRef.current?.scrollTo({ top: index === 0 ? 0 : screen2Ref.current.offsetTop });
+  }
+
   useEffect(() => {
     api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setPlannerEntries([]));
     api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => setUpcomingEntries([]));
@@ -263,380 +314,401 @@ export function Home({
 
   return (
     <div className="riso-theme riso-home home-page" data-theme="light">
-      <div className="riso-home-greeting">
-        <h1 className="riso-home-greeting-title">
-          {greeting()},
-          <br />
-          <span className="accent">{user.name || user.email.split("@")[0]}.</span>
-        </h1>
-      </div>
+      <div className="home-scroller" ref={scrollerRef} data-snap={snap ? "on" : "off"}>
+        <section className="home-screen" data-screen="1" ref={screen1Ref}>
+          <div className="riso-home-greeting">
+            <h1 className="riso-home-greeting-title">
+              {greeting()},
+              <br />
+              <span className="accent">{user.name || user.email.split("@")[0]}.</span>
+            </h1>
+          </div>
 
-      <div className="riso-home-top-row">
-        <section className="riso-home-hero">
-          {tonightAllHave && (
-            <span className="riso-sticker yellow" style={{ top: -14, right: 26, transform: "rotate(6deg)" }}>
-              {t("home.nothingToBuy")}
-            </span>
-          )}
-          {tonightNote ? (
-            <div className="riso-home-hero-body note">
-              <div className="riso-home-hero-emoji" aria-hidden="true">
-                {tonightNote.emoji}
+          <div className="riso-home-top-row">
+            <section className="riso-home-hero">
+              {tonightAllHave && (
+                <span className="riso-sticker yellow" style={{ top: -14, right: 26, transform: "rotate(6deg)" }}>
+                  {t("home.nothingToBuy")}
+                </span>
+              )}
+              {tonightNote ? (
+                <div className="riso-home-hero-body note">
+                  <div className="riso-home-hero-emoji" aria-hidden="true">
+                    {tonightNote.emoji}
+                  </div>
+                  <div className="riso-home-hero-info">
+                    <div className="riso-eyebrow on-accent">{t(hero.eyebrow)}</div>
+                    <h2 className="riso-home-hero-title">{tonightNote.text}</h2>
+                    <div className="riso-home-hero-pills">
+                      <span className="riso-home-hero-pill cream">{t("home.notFromRecipe")}</span>
+                      <span className="riso-home-hero-pill outline">{t("home.nothingToPrep")}</span>
+                    </div>
+                    <p className="riso-home-hero-blurb">
+                      {tonightEntry.recipe.title === RESTAURANT_TITLE
+                        ? t("home.eatingOutBlurb")
+                        : t("home.noteBlurb")}{" "}
+                      {openDaysLine(plannerEntries, todayIndex, nowMeal)}
+                    </p>
+                    <div className="riso-home-hero-actions">
+                      <button
+                        type="button"
+                        className="riso-btn hot"
+                        onClick={() =>
+                          onPickRecipeFor?.({ dayOfWeek: todayIndex, mealType: nowMeal, note: tonightEntry.recipe.title })
+                        }
+                      >
+                        {t("home.pickRecipe")}
+                      </button>
+                      <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
+                        {t("home.changeInPlanner")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : tonightEntry ? (
+                <div className="riso-home-hero-body">
+                  {tonightEntry.recipe.photoUrl ? (
+                    <RecipePhoto src={tonightEntry.recipe.photoUrl} alt="" className="riso-home-hero-photo" />
+                  ) : (
+                    <div className="riso-home-hero-photo placeholder" aria-hidden="true" />
+                  )}
+                  <div className="riso-home-hero-info">
+                    <div className="riso-eyebrow on-accent">
+                      {t(hero.eyebrow)}
+                      {tonightEntry.cookedAt && <span className="riso-home-cooked">{t("cooked.status")}</span>}
+                    </div>
+                    <h2 className="riso-home-hero-title">{tonightEntry.recipe.title}</h2>
+                    <p className="riso-home-hero-blurb">
+                      {tonightMatch
+                        ? tonightAllHave
+                          ? t("home.haveAll", { count: tonightMatch.totalCount })
+                          : t("home.haveSome", {
+                              have: tonightMatch.matchedCount,
+                              total: tonightMatch.totalCount,
+                            })
+                        : tonightEntry.recipe.ingredients?.length
+                        ? t("home.missingSome")
+                        : null}
+                    </p>
+                    <div className="riso-home-hero-actions">
+                      <button
+                        type="button"
+                        className="riso-btn hot"
+                        onClick={() => onOpenRecipeCard(tonightEntry.recipe.id)}
+                      >
+                        {t("home.startCooking")}
+                      </button>
+                      {onCooked && !tonightEntry.isLeftover && (
+                        <button
+                          type="button"
+                          className="riso-btn outline-on-accent"
+                          aria-label={t("cooked.buttonAria", { title: tonightEntry.recipe.title })}
+                          onClick={() =>
+                            onCooked(tonightEntry, (id, cookedAt) =>
+                              setPlannerEntries((prev) => prev.map((e) => (e.id === id ? { ...e, cookedAt } : e)))
+                            )
+                          }
+                        >
+                          {t("cooked.button")}
+                        </button>
+                      )}
+                      <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
+                        {t("home.swap")}
+                      </button>
+                      {restaurantRecipe && (
+                        <button type="button" className="riso-btn outline-on-accent" onClick={handleEatingOut}>
+                          {t("home.eatingOut")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="riso-home-hero-empty">
+                  <div className="riso-eyebrow on-accent">{t(hero.eyebrow)}</div>
+                  <p>{tonightBlank ? t(hero.marked) : t(hero.nothing)}</p>
+                  <div className="riso-home-hero-actions">
+                    <button type="button" className="riso-btn hot" onClick={() => onNavigate("planner")}>
+                      {t("home.addRecipe")}
+                    </button>
+                    {restaurantRecipe && !tonightBlank && (
+                      <button type="button" className="riso-btn outline-on-accent" onClick={handleEatingOut}>
+                        {t("home.eatingOut")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className={`riso-home-grocery${groceriesDone ? " done" : ""}`}>
+              <div className="riso-eyebrow on-pink">{t("home.groceryList")}</div>
+              {groceriesDone ? (
+                <div className="riso-home-grocery-done">
+                  <span className="riso-home-grocery-done-title">{t("home.groceriesDone")}</span>
+                  <span className="riso-home-grocery-unit wide">{t("home.allBought", { count: totalCount })}</span>
+                </div>
+              ) : (
+                <div className="riso-home-grocery-count">
+                  <span className="home-grocery-number">{totalCount - checkedCount}</span>
+                  <span className="riso-home-grocery-unit">
+                    {totalCount === 0 ? t("home.nothingYet") : t("home.leftToGrab", { count: totalCount - checkedCount })}
+                  </span>
+                </div>
+              )}
+              <div className="riso-home-grocery-track">
+                <div className="riso-home-grocery-fill" style={{ width: `${progressPct}%` }} />
               </div>
-              <div className="riso-home-hero-info">
-                <div className="riso-eyebrow on-accent">{t(hero.eyebrow)}</div>
-                <h2 className="riso-home-hero-title">{tonightNote.text}</h2>
-                <div className="riso-home-hero-pills">
-                  <span className="riso-home-hero-pill cream">{t("home.notFromRecipe")}</span>
-                  <span className="riso-home-hero-pill outline">{t("home.nothingToPrep")}</span>
-                </div>
-                <p className="riso-home-hero-blurb">
-                  {tonightEntry.recipe.title === RESTAURANT_TITLE
-                    ? t("home.eatingOutBlurb")
-                    : t("home.noteBlurb")}{" "}
-                  {openDaysLine(plannerEntries, todayIndex, nowMeal)}
-                </p>
-                <div className="riso-home-hero-actions">
-                  <button
-                    type="button"
-                    className="riso-btn hot"
-                    onClick={() =>
-                      onPickRecipeFor?.({ dayOfWeek: todayIndex, mealType: nowMeal, note: tonightEntry.recipe.title })
-                    }
-                  >
-                    {t("home.pickRecipe")}
-                  </button>
-                  <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
-                    {t("home.changeInPlanner")}
-                  </button>
-                </div>
+              <p className="riso-home-grocery-line">
+                {t("home.inCart", { checked: checkedCount, total: totalCount })}
+                {saleCount > 0 ? t("home.onSale", { count: saleCount }) : ""}
+              </p>
+              <button
+                type="button"
+                className={`riso-btn ${groceriesDone ? "hot" : "ink"} full`}
+                onClick={() => onNavigate("grocery")}
+              >
+                {t("home.openList")}
+              </button>
+            </section>
+          </div>
+
+          <section className="riso-home-week">
+            <div className="riso-home-week-header">
+              <h3>
+                {t(`home.weekTitle.${stripWeekOffset === 0 ? "this" : "next"}${allMeals ? "Meals" : "Dinners"}`)}{" "}
+                <span className="riso-home-week-sub">
+                  ·{" "}
+                  {allMeals
+                    ? t("home.plannedOf", {
+                        planned: DAY_INDICES.reduce((n, d) => n + STRIP_MEALS.filter((m) => mealFor(d, m.id)).length, 0),
+                        total: 21,
+                      })
+                    : t("home.plannedOf", { planned: DAY_INDICES.filter((d) => dinnerFor(d)).length, total: 7 })}
+                </span>
+              </h3>
+              <div className="riso-chip-row">
+                <button
+                  type="button"
+                  className={`riso-chip small${stripWeekOffset === 0 ? " active" : ""}`}
+                  onClick={() => setStripWeekOffset(0)}
+                >
+                  {t("home.thisWeek")}
+                </button>
+                <button
+                  type="button"
+                  className={`riso-chip small${stripWeekOffset === 1 ? " active" : ""}`}
+                  onClick={() => setStripWeekOffset(1)}
+                >
+                  {t("home.nextWeek")}
+                </button>
+                <button type="button" className="riso-home-week-toggle" aria-pressed={allMeals} onClick={toggleAllMeals}>
+                  {allMeals ? t("home.dinnersOnly") : t("home.allMeals")}
+                </button>
               </div>
             </div>
-          ) : tonightEntry ? (
-            <div className="riso-home-hero-body">
-              {tonightEntry.recipe.photoUrl ? (
-                <RecipePhoto src={tonightEntry.recipe.photoUrl} alt="" className="riso-home-hero-photo" />
-              ) : (
-                <div className="riso-home-hero-photo placeholder" aria-hidden="true" />
-              )}
-              <div className="riso-home-hero-info">
-                <div className="riso-eyebrow on-accent">
-                  {t(hero.eyebrow)}
-                  {tonightEntry.cookedAt && <span className="riso-home-cooked">{t("cooked.status")}</span>}
-                </div>
-                <h2 className="riso-home-hero-title">{tonightEntry.recipe.title}</h2>
-                <p className="riso-home-hero-blurb">
-                  {tonightMatch
-                    ? tonightAllHave
-                      ? t("home.haveAll", { count: tonightMatch.totalCount })
-                      : t("home.haveSome", {
-                          have: tonightMatch.matchedCount,
-                          total: tonightMatch.totalCount,
-                        })
-                    : tonightEntry.recipe.ingredients?.length
-                    ? t("home.missingSome")
-                    : null}
-                </p>
-                <div className="riso-home-hero-actions">
-                  <button
-                    type="button"
-                    className="riso-btn hot"
-                    onClick={() => onOpenRecipeCard(tonightEntry.recipe.id)}
-                  >
-                    {t("home.startCooking")}
+            {allMeals ? (
+              <div ref={stripRef} className={`riso-home-week-strip all-meals${stripWeekOffset === 1 ? " next" : ""}`}>
+                {DAY_INDICES.map((d) => {
+                  const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
+                  const past = isPastDay(stripWeekStart, d);
+                  return (
+                    <div key={d} className={`riso-home-week-col${isToday ? " today" : ""}${past ? " past" : ""}`}>
+                      <span className="riso-home-week-day-label">
+                        {weekday.toUpperCase()} {dayNum}
+                      </span>
+                      {STRIP_MEALS.map((m) => {
+                        const entry = mealFor(d, m.id);
+                        const title = entry?.recipe.title;
+                        // Today's meal that is on now gets the one pink shadow.
+                        const current = isToday && m.id === nowMeal ? " current" : "";
+                        return entry && !entry.recipe.isPlaceholder ? (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className={`riso-home-week-meal${current}`}
+                            title={`${m.label}: ${title}`}
+                            onClick={(e) => onSelectRecipe(entry.recipe, e.currentTarget.getBoundingClientRect())}
+                          >
+                            <i>{m.short}</i>
+                            <span>{title}</span>
+                          </button>
+                        ) : entry ? (
+                          <div key={m.id} className={`riso-home-week-meal note${current}`} title={`${m.label}: ${title}`}>
+                            <i>{m.short}</i>
+                            <span>{title}</span>
+                          </div>
+                        ) : past ? (
+                          <div key={m.id} className="riso-home-week-meal empty">
+                            <i>{m.short}</i>
+                            <span>—</span>
+                          </div>
+                        ) : (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className={`riso-home-week-meal empty${current}`}
+                            aria-label={t("home.planMeal", { meal: m.label.toLowerCase(), day: dict().days.long[d] })}
+                            onClick={() => onNavigate("planner")}
+                          >
+                            <i>{m.short}</i>
+                            <span>—</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div ref={stripRef} className={`riso-home-week-strip${stripWeekOffset === 1 ? " next" : ""}`}>
+                {DAY_INDICES.map((d) => {
+                  const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
+                  const entry = dinnerFor(d);
+                  // Days gone by: greyscale, muted, no shadow (and nothing to plan).
+                  const state = isToday ? " today" : isPastDay(stripWeekStart, d) ? " past" : "";
+                  // A custom note or "Restaurant" entry is the placeholder-recipe
+                  // mechanism (see isCustomNote/isBlankMarker in PlannerBoard.jsx)
+                  // - there's no real recipe or photo behind it, so it renders as
+                  // plain text with no click target, instead of a fake recipe card.
+                  const label = `${weekday.toUpperCase()} ${dayNum}`;
+                  return entry?.recipe.isPlaceholder ? (
+                    <div key={d} className={`riso-home-week-day note${state}`}>
+                      <div className="riso-home-week-day-body">
+                        <span className="riso-home-week-day-label">{label}</span>
+                        <span className={`riso-home-week-day-title${LEADING_EMOJI.test(entry.recipe.title) ? " emoji" : ""}`}>
+                          {entry.recipe.title}
+                        </span>
+                      </div>
+                    </div>
+                  ) : entry ? (
+                    <button
+                      key={d}
+                      type="button"
+                      className={`riso-home-week-day${state}`}
+                      onClick={(e) => onSelectRecipe(entry.recipe, e.currentTarget.getBoundingClientRect())}
+                    >
+                      {entry.recipe.photoUrl ? (
+                        <RecipePhoto src={entry.recipe.photoUrl} alt="" className="riso-home-week-day-photo" />
+                      ) : (
+                        <div className="riso-home-week-day-photo placeholder" />
+                      )}
+                      <div className="riso-home-week-day-body">
+                        <span className="riso-home-week-day-label">{label}</span>
+                        <span className="riso-home-week-day-title">{entry.recipe.title}</span>
+                      </div>
+                    </button>
+                  ) : state === " past" ? (
+                    <div key={d} className="riso-home-week-day empty past">
+                      <span className="riso-home-week-day-label">{label}</span>
+                      <span className="riso-home-week-day-plan">—</span>
+                    </div>
+                  ) : (
+                    <button
+                      key={d}
+                      type="button"
+                      className={`riso-home-week-day empty${state}`}
+                      onClick={() => onNavigate("planner")}
+                    >
+                      <span className="riso-home-week-day-label">{label}</span>
+                      <span className="riso-home-week-day-plan">{t("home.plan")}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </section>
+
+        <section className="home-screen" data-screen="2" ref={screen2Ref}>
+          <div className={`riso-home-bottom-row${showMakeable ? " three" : ""}`}>
+            <ProteinsOnSale
+              deals={deals}
+              loaded={dealsLoaded}
+              failed={dealsFailed}
+              onRetry={refreshDeals}
+              recipes={recipes}
+              onNavigate={onNavigate}
+              onFindProtein={onFindProtein}
+              onOpenFlyer={onOpenFlyerDeal}
+              isOnGroceryList={isOnGroceryList}
+              onToggleOnList={toggleOnList}
+            />
+
+            {showMakeable && (
+              <section className="riso-home-mini riso-home-makeable">
+                <div className="riso-home-mini-header">
+                  <h3>{t("home.makeableNow")}</h3>
+                  <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("makeable")}>
+                    {t("home.allLink")}
                   </button>
-                  {onCooked && !tonightEntry.isLeftover && (
+                </div>
+                <div className="riso-home-makeable-count">
+                  <span className="riso-home-makeable-num">{readyNow.length}</span>
+                  <span className="riso-home-makeable-sub">
+                    {t("home.readyNow")}
+                    <br />
+                    <span>{t("home.nearly", { count: nearly.length })}</span>
+                  </span>
+                </div>
+              </section>
+            )}
+
+            <section className="riso-home-mini riso-home-useup">
+              <div className="riso-home-mini-header">
+                <h3>{t("home.useItUp")}</h3>
+                <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("inventory")}>
+                  {t("home.inventoryLink")}
+                </button>
+              </div>
+              {useSoonItems.length === 0 ? (
+                <p className="riso-empty-note">{t("home.nothingExpiring")}</p>
+              ) : (
+                <>
+                  <div className="riso-home-useup-scroll">
+                    <ul className="riso-home-rows">
+                      {useSoonItems.map((item) => (
+                        <ToUseRow key={item.id} item={item} />
+                      ))}
+                    </ul>
+                  </div>
+                  <p className="riso-home-mini-note">
+                    {usesTwo > 0
+                      ? t("home.usesTwo", { count: usesTwo })
+                      : usesOne > 0
+                      ? t("home.usesOne", { count: usesOne })
+                      : t("home.usesNone")}
+                  </p>
+                  {usesOne > 0 && (
                     <button
                       type="button"
-                      className="riso-btn outline-on-accent"
-                      aria-label={t("cooked.buttonAria", { title: tonightEntry.recipe.title })}
-                      onClick={() =>
-                        onCooked(tonightEntry, (id, cookedAt) =>
-                          setPlannerEntries((prev) => prev.map((e) => (e.id === id ? { ...e, cookedAt } : e)))
-                        )
-                      }
+                      className="riso-btn ink full"
+                      onClick={() => onFindRecipes?.(useSoonest.map((i) => i.name).join(", "))}
                     >
-                      {t("cooked.button")}
+                      {t("home.cookWithThese")}
                     </button>
                   )}
-                  <button type="button" className="riso-btn outline-on-accent" onClick={() => onNavigate("planner")}>
-                    {t("home.swap")}
-                  </button>
-                  {restaurantRecipe && (
-                    <button type="button" className="riso-btn outline-on-accent" onClick={handleEatingOut}>
-                      {t("home.eatingOut")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="riso-home-hero-empty">
-              <div className="riso-eyebrow on-accent">{t(hero.eyebrow)}</div>
-              <p>{tonightBlank ? t(hero.marked) : t(hero.nothing)}</p>
-              <div className="riso-home-hero-actions">
-                <button type="button" className="riso-btn hot" onClick={() => onNavigate("planner")}>
-                  {t("home.addRecipe")}
-                </button>
-                {restaurantRecipe && !tonightBlank && (
-                  <button type="button" className="riso-btn outline-on-accent" onClick={handleEatingOut}>
-                    {t("home.eatingOut")}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className={`riso-home-grocery${groceriesDone ? " done" : ""}`}>
-          <div className="riso-eyebrow on-pink">{t("home.groceryList")}</div>
-          {groceriesDone ? (
-            <div className="riso-home-grocery-done">
-              <span className="riso-home-grocery-done-title">{t("home.groceriesDone")}</span>
-              <span className="riso-home-grocery-unit wide">{t("home.allBought", { count: totalCount })}</span>
-            </div>
-          ) : (
-            <div className="riso-home-grocery-count">
-              <span className="home-grocery-number">{totalCount - checkedCount}</span>
-              <span className="riso-home-grocery-unit">
-                {totalCount === 0 ? t("home.nothingYet") : t("home.leftToGrab", { count: totalCount - checkedCount })}
-              </span>
-            </div>
-          )}
-          <div className="riso-home-grocery-track">
-            <div className="riso-home-grocery-fill" style={{ width: `${progressPct}%` }} />
-          </div>
-          <p className="riso-home-grocery-line">
-            {t("home.inCart", { checked: checkedCount, total: totalCount })}
-            {saleCount > 0 ? t("home.onSale", { count: saleCount }) : ""}
-          </p>
-          <button
-            type="button"
-            className={`riso-btn ${groceriesDone ? "hot" : "ink"} full`}
-            onClick={() => onNavigate("grocery")}
-          >
-            {t("home.openList")}
-          </button>
-        </section>
-      </div>
-
-      <section className="riso-home-week">
-        <div className="riso-home-week-header">
-          <h3>
-            {t(`home.weekTitle.${stripWeekOffset === 0 ? "this" : "next"}${allMeals ? "Meals" : "Dinners"}`)}{" "}
-            <span className="riso-home-week-sub">
-              ·{" "}
-              {allMeals
-                ? t("home.plannedOf", {
-                    planned: DAY_INDICES.reduce((n, d) => n + STRIP_MEALS.filter((m) => mealFor(d, m.id)).length, 0),
-                    total: 21,
-                  })
-                : t("home.plannedOf", { planned: DAY_INDICES.filter((d) => dinnerFor(d)).length, total: 7 })}
-            </span>
-          </h3>
-          <div className="riso-chip-row">
-            <button
-              type="button"
-              className={`riso-chip small${stripWeekOffset === 0 ? " active" : ""}`}
-              onClick={() => setStripWeekOffset(0)}
-            >
-              {t("home.thisWeek")}
-            </button>
-            <button
-              type="button"
-              className={`riso-chip small${stripWeekOffset === 1 ? " active" : ""}`}
-              onClick={() => setStripWeekOffset(1)}
-            >
-              {t("home.nextWeek")}
-            </button>
-            <button type="button" className="riso-home-week-toggle" aria-pressed={allMeals} onClick={toggleAllMeals}>
-              {allMeals ? t("home.dinnersOnly") : t("home.allMeals")}
-            </button>
-          </div>
-        </div>
-        {allMeals ? (
-          <div ref={stripRef} className={`riso-home-week-strip all-meals${stripWeekOffset === 1 ? " next" : ""}`}>
-            {DAY_INDICES.map((d) => {
-              const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
-              const past = isPastDay(stripWeekStart, d);
-              return (
-                <div key={d} className={`riso-home-week-col${isToday ? " today" : ""}${past ? " past" : ""}`}>
-                  <span className="riso-home-week-day-label">
-                    {weekday.toUpperCase()} {dayNum}
-                  </span>
-                  {STRIP_MEALS.map((m) => {
-                    const entry = mealFor(d, m.id);
-                    const title = entry?.recipe.title;
-                    // Today's meal that is on now gets the one pink shadow.
-                    const current = isToday && m.id === nowMeal ? " current" : "";
-                    return entry && !entry.recipe.isPlaceholder ? (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`riso-home-week-meal${current}`}
-                        title={`${m.label}: ${title}`}
-                        onClick={(e) => onSelectRecipe(entry.recipe, e.currentTarget.getBoundingClientRect())}
-                      >
-                        <i>{m.short}</i>
-                        <span>{title}</span>
-                      </button>
-                    ) : entry ? (
-                      <div key={m.id} className={`riso-home-week-meal note${current}`} title={`${m.label}: ${title}`}>
-                        <i>{m.short}</i>
-                        <span>{title}</span>
-                      </div>
-                    ) : past ? (
-                      <div key={m.id} className="riso-home-week-meal empty">
-                        <i>{m.short}</i>
-                        <span>—</span>
-                      </div>
-                    ) : (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`riso-home-week-meal empty${current}`}
-                        aria-label={t("home.planMeal", { meal: m.label.toLowerCase(), day: dict().days.long[d] })}
-                        onClick={() => onNavigate("planner")}
-                      >
-                        <i>{m.short}</i>
-                        <span>—</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div ref={stripRef} className={`riso-home-week-strip${stripWeekOffset === 1 ? " next" : ""}`}>
-            {DAY_INDICES.map((d) => {
-              const { weekday, dayNum, isToday } = formatDayLabel(stripWeekStart, d);
-              const entry = dinnerFor(d);
-              // Days gone by: greyscale, muted, no shadow (and nothing to plan).
-              const state = isToday ? " today" : isPastDay(stripWeekStart, d) ? " past" : "";
-              // A custom note or "Restaurant" entry is the placeholder-recipe
-              // mechanism (see isCustomNote/isBlankMarker in PlannerBoard.jsx)
-              // - there's no real recipe or photo behind it, so it renders as
-              // plain text with no click target, instead of a fake recipe card.
-              const label = `${weekday.toUpperCase()} ${dayNum}`;
-              return entry?.recipe.isPlaceholder ? (
-                <div key={d} className={`riso-home-week-day note${state}`}>
-                  <div className="riso-home-week-day-body">
-                    <span className="riso-home-week-day-label">{label}</span>
-                    <span className={`riso-home-week-day-title${LEADING_EMOJI.test(entry.recipe.title) ? " emoji" : ""}`}>
-                      {entry.recipe.title}
-                    </span>
-                  </div>
-                </div>
-              ) : entry ? (
-                <button
-                  key={d}
-                  type="button"
-                  className={`riso-home-week-day${state}`}
-                  onClick={(e) => onSelectRecipe(entry.recipe, e.currentTarget.getBoundingClientRect())}
-                >
-                  {entry.recipe.photoUrl ? (
-                    <RecipePhoto src={entry.recipe.photoUrl} alt="" className="riso-home-week-day-photo" />
-                  ) : (
-                    <div className="riso-home-week-day-photo placeholder" />
-                  )}
-                  <div className="riso-home-week-day-body">
-                    <span className="riso-home-week-day-label">{label}</span>
-                    <span className="riso-home-week-day-title">{entry.recipe.title}</span>
-                  </div>
-                </button>
-              ) : state === " past" ? (
-                <div key={d} className="riso-home-week-day empty past">
-                  <span className="riso-home-week-day-label">{label}</span>
-                  <span className="riso-home-week-day-plan">—</span>
-                </div>
-              ) : (
-                <button
-                  key={d}
-                  type="button"
-                  className={`riso-home-week-day empty${state}`}
-                  onClick={() => onNavigate("planner")}
-                >
-                  <span className="riso-home-week-day-label">{label}</span>
-                  <span className="riso-home-week-day-plan">{t("home.plan")}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <div className={`riso-home-bottom-row${showMakeable ? " three" : ""}`}>
-        <ProteinsOnSale
-          deals={deals}
-          loaded={dealsLoaded}
-          failed={dealsFailed}
-          onRetry={refreshDeals}
-          recipes={recipes}
-          onNavigate={onNavigate}
-          onFindProtein={onFindProtein}
-          onOpenFlyer={onOpenFlyerDeal}
-          isOnGroceryList={isOnGroceryList}
-          onToggleOnList={toggleOnList}
-        />
-
-        {showMakeable && (
-          <section className="riso-home-mini riso-home-makeable">
-            <div className="riso-home-mini-header">
-              <h3>{t("home.makeableNow")}</h3>
-              <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("makeable")}>
-                {t("home.allLink")}
-              </button>
-            </div>
-            <div className="riso-home-makeable-count">
-              <span className="riso-home-makeable-num">{readyNow.length}</span>
-              <span className="riso-home-makeable-sub">
-                {t("home.readyNow")}
-                <br />
-                <span>{t("home.nearly", { count: nearly.length })}</span>
-              </span>
-            </div>
-          </section>
-        )}
-
-        <section className="riso-home-mini riso-home-useup">
-          <div className="riso-home-mini-header">
-            <h3>{t("home.useItUp")}</h3>
-            <button type="button" className="riso-home-mini-link" onClick={() => onNavigate("inventory")}>
-              {t("home.inventoryLink")}
-            </button>
-          </div>
-          {useSoonItems.length === 0 ? (
-            <p className="riso-empty-note">{t("home.nothingExpiring")}</p>
-          ) : (
-            <>
-              <div className="riso-home-useup-scroll">
-                <ul className="riso-home-rows">
-                  {useSoonItems.map((item) => (
-                    <ToUseRow key={item.id} item={item} />
-                  ))}
-                </ul>
-              </div>
-              <p className="riso-home-mini-note">
-                {usesTwo > 0
-                  ? t("home.usesTwo", { count: usesTwo })
-                  : usesOne > 0
-                  ? t("home.usesOne", { count: usesOne })
-                  : t("home.usesNone")}
-              </p>
-              {usesOne > 0 && (
-                <button
-                  type="button"
-                  className="riso-btn ink full"
-                  onClick={() => onFindRecipes?.(useSoonest.map((i) => i.name).join(", "))}
-                >
-                  {t("home.cookWithThese")}
-                </button>
+                </>
               )}
-            </>
-          )}
+            </section>
+          </div>
         </section>
       </div>
+
+      <nav className="home-dots" aria-label={t("home.screensLabel")}>
+        {[0, 1].map((i) => (
+          <button
+            key={i}
+            type="button"
+            className={`home-dot${screen === i ? " active" : ""}`}
+            aria-label={t("home.screen", { n: i + 1 })}
+            aria-current={screen === i ? "true" : undefined}
+            onClick={() => goToScreen(i)}
+          >
+            <span />
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

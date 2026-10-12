@@ -8675,16 +8675,142 @@ button.riso-table-group-head:disabled {
 /* ================================================================
    Home dashboard
    ================================================================ */
-.home-page {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 28px 40px 44px;
+/* Home is two full screens in one scroller (design:
+   docs/design/riso-v2-home-two-screens/). On Home the shell is exactly the
+   window's height: the header keeps its own height (it wraps and tightens with
+   the language and the width, so no number is written here) and .home-page takes
+   what is left. The page itself never scrolls on Home; the scroller does. Other
+   pages never get .is-home. */
+.app.is-home {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+/* The design's header has no gap below it: the screens' top padding is the gap. */
+.app.is-home .app-header {
+  flex: none;
+  margin-bottom: 0;
+}
+
+/* Full width (past .app's own side padding): the screens pad themselves, and
+   the dots sit at the edge. */
+.home-page {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 0 -40px;
   background: var(--riso-canvas);
   color: var(--riso-ink);
   font-family: var(--riso-font-body);
+}
+
+/* The one scroller through both screens. It snaps (mandatory) only while both
+   screens fit it (data-snap="on", set by Home from lib/homeScreens.js): in a
+   screen taller than the window a snap point is a wall that an ordinary swipe
+   or wheel tick bounces back from, so then it scrolls freely. position: relative
+   makes the screens' offsetTop count from here. */
+.home-scroller {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.home-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.home-scroller[data-snap="on"] {
+  scroll-snap-type: y mandatory;
+}
+
+/* min-height: 100% (not 100cqh): no container query, so nothing is cut off
+   from the page behind it (the Proteins scrim, z-index 60, is on <body>). */
+.home-screen {
+  box-sizing: border-box;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: 40px;
+  padding-right: 40px;
+  scroll-snap-align: start;
+}
+
+.home-screen[data-screen="1"] {
+  gap: 24px;
+  padding-top: 24px;
+  padding-bottom: 32px;
+}
+
+.home-screen[data-screen="2"] {
+  padding-top: 24px;
+  padding-bottom: 44px;
+}
+
+/* The dots: one column on the right edge, centred on the area under the header
+   (their box is .home-page, which starts under it). They sit under the Proteins
+   scrim (z-index 60) while a protein is open. */
+.home-dots {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-dot {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  width: 24px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.home-dot.active {
+  height: 34px;
+}
+
+.home-dot span {
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  /* A paper ring: invisible on the page, and keeps a dot apart from the hard
+     shadow of the hero and Grocery cards where the two cross on a phone. */
+  box-shadow: 0 0 0 2px var(--riso-canvas);
+  transition: height 0.2s, background 0.2s;
+}
+
+.home-dot.active span {
+  height: 26px;
+  background: var(--riso-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-scroller {
+    scroll-behavior: auto;
+  }
+
+  .home-dot span {
+    transition: none;
+  }
 }
 
 .riso-home-greeting-title {
@@ -11395,7 +11521,34 @@ button.riso-deal-detail-other:focus-visible {
   }
 
   .home-page {
-    padding: 18px 16px 40px;
+    margin: 0 -18px;
+  }
+
+  /* The cards keep the design's 18px on both sides (more side padding wraps
+     the French headers and clips the product counts at 390px), so the dots live
+     inside that 18px gutter: on a phone their tap area is 18px wide and flush
+     with the edge, and no card is ever under a dot or a tap on a card's edge
+     hits one. */
+  .home-screen {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .home-screen[data-screen="1"] {
+    padding-top: 18px;
+  }
+
+  .home-screen[data-screen="2"] {
+    padding-top: 18px;
+    padding-bottom: 40px;
+  }
+
+  .home-dots {
+    right: 0;
+  }
+
+  .home-dot {
+    width: 18px;
   }
 
   .riso-home-greeting-title {
@@ -11820,7 +11973,6 @@ button.riso-deal-detail-other:focus-visible {
    18px on phones) - the same edge the header uses - so the screens don't
    add side padding of their own. They used to, which pushed page content
    40px in from the logo on desktop and cost a phone ~70px of width. */
-.home-page,
 .riso-grocery,
 .riso-flyers,
 .riso-recipes,
