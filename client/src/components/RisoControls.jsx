@@ -53,10 +53,38 @@ export function Segmented({ options, value, onChange }) {
 // The "how it works" dashed strip shown once per user per screen, per
 // design_handoff_riso's shared component - `screenKey` scopes the
 // dismissal (e.g. "home", "flyers"). `children` is the strip's copy; `items`
-// (an array of lines) draws it as a bulleted list instead.
-export function HintStrip({ userId, screenKey, items, children }) {
+// (an array of lines) draws it as a bulleted list instead. With `title`, the
+// sticker, the title and Got it share the top line and `children` is a free
+// body under them (Grocery's live demo).
+export function HintStrip({ userId, screenKey, items, title, children }) {
   const [dismissed, setDismissed] = useState(() => isHintDismissed(userId, screenKey));
   if (dismissed) return null;
+  const dismiss = (
+    <button
+      type="button"
+      className="riso-hint-dismiss"
+      onClick={() => {
+        dismissHint(userId, screenKey);
+        setDismissed(true);
+      }}
+    >
+      {t("common.gotIt")}
+    </button>
+  );
+  if (title) {
+    return (
+      <div className="riso-hint-strip has-title">
+        <div className="riso-hint-top">
+          <span className="riso-sticker yellow riso-hint-sticker" style={{ position: "static" }}>
+            {t("common.howItWorks")}
+          </span>
+          <p className="riso-hint-title">{title}</p>
+          {dismiss}
+        </div>
+        {children}
+      </div>
+    );
+  }
   return (
     <div className={`riso-hint-strip${items ? " has-list" : ""}`}>
       <span className="riso-sticker yellow riso-hint-sticker" style={{ position: "static" }}>
@@ -71,16 +99,7 @@ export function HintStrip({ userId, screenKey, items, children }) {
       ) : (
         <p className="riso-hint-text">{children}</p>
       )}
-      <button
-        type="button"
-        className="riso-hint-dismiss"
-        onClick={() => {
-          dismissHint(userId, screenKey);
-          setDismissed(true);
-        }}
-      >
-        {t("common.gotIt")}
-      </button>
+      {dismiss}
     </div>
   );
 }

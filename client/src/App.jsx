@@ -634,7 +634,7 @@ export default function App({ user, onLogout }) {
   }
 
   // A deal's card on the Flyers page: Home's "Open the flyer" and the deal card's
-  // "See in Flyers" on Makeable.
+  // "See in Flyers" on Makeable and Grocery.
   function openFlyerDeal(deal) {
     setFlyerDealId(deal.id);
     setOpenCard(null);
@@ -686,11 +686,14 @@ export default function App({ user, onLogout }) {
   // The only way anything but Inventory's own add form reaches Inventory: it
   // opens the confirmation sheet and resolves with the `ref`s of the rows that
   // were added (an empty list when nothing was), or null if it was cancelled
-  // before anything was. Nothing is added until the sheet is confirmed.
+  // before anything was. Nothing is added until the sheet is confirmed. The
+  // list has `confirmed: true` when the sheet's button finished it (not when it
+  // was closed after only some rows went in). `confirmNone` lets the sheet be
+  // confirmed with every row off (Done shopping: see InventoryConfirmSheet).
   const [inventoryAsk, setInventoryAsk] = useState(null);
-  function requestInventoryAdd(drafts, { title, intro } = {}) {
+  function requestInventoryAdd(drafts, { title, intro, confirmNone } = {}) {
     return new Promise((resolve) => {
-      setInventoryAsk({ drafts, title, intro, added: [], resolve });
+      setInventoryAsk({ drafts, title, intro, confirmNone, added: [], resolve });
     });
   }
 
@@ -711,7 +714,7 @@ export default function App({ user, onLogout }) {
       error.added = rows.map((r) => r.ref).filter((r) => !failed.includes(r));
       throw error;
     }
-    ask.resolve(ask.added);
+    ask.resolve(Object.assign(ask.added, { confirmed: true }));
     setInventoryAsk(null);
   }
 
@@ -1370,6 +1373,7 @@ export default function App({ user, onLogout }) {
             sections={shelfOptions(pantryLocations, inventoryLayout)}
             title={inventoryAsk.title}
             intro={inventoryAsk.intro}
+            confirmNone={inventoryAsk.confirmNone}
             onConfirm={confirmInventoryAdd}
             onCancel={cancelInventoryAdd}
           />
@@ -1562,6 +1566,8 @@ export default function App({ user, onLogout }) {
             stapleCategories={stapleCategories}
             onRequestInventoryAdd={requestInventoryAdd}
             onToast={showToast}
+            // The deal card's "See in Flyers →": that deal's card on Flyers.
+            onOpenFlyerDeal={openFlyerDeal}
             // A By recipe heading names a planned recipe: open its card.
             onOpenRecipe={(title) => {
               const planned = upcomingEntries.find((e) => e.recipe?.title === title && !e.recipe.isPlaceholder)?.recipe;

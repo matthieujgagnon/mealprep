@@ -6,17 +6,26 @@ import { RecipesLine } from "./RecipesLine.jsx";
 import { localizePrice } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
 
-// The one grocery item, drawn the same in By store, By aisle, By recipe and
-// Store mode (design handoff: docs/design/grocery-item/README.md). Left to
-// right: the checkbox, the text column (the name alone on its line, then a
-// meta line of brand, recipes, the recipe quantity on a phone and in Store mode, and the sale
-// tag) and, in a list, the right cluster: "+ Inventory" once checked, the
-// recipe quantity (desktop), how many to buy, and the remove ×.
+// The one grocery item, drawn the same in By store, By aisle, By recipe, Store
+// mode and Grocery's How it works demo (design handoffs:
+// docs/design/grocery-item/README.md, and the list's row in
+// docs/design/riso-v2-grocery/README.md). Left to right: the checkbox, the
+// text column (the name alone on its line, then a meta line: "→ INVENTORY" when
+// queued, "Added by you", the brand, the recipes, and on a phone the recipe
+// quantity) and, in a list, the columns: the sale price, the recipe quantity
+// (desktop), how many to buy, and the remove ×. On a computer they are the
+// shared grid of the store header (ON SALE, RECIPE, BUY).
+//
+// The checkbox has three steps (lib/groceryChecks.js): to buy, bought ✓
+// (`checked`) and queued for Inventory + (`checked` and `queued`). Each tap of
+// the box calls `onToggle`, and the list moves it to the next step.
 //
 //   variant "line"   a row in a list. Only the checkbox checks it; a flyer item's
-//                    row opens its deal. Sized by CSS (--gi-min, --gi-h).
-//   variant "store"  a row in Store mode. The whole row checks it, no × and no
-//                    inventory button, the number is static.
+//                    row opens its deal. Sized by CSS (--gi-min, --gi-h). Without
+//                    `onSetQuantity` the number is static, and without `onDelete`
+//                    there is no × (the How it works demo).
+//   variant "store"  a row in Store mode. The whole row checks it (in or out of
+//                    the cart), no ×, the number is static.
 //
 // The two forms share every part and every rule here, and differ only in their
 // CSS (class names: riso-row-* for a list, store-mode-* for Store mode). Names
@@ -26,6 +35,9 @@ import { t } from "../i18n/index.js";
 const cls = (variant, part) => (variant === "store" ? `store-mode-${part}` : `riso-row-${part}`);
 
 const capitalizeFirst = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : text);
+
+// What the next tap of the box does, as its tooltip.
+const STEP_TIPS = ["grocery.stepTipBuy", "grocery.stepTipQueue", "grocery.stepTipPutBack"];
 
 // How many to buy: a plain number, edited in place.
 function QuantityInput({ item, onSave }) {
@@ -68,12 +80,13 @@ export function GroceryItem({
   variant = "line",
   item,
   checked,
+  queued = false, // checked and waiting to go into Inventory (the box shows +)
   deal, // the best sale on it (store, price), shown while it isn't checked
+  dealStore = false, // name the sale's store after its price (By aisle, By recipe)
   brand = "",
   flyerDeal = null, // an item added from a flyer deal: its row opens that deal
   onToggle,
   onOpenDeal,
-  onToInventory,
   onDelete,
   onSetQuantity,
   dragging = false,
@@ -81,28 +94,36 @@ export function GroceryItem({
   dragProps,
 }) {
   const store = variant === "store";
+  const isQueued = checked && queued;
+  const step = !checked ? 0 : isQueued ? 2 : 1;
   const justChecked = useJustChecked(checked);
   const c = (part) => cls(variant, part);
   const label = item.name + (item.varieties?.length > 0 ? ` (${item.varieties.join(", ")})` : "");
-  const shownName = store ? capitalizeFirst(label) : label;
+  // Names always start with a capital ("lemons" -> "Lemons").
+  const shownName = capitalizeFirst(label);
   const hasRecipes = (item.usedIn || []).length > 0;
   // What the recipes need, with its unit: the only place a unit shows. Not for
   // an item you added yourself.
   const recipeQty = item.isManual ? "" : recipeAmountLabel(item);
-  // The sale tag: only in a list (Store mode shows none), and not once it's checked.
+  // The sale price: only in a list (Store mode shows none), and not once it's checked.
   const showDeal = !store && !checked && !!deal?.price;
+  const mine = !!item.isManual;
   // Store mode shows the name and the number to buy, nothing else.
-  const hasMeta = !store && (!!brand || hasRecipes || !!recipeQty);
+  const hasMeta = !store && (isQueued || mine || !!brand || hasRecipes || !!recipeQty);
+  const afterQueued = mine || !!brand || hasRecipes;
 
   const metaLine = hasMeta && (
     <span className={c("meta")}>
+      {isQueued && <span className="riso-row-queued">{t("grocery.queuedLabel")}</span>}
+      {isQueued && afterQueued && <span className={c("dot")} aria-hidden="true" />}
+      {mine && <span className="riso-row-mine">{t("grocery.addedByYou")}</span>}
       {brand && (
         <span className={c("brand")} title={t("grocery.brand", { brand })}>
           {brand}
         </span>
       )}
       {brand && hasRecipes && <span className={c("dot")} aria-hidden="true" />}
-      <RecipesLine usedIn={item.usedIn} className={c("recipes")} />
+      {hasRecipes && <RecipesLine usedIn={item.usedIn} className={c("recipes")} />}
       {recipeQty && (
         <span className="riso-row-need narrow" title={t("grocery.recipeQtyTitle")}>
           {recipeQty}
@@ -111,19 +132,25 @@ export function GroceryItem({
     </span>
   );
 
+  // The sale price: a green dot, the price underlined and ›; it opens the deal's
+  // card. In By aisle and By recipe the store follows the price.
   const dealTag = showDeal && (
     <button
       type="button"
       className="riso-row-deal"
       title={t("grocery.onSaleAt", { store: deal.store })}
+      aria-label={t("grocery.salePriceAria", { name: shownName, price: localizePrice(deal.price), store: deal.store })}
       onClick={(e) => {
         e.stopPropagation();
         onOpenDeal(deal);
       }}
     >
-      <span className="riso-row-deal-store">{deal.store}</span>
-      <span className="riso-row-deal-div" aria-hidden="true" />
+      <span className="riso-row-deal-dot" aria-hidden="true" />
       <span className="riso-row-deal-price">{localizePrice(deal.price)}</span>
+      {dealStore && <span className="riso-row-deal-store">{deal.store}</span>}
+      <span className="riso-row-deal-go" aria-hidden="true">
+        ›
+      </span>
     </button>
   );
 
@@ -142,12 +169,13 @@ export function GroceryItem({
         type="button"
         ref={rowRef}
         data-gi-row
-        className={`store-mode-row${checked ? " on" : ""}`}
+        data-step={step}
+        className={`store-mode-row${checked ? " on" : ""}${isQueued ? " queued" : ""}`}
         aria-pressed={checked}
         onClick={onToggle}
       >
         <span className={`store-mode-check${justChecked ? " pop" : ""}`} aria-hidden="true">
-          {checked ? "✓" : ""}
+          {isQueued ? "+" : checked ? "✓" : ""}
         </span>
         {text}
         <span className="store-mode-qty">{displayQuantity(item)}</span>
@@ -159,7 +187,8 @@ export function GroceryItem({
     <div
       ref={rowRef}
       data-gi-row
-      className={`riso-row${checked ? " checked" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}`}
+      data-step={step}
+      className={`riso-row${checked ? " checked" : ""}${isQueued ? " queued" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}`}
       {...(flyerDeal
         ? {
             role: "button",
@@ -183,31 +212,19 @@ export function GroceryItem({
         role="checkbox"
         aria-checked={checked}
         aria-label={t("grocery.checkOff", { name: item.name })}
+        title={t(STEP_TIPS[step])}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
       >
-        <span className={`riso-row-check${checked ? " on" : ""}${justChecked ? " pop" : ""}`}>{checked ? "✓" : ""}</span>
+        <span className={`riso-row-check${checked ? " on" : ""}${isQueued ? " queued" : ""}${justChecked ? " pop" : ""}`}>
+          {isQueued ? "+" : checked ? "✓" : ""}
+        </span>
       </button>
       {text}
       <span className="riso-row-right">
-        <span className="riso-row-slot">
-          {checked && (
-            <button
-              type="button"
-              className="riso-row-toinv"
-              aria-label={t("grocery.toInventoryAria", { name: item.name })}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToInventory();
-              }}
-            >
-              {t("grocery.toInventory")}
-            </button>
-          )}
-          {dealTag}
-        </span>
+        <span className="riso-row-slot">{dealTag}</span>
         <span className="riso-row-needcol">
           {recipeQty && (
             <span className="riso-row-need wide" title={t("grocery.recipeQtyTitle")}>
@@ -216,20 +233,26 @@ export function GroceryItem({
           )}
         </span>
         <span className="riso-row-qtycol">
-          <QuantityInput item={item} onSave={onSetQuantity} />
+          {onSetQuantity ? (
+            <QuantityInput item={item} onSave={onSetQuantity} />
+          ) : (
+            <span className="riso-row-qty">{displayQuantity(item)}</span>
+          )}
         </span>
-        <button
-          type="button"
-          className="riso-row-delete"
-          aria-label={t("grocery.removeAria", { name: item.name })}
-          title={item.isManual ? t("grocery.deleteItem") : t("grocery.removeFromList")}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          ×
-        </button>
+        {onDelete && (
+          <button
+            type="button"
+            className="riso-row-delete"
+            aria-label={t("grocery.removeAria", { name: item.name })}
+            title={item.isManual ? t("grocery.deleteItem") : t("grocery.removeFromList")}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            ×
+          </button>
+        )}
       </span>
     </div>
   );

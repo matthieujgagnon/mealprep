@@ -12,8 +12,8 @@ with "Add N to inventory" (« Ajouter N à l'inventaire »), or cancel. **Cancel
 leaves whatever it came from (the grocery list, a receipt, a recipe) as it was.**
 
 This covers:
-- "Done shopping" in Grocery and in Store mode
-- a checked grocery item's "To inventory" button
+- "Done shopping" in Grocery and in Store mode (the queued items ticked, the bought ones not)
+- a store's "+ Add N to inventory" at the bottom of the grocery list (its queued items)
 - receipt import
 - "I have it" on a recipe's ingredient
 - anything new that puts items in Inventory

@@ -52,12 +52,15 @@ function Verdict({ copy }) {
   );
 }
 
+// A grocery row's sale price: the green dot, the price and ›.
 function Deal() {
   return (
-    <span className="riso-row-deal riso-help-copy-body">
-      <span className="riso-row-deal-store">{t("same.sampleStore")}</span>
-      <span className="riso-row-deal-div" aria-hidden="true" />
+    <span className="riso-row-deal sample riso-help-copy-body">
+      <span className="riso-row-deal-dot" aria-hidden="true" />
       <span className="riso-row-deal-price">{t("help.sample.price")}</span>
+      <span className="riso-row-deal-go" aria-hidden="true">
+        ›
+      </span>
     </span>
   );
 }

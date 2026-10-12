@@ -94,11 +94,12 @@ function groceryUnit(unit) {
 export const UNIT_OPTIONS = UNIT_GROUPS.flatMap((g) => g.units);
 
 // The recipes an item is for, as the small line under it: "Tacos" or "Tacos,
-// Chili"; with more than two, the first two and how many more ("Tacos, Chili
-// +1"). `all` is every one, for a tooltip. A hand-added item is for no recipe,
+// Chili"; with three or more, the first and how many more ("Tacos +2"). `all`
+// is every one, for a tooltip. A hand-added item is for no recipe,
 // so every part is empty.
-export function recipesLine(usedIn, max = 2) {
+export function recipesLine(usedIn) {
   const titles = [...new Set((usedIn || []).filter(Boolean))];
+  const max = titles.length >= 3 ? 1 : 2;
   return { names: titles.slice(0, max).join(", "), more: Math.max(0, titles.length - max), all: titles.join(", ") };
 }
 

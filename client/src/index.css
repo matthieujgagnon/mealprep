@@ -3190,6 +3190,8 @@ input[type="date"].planner-week-picker {
      already uses a token above changed. */
   --riso-hot-soft: #ff5cb8; /* light pink: "Planned Wednesday", "expires soon" tags (black text reads well on it). The vivid --riso-hot stays for today. */
   --riso-accent-tint: #e4e4ff; /* light blue: a selected pill's fill */
+  --riso-queued-tint: #ebebff; /* a grocery item queued for Inventory (+), and its store's Add to inventory footer */
+  --riso-sale-hover: #c9f5da; /* a grocery sale price under the pointer, and the sample sale chip in Grocery's How it works */
   --riso-hot-tint: #ffe9f5; /* light pink: an empty Planner slot with a recipe dragged over it */
   --riso-weekend-fill: #f8f8ff; /* the Planner's weekend block */
   --riso-shelf-fridge: #4de3ff; /* ingredient picker shelves */
@@ -3789,7 +3791,7 @@ button.riso-pill:disabled {
 .riso-grocery-add-store-cancel,
 .riso-grocery-removed-clear,
 .riso-group-remove,
-.riso-row-toinv,
+.riso-grocery-cartbar-btn,
 .riso-row-delete,
 .riso-row-check-hit,
 .store-mode-row,
@@ -3809,7 +3811,7 @@ button.riso-pill:disabled {
 .riso-grocery-add-store-cancel:active:not(:disabled),
 .riso-grocery-removed-clear:active:not(:disabled),
 .riso-group-remove:active:not(:disabled),
-.riso-row-toinv:active:not(:disabled),
+.riso-grocery-cartbar-btn:active:not(:disabled),
 .riso-row-delete:active:not(:disabled),
 .riso-row-check-hit:active:not(:disabled),
 .store-mode-row:active:not(:disabled),
@@ -10498,28 +10500,124 @@ body.riso-copy-drag .riso-planner-note.dragging {
   flex-direction: column;
 }
 
+/* A group's heading (design: docs/design/riso-v2-grocery, §3). On a computer it
+   is the rows' grid: the grip, name and count over the first two columns, then
+   ON SALE, RECIPE and BUY over theirs, and the × of a store you made in the
+   last. On a phone (below) it is one line: grip, name, the count on the right, ×. */
+.riso-grocery {
+  --gi-cols: 44px minmax(0, 1fr) 128px 76px 56px 32px;
+}
+
 .riso-group-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: var(--gi-cols);
+  column-gap: 12px;
+  align-items: end;
+  padding: 14px 12px 10px 14px;
   border-bottom: 2px solid var(--riso-ink);
+}
+
+.riso-group-title {
+  grid-column: 1 / 3;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
 .riso-group-name {
   margin: 0;
+  min-width: 0;
   font-family: var(--riso-font-display);
   font-weight: 800;
   font-size: 22px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .riso-group-count {
-  font-family: var(--riso-font-mono);
-  font-size: 11px;
+  flex: none;
+  font: 500 11px var(--riso-font-mono);
   letter-spacing: 0.08em;
+  color: var(--riso-soft);
+  white-space: nowrap;
+}
+
+.riso-group-col {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-muted);
+  white-space: nowrap;
+  padding-bottom: 2px;
+}
+
+.riso-group-col.buy {
+  text-align: right;
+}
+
+.riso-group-head .riso-group-remove {
+  justify-self: center;
+  align-self: center;
+}
+
+/* Under a group with queued items: "2 queued · Milk 2%, Eggs" and the one blue
+   button that sends them to Inventory (§2). */
+.riso-group-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 14px 20px;
+  border-top: 2px solid var(--riso-ink);
+  background: var(--riso-queued-tint);
+}
+
+.riso-group-foot-text {
+  margin: 0;
+  min-width: 0;
+  font: 500 12px/1.5 var(--riso-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--riso-ink);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riso-group-foot-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 20px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-accent);
+  color: var(--riso-on-accent);
+  box-shadow: 3px 3px 0 var(--riso-ink);
+  font: 600 14px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.riso-group-foot-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--riso-ink);
+}
+
+/* The sample in How it works and Help: the look only. */
+.riso-group-foot-btn.sample {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  cursor: default;
 }
 
 /* ================================================================
@@ -10550,15 +10648,20 @@ body.riso-copy-drag .riso-planner-note.dragging {
   padding: 0 10px 0 14px;
   border-top: 1.5px dashed var(--riso-dash);
   background: transparent;
-  transition: background-color 200ms ease-out;
+  transition: background-color 160ms ease-out;
 }
 
 .riso-group-head + .riso-row {
   border-top: none;
 }
 
+/* The checkbox's steps (§1): bought ✓ on paper, queued + on light blue. */
 .riso-row.checked {
   background: var(--riso-canvas);
+}
+
+.riso-row.queued {
+  background: var(--riso-queued-tint);
 }
 
 /* Only a flyer item's row is tappable (it opens the deal). */
@@ -10572,6 +10675,10 @@ body.riso-copy-drag .riso-planner-note.dragging {
 @media (hover: hover) and (min-width: 768px) {
   .riso-row:hover {
     background: var(--riso-canvas);
+  }
+
+  .riso-row.queued:hover {
+    background: var(--riso-queued-tint);
   }
 }
 
@@ -10620,10 +10727,15 @@ body.riso-copy-drag .riso-planner-note.dragging {
   align-items: center;
   justify-content: center;
   font: 800 17px/1 var(--riso-font-display);
+  transition: background-color 160ms ease-out;
 }
 
 .riso-row-check.on {
   background: var(--riso-accent);
+}
+
+.riso-row-check.queued {
+  font-size: 22px;
 }
 
 /* The text column: the name, then the meta line. */
@@ -10675,7 +10787,25 @@ body.riso-copy-drag .riso-planner-note.dragging {
   background: var(--riso-muted);
 }
 
-/* The recipes it's for ("TACOS, CHILI", "SANDWICH +2"): small monospace
+/* A queued item's "→ INVENTORY", first on its meta line. */
+.riso-row-queued {
+  flex: none;
+  font: 600 11px var(--riso-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--riso-accent);
+  white-space: nowrap;
+}
+
+/* "Added by you" on an item you typed in. */
+.riso-row-mine {
+  flex: none;
+  font: 400 11px var(--riso-font-mono);
+  letter-spacing: 0.04em;
+  color: var(--riso-faint);
+  white-space: nowrap;
+}
+
+/* The recipes it's for ("TACOS, CHILI", "LENTIL SALAD +2"): small monospace
    capitals. Long names end in an ellipsis; the "+2" stays. */
 .riso-row-recipes {
   display: flex;
@@ -10734,36 +10864,67 @@ body.riso-copy-drag .riso-planner-note.dragging {
   font-size: 10.5px;
 }
 
-/* The sale tag: green, store | price. Opens the flyer item. */
+/* The sale price (§3): a green dot, the price with a dotted underline and ›, and
+   in By aisle and By recipe the store after the price. It opens the deal's card;
+   under the pointer it turns light green. Hidden once the item is checked. */
 .riso-row-deal {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 22px;
+  gap: 6px;
+  max-width: calc(100% + 8px);
+  height: 32px;
   box-sizing: border-box;
+  margin-left: -8px;
   padding: 0 8px;
-  border: 1.5px solid var(--riso-ink);
-  border-radius: 6px;
-  background: var(--riso-green);
+  border: none;
+  border-radius: 16px;
+  background: transparent;
   color: var(--riso-ink);
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color 160ms ease-out;
 }
 
-.riso-row-deal-store {
-  font: 600 11.5px var(--riso-font-display);
+.riso-row-deal:hover,
+.riso-row-deal:focus-visible,
+.riso-row-deal.sample {
+  background: var(--riso-sale-hover);
+}
+
+.riso-row-deal.sample {
+  margin-left: 0;
+  cursor: default;
+}
+
+.riso-row-deal-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 5px;
+  background: var(--riso-green);
 }
 
 .riso-row-deal-price {
-  font: 700 11.5px var(--riso-font-mono);
+  flex: none;
+  font: 700 13.5px var(--riso-font-mono);
+  text-decoration: underline dotted 1.5px;
+  text-underline-offset: 3px;
 }
 
-.riso-row-deal-div {
+.riso-row-deal-store {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 600 12px var(--riso-font-display);
+  color: var(--riso-soft);
+}
+
+.riso-row-deal-go {
   flex: none;
-  width: 1.5px;
-  height: 11px;
-  background: var(--riso-ink);
+  font: 700 13px var(--riso-font-display);
 }
 
 /* The right cluster. */
@@ -10771,28 +10932,6 @@ body.riso-copy-drag .riso-planner-note.dragging {
   flex: none;
   display: flex;
   align-items: center;
-}
-
-.riso-row-toinv {
-  position: relative;
-  flex: none;
-  height: 30px;
-  padding: 0 12px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 15px;
-  background: var(--riso-accent);
-  color: var(--riso-on-accent);
-  box-shadow: 2px 2px 0 var(--riso-ink);
-  font: 700 12.5px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-/* The button is 30 px tall; its tap area is 44. */
-.riso-row-toinv::after {
-  content: "";
-  position: absolute;
-  inset: -7px 0;
 }
 
 /* How many to buy: a plain number, a pill. The column is fixed so the numbers and
@@ -10833,6 +10972,13 @@ body.riso-copy-drag .riso-planner-note.dragging {
   color: var(--riso-ink);
   font: 700 16px var(--riso-font-mono);
   text-align: center;
+}
+
+/* The number when it can't be edited (How it works' demo row). */
+span.riso-row-qty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .riso-row-qty.long {
@@ -10901,39 +11047,146 @@ body.riso-copy-drag .riso-planner-note.dragging {
     display: flex;
   }
 
-  /* The slot dissolves: "+ Inventory" is a plain part of the cluster. The sale tag
-     (shown when the phone is sideways, see below) sits just left of the number and
-     looks like it does on a computer: store, a divider, price. */
+  /* A queued item's "→ INVENTORY" has its own line, above the recipes. */
+  .riso-row-queued {
+    flex-basis: 100%;
+  }
+
+  .riso-row-queued + .riso-row-dot {
+    display: none;
+  }
+
+  /* The slot dissolves: the sale price (shown when the phone is sideways, see
+     below) sits just left of the number. */
   .riso-row-slot {
     display: contents;
   }
 
   .riso-row-deal {
-    gap: 6px;
-    margin-right: 6px;
-    padding: 0 7px;
-  }
-
-  .riso-row-deal-store,
-  .riso-row-deal-price {
-    font-size: 11px;
+    margin: 0 2px 0 0;
   }
 
   .riso-row-qtycol {
     width: 50px;
   }
 
-  /* A checked row's "+ Inventory" drops under the number and the ×, so the
-     name keeps its room. */
-  .riso-row.checked .riso-row-right {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    width: 112px;
+  /* The heading is one line: grip, name, the count on the right, the store's ×. */
+  .riso-group-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px 12px 18px;
   }
 
-  .riso-row-toinv {
-    order: 3;
-    margin: 0 4px 0 0;
+  .riso-group-title {
+    flex: 1;
+    align-items: center;
+  }
+
+  .riso-group-title .riso-group-count {
+    margin-left: auto;
+  }
+
+  .riso-group-col,
+  .riso-group-remove-slot {
+    display: none;
+  }
+
+  /* The footer stacks: the line, then the button across the width. */
+  .riso-group-foot {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+  }
+
+  .riso-group-foot-btn {
+    height: 44px;
+    border-radius: 22px;
+  }
+}
+
+/* On a computer every row is the heading's grid (§3): the box, the name and its
+   meta line, ON SALE, RECIPE, BUY and ×. */
+@media (min-width: 768px) {
+  .riso-row {
+    display: grid;
+    grid-template-columns: var(--gi-cols);
+    column-gap: 12px;
+    padding: 10px 12px 10px 14px;
+  }
+
+  .riso-row-right {
+    display: contents;
+  }
+
+  .riso-row-main {
+    padding: 0;
+  }
+
+  .riso-row-meta {
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .riso-row-dot {
+    margin: 0;
+  }
+
+  .riso-row-slot {
+    width: auto;
+    height: 36px;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .riso-row-needcol {
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  /* RECIPE: plain text on a computer. */
+  .riso-row-need.wide {
+    height: auto;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    color: var(--riso-muted);
+    font-size: 12.5px;
+  }
+
+  /* BUY: a 52 x 36 pill, right-aligned. */
+  .riso-row-qtycol {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .riso-row-qty {
+    width: 52px;
+    height: 36px;
+    border-radius: 18px;
+    background: var(--riso-surface);
+    font-size: 15px;
+  }
+
+  .riso-row.checked .riso-row-qty {
+    border-color: var(--riso-faint);
+    color: var(--riso-muted);
+    background: var(--riso-surface);
+  }
+
+  /* ×: 32 x 44, no circle. */
+  .riso-row-delete {
+    width: 32px;
+    font-size: 20px;
+  }
+
+  .riso-row-delete::before {
+    display: none;
+  }
+
+  .riso-row-delete:hover {
+    color: var(--riso-ink);
   }
 }
 
@@ -11158,6 +11411,303 @@ button.riso-deal-detail-other:focus-visible {
   font-weight: 800;
   font-size: 15px;
   text-align: center;
+}
+
+/* The cart on a phone (§5): a small pink bar at the top of the list, under How it
+   works (or above the add field once that's closed). The same GroceryCart as the
+   card above, which a computer shows in the side column. */
+.riso-grocery-cartbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 10px 12px 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  box-shadow: var(--riso-shadow);
+}
+
+.riso-grocery-cartbar-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-grocery-cartbar-num {
+  flex: none;
+  font: 800 34px/0.9 var(--riso-font-display);
+  letter-spacing: -0.04em;
+}
+
+.riso-grocery-cartbar-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.riso-grocery-cartbar-eyebrow {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.riso-grocery-cartbar-label,
+.riso-grocery-cart-label {
+  display: inline-block;
+}
+
+.riso-grocery-cartbar-label {
+  font: 700 13.5px var(--riso-font-display);
+}
+
+/* "Items checked": a capital first letter, as in the design. */
+.riso-grocery-cartbar-label::first-letter,
+.riso-grocery-cart-label::first-letter {
+  text-transform: uppercase;
+}
+
+.riso-grocery-cartbar-btn {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 18px;
+  background: var(--riso-ink);
+  color: var(--riso-canvas);
+  font: 700 13px var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 36 px tall, a 44 px tap area. */
+.riso-grocery-cartbar-btn {
+  position: relative;
+}
+
+.riso-grocery-cartbar-btn::after {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+
+.riso-grocery-cartbar-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.riso-grocery-cartbar-track {
+  height: 8px;
+  margin-right: 4px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 4px;
+  background: var(--riso-canvas);
+  overflow: hidden;
+}
+
+.riso-grocery-cartbar-track > div {
+  height: 100%;
+  background: var(--riso-ink);
+  transition: width 0.25s;
+}
+
+/* Grocery's How it works (§6): the shared strip with a title (HintStrip's
+   `title`), and a body of the live demo row, the three steps and two tips. */
+.riso-hint-strip.has-title {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  border-radius: 20px;
+}
+
+.riso-hint-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.riso-hint-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 700 15px/1.3 var(--riso-font-body);
+  color: var(--riso-ink);
+}
+
+.riso-ghint {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.riso-ghint-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.riso-ghint-demo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The demo row: the real grocery row, in a box of its own and as tall as it needs. */
+.riso-ghint-row {
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  overflow: hidden;
+}
+
+.riso-ghint-row .riso-row {
+  height: auto;
+  min-height: 60px;
+  border-top: none;
+  grid-template-columns: 44px minmax(0, 1fr) 56px;
+}
+
+.riso-ghint-row .riso-row-slot,
+.riso-ghint-row .riso-row-needcol {
+  display: none;
+}
+
+.riso-ghint-caption {
+  margin: 0;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--riso-soft);
+}
+
+.riso-ghint-steps {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.riso-ghint-step {
+  display: grid;
+  grid-template-columns: 24px 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.riso-ghint-step.on {
+  border-color: var(--riso-ink);
+  background: var(--riso-surface);
+}
+
+.riso-ghint-step.on.step-1 {
+  background: var(--riso-canvas);
+}
+
+.riso-ghint-step.on.step-2 {
+  background: var(--riso-queued-tint);
+}
+
+.riso-ghint-box {
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 7px;
+  background: var(--riso-surface);
+  color: var(--riso-on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 14px/1 var(--riso-font-display);
+}
+
+.riso-ghint-box.filled {
+  background: var(--riso-accent);
+}
+
+.riso-ghint-step-title {
+  font: 700 13.5px var(--riso-font-display);
+  color: var(--riso-ink);
+}
+
+.riso-ghint-step-sub {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--riso-muted);
+}
+
+.riso-ghint-step.on .riso-ghint-step-sub {
+  color: var(--riso-ink);
+}
+
+.riso-ghint-tips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding-top: 14px;
+  border-top: 1.5px dashed var(--riso-dash);
+}
+
+.riso-ghint-tip {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--riso-soft);
+}
+
+.riso-ghint-tip > :first-child {
+  flex: none;
+}
+
+@media (max-width: 767px) {
+  .riso-hint-strip.has-title {
+    padding: 12px 14px;
+  }
+
+  /* The title wraps onto its own line under the sticker. */
+  .riso-hint-top {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+
+  .riso-hint-top .riso-hint-dismiss {
+    order: 1;
+    margin-left: auto;
+    align-self: center;
+  }
+
+  .riso-hint-title {
+    order: 2;
+    flex-basis: 100%;
+  }
+
+  .riso-ghint-body,
+  .riso-ghint-tips {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .riso-ghint-row .riso-row {
+    min-height: 60px;
+    padding: 8px 12px 8px 10px;
+  }
+
+  .riso-ghint-step {
+    grid-template-columns: 24px 92px minmax(0, 1fr);
+  }
 }
 
 .riso-grocery-sale {
@@ -12215,10 +12765,6 @@ body.no-select {
   font-weight: 800;
   font-size: 20px;
   color: var(--riso-ink);
-}
-
-.riso-group-head .riso-group-count {
-  margin-left: auto;
 }
 
 .riso-group-remove {
@@ -17556,10 +18102,11 @@ body.no-select {
   color: var(--riso-muted);
 }
 
-/* A phone held upright has no room for the sale tag beside the name, so it isn't
-   shown there; turned sideways it is, on one line like on a computer. */
+/* A phone held upright has no room for the sale price beside the name, so it isn't
+   shown there; turned sideways it is, left of the number. (The samples in How it
+   works and Help always show.) */
 @media (max-width: 767px) and (orientation: portrait) {
-  .riso-row-deal {
+  .riso-row-deal:not(.sample) {
     display: none;
   }
 }
@@ -20819,8 +21366,21 @@ body.no-select {
   box-sizing: border-box;
 }
 
+/* Colours is a small pill (28 px tall, 1.5 px outline, 12 px type) so it doesn't
+   compete with ← List; its tap area stays 44 px tall. */
 .store-mode-colours {
-  font-size: 13px;
+  position: relative;
+  height: 28px;
+  padding: 0 11px;
+  border-width: 1.5px;
+  border-radius: 14px;
+  font-size: 12px;
+}
+
+.store-mode-colours::after {
+  content: "";
+  position: absolute;
+  inset: -9.5px -1.5px;
 }
 
 /* The ☀ / ☾ button is the shared ThemeSwitch (.riso-theme-switch, below the
@@ -21060,6 +21620,11 @@ body.no-select {
 
 .store-mode-row.on .store-mode-check {
   background: var(--sm-accent);
+}
+
+/* Queued for Inventory on the list: the same filled box, with + instead of ✓. */
+.store-mode-row.queued .store-mode-check {
+  font-size: 23px;
 }
 
 .store-mode-main {

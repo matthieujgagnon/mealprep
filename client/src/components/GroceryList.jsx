@@ -15,16 +15,22 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { groceryShared } from "../lib/groceryCache.js";
-import { afterSaves, savesVersion } from "../lib/pendingSaves.js";
+import { GROCERY, afterSaves, savesVersion } from "../lib/pendingSaves.js";
+import { saveInOrder } from "../lib/saveInOrder.js";
 import { daysBetween, quebecDay } from "../lib/quebecDay.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { buildGroceryList } from "../lib/groceryList.js";
 import {
+  BOUGHT,
+  QUEUED,
+  TO_BUY,
   applyChecks,
   boughtSnapshot,
   checkSnapshot,
+  nextStep,
   recipeAmountLabel,
   setCovered,
+  stepOf,
   tidyChecks,
 } from "../lib/groceryChecks.js";
 import { staleOverrideKeys } from "../lib/groceryDedupe.js";
@@ -36,7 +42,9 @@ import { brandOf, dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
 import { GroceryItem } from "./GroceryItem.jsx";
+import { GroceryCart, GroceryHowItWorks, GroupFooter } from "./GroceryParts.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
+import { useIsPhone } from "../hooks/useIsPhone.js";
 import { displayQuantity, inventoryAmount } from "../lib/groceryQuantity.js";
 import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
@@ -132,50 +140,80 @@ function StoreGroup({ storeName, children, className }) {
   );
 }
 
-// A store's heading. Stores you made can be renamed (click the name) or
-// removed (their items go back to where they'd land on their own).
-function StoreGroupHead({ group, section, onRename, onRemove, handleRef, handleProps }) {
+// A group's heading, on the same grid as its rows on a computer (design:
+// docs/design/riso-v2-grocery, §3): the name and its count ("3 TO BUY · 2 ON
+// SALE"), then the column labels ON SALE, RECIPE and BUY, and the × on a store you
+// made. By store it has the grip ⠿ that drags the store to reorder (`handle`),
+// and a store you made can be renamed (click the name) or removed (its items go
+// back to where they'd land on their own). By recipe, the name opens the recipe
+// (`onOpenName`). On a phone the labels are left out.
+function GroupHead({ group, section, onRename, onRemove, onOpenName, handle }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(group.name);
-  return (
-    <div className="riso-group-head" style={{ background: "var(--riso-track)" }}>
-      <span
-        ref={handleRef}
-        className="riso-group-grip"
-        title={t("grocery.reorderStores")}
-        {...handleProps}
-        aria-label={t("grocery.reorderStore", { store: group.label })}
-      >
-        ⠿
-      </span>
-      {editing ? (
-        <input
-          autoFocus
-          className="riso-group-name-input"
-          aria-label={t("grocery.storeName")}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={async () => {
+  let title;
+  if (editing) {
+    title = (
+      <input
+        autoFocus
+        className="riso-group-name-input"
+        aria-label={t("grocery.storeName")}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={async () => {
+          setEditing(false);
+          if (name.trim() && name.trim() !== group.name) await onRename(name.trim()).catch(() => setName(group.name));
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setName(group.name);
             setEditing(false);
-            if (name.trim() && name.trim() !== group.name) await onRename(name.trim()).catch(() => setName(group.name));
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") {
-              setName(group.name);
-              setEditing(false);
-            }
-          }}
-        />
-      ) : section ? (
-        <button type="button" className="riso-group-name as-button" title={t("grocery.renameStore")} onClick={() => setEditing(true)}>
-          {group.label}
-        </button>
-      ) : (
-        <p className="riso-group-name">{group.label}</p>
-      )}
-      <span className="riso-group-count">{group.count}</span>
-      {section && (
+          }
+        }}
+      />
+    );
+  } else if (section) {
+    title = (
+      <button type="button" className="riso-group-name as-button" title={t("grocery.renameStore")} onClick={() => setEditing(true)}>
+        {group.label}
+      </button>
+    );
+  } else if (onOpenName) {
+    title = (
+      <button type="button" className="riso-group-name as-button" title={t("grocery.openRecipe")} onClick={onOpenName}>
+        {group.label}
+      </button>
+    );
+  } else {
+    title = <p className="riso-group-name">{group.label}</p>;
+  }
+  return (
+    <div className="riso-group-head">
+      <div className="riso-group-title">
+        {handle && (
+          <span
+            ref={handle.ref}
+            className="riso-group-grip"
+            title={t("grocery.reorderStores")}
+            {...handle.props}
+            aria-label={t("grocery.reorderStore", { store: group.label })}
+          >
+            ⠿
+          </span>
+        )}
+        {title}
+        <span className="riso-group-count">{group.count}</span>
+      </div>
+      <span className="riso-group-col" aria-hidden="true">
+        {t("grocery.colOnSale")}
+      </span>
+      <span className="riso-group-col" aria-hidden="true">
+        {t("grocery.colRecipe")}
+      </span>
+      <span className="riso-group-col buy" aria-hidden="true">
+        {t("grocery.colBuy")}
+      </span>
+      {section ? (
         <button type="button" className="riso-group-remove" aria-label={t("grocery.removeStoreAria", { store: group.label })}
           title={t("grocery.removeStore")}
           onClick={() => {
@@ -184,6 +222,8 @@ function StoreGroupHead({ group, section, onRename, onRemove, handleRef, handleP
         >
           ×
         </button>
+      ) : (
+        <span className="riso-group-remove-slot" aria-hidden="true" />
       )}
     </div>
   );
@@ -242,6 +282,7 @@ export function GroceryList({
   onRequestInventoryAdd,
   onToast,
   onOpenRecipe, // (recipe title): the recipe's card, from a By recipe heading
+  onOpenFlyerDeal, // (deal): the deal card's "See in Flyers →", that deal on the Flyers page
 }) {
   // Deals and stores decide which store each item sits in, so the list
   // waits for both (see `ready` below) - drawing it before they arrived
@@ -418,7 +459,7 @@ export function GroceryList({
     setCheckRows((prev) => {
       const next = { ...prev };
       for (const key of remove) delete next[key];
-      for (const { key, covered, bought } of set) next[key] = { core: key, covered, bought, inInventory: false };
+      for (const { key, covered, bought } of set) next[key] = { core: key, covered, bought, inInventory: false, queued: !!covered && !!prev[key]?.queued };
       return next;
     });
     api
@@ -436,7 +477,9 @@ export function GroceryList({
     checkRows
   );
   const shoppingItems = applied.items;
+  // In the cart: bought ✓ or queued + (the checkbox's second and third steps).
   const checked = applied.checked;
+  const queued = applied.queued;
   const boughtCount = applied.bought.length;
   const hiddenKeys = new Set(overrides.filter((o) => o.hidden).map((o) => o.key));
   const removedItems = items.filter((i) => !i.isStaple && i.removed && !hiddenKeys.has(i.key));
@@ -623,28 +666,40 @@ export function GroceryList({
     }
   }
 
-  // Optimistic: flip the checkbox immediately, then persist — reverting if
-  // the request fails, so a dropped connection doesn't leave the UI showing
-  // a check that never actually saved. A check covers what the row shows now.
-  async function toggle(key) {
+  // One item's saves go out in the order of the taps, and a read of the list
+  // waits for them (lib/saveInOrder.js, lib/pendingSaves.js).
+  const checkSaves = useRef(null);
+  if (!checkSaves.current) checkSaves.current = saveInOrder({ area: GROCERY });
+
+  // Optimistic: the box moves at once, then the save goes out after the ones
+  // already sent for the same item, so the last tap is what the server keeps,
+  // even on a slow phone. If a save fails and no tap came after it, the row goes
+  // back to how it was before that tap. A check covers what the row shows now.
+  function setStep(key, step) {
     const item = shoppingItems.find((i) => i.key === key);
     if (!item) return;
-    const wasChecked = !!checked[key];
     const before = checkRows[key];
-    const covered = wasChecked ? null : checkSnapshot(item);
-    setCheckRows((prev) => setCovered(prev, key, covered));
-    try {
-      if (wasChecked) await api.uncheckGroceryItem(key);
-      else await api.checkGroceryItem(key, covered);
-    } catch {
-      setCheckRows((prev) => {
-        const next = { ...prev };
-        if (before) next[key] = before;
-        else delete next[key];
-        return next;
+    const covered = step === TO_BUY ? null : checkSnapshot(item);
+    const isQueued = step === QUEUED;
+    setCheckRows((prev) => setCovered(prev, key, covered, isQueued));
+    checkSaves.current
+      .run(key, () => (covered ? api.checkGroceryItem(key, covered, isQueued) : api.uncheckGroceryItem(key)))
+      .then(({ ok, latest }) => {
+        if (ok || !latest) return;
+        setCheckRows((prev) => {
+          const next = { ...prev };
+          if (before) next[key] = before;
+          else delete next[key];
+          return next;
+        });
       });
-    }
   }
+
+  // A tap of a list row's box: to buy -> bought ✓ -> queued + -> to buy.
+  const cycle = (key) => setStep(key, nextStep(stepOf(key, checked, queued)));
+  // A tap in Store mode: in or out of the cart (to buy <-> bought ✓). What to
+  // queue is chosen at the till, in Done shopping's sheet.
+  const toggleCart = (key) => setStep(key, checked[key] ? TO_BUY : BOUGHT);
 
   // What goes to the confirmation sheet for one grocery item (see
   // inventoryAmount: the recipe quantity, with its unit, unless you set a
@@ -654,21 +709,28 @@ export function GroceryList({
     return { ref: item.key, name: item.name, quantity, unit };
   }
 
-  // Everything that sends grocery items to Inventory comes here ("Done
-  // shopping" on this page and in Store mode, and a row's "To inventory"):
-  // it opens the confirmation sheet, and only what's confirmed goes in (with
-  // a USDA use-by date, as suggested in the sheet) and leaves the list. What
-  // was bought is remembered, so a meal added later that needs more shows only
-  // the extra, unchecked. A hand-added item that goes in is just deleted.
-  // Cancelling leaves the list exactly as it was. Resolves true when something
-  // went in.
-  async function sendToInventory(list) {
-    if (doneShopping.current || list.length === 0 || !onRequestInventoryAdd) return false;
+  // Everything that sends grocery items to Inventory comes here: a group's
+  // "+ Add N to inventory" (its queued items, every row ticked) and "Done
+  // shopping" on this page and in Store mode (`cart`: everything in the cart,
+  // the queued ones ticked and the bought ones not, so they can still be
+  // ticked). It opens the confirmation sheet, and only what's confirmed goes in
+  // (with a USDA use-by date, as suggested in the sheet) and leaves the list.
+  // Done shopping can be confirmed with nothing ticked ("Done, add nothing"),
+  // and once confirmed the rest of the cart leaves the list too, as bought: the
+  // shop is over, those just aren't tracked. What was bought is remembered, so a
+  // meal added later that needs more shows only the extra, unchecked. A
+  // hand-added item that leaves is just deleted. Cancelling leaves the list
+  // exactly as it was. Resolves with how many went into Inventory, or null when
+  // the list didn't change.
+  async function sendToInventory(list, { cart = false } = {}) {
+    if (doneShopping.current || list.length === 0 || !onRequestInventoryAdd) return null;
     doneShopping.current = true;
     try {
-      const added = await onRequestInventoryAdd(list.map(inventoryDraft));
-      const sent = added?.length ? list.filter((i) => added.includes(i.key)) : [];
-      if (sent.length === 0) return false;
+      const drafts = list.map((item) => ({ ...inventoryDraft(item), ...(cart && !queued[item.key] ? { on: false } : {}) }));
+      const added = await onRequestInventoryAdd(drafts, cart ? { confirmNone: t("grocery.doneAddNothing") } : undefined);
+      const inInventory = added?.length ? list.filter((i) => added.includes(i.key)) : [];
+      const sent = cart && added?.confirmed ? list : inInventory;
+      if (sent.length === 0) return null;
       const manualKeys = new Set(sent.filter((i) => i.isManual).map((i) => i.key));
       setCheckRows((prev) => {
         const next = { ...prev };
@@ -682,13 +744,13 @@ export function GroceryList({
       await api
         .markGroceryInInventory(sent.map((i) => ({ core: i.key, bought: i.isManual ? null : boughtSnapshot(i) })))
         .catch(() => {});
-      return true;
+      return inInventory.length;
     } finally {
       doneShopping.current = false;
     }
   }
 
-  const handleDoneShopping = () => sendToInventory(shoppingItems.filter((i) => checked[i.key]));
+  const handleDoneShopping = () => sendToInventory(shoppingItems.filter((i) => checked[i.key]), { cart: true });
 
   // Plain-text copy of what's still to buy, grouped like the list on screen.
   function listAsText() {
@@ -740,7 +802,7 @@ export function GroceryList({
     await api.deleteGroceryExtra(id);
   }
 
-  // Optimistic, like toggle() above: the row changes right away, then the
+  // Optimistic, like setStep() above: the row changes right away, then the
   // server's answer (or the previous state, on failure) wins.
   async function setOverride(key, patch) {
     const prev = overrides;
@@ -852,9 +914,11 @@ export function GroceryList({
   });
   const storesWithItems = storeOrder.filter((st) => storeRows.some((r) => r.store === st));
 
+  // In the cart: every row bought ✓ or queued +, all waiting for "Done shopping".
   const doneCount = shoppingItems.filter((i) => checked[i.key]).length;
-  // Every checked row still on the list is waiting for "Done shopping".
   const toSendCount = doneCount;
+  // The queued ones: what Done shopping's sheet ticks to begin with.
+  const queuedCount = shoppingItems.filter((i) => queued[i.key]).length;
   // Everything on the list is bought: it's empty, and says so.
   const allBought = shoppingItems.length === 0 && boughtCount > 0;
   // Everything's in the cart: the card goes dark even before "Done shopping".
@@ -875,7 +939,43 @@ export function GroceryList({
 
   const subLabel = t("grocery.subLabel", { count: totalCount - doneCount, sales: onSaleRows.length });
 
-  const hintText = view === "store" ? t("grocery.hintStore") : t("grocery.hintOther");
+  const phone = useIsPhone();
+  const cart = (
+    <GroceryCart
+      bar={phone}
+      count={cartDone}
+      pct={pct}
+      done={allInCart || allBought}
+      allBought={allBought}
+      queuedCount={queuedCount}
+      onDone={handleDoneShopping}
+    />
+  );
+
+  // One row of a group, the same in every view (only By store's rows drag).
+  function renderRow(group, row, Row = GroceryRow) {
+    return (
+      <Row
+        key={`${group.key}-${row.item.key}`}
+        item={row.item}
+        checked={!!checked[row.item.key]}
+        queued={!!queued[row.item.key]}
+        onToggle={() => cycle(row.item.key)}
+        deal={row.deal}
+        dealStore={view !== "store"}
+        flyerDeal={flyerDealFor(row.item)}
+        onOpenDeal={(d) => openDealDetail(d, row.item.name)}
+        onDelete={() => removeItem(row.item)}
+        onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
+      />
+    );
+  }
+
+  // Under a group with something queued: the one button that adds those (§2).
+  function renderFooter(group) {
+    const items = group.sorted.map((r) => r.item).filter((item) => queued[item.key]);
+    return items.length > 0 && <GroupFooter items={items} onAdd={() => sendToInventory(items)} />;
+  }
 
   return (
     <div className="riso-theme riso-grocery" data-theme="light">
@@ -907,9 +1007,13 @@ export function GroceryList({
 
       <div className="riso-grocery-body">
         <div className="riso-grocery-main" ref={listRef}>
-          <HintStrip userId={user.id} screenKey="grocery">
-            {hintText}
-          </HintStrip>
+          {view === "store" && (
+            <HintStrip userId={user.id} screenKey="grocery-v2" title={t("grocery.hint.title")}>
+              <GroceryHowItWorks />
+            </HintStrip>
+          )}
+
+          {phone && cart}
 
           <form className="riso-grocery-add" onSubmit={handleAddSubmit}>
             <input
@@ -948,29 +1052,16 @@ export function GroceryList({
                     <StoreGroup key={group.key} storeName={group.name} className="riso-group">
                       {({ handleRef, handleProps }) => (
                         <>
-                          <StoreGroupHead
+                          <GroupHead
                             group={group}
                             section={section}
                             onRename={(name) => renameStore(section, name)}
                             onRemove={() => removeStore(section)}
-                            handleRef={handleRef}
-                            handleProps={handleProps}
+                            handle={{ ref: handleRef, props: handleProps }}
                           />
                           {group.sorted.length === 0 && <p className="riso-group-empty">{t("grocery.dragHere")}</p>}
-                          {group.sorted.map((row) => (
-                            <DraggableGroceryRow
-                              key={`${group.key}-${row.item.key}`}
-                              item={row.item}
-                              checked={!!checked[row.item.key]}
-                              onToggle={() => toggle(row.item.key)}
-                              deal={row.deal}
-                              flyerDeal={flyerDealFor(row.item)}
-                              onOpenDeal={(d) => openDealDetail(d, row.item.name)}
-                              onToInventory={() => sendToInventory([row.item])}
-                              onDelete={() => removeItem(row.item)}
-                              onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
-                            />
-                          ))}
+                          {group.sorted.map((row) => renderRow(group, row, DraggableGroceryRow))}
+                          {renderFooter(group)}
                         </>
                       )}
                     </StoreGroup>
@@ -985,31 +1076,13 @@ export function GroceryList({
           ) : (
             groups.map((group) => (
               <section key={group.key} className="riso-group">
-                <div className="riso-group-head" style={{ background: "var(--riso-canvas)" }}>
-                  {/* By recipe: the recipe's name opens its card. */}
-                  {view === "recipe" && group.name !== MANUAL_GROUP_LABEL && onOpenRecipe ? (
-                    <button type="button" className="riso-group-name as-button" title={t("grocery.openRecipe")} onClick={() => onOpenRecipe(group.name)}>
-                      {group.label}
-                    </button>
-                  ) : (
-                    <p className="riso-group-name">{group.label}</p>
-                  )}
-                  <span className="riso-group-count">{group.count}</span>
-                </div>
-                {group.sorted.map((row) => (
-                  <GroceryRow
-                    key={`${group.key}-${row.item.key}`}
-                    item={row.item}
-                    checked={!!checked[row.item.key]}
-                    onToggle={() => toggle(row.item.key)}
-                    deal={row.deal}
-                    flyerDeal={flyerDealFor(row.item)}
-                    onOpenDeal={(d) => openDealDetail(d, row.item.name)}
-                    onToInventory={() => sendToInventory([row.item])}
-                    onDelete={() => removeItem(row.item)}
-                    onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
-                  />
-                ))}
+                {/* By recipe: the recipe's name opens its card. */}
+                <GroupHead
+                  group={group}
+                  onOpenName={view === "recipe" && group.name !== MANUAL_GROUP_LABEL && onOpenRecipe ? () => onOpenRecipe(group.name) : null}
+                />
+                {group.sorted.map((row) => renderRow(group, row))}
+                {renderFooter(group)}
               </section>
             ))
           )}
@@ -1042,24 +1115,7 @@ export function GroceryList({
         )}
 
         <aside className="riso-grocery-aside">
-          <section className={`riso-grocery-cart${allInCart || allBought ? " done" : ""}`}>
-            <div className="riso-eyebrow on-pink">{t("grocery.inCart")}</div>
-            <div className="riso-grocery-cart-count">
-              <span className="riso-grocery-cart-num">{cartDone}</span>
-              <span className="riso-grocery-cart-label">{t("grocery.itemsChecked", { count: cartDone })}</span>
-            </div>
-            <div className="riso-grocery-cart-track">
-              <div className="riso-grocery-cart-fill" style={{ width: `${pct}%` }} />
-            </div>
-            {allBought ? (
-              <p className="riso-grocery-cart-done">{t("grocery.groceriesDone")}</p>
-            ) : (
-              <button type="button" className="riso-grocery-cart-btn" disabled={toSendCount === 0} onClick={handleDoneShopping}>
-                {t("grocery.doneShopping", { count: toSendCount })}
-              </button>
-            )}
-            <p className="riso-grocery-cart-note">{t("grocery.cartNote")}</p>
-          </section>
+          {!phone && cart}
 
           <section className="riso-grocery-sale">
             <span className="riso-sticker yellow" style={{ top: -14, right: 18, transform: "rotate(5deg)" }}>
@@ -1112,7 +1168,8 @@ export function GroceryList({
           rows={storeRows}
           stores={storesWithItems.length > 0 ? storesWithItems : storeOrder}
           checked={checked}
-          onToggle={toggle}
+          queued={queued}
+          onToggle={toggleCart}
           onDone={handleDoneShopping}
           onClose={() => setStoreMode(false)}
           storeLabel={storeLabel}
@@ -1131,6 +1188,7 @@ export function GroceryList({
           onClose={() => setOpenDeal(null)}
           onToggleWatch={() => toggleWatch(openDeal.deal)}
           onOpenOther={(o) => openDealDetail(o, openDeal.name)}
+          onOpenCirculaires={onOpenFlyerDeal ? () => onOpenFlyerDeal(openDeal.deal) : undefined}
         />
       )}
     </div>
