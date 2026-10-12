@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
+import { quebecDayIn } from "./quebec-day.js";
 
 // The Makeable page, Riso v2 (designs: docs/design/riso-v2-makeable and, for the
 // cards, docs/design/riso-v2-recipe-cards): the shared Finder as a page. Sections
@@ -42,8 +43,8 @@ async function seed(page, recipes, inventory) {
   }
   for (const item of inventory) {
     const [name, days] = Array.isArray(item) ? item : [item, null];
-    // An hour short of whole days, because the app counts days rounding up.
-    const expiresAt = days == null ? undefined : new Date(Date.now() + days * 86400000 - 3600000).toISOString();
+    // A use-by day n Quebec days from today: the app counts days left in Quebec days.
+    const expiresAt = days == null ? undefined : quebecDayIn(days);
     await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", ...(expiresAt && { expiresAt }) } });
   }
   await page.reload();

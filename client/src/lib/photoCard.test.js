@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_PILLS,
   captionTime,
@@ -13,9 +13,24 @@ import {
   saleCount,
   soonItemFor,
 } from "./photoCard.js";
+import { addDays, quebecDay } from "./quebecDay.js";
 
 const recipe = (id, names) => ({ id, title: id, ingredients: names.map((name) => ({ name })) });
-const inDays = (n) => new Date(Date.now() + n * 86400000 - 3600000).toISOString(); // daysUntil rounds up, so an hour short is exactly n days
+// A use-by date n Quebec days from today ("2026-10-15"), the way the Inventory
+// form saves one. Days left are counted in Quebec calendar days, so a date made
+// from the machine clock ("now + n days") lands on the wrong day near midnight.
+const inDays = (n) => addDays(quebecDay(), n);
+
+// Noon, 11:30 p.m., midnight and 3:59 a.m. in Quebec (Oct 2026, UTC-4): the
+// use-soon strip says the same at every hour, the late ones included.
+const TIMES = [
+  ["noon", "2026-10-14T16:00:00Z"],
+  ["11:30 p.m.", "2026-10-15T03:30:00Z"],
+  ["midnight", "2026-10-15T04:00:00Z"],
+  ["3:59 a.m.", "2026-10-15T07:59:00Z"],
+];
+
+afterEach(() => vi.useRealTimers());
 
 describe("the Recipes card caption and meal line", () => {
   it("writes the time in capitals, with hours", () => {
@@ -91,8 +106,12 @@ describe("the grocery list and the sale summary", () => {
   });
 });
 
-describe("the use-soon strip", () => {
+describe.each(TIMES)("the use-soon strip, at %s in Quebec", (_label, iso) => {
   const celery = recipe("salad", ["celery", "chickpeas"]);
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(iso));
+  });
 
   it("names the soonest ingredient going off within 3 days", () => {
     const inventory = [

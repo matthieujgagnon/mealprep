@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { addDays, quebecDay } from "./quebecDay.js";
 import {
   PROTEINS,
@@ -183,6 +183,12 @@ describe("Home's protein rows", () => {
 });
 
 describe("what a product card shows", () => {
+  // A fixed clock: 11:30 p.m. in Quebec on Oct 14, 2026, already Oct 15 in UTC.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T03:30:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
   // The flyer's end day is a Quebec day, so today is the Quebec day (lib/quebecDay.js).
   const keyIn = (days) => addDays(quebecDay(), days);
   const chicken = (extra = {}) => deal("Boneless chicken thighs", "meat", { id: "t", unitPrice: 3.99, unitBasis: "lb", ...extra });

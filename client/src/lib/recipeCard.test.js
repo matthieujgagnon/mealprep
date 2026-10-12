@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { setLang } from "../i18n/index.js";
 import { rankRecipesForTray } from "./plannerSuggestions.js";
 import { bySimilarity, similarTo } from "./finder.js";
@@ -16,12 +16,21 @@ import {
   timerPill,
 } from "./recipeCard.js";
 import { ANY_STORE, DEFAULT_STORE, namedStoreFor, storeFor, storeSetup } from "./groceryStores.js";
+import { addDays, quebecDay } from "./quebecDay.js";
+
+// A fixed clock: 11:30 p.m. in Quebec on Oct 14, 2026, already Oct 15 in UTC.
+// Days left are Quebec calendar days, so the use-by dates are Quebec days too
+// ("2026-10-17"), the way the Inventory form saves them: a date made from the
+// machine clock ("now + 3 days") lands on another day near midnight.
+vi.useFakeTimers({ toFake: ["Date"] });
+vi.setSystemTime(new Date("2026-10-15T03:30:00Z"));
+afterAll(() => vi.useRealTimers());
 
 setLang("en");
 
 const ing = (name, quantity = null, unit = null, extra = {}) => ({ name, quantity, unit, ...extra });
 const kitchen = (inventory) => ({ inventory, customStaples: [], excludedStaples: [] });
-const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString();
+const inDays = (n) => addDays(quebecDay(), n);
 
 const shawarma = {
   id: "shawarma",

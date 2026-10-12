@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
+import { asSavedDay, quebecDayIn } from "./quebec-day.js";
 
 // The Inventory item form (design handoff: docs/design/inventory-item-form/): one form
 // for "+ Add item" and for a tapped item card. Add keeps going until you're done; Edit
@@ -234,9 +235,8 @@ test("Edit: shelf, use-by date and amount save together with Save changes, and C
   await expect(toast(page)).toHaveText("Changes saved");
   const saved = (await inventory(page))[0];
   expect(saved).toMatchObject({ location: "freezer", quantity: 3 });
-  const days = Math.round((new Date(saved.expiresAt) - Date.now()) / 86400000);
-  expect(days).toBeGreaterThanOrEqual(89);
-  expect(days).toBeLessThanOrEqual(91);
+  // 3 months is 90 Quebec days from today, saved as that day.
+  expect(saved.expiresAt).toBe(asSavedDay(quebecDayIn(90)));
 });
 
 test("the server lists recent foods and shelf life for every shelf", async ({ page }) => {

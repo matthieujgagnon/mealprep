@@ -3,6 +3,7 @@ import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
 import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
+import { quebecDayIn } from "./quebec-day.js";
 
 const prisma = new PrismaClient();
 
@@ -240,7 +241,7 @@ test("See in Flyers lands on that deal's card in Flyers, and \"On list\" takes a
 
 test("Use it up finds recipes for those items; Makeable now counts the ones one or two items away", async ({ page }) => {
   await signUp(page, uniqueEmail());
-  const soon = new Date(Date.now() + 2 * 86400000 + 3600000).toISOString();
+  const soon = quebecDayIn(2); // a Quebec day, like a use-by date the Inventory form saves
   for (const name of ["parsley", "cucumber", "chickpeas"]) {
     await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: soon } });
   }

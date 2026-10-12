@@ -3,6 +3,7 @@ import { E2E_INVITE } from "./invite.js";
 import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
 import { langSwitch } from "./account-menu.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 const prisma = new PrismaClient();
 
@@ -54,7 +55,8 @@ function mondayOf(d) {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 }
 
-const inDays = (n) => new Date(Date.now() + n * 864e5 + 3600e3).toISOString();
+// A use-by day n Quebec days from today ("2026-10-15"): days left are Quebec days.
+const inDays = (n) => quebecDayIn(n);
 
 async function signUpInFrench(page) {
   await page.goto("/");

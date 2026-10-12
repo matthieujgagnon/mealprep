@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { scrollBetween } from "./planner-drag.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // The Riso v2 Planner: a board of 7 days by 3 meals with one shared recipe
 // finder under it (search, filters, Cook with, Main meal, the recipe card).
@@ -346,7 +347,7 @@ test("Expiring soon keeps the recipes that use food going off", async ({ page })
     { title: "Plain Rice", ingredients: [{ name: "rice" }] },
   ]);
   await page.request.post("/api/pantry-inventory", {
-    data: { name: "spinach", location: "fridge", expiresAt: new Date(Date.now() + 2 * 86400000).toISOString() },
+    data: { name: "spinach", location: "fridge", expiresAt: quebecDayIn(2) }, // in 2 Quebec days
   });
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
@@ -364,7 +365,7 @@ test("Cook with lists expiring food first, then the user's own shelves, and find
     { title: "Plain Rice", ingredients: [{ name: "rice" }] },
   ]);
   const shelf = await (await page.request.post("/api/pantry-locations", { data: { name: "Spice rack" } })).json();
-  const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString();
+  const inDays = (n) => quebecDayIn(n); // a use-by day n Quebec days from today
   await page.request.post("/api/pantry-inventory", { data: { name: "spinach", location: "fridge", expiresAt: inDays(2) } });
   await page.request.post("/api/pantry-inventory", { data: { name: "ice cream", location: "freezer", expiresAt: inDays(90) } });
   await page.request.post("/api/pantry-inventory", { data: { name: "paprika", location: shelf.id, expiresAt: inDays(300) } });

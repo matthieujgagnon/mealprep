@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PHONE_PAGE_STARTS, canClearDay, entriesOnDay, pageOfDay, pickerSlot, slotLabel, weekendDaysLabel, weekendRuns } from "./plannerSlots.js";
 import { currentWeekStart, shiftWeek } from "./dates.js";
 import { setLang } from "../i18n/index.js";
@@ -36,8 +36,18 @@ describe("slotLabel", () => {
 });
 
 describe("canClearDay (the Planner's Clear under a day)", () => {
-  const week = currentWeekStart();
-  const today = (new Date().getDay() + 6) % 7;
+  // A fixed clock: Wednesday Oct 14, 2026 at 11:30 p.m., so "today" is the same on
+  // every run (the Planner's days are the device's own) and no check is skipped.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 14, 23, 30));
+  });
+  afterEach(() => vi.useRealTimers());
+  const today = 2; // Wednesday
+  let week;
+  beforeEach(() => {
+    week = currentWeekStart();
+  });
   const meal = (dayOfWeek, id) => ({ id, dayOfWeek, mealType: "dinner", recipe: { isPlaceholder: false } });
   const note = (dayOfWeek, id) => ({ id, dayOfWeek, mealType: "lunch", recipe: { isPlaceholder: true, title: "Eating out" } });
 
@@ -57,7 +67,7 @@ describe("canClearDay (the Planner's Clear under a day)", () => {
   });
 
   it("hides on days before today, and shows on every day of next week", () => {
-    if (today > 0) expect(canClearDay([meal(0, "a")], week, 0)).toBe(false);
+    expect(canClearDay([meal(0, "a")], week, 0)).toBe(false); // Monday is before today
     expect(canClearDay([meal(0, "a")], shiftWeek(week, -1), 0)).toBe(false);
     expect(canClearDay([meal(0, "a")], shiftWeek(week, 1), 0)).toBe(true);
   });

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
-import { addDays, asSavedDay, quebecDay } from "./quebec-day.js";
+import { addDays, asSavedDay, quebecDay, quebecDayIn } from "./quebec-day.js";
 import { langSwitch } from "./account-menu.js";
 
 // "I cooked this" (components/CookedView.jsx) from the Planner and Home, and the one
@@ -14,7 +14,6 @@ function mondayOf(d) {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 }
 const todayIndex = () => (new Date().getDay() + 6) % 7;
-const daysFromNow = (n) => new Date(Date.now() + n * 86400000).toISOString();
 
 // Today at this hour (the browser's clock is fixed there), so Home shows supper.
 function atHour(hour) {
@@ -148,7 +147,7 @@ test("leftovers: added by hand on the Leftovers shelf, thawed, and planned from 
   const today = quebecDay(LATE_EVENING);
   const recipe = await (await page.request.post("/api/recipes", { data: SHAWARMA })).json();
   await page.request.post("/api/pantry-inventory", {
-    data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "freezer", isLeftover: true, recipeId: recipe.id, expiresAt: daysFromNow(60) },
+    data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "freezer", isLeftover: true, recipeId: recipe.id, expiresAt: quebecDayIn(60) },
   });
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
@@ -299,7 +298,7 @@ test("a planned leftover whose day has passed takes one portion off, once, with 
   const recipe = await (await page.request.post("/api/recipes", { data: SHAWARMA })).json();
   const leftovers = await (
     await page.request.post("/api/pantry-inventory", {
-      data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "fridge", isLeftover: true, recipeId: recipe.id, expiresAt: daysFromNow(2) },
+      data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "fridge", isLeftover: true, recipeId: recipe.id, expiresAt: quebecDayIn(2) },
     })
   ).json();
   const lastWeek = mondayOf(new Date(Date.now() - 7 * 86400000));
