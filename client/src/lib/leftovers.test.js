@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { leftoverExpiry, leftoverIsStale, leftoverItem, plannableLeftovers, thawPatch } from "./leftovers.js";
-import { buildAddPayload, dateFromDays } from "./inventoryForm.js";
-import { daysUntil } from "./pantryInventory.js";
+import { buildAddPayload, dateFromDays, expiryTag, lineForDays, useByKind } from "./inventoryForm.js";
+import { daysUntil, formatExpiry } from "./pantryInventory.js";
+import { toUseItems } from "./homeWeek.js";
 import { quebecDay } from "./quebecDay.js";
+import { setLang, t } from "../i18n/index.js";
 
 afterEach(() => vi.useRealTimers());
 
@@ -70,5 +72,69 @@ describe("plannableLeftovers", () => {
       { id: "c", name: "Soup", isLeftover: true, quantity: 1, expiresAt: "2026-10-15T00:00:00.000Z" },
     ];
     expect(plannableLeftovers(items, []).map((r) => r.item.id)).toEqual(["c", "a", "b"]);
+  });
+});
+
+// The use-by day itself is not expired: it says "today", and only the next day is expired.
+describe("on the use-by day itself", () => {
+  const savedDay = "2026-10-16T00:00:00.000Z"; // use by the 16th, as a typed or picked day is saved
+  const meal = (dayOfWeek) => ({ isLeftover: true, weekStart: "2026-10-12", dayOfWeek, recipe: { fridgeLifeDays: 4 } });
+
+  afterEach(() => setLang("en"));
+
+  it.each([
+    ["9 a.m.", "2026-10-16T13:00:00Z"],
+    ["11 p.m.", "2026-10-17T03:00:00Z"],
+  ])("at %s Quebec time it is today, not expired, everywhere that counts days left", (_label, iso) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(iso));
+    const days = daysUntil(savedDay);
+    expect(days).toBe(0);
+
+    // The add form's tag, note and line, and Inventory's card (they all read these).
+    expect(expiryTag(days)).toEqual({ kind: "today", tone: "hot" });
+    expect(lineForDays(days)).toEqual({ height: "100%", color: "pink" });
+    expect(useByKind({ days, custom: true, usda: false })).toBe("custom");
+    expect(formatExpiry(savedDay)).toBe("Expires today");
+
+    // Home's Use it up still lists it.
+    expect(toUseItems([{ name: "Pizza", isLeftover: true, expiresAt: savedDay }], daysUntil).shown).toHaveLength(1);
+
+    // The Planner's past-fridge-life check: a meal on the use-by day (Fri the 16th) is fine, the next day is late.
+    expect(leftoverIsStale(meal(4), { item: { expiresAt: savedDay } })).toBe(false);
+    expect(leftoverIsStale(meal(5), { item: { expiresAt: savedDay } })).toBe(true);
+  });
+
+  it("is the same for a use-by moment worked out from a time, at 9 a.m. and 11 p.m.", () => {
+    // 5 p.m. on the 16th in Quebec.
+    for (const iso of ["2026-10-16T13:00:00Z", "2026-10-17T03:00:00Z"]) {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(iso));
+      expect(daysUntil("2026-10-16T21:00:00.000Z")).toBe(0);
+    }
+  });
+
+  it("is expired only from the next day, at 9 a.m. and at 11 p.m.", () => {
+    for (const iso of ["2026-10-17T13:00:00Z", "2026-10-18T03:00:00Z"]) {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(iso));
+      const days = daysUntil(savedDay);
+      expect(days).toBe(-1);
+      expect(expiryTag(days).kind).toBe("expired");
+      expect(lineForDays(days)).toEqual({ expired: true });
+      expect(toUseItems([{ name: "Pizza", expiresAt: savedDay }], daysUntil).shown).toHaveLength(0);
+    }
+  });
+
+  it("says today in English and in Quebec French with the app's own wording", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-17T03:00:00Z")); // 11 p.m. on the 16th
+    expect(formatExpiry(savedDay)).toBe("Expires today");
+    expect(t("days.today")).toBe("Today");
+    expect(t("home.todayBang")).toBe("today!");
+    setLang("fr");
+    expect(formatExpiry(savedDay)).toBe("Expire aujourd'hui");
+    expect(t("days.today")).toBe("Aujourd'hui");
+    expect(t("home.todayBang")).toBe("aujourd'hui!");
   });
 });

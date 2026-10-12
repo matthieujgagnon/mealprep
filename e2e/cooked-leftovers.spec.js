@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { addDays, asSavedDay, quebecDay } from "./quebec-day.js";
+import { langSwitch } from "./account-menu.js";
 
 // "I cooked this" (components/CookedView.jsx) from the Planner and Home, and the one
 // leftovers system: LEFTOVER items on Inventory's Leftovers shelf, added by hand,
@@ -234,6 +235,62 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
     const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" });
     await expect(card).toContainText("use by tomorrow");
     await expect(card).not.toContainText(/expired/i);
+  });
+
+  // The use-by day itself is not expired: it says it expires today, on the Inventory card, in the
+  // add/edit form and in Home's Use it up, from the morning to the end of the Quebec evening.
+  for (const [label, at] of [
+    ["9 a.m.", "2026-10-16T13:00:00Z"],
+    ["11 p.m.", "2026-10-17T03:00:00Z"],
+  ]) {
+    test(`on its use-by day, at ${label}, it says today and is not expired`, async ({ page }) => {
+      await signUp(page);
+      await page.request.post("/api/pantry-inventory", {
+        data: { name: "Pizza", quantity: 1, unit: "portion", location: "fridge", isLeftover: true, expiresAt: "2026-10-16" },
+      });
+      await page.clock.setFixedTime(new Date(at));
+      await page.reload();
+
+      // Home's Use it up lists it as today.
+      await expect(page.locator(".riso-useup-row", { hasText: "Pizza" }).locator(".riso-useup-badge")).toHaveText("today!");
+
+      await page.getByRole("button", { name: "Inventory", exact: true }).click();
+      const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" });
+      await expect(card).toContainText("expires today");
+      await expect(card).not.toHaveClass(/expired/);
+      await expect(card.locator(".inv-card-expired")).toHaveCount(0);
+      await expect(card.locator(".inv-card-line-fill.pink")).toHaveCount(1);
+
+      await card.click();
+      await expect(page.locator(".riso-itemform .riso-itemform-tag")).toHaveText("Today");
+    });
+  }
+
+  test("in Quebec French it says aujourd'hui on its use-by day, and expiré only the next day", async ({ page }) => {
+    await signUp(page);
+    await page.request.post("/api/pantry-inventory", {
+      data: { name: "Pizza", quantity: 1, unit: "portion", location: "fridge", isLeftover: true, expiresAt: "2026-10-16" },
+    });
+    // The account's language is saved when the switch is pressed, so it is French after a reload.
+    await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith("/api/auth/me") && r.request().method() === "PATCH"),
+      langSwitch(page).getByRole("button", { name: "Français" }).click(),
+    ]);
+    await page.clock.setFixedTime(new Date("2026-10-17T03:00:00Z")); // 11 p.m. on the 16th in Quebec
+    await page.reload();
+    await expect(page.locator(".riso-useup-row", { hasText: "Pizza" }).locator(".riso-useup-badge")).toHaveText("aujourd'hui!");
+    await page.getByRole("button", { name: "Inventaire", exact: true }).click();
+    const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" });
+    await expect(card).toContainText("expire aujourd'hui");
+    await expect(card.locator(".inv-card-expired")).toHaveCount(0);
+    await card.click();
+    await expect(page.locator(".riso-itemform .riso-itemform-tag")).toHaveText("Aujourd'hui");
+
+    // The next day (the 17th) it is expired.
+    await page.clock.setFixedTime(new Date("2026-10-17T13:00:00Z"));
+    await page.reload();
+    await page.getByRole("button", { name: "Inventaire", exact: true }).click();
+    await expect(page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" }).locator(".inv-card-expired")).toHaveCount(1);
   });
 });
 

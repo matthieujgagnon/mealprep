@@ -69,10 +69,13 @@ export function commitQuantity(typed, previous) {
 
 // The tag under the preview card: how soon it expires, and its colour.
 //   tone: none (no date), hot (2 days or less, or expired), warn (a week or less), plain
+// The use-by day itself is not expired yet: 0 days is "today", and only a day
+// before today (below 0) is expired.
 export function expiryTag(days) {
   if (days == null) return { kind: "none", tone: "none" };
   const tone = days <= 2 ? "hot" : days <= 7 ? "warn" : "plain";
-  if (days <= 0) return { kind: "expired", tone };
+  if (days < 0) return { kind: "expired", tone };
+  if (days === 0) return { kind: "today", tone };
   if (days <= 1) return { kind: "tomorrow", tone };
   if (days < 60) return { kind: "days", count: days, tone };
   return { kind: "months", count: Math.round(days / 30), tone };
@@ -80,11 +83,12 @@ export function expiryTag(days) {
 
 // The line down a card's left edge (the same as on the shelf): how close the date
 // is on a 4-week scale, filling up as it nears, pink within 3 days, yellow within
-// a week, blue after. None from 28 days on or with no date; expired has its own tag.
+// a week, blue after. None from 28 days on or with no date; expired (before the
+// use-by day) has its own tag. On the use-by day itself the line is full and pink.
 export const LINE_DAYS = 28;
 export function lineForDays(days) {
   if (days == null || days >= LINE_DAYS) return null;
-  if (days <= 0) return { expired: true };
+  if (days < 0) return { expired: true };
   const color = days <= 3 ? "pink" : days <= 7 ? "yellow" : "blue";
   return { height: `${Math.max(8, Math.round((1 - days / LINE_DAYS) * 100))}%`, color };
 }
@@ -92,7 +96,7 @@ export function lineForDays(days) {
 // Which sentence goes under the use-by chips.
 export function useByKind({ days, custom, usda }) {
   if (days == null) return "none";
-  if (days <= 0) return "expired";
+  if (days < 0) return "expired";
   if (custom) return "custom";
   return usda ? "usda" : "rough";
 }

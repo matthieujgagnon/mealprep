@@ -373,6 +373,7 @@ export function InventoryItemForm({
   const tagText = {
     none: t("inventory.form.tagNone"),
     expired: t("inventory.form.tagExpired"),
+    today: t("days.today"),
     tomorrow: t("inventory.form.tagTomorrow"),
     days: t("inventory.form.tagDays", { count: tag.count }),
     months: t("inventory.form.tagMonths", { count: tag.count }),

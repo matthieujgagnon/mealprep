@@ -128,7 +128,9 @@ function LeftoverResultCard({ entry, draggable, onAdd }) {
   });
   const title = leftoverTitle(item);
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
-  const caption = [t("cooked.leftovers.tag"), days != null ? t("finder.leftoverDays", { count: Math.max(0, days) }) : null].filter(Boolean).join(" · ");
+  // The use-by day itself says it expires today (the app's own `expiry.today`), not "0 days left".
+  const left = days === 0 ? t("expiry.today").toUpperCase() : days != null ? t("finder.leftoverDays", { count: Math.max(0, days) }) : null;
+  const caption = [t("cooked.leftovers.tag"), left].filter(Boolean).join(" · ");
   return (
     <RecipePhotoCard
       variant="finder"
