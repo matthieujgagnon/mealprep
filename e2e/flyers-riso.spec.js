@@ -367,7 +367,7 @@ test("a deal with no history at its own store is compared with other stores, per
   await expect(opened.locator(".riso-ing-verdict")).toHaveText("LOWEST AROUND");
 });
 
-test("on the grocery list, a sale item's tag shows where it's cheapest, wherever it's filed, and opens the flyer item", async ({ page }) => {
+test("on the grocery list, a sale item's price shows where it's cheapest, wherever it's filed, and opens the flyer item", async ({ page }) => {
   const email = uniqueEmail();
   await signUp(page, email);
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -392,9 +392,11 @@ test("on the grocery list, a sale item's tag shows where it's cheapest, wherever
 
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  const groceryRow = (name) => page.locator(".riso-row").filter({ has: page.getByRole("checkbox", { name: `Check off ${name}`, exact: true }) });
+  const groceryRow = (name) => page.locator(".riso-group .riso-row").filter({ has: page.getByRole("checkbox", { name: `Check off ${name}`, exact: true }) });
   const bacon = groceryRow("Bacon");
-  await expect(bacon.locator(".riso-row-deal")).toHaveText("Super C$3.99");
+  // By store it sits in the cheapest store, and the price says how much.
+  await expect(bacon.locator(".riso-row-deal")).toHaveText("$3.99›");
+  await expect(page.getByRole("region", { name: "Super C store" })).toContainText("Bacon");
   await expect(groceryRow("Lemon juice").locator(".riso-row-deal")).toHaveCount(0);
   await expect(groceryRow("Red bell pepper").locator(".riso-row-deal")).toHaveCount(0);
 
@@ -408,6 +410,7 @@ test("on the grocery list, a sale item's tag shows where it's cheapest, wherever
   // Aisles: lemon juice is pantry, red bell pepper is produce.
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "By aisle" }).click();
+  await expect(bacon.locator(".riso-row-deal")).toHaveText("$3.99Super C›"); // outside By store, the store follows the price
   await expect(page.locator(".riso-group", { hasText: "Pantry" })).toContainText("Lemon juice");
   await expect(page.locator(".riso-group", { hasText: "Fruits & vegetables" })).toContainText("Red bell pepper");
 });

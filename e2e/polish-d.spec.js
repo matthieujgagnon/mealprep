@@ -315,7 +315,7 @@ test.describe("Button feedback", () => {
 
   test("on a computer the whole grocery row lights up under the pointer", async ({ page }) => {
     await groceryWithItem(page);
-    const row = page.locator(".riso-row").first();
+    const row = page.locator(".riso-group .riso-row").first();
     const before = await row.evaluate((e) => getComputedStyle(e).backgroundColor);
     // Point at the row's empty middle: not the checkbox, not a button.
     const b = await row.locator(".riso-row-main").boundingBox();

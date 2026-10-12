@@ -144,7 +144,7 @@ test("every screen speaks French, with nothing left in English", async ({ page }
 
   // Grocery list, its aisle view and store mode.
   await page.getByRole("button", { name: "Épicerie", exact: true }).click();
-  await expect(page.locator(".riso-row").first()).toBeVisible();
+  await expect(page.locator(".riso-group .riso-row").first()).toBeVisible();
   await expectAllFrench(page, "epicerie");
   await page.getByRole("button", { name: "Par rayon" }).click();
   await expect(page.locator(".riso-group-name").first()).toBeVisible();
@@ -287,14 +287,15 @@ test("a French recipe reads its measures, and meets French flyer deals", async (
   await page.keyboard.press("Escape");
 
   // + Liste on the flyer card puts the French name on the grocery list,
-  // with its Metro deal tag.
+  // in the Metro store, with its sale price.
   await page.getByRole("button", { name: "Circulaires", exact: true }).click();
   const card = page.locator(".riso-ing-card", { hasText: "Poitrines de poulet désossées" });
   await card.locator(".riso-ing-main").click();
   await card.getByRole("button", { name: /Ajouter Poitrines de poulet désossées/ }).click();
   await page.getByRole("button", { name: "Épicerie", exact: true }).click();
-  const row = page.locator(".riso-row", { hasText: "Poitrines de poulet désossées" });
+  const row = page.locator(".riso-group .riso-row", { hasText: "Poitrines de poulet désossées" });
   await expect(row).toBeVisible();
-  await expect(row.locator(".riso-row-deal")).toContainText("Metro");
+  await expect(page.getByRole("region", { name: "Magasin Metro" })).toContainText("Poitrines de poulet désossées");
+  await expect(row.locator(".riso-row-deal")).toContainText("$");
 });
 

@@ -5,11 +5,13 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// The grocery item (design handoff: docs/design/grocery-item/README.md): one
-// component drawn the same in By store, By aisle, By recipe and Store mode.
-// Left to right: the checkbox, the name with its meta line under it, then the
-// recipe quantity (read-only, with its unit), how many to buy (a plain number)
-// and the remove ×. Every item in a view is the same height; no name is cut.
+// The grocery item (design handoffs: docs/design/grocery-item/README.md and
+// docs/design/riso-v2-grocery/README.md): one component drawn the same in By
+// store, By aisle, By recipe and Store mode. Left to right: the checkbox, the
+// name with its meta line under it, then the sale price, the recipe quantity
+// (read-only, with its unit), how many to buy (a plain number) and the remove ×.
+// Every item in a view is the same height; no name is cut. (The rows here are
+// the list's, `.riso-group .riso-row`: How it works' demo row is one too.)
 
 function nextMonday() {
   const x = new Date();
@@ -55,11 +57,11 @@ async function setup(page) {
   await page.request.post("/api/grocery-sections", { data: { name: "Costco" } });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).first().click();
-  await expect(page.locator(".riso-row").first()).toBeVisible();
+  await expect(page.locator(".riso-group .riso-row").first()).toBeVisible();
 }
 
 const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
-const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
+const row = (page, name) => page.locator(".riso-group .riso-row").filter({ has: check(page, name) });
 const heights = (locator) => locator.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
 
 test.describe("on a computer", () => {
@@ -85,14 +87,14 @@ test.describe("on a computer", () => {
     }
   });
 
-  test("the number is a round pill, and the sale tags line up in one column on the right", async ({ page }) => {
+  test("the number is a 52 x 36 pill, and the sale prices line up in one column on the right", async ({ page }) => {
     await setup(page);
-    const qty = await page.locator(".riso-row-qty").first().boundingBox();
-    expect(Math.abs(qty.width - qty.height)).toBeLessThanOrEqual(1);
-    expect(await page.locator(".riso-row-qty").first().evaluate((e) => getComputedStyle(e).borderRadius)).toBe("50%");
-    const tags = page.locator(".riso-row-deal");
+    const qty = await page.locator(".riso-group .riso-row-qty").first().boundingBox();
+    expect([Math.round(qty.width), Math.round(qty.height)]).toEqual([52, 36]);
+    expect(await page.locator(".riso-group .riso-row-qty").first().evaluate((e) => getComputedStyle(e).borderRadius)).toBe("18px");
+    const tags = page.locator(".riso-group .riso-row-deal");
     await expect(tags).toHaveCount(2);
-    const spots = await page.locator(".riso-row").evaluateAll((rows) =>
+    const spots = await page.locator(".riso-group .riso-row").evaluateAll((rows) =>
       rows
         .map((r) => ({ tag: r.querySelector(".riso-row-deal"), name: r.querySelector(".riso-row-name"), qty: r.querySelector(".riso-row-qty") }))
         .filter((x) => x.tag)
@@ -101,29 +103,30 @@ test.describe("on a computer", () => {
     expect(new Set(spots.map((x) => x.left)).size).toBe(1); // the same left edge on every row
     expect(spots.every((x) => x.afterName && x.beforeQty)).toBe(true);
     // The recipe quantity pills and the numbers line up too.
-    const centers = await page.locator(".riso-row-need.wide").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.parentElement.getBoundingClientRect().left)))]);
+    const centers = await page.locator(".riso-group .riso-row-need.wide").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.parentElement.getBoundingClientRect().left)))]);
     expect(centers).toHaveLength(1);
-    const qtyLefts = await page.locator(".riso-row-qty").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
+    const qtyLefts = await page.locator(".riso-group .riso-row-qty").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
     expect(qtyLefts).toHaveLength(1);
   });
 
-  test("a hand-added item shows only its name and its number", async ({ page }) => {
+  test("a hand-added item shows its name, Added by you and its number", async ({ page }) => {
     await setup(page);
     const paper = row(page, "Toilet paper");
     await expect(paper.locator(".riso-row-qty")).toHaveValue("2");
     await expect(paper.locator(".riso-row-need")).toHaveCount(0);
-    await expect(paper.locator(".riso-row-meta")).toHaveCount(0);
+    await expect(paper.locator(".riso-row-meta > *")).toHaveCount(1);
+    await expect(paper.locator(".riso-row-mine")).toHaveText("Added by you");
   });
 
   test("every row is the same height (68 or more), and the longest name is not cut", async ({ page }) => {
     await setup(page);
     for (const view of [null, "By aisle", "By recipe"]) {
       if (view) await page.getByRole("button", { name: view, exact: true }).click();
-      const h = await heights(page.locator(".riso-row"));
+      const h = await heights(page.locator(".riso-group .riso-row"));
       expect(h.length).toBeGreaterThanOrEqual(5);
       expect(new Set(h).size, h.join(" ")).toBe(1);
       expect(h[0]).toBeGreaterThanOrEqual(68);
-      const cut = await page.locator(".riso-row-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
+      const cut = await page.locator(".riso-group .riso-row-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
       expect(cut).toBe(false);
     }
   });
@@ -141,17 +144,17 @@ test.describe("on a computer", () => {
     await expect(check(page, "Ground beef")).toHaveAttribute("aria-checked", "true");
   });
 
-  test("+ Inventory shows only on a checked row and opens the confirmation sheet first", async ({ page }) => {
+  test("no row has its own + Inventory: a queued row's store has one button, and it opens the confirmation sheet first", async ({ page }) => {
     await setup(page);
-    await expect(page.locator(".riso-row-toinv")).toHaveCount(0);
     await check(page, "Lemon").click();
-    const button = row(page, "Lemon").locator(".riso-row-toinv");
-    await expect(button).toHaveText("+ Inventory");
-    await button.click();
+    await check(page, "Lemon").click(); // queued for Inventory
+    await expect(page.getByRole("button", { name: /^\+ Inventory$/ })).toHaveCount(0);
+    const store = page.locator(".riso-group").filter({ has: check(page, "Lemon") });
+    await store.getByRole("button", { name: "+ Add 1 to inventory" }).click();
     await expect(page.locator(".riso-confirm .riso-confirm-row")).toHaveCount(1);
     await cancelAdd(page);
     expect(await (await page.request.get("/api/pantry-inventory")).json()).toHaveLength(0);
-    await expect(check(page, "Lemon")).toHaveAttribute("aria-checked", "true");
+    await expect(row(page, "Lemon")).toHaveAttribute("data-step", "2");
   });
 
   test("a store's × asks first, and only a store you made has one", async ({ page }) => {
@@ -203,7 +206,7 @@ test.describe("on a phone", () => {
 
   test("rows are 108 or more, all one height, the recipe quantity is under the name, and a checked row keeps its name", async ({ page }) => {
     await setup(page);
-    const h = await heights(page.locator(".riso-row"));
+    const h = await heights(page.locator(".riso-group .riso-row"));
     expect(new Set(h).size, h.join(" ")).toBe(1);
     expect(h[0]).toBeGreaterThanOrEqual(108);
     const beef = row(page, "Ground beef");
@@ -213,10 +216,11 @@ test.describe("on a phone", () => {
     expect(under).toBe(true);
 
     await check(page, "Lemon").click();
-    await expect(row(page, "Lemon").locator(".riso-row-toinv")).toBeVisible();
-    const after = await heights(page.locator(".riso-row"));
+    await check(page, "Lemon").click(); // queued: "→ INVENTORY" joins the meta line
+    await expect(row(page, "Lemon").locator(".riso-row-queued")).toBeVisible();
+    const after = await heights(page.locator(".riso-group .riso-row"));
     expect(new Set(after).size, after.join(" ")).toBe(1);
-    const cut = await page.locator(".riso-row-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
+    const cut = await page.locator(".riso-group .riso-row-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
     expect(cut).toBe(false);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     // Tap targets are 44 px.
@@ -229,38 +233,36 @@ test.describe("on a phone", () => {
 
   test("a phone held upright shows no sale tag, so the name has the room", async ({ page }) => {
     await setup(page);
-    await expect(page.locator(".riso-row-deal")).toHaveCount(2); // they're there, just not shown
-    for (const tag of await page.locator(".riso-row-deal").all()) await expect(tag).toBeHidden();
+    await expect(page.locator(".riso-group .riso-row-deal")).toHaveCount(2); // they're there, just not shown
+    for (const tag of await page.locator(".riso-group .riso-row-deal").all()) await expect(tag).toBeHidden();
     // Nothing else is lost: the green On sale panel still lists the deals.
-    await expect(page.locator(".riso-row-qty").first()).toBeVisible();
+    await expect(page.locator(".riso-group .riso-row-qty").first()).toBeVisible();
   });
 
-  test("a phone held sideways shows the sale tag as on a computer: store, a divider, price, on one line", async ({ page }) => {
+  test("a phone held sideways shows the sale price as on a computer: the green dot, the price and ›, on one line", async ({ page }) => {
     await page.setViewportSize({ width: 667, height: 375 });
     await setup(page);
-    const looks = await page.locator(".riso-row-deal").evaluateAll((tags) =>
+    const looks = await page.locator(".riso-group .riso-row-deal").evaluateAll((tags) =>
       tags.map((tag) => {
         const r = tag.getBoundingClientRect();
-        const div = tag.querySelector(".riso-row-deal-div").getBoundingClientRect();
+        const dot = tag.querySelector(".riso-row-deal-dot");
         const row = tag.closest(".riso-row");
         const qty = row.querySelector(".riso-row-qty").getBoundingClientRect();
         const name = row.querySelector(".riso-row-name").getBoundingClientRect();
         return {
           height: Math.round(r.height),
-          dividerIsVertical: div.height >= div.width && div.height > 6,
+          dot: getComputedStyle(dot).backgroundColor,
           leftOfNumber: r.right <= qty.left,
           afterName: r.left >= name.right,
-          bg: getComputedStyle(tag).backgroundColor,
         };
       })
     );
     expect(looks).toHaveLength(2);
     for (const l of looks) {
-      expect(l.height).toBe(22); // the same tag as on a computer
-      expect(l.dividerIsVertical).toBe(true);
+      expect(l.height).toBe(32); // the same link as on a computer
+      expect(l.dot).toBe("rgb(16, 201, 92)");
       expect(l.leftOfNumber).toBe(true);
       expect(l.afterName).toBe(true);
-      expect(l.bg).toBe("rgb(16, 201, 92)");
     }
   });
 

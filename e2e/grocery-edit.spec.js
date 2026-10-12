@@ -172,6 +172,8 @@ test("checked items never show as unchecked while the list loads", async ({ page
 
 test("stores: add one and drag an item into it; it stays there", async ({ page }) => {
   await setup(page);
+  // Close How it works, so the item and the new store both fit on the screen for the drag.
+  await page.locator(".riso-hint-strip").getByRole("button", { name: "Got it" }).click();
   await page.getByRole("button", { name: "+ Add store" }).click();
   await page.getByLabel("Store name").fill("Costco");
   await page.getByRole("button", { name: "Add", exact: true }).last().click();
@@ -195,14 +197,18 @@ test("stores: add one and drag an item into it; it stays there", async ({ page }
   ).toBeVisible();
 });
 
-test("Done shopping adds the checked items to Inventory once, takes them off the list, and says the groceries are done", async ({ page }) => {
+test("Done shopping adds the queued items to Inventory once, takes them off the list, and says the groceries are done", async ({ page }) => {
   await setup(page);
-  for (const name of ["Garlic", "Lemon", "Spaghetti"]) await check(page, name).click();
+  // Two taps each: queued for Inventory (+), so Done shopping's sheet ticks them.
+  for (const name of ["Garlic", "Lemon", "Spaghetti"]) {
+    await check(page, name).click();
+    await check(page, name).click();
+  }
   // Everything in the cart: the card goes dark before Done shopping.
   await expect(page.locator(".riso-grocery-cart")).toHaveClass(/done/);
   await page.getByRole("button", { name: "Done shopping · add 3 to inventory" }).click();
   await confirmAdd(page);
-  await expect(page.locator(".riso-grocery-cart-done")).toHaveText("Groceries done ✓ Everything's in your Inventory.");
+  await expect(page.locator(".riso-grocery-cart-done")).toHaveText("Groceries done ✓ Nothing left to buy.");
   await expect(row(page, "Garlic")).toHaveCount(0);
   // Still off the list after a reload, and not added a second time.
   await page.reload();

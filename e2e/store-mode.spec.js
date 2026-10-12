@@ -48,7 +48,7 @@ async function seedList(page) {
 
 async function openStoreMode(page) {
   await page.getByRole("button", { name: "Grocery", exact: true }).first().click();
-  await expect(page.locator(".riso-row").first()).toBeVisible();
+  await expect(page.locator(".riso-group .riso-row").first()).toBeVisible();
   await page.getByRole("button", { name: /I'm at the store/ }).click();
   const mode = page.getByRole("dialog", { name: "Store mode" });
   await expect(mode).toBeVisible();
@@ -207,9 +207,9 @@ test("leaving: with nothing checked ← List just goes back; with items checked 
   await mode.locator(".store-mode-row", { hasText: "Cilantro" }).click();
   await mode.locator(".store-mode-row", { hasText: "Limes" }).click();
   await mode.getByRole("button", { name: "← List" }).click();
-  const ask = mode.getByRole("dialog", { name: "Add 2 checked items to your inventory?" });
+  const ask = mode.getByRole("dialog", { name: "2 items in your cart" });
   await expect(ask).toBeVisible();
-  await expect(ask).toContainText("Fridge, Freezer or Pantry");
+  await expect(ask).toContainText("the ones you queued on the list (+) are ticked");
   await page.screenshot({ path: test.info().outputPath("dark-leave-sheet.png") });
 
   // Keep shopping: back to the list, checks kept.
@@ -225,8 +225,13 @@ test("leaving: with nothing checked ← List just goes back; with items checked 
   await expect(ask).toBeVisible();
   expect(await (await page.request.get("/api/pantry-inventory")).json()).toHaveLength(0);
 
-  // Confirm: the items go in, a sheet says so, and they are off the list.
+  // Confirm: bought in Store mode, they start unticked; ticked, they go in, a
+  // sheet says so, and they are off the list.
   await ask.getByRole("button", { name: "Add to inventory" }).click();
+  for (const box of await page.locator(".riso-confirm .riso-confirm-on").all()) {
+    await expect(box).not.toBeChecked();
+    await box.check();
+  }
   await confirmAdd(page);
   const added = mode.getByRole("dialog", { name: "Added to your inventory" });
   await expect(added).toContainText("2 items are now in the Fridge, Freezer or Pantry with a use-by date.");
@@ -499,7 +504,7 @@ test.describe("in French", () => {
     await seedList(page);
 
     await page.getByRole("button", { name: "Épicerie", exact: true }).first().click();
-    await expect(page.locator(".riso-row").first()).toBeVisible();
+    await expect(page.locator(".riso-group .riso-row").first()).toBeVisible();
     await page.getByRole("button", { name: /Je suis à l.épicerie/ }).click();
     const mode = page.getByRole("dialog", { name: "Mode magasin" });
     await expect(mode.locator(".store-mode-at")).toHaveText("restants sur la liste");
@@ -514,7 +519,7 @@ test.describe("in French", () => {
 
     await mode.locator(".store-mode-row", { hasText: "Cilantro" }).click();
     await mode.getByRole("button", { name: "← Liste" }).click();
-    const ask = mode.getByRole("dialog", { name: "Ajouter 1 article coché à votre inventaire ?" });
+    const ask = mode.getByRole("dialog", { name: "1 article dans votre panier" });
     await expect(ask).toBeVisible();
     await expect(ask.getByRole("button", { name: "Ajouter à l'inventaire" })).toBeVisible();
     await expect(ask.getByRole("button", { name: "Quitter sans ajouter" })).toBeVisible();
@@ -537,7 +542,7 @@ test.describe("in French", () => {
     await page.request.post("/api/grocery-sections", { data: { name: "Costco" } });
     await page.reload();
     await page.getByRole("button", { name: "Épicerie", exact: true }).first().click();
-    await expect(page.locator(".riso-row").first()).toBeVisible();
+    await expect(page.locator(".riso-group .riso-row").first()).toBeVisible();
     await page.getByRole("button", { name: /Je suis à l.épicerie/ }).click();
     const mode = page.getByRole("dialog", { name: "Mode magasin" });
     await expect(mode.locator(".store-mode-hint")).toHaveText("Appuyez longuement sur un article, puis glissez-le vers un autre magasin.");
