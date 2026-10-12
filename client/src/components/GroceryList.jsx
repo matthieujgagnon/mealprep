@@ -45,6 +45,7 @@ import { GroceryItem } from "./GroceryItem.jsx";
 import { GroceryCart, GroceryHowItWorks, GroupFooter } from "./GroceryParts.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
+import { useStickyDodge } from "../hooks/useStickyDodge.js";
 import { displayQuantity, inventoryAmount } from "../lib/groceryQuantity.js";
 import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
@@ -940,6 +941,19 @@ export function GroceryList({
   const subLabel = t("grocery.subLabel", { count: totalCount - doneCount, sales: onSaleRows.length });
 
   const phone = useIsPhone();
+  // The phone's sticky "I'm at the store" never sits on the cart bar, a store's
+  // "+ Add N to inventory" or the list's last row: it slides away while one is
+  // under it (hooks/useStickyDodge.js).
+  const storeBtnRef = useRef(null);
+  const storeBtnAside = useStickyDodge(storeBtnRef, () => {
+    const main = listRef.current;
+    if (!main) return [];
+    const rows = main.querySelectorAll(".riso-group .riso-row");
+    return [
+      ...main.querySelectorAll(".riso-grocery-cartbar, .riso-group-foot-btn:not(.sample)"),
+      ...(rows.length > 0 ? [rows[rows.length - 1]] : []),
+    ];
+  });
   const cart = (
     <GroceryCart
       bar={phone}
@@ -1109,7 +1123,13 @@ export function GroceryList({
         </div>
 
         {totalCount > 0 && (
-          <button type="button" className="riso-grocery-store-btn" onClick={() => setStoreMode(true)}>
+          <button
+            type="button"
+            ref={storeBtnRef}
+            className={`riso-grocery-store-btn${storeBtnAside ? " dodge" : ""}`}
+            tabIndex={storeBtnAside ? -1 : undefined}
+            onClick={() => setStoreMode(true)}
+          >
             {t("grocery.atStore")} <span>{t("grocery.bigMode")}</span>
           </button>
         )}

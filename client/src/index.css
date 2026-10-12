@@ -12333,6 +12333,19 @@ button.riso-deal-detail-other:focus-visible {
     font: 500 10.5px var(--riso-font-mono);
     letter-spacing: 0.1em;
   }
+
+  /* While the cart bar, a store's "+ Add N to inventory" or the list's last row
+     is under it, the sticky button slides down out of the screen, and comes back
+     once they've passed (useStickyDodge). */
+  .riso-grocery-store-btn {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease-out;
+  }
+
+  .riso-grocery-store-btn.dodge {
+    transform: translateY(calc(100% + 16px));
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 /* The shelf pill: a chip per shelf that jumps to it, the same on a computer and
