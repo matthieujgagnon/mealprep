@@ -238,6 +238,8 @@ export const fr = {
     nextWeek: "Semaine prochaine",
     dinnersOnly: "Soupers seulement",
     allMeals: "Tous les repas",
+    screen: "Écran {n}",
+    screensLabel: "Écrans de l'accueil",
     stripShort: { breakfast: "Dé", lunch: "Dî", dinner: "So" },
     planMeal: "Planifier le {meal} de {day}",
     plan: "+ planifier",
@@ -1543,6 +1545,7 @@ export const fr = {
         title: "Accueil",
         lines: [
           "L'accueil montre votre journée en un coup d'œil.",
+          "L'accueil a deux écrans. Le premier montre votre journée, l'épicerie et la semaine; le second montre Protéines en rabais, Faisable maintenant et À utiliser. Faites défiler vers le bas, ou touchez un point sur le bord droit, pour passer à l'autre. Quand la fenêtre est assez haute pour les deux écrans, la page s'accroche de l'un à l'autre; sur un téléphone, elle défile librement, et les points montrent toujours où vous êtes et vous y amènent quand vous les touchez.",
           "La carte du haut suit la journée : Ce matin · Déjeuner jusqu'à 10 h, Ce midi · Dîner jusqu'à 15 h, puis Ce soir · Souper. Elle montre le repas prévu et combien de ses ingrédients vous avez. Utilisez [[startCooking]], [[swap]] ou [[eatingOut]]. Une fois le repas cuisiné, [[homeCooked]] ouvre la vue de fin (voir Mode cuisine), puis la carte indique ✓ Cuisiné. Un repas écrit ou un souper au restaurant n'a rien à cuisiner, et une journée marquée sans repas l'indique.",
           "Si rien n'est prévu pour ce repas, choisissez une recette à partir de là, ou choisissez [[eatingOut]].",
           "La carte rose d'épicerie montre combien d'articles restent à acheter, combien sont dans le panier et combien sont vraiment en rabais cette semaine. [[openList]] vous y mène.",

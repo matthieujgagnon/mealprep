@@ -76,6 +76,16 @@ async function withQuebecAverage(page) {
 const DEALS_URL = /\/api\/deals\?lite=1/;
 
 const card = (page) => page.locator(".riso-home-proteins");
+// Proteins on sale is on Home's second screen: go there (at once, not smoothly) before measuring where a row sits.
+async function onScreenTwo(page) {
+  await page.evaluate(() => {
+    const scroller = document.querySelector(".home-scroller");
+    scroller.style.scrollBehavior = "auto";
+    scroller.scrollTop = document.querySelector('[data-screen="2"]').offsetTop;
+    scroller.style.scrollBehavior = "";
+  });
+  await expect(card(page)).toBeInViewport();
+}
 // A kind's row (a button), not one of the product cards in its pop-out.
 const rowButton = (page, kind) =>
   card(page).locator("button.riso-protein-card", { has: page.locator(".riso-protein-name", { hasText: new RegExp(`^${kind}$`) }) });
@@ -86,6 +96,7 @@ test.describe("Proteins on sale on a computer", () => {
   test("a row opens a pop-out under it with three product cards across, the best buy first with a green shadow", async ({ page }) => {
     await withQuebecAverage(page);
     await seedAndLoad(page);
+    await onScreenTwo(page);
     const chicken = rowButton(page, "Chicken");
     await expect(chicken).toContainText("4 products");
     const below = rowButton(page, "Fish");

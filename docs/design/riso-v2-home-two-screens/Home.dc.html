@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&amp;family=DM+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>html,body{margin:0;background:#e4e0d6}a{color:#2323ff;text-decoration:none}a:hover{color:#16181f}.nos::-webkit-scrollbar{display:none}</style></helmet>
+<div style="padding:64px;display:flex;flex-direction:column;gap:64px;font-family:Inter,system-ui,sans-serif;color:#16181f;width:max-content;min-width:100%;box-sizing:border-box">
+  <div style="display:flex;flex-direction:column;gap:16px;width:1100px">
+    <a href="Index.dc.html" style="font:500 12px 'DM Mono',monospace;letter-spacing:0.1em">← ALL PAGES</a>
+    <span style="font:500 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">BASELINE · 02 / 12 · LIVE CODE @ main</span>
+    <h1 style="margin:0;font:800 56px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Home</h1>
+    <p style="margin:0;font:400 17px/1.5 Inter,sans-serif;color:#3f3e37;max-width:760px;text-wrap:pretty">The dashboard. A greeting by hour, the meal that is on now (breakfast before 10, lunch before 15, supper after) beside the grocery card, the week strip, then Proteins on sale, Makeable now (only when it has something) and Use it up. Sample data: Friday 9 October 2026, supper time unless noted.</p>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;margin-top:8px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font:600 11px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">SOURCE FILES</span>
+        <code style="font:400 13px/1.7 'DM Mono',monospace;white-space:pre-line">client/src/components/Home.jsx
+client/src/components/ProteinsOnSale.jsx
+client/src/lib/homeWeek.js (meal on now, Use it up tones and bar)
+client/src/lib/proteins.js (kinds and emoji)
+client/src/index.css (.home-page, .riso-home-*, .riso-protein-*, .riso-useup-*, .riso-btn, .riso-chip)
+client/src/i18n/en.js, fr.js (home.*, proteins.*, deals.verdict*)</code>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font:600 11px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">VS HANDOFF (docs/design/riso-v2/Riso v2 Home.dc.html)</span>
+        <ul style="margin:0;padding-left:18px;font:400 14px/1.6 Inter,sans-serif;color:#3f3e37">
+          <li>Bottom row order is Proteins on sale, Makeable now, Use it up; the handoff puts To use first.</li>
+          <li>Use it up lists everything inside a month and scrolls inside the card; the handoff shows up to 5 with an overflow link.</li>
+          <li>Makeable now is a count only (ready now, n one or two away) with "All →"; no recipe rows or "+ List" buttons.</li>
+          <li>The hero follows the meal on now (This morning · Breakfast / Today · Lunch / Tonight · Supper); the handoff only shows supper.</li>
+          <li>Suppers strip: only planned days and today carry a shadow (ink, today pink); empty days are dashed with none.</li>
+          <li>Proteins on sale lists every kind, always; kinds with no real sale read "No deal this week" and don't open.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <sc-for list="{{ states }}" as="st" hint-placeholder-count="2">
+    <section style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1400px">
+        <span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:4px 8px;border-radius:6px">{{ st.id }}</span>
+        <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">{{ st.name }}</h2>
+        <span style="font:400 15px Inter,sans-serif;color:#5e5b52">{{ st.caption }}</span>
+      </div>
+      <div style="display:flex;gap:40px;align-items:flex-start">
+        <sc-for list="{{ st.boards }}" as="b" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:10px;flex:none">
+            <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.label }}</span>
+            <div data-screen-label="{{ b.screenLabel }}" style="position:relative;width:{{ b.w }}px;height:{{ b.boardH }};display:flex;flex-direction:column;background:#f4f1ea;border:1px solid #bdb6a6;overflow:hidden;color:#16181f;font-family:Inter,system-ui,sans-serif;box-sizing:border-box">
+              <dc-import name="AppHeader" active="home" lang="{{ b.lang }}" phone="{{ b.phone }}" menu-open="{{ b.menuOpen }}" style="flex:none" hint-size="100%,88px"></dc-import>
+              <div ref="{{ b.scrollRef }}" onScroll="{{ b.onScroll }}" data-scroller="1" class="nos" style="position:relative;flex:1;min-height:0;overflow-x:{{ b.ox }};overflow-y:{{ b.oy }};scroll-snap-type:{{ b.snapType }};container-type:{{ b.ct }};scrollbar-width:none;scroll-behavior:smooth">
+              <div style="padding:0">
+                <div style="display:flex;flex-direction:{{ b.screensDir }}">
+                  <div data-screen="1" ref="{{ b.s1Ref }}" class="nos" style="position:{{ b.s1Pos }};top:0;z-index:0;flex:none;width:{{ b.screenW }};height:{{ b.screenH }};overflow-y:{{ b.screenOy }};scrollbar-width:none;display:flex;flex-direction:column;gap:24px;min-height:{{ b.s1Min }};padding:{{ b.headGap }} {{ b.padX }} {{ b.s1Pb }};scroll-snap-align:start;box-sizing:border-box">
+                  <h1 style="margin:0;font:800 {{ b.greetFs }}/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em;overflow-wrap:anywhere">{{ b.greet }},<br><span style="color:#2323ff">{{ b.name }}.</span></h1>
+
+                  <div style="display:grid;grid-template-columns:{{ b.topCols }};gap:20px">
+                    <section style="position:relative;background:#2323ff;color:#fff;border:2px solid #16181f;border-radius:24px;box-shadow:8px 8px 0 #16181f;padding:24px">
+                      <sc-if value="{{ b.allHave }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:-14px;right:26px;transform:rotate(6deg);border:2px solid #16181f;border-radius:999px;padding:6px 12px;font:800 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;z-index:2;background:#ffe14d;color:#16181f">{{ b.c.nothingToBuy }}</span></sc-if>
+                      <sc-if value="{{ b.heroRecipe }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;gap:20px;flex-wrap:wrap">
+                          <div style="width:{{ b.heroPhotoW }};height:{{ b.heroPhotoH }};border-radius:18px;border:2px solid #16181f;flex:none;box-sizing:border-box;background:repeating-linear-gradient(135deg,#e9e4d8 0 10px,#ddd6c6 10px 20px);display:flex;align-items:flex-end;padding:10px"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:0.08em;color:#5e5b52;background:#f4f1ea;padding:2px 6px;border-radius:4px">RECIPE PHOTO</span></div>
+                          <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px">
+                            <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:rgba(255,255,255,0.85);margin:0 0 6px;text-transform:uppercase">{{ b.heroEyebrow }}</div>
+                            <h2 style="margin:0;font:800 38px/1.05 'Bricolage Grotesque',sans-serif">{{ b.heroTitle }}</h2>
+                            <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,0.9)">{{ b.heroBlurb }}</p>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                              <span style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #16181f;background:#ff48b0;color:#16181f;box-shadow:3px 3px 0 #16181f;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.startCooking }}</span>
+                              <span style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #fff;background:transparent;color:#fff;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.swap }}</span>
+                              <span style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #fff;background:transparent;color:#fff;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.eatingOut }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ b.heroNote }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:{{ b.noteDir }};flex-wrap:nowrap;align-items:stretch;gap:{{ b.noteGap }}">
+                          <div style="width:{{ b.emojiW }};min-height:{{ b.emojiW }};box-sizing:border-box;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid #16181f;border-radius:18px;background:#ffe14d;box-shadow:4px 4px 0 #16181f;transform:rotate(-3deg);font-size:{{ b.emojiFs }};line-height:1">🍽️</div>
+                          <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px">
+                            <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:rgba(255,255,255,0.85);margin:0 0 6px;text-transform:uppercase">{{ b.heroEyebrow }}</div>
+                            <h2 style="margin:0;font:800 {{ b.noteTitleFs }}/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Restaurant</h2>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px">
+                              <span style="padding:3px 12px;border:2px solid #16181f;border-radius:999px;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:#f4f1ea;color:#16181f">{{ b.c.notFromRecipe }}</span>
+                              <span style="padding:3px 12px;border:2px solid #fff;border-radius:999px;font:500 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ b.c.nothingToPrep }}</span>
+                            </div>
+                            <p style="margin:0;font-size:14.5px;line-height:1.5;color:rgba(255,255,255,0.9)">{{ b.noteBlurb }}</p>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px">
+                              <span style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #16181f;background:#ff48b0;color:#16181f;box-shadow:3px 3px 0 #16181f;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.pickRecipe }}</span>
+                              <span style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #fff;color:#fff;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.changeInPlanner }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ b.heroEmpty }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:10px">
+                          <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:rgba(255,255,255,0.85);margin:0 0 6px;text-transform:uppercase">{{ b.heroEyebrow }}</div>
+                          <p style="margin:0;font-size:15px;color:rgba(255,255,255,0.92)">{{ b.heroEmptyText }}</p>
+                          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                            <span style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #16181f;background:#ff48b0;color:#16181f;box-shadow:3px 3px 0 #16181f;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.addRecipe }}</span>
+                            <sc-if value="{{ b.showEatingOut }}" hint-placeholder-val="{{ true }}"><span style="height:40px;padding:0 18px;border-radius:20px;border:2px solid #fff;color:#fff;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.eatingOut }}</span></sc-if>
+                          </div>
+                        </div>
+                      </sc-if>
+                    </section>
+
+                    <section style="background:{{ b.groBg }};border:2px solid #16181f;border-radius:24px;box-shadow:8px 8px 0 #16181f;padding:22px;display:flex;flex-direction:column;gap:14px">
+                      <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:{{ b.groFg }};opacity:0.75;text-transform:uppercase">{{ b.c.groceryList }}</div>
+                      <sc-if value="{{ b.groDone }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:6px">
+                          <span style="font:800 34px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#f4f1ea">{{ b.c.groceriesDone }}</span>
+                          <span style="font:700 15px/1.15 'Bricolage Grotesque',sans-serif;color:#f4f1ea">{{ b.allBought }}</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ b.groNotDone }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;align-self:flex-start;min-width:84px;gap:4px">
+                          <span style="font:800 72px/1 'Bricolage Grotesque',sans-serif;color:#16181f">{{ b.groLeft }}</span>
+                          <span style="font:700 15px/1.15 'Bricolage Grotesque',sans-serif;color:#16181f;text-align:right;width:0;min-width:100%">{{ b.groUnit }}</span>
+                        </div>
+                      </sc-if>
+                      <div style="height:14px;border-radius:7px;background:{{ b.trackBg }};border:1.5px solid {{ b.trackBd }};overflow:hidden;margin-top:auto"><div style="height:100%;width:{{ b.groPct }}%;background:{{ b.fillBg }}"></div></div>
+                      <p style="margin:0;font:400 11.5px 'DM Mono',monospace;color:{{ b.groFg }}">{{ b.groLine }}</p>
+                      <span style="height:40px;width:100%;justify-content:center;border-radius:20px;border:2px solid {{ b.groBtnBd }};background:{{ b.groBtnBg }};color:{{ b.groBtnFg }};font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.openList }}</span>
+                    </section>
+                  </div>
+
+                  <section style="background:#fffdf8;border:2px solid #16181f;border-radius:22px;padding:22px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+                      <h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ b.weekTitle }} <span style="font:400 13px Inter,sans-serif;color:#5e5b52">· {{ b.weekSub }}</span></h3>
+                      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+                        <sc-for list="{{ b.weekChips }}" as="ch" hint-placeholder-count="2"><span style="height:28px;padding:0 12px;border-radius:16px;border:2px solid #16181f;background:{{ ch.bg }};color:{{ ch.fg }};box-shadow:{{ ch.sh }};font:600 11.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;white-space:nowrap;box-sizing:border-box">{{ ch.label }}</span></sc-for>
+                        <span style="padding:0 4px;font:400 12.5px Inter,sans-serif;color:#3f3e37;text-decoration:underline;text-underline-offset:3px">{{ b.toggleLabel }}</span>
+                      </div>
+                    </div>
+                    <sc-if value="{{ b.suppers }}" hint-placeholder-val="{{ true }}">
+                      <div ref="{{ b.stripRef }}" class="nos" style="position:relative;display:grid;grid-template-columns:{{ b.stripCols }};grid-auto-flow:{{ b.stripFlow }};grid-auto-columns:{{ b.stripAutoCols }};overflow-x:{{ b.stripOx }};scrollbar-width:none;gap:10px;padding:0 6px {{ b.stripPb }} 0">
+                        <sc-for list="{{ b.days }}" as="d" hint-placeholder-count="7">
+                          <div data-today="{{ d.today }}" style="border:2px {{ d.bs }} {{ d.bc }};border-radius:16px;background:{{ d.bg }};overflow:hidden;display:flex;flex-direction:column;align-items:{{ d.ai }};justify-content:{{ d.jc }};gap:{{ d.gap }};padding:{{ d.pad }};min-height:128px;color:{{ d.fg }};box-shadow:{{ d.sh }};box-sizing:border-box">
+                            <sc-if value="{{ d.hasPhoto }}" hint-placeholder-val="{{ false }}"><div style="width:100%;height:74px;flex:none;border-bottom:2px solid #16181f;background:{{ d.photoBg }};box-sizing:border-box"></div></sc-if>
+                            <sc-if value="{{ d.hasBody }}" hint-placeholder-val="{{ false }}">
+                              <div style="padding:8px 9px 9px;display:flex;flex-direction:column;gap:3px">
+                                <span style="font:400 10px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ d.labelFg }}">{{ d.label }}</span>
+                                <span style="font:700 {{ d.titleFs }}/1.3 'Bricolage Grotesque',sans-serif">{{ d.title }}</span>
+                              </div>
+                            </sc-if>
+                            <sc-if value="{{ d.isEmpty }}" hint-placeholder-val="{{ true }}">
+                              <span style="font:400 10px 'DM Mono',monospace;letter-spacing:0.08em;color:{{ d.labelFg }}">{{ d.label }}</span>
+                              <span style="font:600 13px 'Bricolage Grotesque',sans-serif;color:{{ d.labelFg }}">{{ d.plan }}</span>
+                            </sc-if>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ b.allMeals }}" hint-placeholder-val="{{ false }}">
+                      <div ref="{{ b.stripRef }}" class="nos" style="position:relative;display:grid;grid-template-columns:{{ b.stripCols }};grid-auto-flow:{{ b.stripFlow }};grid-auto-columns:{{ b.stripAutoCols }};overflow-x:{{ b.stripOx }};scrollbar-width:none;gap:10px;padding:0 6px {{ b.stripPb }} 0">
+                        <sc-for list="{{ b.cols }}" as="col" hint-placeholder-count="7">
+                          <div data-today="{{ col.today }}" style="border:2px solid #16181f;border-radius:16px;background:{{ col.bg }};padding:8px;display:flex;flex-direction:column;gap:5px;min-width:0;box-shadow:{{ col.sh }};filter:{{ col.filter }};opacity:{{ col.op }};box-sizing:border-box">
+                            <span style="font:400 10px 'DM Mono',monospace;letter-spacing:0.08em;color:#5e5b52">{{ col.label }}</span>
+                            
+                              <div style="display:flex;align-items:flex-start;gap:5px;padding:5px 6px;border:1.5px {{ col.m0.bs }} {{ col.m0.bc }};border-radius:9px;background:{{ col.m0.bg }};color:{{ col.m0.fg }};font:{{ col.m0.fw }} 12px/1.2 'Bricolage Grotesque',sans-serif;min-height:40px;box-shadow:{{ col.m0.sh }};box-sizing:border-box">
+                                <i style="flex:none;font:normal 500 10px 'DM Mono',monospace;color:#5e5b52;padding-top:1px">{{ col.m0.short }}</i>
+                                <span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">{{ col.m0.title }}</span>
+                              </div>
+                            
+                              <div style="display:flex;align-items:flex-start;gap:5px;padding:5px 6px;border:1.5px {{ col.m1.bs }} {{ col.m1.bc }};border-radius:9px;background:{{ col.m1.bg }};color:{{ col.m1.fg }};font:{{ col.m1.fw }} 12px/1.2 'Bricolage Grotesque',sans-serif;min-height:40px;box-shadow:{{ col.m1.sh }};box-sizing:border-box">
+                                <i style="flex:none;font:normal 500 10px 'DM Mono',monospace;color:#5e5b52;padding-top:1px">{{ col.m1.short }}</i>
+                                <span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">{{ col.m1.title }}</span>
+                              </div>
+                            
+                              <div style="display:flex;align-items:flex-start;gap:5px;padding:5px 6px;border:1.5px {{ col.m2.bs }} {{ col.m2.bc }};border-radius:9px;background:{{ col.m2.bg }};color:{{ col.m2.fg }};font:{{ col.m2.fw }} 12px/1.2 'Bricolage Grotesque',sans-serif;min-height:40px;box-shadow:{{ col.m2.sh }};box-sizing:border-box">
+                                <i style="flex:none;font:normal 500 10px 'DM Mono',monospace;color:#5e5b52;padding-top:1px">{{ col.m2.short }}</i>
+                                <span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">{{ col.m2.title }}</span>
+                              </div>
+                            
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </section>
+                  </div>
+
+                  <div data-screen="2" class="nos" style="position:relative;z-index:1;flex:none;width:{{ b.screenW }};height:{{ b.screenH }};overflow-y:{{ b.screenOy }};scrollbar-width:none;background:{{ b.s2Bg }};border:{{ b.s2Bd }};border-bottom-width:0;border-radius:{{ b.s2Rad }};display:flex;flex-direction:column;min-height:{{ b.screenMin }};padding:{{ b.s2Pt }} {{ b.padX }} {{ b.pageBottom }};scroll-snap-align:start;box-sizing:border-box">
+                  <sc-if value="{{ b.handle }}" hint-placeholder-val="{{ false }}"><div style="width:44px;height:5px;border-radius:3px;background:#bdb6a6;margin:0 auto 16px;flex:none"></div></sc-if>
+                  <div style="display:grid;grid-template-columns:{{ b.bottomCols }};gap:20px;align-items:stretch">
+                    <section style="background:{{ b.protBg }};border:2px solid #16181f;border-radius:22px;padding:22px;display:flex;flex-direction:column;position:relative;z-index:{{ b.protZ }}">
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px">
+                        <h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ b.c.proteinsTitle }}</h3>
+                        <span style="color:#2323ff;font:700 13px 'Bricolage Grotesque',sans-serif">{{ b.c.flyersLink }}</span>
+                      </div>
+                      <sc-if value="{{ b.noDeals }}" hint-placeholder-val="{{ false }}"><p style="font-size:13px;color:#5e5b52;margin:0 0 12px">{{ b.c.noDeals }}</p></sc-if>
+                      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+                        <sc-for list="{{ b.proteins }}" as="p" hint-placeholder-count="8">
+                          <li style="position:relative;z-index:{{ p.z }}">
+                            <div style="width:100%;box-sizing:border-box;height:78px;padding:{{ b.protPad }};border:2px solid #16181f;border-radius:{{ p.rad }};background:#fffdf8;display:grid;grid-template-columns:{{ p.cols }};column-gap:{{ b.protGap }};align-items:center;box-shadow:{{ p.sh }};filter:{{ p.filter }};opacity:{{ p.op }}">
+                              <span style="font-size:22px;width:28px;text-align:center;opacity:{{ p.emojiOp }}">{{ p.emoji }}</span>
+                              <span style="min-width:0;display:flex;flex-direction:column;gap:2px">
+                                <span style="font:{{ p.nameW }} 14.5px/1.15 'Bricolage Grotesque',sans-serif;color:{{ p.nameFg }};overflow-wrap:anywhere">{{ p.label }}</span>
+                                <span style="margin-top:{{ p.subMt }};font:{{ p.subFont }};letter-spacing:{{ p.subLs }};text-transform:{{ p.subTt }};white-space:nowrap;color:#5e5b52;overflow:hidden;text-overflow:ellipsis">{{ p.sub }}</span>
+                              </span>
+                              <sc-if value="{{ p.hasDeal }}" hint-placeholder-val="{{ true }}">
+                                <span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+                                  <span style="font:800 18px/1 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ p.amount }}<small style="font:500 11px 'DM Mono',monospace">{{ p.unit }}</small></span>
+                                  <sc-if value="{{ p.isBest }}" hint-placeholder-val="{{ false }}"><span style="background:#10c95c;border:1.5px solid #16181f;border-radius:999px;padding:0 8px;font:800 11px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ b.c.bestDeal }}</span></sc-if>
+                                  <sc-if value="{{ p.hasVerdict }}" hint-placeholder-val="{{ true }}"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;text-align:right;color:{{ p.verdictFg }}">{{ p.verdict }}</span></sc-if>
+                                </span>
+                                <span style="width:{{ b.chevW }};height:{{ b.chevW }};box-sizing:border-box;border:2px solid #16181f;border-radius:50%;background:{{ p.chevBg }};color:{{ p.chevFg }};display:flex;align-items:center;justify-content:center;font:800 17px/1 'Bricolage Grotesque',sans-serif">{{ p.chev }}</span>
+                              </sc-if>
+                            </div>
+                            <sc-if value="{{ p.open }}" hint-placeholder-val="{{ false }}">
+                              <div style="position:absolute;z-index:30;top:100%;left:-2px;width:calc(100% + 4px);box-sizing:border-box;padding:8px 14px 10px;background:#fffdf8;border:2px solid #16181f;border-radius:0 0 16px 16px;box-shadow:4px 4px 0 #2323ff">
+                                <ul style="list-style:none;margin:0;padding:0">
+                                  <sc-for list="{{ b.products }}" as="pr" hint-placeholder-count="3">
+                                    <li style="border-top:{{ pr.bt }}">
+                                      <div style="width:100%;display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:10px;background:{{ pr.headBg }};box-sizing:border-box">
+                                        <span style="width:36px;height:36px;flex:none;border:2px solid #16181f;border-radius:9px;box-sizing:border-box;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px">{{ pr.emoji }}</span>
+                                        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+                                          <span style="font:600 13px/1.2 Inter,sans-serif">{{ pr.name }}</span>
+                                          <span style="font:500 11px/1.2 Inter,sans-serif;color:#5e5b52">{{ pr.store }} <span style="font-size:9px">{{ pr.caret }}</span></span>
+                                        </span>
+                                        <span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none">
+                                          <span style="font:800 14px/1 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ pr.amount }}<small style="font:500 10px 'DM Mono',monospace">{{ pr.unit }}</small></span>
+                                          <span style="background:#10c95c;border:1.5px solid #16181f;border-radius:999px;padding:0 7px;font:800 10.5px/16px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ pr.off }}</span>
+                                        </span>
+                                      </div>
+                                      <sc-if value="{{ pr.open }}" hint-placeholder-val="{{ false }}">
+                                        <div style="margin:0 4px 8px;padding:10px 12px;border:1.5px dashed #bdb6a6;border-radius:12px;display:flex;flex-direction:column;gap:8px">
+                                          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+                                            <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font:500 9.5px 'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;color:#5e5b52">{{ pr.s0.cap }}</span><span style="font:700 13px 'Bricolage Grotesque',sans-serif;color:{{ pr.s0.fg }}">{{ pr.s0.val }}</span></div><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font:500 9.5px 'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;color:#5e5b52">{{ pr.s1.cap }}</span><span style="font:700 13px 'Bricolage Grotesque',sans-serif;color:{{ pr.s1.fg }}">{{ pr.s1.val }}</span></div><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font:500 9.5px 'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;color:#5e5b52">{{ pr.s2.cap }}</span><span style="font:700 13px 'Bricolage Grotesque',sans-serif;color:{{ pr.s2.fg }}">{{ pr.s2.val }}</span></div>
+                                          </div>
+                                          <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                            <span style="height:32px;box-sizing:border-box;padding:0 13px;border-radius:16px;border:2px solid #16181f;display:inline-flex;align-items:center;font:800 12px 'Bricolage Grotesque',sans-serif;background:#ffe14d">{{ b.c.addToList }}</span>
+                                            <span style="height:32px;box-sizing:border-box;padding:0 13px;border-radius:16px;border:2px dashed #16181f;display:inline-flex;align-items:center;font:700 12px 'Bricolage Grotesque',sans-serif">{{ b.c.openFlyer }}</span>
+                                          </div>
+                                        </div>
+                                      </sc-if>
+                                    </li>
+                                  </sc-for>
+                                </ul>
+                                <div style="margin-top:4px;padding:10px 6px 4px;border-top:1.5px solid #e9e4d8"><span style="color:#2323ff;font:700 13px 'Bricolage Grotesque',sans-serif">{{ b.seeRecipes }}</span></div>
+                              </div>
+                            </sc-if>
+                          </li>
+                        </sc-for>
+                      </ul>
+                      <div style="flex:1;min-height:14px"></div>
+                    </section>
+
+                    <sc-if value="{{ b.showMakeable }}" hint-placeholder-val="{{ true }}">
+                      <section style="background:#fffdf8;border:2px solid #16181f;border-radius:22px;padding:22px;display:flex;flex-direction:column;filter:{{ b.restFilter }}">
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px">
+                          <h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ b.c.makeableNow }}</h3>
+                          <span style="color:#2323ff;font:700 13px 'Bricolage Grotesque',sans-serif">{{ b.c.allLink }}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <span style="font:800 44px/0.9 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">3</span>
+                          <span style="font:600 14px/1.25 'Bricolage Grotesque',sans-serif">{{ b.c.readyNow }}<br><span style="font-weight:500;color:#5e5b52">{{ b.nearly }}</span></span>
+                        </div>
+                      </section>
+                    </sc-if>
+
+                    <section style="background:#fffdf8;border:2px solid #16181f;border-radius:22px;padding:22px;display:flex;flex-direction:column;filter:{{ b.restFilter }}">
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px">
+                        <h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif">{{ b.c.useItUp }}</h3>
+                        <span style="color:#2323ff;font:700 13px 'Bricolage Grotesque',sans-serif">{{ b.c.inventoryLink }}</span>
+                      </div>
+                      <sc-if value="{{ b.noExpiring }}" hint-placeholder-val="{{ false }}"><p style="font-size:13px;color:#5e5b52;margin:0">{{ b.c.nothingExpiring }}</p></sc-if>
+                      <sc-if value="{{ b.hasExpiring }}" hint-placeholder-val="{{ true }}">
+                        <div style="position:relative;flex:{{ b.useFlex }};min-height:220px;height:{{ b.useH }};margin-bottom:12px">
+                          <ul style="list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;position:absolute;inset:0;overflow:hidden">
+                            <sc-for list="{{ b.useup }}" as="u" hint-placeholder-count="5">
+                              <li style="display:flex;gap:12px;align-items:center;margin-top:{{ u.mt }};padding-top:{{ u.mt }};border-top:{{ u.bt }}">
+                                <span style="width:56px;height:56px;flex:none;box-sizing:border-box;border:2px solid #16181f;border-radius:12px;background:#f4f1ea;display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1">{{ u.emoji }}</span>
+                                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                                  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                                    <div style="display:flex;flex-direction:column;min-width:0">
+                                      <span style="font:700 15px/1.2 'Bricolage Grotesque',sans-serif;overflow-wrap:anywhere">{{ u.name }}</span>
+                                      <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;color:#5e5b52">{{ u.qty }}</span>
+                                    </div>
+                                    <span style="border:1.5px solid #16181f;border-radius:999px;padding:1px 10px;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:{{ u.bg }};color:{{ u.fg }}">{{ u.badge }}</span>
+                                  </div>
+                                  <div style="height:8px;border-radius:4px;background:#f4f1ea;border:1.5px solid #16181f;overflow:hidden"><div style="height:100%;width:{{ u.pct }}%;background:{{ u.bg }}"></div></div>
+                                </div>
+                              </li>
+                            </sc-for>
+                          </ul>
+                        </div>
+                        <p style="margin:0 0 10px;font-size:13.5px;line-height:1.45;color:#3f3e37">{{ b.usesNote }}</p>
+                        <span style="height:40px;width:100%;justify-content:center;border-radius:20px;border:2px solid #16181f;background:#16181f;color:#f4f1ea;font:600 13.5px 'Bricolage Grotesque',sans-serif;display:inline-flex;align-items:center;box-sizing:border-box">{{ b.c.cookWithThese }}</span>
+                      </sc-if>
+                    </section>
+                  </div>
+                  </div>
+                </div>
+              </div>
+              </div>
+              <sc-if value="{{ b.snap }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:{{ b.dotsRight }};left:{{ b.dotsLeft }};top:{{ b.dotsTop }};bottom:{{ b.dotsBottom }};transform:{{ b.dotsTf }};z-index:40;display:flex;flex-direction:{{ b.dotsDir }};gap:4px">
+                  <sc-for list="{{ b.dots }}" as="dt" hint-placeholder-count="2">
+                    <button onClick="{{ dt.go }}" title="{{ dt.label }}" style="all:unset;cursor:pointer;width:{{ dt.hitW }};height:{{ dt.hitH }};display:flex;align-items:center;justify-content:center">
+                      <span style="width:{{ dt.w }};height:{{ dt.h }};border-radius:5px;border:2px solid #16181f;background:{{ dt.bg }};box-sizing:border-box;transition:width .2s,height .2s,background .2s"></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.scrim }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;z-index:60;background:rgba(22,24,31,0.22);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);pointer-events:none"></div></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;both&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;en&quot;,&quot;fr&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;only&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { import('./kit.js').then(k => { this.k = k; this.forceUpdate(); }); }
+  state = { at: {} };
+  STATES = [
+    { id: '2.0', name: 'Two screens · vertical snap', caption: 'Screen 1: greeting, the meal on now, groceries, the week. Screen 2: Proteins on sale, Makeable now, Use it up. Scrolling snaps between them; the dots on the right show where you are and jump on tap. Scroll inside each board to try it.', snap: true },
+    { id: '2.0b', name: 'Vertical · proximity snap', caption: 'Same two screens, but snap only catches when you stop near the boundary. Stop anywhere else and the page stays put, so long phone screens never jump.', snap: 'proximity' },
+    { id: '2.0c', name: 'Vertical · peek', caption: 'Screen 1 ends 76px short, so the tops of Proteins on sale, Makeable now and Use it up show at the bottom as a hint that there is more. Mandatory snap.', snap: 'peek' },
+    { id: '2.0d', name: 'Stack · screen 2 slides over', caption: 'Screen 1 stays pinned (once its bottom is reached) while screen 2 rises over it as a sheet with a rounded top edge and a handle. Mandatory snap.', snap: 'stack' },
+    { id: '2.0e', name: 'Horizontal pager', caption: 'The screens sit side by side: swipe left and right, and each screen scrolls up and down on its own. Dots move to the bottom. On desktop this needs a trackpad or the dots; a mouse wheel will not page.', snap: 'pager' },
+    { id: '2.1', name: 'Default · supper planned', caption: 'Tonight has a recipe (9 of 11 on hand), 7 left on the grocery list, Makeable now has something, so the bottom row is three across.' },
+    { id: '2.2', name: 'Everything on hand · groceries done', caption: 'Yellow "nothing to buy!" sticker on the hero; the grocery card turns ink with a pink bar and button.', allHave: true, groDone: true },
+    { id: '2.3', name: 'Tonight is a note · all meals', caption: 'A written meal (🍽️ Restaurant) gets the emoji tile; "All meals" shows B / L / S per day, today\'s current meal with the pink shadow.', hero: 'note', allMeals: true },
+    { id: '2.4', name: 'Lunch time · nothing planned · next week · avatar menu', caption: 'At lunch the hero reads "Today · Lunch"; the strip looks at next week (no today, no greyed days). Avatar menu open: name, Help, Log out.', hero: 'empty', meal: 'lunch', greet: 'afternoon', next: true, menu: true },
+    { id: '2.5', name: 'Marked as no meal · quiet week', caption: 'Slot marked blank (no "Eating out"). Nothing makeable, so Proteins takes the wide column; nothing expiring; no flyer deals loaded.', hero: 'blank', noMakeable: true, noExpiring: true, noDeals: true, groEmpty: true },
+    { id: '2.6', name: 'Proteins on sale · open', caption: 'Tapping a protein opens its products under it; one product is open on its details. The rest of the page blurs (scrim).', proteinOpen: true },
+  ];
+  stripRef = el => { if (!el) return; requestAnimationFrame(() => { const today = el.querySelector('[data-today="true"]'); el.scrollLeft = today && el.scrollWidth > el.clientWidth ? today.offsetLeft - (el.clientWidth - today.offsetWidth) / 2 : 0; }); };
+  board(k, s, bd) {
+    const L = bd.lang, P = bd.phone, t = k.tr(L), D = k.dict(L), money = n => k.money(L, n);
+    const c = {};
+    ['nothingToBuy','startCooking','swap','eatingOut','notFromRecipe','nothingToPrep','pickRecipe','changeInPlanner','addRecipe','groceryList','groceriesDone','openList','useItUp','inventoryLink','nothingExpiring','cookWithThese','makeableNow','allLink','readyNow'].forEach(x => c[x] = t('home.' + x));
+    ['bestDeal','addToList','openFlyer','noDeals','flyersLink'].forEach(x => c[x] = t('proteins.' + x));
+    c.proteinsTitle = t('proteins.title');
+    const meal = s.meal || 'dinner';
+    const HERO = { breakfast: ['home.thisMorning','home.markedBlankMorning','home.nothingMorning'], lunch: ['home.todayLunch','home.markedBlankMidday','home.nothingMidday'], dinner: ['home.tonight','home.markedBlank','home.nothingTonight'] }[meal];
+    const hero = s.hero || 'recipe';
+    // grocery
+    const total = s.groEmpty ? 0 : 12, checked = s.groDone ? 12 : s.groEmpty ? 0 : 5;
+    const done = total > 0 && checked === total;
+    const left = total - checked;
+    // week strip
+    const today = s.next ? -1 : 4;
+    const R = { pasta: 'Pasta e fagioli', salmon: 'Salmon rice bowls', shaw: 'Sheet-pan chicken shawarma', risotto: 'Mushroom risotto', oats: 'Overnight oats', pancakes: 'Buttermilk pancakes', beef: 'Beef & broccoli', pizza: '🍕 Pizza night', work: 'Lunch at work' };
+    const NOTE = new Set([R.pizza, R.work]);
+    const thisWeek = [[R.oats, null, R.pasta], [null, R.pasta, R.salmon], [R.oats, null, null], [null, R.salmon, R.pizza], [R.oats, R.work, hero === 'recipe' ? R.shaw : hero === 'note' ? '🍽️ Restaurant' : null], [R.pancakes, null, null], [null, null, R.risotto]];
+    const nextWeek = [[null, null, R.beef], [null, null, null], [null, null, null], [null, null, null], [null, null, null], [null, null, null], [null, null, null]];
+    const week = s.next ? nextWeek : thisWeek;
+    const start = s.next ? 12 : 5;
+    const label = d => `${D.days.short[d].toUpperCase()} ${start + d}`;
+    const MEALS = ['breakfast', 'lunch', 'dinner'];
+    const days = week.map((m, d) => {
+      const title = m[2], isToday = d === today, past = d < today;
+      const isNote = title && (NOTE.has(title) || title.startsWith('🍽️'));
+      if (!title) return { today: isToday, label: label(d), bs: past ? 'solid' : 'dashed', bc: '#16181f', bg: past ? '#e9e4d8' : 'transparent', fg: '#16181f', ai: 'center', jc: 'center', gap: '8px', pad: '10px', sh: isToday ? '4px 4px 0 #ff48b0' : 'none', hasPhoto: false, hasBody: false, isEmpty: true, plan: past ? '—' : t('home.plan'), labelFg: past ? '#6b685f' : '#5e5b52' };
+      return { today: isToday, label: label(d), title, bs: 'solid', bc: '#16181f', bg: past ? '#e9e4d8' : '#f4f1ea', fg: past ? '#6b685f' : '#16181f', ai: 'stretch', jc: isNote ? 'center' : 'flex-start', gap: '0', pad: '0', sh: past ? 'none' : isToday ? '4px 4px 0 #ff48b0' : '4px 4px 0 #16181f', hasPhoto: !isNote, photoBg: past ? 'repeating-linear-gradient(135deg,#d6d3cc 0 8px,#c9c6bf 8px 16px)' : 'repeating-linear-gradient(135deg,#e9e4d8 0 8px,#ddd6c6 8px 16px)', hasBody: true, isEmpty: false, titleFs: /^\p{Extended_Pictographic}/u.test(title) ? '15px' : '12.5px', labelFg: past ? '#6b685f' : '#5e5b52' };
+    });
+    const cols = week.map((m, d) => {
+      const isToday = d === today, past = d < today;
+      return { today: isToday, label: label(d), bg: isToday ? '#fffdf8' : '#f4f1ea', sh: isToday ? '4px 4px 0 #ff48b0' : 'none', filter: past ? 'grayscale(1)' : 'none', op: past ? 0.7 : 1,
+        ...(() => { const ms = MEALS.map((mt, i) => {
+          const title = m[i], cur = isToday && mt === meal;
+          const base = { short: t('home.stripShort.' + mt) };
+          if (!title) return { ...base, title: '—', bs: cur ? 'solid' : 'dashed', bc: cur || isToday ? '#16181f' : '#bdb6a6', bg: cur ? '#fffdf8' : 'none', fg: '#5e5b52', fw: 500, sh: cur ? '3px 3px 0 #ff48b0' : 'none' };
+          const note = NOTE.has(title) || title.startsWith('🍽️');
+          return { ...base, title, bs: 'solid', bc: '#16181f', bg: cur ? '#fffdf8' : note ? '#f4f1ea' : '#fffdf8', fg: '#16181f', fw: note ? 600 : 700, sh: cur ? '3px 3px 0 #ff48b0' : 'none' };
+        }); return { m0: ms[0], m1: ms[1], m2: ms[2] }; })() };
+    });
+    const plannedSup = week.filter(m => m[2]).length, plannedAll = week.reduce((n, m) => n + m.filter(Boolean).length, 0);
+    // proteins
+    const lb = L === 'fr' ? '/lb' : '/lb';
+    const VER = { stockUp: ['deals.verdictStockUp', '#16a34a'], buy: ['deals.verdictBuy', '#16a34a'], fair: ['deals.verdictFair', '#5e5b52'], unknown: ['deals.verdictCantTell', '#5e5b52'], skip: ['deals.verdictSkip', '#8a0f55'] };
+    const PROT = [['chicken', '🍗', 2.99, 3, 'stockUp'], ['beef', '🥩', 6.99, 2, 'buy'], ['pork', '🐖', 1.99, 4, 'best'], ['fish', '🐟', 8.99, 1, 'unknown'], ['seafood', '🦐'], ['turkey', '🦃'], ['lamb-veal', '🐑'], ['tofu', '⬜']];
+    const openId = s.proteinOpen ? 'chicken' : null;
+    const proteins = PROT.map(([id, emoji, price, n, v]) => {
+      const has = !s.noDeals && price != null, isOpen = id === openId, dim = !!openId && !isOpen;
+      const base = { emoji, label: t('proteins.kinds.' + id), z: isOpen ? 31 : 'auto', filter: dim ? 'blur(3px)' : 'none', op: dim ? 0.55 : 1, open: isOpen };
+      if (!has) return { ...base, hasDeal: false, cols: (P ? '26px' : '30px') + ' minmax(0,1fr) auto', rad: '14px', sh: 'none', emojiOp: 0.55, nameW: 600, nameFg: '#5e5b52', sub: t('proteins.noDeal'), subMt: '0', subFont: '400 12px Inter,sans-serif', subLs: 'normal', subTt: 'none' };
+      return { ...base, hasDeal: true, cols: P ? '26px minmax(0,1fr) auto 34px' : '30px minmax(0,1fr) auto 38px', rad: isOpen ? '16px 16px 0 0' : '14px', sh: isOpen ? '4px 4px 0 #2323ff' : 'none', emojiOp: 1, nameW: 700, nameFg: '#16181f', sub: t('proteins.products', { count: n }), subMt: '3px', subFont: "500 10.5px 'DM Mono',monospace", subLs: '0.06em', subTt: 'uppercase', amount: money(price), unit: lb, isBest: v === 'best', hasVerdict: v !== 'best', verdict: v !== 'best' ? t(VER[v][0]) : '', verdictFg: v !== 'best' ? VER[v][1] : '', chev: isOpen ? '▴' : '▾', chevBg: isOpen ? '#16181f' : '#fffdf8', chevFg: isOpen ? '#fff' : '#16181f' };
+    });
+    const PRODS = L === 'fr'
+      ? [['Hauts de cuisse de poulet désossés', 'Metro', 2.99, 40, true], ['Poitrines de poulet', 'IGA', 3.99, 50], ['Pilons de poulet', 'Super C', 3.29, 25]]
+      : [['Boneless chicken thighs', 'Metro', 2.99, 40, true], ['Chicken breasts', 'IGA', 3.99, 50], ['Chicken drumsticks', 'Super C', 3.29, 25]];
+    const products = PRODS.map(([name, store, price, pct, open], i) => ({ name, store, emoji: '🍗', amount: money(price), unit: lb, off: t('proteins.offPct', { pct }), open: !!open, caret: open ? '▴' : '▾', headBg: open ? '#f4f1ea' : 'none', bt: i ? '1.5px solid #e9e4d8' : 'none',
+      ...(() => { const st = [{ cap: t('proteins.regularCap'), val: money(4.99) + lb, fg: '#16181f' }, { cap: t('proteins.endsCap'), val: (D.days.long[2].charAt(0).toUpperCase() + D.days.long[2].slice(1)), fg: '#16181f' }, { cap: t('proteins.qcCap'), val: t('proteins.qcLess', { pct: 38 }), fg: '#00753f' }]; return { s0: st[0], s1: st[1], s2: st[2] }; })() }));
+    // use it up
+    const UP = L === 'fr'
+      ? [['Épinards', '🥬', '300 g', 0], ['Coriandre', '🌿', '1', 1], ['Hauts de cuisse de poulet', '🍗', '900 g', 2], ['Yogourt grec', '🥛', '750 g', 5], ['Champignons', '🍄', '227 g', 6], ['Crème 35 %', '🥛', '473 ml', 11], ['Cheddar', '🧀', '400 g', 19]]
+      : [['Spinach', '🥬', '300 g', 0], ['Cilantro', '🌿', '1', 1], ['Chicken thighs', '🍗', '900 g', 2], ['Greek yogurt', '🥛', '750 g', 5], ['Mushrooms', '🍄', '227 g', 6], ['35% cream', '🥛', '473 ml', 11], ['Cheddar', '🧀', '400 g', 19]];
+    const tone = d => d <= 3 ? ['#ff48b0', '#16181f'] : d <= 7 ? ['#ffe14d', '#16181f'] : ['#2323ff', '#fff'];
+    const useup = UP.map(([name, emoji, qty, d], i) => ({ name, emoji, qty, badge: d === 0 ? t('home.todayBang') : d === 1 ? t('home.tomorrowBang') : t('home.daysLeft', { count: d }), bg: tone(d)[0], fg: tone(d)[1], pct: Math.max(8, Math.min(96, Math.round((1 - d / 7) * 100))), mt: i ? '12px' : '0', bt: i ? '1.5px solid #d9d3c4' : 'none' }));
+    const showMakeable = !s.noMakeable;
+    const key = `${s.id}-${bd.label}`, at = this.state.at[key] || 0;
+    const mode = s.snap === true ? 'mandatory' : s.snap || null, snap = !!mode, H = mode === 'pager', ST = mode === 'stack', PK = mode === 'peek';
+    const els = this.els || (this.els = {});
+    const go = i => () => { const el = els[key]; if (!el) return; const tgt = el.querySelector(`[data-screen="${i + 1}"]`); if (H) el.scrollLeft = i ? tgt.offsetLeft : 0; else el.scrollTop = i ? tgt.offsetTop : 0; };
+    const snapVals = {
+      snap, boardH: snap ? (P ? '844px' : '900px') : 'auto', oy: snap ? (H ? 'hidden' : 'auto') : 'visible', ox: H ? 'auto' : 'visible',
+      snapType: !snap ? 'none' : H ? 'x mandatory' : mode === 'proximity' ? 'y proximity' : 'y mandatory', ct: snap ? 'size' : 'normal',
+      screensDir: H ? 'row' : 'column', screenW: H ? '100cqw' : 'auto', screenH: H ? '100cqh' : 'auto', screenOy: H ? 'auto' : 'visible',
+      screenMin: snap ? '100cqh' : 'auto', s1Min: snap ? (PK ? 'calc(100cqh - 76px)' : '100cqh') : 'auto', s1Pos: ST ? 'sticky' : 'relative',
+      s1Ref: ST ? el => { if (el) requestAnimationFrame(() => { const sc = el.closest('[data-scroller]'); if (sc) el.style.top = Math.min(0, sc.clientHeight - el.offsetHeight) + 'px'; }); } : undefined,
+      s2Bg: ST ? '#f4f1ea' : 'transparent', s2Bd: ST ? '2px solid #16181f' : 'none', s2Rad: ST ? '28px 28px 0 0' : '0', handle: ST,
+      padX: P ? '18px' : '40px', s1Pb: snap ? '32px' : '24px', s2Pt: snap ? (ST ? '12px' : P ? '18px' : '24px') : '0',
+      dotsRight: H ? 'auto' : P ? '2px' : '10px', dotsLeft: H ? '50%' : 'auto', dotsTop: H ? 'auto' : 'calc(50% + 40px)', dotsBottom: H ? '12px' : 'auto', dotsTf: H ? 'translateX(-50%)' : 'translateY(-50%)', dotsDir: H ? 'row' : 'column',
+      scrollRef: el => { if (el) els[key] = el; },
+      onScroll: snap ? e => { const el = e.currentTarget, s2 = el.querySelector('[data-screen="2"]'); const i = (H ? el.scrollLeft + el.clientWidth / 2 >= s2.offsetLeft : el.scrollTop + el.clientHeight / 2 >= s2.offsetTop) ? 1 : 0; if (i !== at) this.setState(st => ({ at: { ...st.at, [key]: i } })); } : undefined,
+      dots: [0, 1].map(i => { const on = i === at; return { go: go(i), label: L === 'fr' ? `Écran ${i + 1}` : `Screen ${i + 1}`, w: H && on ? '26px' : '10px', h: !H && on ? '26px' : '10px', hitW: H ? (on ? '34px' : '20px') : '24px', hitH: H ? '24px' : (on ? '34px' : '20px'), bg: on ? '#16181f' : '#f4f1ea' }; }),
+    };
+    return {
+      ...snapVals,
+      ...bd, c, screenLabel: `${s.id} Home ${bd.label}`, menuOpen: !!s.menu,
+      appPad: P ? '0 18px' : '0 40px', headGap: P ? '18px' : '24px', pageBottom: P ? '40px' : '44px',
+      greetFs: P ? '32px' : '44px', greet: t('home.greeting.' + (s.greet || 'evening')), name: 'Matthieu',
+      topCols: P ? '1fr' : 'minmax(0,1.7fr) minmax(0,1fr)',
+      allHave: !!s.allHave && hero === 'recipe', heroRecipe: hero === 'recipe', heroNote: hero === 'note', heroEmpty: hero === 'empty' || hero === 'blank',
+      heroEyebrow: t(HERO[0]), heroTitle: R.shaw, heroBlurb: s.allHave ? t('home.haveAll', { count: 11 }) : t('home.haveSome', { have: 9, total: 11 }),
+      heroPhotoW: P ? '100%' : 'clamp(160px, 30%, 250px)', heroPhotoH: P ? '180px' : '230px',
+      noteDir: P ? 'column' : 'row', noteGap: P ? '18px' : '24px', emojiW: P ? '120px' : 'clamp(150px, 26%, 220px)', emojiFs: P ? '64px' : '92px', noteTitleFs: P ? '34px' : '42px',
+      noteBlurb: t('home.eatingOutBlurb') + ' ' + t('home.stillOpen', { count: 1, days: D.days.long[5].charAt(0).toUpperCase() + D.days.long[5].slice(1) }),
+      heroEmptyText: hero === 'blank' ? t(HERO[1]) : t(HERO[2]), showEatingOut: hero !== 'blank',
+      groDone: done, groNotDone: !done, groBg: done ? '#16181f' : '#ff48b0', groFg: done ? '#f4f1ea' : '#16181f',
+      allBought: t('home.allBought', { count: total }), groLeft: left, groUnit: total === 0 ? t('home.nothingYet') : t('home.leftToGrab', { count: left }),
+      groPct: total ? Math.round(checked / total * 100) : 0, trackBg: done ? '#16181f' : '#f4f1ea', trackBd: done ? '#f4f1ea' : '#16181f', fillBg: done ? '#ff48b0' : '#16181f',
+      groLine: t('home.inCart', { checked, total }) + (!done && total ? t('home.onSale', { count: 3 }) : ''),
+      groBtnBg: done ? '#ff48b0' : '#16181f', groBtnBd: done ? '#ff48b0' : '#16181f', groBtnFg: done ? '#16181f' : '#f4f1ea',
+      weekTitle: t(`home.weekTitle.${s.next ? 'next' : 'this'}${s.allMeals ? 'Meals' : 'Dinners'}`),
+      weekSub: s.allMeals ? t('home.plannedOf', { planned: plannedAll, total: 21 }) : t('home.plannedOf', { planned: plannedSup, total: 7 }),
+      weekChips: [[t('home.thisWeek'), !s.next], [t('home.nextWeek'), !!s.next]].map(([label, on]) => ({ label, bg: on ? '#16181f' : '#fffdf8', fg: on ? '#f4f1ea' : '#16181f', sh: on ? '3px 3px 0 #2323ff' : 'none' })),
+      toggleLabel: s.allMeals ? t('home.dinnersOnly') : t('home.allMeals'),
+      suppers: !s.allMeals, allMeals: !!s.allMeals, days, cols, stripRef: this.stripRef,
+      stripCols: P ? 'none' : 'repeat(7, minmax(0, 1fr))', stripFlow: P ? 'column' : 'row', stripAutoCols: P ? 'minmax(110px, 1fr)' : 'auto', stripOx: P ? 'auto' : 'visible', stripPb: P ? '4px' : '6px',
+      bottomCols: P ? '1fr' : showMakeable ? 'minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1.7fr) minmax(0,1fr)',
+      protBg: openId ? '#f2f0eb' : '#fffdf8', protZ: openId ? 61 : 'auto', protPad: P ? '10px' : '10px 12px', protGap: P ? '10px' : '18px', chevW: P ? '34px' : '38px',
+      noDeals: !!s.noDeals, proteins, products, seeRecipes: t('proteins.seeRecipes', { count: 6, name: t('proteins.useName.chicken') }),
+      showMakeable, nearly: t('home.nearly', { count: 4 }), restFilter: 'none',
+      noExpiring: !!s.noExpiring, hasExpiring: !s.noExpiring, useup, useFlex: P ? 'none' : '1 1 0', useH: P ? '380px' : 'auto',
+      usesNote: t('home.usesTwo', { count: 4 }), scrim: !!openId,
+    };
+  }
+  renderVals() {
+    const k = this.k;
+    if (!k) return { states: [] };
+    const pref = this.props.lang || 'both';
+    return { states: this.STATES.filter(s => (this.props.only || '2.0').split(',').includes(s.id)).map(s => ({ id: s.id, name: s.name, caption: s.caption, boards: k.boards(pref).map(bd => this.board(k, s, bd)) })) };
+  }
+}
+</script>
+</body>
+</html>
