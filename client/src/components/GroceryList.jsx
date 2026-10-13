@@ -43,6 +43,7 @@ import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
 import { GroceryItem } from "./GroceryItem.jsx";
 import { GroceryCart, GroceryHowItWorks, GroupFooter } from "./GroceryParts.jsx";
+import { RemovedStrip } from "./RemovedStrip.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { useStickyDodge } from "../hooks/useStickyDodge.js";
@@ -1101,25 +1102,18 @@ export function GroceryList({
             ))
           )}
 
-          {removedItems.length > 0 && (
-            <div className="riso-grocery-removed">
-              <span className="riso-grocery-removed-label">{t("grocery.removedLabel")}</span>
-              {removedItems.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className="riso-grocery-removed-chip"
-                  aria-label={t("grocery.putBackAria", { name: item.name })}
-                  onClick={() => setOverride(item.key, { removed: false })}
-                >
-                  {item.name} <span aria-hidden="true">↺</span>
-                </button>
-              ))}
-              <button type="button" className="riso-grocery-removed-clear" onClick={clearRemoved}>
-                {t("grocery.clear")}
-              </button>
-            </div>
-          )}
+          <RemovedStrip
+            className="riso-grocery-removed"
+            label={t("grocery.removedLabel")}
+            items={removedItems.map((item) => ({
+              key: item.key,
+              name: item.name,
+              ariaLabel: t("grocery.putBackAria", { name: item.name }),
+              onPutBack: () => setOverride(item.key, { removed: false }),
+            }))}
+            onClear={clearRemoved}
+            clearLabel={t("grocery.clear")}
+          />
         </div>
 
         {totalCount > 0 && (

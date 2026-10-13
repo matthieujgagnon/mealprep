@@ -157,13 +157,20 @@ test("leftovers: added by hand on the Leftovers shelf, thawed, and planned from 
   await expect(shelf).toContainText("LEFTOVER");
   await expect(shelf).toContainText("2 portions");
 
-  // Freezer leftovers move to the fridge to thaw: the days left start over with the recipe's fridge time.
-  await shelf.getByRole("button", { name: "Move to fridge to thaw" }).click();
+  // Freezer leftovers move to the fridge to thaw (in the item's pop-up): the days
+  // left start over with the recipe's fridge time, and Undo puts them back.
+  await shelf.locator(".inv-row", { hasText: SHAWARMA.title }).click();
+  await page.locator(".riso-itemform").getByRole("button", { name: "Move to fridge to thaw" }).click();
   await expect(page.locator(".riso-toast")).toContainText(`${SHAWARMA.title} is in the fridge: 3 days left`);
-  await expect(shelf.getByRole("button", { name: "Move to fridge to thaw" })).toHaveCount(0);
+  await expect(page.locator(".riso-itemform")).toHaveCount(0);
   let items = await (await page.request.get("/api/pantry-inventory")).json();
   expect(items[0].location).toBe("fridge");
   expect(items[0].expiresAt).toBe(asSavedDay(addDays(today, 3)));
+  await page.locator(".riso-toast").getByRole("button", { name: "Undo" }).click();
+  await expect.poll(async () => (await (await page.request.get("/api/pantry-inventory")).json())[0].location).toBe("freezer");
+  await shelf.locator(".inv-row", { hasText: SHAWARMA.title }).click();
+  await page.locator(".riso-itemform").getByRole("button", { name: "Move to fridge to thaw" }).click();
+  await expect.poll(async () => (await (await page.request.get("/api/pantry-inventory")).json())[0].location).toBe("fridge");
 
   // Leftovers by hand: the shelf's + opens the item form in its Leftovers mode.
   await shelf.getByRole("button", { name: "Add an item to Leftovers" }).click();
@@ -178,7 +185,7 @@ test("leftovers: added by hand on the Leftovers shelf, thawed, and planned from 
   const pizza = items.find((i) => i.name === "Pizza");
   expect(pizza).toMatchObject({ isLeftover: true, unit: "portion", location: "fridge", quantity: 1 });
   expect(pizza.expiresAt).toBe(asSavedDay(addDays(today, 4)));
-  await expect(shelf.locator(".inv-card", { hasText: "Pizza" })).toContainText("4 days left");
+  await expect(shelf.locator(".inv-row", { hasText: "Pizza" })).toContainText("4 days left");
 
   // The Planner search offers both; placing one plans a leftover meal that eats from it.
   await page.getByRole("button", { name: "Planner", exact: true }).click();
@@ -218,7 +225,7 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
       const items = await (await page.request.get("/api/pantry-inventory")).json();
       const pizza = items.find((i) => i.name === "Pizza");
       expect(pizza.expiresAt).toBe(asSavedDay(addDays(quebecDay(at), 4)));
-      await expect(shelf.locator(".inv-card", { hasText: "Pizza" })).toContainText("4 days left");
+      await expect(shelf.locator(".inv-row", { hasText: "Pizza" })).toContainText("4 days left");
     });
   }
 
@@ -231,7 +238,7 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
     await page.clock.setFixedTime(new Date("2026-10-16T01:00:00Z")); // 9 p.m. on the 15th in Quebec
     await page.reload();
     await page.getByRole("button", { name: "Inventory", exact: true }).click();
-    const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" });
+    const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-row', { hasText: "Pizza" });
     await expect(card).toContainText("use by tomorrow");
     await expect(card).not.toContainText(/expired/i);
   });
@@ -254,11 +261,11 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
       await expect(page.locator(".riso-useup-row", { hasText: "Pizza" }).locator(".riso-useup-badge")).toHaveText("today!");
 
       await page.getByRole("button", { name: "Inventory", exact: true }).click();
-      const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" });
+      const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-row', { hasText: "Pizza" });
       await expect(card).toContainText("expires today");
       await expect(card).not.toHaveClass(/expired/);
-      await expect(card.locator(".inv-card-expired")).toHaveCount(0);
-      await expect(card.locator(".inv-card-line-fill.pink")).toHaveCount(1);
+      await expect(card.locator(".inv-expired")).toHaveCount(0);
+      await expect(card.locator(".inv-life.pink")).toHaveCount(1);
 
       await card.click();
       await expect(page.locator(".riso-itemform .riso-itemform-tag")).toHaveText("Today");
@@ -279,9 +286,9 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
     await page.reload();
     await expect(page.locator(".riso-useup-row", { hasText: "Pizza" }).locator(".riso-useup-badge")).toHaveText("aujourd'hui!");
     await page.getByRole("button", { name: "Inventaire", exact: true }).click();
-    const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" });
+    const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-row', { hasText: "Pizza" });
     await expect(card).toContainText("expire aujourd'hui");
-    await expect(card.locator(".inv-card-expired")).toHaveCount(0);
+    await expect(card.locator(".inv-expired")).toHaveCount(0);
     await card.click();
     await expect(page.locator(".riso-itemform .riso-itemform-tag")).toHaveText("Aujourd'hui");
 
@@ -289,7 +296,7 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
     await page.clock.setFixedTime(new Date("2026-10-17T13:00:00Z"));
     await page.reload();
     await page.getByRole("button", { name: "Inventaire", exact: true }).click();
-    await expect(page.locator('.inv-shelf[data-section-id="leftovers"] .inv-card', { hasText: "Pizza" }).locator(".inv-card-expired")).toHaveCount(1);
+    await expect(page.locator('.inv-shelf[data-section-id="leftovers"] .inv-row', { hasText: "Pizza" }).locator(".inv-expired")).toHaveCount(1);
   });
 });
 

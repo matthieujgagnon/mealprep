@@ -33,14 +33,18 @@ export function IncludeSidesToggle({ on, onChange }) {
 
 // One outlined pill with a filled active segment - design_handoff_riso's
 // shared "Segmented control" component. `options` is [{ id, label }].
-export function Segmented({ options, value, onChange }) {
+// `className` adds a size ("inset": the 36px pill with 28px segments inside it,
+// Inventory's Compact / Tiles); `ariaLabel` names the group, and each segment
+// says whether it is the one chosen.
+export function Segmented({ options, value, onChange, className = "", ariaLabel }) {
   return (
-    <div className="riso-segmented">
+    <div className={`riso-segmented${className ? ` ${className}` : ""}`} role="group" aria-label={ariaLabel}>
       {options.map((opt) => (
         <button
           key={opt.id}
           type="button"
           className={value === opt.id ? "active" : ""}
+          aria-pressed={value === opt.id}
           onClick={() => onChange(opt.id)}
         >
           {opt.label}

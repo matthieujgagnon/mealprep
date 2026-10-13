@@ -93,7 +93,8 @@ describe("on the use-by day itself", () => {
 
     // The add form's tag, note and line, and Inventory's card (they all read these).
     expect(expiryTag(days)).toEqual({ kind: "today", tone: "hot" });
-    expect(lineForDays(days)).toEqual({ height: "100%", color: "pink" });
+    // The life-left bar: a pink stub on the use-by day, not the full expired bar.
+    expect(lineForDays(days)).toEqual({ color: "pink", height: "8%", width: "8%" });
     expect(useByKind({ days, custom: true, usda: false })).toBe("custom");
     expect(formatExpiry(savedDay)).toBe("Expires today");
 
@@ -121,7 +122,7 @@ describe("on the use-by day itself", () => {
       const days = daysUntil(savedDay);
       expect(days).toBe(-1);
       expect(expiryTag(days).kind).toBe("expired");
-      expect(lineForDays(days)).toEqual({ expired: true });
+      expect(lineForDays(days)).toEqual({ expired: true, color: "pink", height: "100%", width: "100%" });
       expect(toUseItems([{ name: "Pizza", expiresAt: savedDay }], daysUntil).shown).toHaveLength(0);
     }
   });

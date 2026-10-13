@@ -172,9 +172,9 @@ test("every screen speaks French, with nothing left in English", async ({ page }
 
   // Inventory, an item's panel and the add form.
   await page.getByRole("button", { name: "Inventaire", exact: true }).click();
-  await expect(page.locator(".inv-card").first()).toBeVisible();
+  await expect(page.locator(".inv-row").first()).toBeVisible();
   await expectAllFrench(page, "inventaire");
-  await page.locator(".inv-card", { hasText: "persil" }).click();
+  await page.locator(".inv-row", { hasText: "persil" }).click();
   await expect(page.locator(".riso-itemform")).toBeVisible();
   await expectAllFrench(page, "inventaire-article");
   await page.keyboard.press("Escape");

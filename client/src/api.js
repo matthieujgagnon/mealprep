@@ -1,5 +1,6 @@
 import { getLang, t } from "./i18n/index.js";
 import { afterSaves, noteSave, readArea, saveArea, savesVersion } from "./lib/pendingSaves.js";
+import { removedChanged } from "./lib/removedItems.js";
 
 const BASE = "/api";
 
@@ -255,23 +256,34 @@ export const api = {
     request("/pantry-inventory", { method: "POST", body: JSON.stringify(item) }),
   updatePantryInventoryItem: (id, payload) =>
     request(`/pantry-inventory/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  deletePantryInventoryItem: (id) => request(`/pantry-inventory/${id}`, { method: "DELETE" }),
+  // Removes one item; it goes to Recently removed as Deleted, or as Used up with
+  // { how: "consumed" } ("I'm out of this"). { forget: true } takes back an item
+  // just added (an add's Undo), which is not kept.
+  deletePantryInventoryItem: (id, { how, forget } = {}) =>
+    request(`/pantry-inventory/${id}${forget ? "?forget=1" : how === "consumed" ? "?how=consumed" : ""}`, { method: "DELETE" }).then(removedChanged),
   // Removes items like a plain delete, but logs each as "consumed" or
   // "wasted" first - see POST /pantry-inventory/consume.
   consumePantryInventoryItems: (ids, action) =>
-    request("/pantry-inventory/consume", { method: "POST", body: JSON.stringify({ ids, action }) }),
+    request("/pantry-inventory/consume", { method: "POST", body: JSON.stringify({ ids, action }) }).then(removedChanged),
   // "Remove from inventory" after cooking: takes = [{ id, amount }] (the item's
   // own unit, or "all"). Resolves with { before, removedIds, logIds, items }:
   // `before` and `logIds` are what putBackPantryItems needs to undo it.
   takeOutPantryItems: (takes) =>
-    request("/pantry-inventory/take-out", { method: "POST", body: JSON.stringify({ takes }) }),
+    request("/pantry-inventory/take-out", { method: "POST", body: JSON.stringify({ takes }) }).then(removedChanged),
   // Undo of a take-out: the rows exactly as they were, same ids. Not a way of adding.
   putBackPantryItems: (rows, logIds) =>
-    request("/pantry-inventory/put-back", { method: "POST", body: JSON.stringify({ rows, logIds }) }),
+    request("/pantry-inventory/put-back", { method: "POST", body: JSON.stringify({ rows, logIds }) }).then(removedChanged),
   // One portion off the Inventory leftovers for each planned leftover meal
   // before `today`, once. Resolves like a take-out plus { entryIds, meals }.
   settleLeftovers: (today) =>
-    request("/pantry-inventory/leftovers/settle", { method: "POST", body: JSON.stringify({ today }) }),
+    request("/pantry-inventory/leftovers/settle", { method: "POST", body: JSON.stringify({ today }) }).then(removedChanged),
+  // Recently removed: what left Inventory in the last 7 Quebec days, newest first
+  // ([{ id, itemId, how, removedAt, item }]).
+  listRemovedPantryItems: () => request("/pantry-inventory/removed"),
+  // « Remettre » / Put back: the item comes back as it was (same id, shelf,
+  // amount and use-by date). Like Undo, it only undoes a removal (CLAUDE.md).
+  putBackRemovedPantryItem: (id) =>
+    request(`/pantry-inventory/removed/${encodeURIComponent(id)}/put-back`, { method: "POST" }).then(removedChanged),
 
   listPantryLocations: () => request("/pantry-locations"),
   addPantryLocation: (name) =>

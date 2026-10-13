@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#F4F1EA;font-family:Inter,system-ui,sans-serif}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}</style><script src="./image-slot.js"></script></helmet>
+<div style="min-height:100vh;background:#F4F1EA;color:#16181F;position:relative">
+<div style="max-width:1280px;margin:0 auto;padding:0 0 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+<sc-if value="{{ showHeader }}" hint-placeholder-val="{{ true }}"><dc-import name="part-header" active="inventory" hint-size="100%,96px"></dc-import></sc-if>
+
+<div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:{{ headPad }}">
+<div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:4px">
+<div style="font:500 11.5px 'DM Mono',monospace;letter-spacing:.12em">{{ summary }}</div>
+<div style="font:800 40px/.95 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">What you've <span style="color:#2323FF">got.</span></div>
+</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<div style="height:36px;padding:2px;border-radius:18px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;gap:2px;box-sizing:border-box"><sc-for list="{{ views }}" as="v" hint-placeholder-count="2"><div onClick="{{ v.pick }}" style="height:28px;padding:0 14px;border-radius:14px;background:{{ v.bg }};color:{{ v.fg }};display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">{{ v.label }}</div></sc-for></div>
+<div style="height:36px;padding:0 16px;border-radius:18px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:600 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">Scan receipt</div>
+<div onClick="{{ addShelf }}" style="height:36px;padding:0 16px;border-radius:18px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:600 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">+ Add section</div>
+<div style="height:36px;padding:0 18px;border-radius:18px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer" onClick="{{ addItem }}">+ Add item</div>
+</div>
+</div>
+
+<sc-if value="{{ hint }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;gap:14px;align-items:center;background:#FFFDF8;border:2px dashed #16181F;border-radius:14px;padding:8px 14px;margin:{{ hintMargin }}">
+<div style="flex:none;transform:rotate(-3deg);background:#FFE14D;border:2px solid #16181F;border-radius:999px;white-space:nowrap;padding:2px 10px;font:800 11.5px 'Bricolage Grotesque',sans-serif">how it works</div>
+<div style="flex:1;font-size:12.5px;line-height:1.45;color:#3F3E37">Shelves are sorted by what expires first. Click an item to edit it. Storage tips come from USDA FoodKeeper. Tick several to mark them used up, tossed or frozen all at once. Pink means use it within 3 days.</div>
+<div onClick="{{ hideHint }}" style="font:600 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap;text-decoration:underline">Got it</div>
+</div>
+</sc-if>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:{{ sidePad }}">
+<div id="shelfgrid" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;align-items:start">
+<sc-for list="{{ shelves }}" as="sh" hint-placeholder-count="3">
+<section draggable="{{ sh.canDrag }}" onDragStart="{{ sh.dragStart }}" onDragOver="{{ sh.dragOver }}" onDrop="{{ sh.drop }}" style="grid-column:{{ sh.span }};height:{{ sh.h }};position:relative;background:#FFFDF8;border:2px solid #16181F;border-radius:20px;padding:10px 12px 18px;display:flex;flex-direction:column;gap:8px;min-width:0;box-sizing:border-box;box-shadow:{{ sh.ring }}">
+<div style="display:flex;align-items:center;gap:8px;flex:none">
+<div onMouseDown="{{ sh.grab }}" onMouseUp="{{ sh.release }}" title="Drag to move" style="cursor:grab;font-size:14px;letter-spacing:-2px;color:#5E5B52;user-select:none;padding:2px">⠿</div>
+<sc-if value="{{ sh.editing }}" hint-placeholder-val="{{ false }}"><input value="{{ sh.name }}" onInput="{{ sh.rename }}" style="flex:1;min-width:0;font:800 19px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;border:2px solid #16181F;border-radius:10px;background:#F4F1EA;padding:2px 10px;box-sizing:border-box;outline:none;color:#16181F"></input></sc-if>
+<sc-if value="{{ sh.notEditing }}" hint-placeholder-val="{{ true }}"><div style="font:800 20px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap;flex:none">{{ sh.name }}</div></sc-if>
+<div style="min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:#FFE14D;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:800 11.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;flex:none">{{ sh.count }}</div>
+<div style="flex:1"></div>
+<sc-if value="{{ sh.editing }}" hint-placeholder-val="{{ false }}"><div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52;white-space:nowrap">{{ sh.size }}</div></sc-if>
+<div onClick="{{ sh.toggleEdit }}" title="Edit shelf" style="width:26px;height:26px;border-radius:13px;border:2px solid #16181F;background:{{ sh.editBg }};display:flex;align-items:center;justify-content:center;font-size:12px;box-sizing:border-box;cursor:pointer;flex:none">{{ sh.editIcon }}</div>
+</div>
+<sc-if value="{{ sh.editing }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:8px;flex-wrap:wrap;flex:none;align-items:center">
+<div onClick="{{ sh.fullW }}" style="height:28px;padding:0 12px;border-radius:14px;border:2px solid #16181F;display:flex;align-items:center;font:600 12.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:#F4F1EA">Full width</div>
+<div onClick="{{ sh.halfW }}" style="height:28px;padding:0 12px;border-radius:14px;border:2px solid #16181F;display:flex;align-items:center;font:600 12.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:#F4F1EA">Half</div>
+<div onClick="{{ sh.thirdW }}" style="height:28px;padding:0 12px;border-radius:14px;border:2px solid #16181F;display:flex;align-items:center;font:600 12.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:#F4F1EA">Third</div>
+<div onClick="{{ sh.autoH }}" style="height:28px;padding:0 12px;border-radius:14px;border:2px solid #16181F;display:flex;align-items:center;font:600 12.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:#F4F1EA">Auto height</div>
+<div onClick="{{ sh.del }}" style="height:28px;padding:0 12px;border-radius:14px;border:2px solid #16181F;display:flex;align-items:center;font:600 12.5px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:#FF48B0">Delete shelf</div>
+<div style="font-size:12px;color:#5E5B52">Items move to another shelf. Drag cards between shelves any time.</div>
+</div>
+</sc-if>
+<div style="flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:{{ gridCols }};grid-auto-rows:{{ autoRows }};gap:{{ gridGap }};align-content:start;padding:2px 4px 6px 2px;margin:-2px -4px -6px -2px">
+<sc-for list="{{ sh.items }}" as="i" hint-placeholder-count="5">
+<sc-if value="{{ isTiles }}" hint-placeholder-val="{{ false }}">
+<div draggable="true" onDragStart="{{ i.dragStart }}" onDragEnd="{{ i.dragEnd }}" onClick="{{ i.activate }}" style="background:{{ i.rowBg }};border:2px solid #16181F;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;min-width:0;position:relative;box-sizing:border-box;box-shadow:{{ i.shadow }}">
+<div style="height:92px;background:#FFFFFF;border-bottom:2px solid #16181F;padding:8px;box-sizing:border-box"><image-slot id="{{ i.slot }}" fit="contain" shape="rect" placeholder="Photo"></image-slot></div>
+<div onClick="{{ i.toggle }}" style="position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:4px;box-sizing:border-box;border:2px solid #16181F;background:{{ i.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">{{ i.tick }}</div>
+<sc-if value="{{ i.expired }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;left:6px;background:#FFE0F1;color:#8A0F55;border:1.5px solid #8A0F55;border-radius:999px;padding:0 6px;height:16px;display:inline-flex;align-items:center;font:700 10.5px 'Bricolage Grotesque',sans-serif">Expired</span></sc-if>
+<div style="padding:6px 8px 7px;display:flex;flex-direction:column;gap:2px"><div style="font:700 13px/1.15 'Bricolage Grotesque',sans-serif;min-height:2.3em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ i.name }}</div><div style="font:800 12.5px 'Bricolage Grotesque',sans-serif">{{ i.qtyNum }}<span style="font-weight:600;color:#5E5B52"> {{ i.qtyUnit }}</span></div></div>
+<div style="height:5px;background:#F4F1EA;border-top:2px solid #16181F"><div style="height:100%;width:{{ i.tileBar }};background:{{ i.barColor }}"></div></div>
+</div>
+</sc-if>
+<sc-if value="{{ isCompact }}" hint-placeholder-val="{{ true }}">
+<div draggable="true" onDragStart="{{ i.dragStart }}" onDragEnd="{{ i.dragEnd }}" onClick="{{ i.activate }}" style="background:{{ i.rowBg }};border:2px solid #16181F;border-radius:12px;overflow:hidden;display:flex;cursor:pointer;box-sizing:border-box;min-width:0;box-shadow:{{ i.shadow }}">
+<sc-if value="{{ i.showLine }}" hint-placeholder-val="{{ true }}"><div style="width:6px;flex:none;border-right:2px solid #16181F;background:#F4F1EA;display:flex;align-items:flex-end"><div style="width:100%;height:{{ i.lineH }};background:{{ i.barColor }}"></div></div></sc-if>
+<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:5px 10px 5px 6px">
+<div style="width:34px;height:34px;border:2px solid #16181F;border-radius:8px;box-sizing:border-box;flex:none;background:#FFFFFF;overflow:hidden;position:relative"><div style="position:absolute;left:1px;top:1px;width:84px;height:84px;transform:scale(.2857);transform-origin:0 0;pointer-events:auto"><image-slot id="{{ i.slot }}" fit="contain" shape="rect" radius="0" placeholder=" "></image-slot></div></div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px"><div style="font:700 14.5px/1.15 'Bricolage Grotesque',sans-serif;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.name }}</div><sc-if value="{{ i.expired }}" hint-placeholder-val="{{ false }}"><span style="background:#FFE0F1;color:#8A0F55;border-radius:999px;padding:0 7px;height:15px;display:inline-flex;align-items:center;font:700 10.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap">Expired</span></sc-if></div>
+<div style="white-space:nowrap;text-align:right;font:800 14.5px 'Bricolage Grotesque',sans-serif">{{ i.qtyNum }}<span style="font:600 12px 'Bricolage Grotesque',sans-serif;color:#5E5B52"> {{ i.qtyUnit }}</span></div>
+<div onClick="{{ i.toggle }}" style="width:16px;height:16px;border-radius:4px;flex:none;box-sizing:border-box;border:2px solid #16181F;background:{{ i.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">{{ i.tick }}</div>
+</div>
+</div>
+</sc-if>
+</sc-for>
+<sc-if value="{{ sh.empty }}" hint-placeholder-val="{{ false }}"><div style="border:2px dashed #BDB6A6;border-radius:12px;display:flex;align-items:center;justify-content:center;font:600 13px 'Bricolage Grotesque',sans-serif;color:#5E5B52;grid-column:1 / -1;height:48px">Drop items here</div></sc-if>
+</div>
+<div onMouseDown="{{ sh.resize }}" onDoubleClick="{{ sh.autoH }}" title="Drag to resize. Double-click for auto height." style="position:absolute;right:8px;bottom:6px;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,#A39B86 45%,#A39B86 55%,transparent 55%,transparent 68%,#A39B86 68%,#A39B86 78%,transparent 78%)"></div>
+</section>
+</sc-for>
+
+</div>
+
+<sc-if value="{{ hasActive }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ closeAct }}" style="position:absolute;inset:0;background:rgba(22,24,31,.4);display:flex;justify-content:center;align-items:flex-start;padding-top:140px;z-index:10;cursor:pointer">
+<aside onClick="{{ stop }}" style="width:400px;max-width:calc(100% - 40px);background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:6px 6px 0 #16181F;padding:20px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;position:relative;cursor:default">
+<div onClick="{{ closeAct }}" title="Close" style="position:absolute;top:-16px;right:-16px;width:42px;height:42px;border-radius:21px;background:#FFFDF8;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;justify-content:center;font:700 22px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">×</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+<sc-if value="{{ notDraft }}" hint-placeholder-val="{{ true }}"><div style="font:800 22px/1.1 'Bricolage Grotesque',sans-serif">{{ act.name }}</div></sc-if><sc-if value="{{ isDraft }}" hint-placeholder-val="{{ false }}"><input placeholder="Item name" onChange="{{ setName }}" style="flex:1;min-width:0;height:44px;border:2px solid #16181F;border-radius:22px;background:#fff;padding:0 16px;font:800 20px 'Bricolage Grotesque',sans-serif;box-sizing:border-box"/></sc-if>
+<sc-if value="{{ notDraft }}" hint-placeholder-val="{{ true }}"><div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.1em;text-align:right">{{ act.cat }}</div></sc-if>
+</div>
+<div style="display:flex;gap:14px;align-items:center">
+<div style="width:76px;height:76px;border:2px solid #16181F;border-radius:14px;box-sizing:border-box;flex:none;background:repeating-linear-gradient(135deg,#F4F1EA 0 8px,#E9E4D8 8px 16px)"></div>
+<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+<div style="display:flex;gap:8px;flex-wrap:wrap"><div style="height:32px;padding:0 14px;border-radius:16px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap">Add photo</div><div style="height:32px;padding:0 14px;border-radius:16px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap">Paste link</div></div>
+<div style="font-size:12.5px;color:#5E5B52">Stock photo · <a href="#" style="font-weight:600">Hide it</a></div>
+</div></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">QUANTITY</div>
+<div style="display:flex;align-items:center;gap:10px">
+<div onClick="{{ qDec }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">−</div>
+<input key="{{ act.qkey }}" defaultValue="{{ act.qtyShown }}" onBlur="{{ qCommit }}" onKeyDown="{{ qKey }}" style="width:84px;height:40px;text-align:center;border:2px solid #16181F;border-radius:20px;background:#fff;font:800 18px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;padding:0 6px"/>
+<div onClick="{{ qInc }}" style="width:40px;height:40px;border-radius:20px;border:2px solid #16181F;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">+</div>
+<select onChange="{{ setUnit }}" value="{{ act.unit }}" style="height:40px;flex:1;min-width:0;border:2px solid #16181F;border-radius:20px;background:#FFFDF8;padding:0 14px;font:700 14.5px 'Bricolage Grotesque',sans-serif;cursor:pointer"><sc-for list="{{ units }}" as="u" hint-placeholder-count="4"><option value="{{ u }}">{{ u }}</option></sc-for></select>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ fracs }}" as="f" hint-placeholder-count="5"><div onClick="{{ f.pick }}" style="height:30px;min-width:34px;padding:0 10px;border-radius:15px;border:2px solid #16181F;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">{{ f.l }}</div></sc-for></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">STORED IN · USDA</div>
+<sc-for list="{{ act.opts }}" as="o" hint-placeholder-count="2">
+<div onClick="{{ o.pick }}" style="height:44px;padding:0 16px;border-radius:22px;border:2px solid #16181F;background:{{ o.bg }};color:{{ o.color }};box-shadow:{{ o.shadow }};display:flex;align-items:center;justify-content:space-between;gap:10px;font:700 14.5px 'Bricolage Grotesque',sans-serif;cursor:pointer"><span>{{ o.loc }}</span><span style="font:500 11.5px 'DM Mono',monospace;opacity:.85">{{ o.range }}</span></div>
+</sc-for>
+</div>
+<div style="font-size:13.5px;line-height:1.5;color:#3F3E37">{{ act.useBy }} <a href="#" style="font-weight:600">Pick a date</a></div>
+<div style="display:flex"><div style="height:32px;padding:0 14px;border-radius:16px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap">☆ Mark as pantry staple</div></div>
+<sc-if value="{{ notDraft }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:14px"><div style="padding-top:14px;border-top:1.5px dashed #BDB6A6;font-size:13.5px;line-height:1.5">{{ act.recipes }} <a href="#" style="font-weight:600">See them →</a></div>
+<div style="font-size:12.5px;color:#5E5B52;cursor:pointer" onClick="{{ removeAct }}">Remove (typo or duplicate, not used/tossed)</div>
+</div></sc-if>
+<sc-if value="{{ isDraft }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:10px"><div onClick="{{ closeAct }}" style="height:48px;padding:0 22px;border-radius:24px;border:2px solid #16181F;display:flex;align-items:center;font:700 15px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">Cancel</div><div onClick="{{ saveDraft }}" style="flex:1;height:48px;border-radius:24px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;justify-content:center;font:800 16px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">Add to inventory</div></div></sc-if>
+</aside>
+</div>
+</sc-if>
+<sc-if value="{{ anySelected }}" hint-placeholder-val="{{ true }}">
+<div style="position:sticky;bottom:24px;display:flex;justify-content:center;pointer-events:none;z-index:5">
+<div style="pointer-events:auto;display:flex;align-items:center;gap:6px;padding:8px;border-radius:999px;background:#16181F;border:2px solid #16181F;box-shadow:5px 5px 0 #2323FF;flex-wrap:wrap">
+<div style="padding:0 12px;font:700 14px 'Bricolage Grotesque',sans-serif;color:#F4F1EA;white-space:nowrap">{{ selLabel }}</div>
+<div style="height:34px;padding:0 14px;border-radius:17px;background:#FFE14D;color:#16181F;border:2px solid #FFE14D;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">Find recipes</div>
+<div onClick="{{ usedUp }}" style="height:34px;padding:0 14px;border-radius:17px;border:2px solid rgba(244,241,234,.45);color:#F4F1EA;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">Used up</div>
+<div onClick="{{ tossed }}" style="height:34px;padding:0 14px;border-radius:17px;border:2px solid rgba(244,241,234,.45);color:#F4F1EA;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">Tossed</div>
+<div onClick="{{ freeze }}" style="height:34px;padding:0 14px;border-radius:17px;border:2px solid rgba(244,241,234,.45);color:#F4F1EA;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer">Freeze</div>
+<div onClick="{{ clearSel }}" style="width:34px;height:34px;border-radius:17px;border:2px solid rgba(244,241,234,.45);color:#F4F1EA;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;cursor:pointer;box-sizing:border-box">×</div>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;1000px&quot;},&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;compact&quot;,&quot;tiles&quot;],&quot;default&quot;:&quot;compact&quot;,&quot;tsType&quot;:&quot;'compact' | 'tiles'&quot;}}">
+class Component extends DCLogic {
+  state = { qtyFmt: 'frac', draft: null,
+    shelfList:[{name:'Fridge',span:6,h:null},{name:'Freezer',span:6,h:null},{name:'Pantry',span:12,h:null}], editing:null, dragging:null, dragItem:null, canDrag:null, hint: true, active: null, sel: {}, removed: {},
+    items: [
+      { id:'bbq', name:'Bbq sauce', qty:0.25, unit:'cup', loc:'Fridge', days:0, life:120, cat:'SAUCES', rec:3, opts:[['Fridge','4 months after opening',120]] },
+      { id:'shrimp', name:'Shrimp, peeled', qty:1, unit:'lb', loc:'Fridge', days:1, life:2, cat:'SEAFOOD', rec:6, opts:[['Fridge','1–2 days',2],['Freezer','3–6 months',120]] },
+      { id:'cilantro', name:'Cilantro', qty:1, unit:'bunch', loc:'Fridge', days:1, life:7, cat:'PRODUCE', rec:8, opts:[['Fridge','5–7 days',7],['Freezer','4–6 months',120]] },
+      { id:'spinach', name:'Baby spinach', qty:5, unit:'oz', loc:'Fridge', days:2, life:5, cat:'PRODUCE', rec:5, opts:[['Fridge','3–5 days',5],['Freezer','8–14 months',300]] },
+      { id:'tomato', name:'Tomatoes', qty:3, unit:'ea', loc:'Fridge', days:3, life:7, cat:'PRODUCE', rec:11, opts:[['Counter','3–5 days',5],['Fridge','5–7 days',7]] },
+      { id:'yogurt', name:'Greek yogurt', qty:500, unit:'g', loc:'Fridge', days:6, life:14, cat:'DAIRY', rec:4, opts:[['Fridge','1–2 weeks',14],['Freezer','1–2 months',45]] },
+      { id:'eggs', name:'Eggs', qty:8, unit:'ea', loc:'Fridge', days:21, life:35, cat:'DAIRY & EGGS', rec:9, opts:[['Fridge','3–5 weeks',35]] },
+      { id:'cheddar', name:'Aged cheddar', qty:200, unit:'g', loc:'Fridge', days:30, life:45, cat:'DAIRY', rec:7, opts:[['Fridge','3–4 weeks',30],['Freezer','6 months',180]] },
+      { id:'onion', name:'Red onion', qty:1, unit:'ea', loc:'Fridge', days:null, life:30, cat:'PRODUCE', rec:12, opts:[['Pantry','2–3 months',75],['Fridge','1–2 months',45]] },
+      { id:'thighs', name:'Chicken thighs', qty:2, unit:'lb', loc:'Freezer', days:120, life:270, cat:'POULTRY', rec:10, opts:[['Fridge','1–2 days',2],['Freezer','9 months',270]] },
+      { id:'beef', name:'Lean ground beef', qty:1, unit:'lb', loc:'Freezer', days:60, life:120, cat:'MEAT', rec:9, opts:[['Fridge','1–2 days',2],['Freezer','3–4 months',120]] },
+      { id:'tacos', name:'Pork taco leftovers', qty:2, unit:'portion', loc:'Freezer', days:45, life:90, cat:'LEFTOVERS', rec:1, opts:[['Fridge','3–4 days',4],['Freezer','2–3 months',90]] },
+      { id:'peas', name:'Frozen peas', qty:500, unit:'g', loc:'Freezer', days:240, life:300, cat:'FROZEN', rec:6, opts:[['Freezer','8–10 months',300]] },
+      { id:'bread', name:'Sourdough', qty:0.5, unit:'loaf', loc:'Freezer', days:75, life:90, cat:'BAKERY', rec:3, opts:[['Counter','2–4 days',3],['Freezer','3 months',90]] },
+      { id:'flour', name:'All-purpose flour', qty:1, unit:'kg', loc:'Pantry', days:180, life:240, cat:'BAKING', rec:8, opts:[['Pantry','6–8 months',240]] },
+      { id:'oil', name:'Olive oil', qty:0.25, unit:'bottle', loc:'Pantry', days:400, life:540, cat:'OILS', rec:22, opts:[['Pantry','18–24 months',540]] },
+      { id:'pasta', name:'Pasta', qty:900, unit:'g', loc:'Pantry', days:500, life:730, cat:'GRAINS', rec:5, opts:[['Pantry','1–2 years',730]] },
+      { id:'chickpeas', name:'Chickpeas', qty:3, unit:'can', loc:'Pantry', days:540, life:730, cat:'CANNED', rec:6, opts:[['Pantry','2–5 years',730]] },
+      { id:'rice', name:'Basmati rice', qty:2, unit:'kg', loc:'Pantry', days:600, life:730, cat:'GRAINS', rec:7, opts:[['Pantry','2 years',730]] },
+      { id:'tomcan', name:'Canned tomatoes', qty:2, unit:'can', loc:'Pantry', days:700, life:730, cat:'CANNED', rec:9, opts:[['Pantry','18–24 months',730]] },
+      { id:'paprika', name:'Smoked paprika', qty:1, unit:'jar', loc:'Pantry', days:300, life:1095, cat:'SPICES', rec:14, opts:[['Pantry','2–3 years',1095]] },
+    ],
+  };
+  componentDidMount() {
+    try { const q = new URLSearchParams(location.search).get('view'), v = q || localStorage.getItem('riso-inv-view'); if (v) this.setState({ view: v }); } catch (e) {}
+    this._rs = () => this.setState({ w: window.innerWidth }); this._rs(); window.addEventListener('resize', this._rs);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._rs); }
+  renderVals() {
+    const S = this.state, P = (S.w || 1280) < 640;
+    const items = S.items.filter(i => !S.removed[i.id]);
+    const label = d => d == null ? '+ DATE' : d <= 1 ? 'TOMORROW' : d < 60 ? d + 'D' : d < 365 ? Math.round(d / 30) + 'MO' : Math.round(d / 365) + 'Y';
+    const upd = (id, patch) => id === '__draft' ? this.setState(s => ({ draft: { ...s.draft, ...patch } })) : this.setState(s => ({ items: s.items.map(i => i.id === id ? { ...i, ...patch } : i) }));
+    const tipFor = i => { const cur = i.opts.find(o => o[0] === i.loc) || i.opts[0]; const fr = i.opts.find(o => o[0] === 'Freezer'); return i.loc === 'Freezer' ? 'Keeps ' + cur[1] + ' frozen' : fr ? 'Freeze for ' + fr[1] : cur[1] + ' in the ' + cur[0].toLowerCase(); };
+    const card = i => {
+      const urgent = i.days != null && i.days <= 3, isAct = S.active === i.id, sel = !!S.sel[i.id];
+      const lbl = label(i.days);
+      return {
+        name: i.name, qtyLabel: (i.qty + ' ' + i.unit).toUpperCase(),
+        urgent: urgent || i.days == null, calm: !(urgent || i.days == null), label: urgent ? (i.days <= 1 ? 'tomorrow!' : i.days + ' days') : lbl,
+        hasDate: i.days != null, expired: i.days != null && i.days <= 0, showBar: i.days != null && i.days > 0 && i.days < 28, pct: (i.days == null || i.days >= 28) ? '0%' : Math.max(8, Math.round(i.days / 28 * 100)) + '%', barColor: i.days != null && i.days <= 0 ? '#FF48B0' : urgent ? '#FF48B0' : i.days <= 7 ? '#FFE14D' : '#2323FF',
+        tip: tipFor(i), showLine: i.days != null && i.days < 28, rowBg: i.days != null && i.days <= 0 ? '#FFF4FA' : '#fff', qtyNum: i.qty, qtyUnit: i.unit, lineH: i.days == null || i.days >= 28 ? '0%' : i.days <= 0 ? '100%' : Math.max(8, Math.round(i.days / 28 * 100)) + '%',
+        shadow: isAct ? '4px 4px 0 #2323FF' : 'none',
+        boxBg: sel ? '#2323FF' : '#FFFDF8', tick: sel ? '✓' : '',
+        pillBg: i.days == null ? '#F4F1EA' : i.days <= 2 ? '#FF48B0' : i.days <= 7 ? '#FFE14D' : '#fff', qtyText: i.qty + ' ' + i.unit,
+        slot: 'inv-item-' + i.id, tileBar: i.days == null ? '0%' : i.days >= 28 ? '100%' : i.days <= 0 ? '100%' : Math.max(8, Math.round(i.days / 28 * 100)) + '%',
+        activate: () => this.setState({ active: i.id }),
+        dragStart: e => { e.stopPropagation(); e.dataTransfer.setData('text/plain', i.id); this.setState({ dragItem: i.id }); }, dragEnd: () => this.setState({ dragItem: null }),
+        toggle: e => { e.stopPropagation(); this.setState(s => ({ sel: { ...s.sel, [i.id]: !s.sel[i.id] } })); },
+      };
+    };
+    const sortD = (a, b) => (a.days ?? 1e9) - (b.days ?? 1e9);
+    const mk = (name, span, cols, pillBg, note) => {
+      const list = items.filter(i => i.loc === name).sort(sortD);
+      return { name, span, cols, pillBg, note, count: list.length, empty: !list.length, items: list.map(card) };
+    };
+    const SL = S.shelfList, setSL = fn => this.setState(st => ({ shelfList: fn(st.shelfList) }));
+    const shelves = SL.map((def, idx) => {
+      const n = def.name, sh = mk(n, '', '1fr', '', '');
+      const sp = def.span, isE = S.editing === n;
+      return { ...sh, span: P ? 'span 12' : 'span ' + sp, h: def.h ? def.h + 'px' : 'auto', size: sp + '/12 · ' + (def.h ? def.h + 'PX' : 'AUTO'), ring: S.dragging === n ? '5px 5px 0 #2323FF' : 'none', canDrag: S.canDrag === n,
+        editing: isE, notEditing: !isE, editBg: isE ? '#FFE14D' : '#FFFDF8', editIcon: isE ? '✓' : '✎',
+        toggleEdit: () => this.setState({ editing: isE ? null : n }),
+        rename: e => { const v = e.target.value; setSL(l => l.map((x, j) => j === idx ? { ...x, name: v } : x)); this.setState(st => ({ editing: v, items: st.items.map(i => i.loc === n ? { ...i, loc: v } : i) })); },
+        fullW: () => setSL(l => l.map((x, j) => j === idx ? { ...x, span: 12 } : x)), halfW: () => setSL(l => l.map((x, j) => j === idx ? { ...x, span: 6 } : x)), thirdW: () => setSL(l => l.map((x, j) => j === idx ? { ...x, span: 4 } : x)),
+        autoH: () => setSL(l => l.map((x, j) => j === idx ? { ...x, h: null } : x)),
+        del: () => { const dest = SL.find(x => x.name !== n); this.setState(st => ({ items: st.items.map(i => i.loc === n ? { ...i, loc: dest ? dest.name : i.loc } : i), editing: null })); setSL(l => l.filter((x, j) => j !== idx)); },
+        grab: () => this.setState({ canDrag: n }), release: () => this.setState({ canDrag: null }),
+        dragStart: e => { if (e.target !== e.currentTarget) return; e.dataTransfer.setData('text/plain', n); this.setState({ dragging: n }); },
+        dragOver: e => e.preventDefault(),
+        drop: e => { e.preventDefault(); if (S.dragItem) { const id = S.dragItem; this.setState(st => ({ dragItem: null, items: st.items.map(i => i.id === id ? { ...i, loc: n } : i) })); return; }
+          const from = S.dragging; if (from == null || from === n) return this.setState({ dragging: null, canDrag: null });
+          setSL(l => { const fi = l.findIndex(x => x.name === from), it = l[fi], r = l.filter((x, j) => j !== fi); r.splice(r.findIndex(x => x.name === n) + (fi < idx ? 1 : 0), 0, it); return r; }); this.setState({ dragging: null, canDrag: null }); },
+        resize: e => { e.preventDefault(); const g = document.getElementById('shelfgrid'), col = (g.offsetWidth + 20) / 12, x0 = e.clientX, y0 = e.clientY, s0 = def.span, h0 = e.currentTarget.parentElement.offsetHeight;
+          const mv = ev => { let ns = Math.max(3, Math.min(12, Math.round(s0 + (ev.clientX - x0) / col))); if (ns >= 10) ns = 12; const nh = Math.max(200, Math.round(h0 + ev.clientY - y0)); setSL(l => l.map((x, j) => j === idx ? { ...x, span: ns, h: nh } : x)); };
+          const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+          window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up); } };
+    });
+    const a = S.draft || (S.active ? items.find(i => i.id === S.active) : null);
+    const step = a && a.unit === 'g' ? 50 : a && (a.unit === 'bottle' || a.unit === 'loaf') ? 0.25 : 1;
+    const today = new Date(2026, 8, 28);
+    const useBy = a && a.days != null && a.days <= 0 ? 'Expired. Toss it or check it before using.' : a && a.days != null ? 'Use by ' + new Date(today.getTime() + a.days * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '.' : 'No date yet. Pick a storage spot above for the USDA estimate, or';
+    const U={'¼':.25,'½':.5,'¾':.75,'⅓':1/3,'⅔':2/3,'⅛':.125,'⅜':.375,'⅝':.625,'⅞':.875};
+    const parseQ = t => { t = String(t).trim(); if (!t) return null; let tot = 0, ok = false; for (const p of t.replace(/([0-9])([¼½¾⅓⅔⅛⅜⅝⅞])/g,'$1 $2').split(/\s+/)) { let m; if (U[p] != null) tot += U[p]; else if ((m = p.match(/^(\d+)\/(\d+)$/))) { if (+m[2] === 0) return null; tot += m[1] / m[2]; } else if (/^\d*\.?\d+$/.test(p)) tot += +p; else return null; ok = true; } return ok ? +tot.toFixed(3) : null; };
+    const fmtQ = q => { if (S.qtyFmt === 'dec') return String(+(+q).toFixed(3)); const w = Math.floor(q + 1e-6), fr = q - w; const names = {0.125:'⅛',0.25:'¼',0.375:'⅜',0.5:'½',0.625:'⅝',0.75:'¾',0.875:'⅞'}; const k = Object.keys(names).find(k => Math.abs(k - fr) < .02); const th = Math.abs(fr - 1/3) < .02 ? '⅓' : Math.abs(fr - 2/3) < .02 ? '⅔' : null; if (fr < .02) return String(w); const g = th || (k && names[k]); if (!g) return String(+(+q).toFixed(2)); return (w ? w + ' ' : '') + g; };
+    const act = a ? {
+      name: a.name, cat: a.cat, qty: a.qty, qtyShown: fmtQ(a.qty), qkey: a.id + '|' + a.qty + '|' + S.qtyFmt, unit: a.unit, tagText: a.days == null ? 'No date' : label(a.days), tagBg: a.days == null ? '#F4F1EA' : a.days <= 2 ? '#FF48B0' : a.days <= 7 ? '#FFE14D' : '#fff', tip: tipFor(a), qtyText: a.qty + ' ' + a.unit, useBy,
+      recipes: a.rec + ' of your recipes use ' + a.name.toLowerCase() + '.',
+      opts: a.opts.map(([loc, range, d]) => { const on = a.loc === loc || (!S.shelfList.some(x => x.name === loc) && loc === 'Counter' && false); return { loc, range, bg: on ? '#2323FF' : '#F4F1EA', color: on ? '#fff' : '#16181F', shadow: on ? '3px 3px 0 #16181F' : 'none', pick: () => upd(a.id, { ...(S.shelfList.some(x => x.name === loc) ? { loc } : {}), days: d, life: d }) }; }),
+    } : { name: '', cat: '', tagText: '', tagBg: '#fff', tip: '', qtyText: '', useBy: '', recipes: '', opts: [] };
+    const selIds = Object.keys(S.sel).filter(k => S.sel[k] && !S.removed[k]);
+    const removeSel = () => this.setState(s => ({ removed: { ...s.removed, ...Object.fromEntries(selIds.map(k => [k, true])) }, sel: {} }));
+    const soon = items.filter(i => i.days != null && i.days > 0 && i.days <= 3).length, gone = items.filter(i => i.days != null && i.days <= 0).length;
+    return {
+      shelves, act, hasActive: !!a, closeAct: () => this.setState({ active: null, draft: null }), isDraft: !!S.draft, notDraft: !S.draft,
+      addItem: () => { const D = { Fridge: ['1–2 weeks', 14], Freezer: ['2–3 months', 90], Pantry: ['6 months', 180] }; this.setState({ active: '__draft', draft: { id: '__draft', name: '', qty: 1, unit: 'each', loc: S.shelfList[0].name, days: 14, life: 14, cat: 'NEW ITEM', rec: 0, opts: S.shelfList.map(x => [x.name, (D[x.name] || ['1 month', 30])[0], (D[x.name] || ['1 month', 30])[1]]) } }); },
+      setName: e => this.setState(s => ({ draft: { ...s.draft, name: e.target.value } })),
+      saveDraft: () => { const d = S.draft; if (!d || !d.name.trim()) return; this.setState(s => ({ items: [...s.items, { ...d, id: 'n' + Date.now(), name: d.name.trim() }], draft: null, active: null })); }, stop: e => e.stopPropagation(), summary: items.length + ' ITEMS · ' + soon + ' TO USE SOON' + (gone ? ' · ' + gone + ' EXPIRED' : ''),
+      fracs: [['¼',.25],['⅓',1/3],['½',.5],['⅔',2/3],['¾',.75],['1',1]].map(([l,v])=>({ l, pick: () => a && upd(a.id, { qty: +((Math.floor(a.qty)||0)+v>a.qty&&v<1?(Math.floor(a.qty)+v):v).toFixed(3) }) })),
+      toggleFmt: () => this.setState(s => ({ qtyFmt: s.qtyFmt === 'dec' ? 'frac' : 'dec' })),
+      fmtLabel: S.qtyFmt === 'dec' ? 'DECIMAL' : 'FRACTION',
+      qCommit: ev => { if (!a) return; const v = parseQ(ev.target.value); if (v != null) upd(a.id, { qty: v }); else ev.target.value = fmtQ(a.qty); },
+      qKey: ev => { if (ev.key === 'Enter') ev.target.blur(); },
+      units: ['cup','tbsp','tsp','oz','lb','g','kg','ml','L','each','pack','can','bottle'].filter((u,i,arr)=>arr.indexOf(u)===i).concat(a && !['cup','tbsp','tsp','oz','lb','g','kg','ml','L','each','pack','can','bottle'].includes(a.unit) ? [a.unit] : []),
+      setUnit: ev => a && upd(a.id, { unit: ev.target.value }),
+      removeAct: () => a && this.setState(s => ({ removed: { ...s.removed, [a.id]: true }, active: null })),
+      qDec: () => a && upd(a.id, { qty: Math.max(0, +(a.qty - step).toFixed(2)) }),
+      qInc: () => a && upd(a.id, { qty: +(a.qty + step).toFixed(2) }),
+      anySelected: selIds.length > 0, selLabel: selIds.length + ' selected',
+      usedUp: removeSel, tossed: removeSel,
+      freeze: () => this.setState(s => ({ items: s.items.map(i => { if (!selIds.includes(i.id)) return i; const f = i.opts.find(o => o[0] === 'Freezer'); return f ? { ...i, loc: 'Freezer', days: f[2], life: f[2] } : i; }), sel: {} })),
+      clearSel: () => this.setState({ sel: {} }),
+      addShelf: () => { const nm = 'New shelf ' + (S.shelfList.length + 1); this.setState(st => ({ shelfList: [...st.shelfList, { name: nm, span: 6, h: null }], editing: nm })); },
+      ...(() => { const v = S.view || this.props.view || 'compact', t = v === 'tiles'; return { isTiles: t, isCompact: !t, gridCols: t ? (P ? 'repeat(3,minmax(0,1fr))' : 'repeat(auto-fill,minmax(130px,1fr))') : 'repeat(auto-fill,minmax(230px,1fr))', autoRows: t ? 'auto' : '48px', gridGap: t ? '8px' : '6px',
+        views: [['compact', 'Compact'], ['tiles', 'Tiles']].map(([k, label]) => ({ label, bg: v === k ? '#16181F' : 'transparent', fg: v === k ? '#F4F1EA' : '#16181F', pick: () => { try { localStorage.setItem('riso-inv-view', k); } catch (e) {} this.setState({ view: k }); } })) }; })(),
+      headPad: P ? '4px 16px 0' : '8px 40px 0', hintMargin: P ? '0 16px' : '0 40px', sidePad: P ? '0 16px' : '0 40px',
+      showHeader: !this.props.embedded, hint: S.hint, hideHint: () => this.setState({ hint: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

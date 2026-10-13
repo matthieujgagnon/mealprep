@@ -25,6 +25,11 @@ import { addInventoryItem, itemForm } from "./inventory-form.js";
 // pan-y axis - which is virtually every drag on these single-column mobile
 // layouts, since they only stack vertically. touch-action: none is what
 // actually keeps a drag alive on real touch input.
+//
+// Since then App.jsx stops the page scrolling once a drag is live (its
+// touchmove guard), so a row can keep touch-action: pan-y (a swipe scrolls,
+// a press-and-hold drags): Store mode's rows and Inventory's rows and tiles
+// do. These tests are what prove a held drag still isn't cancelled.
 
 test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 } });
 
@@ -87,7 +92,7 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
   const client = await context.newCDPSession(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   const fridgeShelf = page.locator(".inv-shelf", { hasText: "Fridge" });
-  const card = fridgeShelf.locator(".inv-card", { hasText: "Touch Drag Item" });
+  const card = fridgeShelf.locator(".inv-row", { hasText: "Touch Drag Item" });
   const cardBox = await card.boundingBox();
   const pantryShelf = page.locator(".inv-shelf", { hasText: "Pantry" });
   const pantryBox = await pantryShelf.boundingBox();

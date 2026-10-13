@@ -81,16 +81,21 @@ export function expiryTag(days) {
   return { kind: "months", count: Math.round(days / 30), tone };
 }
 
-// The line down a card's left edge (the same as on the shelf): how close the date
-// is on a 4-week scale, filling up as it nears, pink within 3 days, yellow within
-// a week, blue after. None from 28 days on or with no date; expired (before the
-// use-by day) has its own tag. On the use-by day itself the line is full and pink.
+// How much shelf life is left, on a 4-week scale (Matt's Inventory design,
+// docs/design/riso-v2-inventory-compact-tiles/): full and blue when fresh, a short
+// stub near the end, full and pink once expired. Pink within 3 days (the use-by
+// day itself included: it is not expired) or expired, yellow within a week, blue
+// after. `height` is the strip down a Compact row's edge (none from 28 days on);
+// `width` is the bar along a tile's bottom (full from 28 days on). No date, null:
+// no strip, an empty bar. Days are Quebec days (`daysUntil`); expired is days < 0.
 export const LINE_DAYS = 28;
 export function lineForDays(days) {
-  if (days == null || days >= LINE_DAYS) return null;
-  if (days < 0) return { expired: true };
+  if (days == null) return null;
+  if (days < 0) return { expired: true, color: "pink", height: "100%", width: "100%" };
   const color = days <= 3 ? "pink" : days <= 7 ? "yellow" : "blue";
-  return { height: `${Math.max(8, Math.round((1 - days / LINE_DAYS) * 100))}%`, color };
+  if (days >= LINE_DAYS) return { color, height: null, width: "100%" };
+  const left = `${Math.max(8, Math.round((days / LINE_DAYS) * 100))}%`;
+  return { color, height: left, width: left };
 }
 
 // Which sentence goes under the use-by chips.

@@ -92,14 +92,17 @@ describe("the preview", () => {
     expect(expiryTag(90)).toEqual({ kind: "months", count: 3, tone: "plain" });
   });
 
-  it("draws the line like the shelf card: fuller as it nears, pink, yellow, blue, none from 28 days", () => {
+  it("draws the life left like the shelf (Matt's design): fuller when fresh, pink, yellow, blue, full pink once expired", () => {
     expect(lineForDays(null)).toBeNull();
-    expect(lineForDays(28)).toBeNull();
-    expect(lineForDays(-1)).toEqual({ expired: true });
-    expect(lineForDays(0)).toEqual({ height: "100%", color: "pink" }); // the use-by day: full, not expired
-    expect(lineForDays(14)).toEqual({ height: "50%", color: "blue" });
-    expect(lineForDays(3)).toEqual({ height: "89%", color: "pink" });
-    expect(lineForDays(7)).toEqual({ height: "75%", color: "yellow" });
+    expect(lineForDays(28)).toEqual({ color: "blue", height: null, width: "100%" }); // no strip, a full bar
+    expect(lineForDays(400)).toEqual({ color: "blue", height: null, width: "100%" });
+    expect(lineForDays(-1)).toEqual({ expired: true, color: "pink", height: "100%", width: "100%" });
+    expect(lineForDays(0)).toEqual({ color: "pink", height: "8%", width: "8%" }); // the use-by day: a pink stub, not expired
+    expect(lineForDays(14)).toEqual({ color: "blue", height: "50%", width: "50%" });
+    expect(lineForDays(3)).toEqual({ color: "pink", height: "11%", width: "11%" });
+    expect(lineForDays(4)).toEqual({ color: "yellow", height: "14%", width: "14%" });
+    expect(lineForDays(7)).toEqual({ color: "yellow", height: "25%", width: "25%" });
+    expect(lineForDays(8)).toEqual({ color: "blue", height: "29%", width: "29%" });
   });
 });
 
