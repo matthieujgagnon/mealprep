@@ -46,6 +46,7 @@ model User {
   plannerEntries        PlannerEntry[]
   pantryInventoryItems  PantryInventoryItem[]
   pantryConsumptionLogs PantryConsumptionLog[]
+  pantryRemovedItems    PantryRemovedItem[]
   pantryLocations       PantryLocation[]
   watchlistItems        WatchlistItem[]
   recipeImages          RecipeImage[]
@@ -414,6 +415,28 @@ model PantryConsumptionLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// Inventory's "Recently removed" (« Récemment retirés »): an item that left
+// Inventory (used up, tossed, deleted, or taken out to zero by "I cooked this")
+// is kept here for 7 Quebec days so Put back can restore it. The Inventory row
+// itself is deleted as before, so PantryInventoryItem still means "in stock" and
+// nothing that reads Inventory (the matcher, "I have it", Makeable, counts) can
+// see a removed item. `item` is the row exactly as it was; Put back restores it
+// under the same id (`itemId`, so a planned leftover's link comes back too) and
+// drops the "used up" / "tossed" log line it wrote (`logId`). Older entries are
+// deleted whenever the list is read or something is removed (lib/removedItems.js).
+model PantryRemovedItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String // the PantryInventoryItem's id, reused on Put back
+  item      Json // the row as it was: name, quantity, unit, location, dates, photo, leftover link
+  how       String // "consumed" | "wasted" | "deleted" | "cooked"
+  logId     String? // the PantryConsumptionLog line written when it left, if any
+  removedAt DateTime @default(now())
+
+  @@index([userId, removedAt])
 }
 
 // A user-added storage place beyond the three built-in ones (Fridge,
