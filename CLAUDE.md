@@ -30,6 +30,10 @@ The exceptions, which count as Matt confirming:
   view, and of a portion taken off a planned leftover, calls `api.putBackPantryItems`, which
   restores the rows exactly as they were (same ids, amounts, shelves and dates). It only undoes
   a removal; it is never a way of adding something new.
+- « Remettre » / Put back in Inventory's Recently removed puts an item back without the sheet,
+  like Undo. It calls `api.putBackRemovedPantryItem` (`handlePutBackRemoved` in `App.jsx`),
+  which restores the row exactly as it was when it left (same id, shelf, amount and use-by
+  date). It only undoes a removal from the last 7 days; it is never a way of adding something new.
 
 Do not call `api.addPantryInventoryItem` or `handleAddPantryItem` from anywhere else. A new
 way of adding must call `requestInventoryAdd(drafts)` and only act on the rows it resolves

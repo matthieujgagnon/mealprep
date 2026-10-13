@@ -23,7 +23,7 @@ async function setup(page) {
 const inventory = async (page) => await (await page.request.get("/api/pantry-inventory")).json();
 const toast = (page) => page.locator(".riso-toast");
 const note = (page) => itemForm(page).locator(".riso-itemform-note");
-const card = (page, name) => page.locator(".inv-card").filter({ hasText: name }).first();
+const card = (page, name) => page.locator(".inv-row").filter({ hasText: name }).first();
 
 test("Add and next adds the item, keeps the form open and the shelf, and lists it under Added this time", async ({ page }) => {
   await setup(page);

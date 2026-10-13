@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { parseQuantityInput, unitLabel } from "../lib/units.js";
-import { UnitSelect } from "./UnitSelect.jsx";
+import { useDndMonitor, useDroppable } from "@dnd-kit/core";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
-import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
-import { leftoverExpiry, leftoverKeepDays, thawPatch } from "../lib/leftovers.js";
+import { leftoverExpiry } from "../lib/leftovers.js";
+import { removedHowLabel, removedWhenLabel } from "../lib/removedItems.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
+import { InventoryItem, InventoryDragPreview } from "./InventoryItems.jsx";
 import { InventoryItemForm } from "./InventoryItemForm.jsx";
-import { HintStrip } from "./RisoControls.jsx";
+import { HintStrip, Segmented } from "./RisoControls.jsx";
+import { RemovedStrip } from "./RemovedStrip.jsx";
 import { useIsPhone } from "../hooks/useIsPhone.js";
+import { useInventoryView } from "../hooks/useInventoryView.js";
+import { useRemovedItems } from "../hooks/useRemovedItems.js";
 import { t } from "../i18n/index.js";
-// Home shows the same card photo.
-export { ItemPhoto };
+// Home shows the same card photo; App.jsx's drag overlay draws the dragged item.
+export { ItemPhoto, InventoryDragPreview };
 
 // Fridge and Freezer sit side by side, Pantry after - see the design
 // handoff. "Counter" is a fourth USDA location the bundled data supports
@@ -174,232 +176,6 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-// The expiry line down the card's left edge: how close the date is on a
-// 4-week scale, filling up from the bottom as it nears (nearly full the day
-// before, at least 8% so it stays visible), pink within 3 days, yellow
-// within a week, blue after that. No line from 28 days on, with no date,
-// or once expired (the Expired tag says it). The use-by day itself is not
-// expired: its label says it expires today (the app's own `expiry.today`).
-function expiryLine(item) {
-  if (!item.expiresAt) return null;
-  const d = daysUntil(item.expiresAt);
-  const line = lineForDays(d);
-  if (!line) return null;
-  if (line.expired) return { expired: true, label: t("inventory.expired") };
-  const label = d === 0 ? t("expiry.today").toLowerCase() : d === 1 ? t("inventory.useByTomorrow") : t("inventory.daysLeft", { count: d });
-  return { ...line, label };
-}
-
-// The card's amount and its measure: tap it to change them right there
-// (− / typed / + and the unit). Enter or tapping away saves, Escape puts
-// it back. Its clicks and drags stay off the card, so editing never opens
-// the panel or starts a drag.
-function CardQuantity({ item, onUpdate }) {
-  const [draft, setDraft] = useState(null);
-  const inputRef = useRef(null);
-  const editing = draft !== null;
-  const step = qtyStep(draft?.unit ?? item.unit);
-  const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
-
-  useEffect(() => {
-    if (editing) inputRef.current?.select();
-  }, [editing]);
-
-  const keep = (e) => e.stopPropagation();
-  function save() {
-    if (!draft) return;
-    setDraft(null);
-    const patch = {};
-    const next = parseQuantityInput(draft.qty);
-    if (next != null && next >= 0 && next !== item.quantity) patch.quantity = next;
-    if ((draft.unit || null) !== (item.unit || null)) patch.unit = draft.unit || null;
-    if (Object.keys(patch).length) onUpdate(item.id, patch);
-  }
-  function bump(dir) {
-    const current = parseQuantityInput(draft.qty) ?? item.quantity ?? 0;
-    setDraft({ ...draft, qty: String(Math.max(0, Math.round((current + dir * step) * 100) / 100)) });
-    inputRef.current?.focus();
-  }
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        className={`inv-card-qty${item.quantity == null ? " empty" : ""}`}
-        onClick={(e) => {
-          keep(e);
-          setDraft({ qty: item.quantity == null ? "" : String(item.quantity), unit: item.unit || "" });
-        }}
-        onPointerDown={keep}
-        onKeyDown={keep}
-        aria-label={
-          item.quantity != null
-            ? t("inventory.changeAmountNow", { name: item.name, amount: `${item.quantity}${unit ? ` ${unit}` : ""}` })
-            : t("inventory.changeAmount", { name: item.name })
-        }
-      >
-        {item.quantity != null ? (
-          <span className="inv-card-qty-num">{item.quantity}</span>
-        ) : (
-          <span className="inv-card-qty-unit">{t("inventory.addQty")}</span>
-        )}
-        {item.quantity != null && unit && <span className="inv-card-qty-unit"> {unit}</span>}
-      </button>
-    );
-  }
-
-  const onKeys = (e) => {
-    e.stopPropagation();
-    if (e.key === "Enter") save();
-    if (e.key === "Escape") setDraft(null);
-  };
-  return (
-    <span
-      className="inv-card-qty-edit"
-      onClick={keep}
-      onPointerDown={keep}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) save();
-      }}
-    >
-      <button type="button" onClick={() => bump(-1)} aria-label={t("inventory.less", { name: item.name })}>
-        −
-      </button>
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="decimal"
-        value={draft.qty}
-        onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
-        onKeyDown={onKeys}
-        aria-label={t("inventory.amountOf", { name: item.name })}
-      />
-      <button type="button" onClick={() => bump(1)} aria-label={t("inventory.more", { name: item.name })}>
-        +
-      </button>
-      <UnitSelect
-        className="inv-card-unit"
-        value={draft.unit}
-        onChange={(u) => setDraft({ ...draft, unit: u })}
-        onKeyDown={onKeys}
-        emptyLabel="—"
-        aria-label={t("inventory.measureOf", { name: item.name })}
-      />
-    </span>
-  );
-}
-
-// The card that follows the pointer while an item is dragged to another
-// shelf (App.jsx's DragOverlay): the same card, without its controls.
-export function InventoryDragPreview({ item }) {
-  const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
-  return (
-    <div className="riso-theme inv-drag-preview" data-theme="light">
-      <div className={`inv-card${daysUntilOrNull(item) < 0 ? " expired" : ""}`}>
-        <div className="inv-card-body">
-          <ItemPhoto item={item} />
-          <div className="inv-card-main">
-            <span className="inv-card-name">{item.name}</span>
-          </div>
-          {item.quantity != null && (
-            <span className="inv-card-qty">
-              <span className="inv-card-qty-num">{item.quantity}</span>
-              {unit && <span className="inv-card-qty-unit"> {unit}</span>}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function daysUntilOrNull(item) {
-  return item.expiresAt ? daysUntil(item.expiresAt) : Infinity;
-}
-
-// A leftover's card says how many portions are left and where they are kept, wears
-// the yellow LEFTOVER tag, shows the recipe's photo, and in the freezer has "Move
-// to fridge to thaw" (`onThaw`).
-function ItemCard({ item, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true, recipe, onThaw }) {
-  const line = expiryLine(item);
-  const leftover = !!item.isLeftover;
-  const photoItem = leftover && !item.imageUrl && recipe?.photoUrl ? { ...item, imageUrl: recipe.photoUrl } : item;
-
-  // Draggable onto any other shelf (see App.jsx's handleDragEnd, routed via
-  // the "inv-shelf-<location>" droppable ids below). PointerSensor's
-  // activation distance (App.jsx) keeps a quick click a click.
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `inv-item-${item.id}`,
-    data: { inventoryItemId: item.id, inventoryItem: item },
-    disabled: !draggable,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...(draggable ? { ...attributes, ...listeners } : {})}
-      className={`inv-card${active ? " active" : ""}${isDragging ? " dragging" : ""}${line?.expired ? " expired" : ""}${leftover ? " leftover" : ""}`}
-      onClick={onSelect}
-      aria-label={`${item.name}${line ? `, ${line.label}` : ""}`}
-    >
-      {line && !line.expired && (
-        <span className="inv-card-line" aria-hidden="true">
-          <span className={`inv-card-line-fill ${line.color}`} style={{ height: line.height }} />
-        </span>
-      )}
-      <div className="inv-card-body">
-        <ItemPhoto item={photoItem} />
-        <div className="inv-card-main">
-          <span className="inv-card-name">{item.name}</span>
-          {line?.expired && <span className="inv-card-expired">{t("inventory.expiredTag")}</span>}
-          {leftover && (
-            <span className="inv-card-leftover">
-              <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>
-              <span>{t(`locations.${item.location}`)}</span>
-              {line && !line.expired && <span>{line.label}</span>}
-            </span>
-          )}
-          {leftover && item.location === "freezer" && onThaw && (
-            <button
-              type="button"
-              className="inv-card-thaw riso-press"
-              onClick={(e) => {
-                e.stopPropagation();
-                onThaw(item);
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              {t("inventory.thaw")}
-            </button>
-          )}
-        </div>
-        <CardQuantity item={item} onUpdate={onUpdate} />
-        <span
-          role="checkbox"
-          aria-checked={selected}
-          tabIndex={0}
-          className={`inv-card-check${selected ? " on" : ""}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect();
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              onToggleSelect();
-            }
-          }}
-          aria-label={t("inventory.select", { name: item.name })}
-        >
-          {selected ? "✓" : ""}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 const WIDTH_PRESETS = [
   { id: "full", span: GRID_COLUMNS, get label() { return t("inventory.widthFull"); } },
   { id: "half", span: 6, get label() { return t("inventory.widthHalf"); } },
@@ -552,31 +328,9 @@ function ResizeHandle({ label, span, height, shelfRef, onPreview, onCommit }) {
   );
 }
 
-function ShelfColumn({
-  location,
-  items,
-  onUpdate,
-  activeItemId,
-  selectedIds,
-  onSelect,
-  onToggleSelect,
-  draggable = true,
-  recipes = [],
-  onThaw,
-  editing,
-  onEdit,
-  onAddHere,
-  onRename,
-  onDelete,
-  arrangeable,
-  onResize,
-  onStartMove,
-  onMoveByKey,
-  moveState,
-}) {
-  const [preview, setPreview] = useState(null);
-  const shelfRef = useRef(null);
-  const sorted = [...items].sort((a, b) => {
+// Items sorted by days left, soonest first (expired at the top); no date last.
+function byDaysLeft(items) {
+  return [...items].sort((a, b) => {
     const da = a.expiresAt ? daysUntil(a.expiresAt) : null;
     const db = b.expiresAt ? daysUntil(b.expiresAt) : null;
     if (da === null && db === null) return 0;
@@ -584,8 +338,34 @@ function ShelfColumn({
     if (db === null) return -1;
     return da - db;
   });
+}
 
-  // Every shelf is a drop target for a dragged card (see App.jsx's
+function ShelfColumn({
+  location,
+  items,
+  view,
+  onUpdate,
+  activeItemId,
+  selectedIds,
+  onSelect,
+  onToggleSelect,
+  recipes = [],
+  editing,
+  onEdit,
+  onAddHere,
+  onRename,
+  onDelete,
+  resizable,
+  onResize,
+  onStartMove,
+  onMoveByKey,
+  moveState,
+}) {
+  const [preview, setPreview] = useState(null);
+  const shelfRef = useRef(null);
+  const sorted = byDaysLeft(items);
+
+  // Every shelf is a drop target for a dragged item (see App.jsx's
   // handleDragEnd, which routes "inv-shelf-<id>" ids).
   const { setNodeRef, isOver } = useDroppable({ id: `inv-shelf-${location.id}` });
 
@@ -622,21 +402,20 @@ function ShelfColumn({
       aria-label={t("inventory.sectionAria", { name: location.label })}
     >
       <div className="inv-shelf-header">
-        {arrangeable && (
-          <button
-            type="button"
-            className="inv-shelf-grip"
-            aria-label={t("inventory.moveSection", { name: location.label })}
-            title={t("inventory.moveTitle")}
-            onPointerDown={(e) => onStartMove(location.id, e)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft" || e.key === "ArrowUp") onMoveByKey(location.id, -1, e);
-              if (e.key === "ArrowRight" || e.key === "ArrowDown") onMoveByKey(location.id, 1, e);
-            }}
-          >
-            ⠿
-          </button>
-        )}
+        <button
+          type="button"
+          className="inv-shelf-grip"
+          aria-label={t("inventory.moveSection", { name: location.label })}
+          title={t("inventory.moveTitle")}
+          onPointerDown={(e) => onStartMove(location.id, e)}
+          onContextMenu={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft" || e.key === "ArrowUp") onMoveByKey(location.id, -1, e);
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") onMoveByKey(location.id, 1, e);
+          }}
+        >
+          ⠿
+        </button>
         {editing ? editor.nameInput : <h3 className="inv-shelf-title">{location.label}</h3>}
         <span className="inv-shelf-count">{items.length}</span>
         <span className="inv-shelf-spacer" />
@@ -669,24 +448,24 @@ function ShelfColumn({
         </button>
       </div>
       {editing && editor.controls}
-      <div className="inv-shelf-items">
+      <div className={`inv-shelf-items ${view}`}>
         {sorted.map((item) => (
-          <ItemCard
+          <InventoryItem
             key={item.id}
             item={item}
+            view={view}
             active={item.id === activeItemId}
             selected={selectedIds.has(item.id)}
             onSelect={() => onSelect(item.id)}
-            draggable={draggable && !item.isLeftover}
+            draggable={!item.isLeftover}
             onToggleSelect={() => onToggleSelect(item.id)}
             onUpdate={onUpdate}
             recipe={item.isLeftover ? recipes.find((r) => r.id === item.recipeId) : null}
-            onThaw={onThaw}
           />
         ))}
         {sorted.length === 0 && <div className="inv-shelf-empty">{t("inventory.dropHere")}</div>}
       </div>
-      {arrangeable && (
+      {resizable && (
         <ResizeHandle
           label={t("inventory.resizeSection", { name: location.label })}
           span={location.span}
@@ -700,26 +479,26 @@ function ShelfColumn({
   );
 }
 
-// "+ Add shelf" at the end of the grid makes a new shelf and opens it
-// ready to rename.
-// The little round + beside the shelf pill: it turns into a field for the new
-// shelf's name (Enter adds it, Escape cancels).
-function AddShelfSegment({ onAdd }) {
+// "+ Add section" in the title row: it turns into a field for the new shelf's
+// name (Enter adds it, Escape or an empty field cancels), so nothing is made
+// until it has a name. The new shelf goes at the end, and the page scrolls to it.
+function AddSectionButton({ onAdd }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
 
+  function close() {
+    setName("");
+    setError(null);
+    setOpen(false);
+  }
+
   async function submit() {
     const trimmed = name.trim();
-    if (!trimmed) {
-      setOpen(false);
-      return;
-    }
+    if (!trimmed) return close();
     try {
       await onAdd(trimmed);
-      setName("");
-      setError(null);
-      setOpen(false);
+      close();
     } catch (err) {
       setError(err.message);
     }
@@ -727,37 +506,49 @@ function AddShelfSegment({ onAdd }) {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        className="inv-shelf-edit inv-shelf-add add-shelf"
-        aria-label={t("inventory.addShelf")}
-        title={t("inventory.addShelf")}
-        onClick={() => setOpen(true)}
-      >
-        +
+      <button type="button" className="riso-inv-btn" onClick={() => setOpen(true)}>
+        {t("inventory.addSection")}
       </button>
     );
   }
   return (
-    <span className="add-shelf form">
+    <span className="riso-inv-add-section">
       <input
         autoFocus
         aria-label={t("inventory.shelfName")}
         placeholder={t("inventory.shelfNamePlaceholder")}
         value={name}
+        maxLength={40}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") submit();
-          if (e.key === "Escape") {
-            setName("");
-            setError(null);
-            setOpen(false);
-          }
+          if (e.key === "Escape") close();
         }}
         onBlur={() => !error && submit()}
       />
-      {error && <span className="add-shelf-error" role="alert">{error}</span>}
+      {error && (
+        <span className="riso-inv-add-section-error" role="alert">
+          {error}
+        </span>
+      )}
     </span>
+  );
+}
+
+// Compact / Tiles: switches every shelf (remembered per account on this device).
+// The shared Segmented control at the design's inset size.
+function ViewToggle({ view, onChange }) {
+  return (
+    <Segmented
+      className="inset"
+      ariaLabel={t("inventory.viewAria")}
+      value={view}
+      onChange={onChange}
+      options={[
+        { id: "compact", label: t("inventory.viewCompact") },
+        { id: "tiles", label: t("inventory.viewTiles") },
+      ]}
+    />
   );
 }
 
@@ -784,6 +575,14 @@ function FloatingActionBar({ count, onFindRecipes, onConsume, onFreeze, onClear 
   );
 }
 
+// A shelf held by its ⠿ on a phone moves only after a short still hold (the
+// app's 200 ms, as items do), so a swipe that starts on the grip is not a move.
+const HOLD_MS = 200;
+const HOLD_TOLERANCE = 8;
+// While a shelf is carried near the top or bottom of the screen, the page scrolls.
+const EDGE = 72;
+const EDGE_STEP = 12;
+
 export function Inventory({
   user,
   items,
@@ -792,6 +591,7 @@ export function Inventory({
   onUpdate,
   onDelete,
   onConsume,
+  onPutBackRemoved,
   customStaples,
   onMarkStaple,
   onUnmarkStaple,
@@ -809,20 +609,15 @@ export function Inventory({
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [activeItemId, setActiveItemId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
-  // The shelf a shelf's own + opened the form for (the toolbar's + Add
-  // item starts in the fridge).
+  // The shelf a shelf's own + opened the form for (the title row's + Add item
+  // starts in the fridge).
   const [addLocation, setAddLocation] = useState("fridge");
   const [showScan, setShowScan] = useState(false);
+  const [view, setView] = useInventoryView(user.id);
+  const [removed] = useRemovedItems();
+  const [removedOpen, setRemovedOpen] = useState(false);
   const isPhone = useIsPhone();
   const showToast = onToast;
-  // The shelf chips are pinned at the top while you scroll (under the header on
-  // a phone): tapping one scrolls to its shelf, and the chip of the shelf you're
-  // looking at is the lit one. The same on a phone and on a computer.
-  const [currentShelf, setCurrentShelf] = useState("fridge");
-  const currentShelfRef = useRef(currentShelf);
-  currentShelfRef.current = currentShelf;
-  // While a tapped chip scrolls its shelf into place, that chip stays lit.
-  const jumpLock = useRef(null);
   const [editingId, setEditingId] = useState(null);
   const staples = new Set(customStaples || []);
 
@@ -838,6 +633,29 @@ export function Inventory({
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [activeItemId]);
+
+  // A drag never opens the item it lifted: the click that follows a drop (or a
+  // still hold let go) is swallowed, and so is any click for a moment after it.
+  const carrying = useRef(false);
+  const calmUntil = useRef(0);
+  useDndMonitor({
+    onDragStart: (e) => {
+      if (e.active.data.current?.inventoryItemId) carrying.current = true;
+    },
+    onDragEnd: () => {
+      if (carrying.current) calmUntil.current = Date.now() + 250;
+      carrying.current = false;
+    },
+    onDragCancel: () => {
+      if (carrying.current) calmUntil.current = Date.now() + 250;
+      carrying.current = false;
+    },
+  });
+  function swallowClick(e) {
+    if (!carrying.current && Date.now() >= calmUntil.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }
 
   function toggleSelect(id) {
     setSelectedIds((prev) => {
@@ -877,98 +695,17 @@ export function Inventory({
     }
   }
 
-  // "Move to fridge to thaw" on a frozen leftover: in the fridge, its days left
-  // start over with the fridge keep time; the toast has Undo.
-  async function thaw(item) {
-    const recipe = recipes.find((r) => r.id === item.recipeId);
-    const before = { location: item.location, purchasedAt: item.purchasedAt, expiresAt: item.expiresAt };
-    await onUpdate(item.id, thawPatch(recipe));
-    showToast(t("inventory.thawed", { name: item.name, count: leftoverKeepDays(recipe, "fridge") }), () => onUpdate(item.id, before));
-  }
-
   const activeItem = items.find((i) => i.id === activeItemId);
-  // "Soon" is today to 3 days; expired items (a day before today or earlier) are counted on their own.
+  // "Soon" is today to 3 days (the use-by day itself is not expired); expired
+  // items (a day before today or earlier) are counted on their own.
   const soonCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0 && daysUntil(i.expiresAt) <= 3).length;
   const expiredCount = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) < 0).length;
 
-  // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed) and the user's own
-  // custom sections, in the user's order, with their names and sizes.
+  // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed, and Leftovers) and the
+  // user's own custom sections, in the user's order, with their names and sizes.
   const sections = orderedSections(locations, layout);
-  const shelfLocations = sections;
 
-  // The height of the sticky app header, so the chips pin right under it and a
-  // jump lands the shelf just below the chips.
-  const rootRef = useRef(null);
-  useEffect(() => {
-    if (!isPhone) return undefined;
-    const header = document.querySelector(".app-header");
-    const root = rootRef.current;
-    if (!header || !root) return undefined;
-    const measure = () => root.style.setProperty("--inv-sticky-top", `${header.offsetHeight}px`);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, [isPhone]);
-
-  // Light the chip of the shelf whose top has passed the line under the chips
-  // (the lowest top that has; shelves side by side on a computer tie, and the
-  // first of them wins).
-  const shelfIds = shelfLocations.map((loc) => loc.id).join("|");
-  useEffect(() => {
-    let frame = 0;
-    let settle = 0;
-    const update = () => {
-      frame = 0;
-      if (jumpLock.current && Date.now() < jumpLock.current.until) {
-        setCurrentShelf(jumpLock.current.id);
-        // Look again once the jump is over.
-        clearTimeout(settle);
-        settle = setTimeout(onScroll, jumpLock.current.until - Date.now() + 30);
-        return;
-      }
-      const pin = document.querySelector(".riso-inv-shelf-pin");
-      const line = (pin ? pin.getBoundingClientRect().bottom : 0) + 12;
-      let current = null;
-      let currentTop = -Infinity;
-      const tops = {};
-      for (const id of shelfIds.split("|")) {
-        const el = document.querySelector(`.inv-shelves [data-section-id="${id}"]`);
-        if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        tops[id] = top;
-        if (current === null) {
-          current = id;
-          currentTop = top;
-        } else if (top <= line && (currentTop > line || top > currentTop)) {
-          current = id;
-          currentTop = top;
-        }
-      }
-      // Shelves side by side share a top: keep the one already lit (the one you
-      // tapped) rather than jumping to the first of them.
-      const lit = currentShelfRef.current;
-      if (lit && lit !== current && tops[lit] !== undefined && Math.abs(tops[lit] - currentTop) < 3) current = lit;
-      // Near the bottom the last shelf may be too short to reach the line.
-      const ids = shelfIds.split("|");
-      if (window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 12) current = ids[ids.length - 1];
-      if (current) setCurrentShelf(current);
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (frame) cancelAnimationFrame(frame);
-      clearTimeout(settle);
-    };
-  }, [shelfIds, items.length]);
-
-  function jumpToShelf(id) {
-    setCurrentShelf(id);
-    jumpLock.current = { id, until: Date.now() + 1000 };
+  function scrollToShelf(id) {
     document.querySelector(`.inv-shelves [data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -988,17 +725,42 @@ export function Inventory({
     if (target) moveSectionTo(id, target.id, dir > 0);
   }
 
-  // Drag a section by its grip onto another one: it lands before or after
-  // it, whichever half of that section the pointer is over.
+  // Drag a section by its grip onto another one: it lands before or after it,
+  // whichever half of that section the pointer is over. With a finger, the grip
+  // has to be held still for a moment first; the page scrolls near its edges.
   const [moveState, setMoveState] = useState(null);
   function startMove(id, e) {
     e.preventDefault();
+    if (e.pointerType !== "touch") return carryShelf(id, e.clientX, e.clientY);
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    const stop = () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointermove", wobble);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+    const wobble = (ev) => {
+      if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > HOLD_TOLERANCE) stop();
+    };
+    const timer = setTimeout(() => {
+      stop();
+      carryShelf(id, x0, y0);
+    }, HOLD_MS);
+    window.addEventListener("pointermove", wobble);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+  }
+
+  function carryShelf(id, startX, startY) {
     let state = { id, overId: null, after: false };
+    let point = { x: startX, y: startY };
+    let frame = 0;
     setMoveState(state);
     document.body.classList.add("no-select");
-    const move = (ev) => {
+    const look = () => {
       const over = document
-        .elementsFromPoint(ev.clientX, ev.clientY)
+        .elementsFromPoint(point.x, point.y)
         .map((el) => el.closest?.("[data-section-id]"))
         .find(Boolean);
       const overId = over?.dataset.sectionId;
@@ -1007,20 +769,36 @@ export function Inventory({
       } else {
         const r = over.getBoundingClientRect();
         const sameRow = r.width < (over.parentElement?.clientWidth || 0) - 4;
-        const after = sameRow ? ev.clientX > r.left + r.width / 2 : ev.clientY > r.top + r.height / 2;
+        const after = sameRow ? point.x > r.left + r.width / 2 : point.y > r.top + r.height / 2;
         state = { id, overId, after };
       }
       setMoveState(state);
     };
-    const up = () => {
+    const edgeScroll = () => {
+      frame = 0;
+      const dy = point.y < EDGE ? -EDGE_STEP : point.y > window.innerHeight - EDGE ? EDGE_STEP : 0;
+      if (!dy) return;
+      window.scrollBy(0, dy);
+      look();
+      frame = requestAnimationFrame(edgeScroll);
+    };
+    const move = (ev) => {
+      point = { x: ev.clientX, y: ev.clientY };
+      look();
+      if (!frame) frame = requestAnimationFrame(edgeScroll);
+    };
+    const end = (ev) => {
       window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (frame) cancelAnimationFrame(frame);
       document.body.classList.remove("no-select");
       setMoveState(null);
-      moveSectionTo(state.id, state.overId, state.after);
+      if (ev.type === "pointerup") moveSectionTo(state.id, state.overId, state.after);
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
   }
 
   function updateSection(id, patch) {
@@ -1032,8 +810,17 @@ export function Inventory({
     else updateSection(sec.id, { label: name });
   }
 
+  async function putBack(entry) {
+    try {
+      await onPutBackRemoved(entry);
+      showToast(t("inventory.removed.putBackDone", { name: entry.item.name }));
+    } catch {
+      showToast(t("inventory.removed.putBackFailed", { name: entry.item.name }));
+    }
+  }
+
   return (
-    <div ref={rootRef} className="riso-theme riso-inv inv-page" data-theme="light">
+    <div className="riso-theme riso-inv inv-page" data-theme="light">
       <div className="riso-inv-header">
         <div className="riso-inv-title-block">
           <p className="riso-inv-summary">
@@ -1046,9 +833,17 @@ export function Inventory({
           </h1>
         </div>
         <div className="riso-inv-header-actions">
+          <ViewToggle view={view} onChange={setView} />
           <button type="button" className="riso-inv-btn" onClick={() => setShowScan(true)}>
             {t("inventory.scanReceipt")}
           </button>
+          <AddSectionButton
+            onAdd={async (name) => {
+              const created = await onAddLocation(name);
+              // Scroll to it once it's on the page.
+              if (created?.id) setTimeout(() => scrollToShelf(created.id), 50);
+            }}
+          />
           <button
             type="button"
             className="riso-inv-btn primary"
@@ -1068,68 +863,54 @@ export function Inventory({
 
       {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
-      <div className="riso-inv-shelf-pin">
-        <div className="riso-inv-shelf-bar">
-          <div className="riso-inv-shelf-switch" role="tablist" aria-label={t("inventory.shelfAria")}>
-            {shelfLocations.map((loc) => (
-              <button
-                key={loc.id}
-                type="button"
-                role="tab"
-                aria-selected={currentShelf === loc.id}
-                className={currentShelf === loc.id ? "on" : ""}
-                onClick={() => jumpToShelf(loc.id)}
-              >
-                {loc.label} <span>{items.filter((i) => onShelf(i, loc.id)).length}</span>
-              </button>
-            ))}
-          </div>
-          {/* The round + sits beside the pill, not inside it. */}
-          <AddShelfSegment
-            onAdd={async (name) => {
-              const created = await onAddLocation(name);
-              // Scroll to it once it's on the page.
-              if (created?.id) setTimeout(() => jumpToShelf(created.id), 50);
+      <div className="inv-shelves" onClickCapture={swallowClick}>
+        {sections.map((loc) => (
+          <ShelfColumn
+            key={loc.id}
+            location={loc}
+            items={items.filter((i) => onShelf(i, loc.id))}
+            view={view}
+            onUpdate={onUpdate}
+            recipes={recipes}
+            activeItemId={activeItemId}
+            selectedIds={selectedIds}
+            onSelect={setActiveItemId}
+            onToggleSelect={toggleSelect}
+            editing={editingId === loc.id}
+            onEdit={(on) => setEditingId(on ? loc.id : null)}
+            onAddHere={() => {
+              setAddLocation(loc.id);
+              setShowAdd(true);
             }}
+            onRename={(name) => renameSection(loc, name)}
+            onDelete={() => {
+              setEditingId(null);
+              onDeleteLocation(loc.id);
+            }}
+            resizable={!isPhone}
+            onResize={({ span, height }) => updateSection(loc.id, { span, height })}
+            onStartMove={startMove}
+            onMoveByKey={moveSectionByKey}
+            moveState={moveState}
           />
-        </div>
+        ))}
       </div>
 
-      <div className="inv-shelves">
-        {shelfLocations
-          .map((loc) => (
-            <ShelfColumn
-              key={loc.id}
-              location={loc}
-              items={items.filter((i) => onShelf(i, loc.id))}
-              onUpdate={onUpdate}
-              recipes={recipes}
-              onThaw={thaw}
-              activeItemId={activeItemId}
-              selectedIds={selectedIds}
-              onSelect={setActiveItemId}
-              onToggleSelect={toggleSelect}
-              draggable={!isPhone}
-              editing={editingId === loc.id}
-              onEdit={(on) => setEditingId(on ? loc.id : null)}
-              onAddHere={() => {
-                setAddLocation(loc.id);
-                setShowAdd(true);
-              }}
-              onRename={(name) => renameSection(loc, name)}
-              onDelete={() => {
-                setEditingId(null);
-                setCurrentShelf("fridge");
-                onDeleteLocation(loc.id);
-              }}
-              arrangeable={!isPhone}
-              onResize={({ span, height }) => updateSection(loc.id, { span, height })}
-              onStartMove={startMove}
-              onMoveByKey={moveSectionByKey}
-              moveState={moveState}
-            />
-          ))}
-      </div>
+      <RemovedStrip
+        className="riso-inv-removed"
+        collapsible
+        open={removedOpen}
+        onToggle={() => setRemovedOpen((o) => !o)}
+        label={t("inventory.removed.title")}
+        items={removed.map((entry) => ({
+          key: entry.id,
+          name: entry.item.name,
+          meta: `${removedHowLabel(entry.how)} · ${removedWhenLabel(entry.removedAt)}`,
+          putBackLabel: t("inventory.removed.putBack"),
+          ariaLabel: t("inventory.removed.putBackAria", { name: entry.item.name }),
+          onPutBack: () => putBack(entry),
+        }))}
+      />
 
       {activeItem && (
         <InventoryItemForm

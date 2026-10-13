@@ -945,69 +945,127 @@ select {
 
 .riso-inv-title-block {
   flex: 1;
-  min-width: 280px;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .riso-inv-title {
   margin: 0;
   font-family: var(--riso-font-display);
   font-weight: 800;
-  font-size: 60px;
+  font-size: 40px;
   line-height: 0.95;
   letter-spacing: -0.035em;
 }
 
 .riso-inv-header-actions {
   display: flex;
-  gap: 10px;
-  flex: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-/* "36 items · 0 to use soon · 3 expired": Riso display type, not the mono
-   eyebrow. */
+/* "21 ITEMS · 4 TO USE SOON · 1 EXPIRED" (Matt's Compact + Tiles design). */
 .riso-inv-summary {
   margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 0;
-  font-family: var(--riso-font-display);
-  font-weight: 600;
-  font-size: 15px;
-  line-height: 1.3;
-  letter-spacing: -0.005em;
-  color: var(--riso-soft);
+  font: 500 11.5px/1.3 var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-ink);
 }
 
 .riso-inv-summary span + span::before {
   content: "·";
-  margin: 0 10px;
-  color: var(--riso-muted);
-}
-
-.riso-inv-summary .expired {
-  color: var(--riso-danger);
+  margin: 0 0.7em;
 }
 
 .riso-inv-btn {
-  height: 44px;
-  padding: 0 20px;
-  border-radius: 22px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   color: var(--riso-ink);
   font-family: var(--riso-font-display);
   font-weight: 600;
-  font-size: 14.5px;
+  font-size: 13.5px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .riso-inv-btn.primary {
+  padding: 0 18px;
   background: var(--riso-accent);
   color: var(--riso-on-accent);
+  font-weight: 700;
+  font-size: 13px;
   box-shadow: var(--riso-shadow);
+}
+
+/* The shared Segmented control at its "inset" size (Inventory's Compact / Tiles):
+   a 36px pill with two 28px segments inside it, the chosen one in ink. */
+.riso-segmented.inset {
+  height: 36px;
+  padding: 2px;
+  gap: 2px;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 18px;
+}
+
+.riso-segmented.inset button,
+.riso-segmented.inset .riso-segment {
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* "+ Add section" once tapped: the new shelf's name. */
+.riso-inv-add-section {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-inv-add-section input {
+  width: 170px;
+  height: 36px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 600 13.5px var(--riso-font-display);
+}
+
+.riso-inv-add-section-error {
+  font: 600 12px var(--riso-font-body);
+  color: var(--riso-danger);
+}
+
+/* The how-it-works strip, the design's smaller size (the shared HintStrip). */
+.riso-inv .riso-hint-strip {
+  border-radius: 14px;
+  padding: 8px 14px;
+}
+
+.riso-inv .riso-hint-sticker {
+  transform: rotate(-3deg);
+  font-size: 11.5px;
+}
+
+.riso-inv .riso-hint-text {
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .riso-inv .empty-state {
@@ -1020,14 +1078,14 @@ select {
 
 .riso-inv {
   font-family: var(--riso-font-display);
-  padding: 28px 40px 40px;
-  gap: 24px;
+  padding: 8px 0 32px;
+  gap: 16px;
 }
 
 .inv-shelves {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 20px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -1041,17 +1099,17 @@ select {
   position: relative;
   background: var(--riso-surface);
   border: 2px solid var(--riso-ink);
-  border-radius: 26px;
-  padding: 16px 16px 28px;
+  border-radius: 20px;
+  padding: 10px 12px 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
   box-sizing: border-box;
 }
 
 .inv-shelf.drop-active {
-  box-shadow: 4px 4px 0 var(--riso-accent);
+  box-shadow: 5px 5px 0 var(--riso-accent);
 }
 
 .inv-shelf.resizing {
@@ -1073,18 +1131,21 @@ select {
 .inv-shelf-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: none;
   min-width: 0;
 }
 
+/* The ⠿ grip: drag the shelf (with a finger, after a short still hold). */
 .inv-shelf-grip {
   cursor: grab;
-  font-size: 16px;
+  font-size: 14px;
   letter-spacing: -2px;
   color: var(--riso-muted);
   user-select: none;
-  padding: 4px 2px;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  padding: 2px;
   background: none;
   border: none;
   touch-action: none;
@@ -1096,7 +1157,7 @@ select {
 
 .inv-shelf-title {
   margin: 0;
-  font: 800 28px var(--riso-font-display);
+  font: 800 20px var(--riso-font-display);
   letter-spacing: -0.02em;
   white-space: nowrap;
   flex: none;
@@ -1105,10 +1166,10 @@ select {
 .inv-shelf-name-input {
   flex: 1;
   min-width: 0;
-  font: 800 26px var(--riso-font-display);
+  font: 800 19px var(--riso-font-display);
   letter-spacing: -0.02em;
   border: 2px solid var(--riso-ink);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--riso-canvas);
   padding: 2px 10px;
   box-sizing: border-box;
@@ -1117,16 +1178,16 @@ select {
 }
 
 .inv-shelf-count {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 9px;
-  border-radius: 14px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 11px;
   background: var(--riso-yellow);
   border: 2px solid var(--riso-ink);
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 800 13px var(--riso-font-display);
+  font: 800 11.5px var(--riso-font-display);
   box-sizing: border-box;
   flex: none;
 }
@@ -1143,26 +1204,25 @@ select {
 }
 
 .inv-shelf-edit {
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
   color: var(--riso-ink);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 12px;
   box-sizing: border-box;
   cursor: pointer;
   flex: none;
   padding: 0;
 }
 
-/* The + that adds an item to a shelf, and the + beside the shelf pill that adds a
-   shelf: the same glyph size on a computer and on a phone. */
+/* The + that adds an item to that shelf, beside ✎ (the same circle). */
 .inv-shelf-edit.inv-shelf-add {
-  font: 800 22px/1 var(--riso-font-display);
+  font: 800 17px/1 var(--riso-font-display);
 }
 
 .inv-shelf-add:hover,
@@ -1184,13 +1244,13 @@ select {
 }
 
 .inv-shelf-controls button {
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 16px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
   border: 2px solid var(--riso-ink);
   background: var(--riso-canvas);
   color: var(--riso-ink);
-  font: 600 13px var(--riso-font-display);
+  font: 600 12.5px var(--riso-font-display);
   cursor: pointer;
 }
 
@@ -1216,17 +1276,24 @@ select {
   color: var(--riso-danger);
 }
 
-/* Every card is the same size whatever the shelf width. */
+/* Compact: 48px rows, at least 230px wide. Tiles: at least 130px wide. Every
+   item is the same size whatever the shelf width. */
 .inv-shelf-items {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
-  grid-auto-rows: 88px;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
+  grid-auto-rows: 48px;
+  gap: 6px;
   align-content: start;
-  padding: 2px 6px 6px 2px;
-  margin: -2px -6px -6px -2px;
+  padding: 2px 4px 6px 2px;
+  margin: -2px -4px -6px -2px;
+}
+
+.inv-shelf-items.tiles {
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-auto-rows: auto;
+  gap: 8px;
 }
 
 .inv-shelf.fixed-height .inv-shelf-items {
@@ -1235,21 +1302,23 @@ select {
 
 .inv-shelf-empty {
   grid-column: 1 / -1;
+  height: 48px;
+  box-sizing: border-box;
   border: 2px dashed var(--riso-dash-strong);
-  border-radius: 14px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 600 14px var(--riso-font-display);
+  font: 600 13px var(--riso-font-display);
   color: var(--riso-muted);
 }
 
 .inv-shelf-resize {
   position: absolute;
-  right: 10px;
-  bottom: 8px;
-  width: 22px;
-  height: 22px;
+  right: 8px;
+  bottom: 6px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: none;
   cursor: nwse-resize;
@@ -1260,21 +1329,6 @@ select {
 .inv-shelf-resize:focus-visible {
   outline: 2px solid var(--riso-accent);
   outline-offset: 2px;
-}
-
-.inv-add-section-tile {
-  grid-column: span 4;
-  min-height: 120px;
-  border: 2px dashed var(--riso-ink);
-  border-radius: 26px;
-  background: transparent;
-  color: var(--riso-ink);
-  font: 700 16px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.inv-add-section-tile:hover {
-  background: var(--riso-surface);
 }
 
 /* Item card (Design4): one row - expiry line, photo, name, amount, tick. */
@@ -1301,20 +1355,19 @@ select {
   box-shadow: 4px 4px 0 var(--riso-accent);
 }
 
-.inv-card.dragging {
-  opacity: 0.4;
-}
-
-/* The card following the pointer: the same card, tilted and lifted. */
+/* The item following the pointer: the same row or tile, tilted and lifted. */
 .inv-drag-preview {
-  width: 300px;
-  height: 88px;
+  width: 260px;
   background: transparent;
   cursor: grabbing;
 }
 
-.inv-drag-preview .inv-card {
-  height: 100%;
+.inv-drag-preview.tiles {
+  width: 140px;
+}
+
+.inv-drag-preview .inv-row,
+.inv-drag-preview .inv-tile {
   transform: rotate(-2deg);
   box-shadow: 5px 5px 0 var(--riso-ink);
 }
@@ -1402,19 +1455,6 @@ select {
   overflow-wrap: break-word;
 }
 
-/* Quiet on purpose: easy to ignore. */
-.inv-card-expired {
-  background: #ffe0f1;
-  color: #8a0f55;
-  border-radius: 999px;
-  padding: 0 8px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  font: 700 11.5px var(--riso-font-display);
-  white-space: nowrap;
-}
-
 /* The amount is a button: tap to change it on the card. */
 .inv-card-qty {
   flex: none;
@@ -1440,55 +1480,6 @@ select {
   font-size: 13px;
 }
 
-.inv-card-qty-edit {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.inv-card-qty-edit button {
-  width: 28px;
-  height: 28px;
-  flex: none;
-  border-radius: 14px;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-canvas);
-  color: var(--riso-ink);
-  font: 700 16px/1 var(--riso-font-display);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-}
-
-.inv-card-qty-edit select {
-  height: 30px;
-  max-width: 96px;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 10px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 13px var(--riso-font-display);
-  padding: 0 4px;
-  cursor: pointer;
-}
-
-.inv-card-qty-edit input {
-  width: 56px;
-  height: 30px;
-  box-sizing: border-box;
-  border: 2px solid var(--riso-ink);
-  border-radius: 10px;
-  background: #fff;
-  text-align: center;
-  font: 800 16px var(--riso-font-display);
-  color: var(--riso-ink);
-  padding: 0 4px;
-}
-
 .inv-card-qty-num {
   font: 800 18px var(--riso-font-display);
 }
@@ -1498,11 +1489,284 @@ select {
   color: var(--riso-muted);
 }
 
-.inv-card-check {
+/* ---------- Inventory items: Compact rows and Tiles (Matt's design,
+   docs/design/riso-v2-inventory-compact-tiles/README.md) ---------- */
+
+/* Both views: a white card, pink-tinted once expired, ringed in blue while its
+   pop-up is open. A press-and-hold carries it to another shelf; a swipe still
+   scrolls (App.jsx keeps the page still once a drag has started). */
+.inv-row,
+.inv-tile {
+  position: relative;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  color: var(--riso-ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.inv-row.draggable,
+.inv-tile.draggable {
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.inv-row.expired,
+.inv-tile.expired {
+  background: #fff4fa;
+}
+
+.inv-row.active,
+.inv-tile.active {
+  box-shadow: var(--riso-shadow-selected);
+}
+
+.inv-row.dragging,
+.inv-tile.dragging {
+  opacity: 0.4;
+}
+
+/* The life left: pink within 3 days or expired, yellow within a week, blue after. */
+.inv-life {
+  display: block;
+}
+
+.inv-life.pink {
+  background: var(--riso-hot);
+}
+
+.inv-life.yellow {
+  background: var(--riso-yellow);
+}
+
+.inv-life.blue {
+  background: var(--riso-accent);
+}
+
+/* Compact row */
+.inv-row {
+  display: flex;
+  height: 48px;
+}
+
+.inv-row-strip {
+  width: 6px;
   flex: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
+  border-right: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  display: flex;
+  align-items: flex-end;
+}
+
+.inv-row-strip .inv-life {
+  width: 100%;
+}
+
+.inv-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px 5px 6px;
+}
+
+.inv-row-thumb {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  display: flex;
+}
+
+.inv-row-thumb .inv-card-photo,
+.inv-tile-well .inv-card-photo {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  object-fit: contain;
+  padding: 0;
+}
+
+.inv-row-thumb .inv-card-photo.generic {
+  padding: 1px;
+}
+
+.inv-row-thumb .inv-card-photo.placeholder {
+  font-size: 18px;
+}
+
+.inv-row-thumb .inv-card-photo.letter {
+  font: 800 15px var(--riso-font-display);
+}
+
+/* A leftover's photo is its recipe's dish: it fills the box. */
+.inv-row.leftover .inv-row-thumb .inv-card-photo:not(.placeholder),
+.inv-tile-well.dish .inv-card-photo {
+  object-fit: cover;
+}
+
+.inv-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.inv-row-name {
+  max-width: 100%;
+  font: 700 14.5px/1.15 var(--riso-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inv-row-tags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.inv-row-tags .inv-card-leftover-tag {
+  margin-left: 0;
+  padding: 0 6px;
+  font-size: 9px;
+  line-height: 13px;
+}
+
+.inv-row-where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 11px var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+/* The quiet Expired pill under the name, and its tag on a tile. */
+.inv-expired {
+  flex: none;
+  height: 15px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #ffe0f1;
+  color: #8a0f55;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  font: 700 10.5px var(--riso-font-display);
+  white-space: nowrap;
+}
+
+/* The amount (¼ ½ ¾ as fractions). In Compact it's a button: tap to change it. */
+.inv-qty {
+  flex: none;
+  white-space: nowrap;
+  text-align: right;
+  color: inherit;
+}
+
+button.inv-qty {
+  background: none;
+  border: 1.5px dashed transparent;
+  border-radius: 8px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  cursor: text;
+}
+
+button.inv-qty:hover,
+button.inv-qty:focus-visible {
+  border-color: var(--riso-dash-strong);
+  background: var(--riso-surface);
+  outline: none;
+}
+
+.inv-qty-num {
+  font: 800 14.5px var(--riso-font-display);
+}
+
+.inv-qty-unit {
+  font: 600 12px var(--riso-font-display);
+  color: var(--riso-muted);
+}
+
+.inv-qty-edit {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.inv-qty-edit button {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 12px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font: 700 14px/1 var(--riso-font-display);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.inv-qty-edit input {
+  width: 44px;
+  height: 26px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 8px;
+  background: #fff;
+  text-align: center;
+  font: 800 13.5px var(--riso-font-display);
+  color: var(--riso-ink);
+  padding: 0 2px;
+}
+
+.inv-qty-edit select {
+  height: 26px;
+  max-width: 72px;
+  box-sizing: border-box;
+  border: 2px solid var(--riso-ink);
+  border-radius: 8px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12px var(--riso-font-display);
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+/* While the amount is being changed, the thumbnail steps aside to make room. */
+.inv-row.editing .inv-row-thumb {
+  display: none;
+}
+
+/* The 16px box: selects only. */
+.inv-check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
   box-sizing: border-box;
   border: 2px solid var(--riso-ink);
   background: var(--riso-surface);
@@ -1510,13 +1774,154 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.inv-card-check.on {
+.inv-check.on {
   background: var(--riso-accent);
+}
+
+/* Tile */
+.inv-tile {
+  display: flex;
+  flex-direction: column;
+}
+
+.inv-tile-well {
+  height: 92px;
+  flex: none;
+  box-sizing: border-box;
+  padding: 8px;
+  background: #fff;
+  border-bottom: 2px solid var(--riso-ink);
+  display: flex;
+}
+
+.inv-tile-well.dish {
+  padding: 0;
+}
+
+.inv-tile-well .inv-card-photo.placeholder {
+  font-size: 40px;
+}
+
+.inv-tile-well .inv-card-photo.letter {
+  font: 800 34px var(--riso-font-display);
+}
+
+.inv-tile .inv-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.inv-tile-tags {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.inv-tile .inv-expired {
+  height: 16px;
+  padding: 0 6px;
+  border: 1.5px solid #8a0f55;
+}
+
+.inv-tile-tags .inv-card-leftover-tag {
+  margin-left: 0;
+}
+
+.inv-tile-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px 7px;
+}
+
+.inv-tile-name {
+  min-height: 2.3em;
+  font: 700 13px/1.15 var(--riso-font-display);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: break-word;
+}
+
+.inv-tile .inv-qty {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inv-tile .inv-qty-num {
+  font-size: 12.5px;
+}
+
+.inv-tile .inv-qty-unit {
+  font-size: 12.5px;
+}
+
+.inv-tile-bar {
+  height: 5px;
+  flex: none;
+  box-sizing: content-box;
+  background: var(--riso-canvas);
+  border-top: 2px solid var(--riso-ink);
+  display: flex;
+}
+
+.inv-tile-bar .inv-life {
+  height: 100%;
+}
+
+/* Recently removed, under the shelves (the shared RemovedStrip). */
+.riso-inv-removed {
+  background: transparent;
+}
+
+/* Under 640px (Matt's design at 390): 16px sides, every shelf the full width,
+   the buttons wrap, Compact one column, Tiles exactly three across. */
+@media (max-width: 639px) {
+  /* The app's container keeps 18px on a phone; the design has 16. */
+  .riso-inv {
+    margin: 0 -2px;
+  }
+
+  .riso-inv .riso-inv-title {
+    font-size: 40px;
+  }
+
+  .riso-inv-title-block {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .riso-inv .inv-shelves > .inv-shelf {
+    grid-column: 1 / -1;
+    height: auto !important;
+  }
+
+  .riso-inv .inv-shelf-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .riso-inv .inv-shelf-items.tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .riso-inv .riso-hint-text {
+    font-size: 12.5px;
+  }
 }
 
 @media (max-width: 1000px) {
@@ -1528,9 +1933,6 @@ select {
     grid-column: span max(6, var(--span, 6));
   }
 
-  .inv-add-section-tile {
-    grid-column: span 6;
-  }
 }
 
 .riso-inv .btn,
@@ -1870,23 +2272,6 @@ select {
 }
 
 @media (max-width: 680px) {
-  .riso-inv {
-    padding: 18px 16px 40px;
-  }
-
-  .riso-inv-title {
-    font-size: 38px;
-  }
-
-  .inv-shelves {
-    grid-template-columns: 1fr;
-  }
-
-  .inv-shelves > .inv-shelf {
-    grid-column: auto;
-    height: auto !important;
-  }
-
   .inv-action-bar {
     flex-wrap: wrap;
     justify-content: center;
@@ -3789,7 +4174,9 @@ button.riso-pill:disabled {
 .riso-grocery-store-btn,
 .riso-grocery-add-store,
 .riso-grocery-add-store-cancel,
-.riso-grocery-removed-clear,
+.riso-removed-clear,
+.riso-removed-putback,
+.riso-removed-toggle,
 .riso-group-remove,
 .riso-grocery-cartbar-btn,
 .riso-row-delete,
@@ -3809,7 +4196,9 @@ button.riso-pill:disabled {
 .riso-grocery-store-btn:active:not(:disabled),
 .riso-grocery-add-store:active:not(:disabled),
 .riso-grocery-add-store-cancel:active:not(:disabled),
-.riso-grocery-removed-clear:active:not(:disabled),
+.riso-removed-clear:active:not(:disabled),
+.riso-removed-putback:active:not(:disabled),
+.riso-removed-toggle:active:not(:disabled),
 .riso-group-remove:active:not(:disabled),
 .riso-grocery-cartbar-btn:active:not(:disabled),
 .riso-row-delete:active:not(:disabled),
@@ -8184,15 +8573,6 @@ button.riso-table-group-head:disabled {
 
 /* Leftovers in Inventory (the Leftovers shelf), the item form's Leftovers mode and
    Home's Use it up: the yellow LEFTOVER tag, where they're kept, and thawing. */
-.inv-card-leftover {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  font: 500 12px var(--riso-font-body);
-  color: var(--riso-muted);
-}
-
 .inv-card-leftover-tag {
   display: inline-block;
   margin-left: 6px;
@@ -8204,15 +8584,6 @@ button.riso-table-group-head:disabled {
   border-radius: 999px;
   padding: 1px 7px;
   vertical-align: middle;
-}
-
-.inv-card-leftover .inv-card-leftover-tag {
-  margin-left: 0;
-}
-
-/* A leftover's card says more (portions, where, days left, thaw): its rows grow. */
-.inv-shelf[data-section-id="leftovers"] .inv-shelf-items {
-  grid-auto-rows: minmax(88px, auto);
 }
 
 .inv-card-thaw {
@@ -11278,7 +11649,9 @@ button.riso-deal-detail-other:focus-visible {
   background: var(--riso-yellow);
 }
 
-.riso-grocery-removed {
+/* The one "removed" strip (components/RemovedStrip.jsx): Grocery's "Removed
+   from your list" and Inventory's "Recently removed". */
+.riso-removed {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -11288,7 +11661,7 @@ button.riso-deal-detail-other:focus-visible {
   border-radius: 18px;
 }
 
-.riso-grocery-removed-label {
+.riso-removed-label {
   font-family: var(--riso-font-mono);
   font-size: 10.5px;
   letter-spacing: 0.08em;
@@ -11297,7 +11670,7 @@ button.riso-deal-detail-other:focus-visible {
   margin-right: 4px;
 }
 
-.riso-grocery-removed-chip {
+.riso-removed-chip {
   height: 30px;
   padding: 0 12px;
   border-radius: 15px;
@@ -11311,10 +11684,120 @@ button.riso-deal-detail-other:focus-visible {
   cursor: pointer;
 }
 
-.riso-grocery-removed-chip span {
+.riso-removed-chip span {
   display: inline-block;
   text-decoration: none;
   margin-left: 4px;
+}
+
+/* Collapsible (Inventory): the label is the button, with the count and a caret. */
+.riso-removed.collapsible {
+  padding: 8px 14px;
+}
+
+.riso-removed-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--riso-ink);
+  cursor: pointer;
+}
+
+.riso-removed-toggle .riso-removed-label {
+  margin-right: 0;
+}
+
+.riso-removed-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-family: var(--riso-font-display);
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.riso-removed-caret {
+  font-size: 11px;
+  color: var(--riso-muted);
+}
+
+/* An entry with how and when (Inventory): one row each. */
+.riso-removed-rows {
+  flex-basis: 100%;
+  list-style: none;
+  margin: 2px 0 2px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-removed-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 4px 0 12px;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 17px;
+  background: var(--riso-surface);
+}
+
+.riso-removed-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--riso-font-display);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--riso-soft);
+  text-decoration: line-through;
+}
+
+.riso-removed-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--riso-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-removed-putback {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  border: 1.5px solid var(--riso-ink);
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.riso-removed-putback:hover,
+.riso-removed-putback:focus-visible {
+  background: var(--riso-yellow);
 }
 
 .riso-grocery-aside {
@@ -12348,190 +12831,6 @@ button.riso-deal-detail-other:focus-visible {
   }
 }
 
-/* The shelf pill: a chip per shelf that jumps to it, the same on a computer and
-   on a phone. It takes all the width the round + leaves, stays pinned at the top
-   while you scroll (under the app header on a phone), and the chip of the shelf
-   you're looking at is lit. The round + that adds a shelf sits beside the pill,
-   outside it. */
-.riso-inv-shelf-pin {
-  position: sticky;
-  top: var(--inv-sticky-top, 0px);
-  z-index: 40;
-  margin: -6px -40px 0;
-  padding: 6px 40px 8px;
-  background: var(--riso-canvas);
-}
-
-.inv-shelves [data-section-id] {
-  scroll-margin-top: calc(var(--inv-sticky-top, 0px) + 66px);
-}
-
-.riso-inv-shelf-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.riso-inv-shelf-switch {
-  display: flex;
-  flex: 1 1 0;
-  width: auto;
-  min-width: 0;
-  max-width: 100%;
-  border: 2px solid var(--riso-ink);
-  border-radius: 999px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  background: var(--riso-surface);
-}
-
-.riso-inv-shelf-switch button {
-  flex: 1 0 auto;
-  height: 44px;
-  padding: 0 14px;
-  border: none;
-  background: transparent;
-  color: var(--riso-ink);
-  font: 700 14px var(--riso-font-display);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.riso-inv-shelf-switch button span {
-  font: 500 11px var(--riso-font-mono);
-  opacity: 0.7;
-}
-
-.riso-inv-shelf-switch button.on {
-  background: var(--riso-ink);
-  color: var(--riso-canvas);
-}
-
-/* The round + beside the pill (the same button as a shelf's own +). */
-.riso-inv-shelf-bar button.add-shelf {
-  flex: none;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 2px solid var(--riso-ink);
-  border-radius: 24px;
-  background: var(--riso-surface);
-  font: 800 22px/1 var(--riso-font-display);
-}
-
-.riso-inv-shelf-bar button.add-shelf:hover {
-  background: var(--riso-yellow);
-}
-
-.riso-inv-shelf-bar .add-shelf.form {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-}
-
-.riso-inv-shelf-bar .add-shelf input {
-  width: 150px;
-  height: 30px;
-  padding: 0 10px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 15px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 600 13px var(--riso-font-body);
-}
-
-.riso-inv-shelf-bar .add-shelf-error {
-  font: 600 12px var(--riso-font-body);
-  color: var(--riso-danger);
-}
-
-/* ---------- Inventory, phone (Riso Mobile.dc.html) ---------- */
-@media (max-width: 767px) {
-  /* One continuous page of shelves; the chips stay pinned under the app
-     header and jump to a shelf. */
-  .riso-inv-shelf-pin {
-    margin: -6px -18px 0;
-    padding: 6px 18px 8px;
-  }
-
-  .inv-shelves {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
-
-  .inv-shelf,
-  .inv-shelf.wide {
-    border: none;
-    background: transparent;
-    padding: 0;
-    box-shadow: none;
-  }
-
-  .inv-shelf-header {
-    justify-content: flex-end;
-  }
-
-  .inv-shelf-header > span {
-    display: none;
-  }
-
-  .inv-shelf-edit {
-    width: auto;
-    padding: 0 12px;
-    font-size: 12.5px;
-    font-weight: 700;
-  }
-
-  .inv-shelf-edit-text {
-    display: inline;
-  }
-
-  .inv-shelf-items.grid {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .inv-card-qty-edit input {
-    width: 44px;
-  }
-
-  .inv-card-qty-edit select {
-    max-width: 64px;
-  }
-
-  /* Room for the editor: the photo steps aside while it's open. */
-  .inv-card:has(.inv-card-qty-edit) .inv-card-photo {
-    display: none;
-  }
-
-  .inv-card-qty-edit button {
-    width: 26px;
-    height: 26px;
-  }
-
-  /* No drag on phones, so cards scroll the page like anything else. */
-  .inv-card {
-    touch-action: auto;
-    min-height: 80px;
-    flex: none;
-  }
-
-  .riso-inv-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .riso-inv-header-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-}
-
 /* Every screen sits in .app's own container (max-width 1280, 40px sides,
    18px on phones) - the same edge the header uses - so the screens don't
    add side padding of their own. They used to, which pushed page content
@@ -12843,7 +13142,7 @@ body.no-select {
   font-size: 12.5px;
 }
 
-.riso-grocery-removed-clear {
+.riso-removed-clear {
   margin-left: auto;
   border: none;
   background: none;
@@ -16660,7 +16959,7 @@ body.no-select {
 }
 
 .riso-help-copy .riso-help-copy-body.riso-row-deal,
-.riso-help-copy .riso-help-copy-body.riso-grocery-removed-chip {
+.riso-help-copy .riso-help-copy-body.riso-removed-chip {
   padding: 0;
   height: 22px;
   white-space: nowrap;
@@ -16673,7 +16972,7 @@ body.no-select {
   padding: 0 9px;
 }
 
-.riso-help-copy .riso-help-copy-body.riso-grocery-removed-chip {
+.riso-help-copy .riso-help-copy-body.riso-removed-chip {
   padding: 0 8px;
 }
 
@@ -16737,6 +17036,20 @@ body.no-select {
   font-size: 10px;
   font-weight: 700;
   cursor: default;
+}
+
+.riso-help-copy .riso-segmented.inset {
+  height: 22px;
+  padding: 1px;
+  gap: 1px;
+  border-radius: 11px;
+}
+
+.riso-help-copy .riso-segmented.inset .riso-segment {
+  height: 16px;
+  padding: 0 7px;
+  border-radius: 8px;
+  font-size: 10px;
 }
 
 .riso-help-copy .riso-lang-switch .riso-lang-seg {

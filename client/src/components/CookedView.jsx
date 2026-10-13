@@ -287,7 +287,8 @@ export function CookedViewHost({
     if (s.leftover) {
       const id = s.leftover.id;
       setPantryInventory((prev) => prev.filter((i) => i.id !== id));
-      await api.deletePantryInventoryItem(id);
+      // Taking back the leftovers this view added: not kept on Recently removed.
+      await api.deletePantryInventoryItem(id, { forget: true });
       s.leftover = null;
     }
   }

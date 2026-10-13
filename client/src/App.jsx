@@ -102,7 +102,7 @@ function DragPreview({ active, copy = false }) {
   }
 
   if (inventoryItem) {
-    return <InventoryDragPreview item={inventoryItem} />;
+    return <InventoryDragPreview item={inventoryItem} view={active.data.current?.inventoryView} recipe={active.data.current?.inventoryRecipe} />;
   }
 
   return null;
@@ -728,9 +728,20 @@ export default function App({ user, onLogout }) {
     setPantryInventory((prev) => prev.map((i) => (i.id === id ? updated : i)));
   }
 
-  async function handleDeletePantryItem(id) {
+  // One item out of Inventory: it goes to Recently removed as Deleted, or as Used
+  // up with { how: "consumed" } ("I'm out of this"); { forget: true } takes back
+  // an item just added (an add's Undo), which is not kept.
+  async function handleDeletePantryItem(id, options) {
     setPantryInventory((prev) => prev.filter((i) => i.id !== id));
-    await api.deletePantryInventoryItem(id);
+    await api.deletePantryInventoryItem(id, options);
+  }
+
+  // « Remettre » / Put back on Inventory's Recently removed: the item comes back
+  // as it was (same id, shelf, amount and use-by date). Like Undo, this only undoes
+  // a removal, so it doesn't go through the confirmation sheet (CLAUDE.md).
+  async function handlePutBackRemoved(entry) {
+    const item = await api.putBackRemovedPantryItem(entry.id);
+    setPantryInventory((prev) => [...prev.filter((i) => i.id !== item.id), item]);
   }
 
   // "Used up"/"Tossed" on the Inventory page - removes the items like a
@@ -1422,6 +1433,7 @@ export default function App({ user, onLogout }) {
             onUpdate={handleUpdatePantryItem}
             onDelete={handleDeletePantryItem}
             onConsume={handleConsumePantryItems}
+            onPutBackRemoved={handlePutBackRemoved}
             customStaples={customStaples}
             onMarkStaple={handleMarkStaple}
             onUnmarkStaple={handleRemoveStaple}

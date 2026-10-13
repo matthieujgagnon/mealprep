@@ -3,9 +3,11 @@ import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
 import { quebecDayIn } from "./quebec-day.js";
 
-// Covers the shelves + edit panel + select-and-act Inventory redesign:
-// items grouped into Fridge/Freezer/Pantry columns, an edit panel opened by
-// clicking a card, and the floating action bar's bulk actions.
+// Covers the Inventory page (Matt's Compact + Tiles design,
+// docs/design/riso-v2-inventory-compact-tiles/): items grouped into shelves, the
+// item pop-up opened by clicking an item, the floating action bar's bulk
+// actions, shelf editing, resizing and dragging. The two views, the phone and
+// Recently removed are in inventory-compact-tiles.spec.js.
 
 function uniqueEmail() {
   return `inv-redesign+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -83,17 +85,17 @@ test("the form's amount takes fractions and has quick-pick chips, and nothing sa
   await form.getByRole("button", { name: "Set to ¾" }).click();
   await form.getByRole("button", { name: "Cancel" }).click();
   await expect(itemForm(page)).toHaveCount(0);
-  await expect(page.locator(".inv-card", { hasText: "Olive oil" }).locator(".inv-card-qty")).toHaveText("1");
+  await expect(page.locator(".inv-row", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("1");
 
   // Save changes keeps it.
   await page.getByText("Olive oil", { exact: true }).click();
   await itemForm(page).getByRole("button", { name: "Set to ¾" }).click();
   await itemForm(page).getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator(".riso-toast")).toHaveText("Changes saved");
-  await expect(page.locator(".inv-card", { hasText: "Olive oil" }).locator(".inv-card-qty")).toHaveText("0.75");
+  await expect(page.locator(".inv-row", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("¾");
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
-  await expect(page.locator(".inv-card", { hasText: "Olive oil" }).locator(".inv-card-qty")).toHaveText("0.75");
+  await expect(page.locator(".inv-row", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("¾");
 });
 
 test("the item name in the form can be renamed, and saves with Save changes", async ({ page }) => {
@@ -123,26 +125,26 @@ test("selecting items shows the floating action bar, and Used up removes them", 
   await expect(page.getByText("Rice", { exact: true })).toBeVisible();
 
   await expect(page.locator(".inv-action-bar")).toHaveCount(0);
-  await page.locator(".inv-card-check").first().click();
+  await page.locator(".inv-check").first().click();
   await expect(page.locator(".inv-action-bar")).toBeVisible();
   await expect(page.locator(".inv-action-count")).toHaveText("1 selected");
 
   await page.getByRole("button", { name: "Used up" }).click();
   await expect(page.locator(".inv-action-bar")).toHaveCount(0);
-  await expect(page.locator(".inv-card")).toHaveCount(0);
+  await expect(page.locator(".inv-row")).toHaveCount(0);
 });
 
 test("custom sections can be added, used, and removed (items fall back to Pantry)", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
-  // A shelf is addable from the round + beside the shelf pill (outside it), even with zero items.
-  await expect(page.locator(".riso-inv-shelf-switch").getByRole("button", { name: "Add a shelf" })).toHaveCount(0);
-  const pill = await page.locator(".riso-inv-shelf-switch").boundingBox();
-  const plus = await page.getByRole("button", { name: "Add a shelf" }).boundingBox();
-  expect(plus.x).toBeGreaterThanOrEqual(pill.x + pill.width); // to the right of the pill
-  expect(pill.width).toBeGreaterThan(1000); // the full width less the round +, on a computer too
-  await page.getByRole("button", { name: "Add a shelf" }).click();
+  // A shelf is added from "+ Add section" in the title row, even with zero items;
+  // it asks for the name first, so nothing is made by accident.
+  await expect(page.locator(".riso-inv-header-actions").getByRole("button", { name: "+ Add section" })).toBeVisible();
+  await page.getByRole("button", { name: "+ Add section" }).click();
+  await page.getByLabel("Shelf name").press("Escape");
+  await expect(page.locator(".inv-shelf")).toHaveCount(4);
+  await page.getByRole("button", { name: "+ Add section" }).click();
   await page.getByLabel("Shelf name").fill("Garage Freezer");
   await page.keyboard.press("Enter");
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toBeVisible();
@@ -178,13 +180,13 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   const fridge = page.getByRole("region", { name: "Kitchen fridge section" });
   await expect(fridge).toBeVisible();
 
-  // Whole columns of the 12-column grid.
+  // Whole columns of the 12-column grid (14px gaps).
   const grid = await page.locator(".inv-shelves").boundingBox();
-  const col = (grid.width - 20 * 11) / 12;
-  const columns = async () => Math.round(((await fridge.boundingBox()).width + 20) / (col + 20));
+  const col = (grid.width - 14 * 11) / 12;
+  const columns = async () => Math.round(((await fridge.boundingBox()).width + 14) / (col + 14));
   const isWhole = async () => {
     const w = (await fridge.boundingBox()).width;
-    return Math.abs(w - ((await columns()) * (col + 20) - 20)) < 3;
+    return Math.abs(w - ((await columns()) * (col + 14) - 14)) < 3;
   };
   await expect.poll(columns).toBe(6);
 
@@ -226,7 +228,7 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Leftovers section"]);
 
   // A new shelf is added after the others.
-  await page.getByRole("button", { name: "Add a shelf" }).click();
+  await page.getByRole("button", { name: "+ Add section" }).click();
   await page.getByLabel("Shelf name").fill("Garage freezer");
   await page.keyboard.press("Enter");
   await expect(page.locator(".inv-shelf", { hasText: "Garage freezer" })).toBeVisible();
@@ -257,7 +259,7 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await addItem(page, "Shrimp", "fridge");
   await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp")).toBeVisible();
 
-  const card = page.locator(".inv-card", { hasText: "Shrimp" });
+  const card = page.locator(".inv-row", { hasText: "Shrimp" });
   const targetShelf = page.locator(".inv-shelf", { hasText: "Pantry" });
   const cardBox = await card.boundingBox();
   const targetBox = await targetShelf.boundingBox();
@@ -272,8 +274,8 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await page.mouse.move(cardBox.x + cardBox.width / 2 + 20, cardBox.y + cardBox.height / 2, { steps: 5 });
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 });
   await page.waitForTimeout(100);
-  // What follows the pointer is the item's card, not the old name chip.
-  await expect(page.locator(".inv-drag-preview .inv-card")).toContainText("Shrimp");
+  // What follows the pointer is the item's row, not the old name chip.
+  await expect(page.locator(".inv-drag-preview .inv-row")).toContainText("Shrimp");
   await expect(page.locator(".drag-preview-chip")).toHaveCount(0);
   await page.mouse.up();
 
@@ -281,7 +283,7 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp")).toHaveCount(0);
 });
 
-test("item cards: one row with photo, name and amount; the expiry line on the left; a quiet Expired tag", async ({ page }) => {
+test("Compact rows and Tiles: photo, name and amount; the life-left strip and bar; a quiet Expired tag", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
   const email = `inv-cards+${Date.now()}@example.com`;
@@ -311,25 +313,30 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
   await expect(page.locator(".riso-inv-summary")).toHaveText("6 items1 to use soon1 expired"); // three parts, the dots between them are drawn by CSS
-  const card = (name) => page.locator(".inv-card").filter({ hasText: name });
-  // Expired: pink-tinted card and the quiet tag - no line.
+  const card = (name) => page.locator(".inv-row").filter({ hasText: name });
+  // Expired (the day after the use-by day): pink-tinted row, the quiet pill, and
+  // the strip full and pink.
   await expect(card("Bbq sauce")).toHaveClass(/expired/);
-  await expect(card("Bbq sauce").locator(".inv-card-expired")).toHaveText("Expired");
-  await expect(card("Bbq sauce").locator(".inv-card-line")).toHaveCount(0);
-  await expect(card("Bbq sauce").locator(".inv-card-qty")).toHaveText("0.25 cup");
-  // Days left set the line's colour; no tag, no label.
-  await expect(card("Cilantro").locator(".inv-card-line-fill.pink")).toHaveCount(1);
-  await expect(card("Greek yogurt").locator(".inv-card-line-fill.yellow")).toHaveCount(1);
-  await expect(card("Eggs").locator(".inv-card-line-fill.blue")).toHaveCount(1);
-  // The closer the date, the fuller the line.
-  const fill = async (name) => parseFloat(await card(name).locator(".inv-card-line-fill").evaluate((el) => el.style.height));
-  expect(await fill("Cilantro")).toBeGreaterThan(await fill("Greek yogurt"));
-  expect(await fill("Greek yogurt")).toBeGreaterThan(await fill("Eggs"));
-  expect(await fill("Cilantro")).toBeGreaterThan(85);
-  await expect(card("Cilantro").locator(".inv-card-expired")).toHaveCount(0);
-  // No line at all with 28+ days or no date.
-  await expect(card("Basmati rice").locator(".inv-card-line")).toHaveCount(0);
-  await expect(card("Xylo widget").locator(".inv-card-line")).toHaveCount(0);
+  await expect(card("Bbq sauce").locator(".inv-expired")).toHaveText("Expired");
+  await expect(card("Bbq sauce").locator(".inv-row-strip .inv-life.pink")).toHaveAttribute("style", /height: 100%/);
+  await expect(card("Bbq sauce").locator(".inv-qty")).toHaveText("¼ cup");
+  // Days left set the strip's colour: pink within 3 days, yellow within a week, blue after.
+  await expect(card("Cilantro").locator(".inv-life.pink")).toHaveCount(1);
+  await expect(card("Greek yogurt").locator(".inv-life.yellow")).toHaveCount(1);
+  await expect(card("Eggs").locator(".inv-life.blue")).toHaveCount(1);
+  // It shows the life left: the more days, the fuller (at least 8%).
+  const fill = async (name) => parseFloat(await card(name).locator(".inv-row-strip .inv-life").evaluate((el) => el.style.height));
+  expect(await fill("Cilantro")).toBeLessThan(await fill("Greek yogurt"));
+  expect(await fill("Greek yogurt")).toBeLessThan(await fill("Eggs"));
+  expect(await fill("Cilantro")).toBeGreaterThanOrEqual(8);
+  expect(await fill("Eggs")).toBe(50);
+  await expect(card("Cilantro").locator(".inv-expired")).toHaveCount(0);
+  // No strip from 28 days on, or with no date.
+  await expect(card("Basmati rice").locator(".inv-row-strip")).toHaveCount(0);
+  await expect(card("Xylo widget").locator(".inv-row-strip")).toHaveCount(0);
+  // Soonest first, expired at the top, no date last.
+  await expect(page.locator('.inv-shelf[data-section-id="fridge"] .inv-row-name')).toHaveText(["Bbq sauce", "Cilantro", "Greek yogurt", "Eggs"]);
+  await expect(page.locator('.inv-shelf[data-section-id="pantry"] .inv-row-name')).toHaveText(["Basmati rice", "Xylo widget"]);
   // No photo of its own: TheMealDB's stock photo of the ingredient; if that
   // won't load, a food emoji; with no match, the first letter.
   await expect(card("Basmati rice").locator("img.inv-card-photo.generic")).toHaveAttribute(
@@ -338,11 +345,29 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   );
   await expect(card("Cilantro").locator(".inv-card-photo.placeholder")).toHaveText("🌿");
   await expect(card("Xylo widget").locator(".inv-card-photo.letter")).toHaveText("X");
-  await expect(page.locator(".inv-card").getByText("USDA")).toHaveCount(0);
-  // Every card is the same height.
-  const heights = await page.locator(".inv-card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  await expect(page.locator(".inv-row").getByText("USDA")).toHaveCount(0);
+  // Every row is the design's 48px.
+  const heights = await page.locator(".inv-row").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
   expect(new Set(heights).size).toBe(1);
-  expect(heights[0]).toBe(88);
+  expect(heights[0]).toBe(48);
+
+  // Tiles: the white photo well, the Expired tag, and the bar along the bottom
+  // (full from 28 days on and when expired, empty with no date).
+  await page.getByRole("button", { name: "Tiles" }).click();
+  const tile = (name) => page.locator(".inv-tile").filter({ hasText: name });
+  await expect(tile("Bbq sauce").locator(".inv-expired")).toHaveText("Expired");
+  await expect(tile("Bbq sauce").locator(".inv-tile-bar .inv-life.pink")).toHaveAttribute("style", /width: 100%/);
+  await expect(tile("Basmati rice").locator(".inv-tile-bar .inv-life.blue")).toHaveAttribute("style", /width: 100%/);
+  await expect(tile("Xylo widget").locator(".inv-tile-bar .inv-life")).toHaveCount(0);
+  await expect(tile("Eggs").locator(".inv-tile-bar .inv-life")).toHaveAttribute("style", /width: 50%/);
+  expect(await tile("Basmati rice").locator(".inv-tile-well").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(255, 255, 255)");
+  await expect(tile("Basmati rice").locator("img.inv-card-photo")).toHaveCSS("object-fit", "contain");
+  // The box only selects; the rest of the tile opens the pop-up.
+  await tile("Eggs").locator(".inv-check").click();
+  await expect(page.locator(".inv-action-count")).toHaveText("1 selected");
+  await expect(itemForm(page)).toHaveCount(0);
+  await tile("Eggs").locator(".inv-check").click();
+  await page.getByRole("button", { name: "Compact" }).click();
 
   // A photo added in the item form shows in its preview, and on the card once saved.
   await card("Eggs").click();
@@ -377,7 +402,7 @@ test("item cards: one row with photo, name and amount; the expiry line on the le
   await expect(card("Eggs").locator("img.inv-card-photo")).toHaveAttribute("src", "https://example.com/eggs.png");
 });
 
-test("the amount can be changed right on the card, without opening the item", async ({ page }) => {
+test("in Compact the amount can be changed right on the row, without opening the item", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
   const email = `inv-qty+${Date.now()}@example.com`;
@@ -393,7 +418,7 @@ test("the amount can be changed right on the card, without opening the item", as
   await add({ name: "Aged cheddar", quantity: 1 });
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
-  const card = (name) => page.locator(".inv-card").filter({ hasText: name });
+  const card = (name) => page.locator(".inv-row").filter({ hasText: name });
   const saved = async (name) =>
     (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === name).quantity;
 
@@ -402,38 +427,38 @@ test("the amount can be changed right on the card, without opening the item", as
   await card("Greek yogurt").getByRole("button", { name: "More Greek yogurt" }).click();
   await expect(card("Greek yogurt").getByLabel("Amount of Greek yogurt")).toHaveValue("550");
   await card("Greek yogurt").getByLabel("Amount of Greek yogurt").press("Enter");
-  await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 g");
+  await expect(card("Greek yogurt").locator(".inv-qty")).toHaveText("550 g");
   await expect(itemForm(page)).toHaveCount(0);
   await expect.poll(() => saved("Greek yogurt")).toBe(550);
 
   // Typing a fraction and tapping away saves too.
-  await card("Cilantro").locator(".inv-card-qty").click();
+  await card("Cilantro").locator(".inv-qty").click();
   await card("Cilantro").getByLabel("Amount of Cilantro").fill("1/2");
   await page.locator(".riso-inv-title").click();
-  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
+  await expect(card("Cilantro").locator(".inv-qty")).toHaveText("½ bunch");
   await expect.poll(() => saved("Cilantro")).toBe(0.5);
 
   // Escape puts it back.
-  await card("Cilantro").locator(".inv-card-qty").click();
+  await card("Cilantro").locator(".inv-qty").click();
   await card("Cilantro").getByLabel("Amount of Cilantro").fill("9");
   await card("Cilantro").getByLabel("Amount of Cilantro").press("Escape");
-  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 bunch");
+  await expect(card("Cilantro").locator(".inv-qty")).toHaveText("½ bunch");
 
   // An item with no amount yet can get one, and a measure with it.
   await card("Mystery jam").getByRole("button", { name: "Change the amount of Mystery jam" }).click();
   await card("Mystery jam").getByLabel("Amount of Mystery jam").fill("2");
   await card("Mystery jam").getByLabel("Measure of Mystery jam").selectOption("jar");
   await card("Mystery jam").getByLabel("Amount of Mystery jam").press("Enter");
-  await expect(card("Mystery jam").locator(".inv-card-qty")).toHaveText("2 jars");
+  await expect(card("Mystery jam").locator(".inv-qty")).toHaveText("2 jars");
   await expect(itemForm(page)).toHaveCount(0);
   const jam = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Mystery jam");
   expect([jam.quantity, jam.unit]).toEqual([2, "jar"]);
 
   // Changing only the measure: 550 g of yogurt is really 550 ml.
-  await card("Greek yogurt").locator(".inv-card-qty").click();
+  await card("Greek yogurt").locator(".inv-qty").click();
   await card("Greek yogurt").getByLabel("Measure of Greek yogurt").selectOption("ml");
   await page.locator(".riso-inv-title").click();
-  await expect(card("Greek yogurt").locator(".inv-card-qty")).toHaveText("550 ml");
+  await expect(card("Greek yogurt").locator(".inv-qty")).toHaveText("550 ml");
   await expect.poll(() => saved("Greek yogurt")).toBe(550);
 
   // The item form has the measure too, next to the amount, and saves it with Save changes.
@@ -441,15 +466,15 @@ test("the amount can be changed right on the card, without opening the item", as
   await itemForm(page).getByLabel("Measure").selectOption("cup");
   await itemForm(page).getByRole("button", { name: "Save changes" }).click();
   await expect(itemForm(page)).toHaveCount(0);
-  await expect(card("Cilantro").locator(".inv-card-qty")).toHaveText("0.5 cup");
+  await expect(card("Cilantro").locator(".inv-qty")).toHaveText("½ cup");
   const cilantro = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Cilantro");
   expect(cilantro.unit).toBe("cup");
 
   // A block of cheese.
   await page.keyboard.press("Escape");
-  await card("Aged cheddar").locator(".inv-card-qty").click();
+  await card("Aged cheddar").locator(".inv-qty").click();
   await card("Aged cheddar").getByLabel("Measure of Aged cheddar").selectOption("block");
   await card("Aged cheddar").getByLabel("Amount of Aged cheddar").fill("2");
   await card("Aged cheddar").getByLabel("Amount of Aged cheddar").press("Enter");
-  await expect(card("Aged cheddar").locator(".inv-card-qty")).toHaveText("2 blocks");
+  await expect(card("Aged cheddar").locator(".inv-qty")).toHaveText("2 blocks");
 });

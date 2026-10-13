@@ -202,10 +202,11 @@ export function RecipeDetailModal({
     else grocery.add([groceryItemOf(row)]);
   }
 
-  // "I'm out of this": the Inventory items that are this food leave Inventory.
+  // "I'm out of this": the Inventory items that are this food leave Inventory
+  // (Recently removed lists them as Used up).
   async function outOfIt(row) {
     if (!onDeletePantryItem || ingredientHave(row.name, kitchen) === "staple") return;
-    for (const item of matchingItems(row.name, inventory)) await onDeletePantryItem(item.id);
+    for (const item of matchingItems(row.name, inventory)) await onDeletePantryItem(item.id, { how: "consumed" });
     setOpenRow(null);
   }
 

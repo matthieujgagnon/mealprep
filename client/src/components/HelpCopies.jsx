@@ -67,7 +67,7 @@ function Deal() {
 
 function Removed() {
   return (
-    <span className="riso-grocery-removed-chip riso-help-copy-body">
+    <span className="riso-removed-chip riso-help-copy-body">
       {t("help.sample.item")} <span aria-hidden="true">↺</span>
     </span>
   );

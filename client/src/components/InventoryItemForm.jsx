@@ -22,7 +22,7 @@ import {
   stepQuantity,
   useByKind,
 } from "../lib/inventoryForm.js";
-import { leftoverExpiry, leftoverKeepDays, FRIDGE_DAYS } from "../lib/leftovers.js";
+import { leftoverExpiry, leftoverKeepDays, thawPatch, FRIDGE_DAYS } from "../lib/leftovers.js";
 import { expiryDay } from "../lib/quebecDay.js";
 import { t } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
@@ -446,7 +446,8 @@ export function InventoryItemForm({
     setAdded((rows) => rows.filter((r) => r !== row));
     if (row.id) {
       try {
-        await onDelete(row.id);
+        // Taking back an add: gone for good, not kept on Recently removed.
+        await onDelete(row.id, { forget: true });
       } catch {
         /* already gone */
       }
@@ -486,9 +487,11 @@ export function InventoryItemForm({
         );
         onToast(t("inventory.form.toastFrozen", { name: item.name }));
       } else if (action === "thaw") {
-        const now = new Date();
-        await onSave(item.id, { location: "fridge", purchasedAt: now.toISOString(), expiresAt: leftoverExpiry(leftoverRecipe, "fridge", now) });
-        onToast(t("inventory.thawed", { name: item.name, count: leftoverKeepDays(leftoverRecipe, "fridge") }));
+        // In the fridge its days left start over with the fridge keep time; Undo
+        // puts it back in the freezer as it was.
+        const before = { location: item.location, purchasedAt: item.purchasedAt, expiresAt: item.expiresAt };
+        await onSave(item.id, thawPatch(leftoverRecipe));
+        onToast(t("inventory.thawed", { name: item.name, count: leftoverKeepDays(leftoverRecipe, "fridge") }), () => onSave(item.id, before));
       } else if (action === "remove") {
         await onDelete(item.id);
         onToast(t("inventory.form.toastRemoved", { name: item.name }));
@@ -736,7 +739,7 @@ export function InventoryItemForm({
           <div>
             <div className="riso-itemform-label">{t("inventory.form.previewLabel", { location: (leftover ? labelFor.leftovers : labelFor[loc]) || "" })}</div>
             <div className="inv-card active riso-itemform-card" aria-hidden="true">
-              {line && !line.expired && (
+              {line?.height && (
                 <span className="inv-card-line">
                   <span className={`inv-card-line-fill ${line.color}`} style={{ height: line.height }} />
                 </span>
