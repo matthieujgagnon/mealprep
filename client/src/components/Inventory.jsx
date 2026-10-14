@@ -625,6 +625,11 @@ export function Inventory({
     if (activeItemId && !items.some((i) => i.id === activeItemId)) setActiveItemId(null);
   }, [items, activeItemId]);
 
+  // A pop-up only ever closes itself. Used up, Tossed and Remove take the item off
+  // at once (which closes its pop-up, above) and close it again once the server
+  // answers; by then another item may be open, and it must stay open.
+  const closeItem = (id) => () => setActiveItemId((current) => (current === id ? null : current));
+
   useEffect(() => {
     if (!activeItemId) return;
     function handleKey(e) {
@@ -926,7 +931,7 @@ export function Inventory({
           onConsume={onConsume}
           onFindRecipes={onFindRecipes}
           onToast={showToast}
-          onClose={() => setActiveItemId(null)}
+          onClose={closeItem(activeItem.id)}
           isPhone={isPhone}
         />
       )}

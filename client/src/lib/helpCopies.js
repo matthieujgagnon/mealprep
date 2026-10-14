@@ -152,7 +152,7 @@ export const HELP_COPIES = {
   viewToggle: {
     kind: "group",
     cls: "riso-segmented inset",
-    items: [{ label: "inventory.viewCompact", active: true }, { label: "inventory.viewTiles" }],
+    items: [{ label: "inventory.viewCompact" }, { label: "inventory.viewTiles", active: true }],
   },
   shelfGrip: { kind: "icon", cls: "inv-shelf-grip", glyph: "⠿" },
   addItemHere: { kind: "icon", cls: "inv-shelf-edit inv-shelf-add", glyph: "+" },

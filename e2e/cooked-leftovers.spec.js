@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { addDays, asSavedDay, quebecDay, quebecDayIn } from "./quebec-day.js";
 import { langSwitch } from "./account-menu.js";
+import { pickCompact } from "./inventory-form.js";
 
 // "I cooked this" (components/CookedView.jsx) from the Planner and Home, and the one
 // leftovers system: LEFTOVER items on Inventory's Leftovers shelf, added by hand,
@@ -151,6 +152,7 @@ test("leftovers: added by hand on the Leftovers shelf, thawed, and planned from 
   });
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await pickCompact(page);
 
   const shelf = page.locator('.inv-shelf[data-section-id="leftovers"]');
   await expect(shelf).toContainText(SHAWARMA.title);
@@ -214,6 +216,7 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
       await page.clock.setFixedTime(new Date(at));
       await page.reload();
       await page.getByRole("button", { name: "Inventory", exact: true }).click();
+      await pickCompact(page);
 
       const shelf = page.locator('.inv-shelf[data-section-id="leftovers"]');
       await shelf.getByRole("button", { name: "Add an item to Leftovers" }).click();
@@ -238,6 +241,7 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
     await page.clock.setFixedTime(new Date("2026-10-16T01:00:00Z")); // 9 p.m. on the 15th in Quebec
     await page.reload();
     await page.getByRole("button", { name: "Inventory", exact: true }).click();
+    await pickCompact(page);
     const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-row', { hasText: "Pizza" });
     await expect(card).toContainText("use by tomorrow");
     await expect(card).not.toContainText(/expired/i);
@@ -261,6 +265,7 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
       await expect(page.locator(".riso-useup-row", { hasText: "Pizza" }).locator(".riso-useup-badge")).toHaveText("today!");
 
       await page.getByRole("button", { name: "Inventory", exact: true }).click();
+      await pickCompact(page);
       const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-row', { hasText: "Pizza" });
       await expect(card).toContainText("expires today");
       await expect(card).not.toHaveClass(/expired/);
@@ -286,6 +291,7 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
     await page.reload();
     await expect(page.locator(".riso-useup-row", { hasText: "Pizza" }).locator(".riso-useup-badge")).toHaveText("aujourd'hui!");
     await page.getByRole("button", { name: "Inventaire", exact: true }).click();
+    await pickCompact(page);
     const card = page.locator('.inv-shelf[data-section-id="leftovers"] .inv-row', { hasText: "Pizza" });
     await expect(card).toContainText("expire aujourd'hui");
     await expect(card.locator(".inv-expired")).toHaveCount(0);

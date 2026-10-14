@@ -23,7 +23,7 @@ async function setup(page) {
 const inventory = async (page) => await (await page.request.get("/api/pantry-inventory")).json();
 const toast = (page) => page.locator(".riso-toast");
 const note = (page) => itemForm(page).locator(".riso-itemform-note");
-const card = (page, name) => page.locator(".inv-row").filter({ hasText: name }).first();
+const card = (page, name) => page.locator(":is(.inv-row, .inv-tile)").filter({ hasText: name }).first();
 
 test("Add and next adds the item, keeps the form open and the shelf, and lists it under Added this time", async ({ page }) => {
   await setup(page);
@@ -209,6 +209,26 @@ test("Edit: Done with it? has Used up, Tossed and (when it freezes) Freeze, and 
   await form.getByRole("button", { name: "Remove (typo or duplicate)" }).click();
   await expect(toast(page)).toHaveText("chicken breast removed");
   expect(await inventory(page)).toHaveLength(0);
+});
+
+test("an item opened while the last one is still being tossed stays open", async ({ page }) => {
+  await setup(page);
+  for (const name of ["Rice", "Salt"]) await page.request.post("/api/pantry-inventory", { data: { name, location: "pantry", quantity: 1 } });
+  await page.reload();
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  // A slow server: Tossed takes the item off at once, and answers a second later.
+  await page.route("**/api/pantry-inventory/consume", async (route) => {
+    await new Promise((r) => setTimeout(r, 1000));
+    await route.continue();
+  });
+  await card(page, "Rice").click();
+  await itemForm(page).getByRole("button", { name: "Tossed" }).click();
+  await expect(card(page, "Rice")).toHaveCount(0);
+  await card(page, "Salt").click();
+  await expect(itemForm(page).locator(".riso-itemform-name")).toHaveValue("Salt");
+  await expect(toast(page)).toHaveText("Rice tossed"); // the server has answered
+  await page.waitForTimeout(300);
+  await expect(itemForm(page).locator(".riso-itemform-name")).toHaveValue("Salt");
 });
 
 test("Edit: shelf, use-by date and amount save together with Save changes, and Cancel keeps the item as it was", async ({ page }) => {

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
-import { itemForm } from "./inventory-form.js";
+import { itemForm, pickCompact } from "./inventory-form.js";
 import { quebecDayIn } from "./quebec-day.js";
 
 // Matt's Inventory design (docs/design/riso-v2-inventory-compact-tiles/): the
@@ -40,18 +40,29 @@ test.describe("on a computer", () => {
     await expect(page.locator(".riso-inv-header-actions > *")).toHaveText(["CompactTiles", "Scan receipt", "+ Add section", "+ Add item"]);
     // No pinned shelf menu any more.
     await expect(page.getByRole("tab")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Compact" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".inv-row")).toHaveCount(1);
-
-    await page.getByRole("button", { name: "Tiles" }).click();
+    // Tiles to begin with, and nothing is saved until a view is picked.
+    await expect(page.getByRole("button", { name: "Tiles" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".inv-tile")).toHaveCount(1);
     await expect(page.locator(".inv-row")).toHaveCount(0);
+    const me = await (await page.request.get("/api/auth/me")).json();
+    const saved = () => page.evaluate((id) => localStorage.getItem(`mealprep-inventory-view:${id}`), me.id);
+    expect(await saved()).toBeNull();
+
+    // A picked view is kept after a reload, in this browser, for this account only:
+    // someone who chose Compact keeps Compact.
+    await page.getByRole("button", { name: "Compact" }).click();
+    await expect(page.locator(".inv-row")).toHaveCount(1);
+    await expect(page.locator(".inv-tile")).toHaveCount(0);
+    await openInventory(page);
+    await expect(page.getByRole("button", { name: "Compact" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".inv-row")).toHaveCount(1);
+    expect(await saved()).toBe("compact");
+
+    await page.getByRole("button", { name: "Tiles" }).click();
     await openInventory(page);
     await expect(page.getByRole("button", { name: "Tiles" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".inv-tile")).toHaveCount(1);
-    // Kept in this browser, for this account only.
-    const me = await (await page.request.get("/api/auth/me")).json();
-    expect(await page.evaluate((id) => localStorage.getItem(`mealprep-inventory-view:${id}`), me.id)).toBe("tiles");
+    expect(await saved()).toBe("tiles");
 
     // Clicking a tile opens the pop-up; Escape closes it.
     await page.locator(".inv-tile", { hasText: "Eggs" }).click();
@@ -64,6 +75,7 @@ test.describe("on a computer", () => {
     await add(page, { name: "Milk", quantity: 1, unit: "l", expiresAt: quebecDayIn(0) });
     await add(page, { name: "Cream", quantity: 1, unit: "cup", expiresAt: quebecDayIn(-1) });
     await openInventory(page);
+    await pickCompact(page);
 
     // "To use soon" counts the use-by day; expired is its own count.
     await expect(page.locator(".riso-inv-summary")).toHaveText("2 items1 to use soon1 expired");
@@ -94,20 +106,20 @@ test.describe("on a computer", () => {
     await expect(page.locator(".riso-inv-removed")).toHaveCount(0); // nothing removed yet: no strip
 
     // Used up from the bulk bar.
-    await page.locator(".inv-row", { hasText: "Kale" }).locator(".inv-check").click();
+    await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Kale" }).locator(".inv-check").click();
     await page.locator(".inv-action-bar").getByRole("button", { name: "Used up" }).click();
     // Tossed and Remove from the item's pop-up.
-    await page.locator(".inv-row", { hasText: "Bread" }).click();
+    await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Bread" }).click();
     await itemForm(page).getByRole("button", { name: "Tossed" }).click();
     await expect(itemForm(page)).toHaveCount(0);
-    await page.locator(".inv-row", { hasText: "Mlik" }).click();
+    await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Mlik" }).click();
     await itemForm(page).getByRole("button", { name: /^Remove/ }).click();
     await expect(itemForm(page)).toHaveCount(0);
     // "I cooked this" taking the rice out to zero.
     await page.request.post("/api/pantry-inventory/take-out", { data: { takes: [{ id: rice.id, amount: "all" }] } });
     await openInventory(page);
 
-    await expect(page.locator(".inv-row")).toHaveCount(0);
+    await expect(page.locator(":is(.inv-row, .inv-tile)")).toHaveCount(0);
     await expect(page.locator(".riso-inv-summary")).toHaveText("0 items0 to use soon");
     // Quiet and collapsed until opened.
     const strip = page.locator(".riso-inv-removed");
@@ -129,7 +141,7 @@ test.describe("on a computer", () => {
     await strip.getByRole("button", { name: /Recently removed/ }).click();
     await strip.getByRole("button", { name: "Put Kale back in your Inventory" }).click();
     await expect(page.locator(".riso-toast")).toContainText("Kale is back in your Inventory");
-    await expect(page.locator('.inv-shelf[data-section-id="fridge"] .inv-row', { hasText: "Kale" })).toBeVisible();
+    await expect(page.locator('.inv-shelf[data-section-id="fridge"] :is(.inv-row, .inv-tile)', { hasText: "Kale" })).toBeVisible();
     await expect(strip.locator(".riso-removed-name")).toHaveText(["Rice", "Mlik", "Bread"]);
     const back = (await stock(page)).find((i) => i.name === "Kale");
     expect(back).toMatchObject({ id: kale.id, location: "fridge", quantity: 1, unit: "bunch", expiresAt: kale.expiresAt });
@@ -151,6 +163,7 @@ test.describe("on a phone, in French", () => {
     await signUp(page, { french: true });
     await seed(page);
     await openInventory(page, "Inventaire");
+    await pickCompact(page);
 
     const noScroll = () => page.evaluate(() => document.documentElement.scrollWidth);
     expect(await noScroll()).toBeLessThanOrEqual(390);
@@ -201,10 +214,13 @@ test.describe("on a phone, in French", () => {
     const client = await context.newCDPSession(page);
 
     // An item: Fridge -> Freezer.
-    const row = page.locator(".inv-row", { hasText: "Crevettes" });
+    const row = page.locator(":is(.inv-row, .inv-tile)", { hasText: "Crevettes" });
     const freezer = page.locator('.inv-shelf[data-section-id="freezer"]');
+    // A tile is tall, so bring the Freezer to the middle of the screen first: a finger
+    // can only drop on what is on screen.
+    await freezer.evaluate((el) => el.scrollIntoView({ block: "center" }));
     await holdAndDrag(page, client, middle(await row.boundingBox()), middle(await freezer.boundingBox()));
-    await expect(freezer.locator(".inv-row", { hasText: "Crevettes" })).toBeVisible();
+    await expect(freezer.locator(":is(.inv-row, .inv-tile)", { hasText: "Crevettes" })).toBeVisible();
     await expect.poll(async () => (await stock(page)).find((i) => i.name === "Crevettes").location).toBe("freezer");
     await expect(itemForm(page)).toHaveCount(0); // the drag never opened the item
 
@@ -217,7 +233,7 @@ test.describe("on a phone, in French", () => {
     await expect.poll(order).toEqual(["freezer", "fridge", "pantry", "leftovers"]);
 
     // A quick tap still opens the item's pop-up.
-    await page.locator(".inv-row", { hasText: "Pois" }).tap();
+    await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Pois" }).tap();
     await expect(itemForm(page)).toBeVisible();
   });
 });
