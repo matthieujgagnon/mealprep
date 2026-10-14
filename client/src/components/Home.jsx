@@ -6,10 +6,11 @@ import { applyChecks } from "../lib/groceryChecks.js";
 import { findSaleDeal } from "../lib/similarRecipes.js";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useHomeFlickStop } from "../hooks/useHomeFlickStop.js";
+import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { currentMealType, makeableNow, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
-import { HOME_FLICK_STOP, activeScreen, screensFit } from "../lib/homeScreens.js";
+import { TOUCH_SCREEN, activeScreen, screensFit, scrollMode } from "../lib/homeScreens.js";
 import { refreshDeals, useDeals } from "../lib/dealsStore.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
@@ -173,19 +174,19 @@ export function Home({
   // Home is one scroller holding two screens (design:
   // docs/design/riso-v2-home-two-screens/). The dots light the screen that has
   // passed halfway; a tap scrolls to the top of it (smoothly, unless the person
-  // asked for less motion: the scroller's own CSS decides). The scroller only
-  // snaps while both screens fit it. In a screen taller than the window (a phone,
-  // a short window) a snap point is a wall that an ordinary swipe bounces back
-  // from, so it moves freely there, and the flick stop (useHomeFlickStop) keeps a
-  // flick from flying across the join. A fresh Home always starts at the top:
-  // screen 1.
+  // asked for less motion: the scroller's own CSS decides). How the scroller
+  // moves is `scrollMode` (lib/homeScreens.js): freely on a computer at every
+  // size; on a touch screen it snaps while both screens fit it (a tablet), and
+  // otherwise (a phone) the flick stop (useHomeFlickStop) keeps a flick from
+  // flying across the join. A fresh Home always starts at the top: screen 1.
   const scrollerRef = useRef(null);
   const screen1Ref = useRef(null);
   const screen2Ref = useRef(null);
   const [screen, setScreen] = useState(0);
-  const [snap, setSnap] = useState(false);
-  const flickStop = HOME_FLICK_STOP && !snap;
-  const forgetFlick = useHomeFlickStop(scrollerRef, screen2Ref, flickStop);
+  const [fits, setFits] = useState(false);
+  const touchScreen = useMediaQuery(TOUCH_SCREEN);
+  const mode = scrollMode({ touchScreen, fits });
+  const forgetFlick = useHomeFlickStop(scrollerRef, screen2Ref, mode === "flick-stop");
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
@@ -204,7 +205,7 @@ export function Home({
     };
     // The sizes move when the window does and when a card's data arrives.
     const measure = () => {
-      setSnap(screensFit({ clientHeight: scroller.clientHeight, screenHeights: [first.offsetHeight, second.offsetHeight] }));
+      setFits(screensFit({ clientHeight: scroller.clientHeight, screenHeights: [first.offsetHeight, second.offsetHeight] }));
       lightDot();
     };
     measure();
@@ -320,7 +321,7 @@ export function Home({
 
   return (
     <div className="riso-theme riso-home home-page" data-theme="light">
-      <div className="home-scroller" ref={scrollerRef} data-snap={snap ? "on" : "off"} data-flick-stop={flickStop ? "on" : "off"}>
+      <div className="home-scroller" ref={scrollerRef} data-snap={mode === "snap" ? "on" : "off"} data-flick-stop={mode === "flick-stop" ? "on" : "off"}>
         <section className="home-screen" data-screen="1" ref={screen1Ref}>
           <div className="riso-home-greeting">
             <h1 className="riso-home-greeting-title">
