@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { langSwitch } from "./account-menu.js";
-import { addDays, quebecDay } from "./quebec-day.js";
+import { addDays, quebecDay, quebecDayIn } from "./quebec-day.js";
 import { PrismaClient } from "@prisma/client";
+import { HOME_FLICK_STOP } from "../client/src/lib/homeScreens.js";
 
 const prisma = new PrismaClient();
 
@@ -11,8 +12,10 @@ const prisma = new PrismaClient();
 // left under the header; the page itself never scrolls on Home. It snaps only
 // while both screens fit it: on a phone, or in a short window, a screen is taller
 // than the window, so it scrolls freely there (a snap point in a tall screen is a
-// wall an ordinary swipe bounces back from). The dots follow and jump either way.
-// The pure rules are unit-tested in lib/homeScreens.test.js.
+// wall an ordinary swipe bounces back from), and the flick stop keeps a flick from
+// flying across the join (HOME_FLICK_STOP; with it off those tests are skipped).
+// The dots follow and jump either way. The pure rules are unit-tested in
+// lib/homeScreens.test.js.
 
 function mondayOf(d) {
   const x = new Date(d);
@@ -50,6 +53,55 @@ const park = (page, top) =>
     el.style.scrollBehavior = "";
   }, top);
 
+// Where the scroller comes to rest: the same for 300 ms.
+async function settled(page) {
+  let now = await scrollTop(page);
+  for (let still = 0, i = 0; still < 3 && i < 80; i++) {
+    await page.waitForTimeout(100);
+    const next = await scrollTop(page);
+    still = Math.abs(next - now) < 0.5 ? still + 1 : 0;
+    now = next;
+  }
+  return now;
+}
+
+// A finger flicking up the screen (scrolling down) or down it (scrolling up): real
+// touch events, lifted while still moving, so the browser coasts on. Each event
+// carries its own time, exactly 16 ms after the last, so the speed the browser
+// reads is the same however busy the machine is. The finger is in the screens'
+// left margin, where nothing but Home scrolls: a card's own list (Use it up) takes
+// a swipe that starts on it, and how full it is depends on the fonts.
+// How far each kind carries the scroller in all when nothing stops it (Chromium,
+// measured on a plain page): gentle about 220px; long about 1,950px; fast 2,270 to
+// 2,820px. A finger on the screen is never stopped, so a flick must also start
+// further from the join than the finger travels (at most 240px). The checks leave
+// wide margins around all of that: a gentle flick starts at least 550px from the
+// join it must not reach; a long or fast one starts 400 to 740px from the join it
+// must reach.
+const FLICKS = {
+  gentle: { dy: 60, steps: 4 },
+  long: { dy: 240, steps: 5 },
+  fast: { dy: 240, steps: 2 },
+};
+const MARGIN_X = 9; // inside the screens' 18px side padding on a phone
+async function flick(page, kind, direction) {
+  const { dy, steps } = FLICKS[kind];
+  const box = await scroller(page).boundingBox();
+  const x = box.x + MARGIN_X;
+  const y1 = direction === "down" ? box.y + box.height - 20 : box.y + 20;
+  const y2 = direction === "down" ? y1 - dy : y1 + dy;
+  const cdp = await page.context().newCDPSession(page);
+  const t0 = Date.now() / 1000;
+  const send = (type, touchPoints, i) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints, timestamp: t0 + i * 0.016 });
+  await send("touchStart", [{ x, y: y1 }], 0);
+  for (let i = 1; i <= steps; i++) {
+    await send("touchMove", [{ x, y: y1 + ((y2 - y1) * i) / steps }], i);
+    await page.waitForTimeout(16);
+  }
+  await send("touchEnd", [], steps + 0.5);
+  return settled(page);
+}
+
 // A finger dragging from (x1, y1) to (x2, y2): real touch events.
 async function drag(page, [x1, y1], [x2, y2]) {
   const cdp = await page.context().newCDPSession(page);
@@ -63,6 +115,34 @@ async function drag(page, [x1, y1], [x2, y2]) {
   await send("touchEnd", []);
 }
 
+// All three cards on screen 2: proteins on this week's flyers, a recipe ready to
+// cook, and things to use up soon.
+async function seedScreen2(page) {
+  const me = await (await page.request.get("/api/auth/me")).json();
+  const userId = me.user?.id ?? me.id;
+  await prisma.flyerDeal.createMany({
+    data: [
+      ["Cuisses de poulet | Chicken thighs", "chicken thighs", 2.49, 4.99],
+      ["Saumon | Salmon", "salmon", 9.99, 14.99],
+      ["Porc haché | Ground pork", "ground pork", 3.49, 5.99],
+    ].map(([item, matchName, unitPrice, regularPrice]) => ({
+      userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${unitPrice}/lb`,
+      unitPrice, unitBasis: "lb", regularPrice, validUntil: quebecDayIn(3), isCurrent: true, createdAt: new Date(),
+    })),
+  });
+  await page.request.post("/api/recipes", {
+    data: { title: "Omelette", baseServings: 2, fridgeLifeDays: 1, instructions: ["Cook: Cook the eggs."], ingredients: [{ name: "eggs", quantity: 4, unit: "" }] },
+  });
+  for (const [name, days] of [["eggs", 2], ["spinach", 1], ["milk", 4], ["yogurt", 6], ["mushrooms", 3]]) {
+    await page.request.post("/api/pantry-inventory", { data: { name, quantity: 1, location: "fridge", expiresAt: quebecDayIn(days) } });
+  }
+  await page.reload();
+  for (const card of [".riso-home-proteins", ".riso-home-makeable", ".riso-home-useup"]) {
+    await expect(page.locator(`[data-screen="2"] ${card}`)).toBeAttached();
+  }
+  await expect(page.locator('[data-screen="2"] .riso-protein-list > li')).not.toHaveCount(0);
+}
+
 test.describe("a tall window: both screens fit, so it snaps", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
@@ -70,6 +150,7 @@ test.describe("a tall window: both screens fit, so it snaps", () => {
     await signUp(page);
     await expect(page.locator(".app")).toHaveClass(/is-home/);
     await expect(scroller(page)).toHaveAttribute("data-snap", "on");
+    await expect(scroller(page)).toHaveAttribute("data-flick-stop", "off"); // snapping does that job here
     expect(await scrollTop(page)).toBe(0);
 
     // The scroller meets the header and ends at the bottom of the window; the page never scrolls.
@@ -355,3 +436,196 @@ test.describe("a phone", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 });
+
+// The flick stop on a phone, at a short and a tall iPhone height, in French, with
+// all three cards on screen 2. The rule, not the glide: a flick that would cross
+// the join stops exactly on it (going down with the top of screen 2 at the top of
+// the scroller, going up with the end of screen 1 at its bottom); a flick that runs
+// out first rests where it stops; inside a screen it runs free; a finger dragging
+// across the join is never stopped (no wall); the dots still jump.
+for (const height of [664, 844]) {
+  test.describe(`a phone, 390 x ${height}: a flick stops at the join`, () => {
+    test.use({ viewport: { width: 390, height }, hasTouch: true, isMobile: true });
+    test.skip(!HOME_FLICK_STOP, "the flick stop is off (HOME_FLICK_STOP in lib/homeScreens.js)");
+
+    test("flicks down and up stop at the join, and run free inside a screen, in French", async ({ page }) => {
+      test.setTimeout(120_000); // many real flicks
+      await signUp(page);
+      await inFrench(page);
+      await seedScreen2(page);
+      await expect(scroller(page)).toHaveAttribute("data-snap", "off");
+      await expect(scroller(page)).toHaveAttribute("data-flick-stop", "on");
+      const s2 = await screen2Top(page);
+      const client = await page.evaluate(() => document.querySelector(".home-scroller").clientHeight);
+      const end1 = s2 - client; // screen 1's end at the bottom of the scroller
+      const end = await page.evaluate(() => {
+        const el = document.querySelector(".home-scroller");
+        return el.scrollHeight - el.clientHeight;
+      });
+      expect(end1, "screen 1 is taller than the scroller").toBeGreaterThan(200);
+      expect(end - s2, "screen 2 is taller than the scroller").toBeGreaterThan(40);
+      const room2 = Math.min(100, (end - s2) / 2); // how far "free" has to get inside screen 2
+      const onJoin = (what, top, want) => expect(Math.abs(top - want), `${what}: rests at ${top}, not on the join at ${want}`).toBeLessThanOrEqual(2);
+      const from = async (top, kind, direction) => {
+        await park(page, top);
+        return flick(page, kind, direction);
+      };
+
+      // Down: a flick that would cross the join stops on the top of screen 2.
+      for (const kind of ["long", "fast"]) onJoin(`a ${kind} flick down, 400px before the join`, await from(s2 - 400, kind, "down"), s2);
+      onJoin("a fast flick down from the end of screen 1", await from(end1, "fast", "down"), s2);
+      await expect(dot(page, 2, "Écran")).toHaveAttribute("aria-current", "true");
+      // One that runs out first rests where it stops: nothing pulls it on, or back.
+      const gentle = await from(end1, "gentle", "down");
+      expect(gentle, "a gentle flick down moves on").toBeGreaterThan(end1 + 20);
+      expect(gentle, "...and rests short of the join").toBeLessThan(s2 - 2);
+      // Inside screen 2 it runs free.
+      expect(await from(s2, "gentle", "down"), "free inside screen 2").toBeGreaterThan(s2 + 20);
+      expect(await from(s2, "long", "down"), "free inside screen 2").toBeGreaterThan(s2 + room2);
+
+      // Up: a flick that would cross the join stops with the end of screen 1 at the bottom.
+      for (const kind of ["long", "fast"]) onJoin(`a ${kind} flick up, 400px before the join`, await from(end1 + 400, kind, "up"), end1);
+      onJoin("a fast flick up from the top of screen 2", await from(s2, "fast", "up"), end1);
+      await expect(dot(page, 1, "Écran")).toHaveAttribute("aria-current", "true");
+      const gentleUp = await from(s2, "gentle", "up");
+      expect(gentleUp, "a gentle flick up moves on").toBeLessThan(s2 - 20);
+      expect(gentleUp, "...and rests short of the join").toBeGreaterThan(end1 + 2);
+      // Inside screen 1 it runs free.
+      expect(await from(end1, "gentle", "up"), "free inside screen 1").toBeLessThan(end1 - 20);
+      expect(await from(end1, "long", "up"), "free inside screen 1").toBeLessThan(end1 - 100);
+
+      // A finger dragging 240px across the join is never stopped, either way (it moves
+      // the scroller a little less: the browser waits for the first few pixels of a
+      // touch before it scrolls).
+      const box = await scroller(page).boundingBox();
+      const x = box.x + MARGIN_X;
+      await park(page, s2 - 120);
+      await drag(page, [x, height - 60], [x, height - 300]);
+      await page.waitForTimeout(400);
+      expect(Math.abs((await scrollTop(page)) - (s2 + 120))).toBeLessThanOrEqual(20);
+      await park(page, s2 + 120);
+      await drag(page, [x, height - 300], [x, height - 60]);
+      await page.waitForTimeout(400);
+      expect(Math.abs((await scrollTop(page)) - (s2 - 120))).toBeLessThanOrEqual(20);
+
+      // Right after a stop, a tap on a dot still jumps to the top of its screen.
+      onJoin("a fast flick down, before the dots", await from(end1, "fast", "down"), s2);
+      await dot(page, 1, "Écran").tap();
+      await expect.poll(() => scrollTop(page)).toBe(0);
+      await dot(page, 2, "Écran").tap();
+      await expect.poll(async () => Math.abs((await scrollTop(page)) - s2)).toBeLessThanOrEqual(1);
+      await dot(page, 1, "Écran").tap();
+      await expect.poll(() => scrollTop(page)).toBe(0);
+    });
+  });
+}
+
+// The flick stop in a short laptop window, with the wheel or trackpad: a turn that
+// would carry the scroller across the join stops there and waits while the wheel
+// keeps turning (a trackpad coasts as a stream of wheel events); after a pause, the
+// next turn carries on. At 720px tall screen 2 just fits, so going down the join is
+// also the end; at 640px both screens are taller than the window.
+for (const height of [720, 640]) {
+  test.describe(`a short laptop window, 1280 x ${height}: the wheel stops at the join`, () => {
+    test.use({ viewport: { width: 1280, height } });
+    test.skip(!HOME_FLICK_STOP, "the flick stop is off (HOME_FLICK_STOP in lib/homeScreens.js)");
+
+    test("down and up, then on after a pause; a turn inside a screen is free", async ({ page }) => {
+      await signUp(page);
+      await seedScreen2(page);
+      await expect(scroller(page)).toHaveAttribute("data-snap", "off");
+      await expect(scroller(page)).toHaveAttribute("data-flick-stop", "on");
+      const s2 = await screen2Top(page);
+      const client = await page.evaluate(() => document.querySelector(".home-scroller").clientHeight);
+      const end1 = s2 - client;
+      const end = await page.evaluate(() => {
+        const el = document.querySelector(".home-scroller");
+        return el.scrollHeight - el.clientHeight;
+      });
+      expect(end1, "screen 1 is taller than the window").toBeGreaterThan(40);
+      // In the screens' left padding, so no card's own scroll takes the wheel.
+      const box = await scroller(page).boundingBox();
+      await page.mouse.move(box.x + 16, box.y + box.height / 2);
+      const turn = async (dy, times) => {
+        for (let i = 0; i < times; i++) {
+          await page.mouse.wheel(0, dy);
+          await page.waitForTimeout(16);
+        }
+        return settled(page);
+      };
+      const near = (what, top, want) => expect(Math.abs(top - want), `${what}: rests at ${top}, not ${want}`).toBeLessThanOrEqual(1);
+
+      // A short turn inside screen 1 is free.
+      expect(await turn(40, 3)).toBeGreaterThan(80);
+
+      // Down: a long turn stops at the top of screen 2 and stays while it turns on.
+      await park(page, 0);
+      near("a long turn down", await turn(40, 40), s2);
+      await expect(dot(page, 2)).toHaveAttribute("aria-current", "true");
+      if (end > s2 + 40) {
+        await page.waitForTimeout(400);
+        expect(await turn(40, 5), "after a pause it carries on into screen 2").toBeGreaterThan(s2 + 40);
+      }
+
+      // Up: from the end, a long turn stops with the end of screen 1 at the bottom.
+      await park(page, end);
+      near("a long turn up", await turn(-40, 40), end1);
+      await expect(dot(page, 1)).toHaveAttribute("aria-current", "true");
+      await page.waitForTimeout(400);
+      expect(await turn(-40, 5), "after a pause it carries on up screen 1").toBeLessThan(end1 - 40);
+
+      // The dots still jump to the top of each screen.
+      await dot(page, 2).click();
+      await expect.poll(async () => Math.abs((await scrollTop(page)) - s2)).toBeLessThanOrEqual(1);
+      await dot(page, 1).click();
+      await expect.poll(() => scrollTop(page)).toBe(0);
+    });
+
+    // The stop only ever catches the wheel. Straight after a hard turn that stopped
+    // at the join (and is still held there), a key, the focus moving, a dot and the
+    // app's own scroll all go where they are asked.
+    test("right after a stop, a key, the focus, a dot and the app's own scroll are never held", async ({ page }) => {
+      await signUp(page);
+      await seedScreen2(page);
+      await expect(scroller(page)).toHaveAttribute("data-flick-stop", "on");
+      const s2 = await screen2Top(page);
+      const box = await scroller(page).boundingBox();
+      // A click in the screens' margin: the keys now scroll Home.
+      await page.mouse.click(box.x + 16, box.y + 40);
+      const hardTurnToJoin = async () => {
+        await park(page, 0);
+        await page.mouse.move(box.x + 16, box.y + box.height / 2);
+        for (let i = 0; i < 40; i++) {
+          await page.mouse.wheel(0, 40);
+          await page.waitForTimeout(16);
+        }
+        expect(Math.abs((await scrollTop(page)) - s2), "the turn stopped at the join").toBeLessThanOrEqual(1);
+      };
+
+      await hardTurnToJoin();
+      await page.keyboard.press("PageUp");
+      await expect.poll(() => scrollTop(page), { message: "Page Up moves Home" }).toBeLessThan(s2 - 100);
+
+      await hardTurnToJoin();
+      const first = page.locator('[data-screen="1"] button').first();
+      await first.focus();
+      await expect(first).toBeInViewport();
+      expect(await scrollTop(page), "focusing a button on screen 1 brings it into view").toBeLessThan(s2 - 100);
+
+      await hardTurnToJoin();
+      await dot(page, 1).click();
+      await expect.poll(() => scrollTop(page)).toBe(0);
+
+      await hardTurnToJoin();
+      await page.waitForTimeout(150); // the wheel has stopped turning
+      await page.evaluate((top) => {
+        const el = document.querySelector(".home-scroller");
+        el.style.scrollBehavior = "auto";
+        el.scrollTop = top;
+        el.style.scrollBehavior = "";
+      }, s2 - 200);
+      await page.waitForTimeout(300);
+      expect(await scrollTop(page), "the app's own scroll stays where it went").toBe(s2 - 200);
+    });
+  });
+}

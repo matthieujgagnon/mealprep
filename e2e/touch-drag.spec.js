@@ -92,7 +92,7 @@ test("a real (non-mouse-simulated) touch drag moves an inventory card between sh
   const client = await context.newCDPSession(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   const fridgeShelf = page.locator(".inv-shelf", { hasText: "Fridge" });
-  const card = fridgeShelf.locator(".inv-row", { hasText: "Touch Drag Item" });
+  const card = fridgeShelf.locator(":is(.inv-row, .inv-tile)", { hasText: "Touch Drag Item" });
   const cardBox = await card.boundingBox();
   const pantryShelf = page.locator(".inv-shelf", { hasText: "Pantry" });
   const pantryBox = await pantryShelf.boundingBox();

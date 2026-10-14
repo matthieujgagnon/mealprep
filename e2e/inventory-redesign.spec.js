@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
-import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
+import { addInventoryItem, fillAddForm, itemForm, pickCompact, shelfCard } from "./inventory-form.js";
 import { quebecDayIn } from "./quebec-day.js";
 
 // Covers the Inventory page (Matt's Compact + Tiles design,
@@ -85,17 +85,17 @@ test("the form's amount takes fractions and has quick-pick chips, and nothing sa
   await form.getByRole("button", { name: "Set to ¾" }).click();
   await form.getByRole("button", { name: "Cancel" }).click();
   await expect(itemForm(page)).toHaveCount(0);
-  await expect(page.locator(".inv-row", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("1");
+  await expect(page.locator(":is(.inv-row, .inv-tile)", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("1");
 
   // Save changes keeps it.
   await page.getByText("Olive oil", { exact: true }).click();
   await itemForm(page).getByRole("button", { name: "Set to ¾" }).click();
   await itemForm(page).getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator(".riso-toast")).toHaveText("Changes saved");
-  await expect(page.locator(".inv-row", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("¾");
+  await expect(page.locator(":is(.inv-row, .inv-tile)", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("¾");
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
-  await expect(page.locator(".inv-row", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("¾");
+  await expect(page.locator(":is(.inv-row, .inv-tile)", { hasText: "Olive oil" }).locator(".inv-qty")).toHaveText("¾");
 });
 
 test("the item name in the form can be renamed, and saves with Save changes", async ({ page }) => {
@@ -131,7 +131,7 @@ test("selecting items shows the floating action bar, and Used up removes them", 
 
   await page.getByRole("button", { name: "Used up" }).click();
   await expect(page.locator(".inv-action-bar")).toHaveCount(0);
-  await expect(page.locator(".inv-row")).toHaveCount(0);
+  await expect(page.locator(":is(.inv-row, .inv-tile)")).toHaveCount(0);
 });
 
 test("custom sections can be added, used, and removed (items fall back to Pantry)", async ({ page }) => {
@@ -259,7 +259,7 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await addItem(page, "Shrimp", "fridge");
   await expect(page.locator(".inv-shelf", { hasText: "Fridge" }).getByText("Shrimp")).toBeVisible();
 
-  const card = page.locator(".inv-row", { hasText: "Shrimp" });
+  const card = page.locator(":is(.inv-row, .inv-tile)", { hasText: "Shrimp" });
   const targetShelf = page.locator(".inv-shelf", { hasText: "Pantry" });
   const cardBox = await card.boundingBox();
   const targetBox = await targetShelf.boundingBox();
@@ -274,8 +274,8 @@ test("dragging a card from one shelf to another moves it", async ({ page }) => {
   await page.mouse.move(cardBox.x + cardBox.width / 2 + 20, cardBox.y + cardBox.height / 2, { steps: 5 });
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 });
   await page.waitForTimeout(100);
-  // What follows the pointer is the item's row, not the old name chip.
-  await expect(page.locator(".inv-drag-preview .inv-row")).toContainText("Shrimp");
+  // What follows the pointer is the item itself (a tile, the first view), not the old name chip.
+  await expect(page.locator(".inv-drag-preview .inv-tile")).toContainText("Shrimp");
   await expect(page.locator(".drag-preview-chip")).toHaveCount(0);
   await page.mouse.up();
 
@@ -312,6 +312,7 @@ test("Compact rows and Tiles: photo, name and amount; the life-left strip and ba
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
+  await pickCompact(page);
   await expect(page.locator(".riso-inv-summary")).toHaveText("6 items1 to use soon1 expired"); // three parts, the dots between them are drawn by CSS
   const card = (name) => page.locator(".inv-row").filter({ hasText: name });
   // Expired (the day after the use-by day): pink-tinted row, the quiet pill, and
@@ -418,6 +419,7 @@ test("in Compact the amount can be changed right on the row, without opening the
   await add({ name: "Aged cheddar", quantity: 1 });
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await pickCompact(page);
   const card = (name) => page.locator(".inv-row").filter({ hasText: name });
   const saved = async (name) =>
     (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === name).quantity;

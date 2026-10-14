@@ -30,3 +30,12 @@ export async function addInventoryItem(page, name, shelf, { open = true } = {}) 
   await itemForm(page).getByRole("button", { name: "Add to inventory" }).click();
   await expect(itemForm(page)).toHaveCount(0);
 }
+
+// Inventory opens on Tiles. The tests about Compact's rows (the row itself, the
+// amount on the row, the days under a leftover's name) pick it first; the choice
+// is kept for the account on this device, so once per account is enough.
+export async function pickCompact(page) {
+  const compact = page.getByRole("button", { name: "Compact", exact: true });
+  await compact.click();
+  await expect(compact).toHaveAttribute("aria-pressed", "true");
+}

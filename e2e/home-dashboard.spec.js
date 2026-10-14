@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
-import { quebecDayIn } from "./quebec-day.js";
+import { quebecDay, quebecDayIn } from "./quebec-day.js";
 
 // The Home tab is now the landing page - covers the pieces that pull data
 // from elsewhere in the app (planner, grocery list, inventory) rather than
@@ -12,11 +12,13 @@ function uniqueEmail() {
 }
 
 // These are about supper, which is the card from 3 pm: fix the clock at 6 pm
-// so they give the same answer whenever they run.
+// so they give the same answer whenever they run. 6 pm on today's Quebec day
+// (the day the app counts use-by days in), on this machine's clock (the hour the
+// browser reads): from 8 pm in Quebec a UTC machine's own date is already
+// tomorrow, and "6 pm tomorrow" made a use-by date of tomorrow say today.
 test.beforeEach(async ({ page }) => {
-  const evening = new Date();
-  evening.setHours(18, 0, 0, 0);
-  await page.clock.setFixedTime(evening);
+  const [y, m, d] = quebecDay(new Date()).split("-").map(Number);
+  await page.clock.setFixedTime(new Date(y, m - 1, d, 18, 0, 0, 0));
 });
 
 test("signing up lands on Home, not Recipes", async ({ page }) => {

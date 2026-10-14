@@ -127,12 +127,13 @@ test.describe("Proteins on sale on a computer", () => {
     expect(shadows[0]).toMatch(/5px 5px 0px/);
     for (const s of shadows.slice(1)) expect(s).toBe("none");
 
-    // The other rows blur and dim; the open one doesn't.
+    // The other rows blur and dim; the open one doesn't. They fade over 0.15 s,
+    // from whenever the browser next draws, so wait for the end of the fade.
     await expect(rowButton(page, "Fish")).toHaveClass(/dimmed/);
     await expect(rowButton(page, "Pork")).toHaveClass(/dimmed/);
     await expect(chicken).not.toHaveClass(/dimmed/);
-    expect(await rowButton(page, "Fish").evaluate((e) => getComputedStyle(e).filter)).toContain("blur(3px)");
-    expect(await rowButton(page, "Fish").evaluate((e) => getComputedStyle(e).opacity)).toBe("0.55");
+    await expect(rowButton(page, "Fish")).toHaveCSS("filter", "blur(3px)");
+    await expect(rowButton(page, "Fish")).toHaveCSS("opacity", "0.55");
   });
 
   test("a product with a photo shows it; one without gets the striped paper with the kind's emoji", async ({ page }) => {
