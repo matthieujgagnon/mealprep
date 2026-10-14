@@ -9,13 +9,13 @@ const prisma = new PrismaClient();
 
 // Home as two full screens in one scroller, with a dot for each (design:
 // docs/design/riso-v2-home-two-screens/). The scroller fills exactly what is
-// left under the header; the page itself never scrolls on Home. It snaps only
-// while both screens fit it: on a phone, or in a short window, a screen is taller
-// than the window, so it scrolls freely there (a snap point in a tall screen is a
-// wall an ordinary swipe bounces back from), and the flick stop keeps a flick from
-// flying across the join (HOME_FLICK_STOP; with it off those tests are skipped).
-// The dots follow and jump either way. The pure rules are unit-tested in
-// lib/homeScreens.test.js.
+// left under the header; the page itself never scrolls on Home. How it moves is
+// scrollMode (lib/homeScreens.js, unit-tested in lib/homeScreens.test.js): a
+// computer scrolls freely at every size, with the mouse wheel and the trackpad,
+// from anywhere on the page; a touch screen snaps where both screens fit (a
+// tablet); a phone scrolls freely and the flick stop keeps a flick from flying
+// across the join (HOME_FLICK_STOP; with it off those tests are skipped). The dots
+// follow and jump either way.
 
 function mondayOf(d) {
   const x = new Date(d);
@@ -143,14 +143,15 @@ async function seedScreen2(page) {
   await expect(page.locator('[data-screen="2"] .riso-protein-list > li')).not.toHaveCount(0);
 }
 
-test.describe("a tall window: both screens fit, so it snaps", () => {
+test.describe("a tall computer window: both screens fit, and it still scrolls freely", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
   test("opens on screen 1; the dots follow the scroll and jump when tapped", async ({ page }) => {
     await signUp(page);
     await expect(page.locator(".app")).toHaveClass(/is-home/);
-    await expect(scroller(page)).toHaveAttribute("data-snap", "on");
-    await expect(scroller(page)).toHaveAttribute("data-flick-stop", "off"); // snapping does that job here
+    // A computer never snaps (the wheel and the trackpad fight a snap) and has no flick stop.
+    await expect(scroller(page)).toHaveAttribute("data-snap", "off");
+    await expect(scroller(page)).toHaveAttribute("data-flick-stop", "off");
     expect(await scrollTop(page)).toBe(0);
 
     // The scroller meets the header and ends at the bottom of the window; the page never scrolls.
@@ -298,6 +299,7 @@ test.describe("a short window: a screen is taller than the window, so it scrolls
   test("no snapping; the scroller rests where it is left, and the dots still follow and jump", async ({ page }) => {
     await signUp(page);
     await expect(scroller(page)).toHaveAttribute("data-snap", "off");
+    await expect(scroller(page)).toHaveAttribute("data-flick-stop", "off");
     const tallest = await page.evaluate(() => Math.max(...[...document.querySelectorAll(".home-screen")].map((s) => s.offsetHeight)));
     expect(tallest).toBeGreaterThan(await page.evaluate(() => document.querySelector(".home-scroller").clientHeight));
 
@@ -320,6 +322,26 @@ test.describe("a short window: a screen is taller than the window, so it scrolls
     await dot(page, 2).click();
     await expect.poll(async () => Math.abs((await scrollTop(page)) - (await screen2Top(page)))).toBeLessThanOrEqual(1);
     await expect(dot(page, 2)).toHaveAttribute("aria-current", "true");
+  });
+});
+
+// A tablet: a touch screen with room for both screens. Only there does Home snap.
+test.describe("a tablet: a touch screen where both screens fit, so it snaps", () => {
+  test.use({ viewport: { width: 1280, height: 900 }, hasTouch: true, isMobile: true });
+
+  test("it snaps to a screen, and the dots still follow and jump", async ({ page }) => {
+    await signUp(page);
+    await expect(scroller(page)).toHaveAttribute("data-snap", "on");
+    await expect(scroller(page)).toHaveAttribute("data-flick-stop", "off"); // snapping does that job here
+    const s2 = await screen2Top(page);
+    // A position in the middle of the way is pulled to a screen.
+    await park(page, 300);
+    await expect.poll(async () => { const top = await scrollTop(page); return Math.min(Math.abs(top), Math.abs(top - s2)); }).toBeLessThanOrEqual(1);
+    await dot(page, 2).tap();
+    await expect.poll(async () => Math.abs((await scrollTop(page)) - s2)).toBeLessThanOrEqual(1);
+    await expect(dot(page, 2)).toHaveAttribute("aria-current", "true");
+    await dot(page, 1).tap();
+    await expect.poll(() => scrollTop(page)).toBe(0);
   });
 });
 
@@ -520,60 +542,142 @@ for (const height of [664, 844]) {
   });
 }
 
-// The flick stop in a short laptop window, with the wheel or trackpad: a turn that
-// would carry the scroller across the join stops there and waits while the wheel
-// keeps turning (a trackpad coasts as a stream of wheel events); after a pause, the
-// next turn carries on. At 720px tall screen 2 just fits, so going down the join is
-// also the end; at 640px both screens are taller than the window.
-for (const height of [720, 640]) {
-  test.describe(`a short laptop window, 1280 x ${height}: the wheel stops at the join`, () => {
-    test.use({ viewport: { width: 1280, height } });
-    test.skip(!HOME_FLICK_STOP, "the flick stop is off (HOME_FLICK_STOP in lib/homeScreens.js)");
+// A computer: Home scrolls freely with the mouse wheel and the trackpad, at every
+// size, with the pointer anywhere on the page (Matt's test of Oct 13: a stop at
+// the join for the wheel, and the big windows' snap, fought the trackpad; both are
+// gone). The test tool's wheel events reach Chrome as pixel steps, the way a
+// trackpad sends them: "mouse" is three notches of 100px, "trackpad" thirty
+// steps of 8px, 16 ms apart.
+const STROKES = {
+  mouse: { dy: 100, times: 3, gap: 120 },
+  trackpad: { dy: 8, times: 30, gap: 16 },
+};
 
-    test("down and up, then on after a pause; a turn inside a screen is free", async ({ page }) => {
-      await signUp(page);
-      await seedScreen2(page);
-      await expect(scroller(page)).toHaveAttribute("data-snap", "off");
-      await expect(scroller(page)).toHaveAttribute("data-flick-stop", "on");
-      const s2 = await screen2Top(page);
-      const client = await page.evaluate(() => document.querySelector(".home-scroller").clientHeight);
-      const end1 = s2 - client;
-      const end = await page.evaluate(() => {
-        const el = document.querySelector(".home-scroller");
-        return el.scrollHeight - el.clientHeight;
-      });
-      expect(end1, "screen 1 is taller than the window").toBeGreaterThan(40);
-      // In the screens' left padding, so no card's own scroll takes the wheel.
-      const box = await scroller(page).boundingBox();
-      await page.mouse.move(box.x + 16, box.y + box.height / 2);
-      const turn = async (dy, times) => {
-        for (let i = 0; i < times; i++) {
-          await page.mouse.wheel(0, dy);
-          await page.waitForTimeout(16);
+// Every position the scroller passes through, one per frame, while `act` runs and
+// until it comes to rest.
+async function track(page, act) {
+  await page.evaluate(() => {
+    const el = document.querySelector(".home-scroller");
+    window.__path = [];
+    const tick = () => {
+      window.__path.push(el.scrollTop);
+      window.__frame = requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  await act();
+  const rest = await settled(page);
+  const path = await page.evaluate(() => {
+    cancelAnimationFrame(window.__frame);
+    return window.__path;
+  });
+  return { rest, path };
+}
+// How many frames moved against the scroll (a snap or a stop pulling back).
+const backwards = (path, dir) => path.slice(1).filter((top, i) => Math.sign(top - path[i]) === -dir).length;
+
+async function wheelOver(page, point, kind, dir) {
+  const { dy, times, gap } = STROKES[kind];
+  await page.mouse.move(point.x, point.y);
+  return track(page, async () => {
+    for (let i = 0; i < times; i++) {
+      await page.mouse.wheel(0, dy * dir);
+      await page.waitForTimeout(gap);
+    }
+  });
+}
+
+// The middle of the first of `selector` on screen, or null.
+async function pointOver(page, selector) {
+  return page.evaluate((sel) => {
+    const scroller = document.querySelector(".home-scroller").getBoundingClientRect();
+    const box = document.querySelector(sel)?.getBoundingClientRect();
+    if (!box) return null;
+    const y = box.top + Math.min(box.height / 2, 40);
+    return y > scroller.top + 4 && y < scroller.bottom - 4 ? { x: box.left + box.width / 2, y } : null;
+  }, selector);
+}
+
+async function computerHome(page) {
+  await signUp(page);
+  await seedScreen2(page);
+  await expect(scroller(page)).toHaveAttribute("data-snap", "off");
+  await expect(scroller(page)).toHaveAttribute("data-flick-stop", "off");
+  return page.evaluate(() => {
+    const el = document.querySelector(".home-scroller");
+    return { s2: document.querySelector('[data-screen="2"]').offsetTop, end: el.scrollHeight - el.clientHeight };
+  });
+}
+
+for (const [width, height] of [[1280, 720], [1440, 900], [1920, 1080], [1000, 800]]) {
+  test.describe(`a computer, ${width} x ${height}: the wheel and the trackpad scroll Home freely`, () => {
+    test.use({ viewport: { width, height } });
+
+    // Must pass: the case Matt found broken.
+    test("with the pointer over Proteins on sale, the wheel and the trackpad scroll Home, both ways", async ({ page }) => {
+      const { s2, end } = await computerHome(page);
+      const row = ".riso-protein-list > li button.riso-protein-card";
+      for (const kind of ["mouse", "trackpad"]) {
+        for (const [dir, start] of [[1, Math.max(0, end - 200)], [-1, s2]]) {
+          await park(page, start);
+          const point = await pointOver(page, row);
+          expect(point, `a Proteins row is on screen at ${start}`).not.toBeNull();
+          const room = dir > 0 ? end - start : start;
+          const { rest, path } = await wheelOver(page, point, kind, dir);
+          const want = Math.min(STROKES[kind].dy * STROKES[kind].times, room) / 2;
+          expect((rest - start) * dir, `${kind} ${dir > 0 ? "down" : "up"} over Proteins moves Home`).toBeGreaterThan(want);
+          expect(backwards(path, dir), `${kind} ${dir > 0 ? "down" : "up"} over Proteins never pulls back`).toBe(0);
         }
-        return settled(page);
-      };
-      const near = (what, top, want) => expect(Math.abs(top - want), `${what}: rests at ${top}, not ${want}`).toBeLessThanOrEqual(1);
-
-      // A short turn inside screen 1 is free.
-      expect(await turn(40, 3)).toBeGreaterThan(80);
-
-      // Down: a long turn stops at the top of screen 2 and stays while it turns on.
-      await park(page, 0);
-      near("a long turn down", await turn(40, 40), s2);
-      await expect(dot(page, 2)).toHaveAttribute("aria-current", "true");
-      if (end > s2 + 40) {
-        await page.waitForTimeout(400);
-        expect(await turn(40, 5), "after a pause it carries on into screen 2").toBeGreaterThan(s2 + 40);
       }
+    });
 
-      // Up: from the end, a long turn stops with the end of screen 1 at the bottom.
-      await park(page, end);
-      near("a long turn up", await turn(-40, 40), end1);
-      await expect(dot(page, 1)).toHaveAttribute("aria-current", "true");
-      await page.waitForTimeout(400);
-      expect(await turn(-40, 5), "after a pause it carries on up screen 1").toBeLessThan(end1 - 40);
-
+    test("from every part of the page, never pulled back, all the way to both ends", async ({ page }) => {
+      test.setTimeout(90_000);
+      const { s2, end } = await computerHome(page);
+      const box = await scroller(page).boundingBox();
+      // Screen 1's parts, scrolling down from the top; screen 2's, scrolling up from its top.
+      const parts = [
+        ["the greeting", ".riso-home-greeting-title", 0, 1],
+        ["the hero", ".riso-home-hero", 0, 1],
+        ["the Grocery card", ".riso-home-grocery", 0, 1],
+        ["the week strip", ".riso-home-week-strip", 0, 1],
+        ["Proteins on sale", ".riso-home-proteins", s2, -1],
+        ["Makeable now", ".riso-home-makeable", s2, -1],
+        ["Use it up", ".riso-home-useup .riso-home-mini-header", s2, -1],
+      ];
+      for (const [name, selector, start, dir] of parts) {
+        for (const kind of ["mouse", "trackpad"]) {
+          await park(page, start);
+          const point = await pointOver(page, selector);
+          expect(point, `${name} is on screen`).not.toBeNull();
+          const { rest, path } = await wheelOver(page, point, kind, dir);
+          expect((rest - start) * dir, `${kind} over ${name} moves Home`).toBeGreaterThan(40);
+          expect(backwards(path, dir), `${kind} over ${name} never pulls back`).toBe(0);
+        }
+      }
+      // From the margin, a long scroll goes all the way down and all the way back up,
+      // straight through the join.
+      const margin = { x: box.x + 12, y: box.y + box.height / 2 };
+      for (const [kind, times] of [["mouse", 14], ["trackpad", 170]]) {
+        await park(page, 0);
+        await page.mouse.move(margin.x, margin.y);
+        const down = await track(page, async () => {
+          for (let i = 0; i < times; i++) {
+            await page.mouse.wheel(0, STROKES[kind].dy);
+            await page.waitForTimeout(STROKES[kind].gap);
+          }
+        });
+        expect(Math.round(down.rest), `${kind}: a long scroll down reaches the end`).toBe(end);
+        expect(backwards(down.path, 1)).toBe(0);
+        const up = await track(page, async () => {
+          for (let i = 0; i < times; i++) {
+            await page.mouse.wheel(0, -STROKES[kind].dy);
+            await page.waitForTimeout(STROKES[kind].gap);
+          }
+        });
+        expect(Math.round(up.rest), `${kind}: a long scroll up reaches the top`).toBe(0);
+        expect(backwards(up.path, -1)).toBe(0);
+      }
       // The dots still jump to the top of each screen.
       await dot(page, 2).click();
       await expect.poll(async () => Math.abs((await scrollTop(page)) - s2)).toBeLessThanOrEqual(1);
@@ -581,51 +685,32 @@ for (const height of [720, 640]) {
       await expect.poll(() => scrollTop(page)).toBe(0);
     });
 
-    // The stop only ever catches the wheel. Straight after a hard turn that stopped
-    // at the join (and is still held there), a key, the focus moving, a dot and the
-    // app's own scroll all go where they are asked.
-    test("right after a stop, a key, the focus, a dot and the app's own scroll are never held", async ({ page }) => {
-      await signUp(page);
-      await seedScreen2(page);
-      await expect(scroller(page)).toHaveAttribute("data-flick-stop", "on");
-      const s2 = await screen2Top(page);
-      const box = await scroller(page).boundingBox();
-      // A click in the screens' margin: the keys now scroll Home.
-      await page.mouse.click(box.x + 16, box.y + 40);
-      const hardTurnToJoin = async () => {
-        await park(page, 0);
-        await page.mouse.move(box.x + 16, box.y + box.height / 2);
-        for (let i = 0; i < 40; i++) {
-          await page.mouse.wheel(0, 40);
-          await page.waitForTimeout(16);
-        }
-        expect(Math.abs((await scrollTop(page)) - s2), "the turn stopped at the join").toBeLessThanOrEqual(1);
-      };
-
-      await hardTurnToJoin();
-      await page.keyboard.press("PageUp");
-      await expect.poll(() => scrollTop(page), { message: "Page Up moves Home" }).toBeLessThan(s2 - 100);
-
-      await hardTurnToJoin();
-      const first = page.locator('[data-screen="1"] button').first();
-      await first.focus();
-      await expect(first).toBeInViewport();
-      expect(await scrollTop(page), "focusing a button on screen 1 brings it into view").toBeLessThan(s2 - 100);
-
-      await hardTurnToJoin();
-      await dot(page, 1).click();
-      await expect.poll(() => scrollTop(page)).toBe(0);
-
-      await hardTurnToJoin();
-      await page.waitForTimeout(150); // the wheel has stopped turning
-      await page.evaluate((top) => {
-        const el = document.querySelector(".home-scroller");
-        el.style.scrollBehavior = "auto";
-        el.scrollTop = top;
-        el.style.scrollBehavior = "";
-      }, s2 - 200);
+    test("Use it up's list scrolls first, then hands the wheel on to Home", async ({ page }) => {
+      const { s2, end } = await computerHome(page);
+      const listSel = ".riso-home-useup-scroll > .riso-home-rows";
+      const list = page.locator(listSel);
+      expect(await list.evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe("auto");
+      const listRoom = await list.evaluate((el) => el.scrollHeight - el.clientHeight);
+      expect(listRoom, "the list has more than it shows").toBeGreaterThan(20);
+      // Scroll the way Home has room to go: down when screen 2 is taller than the window, else up.
+      const dir = end - s2 > 60 ? 1 : -1;
+      await park(page, dir > 0 ? s2 : end);
+      if (dir < 0) await list.evaluate((el) => (el.scrollTop = el.scrollHeight)); // the list at its bottom, Home's top above
+      const start = await scrollTop(page);
+      const point = await pointOver(page, listSel);
+      expect(point, "the list is on screen").not.toBeNull();
+      await page.mouse.move(point.x, point.y);
+      // The list moves first, to its end.
+      for (let i = 0; i < 6; i++) {
+        await page.mouse.wheel(0, 100 * dir);
+        await page.waitForTimeout(60);
+      }
+      await settled(page);
+      await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBe(dir > 0 ? listRoom : 0);
+      // Then, at its end, the wheel moves Home.
       await page.waitForTimeout(300);
-      expect(await scrollTop(page), "the app's own scroll stays where it went").toBe(s2 - 200);
+      const { rest } = await wheelOver(page, point, "mouse", dir);
+      expect((rest - start) * dir, "at the list's end, the wheel moves Home").toBeGreaterThan(40);
     });
   });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeScreen, flickStop, screensFit } from "./homeScreens.js";
+import { activeScreen, flickStop, screensFit, scrollMode } from "./homeScreens.js";
 
 describe("activeScreen", () => {
   // A 636px scroller whose second screen starts at 739.
@@ -39,6 +39,25 @@ describe("screensFit", () => {
 
   it("is false before the scroller has a height", () => {
     expect(screensFit({ clientHeight: 0, screenHeights: [0, 0] })).toBe(false);
+  });
+});
+
+describe("scrollMode", () => {
+  it("is free on a computer at every size: no snap, no flick stop", () => {
+    expect(scrollMode({ touchScreen: false, fits: true })).toBe("free");
+    expect(scrollMode({ touchScreen: false, fits: false })).toBe("free");
+  });
+
+  it("snaps on a touch screen where both screens fit (a tablet)", () => {
+    expect(scrollMode({ touchScreen: true, fits: true })).toBe("snap");
+  });
+
+  it("stops a flick at the join on a touch screen where they don't (a phone)", () => {
+    expect(scrollMode({ touchScreen: true, fits: false, flickStop: true })).toBe("flick-stop");
+  });
+
+  it("is free on a phone with the flick stop switched off", () => {
+    expect(scrollMode({ touchScreen: true, fits: false, flickStop: false })).toBe("free");
   });
 });
 

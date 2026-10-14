@@ -9082,11 +9082,13 @@ button.riso-table-group-head:disabled {
   font-family: var(--riso-font-body);
 }
 
-/* The one scroller through both screens. It snaps (mandatory) only while both
-   screens fit it (data-snap="on", set by Home from lib/homeScreens.js): in a
-   screen taller than the window a snap point is a wall that an ordinary swipe
-   or wheel tick bounces back from, so then it scrolls freely. position: relative
-   makes the screens' offsetTop count from here. */
+/* The one scroller through both screens. It snaps (mandatory) only on a touch
+   screen where both screens fit it, a tablet (data-snap="on", set by Home from
+   scrollMode in lib/homeScreens.js). A computer scrolls freely at every size:
+   the wheel and the trackpad fight a snap. In a screen taller than the window a
+   snap point is a wall that an ordinary swipe bounces back from, so a phone
+   scrolls freely too (with the flick stop). position: relative makes the
+   screens' offsetTop count from here. */
 .home-scroller {
   position: relative;
   height: 100%;
@@ -9782,6 +9784,15 @@ button.riso-table-group-head:disabled {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 4px;
+}
+
+/* On a computer the list hands the wheel and the trackpad on to Home once it
+   reaches its end, so Home scrolls with the pointer anywhere. A phone keeps it
+   to the list. */
+@media (pointer: fine) {
+  .riso-home-useup-scroll > .riso-home-rows {
+    overscroll-behavior: auto;
+  }
 }
 
 /* Makeable now */
