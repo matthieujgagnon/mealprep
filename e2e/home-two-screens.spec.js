@@ -714,3 +714,108 @@ for (const [width, height] of [[1280, 720], [1440, 900], [1920, 1080], [1000, 80
     });
   });
 }
+
+// Screen 2 fits the window on a computer, as screen 1 does (Matt, Oct 14: with
+// every protein on sale it ran off the bottom). The most it ever holds: all
+// eight kinds of protein on sale, a recipe ready to cook and ten things to use
+// up. Its rows are slimmer on a computer (at least 50px; Use it up's picture
+// 42px); a phone keeps the design's 78px rows.
+async function seedEverything(page) {
+  const me = await (await page.request.get("/api/auth/me")).json();
+  const userId = me.user?.id ?? me.id;
+  const deals = [
+    ["Cuisses de poulet | Chicken thighs", "chicken thighs"],
+    ["Boeuf haché | Ground beef", "ground beef"],
+    ["Longe de porc | Pork loin", "pork loin"],
+    ["Saumon | Salmon", "salmon"],
+    ["Crevettes | Shrimp", "shrimp"],
+    ["Dinde hachée | Ground turkey", "ground turkey"],
+    ["Gigot d'agneau | Lamb leg", "lamb leg"],
+    ["Tofu ferme | Firm tofu", "firm tofu"],
+  ];
+  await prisma.flyerDeal.createMany({
+    data: deals.map(([item, matchName], i) => ({
+      userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${3 + i}/lb`,
+      unitPrice: 3 + i, unitBasis: "lb", regularPrice: 6 + i, validUntil: quebecDayIn(3), isCurrent: true, createdAt: new Date(),
+    })),
+  });
+  await page.request.post("/api/recipes", {
+    data: { title: "Omelette", baseServings: 2, fridgeLifeDays: 1, instructions: ["Cook: Cook the eggs."], ingredients: [{ name: "eggs", quantity: 4, unit: "" }] },
+  });
+  const useUp = ["eggs", "spinach", "milk", "yogurt", "mushrooms", "cream", "cheddar", "lettuce", "ham", "tortillas"];
+  for (const [i, name] of useUp.entries()) {
+    await page.request.post("/api/pantry-inventory", { data: { name, quantity: 1, location: "fridge", expiresAt: quebecDayIn(1 + i * 2) } });
+  }
+  await page.reload();
+  await expect(page.locator('[data-screen="2"] .riso-protein-list > li')).toHaveCount(8);
+  await expect(page.locator('[data-screen="2"] .riso-home-makeable')).toBeAttached();
+}
+
+for (const [width, height] of [[1280, 720], [1366, 768], [1440, 900], [1536, 864], [1920, 1080]]) {
+  test.describe(`a computer, ${width} x ${height}: screen 2 fits the window`, () => {
+    test.use({ viewport: { width, height } });
+
+    test("with every protein on sale and ten things to use up", async ({ page }) => {
+      await signUp(page);
+      await seedEverything(page);
+      const fit = await page.evaluate(() => {
+        const scroller = document.querySelector(".home-scroller");
+        const second = document.querySelector('[data-screen="2"]');
+        const box = scroller.getBoundingClientRect();
+        scroller.style.scrollBehavior = "auto";
+        scroller.scrollTop = second.offsetTop;
+        const cards = [".riso-home-proteins", ".riso-home-makeable", ".riso-home-useup"].map((sel) => document.querySelector(sel).getBoundingClientRect());
+        return {
+          past: scroller.scrollHeight - scroller.clientHeight - second.offsetTop,
+          lowestCard: Math.max(...cards.map((c) => c.bottom)),
+          windowBottom: box.bottom,
+          row: document.querySelector(".riso-protein-card").getBoundingClientRect().height,
+          picture: document.querySelector(".riso-useup-row .inv-card-photo").getBoundingClientRect().height,
+        };
+      });
+      expect(fit.past, "nothing of screen 2 is below the window").toBeLessThanOrEqual(1);
+      expect(fit.lowestCard, "every card ends inside the window").toBeLessThanOrEqual(fit.windowBottom);
+      expect(fit.row).toBe(50);
+      expect(await page.evaluate(() => [...document.querySelectorAll(".riso-protein-card, .riso-protein-card *")].filter((el) => el.scrollHeight > el.clientHeight + 1).length), "nothing spills out of a row").toBe(0);
+      expect(fit.picture).toBe(42);
+      // Use it up still scrolls inside its card when it has more than it shows.
+      const list = page.locator(".riso-home-useup-scroll > .riso-home-rows");
+      expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    });
+  });
+}
+
+// French at a narrower window: the long verdict « Faites des réserves » makes
+// « Fruits de mer » wrap, and its row grows rather than spill.
+test.describe("a computer, 1100 x 780, in French: a wrapped name makes its row taller", () => {
+  test.use({ viewport: { width: 1100, height: 780 } });
+
+  test("nothing spills out of a row, and screen 2 still fits", async ({ page }) => {
+    await signUp(page);
+    await inFrench(page);
+    await seedEverything(page);
+    const r = await page.evaluate(() => {
+      const scroller = document.querySelector(".home-scroller");
+      return {
+        spills: [...document.querySelectorAll(".riso-protein-card, .riso-protein-card *")].filter((el) => el.scrollHeight > el.clientHeight + 1).length,
+        rows: [...document.querySelectorAll(".riso-protein-card")].map((el) => el.getBoundingClientRect().height),
+        past: scroller.scrollHeight - scroller.clientHeight - document.querySelector('[data-screen="2"]').offsetTop,
+      };
+    });
+    expect(r.spills).toBe(0);
+    expect(Math.min(...r.rows)).toBe(50);
+    expect(Math.max(...r.rows), "« Fruits de mer » wraps onto two lines").toBeGreaterThan(50);
+    expect(r.past).toBeLessThanOrEqual(1);
+  });
+});
+
+test.describe("a phone keeps the design's rows", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("78px protein rows, a 56px picture in Use it up", async ({ page }) => {
+    await signUp(page);
+    await seedEverything(page);
+    expect(await page.locator(".riso-protein-card").first().evaluate((el) => el.getBoundingClientRect().height)).toBe(78);
+    expect(await page.locator(".riso-useup-row .inv-card-photo").first().evaluate((el) => el.getBoundingClientRect().height)).toBe(56);
+  });
+});

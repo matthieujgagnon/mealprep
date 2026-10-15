@@ -286,6 +286,23 @@ test.describe("Proteins on sale on a computer", () => {
 test.describe("Proteins on sale on a wide screen", () => {
   test.use({ viewport: { width: 1600, height: 1000 } });
 
+  test("beside Makeable now as well, the card is a third of the page: one column, the names whole", async ({ page }) => {
+    const userId = await signUp(page);
+    await seed(userId);
+    // A recipe ready to cook, so Makeable now shows beside it.
+    await page.request.post("/api/recipes", { data: { title: "Omelette", ingredients: [{ name: "eggs", quantity: 4, unit: "" }] } });
+    await page.request.post("/api/pantry-inventory", { data: { name: "eggs", quantity: 12, location: "fridge" } });
+    await page.reload();
+    await expect(page.locator(".riso-home-bottom-row.three .riso-home-makeable")).toBeVisible();
+    const chicken = await rowButton(page, "Chicken").boundingBox();
+    const fish = await rowButton(page, "Fish").boundingBox();
+    expect(fish.y).toBeGreaterThan(chicken.y + chicken.height - 1); // under it, not beside it
+    expect(Math.abs(fish.x - chicken.x)).toBeLessThanOrEqual(1);
+    // Each name on one line.
+    const names = await card(page).locator(".riso-protein-name").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    for (const h of names) expect(h).toBeLessThan(24);
+  });
+
   test("two columns of rows from 1560 px; an open row and its pop-out take both columns", async ({ page }) => {
     await seedAndLoad(page);
     const chicken = rowButton(page, "Chicken");
