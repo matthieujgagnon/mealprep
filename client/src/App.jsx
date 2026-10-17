@@ -1291,8 +1291,21 @@ export default function App({ user, onLogout }) {
     >
       <div className={`app${tab === "home" ? " is-home" : ""}${isDragActive ? " dnd-active" : ""}`}>
         <header ref={headerRef} className={`app-header riso-theme${headerLevel >= 1 ? " is-tight" : ""}${headerLevel >= 2 ? " is-tighter" : ""}`}>
+          {/* The app name is the link Home, on every page and every size. A plain click goes
+              through goToTab, like the Home tab, so an unsaved recipe form still asks first;
+              a click with a modifier key (a new tab or window) is the browser's own. */}
           <h1 className="wordmark">
-            matt mo <span>cookbook</span>
+            <a
+              href="/"
+              aria-label={t("app.nav.home")}
+              onClick={(e) => {
+                if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                goToTab("home");
+              }}
+            >
+              matt mo <span>cookbook</span>
+            </a>
           </h1>
           {/* FR | EN right in the header, next to the avatar. The name, Help and
               Log out are in the avatar's menu, on a phone and on a computer. */}

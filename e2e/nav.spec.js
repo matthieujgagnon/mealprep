@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { openHelp } from "./account-menu.js";
 
 // The header nav regressed twice: first the active pill's 3px hard shadow
 // was sliced off along its bottom edge (the tab row was a scroll container,
@@ -53,4 +54,96 @@ test("phone: pills scroll without widening the page, and the avatar menu logs ou
   await page.getByRole("button", { name: "Account" }).click();
   await page.getByRole("button", { name: "Log out" }).click();
   await expect(page.getByRole("button", { name: "Sign up" })).toBeVisible();
+});
+
+// The app name in the header is the link Home (a real link: the keyboard and screen readers can
+// use it), on every page, on a computer and on a phone. It looks like the plain name.
+const PAGES = ["Recipes", "Planner", "Makeable", "Grocery", "Flyers", "Inventory"];
+
+test("computer: the app name is the link Home from every page, with the keyboard too, and looks like the plain name", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signUp(page);
+  const home = page.locator("h1.wordmark").getByRole("link", { name: "Home", exact: true });
+  await expect(home).toHaveCount(1);
+  await expect(home).toHaveAttribute("href", "/");
+  await expect(home).toContainText("matt mo cookbook");
+
+  // The look: the plain name's colour, no underline; only the pointer shows it is a link.
+  expect(await home.evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).textDecorationLine, getComputedStyle(el).cursor])).toEqual([
+    "rgb(22, 24, 31)",
+    "none",
+    "pointer",
+  ]);
+
+  for (const name of PAGES) {
+    await page.getByRole("button", { name, exact: true }).click();
+    await expect(page.locator(".tab.active")).toHaveText(name);
+    await home.click();
+    await expect(page.locator(".tab.active")).toHaveText("Home");
+  }
+  await openHelp(page);
+  await expect(page.locator(".tab.active")).toHaveCount(0); // Help is not a tab
+  await home.click();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+
+  // The keyboard: Shift+Tab back through the header from a tab reaches the app name, which shows a
+  // focus ring, and Enter on it goes Home.
+  const grocery = page.getByRole("button", { name: "Grocery", exact: true });
+  await grocery.click();
+  await expect(page.locator(".tab.active")).toHaveText("Grocery");
+  await grocery.focus();
+  for (let i = 0; i < 8 && !(await home.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Shift+Tab");
+  await expect(home).toBeFocused();
+  expect(await home.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+});
+
+test("phone: the app name is the link Home from every page", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await signUp(page);
+  const home = page.locator("h1.wordmark").getByRole("link", { name: "Home", exact: true });
+  await expect(home).toBeVisible();
+  for (const name of PAGES) {
+    await page.getByRole("button", { name, exact: true }).click();
+    await expect(page.locator(".tab.active")).toHaveText(name);
+    await home.click();
+    await expect(page.locator(".tab.active")).toHaveText("Home");
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test("the app name asks first when the recipe form has unsaved changes, like the tabs", async ({ page }) => {
+  await signUp(page);
+  await page.request.post("/api/recipes", {
+    data: { title: "Weeknight dal", ingredients: [{ name: "red lentils", quantity: 1, unit: "cup" }], instructions: ["Simmer."] },
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.locator(".rpc", { hasText: "Weeknight dal" }).click();
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit recipe" }).click();
+  await expect(page.getByRole("heading", { name: "Edit recipe." })).toBeVisible();
+  const home = page.locator("h1.wordmark").getByRole("link", { name: "Home", exact: true });
+
+  // Nothing changed yet: it just goes Home.
+  await home.click();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+
+  // Changed: it asks. Keep editing stays; Discard goes Home.
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.locator(".rpc", { hasText: "Weeknight dal" }).click();
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit recipe" }).click();
+  await page.fill('input[placeholder="Grandma\'s lasagna"]', "Weeknight red dal");
+  await home.click();
+  const ask = page.getByRole("alertdialog");
+  await expect(ask).toContainText("Leave without saving your changes?");
+  await ask.getByRole("button", { name: "Keep editing" }).click();
+  await expect(ask).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Edit recipe." })).toBeVisible();
+  await home.click();
+  await ask.getByRole("button", { name: "Discard" }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Home");
+  await expect(page.getByRole("heading", { name: "Edit recipe." })).toHaveCount(0);
 });

@@ -31,7 +31,7 @@ async function addRecipe(page, title, ingredientName) {
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', title);
-  await page.fill('input[aria-label="FRIDGE LIFE"]', "4");
+  await page.fill('input[aria-label="LEFTOVERS KEEP"]', "4");
   await page.fill('input[aria-label="Ingredient"]', ingredientName);
   await page.fill('input[aria-label="Quantity"]', "1");
   await page.fill('textarea[placeholder="Describe this step"]', "Cook it.");

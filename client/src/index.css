@@ -127,6 +127,18 @@ select {
   cursor: grabbing !important;
 }
 
+/* Pictures inside something that is pressed and held or dragged (docs/components.md,
+   "Pictures in held or dragged things"). A picture can be replaced under a finger: one
+   that will not load, or loads late, becomes a placeholder. A touch whose element has
+   left the page is lost, so the browser takes it for a page scroll and the press-and-hold
+   or drag is cancelled. With the picture out of the way the touch always lands on the
+   piece itself, which stays; a tap on the picture still opens the piece. Whatever can be
+   held or dragged carries `press-hold`, and a placeholder that stands in for a picture
+   carries `picture-stand-in`. This is the only rule for it. */
+.press-hold :is(img, .picture-stand-in) {
+  pointer-events: none;
+}
+
 .app-header {
   display: flex;
   align-items: center;
@@ -166,6 +178,15 @@ select {
   color: var(--riso-ink);
   padding: 0 8px;
   border-radius: 6px;
+}
+
+/* The name is the link Home. It looks like the plain name: only the pointer on hover and
+   the keyboard focus ring (the page's :focus-visible) show it is a link. */
+.wordmark a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Desktop: never a scroll container. Any overflow value other than visible
@@ -1494,16 +1515,6 @@ select {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-}
-
-/* A press on an item's photo is a press on the item. A photo can be replaced under
-   a finger (a picture that will not load, or loads late, becomes the placeholder),
-   and a touch whose element has left the page is lost: the browser scrolls the page
-   instead and the press-and-hold drag is cancelled. With the photo out of the way
-   the touch always lands on the item itself, which stays. */
-.inv-row.draggable .inv-card-photo,
-.inv-tile.draggable .inv-card-photo {
-  pointer-events: none;
 }
 
 .inv-row.expired,
@@ -13657,7 +13668,6 @@ body.no-select {
   height: 100%;
   object-fit: cover;
   display: block;
-  pointer-events: none;
 }
 
 .re-photo.cover {

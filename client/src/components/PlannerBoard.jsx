@@ -59,7 +59,7 @@ export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, on
     data: { recipe, entryId: entry.id },
   });
 
-  const classes = ["riso-planner-card"];
+  const classes = ["riso-planner-card", "press-hold"];
   if (entry.alreadyHave) classes.push("have");
   else if (entry.isLeftover) classes.push("leftover");
   if (isPast) classes.push("past");

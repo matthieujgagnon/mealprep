@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { WHEN_FAILS, holdAndDragWhilePictureFails, holdPictures } from "./picture-fails.js";
 
 // The Planner on a phone (design: docs/design/riso-v2-planner-mobile-v2): three
 // days at a time on a board that slides under the pinned meal names (pages start
@@ -606,6 +607,44 @@ test("a photo that fails to load does not hide the next photo shown in the same 
   await expect(card).toContainText("Good photo");
   await expect(card.locator("img")).toHaveCSS("visibility", "visible");
 });
+
+// A card's picture can fail (or load late) under the finger that is holding the card. The
+// touch must not be lost: the card still lifts and lands on the slot it is carried to, and
+// the browser never cancels the touch. The picture's request is held until the test lets it
+// fail, so it fails exactly when the finger is down (on the picture itself): during the hold,
+// or while carried. A failed Planner picture is only hidden today (RecipePhoto keeps the
+// <img>), so this is the guard: if a failed picture is ever replaced instead, the shared
+// `.press-hold` rule (index.css) keeps it out of the touch. Inventory's tests prove that rule.
+for (const when of WHEN_FAILS) {
+  test(`a planned card's long-press drag survives its picture failing ${when}`, async ({ page }) => {
+    const pictures = await holdPictures(page, /pictures\.example\.test/);
+    const recipe = await setup(page);
+    await page.request.put(`/api/recipes/${recipe.id}`, { data: { photoUrl: "https://pictures.example.test/roast-chicken.jpg" } });
+    const week = nextMonday();
+    await plan(page, recipe, week, 0, "dinner");
+    await openPlanner(page);
+    await page.getByRole("button", { name: "Next week" }).click();
+    await page.waitForTimeout(400);
+
+    const card = page.locator(".pmb-cell .riso-planner-card");
+    const photo = card.locator("img.riso-planner-card-photo");
+    await expect(photo).toBeVisible(); // the picture, not yet failed
+    const cells = page.locator(".pmb-cell");
+    const cancels = await holdAndDragWhilePictureFails(page, {
+      from: await center(photo), // the finger is on the picture itself
+      to: await center(cells.nth(3 + 2)), // Mon supper -> Tue supper
+      when,
+      pictureFails: async () => {
+        pictures.fail();
+        await expect(photo).not.toBeVisible(); // now the page shows it has failed (hidden, or replaced)
+      },
+    });
+
+    expect(cancels).toBe(0);
+    await expect.poll(async () => (await (await page.request.get(`/api/planner?week=${week}`)).json()).map((e) => e.dayOfWeek)).toEqual([1]);
+    await expect(page.getByRole("dialog")).toHaveCount(0); // the drag never opened the card
+  });
+}
 
 test.describe("in French", () => {
   test.use({ locale: "fr-CA" });
