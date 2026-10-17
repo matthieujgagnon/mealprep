@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { useDndMonitor, useDroppable } from "@dnd-kit/core";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDndMonitor } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { leftoverExpiry } from "../lib/leftovers.js";
@@ -9,6 +10,8 @@ import { InventoryItem, InventoryDragPreview } from "./InventoryItems.jsx";
 import { InventoryItemForm } from "./InventoryItemForm.jsx";
 import { HintStrip, Segmented } from "./RisoControls.jsx";
 import { RemovedStrip } from "./RemovedStrip.jsx";
+import { LIFTED_CLASS, ReorderGrip, ReorderList, useReorderDrop, useReorderSection } from "./ReorderSections.jsx";
+import { gridSortingStrategy } from "../lib/reorderGrid.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { useInventoryView } from "../hooks/useInventoryView.js";
 import { useRemovedItems } from "../hooks/useRemovedItems.js";
@@ -55,6 +58,13 @@ function spanOf(size, id) {
   if (n >= 1 && n <= 6) return snapSpan(n * 2);
   return id === "pantry" || id === "leftovers" ? GRID_COLUMNS : 6;
 }
+
+// A shelf is two things to the app's drag setup: where an item is dropped (App.jsx's
+// handleDragEnd reads the "inv-shelf-<id>" ids) and a section moved by its ⠿ (the
+// shared reorder piece, ReorderSections.jsx, as Grocery's stores). SHELF_DRAG is the
+// `type` of the second, which App.jsx's collision rule looks for.
+export const SHELF_DRAG = "shelf";
+const shelfDragId = (id) => `inv-shelf-${id}`;
 
 // Built-in shelves plus custom sections, in the user's saved order (anything
 // not in the saved layout yet - a brand-new section - goes at the end), with
@@ -357,27 +367,25 @@ function ShelfColumn({
   onDelete,
   resizable,
   onResize,
-  onStartMove,
   onMoveByKey,
-  moveState,
 }) {
   const [preview, setPreview] = useState(null);
   const shelfRef = useRef(null);
   const sorted = byDaysLeft(items);
 
-  // Every shelf is a drop target for a dragged item (see App.jsx's
-  // handleDragEnd, which routes "inv-shelf-<id>" ids).
-  const { setNodeRef, isOver } = useDroppable({ id: `inv-shelf-${location.id}` });
+  // Every shelf is a drop target for a dragged item (see App.jsx's handleDragEnd,
+  // which routes "inv-shelf-<id>" ids) and moves by its grip like a store on Grocery.
+  const shelf = useReorderSection({ id: shelfDragId(location.id), data: { type: SHELF_DRAG, shelf: location.id } });
+  const itemOver = shelf.isOver && !!shelf.active?.data.current?.inventoryItemId;
 
   const span = preview?.span ?? location.span;
   const height = preview ? preview.height : location.height;
   const classes = ["inv-shelf"];
   if (height) classes.push("fixed-height");
-  if (isOver) classes.push("drop-active");
+  if (itemOver) classes.push("drop-active");
   if (preview) classes.push("resizing");
   if (editing) classes.push("editing");
-  if (moveState?.id === location.id) classes.push("moving");
-  if (moveState?.overId === location.id) classes.push(moveState.after ? "drop-after" : "drop-before");
+  if (shelf.lifted) classes.push(LIFTED_CLASS);
   const sizeLabel = `${span}/${GRID_COLUMNS} · ${height ? `${height}PX` : t("inventory.sizeAuto")}`;
 
   const editor = useShelfEditor({
@@ -393,29 +401,27 @@ function ShelfColumn({
   return (
     <section
       ref={(node) => {
-        setNodeRef(node);
+        shelf.ref(node);
         shelfRef.current = node;
       }}
       className={classes.join(" ")}
-      style={{ "--span": span, height: height ? `${height}px` : undefined }}
+      style={{ "--span": span, height: height ? `${height}px` : undefined, ...shelf.style }}
       data-section-id={location.id}
       aria-label={t("inventory.sectionAria", { name: location.label })}
     >
       <div className="inv-shelf-header">
-        <button
-          type="button"
+        <ReorderGrip
+          asButton
+          grip={shelf.grip}
           className="inv-shelf-grip"
           aria-label={t("inventory.moveSection", { name: location.label })}
           title={t("inventory.moveTitle")}
-          onPointerDown={(e) => onStartMove(location.id, e)}
           onContextMenu={(e) => e.preventDefault()}
           onKeyDown={(e) => {
             if (e.key === "ArrowLeft" || e.key === "ArrowUp") onMoveByKey(location.id, -1, e);
             if (e.key === "ArrowRight" || e.key === "ArrowDown") onMoveByKey(location.id, 1, e);
           }}
-        >
-          ⠿
-        </button>
+        />
         {editing ? editor.nameInput : <h3 className="inv-shelf-title">{location.label}</h3>}
         <span className="inv-shelf-count">{items.length}</span>
         <span className="inv-shelf-spacer" />
@@ -575,14 +581,6 @@ function FloatingActionBar({ count, onFindRecipes, onConsume, onFreeze, onClear 
   );
 }
 
-// A shelf held by its ⠿ on a phone moves only after a short still hold (the
-// app's 200 ms, as items do), so a swipe that starts on the grip is not a move.
-const HOLD_MS = 200;
-const HOLD_TOLERANCE = 8;
-// While a shelf is carried near the top or bottom of the screen, the page scrolls.
-const EDGE = 72;
-const EDGE_STEP = 12;
-
 export function Inventory({
   user,
   items,
@@ -714,97 +712,27 @@ export function Inventory({
     document.querySelector(`.inv-shelves [data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function moveSectionTo(id, overId, after) {
-    if (!overId || overId === id) return;
-    const moving = sections.find((sec) => sec.id === id);
-    const rest = sections.filter((sec) => sec.id !== id);
-    const at = rest.findIndex((sec) => sec.id === overId) + (after ? 1 : 0);
-    rest.splice(at, 0, moving);
-    onSaveLayout(layoutPayload(rest));
+  // A shelf dropped on another takes that shelf's place and the others close up
+  // around it (the shared reorder piece, as Grocery's stores). Saved at once, with
+  // the widths and heights as they were.
+  function moveSection(id, overId) {
+    const from = sections.findIndex((sec) => sec.id === id);
+    const to = sections.findIndex((sec) => sec.id === overId);
+    if (from < 0 || to < 0 || from === to) return;
+    onSaveLayout(layoutPayload(arrayMove(sections, from, to)));
   }
+  useReorderDrop(SHELF_DRAG, (carried, target) => moveSection(carried.shelf, target.shelf));
 
   function moveSectionByKey(id, dir, e) {
     e.preventDefault();
     const i = sections.findIndex((sec) => sec.id === id);
     const target = sections[i + dir];
-    if (target) moveSectionTo(id, target.id, dir > 0);
+    if (target) moveSection(id, target.id);
   }
 
-  // Drag a section by its grip onto another one: it lands before or after it,
-  // whichever half of that section the pointer is over. With a finger, the grip
-  // has to be held still for a moment first; the page scrolls near its edges.
-  const [moveState, setMoveState] = useState(null);
-  function startMove(id, e) {
-    e.preventDefault();
-    if (e.pointerType !== "touch") return carryShelf(id, e.clientX, e.clientY);
-    const x0 = e.clientX;
-    const y0 = e.clientY;
-    const stop = () => {
-      clearTimeout(timer);
-      window.removeEventListener("pointermove", wobble);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-    };
-    const wobble = (ev) => {
-      if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > HOLD_TOLERANCE) stop();
-    };
-    const timer = setTimeout(() => {
-      stop();
-      carryShelf(id, x0, y0);
-    }, HOLD_MS);
-    window.addEventListener("pointermove", wobble);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-  }
-
-  function carryShelf(id, startX, startY) {
-    let state = { id, overId: null, after: false };
-    let point = { x: startX, y: startY };
-    let frame = 0;
-    setMoveState(state);
-    document.body.classList.add("no-select");
-    const look = () => {
-      const over = document
-        .elementsFromPoint(point.x, point.y)
-        .map((el) => el.closest?.("[data-section-id]"))
-        .find(Boolean);
-      const overId = over?.dataset.sectionId;
-      if (!overId || overId === id) {
-        state = { id, overId: null, after: false };
-      } else {
-        const r = over.getBoundingClientRect();
-        const sameRow = r.width < (over.parentElement?.clientWidth || 0) - 4;
-        const after = sameRow ? point.x > r.left + r.width / 2 : point.y > r.top + r.height / 2;
-        state = { id, overId, after };
-      }
-      setMoveState(state);
-    };
-    const edgeScroll = () => {
-      frame = 0;
-      const dy = point.y < EDGE ? -EDGE_STEP : point.y > window.innerHeight - EDGE ? EDGE_STEP : 0;
-      if (!dy) return;
-      window.scrollBy(0, dy);
-      look();
-      frame = requestAnimationFrame(edgeScroll);
-    };
-    const move = (ev) => {
-      point = { x: ev.clientX, y: ev.clientY };
-      look();
-      if (!frame) frame = requestAnimationFrame(edgeScroll);
-    };
-    const end = (ev) => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-      if (frame) cancelAnimationFrame(frame);
-      document.body.classList.remove("no-select");
-      setMoveState(null);
-      if (ev.type === "pointerup") moveSectionTo(state.id, state.overId, state.after);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
-  }
+  // The shelves slide to where the 12-column grid will put them (lib/reorderGrid.js).
+  const gridRef = useRef(null);
+  const shelfStrategy = useMemo(() => gridSortingStrategy({ columns: GRID_COLUMNS, getGrid: () => gridRef.current }), []);
 
   function updateSection(id, patch) {
     onSaveLayout(layoutPayload(sections.map((sec) => (sec.id === id ? { ...sec, ...patch } : sec))));
@@ -868,37 +796,37 @@ export function Inventory({
 
       {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
-      <div className="inv-shelves" onClickCapture={swallowClick}>
-        {sections.map((loc) => (
-          <ShelfColumn
-            key={loc.id}
-            location={loc}
-            items={items.filter((i) => onShelf(i, loc.id))}
-            view={view}
-            onUpdate={onUpdate}
-            recipes={recipes}
-            activeItemId={activeItemId}
-            selectedIds={selectedIds}
-            onSelect={setActiveItemId}
-            onToggleSelect={toggleSelect}
-            editing={editingId === loc.id}
-            onEdit={(on) => setEditingId(on ? loc.id : null)}
-            onAddHere={() => {
-              setAddLocation(loc.id);
-              setShowAdd(true);
-            }}
-            onRename={(name) => renameSection(loc, name)}
-            onDelete={() => {
-              setEditingId(null);
-              onDeleteLocation(loc.id);
-            }}
-            resizable={!isPhone}
-            onResize={({ span, height }) => updateSection(loc.id, { span, height })}
-            onStartMove={startMove}
-            onMoveByKey={moveSectionByKey}
-            moveState={moveState}
-          />
-        ))}
+      <div className="inv-shelves" ref={gridRef} onClickCapture={swallowClick}>
+        <ReorderList ids={sections.map((loc) => shelfDragId(loc.id))} strategy={shelfStrategy}>
+          {sections.map((loc) => (
+            <ShelfColumn
+              key={loc.id}
+              location={loc}
+              items={items.filter((i) => onShelf(i, loc.id))}
+              view={view}
+              onUpdate={onUpdate}
+              recipes={recipes}
+              activeItemId={activeItemId}
+              selectedIds={selectedIds}
+              onSelect={setActiveItemId}
+              onToggleSelect={toggleSelect}
+              editing={editingId === loc.id}
+              onEdit={(on) => setEditingId(on ? loc.id : null)}
+              onAddHere={() => {
+                setAddLocation(loc.id);
+                setShowAdd(true);
+              }}
+              onRename={(name) => renameSection(loc, name)}
+              onDelete={() => {
+                setEditingId(null);
+                onDeleteLocation(loc.id);
+              }}
+              resizable={!isPhone}
+              onResize={({ span, height }) => updateSection(loc.id, { span, height })}
+              onMoveByKey={moveSectionByKey}
+            />
+          ))}
+        </ReorderList>
       </div>
 
       <RemovedStrip
