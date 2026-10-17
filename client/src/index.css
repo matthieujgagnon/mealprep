@@ -180,6 +180,15 @@ select {
   border-radius: 6px;
 }
 
+/* The name is the link Home. It looks like the plain name: only the pointer on hover and
+   the keyboard focus ring (the page's :focus-visible) show it is a link. */
+.wordmark a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Desktop: never a scroll container. Any overflow value other than visible
    clips on both axes, which sliced the active pill's 3px hard shadow off
    along its bottom edge. When the row is too narrow for logo + tabs +

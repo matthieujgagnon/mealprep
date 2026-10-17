@@ -1573,6 +1573,7 @@ export const en = {
         title: "Home",
         lines: [
           "Home shows your day at a glance.",
+          "The app's name at the top left of the header (matt mo cookbook) is a link: tap it from any page to come back to Home. It works with the keyboard too.",
           "Home is two screens. The first has your day, the groceries and the week; the second has Proteins on sale, Makeable now and Use it up. Scroll down, or tap a dot on the right edge, to reach the other one. On a computer, Home scrolls freely with the mouse wheel or the trackpad. On a phone you scroll freely inside each screen, and a flick stops where the two screens meet: going down, at the top of the second screen; going up, at the end of the first. Swipe again to carry on. On a tablet with room for both screens, the page snaps from one to the other. The dots show where you are, and a tap on one goes to the top of its screen.",
           "The top card follows the day: This morning · Breakfast until 10, Today · Lunch until 3, then Tonight · Supper. It shows the meal planned for it and how many of its ingredients you have. Use [[startCooking]], [[swap]] or [[eatingOut]]. Once it's cooked, [[homeCooked]] opens the finished view (see Cook mode), and the card then says ✓ Cooked. A written meal or eating out has nothing to cook, and a day you marked as no meal says so.",
           "If nothing is planned for that meal, pick a recipe from there, or choose [[eatingOut]].",

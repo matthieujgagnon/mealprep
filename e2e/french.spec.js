@@ -248,6 +248,15 @@ for (const [where, size] of [
   });
 }
 
+// The app name in the header is the link Home, named « Accueil » in French.
+test("the app name is the link « Accueil »", async ({ page }) => {
+  await signUpInFrench(page);
+  await page.getByRole("button", { name: "Inventaire", exact: true }).first().click();
+  await expect(page.locator(".tab.active")).toHaveText("Inventaire");
+  await page.locator("h1.wordmark").getByRole("link", { name: "Accueil", exact: true }).click();
+  await expect(page.locator(".tab.active")).toHaveText("Accueil");
+});
+
 test("the language follows the account, and the server answers in it", async ({ page }) => {
   // A wrong password is turned down in French.
   await page.goto("/");
