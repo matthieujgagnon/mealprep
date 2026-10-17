@@ -1116,18 +1116,6 @@ select {
   box-shadow: 4px 4px 0 var(--riso-accent);
 }
 
-.inv-shelf.moving {
-  opacity: 0.55;
-}
-
-.inv-shelf.drop-before {
-  box-shadow: -6px 0 0 var(--riso-accent);
-}
-
-.inv-shelf.drop-after {
-  box-shadow: 6px 0 0 var(--riso-accent);
-}
-
 .inv-shelf-header {
   display: flex;
   align-items: center;
@@ -1136,23 +1124,14 @@ select {
   min-width: 0;
 }
 
-/* The ⠿ grip: drag the shelf (with a finger, after a short still hold). */
+/* The ⠿ grip: drag the shelf, as a store is dragged on Grocery (.reorder-grip). */
 .inv-shelf-grip {
-  cursor: grab;
   font-size: 14px;
   letter-spacing: -2px;
   color: var(--riso-muted);
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
   padding: 2px;
   background: none;
   border: none;
-  touch-action: none;
-}
-
-.inv-shelf-grip:active {
-  cursor: grabbing;
 }
 
 .inv-shelf-title {
@@ -1515,6 +1494,16 @@ select {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* A press on an item's photo is a press on the item. A photo can be replaced under
+   a finger (a picture that will not load, or loads late, becomes the placeholder),
+   and a touch whose element has left the page is lost: the browser scrolls the page
+   instead and the press-and-hold drag is cancelled. With the photo out of the way
+   the touch always lands on the item itself, which stays. */
+.inv-row.draggable .inv-card-photo,
+.inv-tile.draggable .inv-card-photo {
+  pointer-events: none;
 }
 
 .inv-row.expired,
@@ -11646,6 +11635,21 @@ span.riso-row-qty {
   }
 }
 
+/* The ⠿ that carries a whole section: a store on Grocery, a shelf on Inventory
+   (components/ReorderSections.jsx). A touch that starts on it never scrolls the
+   page, so a finger on it can only be moving the section. */
+.reorder-grip {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.reorder-grip:active {
+  cursor: grabbing;
+}
+
 .riso-group-grip {
   flex: none;
   margin-right: 4px;
@@ -11653,15 +11657,14 @@ span.riso-row-qty {
   color: var(--riso-muted);
   font-size: 16px;
   line-height: 1;
-  cursor: grab;
-  touch-action: none;
 }
 
 .riso-group-grip:hover {
   color: var(--riso-ink);
 }
 
-.riso-group.store-dragging {
+/* The section being carried: a store, or a shelf (the others slide to make room). */
+.reorder-lifted {
   position: relative;
   z-index: 5;
   opacity: 0.9;
@@ -13040,7 +13043,7 @@ button.riso-deal-detail-other:focus-visible {
   }
 }
 
-/* While a section is being dragged or resized. */
+/* While a section is being resized. */
 body.no-select {
   user-select: none;
   -webkit-user-select: none;

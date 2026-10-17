@@ -1,18 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  pointerWithin,
-  rectIntersection,
-  useDraggable,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { DndContext, DragOverlay, closestCenter, pointerWithin, rectIntersection, useDraggable } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "../api.js";
 import { groceryShared } from "../lib/groceryCache.js";
 import { GROCERY, afterSaves, savesVersion } from "../lib/pendingSaves.js";
@@ -44,6 +32,7 @@ import { StoreMode } from "./StoreMode.jsx";
 import { GroceryItem } from "./GroceryItem.jsx";
 import { GroceryCart, GroceryHowItWorks, GroupFooter } from "./GroceryParts.jsx";
 import { RemovedStrip } from "./RemovedStrip.jsx";
+import { LIFTED_CLASS, ReorderGrip, ReorderList, useReorderSection, useReorderSensors } from "./ReorderSections.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { useStickyDodge } from "../hooks/useStickyDodge.js";
@@ -122,22 +111,20 @@ function DraggableGroceryRow(props) {
   return <GroceryRow {...props} rowRef={setNodeRef} dragProps={listeners} dragging={isDragging} />;
 }
 
-// One store's list. Its heading drags to reorder the stores; items drop
-// anywhere on it.
+// One store's list. Its heading's grip drags to reorder the stores (the shared
+// reorder piece, ReorderSections.jsx, which Inventory's shelves use too); items
+// drop anywhere on it.
 function StoreGroup({ storeName, children, className }) {
-  const { setNodeRef, setActivatorNodeRef, listeners, attributes, transform, transition, isDragging, isOver, active } = useSortable({
-    id: `store:${storeName}`,
-    data: { type: "store", store: storeName },
-  });
-  const itemOver = isOver && active?.data.current?.type === "item";
+  const store = useReorderSection({ id: `store:${storeName}`, data: { type: "store", store: storeName } });
+  const itemOver = store.isOver && store.active?.data.current?.type === "item";
   return (
     <section
-      ref={setNodeRef}
-      className={`${className}${itemOver ? " drop-active" : ""}${isDragging ? " store-dragging" : ""}`}
+      ref={store.ref}
+      className={`${className}${itemOver ? " drop-active" : ""}${store.lifted ? ` ${LIFTED_CLASS}` : ""}`}
       aria-label={t("grocery.storeAria", { store: storeLabel(storeName) })}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
+      style={store.style}
     >
-      {children({ handleRef: setActivatorNodeRef, handleProps: { ...listeners, ...attributes } })}
+      {children({ grip: store.grip })}
     </section>
   );
 }
@@ -145,11 +132,11 @@ function StoreGroup({ storeName, children, className }) {
 // A group's heading, on the same grid as its rows on a computer (design:
 // docs/design/riso-v2-grocery, §3): the name and its count ("3 TO BUY · 2 ON
 // SALE"), then the column labels ON SALE, RECIPE and BUY, and the × on a store you
-// made. By store it has the grip ⠿ that drags the store to reorder (`handle`),
+// made. By store it has the grip ⠿ that drags the store to reorder (`grip`),
 // and a store you made can be renamed (click the name) or removed (its items go
 // back to where they'd land on their own). By recipe, the name opens the recipe
 // (`onOpenName`). On a phone the labels are left out.
-function GroupHead({ group, section, onRename, onRemove, onOpenName, handle }) {
+function GroupHead({ group, section, onRename, onRemove, onOpenName, grip }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(group.name);
   let title;
@@ -192,16 +179,13 @@ function GroupHead({ group, section, onRename, onRemove, onOpenName, handle }) {
   return (
     <div className="riso-group-head">
       <div className="riso-group-title">
-        {handle && (
-          <span
-            ref={handle.ref}
+        {grip && (
+          <ReorderGrip
+            grip={grip}
             className="riso-group-grip"
             title={t("grocery.reorderStores")}
-            {...handle.props}
             aria-label={t("grocery.reorderStore", { store: group.label })}
-          >
-            ⠿
-          </span>
+          />
         )}
         {title}
         <span className="riso-group-count">{group.count}</span>
@@ -637,10 +621,7 @@ export function GroceryList({
     await api.deleteGrocerySection(section.id);
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
-  );
+  const sensors = useReorderSensors();
 
   // Stores reorder by their middles; an item lands in whichever store the
   // pointer is over.
@@ -1060,19 +1041,19 @@ export function GroceryList({
               onDragCancel={() => setDraggingItem(null)}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext items={groups.map((g) => `store:${g.name}`)} strategy={verticalListSortingStrategy}>
+              <ReorderList ids={groups.map((g) => `store:${g.name}`)}>
                 {groups.map((group) => {
                   const section = sectionByName.get(group.name);
                   return (
                     <StoreGroup key={group.key} storeName={group.name} className="riso-group">
-                      {({ handleRef, handleProps }) => (
+                      {({ grip }) => (
                         <>
                           <GroupHead
                             group={group}
                             section={section}
                             onRename={(name) => renameStore(section, name)}
                             onRemove={() => removeStore(section)}
-                            handle={{ ref: handleRef, props: handleProps }}
+                            grip={grip}
                           />
                           {group.sorted.length === 0 && <p className="riso-group-empty">{t("grocery.dragHere")}</p>}
                           {group.sorted.map((row) => renderRow(group, row, DraggableGroceryRow))}
@@ -1082,7 +1063,7 @@ export function GroceryList({
                     </StoreGroup>
                   );
                 })}
-              </SortableContext>
+              </ReorderList>
               <AddStoreForm onAdd={addStore} />
               <DragOverlay dropAnimation={null}>
                 {draggingItem && <div className="riso-grocery-drag-chip">{draggingItem.name}</div>}

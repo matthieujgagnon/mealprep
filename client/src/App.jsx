@@ -7,7 +7,6 @@ import {
   DndContext,
   DragOverlay,
   MeasuringStrategy,
-  PointerSensor,
   pointerWithin,
   rectIntersection,
   useSensor,
@@ -40,7 +39,8 @@ import { entriesOnDay, findNextEmptySlot, isCustomNote, slotLabel } from "./lib/
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { Makeable } from "./components/Makeable.jsx";
-import { Inventory, InventoryDragPreview, shelfOptions } from "./components/Inventory.jsx";
+import { Inventory, InventoryDragPreview, SHELF_DRAG, shelfOptions } from "./components/Inventory.jsx";
+import { GripAwarePointerSensor, sectionCollision } from "./components/ReorderSections.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 import { CookedViewHost } from "./components/CookedView.jsx";
 import { leftoverTitle } from "./lib/leftovers.js";
@@ -118,6 +118,9 @@ function DragPreview({ active, copy = false }) {
 // overlap fallback so the preview doesn't flicker in the gaps between items.
 function collisionDetection(args) {
   const { pointerCoordinates, droppableContainers, active } = args;
+  // An Inventory shelf carried by its grip is over the shelf under the pointer
+  // (the shared reorder piece, as Grocery's stores).
+  if (active.data.current?.type === SHELF_DRAG) return sectionCollision(args, SHELF_DRAG);
   if (pointerCoordinates) {
     const under = document.elementsFromPoint(pointerCoordinates.x, pointerCoordinates.y);
     const visible = droppableContainers.filter(
@@ -339,8 +342,11 @@ export default function App({ user, onLogout }) {
   // moment first; a swipe that starts moving right away is left alone and
   // scrolls normally. This is dnd-kit's own documented fix for exactly
   // this conflict.
+  // One sensor for everything: a card, an item or a recipe is picked up after
+  // that still hold. A press that starts on a ⠿ grip (a shelf on Inventory) is
+  // picked up the grip's way, as on Grocery (ReorderSections.jsx).
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+    useSensor(GripAwarePointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
   // Loads everything the app needs on first render. Tracked with
@@ -818,6 +824,9 @@ export default function App({ user, onLogout }) {
     setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
+
+    // A shelf moved by its grip is saved by Inventory (it listens for the drop).
+    if (active.data.current?.type === SHELF_DRAG) return;
 
     // A grocery item dropped on a store in Store mode (Grocery saves the move).
     const storeDrag = active.data.current?.storeDrag;
@@ -1679,9 +1688,13 @@ export default function App({ user, onLogout }) {
         )}
         <Toast toast={toast} onClose={() => closeToast(toast)} />
       </div>
-      <DragOverlay dropAnimation={null} modifiers={activeDragItem?.data.current?.storeDrag ? [centreAboveFinger] : undefined}>
-        {activeDragItem && <DragPreview active={activeDragItem} copy={copyDrag} />}
-      </DragOverlay>
+      {/* A shelf carried by its grip is the shelf itself moving, with no copy: with the
+          overlay up, dnd-kit would not move it. */}
+      {activeDragItem?.data.current?.type !== SHELF_DRAG && (
+        <DragOverlay dropAnimation={null} modifiers={activeDragItem?.data.current?.storeDrag ? [centreAboveFinger] : undefined}>
+          {activeDragItem && <DragPreview active={activeDragItem} copy={copyDrag} />}
+        </DragOverlay>
+      )}
     </DndContext>
   );
 }
