@@ -93,7 +93,7 @@ function SortablePhoto({ photo, isCover, onCover, onRemove }) {
   return (
     <div
       ref={setNodeRef}
-      className={`re-photo${isCover ? " cover" : ""}${isDragging ? " dragging" : ""}`}
+      className={`re-photo press-hold${isCover ? " cover" : ""}${isDragging ? " dragging" : ""}`}
       data-url={photo.url}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
@@ -103,7 +103,7 @@ function SortablePhoto({ photo, isCover, onCover, onRemove }) {
       onClick={onCover}
     >
       {broken ? (
-        <span className="re-photo-broken">{t("editor.photoBroken")}</span>
+        <span className="re-photo-broken picture-stand-in">{t("editor.photoBroken")}</span>
       ) : (
         <img src={photo.url} alt="" draggable={false} onError={() => setBroken(true)} />
       )}

@@ -271,7 +271,7 @@ export function InventoryItem({ item, view, active, selected, onSelect, onToggle
     isDragging && "dragging",
     line?.expired && "expired",
     item.isLeftover && "leftover",
-    draggable && "draggable",
+    draggable && "draggable press-hold",
   ]
     .filter(Boolean)
     .join(" ");

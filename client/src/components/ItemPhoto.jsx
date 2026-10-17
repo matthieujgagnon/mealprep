@@ -29,7 +29,7 @@ export function ItemPhoto({ item }) {
   }
   const emoji = foodEmoji(item.name, item.category);
   return (
-    <span className={`inv-card-photo placeholder${emoji ? "" : " letter"}`} aria-hidden="true">
+    <span className={`inv-card-photo placeholder picture-stand-in${emoji ? "" : " letter"}`} aria-hidden="true">
       {emoji || (item.name.trim()[0] || "?").toUpperCase()}
     </span>
   );

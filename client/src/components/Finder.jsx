@@ -71,7 +71,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
     <RecipePhotoCard
       variant="finder"
       cardRef={setNodeRef}
-      className={`fnd-card${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}${isOpen ? " is-open" : ""}`}
+      className={`fnd-card${isDragging ? " dragging" : ""}${draggable ? " draggable press-hold" : ""}${isOpen ? " is-open" : ""}`}
       ready={bar.state === "complete"}
       title={recipe.title}
       photoUrl={recipe.photoUrl}
@@ -135,7 +135,7 @@ function LeftoverResultCard({ entry, draggable, onAdd }) {
     <RecipePhotoCard
       variant="finder"
       cardRef={setNodeRef}
-      className={`fnd-card leftover${isDragging ? " dragging" : ""}${draggable ? " draggable" : ""}`}
+      className={`fnd-card leftover${isDragging ? " dragging" : ""}${draggable ? " draggable press-hold" : ""}`}
       ready
       title={title}
       photoUrl={item.imageUrl && item.imageUrl !== "none" ? item.imageUrl : recipe?.photoUrl}
