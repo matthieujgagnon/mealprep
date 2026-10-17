@@ -280,15 +280,6 @@ export function RecipeDetailModal({
     }
   }
 
-  function editLeftoverDays() {
-    setMenuOpen(false);
-    const input = window.prompt(t("recipeCard.promptLeftovers"), recipe.fridgeLifeDays ?? "");
-    if (input === null) return;
-    const days = input.trim() === "" ? null : Math.max(0, Math.round(Number(input)));
-    if (input.trim() !== "" && Number.isNaN(days)) return;
-    api.updateRecipe(recipe.id, { fridgeLifeDays: days }).then((updated) => onRecipeUpdated?.(updated));
-  }
-
   // ---- Pieces both layouts share -------------------------------------------------------
   const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
   const plannedDay = plannedDayOf(recipe.id, plannedEntries);
@@ -348,7 +339,6 @@ export function RecipeDetailModal({
             onEdit?.(recipe);
           }}
           onMove={moveRecipe}
-          onLeftoverDays={editLeftoverDays}
           onDelete={() => {
             setMenuOpen(false);
             onDelete?.(recipe);

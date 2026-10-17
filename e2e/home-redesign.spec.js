@@ -51,7 +51,7 @@ test("Makeable now counts what's ready and lists it with a ready tag", async ({ 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Home Redesign Test Dish");
-  await page.fill('input[aria-label="FRIDGE LIFE"]', "2");
+  await page.fill('input[aria-label="LEFTOVERS KEEP"]', "2");
   await page.fill('input[aria-label="Ingredient"]', "test ingredient");
   await page.fill('input[aria-label="Quantity"]', "1");
   await page.fill('textarea[placeholder="Describe this step"]', "Combine and serve.");
@@ -78,7 +78,7 @@ test("an open protein links to your recipes that use it, and that opens Recipes 
   await page.getByRole("button", { name: "Recipes", exact: true }).click();
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Home Redesign Chicken Dish");
-  await page.fill('input[aria-label="FRIDGE LIFE"]', "2");
+  await page.fill('input[aria-label="LEFTOVERS KEEP"]', "2");
   await page.fill('input[aria-label="Ingredient"]', "chicken breast");
   await page.fill('input[aria-label="Quantity"]', "1");
   await page.fill('textarea[placeholder="Describe this step"]', "Grill until done.");

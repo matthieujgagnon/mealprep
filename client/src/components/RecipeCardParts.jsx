@@ -18,10 +18,9 @@ import { t } from "../i18n/index.js";
 // ---- The ⋯ menu -----------------------------------------------------------------
 
 // Plan around this, Edit, View original, Add to my Cookbook (or Move to Imported),
-// Leftovers keep…, then Delete. A transparent catcher behind it closes it on any
-// click outside.
-export function OptionsMenu({ recipe, onPlanAround, onEdit, onMove, onLeftoverDays, onDelete, onClose }) {
-  const days = recipe.fridgeLifeDays;
+// then Delete. (How long the leftovers keep is in Edit recipe, with the other details.)
+// A transparent catcher behind it closes it on any click outside.
+export function OptionsMenu({ recipe, onPlanAround, onEdit, onMove, onDelete, onClose }) {
   return (
     <>
       <div className="riso-rc-menu-catcher" onClick={onClose} />
@@ -41,9 +40,6 @@ export function OptionsMenu({ recipe, onPlanAround, onEdit, onMove, onLeftoverDa
         )}
         <button type="button" role="menuitem" onClick={onMove}>
           {recipe.inCookbook ? t("recipeCard.moveToImported") : t("recipeCard.addToCookbook")}
-        </button>
-        <button type="button" role="menuitem" onClick={onLeftoverDays}>
-          {t("recipeCard.leftoversKeep", { days: days ? t("recipeCard.days", { count: days }) : t("recipeCard.notSet") })}
         </button>
         <div className="riso-rc-menu-divider" />
         <button type="button" role="menuitem" className="danger" onClick={onDelete}>

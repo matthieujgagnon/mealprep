@@ -125,7 +125,7 @@ function SortablePhoto({ photo, isCover, onCover, onRemove }) {
   );
 }
 
-function Stepper({ label, value, unit, help, step, accent, onChange }) {
+function Stepper({ label, what = label.toLowerCase(), value, unit, help, step, accent, onChange }) {
   const n = Number(value) || 0;
   return (
     <div className="re-stepper">
@@ -133,7 +133,7 @@ function Stepper({ label, value, unit, help, step, accent, onChange }) {
       <div className="re-stepper-pill">
         <button
           type="button"
-          aria-label={t("editor.less", { what: label.toLowerCase() })}
+          aria-label={t("editor.less", { what })}
           onClick={() => onChange(String(Math.max(0, n - step)))}
         >
           −
@@ -150,7 +150,7 @@ function Stepper({ label, value, unit, help, step, accent, onChange }) {
           />
           {unit && <span className="re-stepper-unit">{unit}</span>}
         </label>
-        <button type="button" aria-label={t("editor.more", { what: label.toLowerCase() })} onClick={() => onChange(String(n + step))}>
+        <button type="button" aria-label={t("editor.more", { what })} onClick={() => onChange(String(n + step))}>
           +
         </button>
       </div>
@@ -783,6 +783,7 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
               />
               <Stepper
                 label={t("editor.fridge")}
+                what={t("editor.fridgeWhat")}
                 unit={t("editor.daysUnit")}
                 value={state.fridge}
                 step={1}

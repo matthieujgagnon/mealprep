@@ -215,6 +215,39 @@ test("on a phone too", async ({ page }) => {
   await page.getByRole("button", { name: "← Liste" }).click();
 });
 
+// The recipe form's "Leftovers keep" field (it used to be "Fridge life", and is no longer in the ⋯
+// menu): its French label is the longest of the form's steppers, so nothing in them may be cut off.
+for (const [where, size] of [
+  ["computer", { width: 1280, height: 900 }],
+  ["phone", { width: 390, height: 844 }],
+]) {
+  test(`the recipe form's « Les restes se gardent » field reads French and fits, on a ${where}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await signUpInFrench(page);
+    await page.getByRole("button", { name: "Recettes", exact: true }).first().click();
+    await page.getByRole("button", { name: "+ Nouvelle recette" }).click();
+
+    const field = page.locator(".re-stepper", { hasText: "LES RESTES SE GARDENT" });
+    await expect(field).toBeVisible();
+    await expect(field.getByLabel("LES RESTES SE GARDENT", { exact: true })).toBeVisible();
+    await expect(field.getByRole("button", { name: "Moins : jours de conservation des restes" })).toBeVisible();
+    await expect(field.getByRole("button", { name: "Plus : jours de conservation des restes" })).toBeVisible();
+    await expect(field).toContainText("Utilisé pour les restes dans l'inventaire.");
+    await expect(field).toContainText("JOURS");
+
+    // No label, number, button or help line in the form's steppers runs out of its box.
+    const cut = await page.evaluate(() =>
+      [...document.querySelectorAll(".re-stepper")]
+        .flatMap((el) => [...el.querySelectorAll(".re-label, .re-help, .re-stepper-unit, button, input")])
+        .filter((e) => e.offsetParent && (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1))
+        .map((e) => e.textContent || e.getAttribute("aria-label"))
+    );
+    expect(cut).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);
+    expect(await englishOn(page)).toEqual([]);
+  });
+}
+
 test("the language follows the account, and the server answers in it", async ({ page }) => {
   // A wrong password is turned down in French.
   await page.goto("/");

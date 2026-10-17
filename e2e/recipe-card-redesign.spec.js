@@ -283,7 +283,7 @@ test("the ⋯ menu, and Delete with Undo: the recipe is only deleted once the me
   let card = await openFromRecipes(page, "Card Shawarma");
   await card.getByRole("button", { name: "More actions" }).click();
   const menu = card.locator(".riso-rc-menu");
-  await expect(menu.getByRole("menuitem")).toHaveText(["Plan around this", "Edit recipe", "View original ↗", "Move to Imported", "Leftovers keep… 3 days", "Delete recipe"]);
+  await expect(menu.getByRole("menuitem")).toHaveText(["Plan around this", "Edit recipe", "View original ↗", "Move to Imported", "Delete recipe"]);
   await card.locator(".riso-rc-menu-catcher").click();
   await expect(menu).toHaveCount(0);
 

@@ -108,6 +108,48 @@ test("from a planned meal's card: the review list, Running low, and the meal lea
   await expect(page.locator(".riso-row-name", { hasText: /^Sumac$/ })).toHaveCount(0);
 });
 
+// How long a recipe's leftovers keep is set in Edit recipe (the ⋯ menu no longer has it): the form
+// shows the days the recipe has, saves a change with the rest of the form, and the finished view's
+// Leftovers card then adds leftovers that keep for the new days.
+test("Leftovers keep is in Edit recipe: a change there is what the Leftovers card adds to Inventory", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signUp(page);
+  await page.clock.setFixedTime(atHour(12));
+  const { recipe } = await seed(page);
+  await page.reload();
+
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page.locator(".rpc", { hasText: SHAWARMA.title }).first().click();
+  const card = page.getByRole("dialog", { name: SHAWARMA.title });
+  await card.getByRole("button", { name: "More actions" }).click();
+  const menu = card.locator(".riso-rc-menu");
+  await expect(menu.getByRole("menuitem", { name: /Leftovers keep/ })).toHaveCount(0);
+  await menu.getByRole("menuitem", { name: "Edit recipe" }).click();
+
+  const days = page.getByLabel("LEFTOVERS KEEP", { exact: true });
+  await expect(page.getByRole("heading", { name: "Edit recipe." })).toBeVisible();
+  await expect(days).toHaveValue("3");
+  await expect(page.getByText("Used for leftovers in Inventory.")).toBeVisible();
+  await page.getByRole("button", { name: "More leftover days" }).click();
+  await expect(days).toHaveValue("4");
+  await days.fill("5");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.locator(".riso-rc-facts")).toContainText("Keeps 5 days");
+  expect((await (await page.request.get(`/api/recipes/${recipe.id}`)).json()).fridgeLifeDays).toBe(5);
+
+  // The Leftovers card says how long they keep, and adds them for that long. (A reload first: the
+  // Planner's meals keep the recipe as they were loaded, after any edit of a recipe.)
+  await page.reload();
+  await page.getByRole("button", { name: "Planner", exact: true }).click();
+  await page.locator(".riso-planner-card").first().click();
+  await page.getByRole("button", { name: `I cooked ${SHAWARMA.title}` }).click();
+  const sheet = page.locator(".ck-sheet");
+  await expect(sheet.getByText("5 DAYS")).toBeVisible();
+  await sheet.getByRole("button", { name: "+ Add to Inventory" }).click();
+  const leftover = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.isLeftover);
+  expect(leftover.expiresAt).toBe(asSavedDay(addDays(quebecDay(atHour(12)), 5)));
+});
+
 test("from tonight's meal on Home: Not now leaves Inventory as it was, the meal is cooked, and Undo puts it back", async ({ page }) => {
   await signUp(page);
   await page.clock.setFixedTime(atHour(19));
