@@ -1496,6 +1496,16 @@ select {
   user-select: none;
 }
 
+/* A press on an item's photo is a press on the item. A photo can be replaced under
+   a finger (a picture that will not load, or loads late, becomes the placeholder),
+   and a touch whose element has left the page is lost: the browser scrolls the page
+   instead and the press-and-hold drag is cancelled. With the photo out of the way
+   the touch always lands on the item itself, which stays. */
+.inv-row.draggable .inv-card-photo,
+.inv-tile.draggable .inv-card-photo {
+  pointer-events: none;
+}
+
 .inv-row.expired,
 .inv-tile.expired {
   background: #fff4fa;

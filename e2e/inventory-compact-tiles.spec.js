@@ -236,4 +236,58 @@ test.describe("on a phone, in French", () => {
     await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Pois" }).tap();
     await expect(itemForm(page)).toBeVisible();
   });
+
+  // A picture that will not load turns into the placeholder, which replaces the <img>
+  // the finger is on. A touch whose element has left the page is lost: the browser
+  // used to take it for a page scroll and the drag died, whenever the picture failed
+  // while the finger was down (right after the page opened, or after scrolling a
+  // lazy picture into view). The photo no longer takes the touch, so the item does.
+  // The picture's request is held until the test lets it fail, so it fails exactly
+  // when the finger is down: during the hold, or while the item is carried.
+  for (const failing of ["during the hold", "while the item is carried"]) {
+    test(`a press-and-hold drag survives the item's picture failing ${failing}`, async ({ page, context }) => {
+      let failPictures;
+      const gate = new Promise((resolve) => (failPictures = resolve));
+      await page.route(/themealdb\.com/, async (route) => {
+        await gate;
+        await route.abort();
+      });
+      await signUp(page, { french: true });
+      await add(page, { name: "Crevettes", quantity: 1, unit: "lb", expiresAt: quebecDayIn(1) });
+      await add(page, { name: "Pois", location: "freezer", quantity: 500, unit: "g", expiresAt: quebecDayIn(90) });
+      await openInventory(page, "Inventaire");
+      const client = await context.newCDPSession(page);
+
+      const row = page.locator(":is(.inv-row, .inv-tile)", { hasText: "Crevettes" });
+      await expect(row.locator("img.inv-card-photo")).toBeVisible(); // the picture, not yet the placeholder
+      const freezer = page.locator('.inv-shelf[data-section-id="freezer"]');
+      await freezer.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      const from = middle(await row.boundingBox());
+      const to = middle(await freezer.boundingBox());
+      const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      const pictureFails = async () => {
+        failPictures();
+        await expect(row.locator("img.inv-card-photo")).toHaveCount(0); // now the placeholder: the <img> is gone
+      };
+
+      await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+      await page.waitForTimeout(100);
+      if (failing === "during the hold") await pictureFails();
+      await page.waitForTimeout(250); // past the app's 200 ms hold
+      const steps = 12;
+      for (let i = 1; i <= steps; i++) {
+        await client.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x: from.x + ((to.x - from.x) * i) / steps, y: from.y + ((to.y - from.y) * i) / steps }],
+        });
+        await frame();
+        if (i === 4 && failing !== "during the hold") await pictureFails();
+      }
+      await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+      await expect(freezer.locator(":is(.inv-row, .inv-tile)", { hasText: "Crevettes" })).toBeVisible();
+      await expect.poll(async () => (await stock(page)).find((i) => i.name === "Crevettes").location).toBe("freezer");
+      await expect(itemForm(page)).toHaveCount(0); // the drag never opened the item
+    });
+  }
 });
