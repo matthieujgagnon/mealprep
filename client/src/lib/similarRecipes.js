@@ -1,4 +1,4 @@
-import { canonicalize, capitalize, STAPLE_WORDS, SPICE_WORDS } from "./groceryList.js";
+import { canonicalize, capitalize } from "./groceryList.js";
 import { familyKey } from "./ingredientFamilies.js";
 import { dealSavings, frenchProductName, splitBilingual } from "./flyerIngredients.js";
 
@@ -36,14 +36,29 @@ const PERISHABLES = new Set([
 // ("chicken thigh" / "chicken breast" / "ground chicken" -> "chicken") so
 // reuse detection isn't fooled by which cut a recipe happens to call for.
 //
-// Staples (salt, pepper, oil, and most other spices — the same list the
-// grocery list uses) are excluded entirely, returning null. Virtually every
-// recipe calls for salt, so counting it as a "shared ingredient" was pure
-// noise — two completely unrelated recipes would show up as "matching"
-// over nothing more than both using salt and pepper. Every caller below
-// already drops falsy cores, so this one change clears staples out
-// everywhere at once.
-const STAPLES_SET = new Set([...STAPLE_WORDS, ...SPICE_WORDS]);
+// Ingredients nearly every recipe uses (salt, pepper, oil, flour, most spices) are
+// left out when recipes are compared, returning null. Counting them as a "shared
+// ingredient" was pure noise: two completely unrelated recipes would show up as
+// "matching" over nothing more than both using salt and pepper. Every caller
+// below already drops falsy cores, so this one change clears them out everywhere
+// at once. This list is only for comparing recipes: it says nothing about what
+// you have (Inventory decides that, lib/inventoryMatch.js).
+const IGNORED_WHEN_COMPARING = new Set([
+  "salt", "pepper", "black pepper", "olive oil", "vegetable oil", "canola oil",
+  "cooking oil", "oil", "sugar", "brown sugar", "flour", "all-purpose flour",
+  "baking powder", "baking soda", "soy sauce", "vinegar", "water", "cooking spray",
+  "garlic powder", "onion powder", "vanilla extract", "cornstarch",
+  "paprika", "smoked paprika", "cumin", "ground cumin", "oregano", "basil",
+  "thyme", "cinnamon", "ground cinnamon", "nutmeg", "ground nutmeg",
+  "chili powder", "cayenne", "cayenne pepper", "curry powder", "bay leaf",
+  "bay leaves", "rosemary", "coriander", "ground coriander", "turmeric",
+  "ground turmeric", "ginger", "ground ginger", "allspice", "ground allspice",
+  "white pepper", "ground black pepper", "cracked black pepper",
+  "red pepper flakes", "crushed red pepper", "italian seasoning",
+  "chili flakes", "mustard powder", "ground mustard", "star anise",
+  "cardamom", "fennel seed", "fennel seeds", "mustard seed", "mustard seeds",
+  "onion salt", "celery salt", "five spice powder", "chinese five-spice powder",
+]);
 
 // Fat-content descriptors that don't change what's actually needed for
 // reuse/"can I make this" matching — someone with a carton of whole milk
@@ -60,13 +75,13 @@ const MATCH_ONLY_DESCRIPTOR_WORDS = new Set([
 
 // Exported so callers that need to match a single ingredient name against
 // this same core (e.g. the recipe card's per-row "in inventory" dot) don't
-// have to reimplement canonicalize+familyKey+staple-filtering themselves.
+// have to reimplement canonicalize+familyKey+the ignored list themselves.
 export function core(ingredientName) {
   const rawCore = canonicalize(ingredientName).core;
   const words = rawCore.split(" ").filter((w) => !MATCH_ONLY_DESCRIPTOR_WORDS.has(w));
   const strippedCore = words.join(" ").trim() || rawCore;
   const c = familyKey(strippedCore);
-  return STAPLES_SET.has(c) ? null : c;
+  return IGNORED_WHEN_COMPARING.has(c) ? null : c;
 }
 
 // Cuts of meat and fish: "chicken thighs" and "chicken breast fillets" are

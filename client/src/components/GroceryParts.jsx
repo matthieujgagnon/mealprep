@@ -106,7 +106,7 @@ export function GroceryHowItWorks() {
   const [reached, setReached] = useState(false);
   const [tapped, setTapped] = useState(false);
   const demoName = t("grocery.hint.demoItem");
-  const item = useMemo(() => buildGroceryList([], [], {}, [], [{ id: "demo", name: demoName, quantity: 2, unit: null }])[0], [demoName]);
+  const item = useMemo(() => buildGroceryList([], [{ id: "demo", name: demoName, quantity: 2, unit: null }])[0], [demoName]);
 
   useEffect(() => {
     if (tapped) return undefined;

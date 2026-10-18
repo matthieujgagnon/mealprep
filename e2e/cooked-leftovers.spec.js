@@ -60,15 +60,17 @@ async function seed(page) {
 
 const inventory = async (page) => (await (await page.request.get("/api/pantry-inventory")).json()).map((i) => `${i.name} ${i.quantity}`).sort();
 
-test("from a planned meal's card: the review list, Running low, and the meal leaves the grocery list", async ({ page }) => {
+test("from a planned meal's card: the review list, and the meal leaves the grocery list", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await signUp(page);
   const { entry, weekStart } = await seed(page);
   await page.reload();
 
-  // Sumac isn't in Inventory: it's on the grocery list for tonight's meal.
+  // Sumac isn't in Inventory: it's on the grocery list for tonight's meal. The oil is in
+  // Inventory (as « Huile d'olive »): it waits under Already at home instead.
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.locator(".riso-row-name", { hasText: /^Sumac$/ })).toHaveCount(1);
+  await expect(page.locator(".riso-row-name", { hasText: /^Olive oil$/ })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.locator(".riso-planner-card").first().click();
@@ -82,17 +84,13 @@ test("from a planned meal's card: the review list, Running low, and the meal lea
   await expect(chicken).toHaveAttribute("aria-checked", "true");
   await expect(chicken).toContainText("− 0.9 kg");
   await expect(chicken).toContainText("0.3 kg left after");
-  // An "always have" item is listed, switched off, with Running low.
+  // Oil is an Inventory item like the rest: listed and switched on.
   const oil = sheet.getByRole("checkbox", { name: "Take Huile d'olive out of your Inventory" });
-  await expect(oil).toHaveAttribute("aria-checked", "false");
+  await expect(oil).toHaveAttribute("aria-checked", "true");
   await expect(sheet.locator(".ck-shelf", { hasText: "NOT IN YOUR INVENTORY" })).toContainText("sumac");
-  await oil.getByRole("button", { name: "Running low" }).click();
-  await expect(page.locator(".riso-toast")).toContainText("Huile d'olive is on your grocery list");
-  await expect(oil.getByRole("button", { name: "✓ On the list" })).toBeDisabled();
-  const extras = await (await page.request.get("/api/grocery-extra-items")).json();
-  expect(extras.map((e) => e.name)).toEqual(["Huile d'olive"]);
 
-  // Untick the pitas: they stay.
+  // Untick the oil and the pitas: they stay.
+  await oil.click();
   await sheet.getByRole("checkbox", { name: "Take Pitas out of your Inventory" }).click();
   await sheet.getByRole("button", { name: "Remove from inventory" }).click();
   await expect(page.getByRole("dialog", { name: "Enjoy your supper" })).toContainText("1 ingredient taken out");

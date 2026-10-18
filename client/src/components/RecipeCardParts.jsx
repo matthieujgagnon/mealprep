@@ -8,7 +8,7 @@ import { lineNeed } from "../lib/inventoryMatch.js";
 import { captionTime, cardCaption } from "../lib/photoCard.js";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
-import { formatMoney, formatList } from "../i18n/format.js";
+import { formatMoney } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
 
 // The pieces of the recipe card (components/RecipeDetailModal.jsx; design:
@@ -264,8 +264,8 @@ function HaveRow({ row, open, onOpen, pricesOn, drawer }) {
 }
 
 // The receipt: TO BUY with the servings stepper, the things to buy, "Add to grocery
-// list", then In your Inventory, the "always have" staples and (once Meal pricing
-// ships, with Prices on) the totals.
+// list", then In your Inventory and (once Meal pricing ships, with Prices on) the
+// totals.
 export function Receipt({
   receipt,
   servings,
@@ -286,7 +286,7 @@ export function Receipt({
   onOutOfIt,
   onOpenInventory,
 }) {
-  const { buy, have, staples } = receipt;
+  const { buy, have } = receipt;
   const notListed = buy.filter((row) => !grocery.isOnList(row.name));
   const drawerFor = (row, kind) => (
     <RowDrawer
@@ -366,7 +366,6 @@ export function Receipt({
       ) : (
         <p className="riso-rc-receipt-empty">{t("recipeCard.haveNone")}</p>
       )}
-      {staples.length > 0 && <p className="riso-rc-staples">{t("recipeCard.alwaysHave", { items: formatList(staples) })}</p>}
 
       {pricesOn && totals && (
         <div className="riso-rc-totals">

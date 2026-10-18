@@ -50,8 +50,8 @@ export function categoryOf(name) {
   return "pantry";
 }
 
-// A recipe's ingredients as written, once per core (staples are left out, like
-// everywhere else), in the order the recipe lists them.
+// A recipe's ingredients as written, once per core (the ones recipes are not
+// compared on are left out, see similarRecipes.js), in the order the recipe lists them.
 export function recipeIngredientNames(recipe) {
   const seen = new Set();
   const out = [];

@@ -147,7 +147,7 @@ describe("tidyChecks", () => {
 
 describe("hand-added items", () => {
   it("are checked like any row, and show the extra when the amount grows", () => {
-    const extra = (quantity) => buildGroceryList([], [], {}, [], [{ id: "a1", name: "paper towels", quantity, unit: null }]);
+    const extra = (quantity) => buildGroceryList([], [{ id: "a1", name: "paper towels", quantity, unit: null }]);
     const rows = check(extra(2), {}, "extra-a1");
     expect(applyChecks(extra(2), rows).checked).toEqual({ "extra-a1": true });
     const grown = applyChecks(extra(5), rows);

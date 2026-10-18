@@ -4,8 +4,8 @@ import { fail } from "../lib/i18n.js";
 
 export const groceryItemOverridesRouter = Router();
 
-// GET /api/grocery-item-overrides - the removed rows and custom quantities
-// (see GroceryItemOverride).
+// GET /api/grocery-item-overrides - the removed rows, custom quantities and rows
+// put back on the list (see GroceryItemOverride).
 groceryItemOverridesRouter.get("/", async (req, res) => {
   const overrides = await prisma.groceryItemOverride.findMany({
     where: { userId: req.userId },
@@ -13,9 +13,10 @@ groceryItemOverridesRouter.get("/", async (req, res) => {
   res.json(overrides);
 });
 
-// PUT /api/grocery-item-overrides { key, quantity?, removed?, hidden? }
-// Only the fields sent change. A row left with no custom quantity and not
-// removed is deleted, so "reset" and "restore" leave nothing behind.
+// PUT /api/grocery-item-overrides { key, quantity?, removed?, hidden?, keep? }
+// Only the fields sent change. A row left with no custom quantity, not removed
+// and not put back on the list is deleted, so "reset" and "restore" leave
+// nothing behind.
 // Responds with the override, or null once there's nothing left of it.
 groceryItemOverridesRouter.put("/", async (req, res) => {
   const { key } = req.body;
@@ -28,6 +29,7 @@ groceryItemOverridesRouter.put("/", async (req, res) => {
   }
   if ("removed" in req.body) data.removed = !!req.body.removed;
   if ("hidden" in req.body) data.hidden = !!req.body.hidden;
+  if ("keep" in req.body) data.keep = !!req.body.keep;
   if (data.removed === false) data.hidden = false; // put back = visible again
 
   const where = { userId_key: { userId: req.userId, key } };
@@ -36,7 +38,7 @@ groceryItemOverridesRouter.put("/", async (req, res) => {
     create: { userId: req.userId, key, ...data },
     update: data,
   });
-  if (!saved.quantity && !saved.removed) {
+  if (!saved.quantity && !saved.removed && !saved.keep) {
     await prisma.groceryItemOverride.delete({ where });
     return res.json(null);
   }

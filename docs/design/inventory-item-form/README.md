@@ -45,7 +45,7 @@ Each step label: 22×22 circle (bg `#FFE14D`, 2px border, 800 11) + DM Mono 500 
 - **Preview**: label "HOW IT LOOKS ON THE {LOCATION} SHELF" (DM Mono 11). Then the exact inventory item card: height 88, 2px border, radius 16, bg `#fff`, shadow `4px 4px 0 #2323FF`. Left 12px expiry gauge (bg `#F4F1EA`, right border 2px) filled from the bottom; 68px photo tile; name 800 18/1.15 (2-line clamp, placeholder "Item name" in `#8A8677`); quantity 800 18 + unit 600 14 `#5E5B52`.
   - Gauge height = `max(8, days / 28 × 100)%`; hidden when days is null or 28 or more. Colour: 3 days or less `#FF48B0`, 7 or less `#FFE14D`, else `#2323FF`; no date `#BDB6A6`.
 - **Expiry tag** (28 tall, radius 14, 2px border, 800 13): Tomorrow (1 day or less), "{n} days" (under 60), "{n} months", Expired, No date. Bg: no date `#F4F1EA`, 2 days or less `#FF48B0`, 7 or less `#FFE14D`, else `#fff`. Beside it DM Mono 10.5 `#5E5B52`: "SORTED BY EXPIRY" or "LAST ON THE SHELF".
-- **Pantry staple toggle**: pill 34 tall, radius 17, "☆ Mark as pantry staple" ↔ "★ Pantry staple" (bg `#FFE14D` when on).
+- *(The design had a toggle here that marked an item as always on hand. It was removed: salt, oil and spices are ordinary Inventory items now.)*
 - **Photo panel**: label "PHOTO · OPTIONAL" (Add) / "PHOTO" (Edit). Box with 2px dashed `#16181F` border, radius 16, bg `#F4F1EA`, padding 14. The whole block is a drop target.
   - Empty: "Drop a picture here" (800 15, `#2323FF`); "Upload a photo" button (38 tall, radius 19, 700 14, opens the file picker, images only); "OR"; an image-link input (38 tall, radius 19, 500 14) with a "Use" button. Enter in the input also applies it; only http(s) links are accepted.
   - With photo: 64px thumbnail (radius 12, 2px border), "Change photo" button (34 tall, radius 17, 700 13), "Remove photo" text link (600 13, underlined).
@@ -71,14 +71,14 @@ Each step label: 22×22 circle (bg `#FFE14D`, 2px border, 800 11) + DM Mono 500 
 | Primary | Add to inventory | Save changes |
 
 ## State Management
-Shared: `name`, `qtyText` (string, parsed on commit), `unit`, `loc`, `days` (number or null, days from today), `custom` (true once the user picked a chip or date), `staple`, `photo` (URL), `photoUrl` (link input text).
+Shared: `name`, `qtyText` (string, parsed on commit), `unit`, `loc`, `days` (number or null, days from today), `custom` (true once the user picked a chip or date), `photo` (URL), `photoUrl` (link input text).
 Add also: `added` (session tray), `opts` (USDA ranges for the matched food).
 Edit works on a draft copy of the item; Save commits it, Cancel discards it.
 - Choosing a food: set name, qty, unit, ranges; location = its first option; `days` = that option's days; `custom` = false.
 - Choosing a location: `days` follows USDA unless `custom`.
 - Use-by chip or date: set `days`, `custom` = true. The date picker converts to days from today.
 - Closing (×, overlay, Cancel/Done) clears the tray only; added items stay in inventory.
-- Data needed: a food database with per-location shelf life (USDA FoodKeeper); recent items; file upload for photos; persistence of name, qty, unit, location, expiry date, staple flag and photo URL.
+- Data needed: a food database with per-location shelf life (USDA FoodKeeper); recent items; file upload for photos; persistence of name, qty, unit, location, expiry date and photo URL.
 - Fallback shelf life when the food is unknown: Fridge 14 days, Freezer 90, Pantry 180.
 - Suggested: focus the name field (Add) on open and after Add and next.
 

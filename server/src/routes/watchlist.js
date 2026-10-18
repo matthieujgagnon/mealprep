@@ -15,10 +15,9 @@ watchlistRouter.get("/", async (req, res) => {
 });
 
 // POST /api/watchlist { matchName } - toggle an ingredient onto the
-// watchlist. Idempotent via the userId+matchName unique constraint, same
-// upsert-not-error pattern as pantry-staples: clicking ★ on an item already
-// watched (e.g. from two different deals matching the same ingredient) just
-// no-ops rather than erroring.
+// watchlist. Idempotent via the userId+matchName unique constraint, an
+// upsert rather than an error: clicking ★ on an item already watched (e.g.
+// from two different deals matching the same ingredient) just no-ops.
 watchlistRouter.post("/", async (req, res) => {
   const { matchName } = req.body;
   if (!matchName || !matchName.trim()) {
@@ -35,7 +34,7 @@ watchlistRouter.post("/", async (req, res) => {
 
 // DELETE /api/watchlist/:matchName - untoggle. :matchName is user-derived
 // text (lowercased at write time) so it's matched via a plain param and
-// re-normalized here, the same way pantry-staples' :core route does.
+// re-normalized here.
 watchlistRouter.delete("/:matchName", async (req, res) => {
   const normalized = req.params.matchName.toLowerCase();
   await prisma.watchlistItem.deleteMany({

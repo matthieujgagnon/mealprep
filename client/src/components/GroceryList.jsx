@@ -9,6 +9,7 @@ import { daysBetween, quebecDay } from "../lib/quebecDay.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { useLiveEntries } from "../lib/recipeStore.js";
 import { buildGroceryList } from "../lib/groceryList.js";
+import { splitAtHome } from "../lib/groceryAtHome.js";
 import {
   BOUGHT,
   QUEUED,
@@ -263,9 +264,7 @@ function AddStoreForm({ onAdd }) {
 
 export function GroceryList({
   user,
-  customStaples,
-  excludedStaples,
-  stapleCategories,
+  kitchen, // App's { inventory }: what the list leaves for Inventory (lib/groceryAtHome.js)
   onRequestInventoryAdd,
   onToast,
   onOpenRecipe, // (recipe title): the recipe's card, from a By recipe heading
@@ -296,6 +295,7 @@ export function GroceryList({
   const [checkRows, setCheckRows] = useState({});
   const [extraItems, setExtraItems] = useState([]);
   const [overrides, setOverrides] = useState([]);
+  const [atHomeOpen, setAtHomeOpen] = useState(false); // the "Already at home" strip, folded to begin with
   // Your own stores/sections (GrocerySection) and which ingredient goes where.
   const [sections, setSections] = useState(() => groceryShared.sections || []);
   const [sectionsLoaded, setSectionsLoaded] = useState(() => groceryShared.sections != null);
@@ -439,7 +439,7 @@ export function GroceryList({
     api.clearGroceryOverrides(stale).catch(() => {});
   }, [loaded, fresh, entryRows, overrides]);
 
-  const items = buildGroceryList(entries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
+  const items = buildGroceryList(entries, extraItems, overrides);
 
   // Saved checks and purchases follow the plan: once no planned meal needs an
   // item, its row goes, so a later meal starts fresh; amounts the meals no
@@ -447,7 +447,7 @@ export function GroceryList({
   // theirs.
   useEffect(() => {
     if (!loaded || !fresh) return;
-    const { set, remove } = tidyChecks(buildGroceryList(entryRows, customStaples, stapleCategories, excludedStaples, extraItems, overrides), checkRows);
+    const { set, remove } = tidyChecks(buildGroceryList(entryRows, extraItems, overrides), checkRows);
     if (set.length === 0 && remove.length === 0) return;
     setCheckRows((prev) => {
       const next = { ...prev };
@@ -463,19 +463,22 @@ export function GroceryList({
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, fresh, entryRows, extraItems, checkRows]);
-  // What's left to buy: rows already bought are gone, and a row that needs
-  // more than was checked or bought shows only the extra, unchecked.
-  const applied = applyChecks(
-    items.filter((i) => !i.isStaple && !i.removed),
+  // What Inventory already holds is "Already at home", under the list.
+  const { toBuy, atHome } = splitAtHome(
+    items.filter((i) => !i.removed),
+    kitchen,
     checkRows
   );
+  // What's left to buy: rows already bought are gone, and a row that needs
+  // more than was checked or bought shows only the extra, unchecked.
+  const applied = applyChecks(toBuy, checkRows);
   const shoppingItems = applied.items;
   // In the cart: bought ✓ or queued + (the checkbox's second and third steps).
   const checked = applied.checked;
   const queued = applied.queued;
   const boughtCount = applied.bought.length;
   const hiddenKeys = new Set(overrides.filter((o) => o.hidden).map((o) => o.key));
-  const removedItems = items.filter((i) => !i.isStaple && i.removed && !hiddenKeys.has(i.key));
+  const removedItems = items.filter((i) => i.removed && !hiddenKeys.has(i.key));
 
   // Each item's grocery aisle ("Fruits & vegetables", "Pantry", ...) - the
   // same aisles the Flyers page groups by - for the aisle view and the line
@@ -1101,6 +1104,24 @@ export function GroceryList({
             }))}
             onClear={clearRemoved}
             clearLabel={t("grocery.clear")}
+          />
+
+          {/* What your planned meals need that Inventory already holds: folded, with a way to put one back. */}
+          <RemovedStrip
+            className="riso-grocery-athome"
+            label={t("grocery.atHomeLabel")}
+            collapsible
+            open={atHomeOpen}
+            onToggle={() => setAtHomeOpen((open) => !open)}
+            items={atHome.map(({ item, by }) => ({
+              key: item.key,
+              name: item.name,
+              // Which Inventory item covers it, when it is named differently ("Poulet" for chicken).
+              meta: by && by.name.toLowerCase() !== item.name.toLowerCase() ? by.name : t("grocery.atHomeInInventory"),
+              putBackLabel: t("grocery.putBackOnList"),
+              ariaLabel: t("grocery.putBackAria", { name: item.name }),
+              onPutBack: () => setOverride(item.key, { keep: true }),
+            }))}
           />
         </div>
 

@@ -5,11 +5,13 @@ import {
   expiringItemsIn,
   foodKey,
   haveItemFor,
+  foodsOnLine,
   ingredientHave,
-  isStapleIngredient,
+  isTapWater,
   itemCovers,
   matchingItems,
   recipeHave,
+  recipeLines,
   recipeUsesItem,
 } from "./inventoryMatch.js";
 import { addDays, quebecDay } from "./quebecDay.js";
@@ -91,40 +93,96 @@ describe("matchingItems", () => {
   });
 });
 
-describe("isStapleIngredient", () => {
-  it("knows the app's staples, the ones you marked, and the ones you took off", () => {
-    expect(isStapleIngredient("kosher salt")).toBe(true);
-    expect(isStapleIngredient("extra-virgin olive oil")).toBe(true);
-    expect(isStapleIngredient("chicken thighs")).toBe(false);
-    expect(isStapleIngredient("basmati rice", ["riz basmati"])).toBe(true);
-    expect(isStapleIngredient("sugar", [], ["sugar"])).toBe(false);
-  });
-});
+// Salt, oil and spices are ingredients like any other: had when Inventory holds them,
+// to buy when it doesn't. Each Inventory item below covers the ways recipes write it,
+// in English and in French.
+const COVERS = {
+  Salt: ["kosher salt", "sea salt", "sel", "sel casher", "gros sel"],
+  "Black pepper": ["pepper", "freshly ground black pepper", "poivre", "poivre noir moulu", "white pepper"],
+  "Olive oil": ["extra-virgin olive oil", "huile d'olive extra vierge"],
+  "Vegetable oil": ["canola oil", "cooking oil", "huile végétale"],
+  Sugar: ["granulated sugar", "sucre"],
+  "Brown sugar": ["cassonade", "sucre brun"],
+  "All-purpose flour": ["flour", "all purpose flour", "farine tout usage"],
+  "Baking powder": ["poudre à pâte"],
+  "Baking soda": ["bicarbonate de soude"],
+  "Soy sauce": ["low-sodium soy sauce", "sauce soya"],
+  Vinegar: ["white vinegar", "vinaigre"],
+  "Vanilla extract": ["pure vanilla extract", "extrait de vanille"],
+  Cornstarch: ["corn starch", "fécule de maïs"],
+  "Garlic powder": ["poudre d'ail"],
+  "Onion powder": ["poudre d'oignon"],
+  Paprika: ["smoked paprika", "paprika fumé"],
+  Cumin: ["ground cumin", "cumin moulu"],
+  Oregano: ["dried oregano", "origan séché"],
+  Cinnamon: ["ground cinnamon", "cannelle moulue"],
+  "Chili powder": ["poudre de chili"],
+  "Red pepper flakes": ["chili flakes", "flocons de piment"],
+  "Bay leaf": ["bay leaves", "feuilles de laurier"],
+  "Italian seasoning": ["assaisonnement italien"],
+};
 
-describe("French pantry staples", () => {
-  it.each([
-    "sel", "sel casher", "gros sel", "poivre", "poivre noir", "poivre noir moulu", "huile végétale", "huile d'olive extra vierge",
-    "farine tout usage", "sucre", "cassonade", "sucre brun", "poudre à pâte", "bicarbonate de soude", "fécule de maïs",
-    "extrait de vanille", "vinaigre", "sauce soja", "origan", "origan séché", "thym", "romarin", "cannelle", "muscade",
-    "curcuma", "cumin moulu", "paprika fumé", "feuilles de laurier", "poudre de chili",
-  ])("« %s » is an always-have, like its English name", (name) => {
-    expect(isStapleIngredient(name)).toBe(true);
-  });
-
-  it("reads salt and pepper written on one line, in both languages", () => {
-    expect(isStapleIngredient("sel et poivre")).toBe(true);
-    expect(isStapleIngredient("Sel et poivre, au goût")).toBe(true);
-    expect(isStapleIngredient("salt and pepper")).toBe(true);
-    expect(isStapleIngredient("salt & pepper, to taste")).toBe(true);
-    // Not when one of them is food, or a staple you took off the list.
-    expect(isStapleIngredient("salt and lime")).toBe(false);
-    expect(isStapleIngredient("sel et poivre", [], ["salt"])).toBe(false);
-  });
-
-  it("keeps food as food: bell peppers, fresh coriander, butter and garlic are not staples", () => {
-    for (const name of ["Poivrons", "poivron rouge", "bell pepper", "Coriandre fraîche", "beurre", "ail", "miel", "pâtes"]) {
-      expect(isStapleIngredient(name)).toBe(false);
+describe("salt, oil and spices are ordinary ingredients", () => {
+  it.each(Object.entries(COVERS))("%s in Inventory is the ingredient, and only then", (item, names) => {
+    for (const name of [item, ...names]) {
+      expect(itemCovers(item, name)).toBe(true);
+      expect(ingredientHave(name, { inventory: [{ name: item }] })).toBe("have");
+      expect(ingredientHave(name, { inventory: [] })).toBe("need");
     }
+  });
+
+  it("is not another food: butter, garlic and olive oil are not each other", () => {
+    expect(ingredientHave("butter", { inventory: [{ name: "Salt" }, { name: "Olive oil" }] })).toBe("need");
+    expect(ingredientHave("garlic", { inventory: [{ name: "Garlic powder" }] })).toBe("need");
+    expect(ingredientHave("sesame oil", { inventory: [{ name: "Olive oil" }] })).toBe("need");
+    expect(ingredientHave("olive oil", { inventory: [{ name: "Vegetable oil" }] })).toBe("need");
+  });
+
+  it("keeps pepper the spice apart from bell peppers", () => {
+    const spice = { inventory: [{ name: "Black pepper" }] };
+    for (const name of ["bell pepper", "red bell pepper", "red pepper", "green pepper", "poivron", "poivron rouge", "Poivrons"]) {
+      expect(ingredientHave(name, spice)).toBe("need");
+    }
+    const vegetable = { inventory: [{ name: "Poivrons" }] };
+    for (const name of ["bell pepper", "red bell pepper", "red pepper", "poivron rouge"]) {
+      expect(ingredientHave(name, vegetable)).toBe("have");
+    }
+    for (const name of ["pepper", "black pepper", "poivre"]) expect(ingredientHave(name, vegetable)).toBe("need");
+  });
+
+  it("reads several foods written on one line, in both languages", () => {
+    expect(foodsOnLine("Salt & pepper, to taste")).toEqual(["Salt", "pepper"]);
+    expect(foodsOnLine("Sel et poivre, au goût")).toEqual(["Sel", "poivre"]);
+    // A note after a comma, or a name with "and" in it that is one food, stays one line.
+    expect(foodsOnLine("garlic, minced")).toEqual(["garlic, minced"]);
+    expect(foodsOnLine("chicken thighs, bone-in, skin-on")).toEqual(["chicken thighs, bone-in, skin-on"]);
+
+    const both = { inventory: [{ name: "Salt" }, { name: "Black pepper" }] };
+    for (const name of ["salt and pepper", "Salt & pepper, to taste", "sel et poivre", "Sel et poivre, au goût"]) {
+      expect(ingredientHave(name, both)).toBe("have");
+      expect(ingredientHave(name, { inventory: [{ name: "Salt" }] })).toBe("need");
+      expect(ingredientHave(name, { inventory: [] })).toBe("need");
+    }
+    // Every food on the line must be there, and a pepper that is a vegetable is not the spice.
+    expect(ingredientHave("salt and lime", { inventory: [{ name: "Salt" }] })).toBe("need");
+    expect(ingredientHave("salt and lime", { inventory: [{ name: "Salt" }, { name: "Limes" }] })).toBe("have");
+    expect(ingredientHave("salt and bell pepper", both)).toBe("need");
+  });
+
+  it("never asks you to buy water from the tap", () => {
+    for (const name of ["water", "cold water", "boiling water", "eau", "eau froide", "Eau bouillante"]) {
+      expect(isTapWater(name)).toBe(true);
+      expect(ingredientHave(name, { inventory: [] })).toBe("have");
+    }
+    // Other waters are other foods.
+    for (const name of ["coconut water", "rose water", "sparkling water", "eau de coco"]) {
+      expect(isTapWater(name)).toBe(false);
+    }
+    expect(ingredientHave("coconut water", { inventory: [] })).toBe("need");
+    expect(ingredientHave("salt and water", { inventory: [{ name: "Salt" }] })).toBe("have");
+    // A water line is not a line: it adds nothing to a recipe's counts.
+    const soup = { ingredients: [{ name: "water" }, { name: "salt" }] };
+    expect(recipeHave(soup, { inventory: [] })).toMatchObject({ totalCount: 1, missing: ["Salt"] });
   });
 });
 
@@ -144,23 +202,29 @@ describe("a recipe next to your Inventory", () => {
       { name: "lime" },
     ],
   };
-  const kitchen = (names, extra = {}) => ({ inventory: names.map((name) => (typeof name === "string" ? { name } : name)), customStaples: [], excludedStaples: [], ...extra });
+  const kitchen = (names) => ({ inventory: names.map((name) => (typeof name === "string" ? { name } : name)) });
   const english = kitchen(["Chicken thighs", "Garlic", "Onion", "Rice", "Cilantro"]);
   const french = kitchen(["Hauts de cuisse de poulet", "Ail", "Oignons", "Riz", "Coriandre"]);
 
   it.each([
     ["English", english],
     ["French", french],
-  ])("one line per food, staples left out, the same with an %s Inventory", (_, k) => {
+  ])("one line per food, salt and oil counted like any other, the same with an %s Inventory", (_, k) => {
     const have = recipeHave(recipe, k);
     expect(have.have.map((i) => i.name)).toEqual(["Boneless skinless chicken thighs", "Garlic cloves", "Yellow onion", "Basmati rice", "Fresh cilantro"]);
-    expect(have.buy.map((i) => i.name)).toEqual(["Lime"]);
-    expect(have).toMatchObject({ totalCount: 6, matchedCount: 5, missingCount: 1, missing: ["Lime"] });
+    expect(have.buy.map((i) => i.name)).toEqual(["Kosher salt", "Olive oil", "Salt and pepper", "Lime"]);
+    expect(have).toMatchObject({ totalCount: 9, matchedCount: 5, missingCount: 4 });
   });
 
-  it("gives each ingredient its ✓: staple, have or need", () => {
-    expect(ingredientHave("kosher salt", french)).toBe("staple");
-    expect(ingredientHave("sel", french)).toBe("staple");
+  it("has them all once salt, oil and pepper are in Inventory", () => {
+    const stocked = kitchen([...english.inventory, "Salt", "Huile d'olive", "Poivre noir", "Limes"]);
+    expect(recipeHave(recipe, stocked)).toMatchObject({ totalCount: 9, matchedCount: 9, missingCount: 0 });
+    expect(recipeLines(recipe, stocked).every((line) => line.had)).toBe(true);
+  });
+
+  it("gives each ingredient its ✓: have or need", () => {
+    expect(ingredientHave("kosher salt", french)).toBe("need");
+    expect(ingredientHave("sel", french)).toBe("need");
     expect(ingredientHave("garlic cloves", french)).toBe("have");
     expect(ingredientHave("lime", french)).toBe("need");
   });
@@ -183,13 +247,6 @@ describe("a recipe next to your Inventory", () => {
     expect(recipeHave(twoCuts, kitchen(["Chicken thighs"])).missingCount).toBe(0);
   });
 
-  it("leaves your own staples out, and counts a staple you took off the list", () => {
-    expect(recipeHave(recipe, kitchen([], { customStaples: ["lime"] })).missing).not.toContain("Lime");
-    const sugar = { ingredients: [{ name: "sugar" }, { name: "butter" }] };
-    expect(recipeHave(sugar, kitchen([])).totalCount).toBe(1);
-    expect(recipeHave(sugar, kitchen([], { excludedStaples: ["sugar"] })).missing).toEqual(["Sugar", "Butter"]);
-  });
-
   it("follows Inventory as it changes", () => {
     const k = kitchen(["Ail"]);
     expect(ingredientHave("lime", k)).toBe("need");
@@ -199,7 +256,7 @@ describe("a recipe next to your Inventory", () => {
 });
 
 describe("Cook with and uses expiring", () => {
-  it("a picked item finds the recipes that use it; a staple also by its name in the recipe's", () => {
+  it("a picked item finds the recipes that use it, a spice too", () => {
     expect(recipeUsesItem({ ingredients: [{ name: "chicken thighs" }] }, "Poulet")).toBe(true);
     expect(recipeUsesItem({ ingredients: [{ name: "chicken thighs" }] }, "Chicken breasts")).toBe(false);
     expect(recipeUsesItem({ ingredients: [{ name: "smoked paprika" }] }, "Paprika")).toBe(true);
@@ -218,6 +275,12 @@ describe("Cook with and uses expiring", () => {
     expect(expiringItemsIn(soup, inventory, [], [soup, pie]).map((i) => i.name)).toEqual(["Épinards", "Poulet"]);
     // The pie, already planned, uses the spinach: only the chicken is left to use up.
     expect(expiringItemsIn(soup, inventory, [{ recipe: pie }], [soup, pie]).map((i) => i.name)).toEqual(["Poulet"]);
+  });
+
+  it("counts a spice with a use-by date like any other food", () => {
+    const rub = { id: "rub", ingredients: [{ name: "smoked paprika" }, { name: "salt" }] };
+    const inventory = [{ name: "Paprika", expiresAt: future(2) }, { name: "Salt" }];
+    expect(expiringItemsIn(rub, inventory, [], [rub]).map((i) => i.name)).toEqual(["Paprika"]);
   });
 });
 
@@ -258,16 +321,16 @@ describe("buildTakeOut", () => {
   it("scales to the servings cooked, converts units, and asks when it can't", () => {
     const rows = buildTakeOut({ recipe, servings: 4, inventory });
     const by = Object.fromEntries(rows.map((r) => [r.key, r]));
-    expect(rows.map((r) => r.key)).toEqual(["item:chk", "item:ail", "item:pita", "item:oil", "staple:salt", "missing:sumac"]);
+    expect(rows.map((r) => r.key)).toEqual(["item:chk", "item:ail", "item:pita", "item:oil", "missing:salt", "missing:sumac"]);
     // 900 g + 100 g of the same item, in its own unit.
     expect(by["item:chk"]).toMatchObject({ amount: 1, after: 0.2, on: true, ask: false, before: 1.2 });
     expect(by["item:chk"].names).toEqual(["chicken thighs"]);
     // Cloves are not heads: the row asks and starts off.
     expect(by["item:ail"]).toMatchObject({ ask: true, amount: null, on: false });
     expect(by["item:pita"]).toMatchObject({ amount: 4, after: 2, on: true });
-    // A staple in Inventory is listed but starts off.
-    expect(by["item:oil"]).toMatchObject({ staple: true, on: false, amount: 30 });
-    expect(by["staple:salt"]).toMatchObject({ kind: "staple", on: false });
+    // Oil is an Inventory item like the others.
+    expect(by["item:oil"]).toMatchObject({ on: true, amount: 30 });
+    expect(by["missing:salt"]).toMatchObject({ kind: "missing", on: false, names: ["kosher salt"] });
     expect(by["missing:sumac"]).toMatchObject({ kind: "missing", on: false, names: ["sumac"] });
 
     const half = buildTakeOut({ recipe, servings: 2, inventory });
@@ -298,6 +361,20 @@ describe("buildTakeOut", () => {
     expect(rows.map((r) => [r.key, r.ask, r.on])).toEqual([
       ["item:c", true, false],
       ["item:l", true, false],
+    ]);
+  });
+
+  it("salt and oil are Inventory items like the rest, and one with no amount waits for one", () => {
+    const rows = buildTakeOut({
+      recipe: { baseServings: 2, ingredients: [{ name: "salt and pepper, to taste" }, { name: "water", quantity: 2, unit: "cup" }, { name: "olive oil", quantity: 1, unit: "tbsp" }] },
+      servings: 2,
+      inventory: [{ id: "s", name: "Salt", location: "pantry" }, { id: "o", name: "Olive oil", location: "pantry" }],
+    });
+    // A line of two foods is a row for each; water from the tap has none.
+    expect(rows.map((r) => [r.key, r.kind, r.ask, r.on])).toEqual([
+      ["item:s", "item", true, false],
+      ["missing:pepper", "missing", undefined, false],
+      ["item:o", "item", true, false],
     ]);
   });
 });

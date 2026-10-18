@@ -163,9 +163,6 @@ export function InventoryItemForm({
   sections,
   defaultLocation = "fridge",
   recipes = [],
-  isStaple,
-  isStapleFor,
-  onToggleStaple,
   onAdd,
   onSave,
   onDelete,
@@ -206,7 +203,6 @@ export function InventoryItemForm({
     edit ? savedDate : dateFromDays(startLeftover ? leftoverKeepDays(null, startLoc) : startDays(null, startLoc).days)
   );
   const [custom, setCustom] = useState(edit ? !!savedDate && savedDate !== usdaDate : false);
-  const [staple, setStaple] = useState(edit ? !!isStaple : false);
   const [photo, setPhoto] = useState(edit ? item.imageUrl ?? null : null);
   const [recent, setRecent] = useState([]);
   const [added, setAdded] = useState([]);
@@ -214,7 +210,6 @@ export function InventoryItemForm({
   const [error, setError] = useState(null);
   const nameRef = useRef(null);
   const qtyTouched = useRef(false);
-  const stapleTouched = useRef(false);
   // What the lookup needs when it comes back a moment later.
   const live = useRef({});
   live.current = { loc, locTouched, custom, leftover };
@@ -272,12 +267,6 @@ export function InventoryItemForm({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, edit]);
-
-  // Already a pantry staple, in add mode.
-  useEffect(() => {
-    if (edit || stapleTouched.current || !isStapleFor) return;
-    setStaple(isStapleFor(name));
-  }, [name, edit, isStapleFor]);
 
   function chooseLocation(id) {
     setLoc(id);
@@ -399,17 +388,6 @@ export function InventoryItemForm({
     try {
       const payload = buildAddPayload({ name, qtyText, unit, location: loc, category, expiresAt, photo });
       const created = await onAdd(leftover ? { ...payload, unit: "portion", isLeftover: true, recipeId: recipeId || null } : payload);
-      const core = trimmed.toLowerCase();
-      // The form carries on only once the star is saved, so an item opened
-      // right after shows it. The item is in by now: a star that fails says so
-      // rather than reporting the add as failed (adding again would double it).
-      if (staple !== !!isStapleFor?.(core)) {
-        try {
-          await onToggleStaple({ core });
-        } catch {
-          onToast(t("inventory.form.stapleFailed", { name: trimmed }));
-        }
-      }
       setAdded((rows) => [...rows, { id: created?.id, name: trimmed, qtyText, unit, loc }]);
       onToast(t("inventory.form.toastAdded", { name: trimmed, location: (leftover ? labelFor.leftovers : labelFor[loc]) || "" }));
       if (keepOpen) {
@@ -423,7 +401,6 @@ export function InventoryItemForm({
         setOpts({});
         setCustom(false);
         qtyTouched.current = false;
-        stapleTouched.current = false;
         setExpiresAt(dateFromDays(leftover ? leftoverKeepDays(leftoverRecipe, loc) : startDays(null, loc).days));
         nameRef.current?.focus();
       } else {
@@ -456,9 +433,6 @@ export function InventoryItemForm({
       const patch = buildEditPatch(item, { name, qtyText, unit, location: loc, expiresAt, photo });
       if (leftover && (recipeId || null) !== (item.recipeId || null)) patch.recipeId = recipeId || null;
       if (Object.keys(patch).length > 0) await onSave(item.id, patch);
-      // "Changes saved" and closing wait for the star too, so reopening the
-      // item shows it as saved. A failure keeps the form open with its message.
-      if (staple !== !!isStaple) await onToggleStaple(item);
       onToast(t("inventory.form.toastSaved"));
       onClose();
     } catch (err) {
@@ -756,19 +730,6 @@ export function InventoryItemForm({
             <span className={`riso-itemform-tag ${tag.tone}`}>{tagText}</span>
             <span className="riso-itemform-sorted">{days == null ? t("inventory.form.lastOnShelf") : t("inventory.form.sortedBy")}</span>
           </div>
-
-          <button
-            type="button"
-            style={leftover ? { display: "none" } : undefined}
-            className={`riso-itemform-staple${staple ? " on" : ""}`}
-            aria-pressed={staple}
-            onClick={() => {
-              stapleTouched.current = true;
-              setStaple((v) => !v);
-            }}
-          >
-            {staple ? t("inventory.staple") : t("inventory.markStaple")}
-          </button>
 
           <PhotoPanel item={{ name: trimmed }} photo={photo} onChange={setPhoto} optional={!edit} />
 

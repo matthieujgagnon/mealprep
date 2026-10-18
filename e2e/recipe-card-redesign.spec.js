@@ -74,6 +74,8 @@ const KITCHEN = {
     ["Plain yogurt", null, null, 10],
     ["Garlic", 10, "clove", 30],
     ["Spinach", 4, "cup", 2],
+    ["Olive oil", null, null, null],
+    ["Salt", null, null, null],
   ],
   onList: ["cucumber"],
 };
@@ -103,11 +105,11 @@ test("a recipe opens its card in one tap: the receipt, the facts, the buttons, a
   await expect(buyRow(page, "Fresh parsley").locator(".riso-rc-mark")).toHaveText("+");
   await expect(buyRow(page, "Fresh parsley")).toContainText(/1\/2 cup/i);
 
-  await expect(card.locator(".riso-rc-have-head")).toContainText("In your Inventory · 4");
-  await expect(card.locator(".riso-rc-have-name")).toHaveText(["Chicken thighs boneless", "Plain yogurt", "Garlic", /^SpinachUse soon!$/]);
+  // Salt and oil are ingredients like the rest: in Inventory here, so they are had.
+  await expect(card.locator(".riso-rc-have-head")).toContainText("In your Inventory · 6");
+  await expect(card.locator(".riso-rc-have-name")).toHaveText(["Chicken thighs boneless", "Plain yogurt", "Garlic", /^SpinachUse soon!$/, "Olive oil", "Salt"]);
   await expect(haveRow(page, "Chicken thighs").locator(".riso-rc-have-qty")).toHaveText("900 g");
   await expect(haveRow(page, "Garlic").locator(".riso-rc-have-qty")).toHaveText("4 cloves");
-  await expect(card.locator(".riso-rc-staples")).toHaveText("Always have: Olive oil and Salt");
 
   await expect(card.locator(".riso-rc-facts")).toContainText("45 min");
   await expect(card.locator(".riso-rc-facts")).toContainText("Serves 4");

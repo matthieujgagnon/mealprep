@@ -1,6 +1,6 @@
 import { core, recipeCores } from "./similarRecipes.js";
 import { capitalize } from "./groceryList.js";
-import { expiringSoon, foodProfile, recipeHave, recipeUsesItem } from "./inventoryMatch.js";
+import { expiringSoon, recipeHave, recipeUsesItem } from "./inventoryMatch.js";
 import { isNoteEntry } from "./plannerSlots.js";
 import { recipeSlot } from "./mealSlots.js";
 
@@ -43,10 +43,10 @@ function namesAsWritten(recipes) {
 // Ranks every recipe for the finder. `upcomingEntries` are this week's
 // placements from today on - what "already in a meal" means for expiring
 // food, and what "shared with the week" counts against. `kitchen` is App's
-// { inventory, customStaples, excludedStaples }: what is on hand comes from
+// { inventory }: what is on hand comes from
 // lib/inventoryMatch.js (recipeHave), like every other page.
 export function rankRecipesForTray({ recipes, upcomingEntries, kitchen }) {
-  const expiring = expiringSoon(kitchen?.inventory || [], EXPIRING_WITHIN_DAYS).filter((item) => !foodProfile(item.name).staple);
+  const expiring = expiringSoon(kitchen?.inventory || [], EXPIRING_WITHIN_DAYS);
 
   const planned = upcomingEntries.filter((e) => !isNoteEntry(e) && e.recipe);
   const plannedIds = new Set(planned.map((e) => e.recipe.id));

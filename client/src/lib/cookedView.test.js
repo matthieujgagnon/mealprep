@@ -6,18 +6,16 @@ const item = (id, location, quantity = 1, unit = "kg") => ({ id, location, quant
 const rows = [
   { key: "item:a", kind: "item", item: item("a", "fridge", 1.2), amount: 0.9, on: true, before: 1.2, after: 0.3 },
   { key: "item:b", kind: "item", item: item("b", "pantry", 6, "unit"), amount: 4, on: true, before: 6, after: 2 },
-  { key: "staple:salt", kind: "staple", names: ["salt"], on: false },
-  { key: "item:c", kind: "item", item: item("c", "fridge", 500, "ml"), amount: 30, on: false, staple: true, before: 500 },
+  { key: "item:c", kind: "item", item: item("c", "fridge", 500, "ml"), amount: 30, on: false, before: 500 },
   { key: "missing:sumac", kind: "missing", names: ["sumac"], on: false },
 ];
 
 describe("the take-out list", () => {
-  it("groups rows by shelf, then always-have, then not in Inventory", () => {
+  it("groups rows by shelf, then not in Inventory", () => {
     const groups = shelfGroups(rows, (id) => id.toUpperCase());
     expect(groups.map((g) => [g.key, g.label, g.rows.map((r) => r.key)])).toEqual([
       ["shelf:fridge", "FRIDGE", ["item:a", "item:c"]],
       ["shelf:pantry", "PANTRY", ["item:b"]],
-      ["staple", null, ["staple:salt"]],
       ["missing", null, ["missing:sumac"]],
     ]);
   });

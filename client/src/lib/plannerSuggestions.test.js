@@ -57,8 +57,6 @@ describe("recipe ranking", () => {
       { name: "feta", expiresAt: inDays(20) },
       { name: "eggs", expiresAt: inDays(20) },
     ],
-    customStaples: [],
-    excludedStaples: [],
   });
 
   it("stops pushing expiring food an upcoming meal already uses", () => {
@@ -73,7 +71,7 @@ describe("recipe ranking", () => {
   });
 
   it("counts what is on hand with the shared matching, French names included", () => {
-    const french = { inventory: [{ name: "Épinards" }, { name: "Fromage feta" }, { name: "Oeufs" }], customStaples: [], excludedStaples: [] };
+    const french = { inventory: [{ name: "Épinards" }, { name: "Fromage feta" }, { name: "Oeufs" }] };
     const { ranked } = rankRecipesForTray({ recipes, upcomingEntries: [], kitchen: french });
     const stats = Object.fromEntries(ranked.map((x) => [x.recipe.id, x.stats.missingCount]));
     expect(stats).toEqual({ a: 0, b: 2, c: 0 });

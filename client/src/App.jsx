@@ -256,15 +256,12 @@ export default function App({ user, onLogout }) {
   // The finished view ("I cooked this"): { key, recipe, servings, entry?, variant, onBackToStep1?, onExitCook? } while open.
   const [cookedOpen, setCookedOpen] = useState(null);
   const [burst, setBurst] = useState(null); // the confetti after "Back to the app": a timestamp while it plays
-  const [customStaples, setCustomStaples] = useState([]);
-  const [excludedStaples, setExcludedStaples] = useState([]); // cores explicitly removed from the built-in staple list (e.g. "salt")
-  const [stapleCategories, setStapleCategories] = useState({}); // core -> "spice" | "other" override
   const [pantryInventory, setPantryInventory] = useState([]);
   const [pantryLocations, setPantryLocations] = useState([]); // user-added storage sections beyond Fridge/Pantry/Freezer
   const [inventoryLayout, setInventoryLayout] = useState([]); // section order/size/built-in names (InventorySectionLayout)
   // What is on hand, for every page that says what you have of a recipe
   // (lib/inventoryMatch.js recipeHave and ingredientHave): one object, so they all agree.
-  const kitchen = useMemo(() => ({ inventory: pantryInventory, customStaples, excludedStaples }), [pantryInventory, customStaples, excludedStaples]);
+  const kitchen = useMemo(() => ({ inventory: pantryInventory }), [pantryInventory]);
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("all");
@@ -366,13 +363,6 @@ export default function App({ user, onLogout }) {
     setLoadError(false);
     Promise.allSettled([
       api.listRecipes().then(loadRecipes),
-      api.listPantryStaples().then((list) => {
-        setCustomStaples(list.filter((s) => !s.excluded).map((s) => s.core));
-        setExcludedStaples(list.filter((s) => s.excluded).map((s) => s.core));
-        setStapleCategories(
-          Object.fromEntries(list.filter((s) => s.category).map((s) => [s.core, s.category]))
-        );
-      }),
       api.listPantryInventory().then(setPantryInventory),
       api.listPantryLocations().then(setPantryLocations),
       api.getInventoryLayout().then(setInventoryLayout),
@@ -476,7 +466,7 @@ export default function App({ user, onLogout }) {
     const matches = plannerExtraItems.filter((item) => groceryCore(item.name) === c);
     await Promise.all(matches.map((item) => api.deleteGroceryExtra(item.id)));
     setPlannerExtraItems((prev) => prev.filter((item) => !matches.includes(item)));
-    const recipeRow = buildGroceryList(upcomingEntries, [], {}, [], [], groceryOverrides).find(
+    const recipeRow = buildGroceryList(upcomingEntries, [], groceryOverrides).find(
       (item) => item.core === c && !item.removed
     );
     if (recipeRow) await setGroceryOverride(recipeRow.key, { removed: true });
@@ -623,35 +613,6 @@ export default function App({ user, onLogout }) {
       : []),
     { id: "logout", label: t("app.logOut"), onSelect: handleLogout },
   ];
-
-  async function handleMarkStaple(core) {
-    if (customStaples.includes(core)) return; // already a staple
-    await api.addPantryStaple(core);
-    setCustomStaples((prev) => [...prev, core]);
-    // Dragging a previously-removed default (e.g. salt) back onto the
-    // staples section un-removes it — see pantryStaplesRouter's POST handler.
-    setExcludedStaples((prev) => prev.filter((c) => c !== core));
-  }
-
-  // Un-marks a staple. For one the user added themselves this just drops
-  // it from customStaples. For one of the app's built-in defaults (never in
-  // customStaples to begin with) it instead records the exclusion so the
-  // built-in list stops re-adding it on every render.
-  async function handleRemoveStaple(core) {
-    await api.removePantryStaple(core);
-    setCustomStaples((prev) => prev.filter((c) => c !== core));
-    setExcludedStaples((prev) => (prev.includes(core) ? prev : [...prev, core]));
-    setStapleCategories((prev) => {
-      const { [core]: _removed, ...rest } = prev;
-      return rest;
-    });
-  }
-
-  async function handleSetStapleCategory(core, category) {
-    await api.setPantryStapleCategory(core, category);
-    setCustomStaples((prev) => (prev.includes(core) ? prev : [...prev, core]));
-    setStapleCategories((prev) => ({ ...prev, [core]: category }));
-  }
 
   // A deal's card on the Flyers page: Home's "Open the flyer" and the deal card's
   // "See in Flyers" on Makeable and Grocery.
@@ -864,18 +825,6 @@ export default function App({ user, onLogout }) {
       return;
     }
 
-    if (over.id === "pantry-staples-drop") {
-      const core = active.data.current?.ingredientCore;
-      if (core) handleMarkStaple(core);
-      return;
-    }
-
-    if (over.id === "staple-category-spice-drop" || over.id === "staple-category-other-drop") {
-      const core = active.data.current?.ingredientCore;
-      if (core) handleSetStapleCategory(core, over.id === "staple-category-spice-drop" ? "spice" : "other");
-      return;
-    }
-
     const cellMatch = /^day-(\d)-(breakfast|lunch|dinner)$/.exec(over.id);
     if (!cellMatch) return;
     const slot = { dayOfWeek: Number(cellMatch[1]), mealType: cellMatch[2] };
@@ -935,7 +884,7 @@ export default function App({ user, onLogout }) {
   function itemsAddedBy(recipeId, week, slot) {
     const recipe = recipes.find((r) => r.id === recipeId);
     if (!recipe || isPastDay(week, slot.dayOfWeek)) return 0;
-    return newGroceryItemCount({ recipe }, groceryCores, customStaples, excludedStaples);
+    return newGroceryItemCount({ recipe }, groceryCores, kitchen);
   }
 
   async function handleMoveEntry(entryId, slot) {
@@ -1225,24 +1174,6 @@ export default function App({ user, onLogout }) {
     }
   }
 
-  // "Running low" on a pantry staple in the finished view: it goes on the grocery
-  // list as an item of its own (a staple added by hand shows on the list), with
-  // the shared toast; Undo takes it off again.
-  async function handleRunningLow(name, onUndone) {
-    const core = groceryCore(name);
-    if (plannerExtraItems.some((item) => groceryCore(item.name) === core)) {
-      showToast(t("cooked.inventory.runningLowToast", { name }));
-      return;
-    }
-    const created = await api.addGroceryExtra({ name, quantity: null, unit: null });
-    setPlannerExtraItems((prev) => [...prev, created]);
-    showToast(t("cooked.inventory.runningLowToast", { name }), async () => {
-      setPlannerExtraItems((prev) => prev.filter((item) => item.id !== created.id));
-      await api.deleteGroceryExtra(created.id);
-      onUndone?.();
-    });
-  }
-
   // "Copy last week": last week's meals into this week's EMPTY slots only (the
   // server never replaces anything). The toast says how many, with Undo, and the
   // week calendar's button gets the count.
@@ -1431,7 +1362,6 @@ export default function App({ user, onLogout }) {
           <FlyerDeals
             user={user}
             recipes={recipes}
-            customStaples={customStaples}
             isOnGroceryList={isOnGroceryList}
             onAddToGroceryList={addToGroceryList}
             onRemoveFromGroceryList={removeFromGroceryList}
@@ -1471,9 +1401,6 @@ export default function App({ user, onLogout }) {
             onDelete={handleDeletePantryItem}
             onConsume={handleConsumePantryItems}
             onPutBackRemoved={handlePutBackRemoved}
-            customStaples={customStaples}
-            onMarkStaple={handleMarkStaple}
-            onUnmarkStaple={handleRemoveStaple}
             recipes={recipes}
             onFindRecipes={(query) => {
               setRecipeSearch(query);
@@ -1496,8 +1423,6 @@ export default function App({ user, onLogout }) {
           <Home
             user={user}
             recipes={recipes}
-            customStaples={customStaples}
-            excludedStaples={excludedStaples}
             pantryInventory={pantryInventory}
             kitchen={kitchen}
             onNavigate={setTab}
@@ -1610,9 +1535,7 @@ export default function App({ user, onLogout }) {
         {tab === "grocery" && (
           <GroceryList
             user={user}
-            customStaples={customStaples}
-            excludedStaples={excludedStaples}
-            stapleCategories={stapleCategories}
+            kitchen={kitchen}
             onRequestInventoryAdd={requestInventoryAdd}
             onToast={showToast}
             // The deal card's "See in Flyers →": that deal's card on Flyers.
@@ -1699,13 +1622,10 @@ export default function App({ user, onLogout }) {
           pantryInventory={pantryInventory}
           setPantryInventory={setPantryInventory}
           shelfName={(id) => shelfOptions(pantryLocations, inventoryLayout).find((s) => s.id === id)?.label || id}
-          customStaples={customStaples}
-          excludedStaples={excludedStaples}
           entries={[...plannerEntries, ...upcomingEntries]}
           addItem={handleAddPantryItem}
           setCooked={setMealCooked}
           linkMeals={linkLeftoverMeals}
-          runningLow={handleRunningLow}
           showToast={showToast}
           onClosed={handleCookedClosed}
         />

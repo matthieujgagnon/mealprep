@@ -150,16 +150,11 @@ model RecipeCategory {
   @@unique([userId, name])
 }
 
-// A canonical ingredient name (e.g. "salt", "olive oil") with a user
-// decision about staple status, overriding the app's built-in default list
-// (STAPLE_WORDS/SPICE_WORDS on the client) either direction:
-//   - excluded: false (default) - explicitly marked a staple, e.g. dragged
-//     onto the "staples" section of the grocery list.
-//   - excluded: true - explicitly marked NOT a staple, even though it's on
-//     the built-in default list (e.g. "salt") — otherwise there'd be no way
-//     to ever remove one of those from the staples section, since they
-//     aren't backed by a row at all until the user overrides them.
-// No row at all = defer entirely to the built-in default list.
+// UNUSED, kept untouched on purpose. The app no longer has the idea of a "pantry
+// staple": salt, oil and spices are ordinary ingredients, had only when they are in
+// Inventory. Nothing reads or writes this table (src/noPantryStaple.test.js fails if
+// any code does). The database is add-only, so it is not dropped here: that is its
+// own later change, after a Neon snapshot.
 model PantryStaple {
   id        String   @id @default(cuid())
   userId    String? // nullable only pre-backfill - see Recipe.userId
@@ -271,6 +266,9 @@ model GroceryItemOverride {
   removed   Boolean  @default(false)
   // A removed row cleared from the "Removed" strip.
   hidden    Boolean  @default(false)
+  // "Put back on the list" on a row under "Already at home": Inventory holds it,
+  // but the row stays on the list until the meals that need it leave the plan.
+  keep      Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -339,11 +337,9 @@ model FlyerUpload {
 }
 
 // A specific item physically in the user's fridge/pantry/freezer right now -
-// distinct from PantryStaple (which is just a grocery-list categorization
-// flag, not a real inventory) and from the planner's alreadyHave flag (a
-// quick per-meal override) - see the schema comment history in this repo's
-// PR discussion for why those two stay separate. Existence of a row = it's
-// in stock; deleting it (or letting it expire) means it's not.
+// distinct from the planner's alreadyHave flag (a quick per-meal override).
+// Existence of a row = it's in stock; deleting it (or letting it expire) means
+// it's not. The one thing that decides "you have it" for an ingredient.
 model PantryInventoryItem {
   id          String    @id @default(cuid())
   userId      String? // nullable only pre-backfill - see Recipe.userId
@@ -362,7 +358,7 @@ model PantryInventoryItem {
   recipe      Recipe?   @relation(fields: [recipeId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
 
-  // Unlike RecipeCategory/PantryStaple/etc., this one is genuinely meant to
+  // Unlike RecipeCategory and the like, this one is genuinely meant to
   // be multi-row per (userId, core) - buying milk twice is two separate
   // inventory rows with different purchase/expiry dates, not one row to
   // merge into. Plain index, not a unique-constraint candidate.
@@ -389,7 +385,7 @@ model PlannerEntry {
   recipe         Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   servings       Int? // override servings for this planned meal; falls back to recipe.baseServings
   isLeftover     Boolean   @default(false) // true = reusing food from another planned meal; excluded from grocery list
-  alreadyHave    Boolean   @default(false) // true = already have what this meal needs on hand (e.g. breakfast staples); excluded from grocery list, same as a leftover, but for a different reason
+  alreadyHave    Boolean   @default(false) // true = already have what this meal needs on hand (e.g. breakfast basics); excluded from grocery list, same as a leftover, but for a different reason
   position       Int       @default(0) // order within the day+mealType slot
   cookedAt       DateTime? // when "I cooked this" was confirmed for this meal, or, for a planned leftover, when its portion came off the Inventory leftovers; a cooked meal adds nothing to the grocery list
   leftoverItemId String? // the Inventory leftovers (PantryInventoryItem with isLeftover) this planned leftover eats from. A plain id, not a relation: the item leaves Inventory at zero portions and Undo puts it back with the same id, so the link must survive

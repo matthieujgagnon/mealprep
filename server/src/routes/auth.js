@@ -114,7 +114,6 @@ authRouter.post("/signup", async (req, res) => {
     await prisma.$transaction([
       prisma.recipe.updateMany({ where: { userId: null }, data: { userId: user.id } }),
       prisma.recipeCategory.updateMany({ where: { userId: null }, data: { userId: user.id } }),
-      prisma.pantryStaple.updateMany({ where: { userId: null }, data: { userId: user.id } }),
       prisma.grocerySection.updateMany({ where: { userId: null }, data: { userId: user.id } }),
       prisma.groceryAssignment.updateMany({ where: { userId: null }, data: { userId: user.id } }),
       prisma.groceryCheckedItem.updateMany({ where: { userId: null }, data: { userId: user.id } }),
