@@ -43,13 +43,15 @@ async function setup(page, inventory) {
   for (const name of inventory) await page.request.post("/api/pantry-inventory", { data: { name, location: "pantry" } });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
+  // A new account sees the "how it works" hint, with an example row of its own.
+  await page.getByRole("button", { name: "Got it" }).click();
 }
 
 const rowNames = (page) => page.locator(".riso-row-name");
 const strip = (page) => page.locator(".riso-grocery-athome");
 
 test("what Inventory holds waits under Already at home; the rest stays on the list", async ({ page }) => {
-  await setup(page, ["Olive oil", "Salt"]);
+  await setup(page, ["Olive oil", "Sea salt"]);
 
   // On the list: what is not in Inventory. Salt and pepper are two rows; water is never listed.
   await expect(rowNames(page)).toHaveText(["Lemon", "Pepper", "Spaghetti"]);
@@ -61,8 +63,8 @@ test("what Inventory holds waits under Already at home; the rest stays on the li
 
   await strip(page).getByRole("button", { name: /Already at home/ }).click();
   await expect(strip(page).locator(".riso-removed-name")).toHaveText(["Olive oil", "Salt"]);
-  // Each says which Inventory item covers it.
-  await expect(strip(page).locator(".riso-removed-meta")).toHaveText(["Olive oil", "Salt"]);
+  // Each says which Inventory item covers it: "In your Inventory", or its other name.
+  await expect(strip(page).locator(".riso-removed-meta")).toHaveText(["In your Inventory", "Sea salt"]);
   await expect(page.getByText("Water", { exact: true })).toHaveCount(0);
 
   // Put back on the list: the row joins the list, and stays after a reload.

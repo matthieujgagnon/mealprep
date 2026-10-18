@@ -1116,7 +1116,8 @@ export function GroceryList({
             items={atHome.map(({ item, by }) => ({
               key: item.key,
               name: item.name,
-              meta: by?.name || t("grocery.atHomeInInventory"),
+              // Which Inventory item covers it, when it is named differently ("Poulet" for chicken).
+              meta: by && by.name.toLowerCase() !== item.name.toLowerCase() ? by.name : t("grocery.atHomeInInventory"),
               putBackLabel: t("grocery.putBackOnList"),
               ariaLabel: t("grocery.putBackAria", { name: item.name }),
               onPutBack: () => setOverride(item.key, { keep: true }),
