@@ -63,7 +63,6 @@ export const HELP_COPIES = {
   iCookedThis: { kind: "pill", cls: "cm-next", label: "cooked.button", strong: true },
   addLeftovers: { kind: "pill", cls: "ck-btn primary", label: "cooked.leftovers.add", strong: true },
   noLeftovers: { kind: "pill", cls: "ck-btn", label: "cooked.leftovers.none" },
-  runningLow: { kind: "pill", cls: "ck-low", label: "cooked.inventory.runningLow" },
   removeFromInventory: { kind: "pill", cls: "ck-btn primary", label: "cooked.inventory.remove", strong: true },
   notNow: { kind: "pill", cls: "ck-btn", label: "cooked.inventory.notNow" },
 
@@ -114,6 +113,7 @@ export const HELP_COPIES = {
   addQueued: { kind: "pill", cls: "riso-group-foot-btn", label: "grocery.addQueued", vars: { count: 2 }, strong: true },
   rowRemove: { kind: "icon", cls: "riso-row-delete", glyph: "×" },
   removedChip: { kind: "removed" },
+  putBackOnList: { kind: "pill", cls: "riso-removed-putback", label: "grocery.putBackOnList" },
   share: { kind: "pill", cls: "riso-grocery-share", label: "grocery.share" },
   atStore: { kind: "atStore" },
   doneShopping: { kind: "pill", cls: "riso-grocery-cart-btn", label: "grocery.doneShopping", vars: { count: 3 }, strong: true },

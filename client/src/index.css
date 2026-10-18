@@ -536,7 +536,7 @@ select {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
-/* Same idea for a dragged ingredient (grocery item / staple), which has no
+/* Same idea for a dragged ingredient (a grocery item), which has no
    card of its own to reuse — a simple pill instead. */
 .drag-preview-chip {
   font-family: var(--font-mono);
@@ -5689,15 +5689,10 @@ button.riso-table-group-head:disabled {
   color: var(--riso-ink-fixed);
 }
 
-.riso-rc-receipt-empty,
-.riso-rc-staples {
+.riso-rc-receipt-empty {
   margin: 0;
   font: 400 13px/1.45 var(--riso-font-body);
   color: var(--riso-muted);
-}
-
-.riso-rc-staples {
-  padding-top: 2px;
 }
 
 .riso-rc-add-all {
@@ -8329,7 +8324,7 @@ button.riso-table-group-head:disabled {
   border-top: 1px solid var(--riso-row-line);
 }
 
-/* A row that stays is faded; its buttons (Running low, All of it, the amount box) are not. */
+/* A row that stays is faded; its buttons (All of it, the amount box) are not. */
 .ck-row:not(.on) > :is(.ck-row-emoji, .ck-row-main, .ck-stays, .ck-tick) {
   opacity: 0.5;
 }
@@ -8419,8 +8414,7 @@ button.riso-table-group-head:disabled {
   color: var(--riso-muted);
 }
 
-.ck-allofit,
-.ck-low {
+.ck-allofit {
   flex: none;
   height: 30px;
   padding: 0 12px;
@@ -8436,13 +8430,6 @@ button.riso-table-group-head:disabled {
 .ck-allofit.on {
   background: var(--riso-ink);
   color: var(--riso-surface);
-}
-
-/* "On the list": green, as everything on the grocery list is. */
-.ck-low.listed {
-  border-color: var(--riso-green-text);
-  color: var(--riso-green-text);
-  cursor: default;
 }
 
 .ck-tick {
@@ -18121,22 +18108,6 @@ body.no-select {
 }
 
 .riso-itemform-tag.warn {
-  background: var(--riso-yellow);
-}
-
-.riso-itemform-staple {
-  align-self: flex-start;
-  height: 34px;
-  padding: 0 14px;
-  border: 2px solid var(--riso-ink);
-  border-radius: 17px;
-  background: var(--riso-surface);
-  color: var(--riso-ink);
-  font: 700 13px var(--riso-font-display);
-  cursor: pointer;
-}
-
-.riso-itemform-staple.on {
   background: var(--riso-yellow);
 }
 

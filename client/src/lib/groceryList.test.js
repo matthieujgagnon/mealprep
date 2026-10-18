@@ -27,12 +27,9 @@ describe("buildGroceryList overrides", () => {
     const items = buildGroceryList(
       [entry([{ name: "garlic", quantity: 4, unit: "clove" }, { name: "lemon", quantity: 1 }])],
       [],
-      {},
-      [],
-      [],
       [
         { key: "lemon", removed: true, quantity: null },
-        { key: "garlic", removed: false, quantity: "1 head" },
+        { key: "garlic", removed: false, quantity: "1 head", keep: true },
       ]
     );
     const garlic = items.find((i) => i.key === "garlic");
@@ -40,7 +37,26 @@ describe("buildGroceryList overrides", () => {
     expect(lemon.removed).toBe(true);
     expect(garlic.removed).toBe(false);
     expect(garlic.customQuantity).toBe("1 head");
+    expect(garlic.keep).toBe(true);
+    expect(lemon.keep).toBe(false);
+    // The ingredients behind a row, as the recipes write them.
+    expect(garlic.ingredientNames).toEqual(["garlic"]);
     expect(garlic.parts).toEqual([{ quantity: 4, unit: "clove" }]);
+  });
+});
+
+describe("several foods on one line", () => {
+  it("are a row each, with no amount, merged with the same food from other lines", () => {
+    const items = buildGroceryList([
+      entry([{ name: "salt and pepper, to taste", quantity: 1, unit: "tsp" }, { name: "steak", quantity: 2 }]),
+      entry([{ name: "salt", quantity: 1, unit: "tsp" }]),
+    ]);
+    expect(items.map((i) => i.name)).toEqual(["Pepper", "Salt", "Steak"]);
+    // The other recipe's 1 tsp is on the same Salt row (the "to taste" line adds no amount).
+    expect(items.find((i) => i.key === "salt").parts).toContainEqual({ quantity: 1, unit: "tsp" });
+    expect(items.filter((i) => i.key === "salt")).toHaveLength(1);
+    expect(items.find((i) => i.key === "pepper").parts).toEqual([{ quantity: null, unit: null }]);
+    expect(items.find((i) => i.key === "pepper").ingredientNames).toEqual(["pepper"]);
   });
 });
 
@@ -110,15 +126,18 @@ describe("recipesLine: the recipes an item is for", () => {
 describe("newGroceryItemCount", () => {
   const dish = entry([{ name: "lemon", quantity: 1 }, { name: "chicken thighs", quantity: 500, unit: "g" }, { name: "salt" }]);
 
-  it("counts what a meal adds, leaving out staples and what is already listed", () => {
-    expect(newGroceryItemCount(dish, new Set())).toBe(2);
+  const none = { inventory: [] };
+
+  it("counts what a meal adds, leaving out what Inventory holds and what is already listed", () => {
+    expect(newGroceryItemCount(dish, new Set(), none)).toBe(3);
+    expect(newGroceryItemCount(dish, new Set(), { inventory: [{ name: "Salt" }] })).toBe(2);
     const onList = coresOnGroceryList([entry([{ name: "lemon", quantity: 2 }])], []);
-    expect(newGroceryItemCount(dish, onList)).toBe(1);
+    expect(newGroceryItemCount(dish, onList, none)).toBe(2);
   });
 
   it("adds nothing for leftovers, food you already have or a meal already cooked", () => {
-    expect(newGroceryItemCount({ ...dish, cookedAt: "2026-10-10T18:00:00Z" }, new Set())).toBe(0);
-    expect(newGroceryItemCount({ ...dish, isLeftover: true }, new Set())).toBe(0);
-    expect(newGroceryItemCount({ ...dish, alreadyHave: true }, new Set())).toBe(0);
+    expect(newGroceryItemCount({ ...dish, cookedAt: "2026-10-10T18:00:00Z" }, new Set(), none)).toBe(0);
+    expect(newGroceryItemCount({ ...dish, isLeftover: true }, new Set(), none)).toBe(0);
+    expect(newGroceryItemCount({ ...dish, alreadyHave: true }, new Set(), none)).toBe(0);
   });
 });

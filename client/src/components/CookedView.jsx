@@ -48,7 +48,6 @@ export function CookedView({ recipe, servings, variant, mealType, userId, rows, 
   const [place, setPlace] = useState("fridge");
   const [inv, setInv] = useState("active"); // "active" | "removed" | "skipped"
   const [edits, setEdits] = useState({});
-  const [listed, setListed] = useState(() => new Set());
   const [modal, setModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -103,11 +102,6 @@ export function CookedView({ recipe, servings, variant, mealType, userId, rows, 
       setModal(false);
     });
 
-  async function runningLow(name) {
-    await actions.runningLow(name, () => setListed((prev) => new Set([...prev].filter((n) => n !== name))));
-    setListed((prev) => new Set(prev).add(name));
-  }
-
   // Escape closes the view (not while the pop-up is open: it closes the pop-up).
   useEffect(() => {
     function onKey(e) {
@@ -160,14 +154,12 @@ export function CookedView({ recipe, servings, variant, mealType, userId, rows, 
             dim={lf === "active"}
             busy={busy}
             shelfName={shelfName}
-            listed={listed}
             onToggle={(row) => setEdits((prev) => ({ ...prev, [row.key]: { ...prev[row.key], on: !row.on } }))}
             onAmount={(row, amount) => {
               if (amount === undefined) return;
               const on = amount === "all" || (typeof amount === "number" && amount > 0);
               setEdits((prev) => ({ ...prev, [row.key]: { amount, on } }));
             }}
-            onRunningLow={runningLow}
             onRemove={() => {
               const takes = takesFrom(shown);
               finish(takes);
@@ -237,20 +229,17 @@ export function CookedViewHost({
   pantryInventory,
   setPantryInventory,
   shelfName,
-  customStaples,
-  excludedStaples,
   entries,
   addItem,
   setCooked,
   linkMeals,
-  runningLow,
   showToast,
   onClosed,
 }) {
   const session = useRef({});
   // The list is worked out once, from Inventory as it was when the view opened.
   const rows = useMemo(
-    () => (open ? buildTakeOut({ recipe: open.recipe, servings: open.servings, inventory: pantryInventory, customStaples, excludedStaples }) : []),
+    () => (open ? buildTakeOut({ recipe: open.recipe, servings: open.servings, inventory: pantryInventory }) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [open]
   );
@@ -323,7 +312,6 @@ export function CookedViewHost({
     },
     undoInventory: () => undoInventory(),
     undoAll: () => undoAll(),
-    runningLow,
   };
 
   // × and Escape ({}), "Back to the app" ({ celebrate }) or "Back to step 1"

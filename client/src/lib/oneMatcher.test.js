@@ -29,10 +29,16 @@ const garlicChicken = recipe("garlic-chicken", "Garlic chicken and rice", [
 const pouletCitron = recipe("poulet-citron", "Poulet au citron", ["Poitrines de poulet", "ail", "citron", "sel", "poivre", "huile d'olive", "bouillon de poulet"]);
 const recipes = [garlicChicken, pouletCitron];
 
-const kitchen = (names) => ({ inventory: names.map((name) => ({ name, location: "fridge" })), customStaples: [], excludedStaples: [] });
+const kitchen = (names) => ({ inventory: names.map((name) => ({ name, location: "fridge" })) });
+// Salt, oil and pepper are in Inventory like anything else.
+const BASICS = { English: ["Salt", "Olive oil", "Black pepper"], French: ["Sel", "Huile d'olive", "Poivre noir"] };
+const FOOD = {
+  English: ["Chicken thighs", "Chicken breasts", "Garlic", "Onion", "Rice", "Cilantro", "Lemons", "Chicken stock"],
+  French: ["Hauts de cuisse de poulet", "Poulet", "Ail", "Oignons", "Riz", "Coriandre", "Citrons", "Bouillon de poulet"],
+};
 const KITCHENS = {
-  English: kitchen(["Chicken thighs", "Chicken breasts", "Garlic", "Onion", "Rice", "Cilantro", "Lemons", "Chicken stock"]),
-  French: kitchen(["Hauts de cuisse de poulet", "Poulet", "Ail", "Oignons", "Riz", "Coriandre", "Citrons", "Bouillon de poulet"]),
+  English: kitchen([...FOOD.English, ...BASICS.English]),
+  French: kitchen([...FOOD.French, ...BASICS.French]),
 };
 
 // What each page shows for one recipe, worked out the way that page does.
@@ -62,17 +68,26 @@ function everyPage(r, k) {
 describe.each(Object.keys(KITCHENS))("one answer everywhere, %s Inventory", (lang) => {
   const k = KITCHENS[lang];
 
-  it("Garlic chicken and rice: 5 of 6, only the lime to buy, on every page", () => {
+  it("Garlic chicken and rice: 8 of 9, only the lime to buy, on every page", () => {
     const p = everyPage(garlicChicken, k);
     // Recipe card numbers.
-    expect(p.card).toMatchObject({ matchedCount: 5, totalCount: 6, missingCount: 1, missing: ["Lime"] });
-    // Recipe card ✓: everything but the lime (salt, oil, salt and pepper are always had).
+    expect(p.card).toMatchObject({ matchedCount: 8, totalCount: 9, missingCount: 1, missing: ["Lime"] });
+    // Recipe card ✓: everything but the lime (salt, oil and pepper are in Inventory).
     expect(Object.entries(p.cardMarks).filter(([, had]) => !had).map(([name]) => name)).toEqual(["lime"]);
     // Pop-out and planned-meal card.
-    expect(p.popout.have.map((i) => i.name)).toEqual(["Boneless skinless chicken thighs", "Garlic cloves", "Yellow onion", "Basmati rice", "Fresh cilantro"]);
+    expect(p.popout.have.map((i) => i.name)).toEqual([
+      "Boneless skinless chicken thighs",
+      "Garlic cloves",
+      "Kosher salt",
+      "Yellow onion",
+      "Basmati rice",
+      "Olive oil",
+      "Salt and pepper",
+      "Fresh cilantro",
+    ]);
     expect(p.popout.buy.map((i) => i.name)).toEqual(["Lime"]);
-    // Planner search card: "5/6", "1 missing".
-    expect(haveBar(p.panel.stats)).toMatchObject({ text: "5/6", missing: 1, state: "missing" });
+    // Planner search card: "8/9", "1 missing".
+    expect(haveBar(p.panel.stats)).toMatchObject({ text: "8/9", missing: 1, state: "missing" });
     // Makeable: One or two short, the lime as its one pill, To buy first.
     expect(p.section).toBe("few");
     expect(p.page.stats.missing).toEqual(["Lime"]);
@@ -85,17 +100,35 @@ describe.each(Object.keys(KITCHENS))("one answer everywhere, %s Inventory", (lan
     }
   });
 
-  it("Poulet au citron: ready everywhere, French staples left out", () => {
+  it("Poulet au citron: ready everywhere, French salt and oil found in Inventory", () => {
     const p = everyPage(pouletCitron, k);
-    expect(p.card).toMatchObject({ matchedCount: 4, totalCount: 4, missingCount: 0 });
+    expect(p.card).toMatchObject({ matchedCount: 7, totalCount: 7, missingCount: 0 });
     expect(Object.values(p.cardMarks).every(Boolean)).toBe(true);
     expect(p.popout.buy).toEqual([]);
-    expect(haveBar(p.panel.stats)).toMatchObject({ text: "4/4", state: "complete" });
+    expect(haveBar(p.panel.stats)).toMatchObject({ text: "7/7", state: "complete" });
     expect(p.section).toBe("ready");
     expect(availabilityOf(p.page.stats)).toBe("ready");
     expect(p.homeState).toBe("ready");
     // Fewest missing puts the ready recipe first.
     expect(p.sorted[0]).toBe("poulet-citron");
+  });
+});
+
+describe.each(Object.keys(KITCHENS))("without salt, oil and pepper in a %s Inventory", (lang) => {
+  const k = kitchen(FOOD[lang]);
+
+  it("they are to buy on every page, like any other ingredient", () => {
+    const p = everyPage(garlicChicken, k);
+    expect(p.card).toMatchObject({ matchedCount: 5, totalCount: 9, missingCount: 4, missing: ["Kosher salt", "Olive oil", "Salt and pepper", "Lime"] });
+    expect(p.popout.buy.map((i) => i.name)).toEqual(["Kosher salt", "Olive oil", "Salt and pepper", "Lime"]);
+    expect(haveBar(p.panel.stats)).toMatchObject({ text: "5/9", missing: 4 });
+    expect(p.page.stats.missing).toEqual(p.card.missing);
+
+    const citron = everyPage(pouletCitron, k);
+    expect(citron.card).toMatchObject({ matchedCount: 4, totalCount: 7, missingCount: 3, missing: ["Sel", "Poivre", "Huile d'olive"] });
+    // Not ready until they are in Inventory.
+    expect(citron.homeState).not.toBe("ready");
+    expect(citron.section).not.toBe("ready");
   });
 });
 

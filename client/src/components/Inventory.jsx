@@ -590,9 +590,6 @@ export function Inventory({
   onDelete,
   onConsume,
   onPutBackRemoved,
-  customStaples,
-  onMarkStaple,
-  onUnmarkStaple,
   recipes,
   onFindRecipes,
   onFindRecipesForSelection,
@@ -617,7 +614,6 @@ export function Inventory({
   const isPhone = useIsPhone();
   const showToast = onToast;
   const [editingId, setEditingId] = useState(null);
-  const staples = new Set(customStaples || []);
 
   useEffect(() => {
     if (activeItemId && !items.some((i) => i.id === activeItemId)) setActiveItemId(null);
@@ -667,11 +663,6 @@ export function Inventory({
       else next.add(id);
       return next;
     });
-  }
-
-  // Gives back the save, so a form can wait for it before it closes.
-  function toggleStaple(item) {
-    return staples.has(item.core) ? onUnmarkStaple(item.core) : onMarkStaple(item.core);
   }
 
   async function handleConsumeSelected(action) {
@@ -852,8 +843,6 @@ export function Inventory({
           item={activeItem}
           sections={sections}
           recipes={recipes}
-          isStaple={staples.has(activeItem.core)}
-          onToggleStaple={toggleStaple}
           onSave={onUpdate}
           onDelete={onDelete}
           onConsume={onConsume}
@@ -881,8 +870,6 @@ export function Inventory({
           sections={sections}
           defaultLocation={addLocation}
           recipes={recipes}
-          isStapleFor={(n) => staples.has(String(n).trim().toLowerCase())}
-          onToggleStaple={toggleStaple}
           onAdd={onAdd}
           onDelete={onDelete}
           onToast={showToast}

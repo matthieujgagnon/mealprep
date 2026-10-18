@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { stepImage, stepIsHeading } from "../lib/steps.js";
 import { findDealsFor, findSaleDeal } from "../lib/similarRecipes.js";
-import { expiringItemsIn, ingredientHave, matchingItems } from "../lib/inventoryMatch.js";
+import { expiringItemsIn, matchingItems } from "../lib/inventoryMatch.js";
 import { plannedDayOf, recipeIngredientNames, similarTo } from "../lib/finder.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
 import { MEAL_PRICING_READY, cardSteps, groceryItemOf, receiptTotals, recipeReceipt, stepServings } from "../lib/recipeCard.js";
@@ -41,8 +41,8 @@ import { t } from "../i18n/index.js";
 //   opened from: "← Planner"), onClose
 //   allRecipes, plannedEntries (this week's and the upcoming entries, for the
 //   "Planned Wednesday" pill and "use soon"), upcomingEntries (from today on, for
-//   the similar search's ranking), kitchen (App's { inventory, customStaples,
-//   excludedStaples }), grocery (App's one { isOnList, add, toggle, addWithUndo })
+//   the similar search's ranking), kitchen (App's { inventory }), grocery
+//   (App's one { isOnList, add, toggle, addWithUndo })
 //   onSelectRecipe(recipe)   another recipe's card (Similar, the footer)
 //   onPlan(recipe)           the shared slot picker
 //   onPlanAround(recipe)     the Planner's Main meal (the ⋯ menu)
@@ -205,7 +205,7 @@ export function RecipeDetailModal({
   // "I'm out of this": the Inventory items that are this food leave Inventory
   // (Recently removed lists them as Used up).
   async function outOfIt(row) {
-    if (!onDeletePantryItem || ingredientHave(row.name, kitchen) === "staple") return;
+    if (!onDeletePantryItem) return;
     for (const item of matchingItems(row.name, inventory)) await onDeletePantryItem(item.id, { how: "consumed" });
     setOpenRow(null);
   }

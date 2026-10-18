@@ -1,4 +1,5 @@
 import { buildGroceryList, canonicalize } from "./groceryList.js";
+import { splitAtHome } from "./groceryAtHome.js";
 
 // The same ingredient key the Grocery List groups rows by, so "2 limes" and
 // "lime" count as one thing already on the list.
@@ -13,7 +14,7 @@ export function groceryCore(name) {
 // other). Removed rows (see GroceryItemOverride) don't count.
 export function coresOnGroceryList(plannerEntries, extraItems, overrides = []) {
   return new Set(
-    buildGroceryList(plannerEntries, [], {}, [], extraItems, overrides)
+    buildGroceryList(plannerEntries, extraItems, overrides)
       .filter((item) => !item.removed)
       .map((item) => item.core)
   );
@@ -23,7 +24,7 @@ export function coresOnGroceryList(plannerEntries, extraItems, overrides = []) {
 // ingredient again can bring the row back instead of adding a duplicate.
 export function removedRecipeRows(plannerEntries, overrides = []) {
   return new Map(
-    buildGroceryList(plannerEntries, [], {}, [], [], overrides)
+    buildGroceryList(plannerEntries, [], overrides)
       .filter((item) => item.removed)
       .map((item) => [item.core, item.key])
   );
@@ -35,13 +36,15 @@ export function removedRecipeRows(plannerEntries, overrides = []) {
 // (keys "extra-...") live until you delete them. `plannerEntries` must be
 // the whole upcoming plan - passing a partial one would clear live rows.
 export function staleOverrideKeys(plannerEntries, overrides = []) {
-  const planned = new Set(buildGroceryList(plannerEntries, [], {}, [], [], []).map((item) => item.key));
+  const planned = new Set(buildGroceryList(plannerEntries).map((item) => item.key));
   return overrides.filter((o) => !o.key.startsWith("extra-") && !planned.has(o.key)).map((o) => o.key);
 }
 
 // How many things placing this meal adds to the grocery list: its ingredients
-// that are not pantry staples and not already on the list (`onList`, from
-// coresOnGroceryList). A leftover or an "already have" meal adds nothing.
-export function newGroceryItemCount(entry, onList, customStaples = [], excludedStaples = []) {
-  return buildGroceryList([entry], customStaples, {}, excludedStaples).filter((item) => !item.isStaple && !onList.has(item.core)).length;
+// that Inventory doesn't already hold (lib/groceryAtHome.js) and that are not
+// already on the list (`onList`, from coresOnGroceryList). A leftover or an
+// "already have" meal adds nothing.
+export function newGroceryItemCount(entry, onList, kitchen) {
+  const { toBuy } = splitAtHome(buildGroceryList([entry]), kitchen);
+  return toBuy.filter((item) => !onList.has(item.core)).length;
 }

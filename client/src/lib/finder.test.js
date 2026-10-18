@@ -45,7 +45,7 @@ const inventory = [
   { name: "old milk", location: "fridge", expiresAt: inDays(-2) },
 ];
 
-const kitchen = { inventory, customStaples: [], excludedStaples: [] };
+const kitchen = { inventory };
 
 function rank() {
   return rankRecipesForTray({ recipes, upcomingEntries: [], kitchen });
@@ -190,7 +190,7 @@ describe("findRecipes", () => {
     expect(tiles[0].picked).toHaveLength(3);
   });
 
-  it("Cook with also finds a staple such as paprika by the name written in the recipe", () => {
+  it("Cook with also finds a spice such as paprika by the name written in the recipe", () => {
     const withPaprika = [...recipes, recipe("paprika", "Smoky chicken", ["chicken", "smoked paprika"])];
     const { ranked } = rankRecipesForTray({ recipes: withPaprika, upcomingEntries: [], kitchen });
     const shelves = shelvesWithItems(inventory, [{ id: "custom-spices", label: "Spice rack", custom: true }]);

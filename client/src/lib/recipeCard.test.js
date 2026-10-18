@@ -29,7 +29,7 @@ afterAll(() => vi.useRealTimers());
 setLang("en");
 
 const ing = (name, quantity = null, unit = null, extra = {}) => ({ name, quantity, unit, ...extra });
-const kitchen = (inventory) => ({ inventory, customStaples: [], excludedStaples: [] });
+const kitchen = (inventory) => ({ inventory });
 const inDays = (n) => addDays(quebecDay(), n);
 
 const shawarma = {
@@ -55,14 +55,20 @@ describe("the receipt", () => {
     { name: "Garlic", quantity: 10, unit: "cloves", location: "pantry" },
   ]);
 
-  it("splits what to buy from what is in your Inventory, with the staples apart", () => {
+  it("splits what to buy from what is in your Inventory, salt and oil like the rest", () => {
     const r = recipeReceipt(shawarma, inv, 4);
-    expect(r.buy.map((row) => row.name)).toEqual(["Cucumber"]);
+    expect(r.buy.map((row) => row.name)).toEqual(["Cucumber", "Olive oil", "Salt"]);
     expect(r.have.map((row) => row.name)).toEqual(["Chicken thighs", "Plain yogurt", "Red onion", "Garlic"]);
-    expect(r.staples).toEqual(["Olive oil", "Salt"]);
     expect(r.have[0].amount).toBe("900 g");
     expect(r.have[0].notes).toEqual(["boneless"]);
     expect(r.buy[0].groups).toEqual(["To serve"]);
+  });
+
+  it("has the salt and oil once they are in Inventory", () => {
+    const stocked = kitchen([...inv.inventory, { name: "Salt", location: "pantry" }, { name: "Olive oil", location: "pantry" }]);
+    const r = recipeReceipt(shawarma, stocked, 4);
+    expect(r.buy.map((row) => row.name)).toEqual(["Cucumber"]);
+    expect(r.have.map((row) => row.name)).toEqual(["Chicken thighs", "Plain yogurt", "Red onion", "Garlic", "Olive oil", "Salt"]);
   });
 
   it("is the same count as every other page at the recipe's own servings", () => {

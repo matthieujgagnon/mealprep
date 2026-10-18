@@ -188,8 +188,8 @@ export function boughtSnapshot(item) {
   return snapshotOf(item.needParts ?? item.parts, item.usedIn);
 }
 
-// Keeps the saved rows true to the plan. Pass every row of the list (staples
-// and removed ones too) and only once the whole plan has loaded, since a row
+// Keeps the saved rows true to the plan. Pass every row of the list (removed
+// ones and ones at home too) and only once the whole plan has loaded, since a row
 // no planned meal needs is dropped. Returns { set, remove }:
 //   - remove: rows nothing needs any more (its meals left the plan);
 //   - set: rows to rewrite as { key, covered, bought } - a row saved before

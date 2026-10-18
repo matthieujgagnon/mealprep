@@ -179,7 +179,7 @@ export const api = {
   deleteGroceryExtra: (id) => request(`/grocery-extra-items/${id}`, { method: "DELETE" }),
 
   listGroceryOverrides: () => request("/grocery-item-overrides"),
-  // patch: { quantity?: string | null, removed?: boolean }. Resolves to the
+  // patch: { quantity?: string | null, removed?: boolean, hidden?: boolean, keep?: boolean }. Resolves to the
   // saved override, or null once it has nothing left to change.
   setGroceryOverride: (key, patch) =>
     request("/grocery-item-overrides", { method: "PUT", body: JSON.stringify({ key, ...patch }) }),
@@ -204,17 +204,6 @@ export const api = {
   // Keeps the saved rows true to the plan (see tidyChecks).
   tidyGroceryChecked: (set, remove) =>
     request("/grocery-checked/tidy", { method: "POST", body: JSON.stringify({ set, remove }) }),
-
-  listPantryStaples: () => request("/pantry-staples"),
-  addPantryStaple: (core) =>
-    request("/pantry-staples", { method: "POST", body: JSON.stringify({ core }) }),
-  removePantryStaple: (core) =>
-    request(`/pantry-staples/${encodeURIComponent(core)}`, { method: "DELETE" }),
-  setPantryStapleCategory: (core, category) =>
-    request(`/pantry-staples/${encodeURIComponent(core)}`, {
-      method: "PUT",
-      body: JSON.stringify({ category }),
-    }),
 
   listGrocerySections: () => request("/grocery-sections"),
   reorderGrocerySections: (orderedIds) =>

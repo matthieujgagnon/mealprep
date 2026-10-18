@@ -1,4 +1,4 @@
-import { canonicalize, canonicalUnit, capitalize, singularize, STAPLE_WORDS, SPICE_WORDS } from "./groceryList.js";
+import { canonicalize, canonicalUnit, capitalize, singularize } from "./ingredientNames.js";
 import { PHRASES, fold } from "./bilingual.js";
 import { familyKey } from "./ingredientFamilies.js";
 import { convertToUnit } from "./units.js";
@@ -25,8 +25,13 @@ import { daysUntil } from "./pantryInventory.js";
 //     don't cover chicken thighs;
 //   - a stock, broth, powder, paste, sauce or juice is never the food it is made
 //     of: « bouillon de poulet » is not chicken, garlic powder is not garlic;
-//   - a pantry staple (salt, oil, spices, and anything marked as one) only
-//     matches another staple.
+//   - plain pepper is the spice; a bell pepper or a coloured pepper ("red
+//     pepper") is the vegetable, and the two never match;
+//   - several foods written on one line ("salt and pepper", « sel et poivre, au
+//     goût ») are looked up one by one: the line is had when each is;
+//   - water from the tap is never something to buy.
+// Nothing else decides whether you have an ingredient: salt, oil and spices are
+// ingredients like any other, had when they are in Inventory.
 // Leftovers (`isLeftover`) are a meal, not an ingredient, and never match.
 
 // Kitchen words in French that the flyers' list doesn't have, singular and
@@ -49,8 +54,8 @@ const KITCHEN_FR = [
   ["pita", "pita"], ["pitas", "pitas"], ["tortilla", "tortilla"], ["tortillas", "tortillas"], ["yogourt", "yogurt"], ["yaourt", "yogurt"],
   ["bouillon", "stock"], ["poudre", "powder"], ["concentre", "paste"], ["puree", "puree"], ["vin", "wine"], ["mais", "corn"],
   ["grec", "greek"], ["grecque", "greek"], ["oignons", "onions"], ["carottes", "carrots"], ["tomates", "tomatoes"],
-  // Pantry staples and spices, so a French recipe's « sel » or « origan » is an
-  // "always have" like salt and oregano.
+  // Salt, oil, baking basics and spices, so a French recipe's « sel » or
+  // « origan » is the same food as salt and oregano.
   ["au gout", "to taste"], ["sel casher", "kosher salt"], ["gros sel", "coarse salt"], ["sel de mer", "sea salt"],
   ["sel de celeri", "celery salt"], ["sel d'oignon", "onion salt"], ["poivre noir", "black pepper"], ["poivre blanc", "white pepper"],
   ["poivre de cayenne", "cayenne pepper"], ["piment de cayenne", "cayenne pepper"], ["sel", "salt"], ["poivre", "pepper"],
@@ -67,6 +72,7 @@ const KITCHEN_FR = [
   ["anis etoile", "star anise"], ["cardamome", "cardamom"], ["graines de fenouil", "fennel seeds"], ["graines de moutarde", "mustard seeds"],
   ["moutarde en poudre", "mustard powder"], ["cinq epices", "five spice powder"], ["seche", "dried"], ["sechee", "dried"],
   ["seches", "dried"], ["sechees", "dried"],
+  ["all purpose", "all-purpose"], ["eau froide", "cold water"], ["eau chaude", "hot water"], ["eau tiede", "warm water"], ["eau bouillante", "boiling water"], ["eau", "water"],
 ];
 
 // "the" is English as often as it is « thé », so it is never read as tea here.
@@ -102,7 +108,7 @@ function toEnglish(name) {
 const DESCRIPTORS = new Set(
   (
     "whole skim nonfat fat-free low-fat reduced-fat unsalted salted boneless skinless bone-in skin-on lean extra-lean extra-virgin virgin " +
-    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought bell mild moulu moulue moulus moulues"
+    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought mild moulu moulue moulus moulues all-purpose pure granulated"
   ).split(" ")
 );
 // What a food was made into: not the food itself.
@@ -120,10 +126,16 @@ const COMPOUNDS = [
   ["green onion", "scallion"], ["spring onion", "scallion"], ["green bean", "greenbean"], ["black bean", "blackbean"], ["kidney bean", "kidneybean"],
   ["sweet potato", "sweetpotato"], ["red pepper flake", "chiliflake"], ["sour cream", "sourcream"], ["cream cheese", "creamcheese"], ["ice cream", "icecream"],
   ["coconut milk", "coconutmilk"], ["peanut butter", "peanutbutter"], ["maple syrup", "maplesyrup"],
+  ["crushed red pepper", "chiliflake"], ["chili flake", "chiliflake"], ["chile flake", "chiliflake"], ["corn starch", "cornstarch"],
 ];
+// Names that are one food written two ways, said once here.
+const SAME_FOOD = { "smoked paprika": "paprika", "cooking oil": "vegetable oil", "canola oil": "vegetable oil" };
+// The colours that make "pepper" the vegetable.
+const PEPPER_COLOURS = new Set(["red", "yellow", "green", "purple"]);
+// Words that can sit beside "water" and leave it water from the tap.
+const TAP_WATER_WORDS = new Set("water cold warm hot boiling lukewarm ice iced tap filtered cool room-temperature".split(" "));
 // Words that only say what kind of thing it is ("pita bread" is pita).
 const GENERIC = new Set(["bread", "cheese"]);
-const STAPLES = new Set([...STAPLE_WORDS, ...SPICE_WORDS].map((w) => canonicalize(w).core));
 
 const profileCache = new Map();
 
@@ -133,11 +145,9 @@ export function foodProfile(name) {
   if (profileCache.has(key)) return profileCache.get(key);
 
   let core = canonicalize(toEnglish(key)).core;
-  // A bell pepper is a vegetable; plain pepper is the spice.
-  const bell = core.split(" ").includes("bell");
   const words0 = core.split(" ").filter((w) => w && !DESCRIPTORS.has(w) && !LITTLE.has(w));
   core = words0.join(" ");
-  const staple = !bell && (STAPLES.has(core) || STAPLES.has(canonicalize(core).core) || STAPLES.has(familyKey(core)));
+  core = SAME_FOOD[core] || core;
   let joined = ` ${core} `;
   for (const [phrase, token] of COMPOUNDS) joined = joined.replace(` ${phrase} `, ` ${token} `);
   const words = joined.trim().split(" ").filter(Boolean);
@@ -158,6 +168,9 @@ export function foodProfile(name) {
     base = [...kinds];
     kinds.clear();
   }
+  // Plain pepper is the spice; a coloured pepper is the vegetable ("bell" stays in
+  // a bell pepper's name, so that one is never the spice).
+  if (base.length === 1 && base[0] === "pepper" && [...kinds].some((k) => PEPPER_COLOURS.has(k))) base = ["bell", "pepper"];
   if (base.length > 1) base = base.filter((w) => !GENERIC.has(w));
   // A cut on its own ("flank steak", "sirloin") is still a meat.
   if (base.length === 0) {
@@ -168,40 +181,46 @@ export function foodProfile(name) {
   const family = familyKey(base.join(" "));
   const food = family !== base.join(" ") ? family : [...base].sort().join(" ");
 
-  const profile = { core, food, derived, cuts, kinds, staple };
+  const profile = { core, food, derived, cuts, kinds };
   profileCache.set(key, profile);
   return profile;
 }
 
 const overlaps = (a, b) => a.size === 0 || b.size === 0 || [...a].some((x) => b.has(x));
 
-// Whether something you have (an Inventory item or a staple's name) is this
-// recipe ingredient.
-export function itemCovers(haveName, ingredientName) {
+const lineFoods = new Map();
+
+// The foods written on one ingredient line: the line itself, or its parts when it
+// names several ("salt and pepper", « sel et poivre, au goût »). A part that is
+// only a note ("to taste", "minced") is not a food.
+export function foodsOnLine(name) {
+  const key = String(name || "").trim();
+  if (!lineFoods.has(key)) {
+    const parts = key.split(/\s*(?:,|&|\band\b|\bet\b)\s*/i).filter((part) => foodProfile(part).core);
+    lineFoods.set(key, parts.length > 1 ? parts : [key]);
+  }
+  return lineFoods.get(key);
+}
+
+// Water from the tap ("water", "cold water", « eau froide »): never to buy.
+export function isTapWater(name) {
+  const words = foodProfile(name).core.split(" ").filter(Boolean);
+  return words.includes("water") && words.every((w) => TAP_WATER_WORDS.has(w));
+}
+
+function sameFoodAs(haveName, foodName) {
   const have = foodProfile(haveName);
-  const want = foodProfile(ingredientName);
+  const want = foodProfile(foodName);
   if (!have.food || !want.food) return false;
-  if (have.staple !== want.staple) return false;
   if (have.derived !== want.derived) return false;
   if (have.food !== want.food) return false;
   return overlaps(have.cuts, want.cuts) && overlaps(have.kinds, want.kinds);
 }
 
-// Whether an ingredient is something you always have: one of the app's pantry
-// staples (salt, oil, flour, spices...) unless you took it off, or anything you
-// marked as a pantry staple.
-export function isStapleIngredient(name, customStaples = [], excludedStaples = []) {
-  const p = foodProfile(name);
-  const own = new Set((customStaples || []).map((s) => String(s).trim().toLowerCase()));
-  const off = new Set((excludedStaples || []).map((s) => String(s).trim().toLowerCase()));
-  const raw = String(name || "").trim().toLowerCase();
-  const keys = [raw, canonicalize(raw).core, p.core];
-  if (keys.some((k) => own.has(k)) || [...own].some((s) => itemCovers(s, name))) return true;
-  if (keys.some((k) => off.has(k))) return false;
-  if (p.staple) return true;
-  // "Salt and pepper", « sel et poivre, au goût »: staples written on one line.
-  const parts = raw.split(/\s*(?:,|&|\band\b|\bet\b)\s*/).filter((part) => foodProfile(part).core);
-  return parts.length > 1 && parts.every((part) => isStapleIngredient(part, customStaples, excludedStaples));
+// Whether something you have (an Inventory item) is this recipe ingredient, or
+// one of the foods on its line.
+export function itemCovers(haveName, ingredientName) {
+  return foodsOnLine(ingredientName).some((food) => sameFoodAs(haveName, food));
 }
 
 const isUsable = (item) => !item.isLeftover;
@@ -228,32 +247,34 @@ export function haveItemFor(ingredientName, inventory = []) {
 
 // ---- A recipe next to your Inventory -------------------------------------------
 //
-// `kitchen` is what App.jsx keeps once: { inventory, customStaples, excludedStaples }.
+// `kitchen` is what App.jsx keeps once: { inventory }.
 
 const NO_ITEMS = [];
-// The answers for one Inventory, kept until it, the staples or the day change.
+// The answers for one Inventory, kept until it or the day change.
 const answers = new WeakMap();
 
 function answersFor(kitchen) {
   const inventory = kitchen?.inventory || NO_ITEMS;
   const day = new Date().toDateString();
   let table = answers.get(inventory);
-  if (!table || table.day !== day || table.customStaples !== kitchen?.customStaples || table.excludedStaples !== kitchen?.excludedStaples) {
-    table = { day, customStaples: kitchen?.customStaples, excludedStaples: kitchen?.excludedStaples, byName: new Map() };
+  if (!table || table.day !== day) {
+    table = { day, byName: new Map() };
     answers.set(inventory, table);
   }
   return table;
 }
 
-// Where one ingredient stands: "staple" (always have: salt, oil, spices, your own
-// pantry staples), "have" (an Inventory item still good is this ingredient) or
-// "need". What the recipe card's ✓ beside each ingredient shows.
+// Whether you have an ingredient: every food on its line is water from the tap or
+// an Inventory item still good.
+function lineHave(name, inventory) {
+  return foodsOnLine(name).every((food) => isTapWater(food) || haveItemFor(food, inventory));
+}
+
+// Where one ingredient stands: "have" (Inventory holds it, still good) or "need".
+// What the recipe card's ✓ beside each ingredient shows.
 export function ingredientHave(name, kitchen) {
   const table = answersFor(kitchen);
-  if (!table.byName.has(name)) {
-    const staple = isStapleIngredient(name, kitchen?.customStaples, kitchen?.excludedStaples);
-    table.byName.set(name, staple ? "staple" : haveItemFor(name, kitchen?.inventory || NO_ITEMS) ? "have" : "need");
-  }
+  if (!table.byName.has(name)) table.byName.set(name, lineHave(name, kitchen?.inventory || NO_ITEMS) ? "have" : "need");
   return table.byName.get(name);
 }
 
@@ -266,21 +287,14 @@ function sameFood(a, b) {
 
 // The lines behind recipeHave, with the ingredients in each: one line per food,
 // in the recipe's order, named as the recipe first writes it (a missing line, as
-// it writes the missing ingredient). Staples are not lines: they are listed
-// apart, once each, as written.
-//   lines    [{ key, name, had, ingredients }]
-//   staples  [name]
+// it writes the missing ingredient). Water from the tap is not a line.
+//   [{ key, name, had, ingredients }]
 export function recipeLines(recipe, kitchen) {
   const lines = [];
-  const staples = [];
   for (const ing of recipe?.ingredients || []) {
     const name = String(ing?.name || "").trim();
-    if (!name) continue;
+    if (!name || isTapWater(name)) continue;
     const status = ingredientHave(name, kitchen);
-    if (status === "staple") {
-      if (!staples.some((s) => sameFood(s, name))) staples.push(name);
-      continue;
-    }
     const line = lines.find((l) => sameFood(l.written, name));
     if (!line) lines.push({ written: name, had: status === "have", missingName: status === "have" ? null : name, ingredients: [ing] });
     else {
@@ -288,22 +302,18 @@ export function recipeLines(recipe, kitchen) {
       if (status !== "have" && line.had) Object.assign(line, { had: false, missingName: name });
     }
   }
-  return {
-    lines: lines.map((l) => ({ key: l.written.toLowerCase(), name: capitalize(l.missingName || l.written), had: l.had, ingredients: l.ingredients })),
-    staples: staples.map(capitalize),
-  };
+  return lines.map((l) => ({ key: l.written.toLowerCase(), name: capitalize(l.missingName || l.written), had: l.had, ingredients: l.ingredients }));
 }
 
 // A recipe next to your Inventory, the one count every page shows ("3/5",
 // "2 missing", "2 things to buy", Ready now). One line per food, in the recipe's
 // order, named as the recipe first writes it (a missing line, as it writes the
-// missing ingredient); staples are left out (you always have them). A line is
-// had when every ingredient in it is.
+// missing ingredient). A line is had when every ingredient in it is.
 //   have, buy     [{ key, name }]
 //   missing       the names in `buy`
 //   totalCount, matchedCount, missingCount
 export function recipeHave(recipe, kitchen) {
-  const { lines } = recipeLines(recipe, kitchen);
+  const lines = recipeLines(recipe, kitchen);
   const item = (l) => ({ key: l.key, name: l.name });
   const have = lines.filter((l) => l.had).map(item);
   const buy = lines.filter((l) => !l.had).map(item);
@@ -317,15 +327,9 @@ export function recipeHave(recipe, kitchen) {
   };
 }
 
-// Whether a recipe uses an Inventory item (Cook with, "uses expiring"). A staple
-// you keep, like paprika, is also found by its name inside the recipe's
-// ("smoked paprika").
+// Whether a recipe uses an Inventory item (Cook with, "uses expiring").
 export function recipeUsesItem(recipe, itemName) {
-  const staple = foodProfile(itemName).staple;
-  const written = fold(itemName).trim();
-  return (recipe?.ingredients || []).some(
-    (ing) => ing?.name && (itemCovers(itemName, ing.name) || (staple && written !== "" && fold(ing.name).includes(written)))
-  );
+  return (recipe?.ingredients || []).some((ing) => ing?.name && itemCovers(itemName, ing.name));
 }
 
 // One key per food, for lists that show each food once (Cook with's shelves and
@@ -347,9 +351,9 @@ export function expiringSoon(inventory = [], withinDays) {
 // The app's "uses expiring" rule (the recipe card's "use soon", the Makeable
 // card's pink strip, the Recipes count): the items going off within `withinDays`
 // days that this recipe uses and no other planned meal uses already, soonest
-// first. Staples (salt, oil, spices) don't count.
+// first.
 export function expiringItemsIn(recipe, inventory, plannerEntries = [], allRecipes = [], withinDays = 3) {
-  const soon = expiringSoon(inventory, withinDays).filter((item) => !foodProfile(item.name).staple && recipeUsesItem(recipe, item.name));
+  const soon = expiringSoon(inventory, withinDays).filter((item) => recipeUsesItem(recipe, item.name));
   if (soon.length === 0) return soon;
   const byId = new Map(allRecipes.map((r) => [r.id, r]));
   const others = [];
@@ -425,15 +429,16 @@ export function roundAmount(qty, unit) {
 
 // The "Take out of your Inventory" list for a meal cooked for `servings`.
 // Rows, in the recipe's order:
-//   { key, kind: "item", item, names, amount, ask, on, staple, before, after }
+//   { key, kind: "item", item, names, amount, ask, on, before, after }
 //     An Inventory item and how much comes out, in the item's own unit. `ask`
 //     when that can't be worked out (the units don't convert, the recipe gives
 //     no amount, or the item has none): the row then waits for an amount and
-//     starts switched off. A staple you keep in Inventory starts switched off.
-//     When one item doesn't hold enough, the rest comes from the next one.
+//     starts switched off. When one item doesn't hold enough, the rest comes
+//     from the next one.
 //   { key, kind: "missing", names, on: false }  not in your Inventory
-//   { key, kind: "staple", names, on: false }   an "always have" not in Inventory
-export function buildTakeOut({ recipe, servings, inventory = [], customStaples = [], excludedStaples = [] }) {
+// A line naming several foods ("salt and pepper") is a row for each, with no
+// amount; water from the tap has no row.
+export function buildTakeOut({ recipe, servings, inventory = [] }) {
   const base = recipe?.baseServings || 1;
   const scale = (servings || base) / base;
   const left = new Map(inventory.map((item) => [item.id, item.quantity]));
@@ -441,17 +446,23 @@ export function buildTakeOut({ recipe, servings, inventory = [], customStaples =
   const others = new Map();
   const order = [];
 
+  const ingredients = [];
   for (const ing of recipe?.ingredients || []) {
     if (!ing?.name) continue;
-    const staple = isStapleIngredient(ing.name, customStaples, excludedStaples);
+    const foods = foodsOnLine(ing.name);
+    if (foods.length === 1) ingredients.push(ing);
+    else for (const food of foods) ingredients.push({ ...ing, name: food, quantity: null });
+  }
+
+  for (const ing of ingredients) {
+    if (isTapWater(ing.name)) continue;
     const items = matchingItems(ing.name, inventory);
     const qty = ing.quantity != null ? ing.quantity * scale : null;
 
     if (items.length === 0) {
-      const kind = staple ? "staple" : "missing";
-      const key = `${kind}:${foodProfile(ing.name).core || ing.name.toLowerCase()}`;
+      const key = `missing:${foodProfile(ing.name).core || ing.name.toLowerCase()}`;
       if (!others.has(key)) {
-        others.set(key, { key, kind, names: [], on: false });
+        others.set(key, { key, kind: "missing", names: [], on: false });
         order.push(key);
       }
       if (!others.get(key).names.includes(ing.name)) others.get(key).names.push(ing.name);
@@ -468,11 +479,10 @@ export function buildTakeOut({ recipe, servings, inventory = [], customStaples =
       if (row && !row.names.includes(ing.name)) row.names.push(ing.name);
       if (!row) {
         if (i > 0 && (need == null || need <= 0)) break;
-        row = { key, kind: "item", item, names: [ing.name], amount: 0, ask: false, staple, on: !staple, before: item.quantity ?? null };
+        row = { key, kind: "item", item, names: [ing.name], amount: 0, ask: false, on: true, before: item.quantity ?? null };
         byItem.set(key, row);
         order.push(key);
       }
-      row.staple = row.staple && staple;
       const inItemUnit = convertAmount(need, ing.unit, item.unit);
       if (inItemUnit == null || item.quantity == null) {
         row.ask = true;

@@ -167,15 +167,14 @@ test("the preview is the real card: name, amount, expiry line, and a photo from 
   expect((await inventory(page))[0]).toMatchObject({ name: "Sourdough", quantity: 0.5, unit: "loaf", imageUrl: "https://example.com/bread.png" });
 });
 
-test("a pantry staple can be marked while adding", async ({ page }) => {
+test("salt is an item like any other: added, then opened again with the same form", async ({ page }) => {
   await setup(page);
   await page.getByRole("button", { name: "+ Add item" }).click();
   await fillAddForm(page, "Salt");
-  await itemForm(page).getByRole("button", { name: "☆ Mark as pantry staple" }).click();
   await itemForm(page).getByRole("button", { name: "Add to inventory" }).click();
   await expect(itemForm(page)).toHaveCount(0);
   await card(page, "Salt").click();
-  await expect(itemForm(page).getByRole("button", { name: "★ Pantry staple" })).toBeVisible();
+  await expect(itemForm(page).getByRole("button", { name: "Save changes" })).toBeVisible();
 });
 
 test("Edit: Done with it? has Used up, Tossed and (when it freezes) Freeze, and each shows a message", async ({ page }) => {

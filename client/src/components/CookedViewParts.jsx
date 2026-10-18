@@ -205,7 +205,6 @@ function AmountMark({ row, editing, onEdit, onDone }) {
 
 // The line under an item's name: what will be left, or what stays.
 function rowLine(row) {
-  if (row.staple && !row.on) return t("cooked.inventory.staple");
   if (row.ask && !row.on) return row.before == null ? t("cooked.inventory.noAmount") : t("cooked.inventory.ask");
   if (!row.on) return row.before == null ? t("cooked.inventory.noAmount") : t("cooked.inventory.inInventory", { amount: amountText(row.before, row.item.unit) });
   if (row.after == null) return t("cooked.inventory.noAmount");
@@ -213,23 +212,7 @@ function rowLine(row) {
   return t("cooked.inventory.leftAfter", { amount: amountText(row.after, row.item.unit) });
 }
 
-function RunningLow({ name, listed, onClick }) {
-  return (
-    <button
-      type="button"
-      className={`ck-low riso-press${listed ? " listed" : ""}`}
-      disabled={listed}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick(name);
-      }}
-    >
-      {listed ? t("cooked.inventory.onList") : t("cooked.inventory.runningLow")}
-    </button>
-  );
-}
-
-function ItemRow({ row, editing, listed, onToggle, onEdit, onAmount, onRunningLow }) {
+function ItemRow({ row, editing, onToggle, onEdit, onAmount }) {
   const name = row.item.name;
   return (
     <div
@@ -254,7 +237,6 @@ function ItemRow({ row, editing, listed, onToggle, onEdit, onAmount, onRunningLo
         <span className="ck-row-name">{name}</span>
         <span className="ck-row-line">{rowLine(row)}</span>
       </span>
-      {row.staple && !row.on && <RunningLow name={name} listed={listed} onClick={onRunningLow} />}
       <AmountMark row={row} editing={editing} onEdit={onEdit} onDone={onAmount} />
       <span className="ck-tick" aria-hidden="true">
         {row.on ? "✓" : ""}
@@ -263,7 +245,7 @@ function ItemRow({ row, editing, listed, onToggle, onEdit, onAmount, onRunningLo
   );
 }
 
-function OtherRow({ row, listed, onRunningLow }) {
+function OtherRow({ row }) {
   const name = row.names[0];
   return (
     <div className="ck-row other">
@@ -272,16 +254,15 @@ function OtherRow({ row, listed, onRunningLow }) {
       </span>
       <span className="ck-row-main">
         <span className="ck-row-name">{name}</span>
-        <span className="ck-row-line">{row.kind === "staple" ? t("cooked.inventory.staple") : t("cooked.inventory.missingLine")}</span>
+        <span className="ck-row-line">{t("cooked.inventory.missingLine")}</span>
       </span>
-      {row.kind === "staple" && <RunningLow name={name} listed={listed} onClick={onRunningLow} />}
     </div>
   );
 }
 
 // The review list: each ingredient's Inventory item and the amount that comes
-// out, under its shelf, then the pantry staples and what isn't in Inventory.
-export function TakeOutCard({ userId, rows, state, dim, busy, shelfName, listed, onToggle, onAmount, onRunningLow, onRemove, onNotNow, onUndo }) {
+// out, under its shelf, then what isn't in Inventory.
+export function TakeOutCard({ userId, rows, state, dim, busy, shelfName, onToggle, onAmount, onRemove, onNotNow, onUndo }) {
   const [editing, setEditing] = useState(null);
   const counts = takeOutCounts(rows);
   if (state !== "active") {
@@ -325,9 +306,9 @@ export function TakeOutCard({ userId, rows, state, dim, busy, shelfName, listed,
       <div className="ck-shelves">
         {groups.map((group) => {
           const items = group.rows.filter((r) => r.kind === "item");
-          const label = group.key === "staple" ? t("cooked.inventory.alwaysHave") : group.key === "missing" ? t("cooked.inventory.missing") : group.label;
+          const label = group.key === "missing" ? t("cooked.inventory.missing") : group.label;
           return (
-            <div key={group.key} className={`ck-shelf ${group.key === "missing" || group.key === "staple" ? "quiet" : ""}`}>
+            <div key={group.key} className={`ck-shelf ${group.key === "missing" ? "quiet" : ""}`}>
               <div className="ck-shelf-head">
                 <span>{label}</span>
                 {items.length > 0 && <span>{`${items.filter((r) => r.on).length} / ${items.length}`}</span>}
@@ -339,17 +320,15 @@ export function TakeOutCard({ userId, rows, state, dim, busy, shelfName, listed,
                       key={row.key}
                       row={row}
                       editing={editing === row.key}
-                      listed={listed.has(row.item.name)}
                       onToggle={() => onToggle(row)}
                       onEdit={() => setEditing(row.key)}
                       onAmount={(amount) => {
                         setEditing(null);
                         onAmount(row, amount);
                       }}
-                      onRunningLow={onRunningLow}
                     />
                   ) : (
-                    <OtherRow key={row.key} row={row} listed={listed.has(row.names[0])} onRunningLow={onRunningLow} />
+                    <OtherRow key={row.key} row={row} />
                   )
                 )}
               </div>

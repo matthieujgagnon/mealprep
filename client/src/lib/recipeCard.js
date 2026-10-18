@@ -57,13 +57,12 @@ const unique = (values) => [...new Set(values.map((v) => String(v || "").trim())
 //                   recipe's unit ("400 g more")
 //   have     [row]  in your Inventory: the amount the recipe uses, the item it
 //                   comes from and `soon` (it wears the "Use soon!" sticker)
-//   staples  [name] the "always have" ingredients (salt, oil, spices)
 // A row is { key, name, need, amount, notes, groups } (+ short, item, soon).
 // `soonItems` are the recipe's expiring items (expiringItemsIn).
 export function recipeReceipt(recipe, kitchen, servings, { soonItems = [] } = {}) {
   const scale = (servings || recipe?.baseServings || 1) / (recipe?.baseServings || 1);
   const inventory = kitchen?.inventory || [];
-  const { lines, staples } = recipeLines(recipe, kitchen);
+  const lines = recipeLines(recipe, kitchen);
   const buy = [];
   const short = [];
   const have = [];
@@ -92,7 +91,7 @@ export function recipeReceipt(recipe, kitchen, servings, { soonItems = [] } = {}
       short.push({ ...row, key: `${line.key}|more`, short: true, need: more, amount: amountText(more) });
     }
   }
-  return { buy: [...buy, ...short], have, staples };
+  return { buy: [...buy, ...short], have };
 }
 
 // What "Add to grocery list" and a row's + put on the list: the name, and for a

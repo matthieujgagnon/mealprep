@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
 import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
+import { splitAtHome } from "../lib/groceryAtHome.js";
 import { applyChecks } from "../lib/groceryChecks.js";
 import { findSaleDeal } from "../lib/similarRecipes.js";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
@@ -106,8 +107,6 @@ function ToUseRow({ item }) {
 export function Home({
   user,
   recipes,
-  customStaples,
-  excludedStaples,
   pantryInventory,
   kitchen,
   onNavigate,
@@ -274,10 +273,15 @@ export function Home({
     return onToggleGroceryItem?.(name, { dealId, onChanged: refreshGrocery });
   }
 
-  const groceryItems = buildGroceryList(upcomingEntries, customStaples, {}, excludedStaples, extraItems, groceryOverrides);
-  // What's still to buy: what "Done shopping" bought is off the list.
+  const groceryItems = buildGroceryList(upcomingEntries, extraItems, groceryOverrides);
+  // What's still to buy: what Inventory already holds and what "Done shopping"
+  // bought are off the list.
   const { items: toBuy, checked, bought } = applyChecks(
-    groceryItems.filter((i) => !i.isStaple && !i.removed),
+    splitAtHome(
+      groceryItems.filter((i) => !i.removed),
+      kitchen,
+      checkRows
+    ).toBuy,
     checkRows
   );
   const allBought = toBuy.length === 0 && bought.length > 0;

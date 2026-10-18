@@ -4,8 +4,9 @@ import { E2E_INVITE } from "./invite.js";
 // One matcher everywhere (lib/inventoryMatch.js): the same recipe, next to an
 // Inventory written in French, gives the same answer on Makeable, the recipe
 // card and the Planner (its search and the planned
-// meal's card). Salt, oil and « sel et poivre » are always had and left out of
-// the count; the garlic written twice is one line; a leftover never counts.
+// meal's card). Salt, oil and « sel et poivre » are ingredients like any other: had
+// because « Sel », « Huile d'olive » and « Poivre noir » are in Inventory; the garlic
+// written twice is one line; a leftover never counts.
 
 const INGREDIENTS = [
   "boneless skinless chicken thighs",
@@ -19,7 +20,7 @@ const INGREDIENTS = [
   "fresh cilantro",
   "lime",
 ];
-const INVENTORY = ["Hauts de cuisse de poulet", "Ail", "Oignons", "Riz", "Coriandre"];
+const INVENTORY = ["Hauts de cuisse de poulet", "Ail", "Oignons", "Riz", "Coriandre", "Sel", "Huile d'olive", "Poivre noir"];
 const TITLE = "Garlic chicken and rice";
 
 function mondayOf(d) {
@@ -59,14 +60,14 @@ async function checkMakeableAndCard(page, L) {
   await tab(page, L.makeable).click();
   const card = page.locator(".fnd-sec.few .mkc", { has: page.locator(".rpc-title", { hasText: TITLE }) });
   await expect(card).toBeVisible();
-  await expect(card.locator(".mkc-progress span")).toHaveText([L.fiveOfSix, L.oneMissing]);
+  await expect(card.locator(".mkc-progress span")).toHaveText([L.eightOfNine, L.oneMissing]);
   await expect(card.locator(".mkc-pill-name")).toHaveText([/lime/i]);
 
-  // The recipe card, in one tap: the same numbers, five you have and the lime to buy.
+  // The recipe card, in one tap: the same numbers, eight you have and the lime to buy.
   await card.locator(".rpc-title").click();
   const rc = page.getByRole("dialog", { name: TITLE });
   await expect(rc.locator(".riso-rc-have-head")).toContainText(L.inInventory);
-  await expect(rc.locator(".riso-rc-have")).toHaveCount(5);
+  await expect(rc.locator(".riso-rc-have")).toHaveCount(8);
   await expect(rc.locator(".riso-rc-sticker")).toHaveText(L.oneToBuy);
   await expect(rc.locator(".riso-rc-buy")).toHaveCount(1);
   await expect(rc.locator(".riso-rc-buy")).toContainText(/lime/i);
@@ -83,9 +84,9 @@ test.describe("on a computer, in English", () => {
     const recipe = await seed(page);
     await checkMakeableAndCard(page, {
       makeable: "Makeable",
-      fiveOfSix: "5/6 ingredients",
+      eightOfNine: "8/9 ingredients",
       oneMissing: "1 missing",
-      inInventory: "In your Inventory · 5",
+      inInventory: "In your Inventory · 8",
       oneToBuy: "1 thing to buy",
     });
 
@@ -93,7 +94,7 @@ test.describe("on a computer, in English", () => {
     await tab(page, "Planner").click();
     await page.getByRole("button", { name: "Browse" }).click();
     const result = page.locator(".fnd-card", { has: page.locator(".rpc-title", { hasText: TITLE }) });
-    await expect(result.locator(".rpc-info > span")).toHaveText(["5/6", "1 missing"]);
+    await expect(result.locator(".rpc-info > span")).toHaveText(["8/9", "1 missing"]);
 
     // And so does the planned meal's card.
     const day = Math.min(todayIndex(), 4);
@@ -102,7 +103,7 @@ test.describe("on a computer, in English", () => {
     await tab(page, "Planner").click();
     await page.locator(".riso-planner-cell").nth(2 * 7 + day).locator(".riso-planner-card").click();
     const planned = page.getByRole("dialog", { name: TITLE });
-    await expect(planned.locator(".ing-marks-have .riso-pill")).toHaveCount(5);
+    await expect(planned.locator(".ing-marks-have .riso-pill")).toHaveCount(8);
     await expect(planned.locator(".ing-marks-buy-pill")).toHaveCount(1);
     await expect(planned.locator(".ing-marks-buy-pill")).toContainText(/lime/i);
   });
@@ -116,9 +117,9 @@ test.describe("on a phone, in French", () => {
     const recipe = await seed(page);
     await checkMakeableAndCard(page, {
       makeable: "Faisable",
-      fiveOfSix: "5/6 ingrédients",
+      eightOfNine: "8/9 ingrédients",
       oneMissing: "1 manquant",
-      inInventory: "Dans votre inventaire · 5",
+      inInventory: "Dans votre inventaire · 8",
       oneToBuy: "1 article à acheter",
     });
 
