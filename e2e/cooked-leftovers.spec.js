@@ -137,17 +137,18 @@ test("Leftovers keep is in Edit recipe: a change there is what the Leftovers car
   await expect(page.locator(".riso-rc-facts")).toContainText("Keeps 5 days");
   expect((await (await page.request.get(`/api/recipes/${recipe.id}`)).json()).fridgeLifeDays).toBe(5);
 
-  // The Leftovers card says how long they keep, and adds them for that long. (A reload first: the
-  // Planner's meals keep the recipe as they were loaded, after any edit of a recipe.)
-  await page.reload();
+  // The Leftovers card says how long they keep, and adds them for that long. No reload first: a
+  // planned meal shows the recipe as it was just saved (the recipe store).
+  await page.getByRole("dialog", { name: SHAWARMA.title }).getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await page.locator(".riso-planner-card").first().click();
   await page.getByRole("button", { name: `I cooked ${SHAWARMA.title}` }).click();
   const sheet = page.locator(".ck-sheet");
   await expect(sheet.getByText("5 DAYS")).toBeVisible();
   await sheet.getByRole("button", { name: "+ Add to Inventory" }).click();
-  const leftover = (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.isLeftover);
-  expect(leftover.expiresAt).toBe(asSavedDay(addDays(quebecDay(atHour(12)), 5)));
+  await expect
+    .poll(async () => (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.isLeftover)?.expiresAt)
+    .toBe(asSavedDay(addDays(quebecDay(atHour(12)), 5)));
 });
 
 test("from tonight's meal on Home: Not now leaves Inventory as it was, the meal is cooked, and Undo puts it back", async ({ page }) => {

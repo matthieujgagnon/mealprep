@@ -13659,7 +13659,11 @@ body.no-select {
   background: var(--riso-track);
   box-sizing: border-box;
   cursor: grab;
-  touch-action: manipulation;
+  /* The app's press-and-hold drag (hooks/useHeldDrag.js): a swipe along the page scrolls it,
+     a held tile is carried; the callout and text selection stay off. */
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 

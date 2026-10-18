@@ -3,7 +3,6 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import {
   DndContext,
   PointerSensor,
-  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -17,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
+import { HELD_DRAG, useDragTouchGuard } from "../hooks/useHeldDrag.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { RECIPE_SLOTS, formatRecipeTime, slotHint } from "../lib/mealSlots.js";
 import { stepHeadingText, stepIsHeading, stepTimer } from "../lib/steps.js";
@@ -281,10 +281,12 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
   }, [namesKey, fridgeTouched]);
 
   const handleSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
-  const photoSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } })
-  );
+  // The photo tiles are picked up the way everything else in the app is: a press that holds
+  // still (HELD_DRAG), with the page kept still while one is carried (hooks/useHeldDrag.js).
+  // A second sensor for touch, or a distance instead of a hold, lets the browser take the
+  // touch for a page scroll before the drag starts.
+  const photoSensors = useSensors(useSensor(PointerSensor, { activationConstraint: HELD_DRAG }));
+  const photoDragLive = useDragTouchGuard();
 
   function reorder(key) {
     return ({ active, over }) => {
@@ -675,7 +677,20 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
               </div>
               <span className="re-count">{t("editor.photoCount", { count: state.photos.length })}</span>
             </div>
-            <DndContext sensors={photoSensors} collisionDetection={closestCenter} onDragEnd={reorder("photos")}>
+            <DndContext
+              sensors={photoSensors}
+              collisionDetection={closestCenter}
+              onDragStart={() => {
+                photoDragLive.current = true;
+              }}
+              onDragEnd={(event) => {
+                photoDragLive.current = false;
+                reorder("photos")(event);
+              }}
+              onDragCancel={() => {
+                photoDragLive.current = false;
+              }}
+            >
               <SortableContext items={state.photos.map((p) => p.id)} strategy={rectSortingStrategy}>
                 <div className="re-photos">
                   {state.photos.map((photo) => (

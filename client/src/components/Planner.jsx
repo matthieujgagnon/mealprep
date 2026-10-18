@@ -10,6 +10,7 @@ import { PlannedCard, SlotCard } from "./PlannerCards.jsx";
 import { useFinder } from "../hooks/useFinder.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { api } from "../api.js";
+import { useLiveEntries } from "../lib/recipeStore.js";
 import { currentWeekStart, formatDayLabel, isCurrentWeek, shiftWeek } from "../lib/dates.js";
 import { MEAL_LABEL, DAY_SHORT, isCustomNote, pageOfDay, slotLabel, todayIndex } from "../lib/plannerSlots.js";
 import { clampPage } from "../lib/plannerPhone.js";
@@ -122,13 +123,14 @@ export function Planner({
   }, [initialMainId]);
 
   // How many meals last week has: "Copy last week" is off when it is empty.
-  const [lastWeekCount, setLastWeekCount] = useState(0);
+  const [lastWeekRows, setLastWeekRows] = useState([]);
+  const lastWeekCount = useLiveEntries(lastWeekRows).length; // through the recipe store: a deleted recipe's meals are not there to copy
   useEffect(() => {
     let cancelled = false;
     api
       .listPlanner(shiftWeek(weekStart, -1))
-      .then((rows) => !cancelled && setLastWeekCount(rows.length))
-      .catch(() => !cancelled && setLastWeekCount(0));
+      .then((rows) => !cancelled && setLastWeekRows(rows))
+      .catch(() => !cancelled && setLastWeekRows([]));
     return () => {
       cancelled = true;
     };

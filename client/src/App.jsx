@@ -2,6 +2,8 @@ import { clearDeals, useDeals } from "./lib/dealsStore.js";
 import { useFinder } from "./hooks/useFinder.js";
 import { useShowSales } from "./hooks/useShowSales.js";
 import { clearGroceryShared } from "./lib/groceryCache.js";
+import { addRecipe, clearRecipes, hideRecipe, loadRecipes, saveRecipe, showRecipe, useLiveEntries, useRecipeStore } from "./lib/recipeStore.js";
+import { HELD_DRAG, useDragTouchGuard } from "./hooks/useHeldDrag.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -46,6 +48,11 @@ import { CookedViewHost } from "./components/CookedView.jsx";
 import { leftoverTitle } from "./lib/leftovers.js";
 import { StoreConfetti } from "./components/StoreModeParts.jsx";
 import { TRASH_ID } from "./components/TrashZone.jsx";
+
+// The planned meals in `rows` (as the server sent them) without those in `gone`. The meals
+// the handlers work from are read through the recipe store, so they are matched by id, not
+// as the same objects.
+const without = (rows, gone) => rows.filter((e) => !gone.some((g) => g.id === e.id));
 
 // Rendered inside <DragOverlay> — a floating copy that actually follows the
 // cursor, independent of wherever the real (now-dimmed) source element sits.
@@ -219,8 +226,12 @@ export default function App({ user, onLogout }) {
   useEffect(() => {
     document.querySelector(".tab.active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [tab]);
-  const [recipes, setRecipes] = useState([]);
-  const [plannerEntries, setPlannerEntries] = useState([]);
+  // Every recipe lives in the recipe store (lib/recipeStore.js). The planned meals below are
+  // kept as the server sent them (`plannerRows`, `upcomingRows`) and read through the store
+  // (`plannerEntries`, `upcomingEntries`), so a meal always shows its recipe as it is now.
+  const { recipes } = useRecipeStore();
+  const [plannerRows, setPlannerRows] = useState([]);
+  const plannerEntries = useLiveEntries(plannerRows);
   const [weekStart, setWeekStart] = useState(currentWeekStart()); // Monday, "YYYY-MM-DD" — which week the Planner and Grocery List tabs are showing
   // The recipe card open over the page (components/RecipeDetailModal.jsx, one for
   // every page): { id, from } (`from` is the box of the card it grows out of) or null.
@@ -262,11 +273,8 @@ export default function App({ user, onLogout }) {
   const makeableFinder = useFinder(); // the Makeable page's search and filters; kept here so they stay when you leave the page and come back
   const [makeableSales, toggleMakeableSales] = useShowSales();
   const { deals } = useDeals();
-  const [upcomingEntries, setUpcomingEntries] = useState([]); // every planned meal from today onward, across weeks: what the grocery list is built from
-  // Recipes deleted a moment ago whose toast (with Undo) is still showing: they are
-  // still on the server, so a planner read leaves their meals out until then.
-  const deletingIds = useRef(new Set());
-  const withoutDeleting = (rows) => (deletingIds.current.size ? rows.filter((e) => !deletingIds.current.has(e.recipeId)) : rows);
+  const [upcomingRows, setUpcomingRows] = useState([]); // every planned meal from today onward, across weeks: what the grocery list is built from
+  const upcomingEntries = useLiveEntries(upcomingRows);
   // This week's meals and every one from today on: the recipe card's "Planned
   // Wednesday" and "Use soon!".
   const allPlanned = useMemo(() => [...plannerEntries, ...upcomingEntries], [plannerEntries, upcomingEntries]);
@@ -291,14 +299,7 @@ export default function App({ user, onLogout }) {
   // handed to the browser's scroll (which would cancel the drag). Before the drag
   // starts a touch scrolls the page as usual. The listener is always on (and
   // reads a ref) so it is already in place for the very first move.
-  const dragLive = useRef(false);
-  useEffect(() => {
-    const onTouchMove = (e) => {
-      if (dragLive.current && e.cancelable) e.preventDefault();
-    };
-    window.addEventListener("touchmove", onTouchMove, { passive: false });
-    return () => window.removeEventListener("touchmove", onTouchMove);
-  }, []);
+  const dragLive = useDragTouchGuard();
   const draggingPlannedRecipe = !!activeDragItem?.data.current?.entryId && !activeDragItem.data.current?.recipe?.isPlaceholder;
   useEffect(() => {
     if (!isDragActive) {
@@ -346,7 +347,7 @@ export default function App({ user, onLogout }) {
   // that still hold. A press that starts on a ⠿ grip (a shelf on Inventory) is
   // picked up the grip's way, as on Grocery (ReorderSections.jsx).
   const sensors = useSensors(
-    useSensor(GripAwarePointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+    useSensor(GripAwarePointerSensor, { activationConstraint: HELD_DRAG })
   );
 
   // Loads everything the app needs on first render. Tracked with
@@ -356,7 +357,7 @@ export default function App({ user, onLogout }) {
   function loadInitialData() {
     setLoadError(false);
     Promise.allSettled([
-      api.listRecipes().then(setRecipes),
+      api.listRecipes().then(loadRecipes),
       api.listPantryStaples().then((list) => {
         setCustomStaples(list.filter((s) => !s.excluded).map((s) => s.core));
         setExcludedStaples(list.filter((s) => s.excluded).map((s) => s.core));
@@ -387,7 +388,7 @@ export default function App({ user, onLogout }) {
       .then((done) => {
         if (!done?.entryIds?.length) return;
         api.listPantryInventory().then(setPantryInventory);
-        api.listPlanner(currentWeekStart()).then((entries) => currentWeekStart() === weekStart && setPlannerEntries(entries));
+        api.listPlanner(currentWeekStart()).then((entries) => currentWeekStart() === weekStart && setPlannerRows(entries));
         const list = formatList(done.meals.map((m) => m.title));
         showToast(t("cooked.eaten", { count: done.entryIds.length, list }), async () => {
           await api.putBackPantryItems(done.before, done.logIds);
@@ -405,7 +406,7 @@ export default function App({ user, onLogout }) {
     let stale = false; // the week was changed again before this one arrived
     api
       .listPlanner(weekStart)
-      .then((rows) => !stale && setPlannerEntries(withoutDeleting(rows)))
+      .then((rows) => !stale && setPlannerRows(rows))
       .catch(() => !stale && setLoadError(true))
       .finally(() => !stale && setPlannerLoadedWeek(weekStart));
     return () => {
@@ -419,10 +420,10 @@ export default function App({ user, onLogout }) {
   // de-duplication below.
   useEffect(() => {
     const today = toDateKey(new Date());
-    api.listPlannerUpcoming(today).then((rows) => setUpcomingEntries(withoutDeleting(rows))).catch(() => setUpcomingEntries([]));
+    api.listPlannerUpcoming(today).then(setUpcomingRows).catch(() => setUpcomingRows([]));
     api.listGroceryExtras().then(setPlannerExtraItems).catch(() => setPlannerExtraItems([]));
     api.listGroceryOverrides().then(setGroceryOverrides).catch(() => setGroceryOverrides([]));
-  }, [tab, plannerEntries, upcomingTick]);
+  }, [tab, plannerRows, upcomingTick]);
 
   const groceryCores = coresOnGroceryList(upcomingEntries, plannerExtraItems, groceryOverrides);
 
@@ -514,7 +515,7 @@ export default function App({ user, onLogout }) {
   };
 
   function handleImported(recipe) {
-    setRecipes((prev) => [recipe, ...prev]);
+    addRecipe(recipe);
   }
 
   function openRecipeEditor(recipe) {
@@ -529,10 +530,10 @@ export default function App({ user, onLogout }) {
   function handleEditorSaved(saved, isNew) {
     setRecipeEditor(null);
     if (isNew) {
-      setRecipes((prev) => [saved, ...prev]);
+      addRecipe(saved);
       return;
     }
-    setRecipes((prev) => prev.map((r) => (r.id === saved.id ? { ...r, ...saved } : r)));
+    saveRecipe(saved);
     openRecipe(saved);
   }
 
@@ -555,38 +556,28 @@ export default function App({ user, onLogout }) {
     setTab(next);
   }
 
-  // Delete recipe (the recipe card's ⋯ menu): Undo, not a question. The recipe and
-  // its planned meals leave every page at once and the toast offers Undo; it is
-  // deleted for good only once the toast is gone (after its five seconds, when
-  // another message replaces it, or when the page is left or you log out). Undo
-  // puts it back where it was. If the delete fails, it comes back and the toast says so.
+  // Delete recipe (the recipe card's ⋯ menu): Undo, not a question. The recipe is hidden
+  // in the recipe store, which takes it and its planned meals off every page at once, and
+  // the toast offers Undo; it is deleted for good only once the toast is gone (after its
+  // five seconds, when another message replaces it, or when the page is left or you log
+  // out). Undo shows it again, where it was, on every page. If the delete fails, it comes
+  // back and the toast says so. After a delete it stays hidden, so a page that still holds
+  // an older read of the Planner cannot bring its meals back.
   function handleDeleteRecipe(recipe) {
     const id = recipe.id;
-    const at = recipes.findIndex((r) => r.id === id);
-    deletingIds.current.add(id);
     setOpenCard(null);
-    setRecipes((prev) => prev.filter((r) => r.id !== id));
-    setPlannerEntries((prev) => prev.filter((e) => e.recipeId !== id));
-    setUpcomingEntries((prev) => prev.filter((e) => e.recipeId !== id));
+    hideRecipe(id);
     function putBack() {
-      deletingIds.current.delete(id);
-      setRecipes((prev) => (prev.some((r) => r.id === id) ? prev : [...prev.slice(0, Math.max(0, at)), recipe, ...prev.slice(Math.max(0, at))]));
-      api.listPlanner(latestWeekStart.current).then(setPlannerEntries).catch(() => {});
-      setUpcomingTick((n) => n + 1);
+      showRecipe(id);
     }
     showToast(t("recipeCard.deleted", { title: recipe.title }), putBack, {
       onGone: () =>
-        api
-          .deleteRecipe(id, { keepalive: true })
-          .then(() => deletingIds.current.delete(id))
-          .catch(() => {
-            putBack();
-            showToast(t("recipeCard.deleteFailed", { title: recipe.title }));
-          }),
+        api.deleteRecipe(id, { keepalive: true }).catch(() => {
+          putBack();
+          showToast(t("recipeCard.deleteFailed", { title: recipe.title }));
+        }),
     });
   }
-  const latestWeekStart = useRef(weekStart);
-  latestWeekStart.current = weekStart;
 
   async function handleLogout() {
     // A recipe deleted a moment ago (its toast still showing) is deleted for good first.
@@ -594,6 +585,7 @@ export default function App({ user, onLogout }) {
     await api.logout();
     if (isAdminPath(window.location.pathname)) window.history.replaceState(null, "", "/");
     clearDeals();
+    clearRecipes();
     clearGroceryShared();
     onLogout();
   }
@@ -676,11 +668,10 @@ export default function App({ user, onLogout }) {
     setPickerFor({ leftover: item, recipe: { id: item.recipeId, title: leftoverTitle(item), photoUrl: recipe?.photoUrl || null } });
   }
 
-  // Keeps the recipes list AND the currently-open modal in sync after an
-  // in-modal edit (currently just tags) — otherwise the tag filter bar
-  // wouldn't see new tags until a full page reload.
+  // After an in-card save (notes, Cookbook / Imported): the recipe store takes it, so every
+  // page shows it.
   function handleRecipeUpdated(updated) {
-    setRecipes((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+    saveRecipe(updated);
   }
 
   async function handleAddPantryItem(item) {
@@ -911,7 +902,7 @@ export default function App({ user, onLogout }) {
     const existing = weekEntries.filter((e) => e.dayOfWeek === slot.dayOfWeek && e.mealType === slot.mealType);
     await Promise.all(existing.map((e) => api.removeFromPlanner(e.id)));
     const entry = await api.placeOnPlanner({ recipeId, weekStart: week, ...slot });
-    if (inView) setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), entry]);
+    if (inView) setPlannerRows((prev) => [...without(prev, existing), entry]);
     else setUpcomingTick((n) => n + 1);
     return { entry, replaced: existing[0] || null };
   }
@@ -934,8 +925,8 @@ export default function App({ user, onLogout }) {
       api.updatePlannerEntry(entryId, slot),
       ...displaced.map((e) => api.updatePlannerEntry(e.id, from)),
     ]);
-    setPlannerEntries((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, ...slot } : displaced.includes(e) ? { ...e, ...from } : e))
+    setPlannerRows((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, ...slot } : displaced.some((d) => d.id === e.id) ? { ...e, ...from } : e))
     );
   }
 
@@ -997,13 +988,13 @@ export default function App({ user, onLogout }) {
         alreadyHave: snap.alreadyHave,
       });
     }
-    if (entry.weekStart === weekStart) setPlannerEntries((prev) => [...prev.filter((e) => e.id !== entry.id), entry]);
+    if (entry.weekStart === weekStart) setPlannerRows((prev) => [...prev.filter((e) => e.id !== entry.id), entry]);
     else setUpcomingTick((n) => n + 1);
     return entry;
   }
 
   async function dropEntry(id) {
-    setPlannerEntries((prev) => prev.filter((e) => e.id !== id));
+    setPlannerRows((prev) => prev.filter((e) => e.id !== id));
     await api.removeFromPlanner(id);
     setUpcomingTick((n) => n + 1);
   }
@@ -1044,7 +1035,7 @@ export default function App({ user, onLogout }) {
     const existing = entriesInSlot(slot);
     await Promise.all(existing.map((e) => api.removeFromPlanner(e.id)));
     const saved = await api.markSlotBlank(weekStart, slot.dayOfWeek, slot.mealType);
-    setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), saved]);
+    setPlannerRows((prev) => [...without(prev, existing), saved]);
     announcePlacement({ entry: saved, replaced: existing[0] || null }, slot);
   }
 
@@ -1060,7 +1051,7 @@ export default function App({ user, onLogout }) {
     let saved;
     if (existingNote) saved = await api.setPlannerEntryNote(existingNote.id, note);
     else saved = await api.markSlotBlank(weekStart, slot.dayOfWeek, slot.mealType, note);
-    setPlannerEntries((prev) => [...prev.filter((e) => !others.includes(e) && e !== existingNote), saved]);
+    setPlannerRows((prev) => [...without(prev, others).filter((e) => e.id !== existingNote?.id), saved]);
     announcePlacement({ entry: saved, replaced: existingNote ? null : others[0] || null }, slot);
   }
 
@@ -1080,7 +1071,7 @@ export default function App({ user, onLogout }) {
       const note = await api.markSlotBlank(week, slot.dayOfWeek, slot.mealType, t("planner.leftoverNote", { name: item.name }));
       entry = { ...note, ...(await api.updatePlannerEntry(note.id, { isLeftover: true, leftoverItemId: item.id })), recipe: note.recipe };
     }
-    if (inView) setPlannerEntries((prev) => [...prev.filter((e) => !existing.includes(e)), entry]);
+    if (inView) setPlannerRows((prev) => [...without(prev, existing), entry]);
     else setUpcomingTick((n) => n + 1);
     setPlannerTarget(null);
     const recipe = recipes.find((r) => r.id === item.recipeId);
@@ -1095,7 +1086,7 @@ export default function App({ user, onLogout }) {
   async function handlePlaceLeftover(recipe, slot) {
     if (entriesInSlot(slot).length > 0) return;
     const entry = await api.placeOnPlanner({ recipeId: recipe.id, weekStart, ...slot, isLeftover: true });
-    setPlannerEntries((prev) => [...prev, entry]);
+    setPlannerRows((prev) => [...prev, entry]);
     showToast(t("planner.leftoversAdded", { title: recipe.title, slot: slotLabel(slot) }), () => dropEntry(entry.id));
   }
 
@@ -1134,7 +1125,7 @@ export default function App({ user, onLogout }) {
   }
 
   async function handleRemoveFromPlanner(entryId) {
-    setPlannerEntries((prev) => prev.filter((e) => e.id !== entryId));
+    setPlannerRows((prev) => prev.filter((e) => e.id !== entryId));
     await api.removeFromPlanner(entryId);
   }
 
@@ -1157,13 +1148,13 @@ export default function App({ user, onLogout }) {
     // status; if the save fails, the card goes back to the status it had (unless
     // a later tap has already moved it on) and the shared toast says so.
     const apply = async (flags, before) => {
-      setPlannerEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...flags } : e)));
+      setPlannerRows((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...flags } : e)));
       try {
         await api.updatePlannerEntry(entryId, flags);
         return true;
       } catch {
         const stillThere = (e) => !!e.isLeftover === flags.isLeftover && !!e.alreadyHave === flags.alreadyHave;
-        setPlannerEntries((prev) => prev.map((e) => (e.id === entryId && stillThere(e) ? { ...e, ...before } : e)));
+        setPlannerRows((prev) => prev.map((e) => (e.id === entryId && stillThere(e) ? { ...e, ...before } : e)));
         showToast(t("planner.toastStatusFailed", { title: entry.recipe?.title }));
         return false;
       }
@@ -1186,8 +1177,8 @@ export default function App({ user, onLogout }) {
   // list (buildGroceryList skips cooked meals) and its card says so.
   async function setMealCooked(entry, cookedAt) {
     const apply = (e) => (e.id === entry.id ? { ...e, cookedAt } : e);
-    setPlannerEntries((prev) => prev.map(apply));
-    setUpcomingEntries((prev) => prev.map(apply));
+    setPlannerRows((prev) => prev.map(apply));
+    setUpcomingRows((prev) => prev.map(apply));
     await api.updatePlannerEntry(entry.id, { cookedAt });
   }
 
@@ -1195,8 +1186,8 @@ export default function App({ user, onLogout }) {
   // finished view adds (`leftoverItemId`), or from none again on Undo (null).
   async function linkLeftoverMeals(ids, leftoverItemId) {
     const apply = (e) => (ids.includes(e.id) ? { ...e, leftoverItemId } : e);
-    setPlannerEntries((prev) => prev.map(apply));
-    setUpcomingEntries((prev) => prev.map(apply));
+    setPlannerRows((prev) => prev.map(apply));
+    setUpcomingRows((prev) => prev.map(apply));
     await Promise.all(ids.map((id) => api.updatePlannerEntry(id, { leftoverItemId })));
   }
 
@@ -1235,14 +1226,14 @@ export default function App({ user, onLogout }) {
   // week calendar's button gets the count.
   async function handleCopyLastWeek() {
     const { entries, createdIds } = await api.copyPlannerWeek(shiftWeek(weekStart, -1), weekStart);
-    setPlannerEntries(entries);
+    setPlannerRows(entries);
     if (createdIds.length === 0) {
       showToast(t("planner.toastCopiedNone"));
       return 0;
     }
     showToast(t("planner.toastCopied", { count: createdIds.length }), async () => {
       await Promise.all(createdIds.map((id) => api.removeFromPlanner(id)));
-      setPlannerEntries((prev) => prev.filter((e) => !createdIds.includes(e.id)));
+      setPlannerRows((prev) => prev.filter((e) => !createdIds.includes(e.id)));
     });
     return createdIds.length;
   }
