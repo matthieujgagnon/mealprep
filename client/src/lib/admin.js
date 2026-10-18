@@ -1,12 +1,51 @@
 // Plain logic for the Admin page (components/Admin.jsx).
 
-// The Admin page is the one page with its own address. A trailing slash is
-// the same page.
+// The Admin pages are the only pages with their own address: Admin, and the
+// Feedback inbox under it. A trailing slash is the same page.
 export const ADMIN_PATH = "/admin";
+export const FEEDBACK_ADMIN_PATH = "/admin/feedback";
+
+const trimmed = (pathname) => String(pathname || "").replace(/\/+$/, "");
 
 export function isAdminPath(pathname) {
-  return String(pathname || "").replace(/\/+$/, "") === ADMIN_PATH;
+  return trimmed(pathname) === ADMIN_PATH;
 }
+
+export function isFeedbackAdminPath(pathname) {
+  return trimmed(pathname) === FEEDBACK_ADMIN_PATH;
+}
+
+// The tab an address opens: "admin", "feedback-inbox" or null for any other.
+export function adminTabFor(pathname) {
+  if (isAdminPath(pathname)) return "admin";
+  if (isFeedbackAdminPath(pathname)) return "feedbackInbox";
+  return null;
+}
+
+// The address a tab lives at: "/admin", "/admin/feedback" or "/" for the rest.
+export function pathForTab(tab) {
+  if (tab === "admin") return ADMIN_PATH;
+  if (tab === "feedbackInbox") return FEEDBACK_ADMIN_PATH;
+  return "/";
+}
+
+// The Feedback inbox: the pill tone of each kind, and the dictionary key a stored
+// page name ("planner") is written under ("app.nav.planner"); null for a page the
+// app doesn't know, which the inbox shows as it was stored.
+export const KIND_TONES = { wrong: "pink", idea: "yellow", other: "canvas" };
+const PAGE_KEYS = {
+  home: "app.nav.home",
+  collection: "app.nav.recipes",
+  planner: "app.nav.planner",
+  makeable: "app.nav.makeable",
+  grocery: "app.nav.grocery",
+  flyers: "app.nav.flyers",
+  inventory: "app.nav.inventory",
+  help: "app.help",
+  admin: "same.admin",
+  feedbackInbox: "admin.feedback.title",
+};
+export const pageKey = (page) => PAGE_KEYS[page] || null;
 
 // How a Members date reads: "today", "yesterday", "date" (then shown as a
 // date) or "never" (no date). Days are the viewer's own calendar days.

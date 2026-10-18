@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { memberRows } from "../lib/admin.js";
 import { makeAdminResetLink } from "../lib/resetLink.js";
 import { fail } from "../lib/i18n.js";
+import { FEEDBACK_LIST_LIMIT, feedbackRow } from "../lib/feedback.js";
 import { cleanInviteInput, expiryDate, generateCode, inviteRow } from "../lib/invites.js";
 import {
   DEFAULT_AI_DAILY_LIMIT,
@@ -115,4 +116,34 @@ adminRouter.put("/ai-limit", async (req, res) => {
   if (limit === null) return res.status(400).json(fail(req, "aiLimitBad"));
   await setAiLimit(limit);
   res.json({ limit });
+});
+
+// GET /api/admin/feedback - what testers sent, newest first (the latest
+// FEEDBACK_LIST_LIMIT), with who sent it and the details the app attached, and
+// how many of all of it are not done yet (lib/feedback.js).
+adminRouter.get("/feedback", async (req, res) => {
+  const [rows, total, notDone] = await Promise.all([
+    prisma.feedback.findMany({
+      orderBy: { createdAt: "desc" },
+      take: FEEDBACK_LIST_LIMIT,
+      include: { user: { select: { email: true } } },
+    }),
+    prisma.feedback.count(),
+    prisma.feedback.count({ where: { doneAt: null } }),
+  ]);
+  res.json({ items: rows.map(feedbackRow), total, notDone });
+});
+
+// PATCH /api/admin/feedback/:id { done } - Matt's Done tick (and un-tick). It is
+// the only thing about a feedback that can change.
+adminRouter.patch("/feedback/:id", async (req, res) => {
+  if (typeof req.body?.done !== "boolean") return res.status(400).json(fail(req, "required", { fields: "done" }));
+  const found = await prisma.feedback.findUnique({ where: { id: req.params.id } });
+  if (!found) return res.status(404).json(fail(req, "notFound.feedback"));
+  const row = await prisma.feedback.update({
+    where: { id: found.id },
+    data: { doneAt: req.body.done ? found.doneAt ?? new Date() : null },
+    include: { user: { select: { email: true } } },
+  });
+  res.json(feedbackRow(row));
 });

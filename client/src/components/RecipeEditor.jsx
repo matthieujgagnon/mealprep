@@ -36,6 +36,8 @@ import {
   stepsToInstructions,
 } from "../lib/recipeForm.js";
 import { t } from "../i18n/index.js";
+import { ReportProblemLink } from "./Feedback.jsx";
+import { ERROR_LABELS } from "../lib/feedback.js";
 
 // A textarea that grows to fit what's typed, so long notes and steps show
 // in full instead of scrolling inside a small box.
@@ -1089,7 +1091,7 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
         <div className="re-savebar-inner">
           {error ? (
             <span className="re-error" role="alert">
-              {error}
+              {error} <ReportProblemLink errorName={ERROR_LABELS.recipeForm} />
             </span>
           ) : dirty ? (
             <span className="re-unsaved">

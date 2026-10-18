@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
-import { BottomSheet } from "./RisoControls.jsx";
+import { Popup } from "./RisoControls.jsx";
+import { ReportProblemLink } from "./Feedback.jsx";
+import { ERROR_LABELS } from "../lib/feedback.js";
 import { ItemPhoto, photoFor } from "./ItemPhoto.jsx";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { categoryLabel } from "../lib/pantryInventory.js";
@@ -276,14 +278,6 @@ export function InventoryItemForm({
     if (edit || stapleTouched.current || !isStapleFor) return;
     setStaple(isStapleFor(name));
   }, [name, edit, isStapleFor]);
-
-  // Escape closes the desktop modal (the phone sheet does its own).
-  useEffect(() => {
-    if (isPhone) return undefined;
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [isPhone, onClose]);
 
   function chooseLocation(id) {
     setLoc(id);
@@ -820,7 +814,11 @@ export function InventoryItemForm({
         </div>
       </div>
 
-      {error && <div className="riso-itemform-error" role="alert">{error}</div>}
+      {error && (
+        <div className="riso-itemform-error" role="alert">
+          {error} <ReportProblemLink errorName={ERROR_LABELS.itemForm} />
+        </div>
+      )}
 
       <div className="riso-itemform-footer">
         {edit ? (
@@ -859,21 +857,9 @@ export function InventoryItemForm({
   );
 
   const label = edit ? t("inventory.editName", { name: item.name }) : t("inventory.addItemTitle");
-  if (isPhone) {
-    return (
-      <BottomSheet label={label} onClose={onClose}>
-        {body}
-      </BottomSheet>
-    );
-  }
   return (
-    <div className="riso-itemform-overlay" onClick={onClose}>
-      <div className="riso-itemform-modal" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="riso-itemform-close" aria-label={t("common.close")} onClick={onClose}>
-          ×
-        </button>
-        {body}
-      </div>
-    </div>
+    <Popup label={label} onClose={onClose} isPhone={isPhone}>
+      {body}
+    </Popup>
   );
 }

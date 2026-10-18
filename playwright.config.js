@@ -22,9 +22,12 @@ export default defineConfig({
       FLYER_AUTO_IMPORT: "off",
       FLIPP_BASE_URL: "http://127.0.0.1:9/flipp",
       STATCAN_WDS_URL: "http://127.0.0.1:9/wds",
-      // The admins e2e/admin.spec.js, e2e/invites.spec.js and
-      // e2e/admin-reset-link.spec.js log in as (and one with no account).
-      ADMIN_EMAILS: "e2e-admin@example.com, e2e-unclaimed@example.com, e2e-invites-admin@example.com, e2e-reset-admin@example.com",
+      // The admins e2e/admin.spec.js, e2e/invites.spec.js,
+      // e2e/admin-reset-link.spec.js and e2e/feedback.spec.js log in as (and one with no account).
+      ADMIN_EMAILS:
+        "e2e-admin@example.com, e2e-unclaimed@example.com, e2e-invites-admin@example.com, e2e-reset-admin@example.com, e2e-feedback-admin@example.com, e2e-feedback-admin-menu@example.com, e2e-feedback-admin-fr@example.com",
+      // No email goes to Matt about feedback in the tests (FEEDBACK_EMAIL_TO unset).
+      FEEDBACK_EMAIL_TO: "",
       // Email is never set up in the tests (nothing is ever sent), whatever the
       // machine running them has set: "Forgot password" says it can't send.
       RESEND_API_KEY: "",

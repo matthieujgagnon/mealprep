@@ -18,6 +18,7 @@ New to the code? [docs/how-it-works.md](docs/how-it-works.md) maps the stack, fo
    RESEND_API_KEY="...your Resend API key..."
    EMAIL_FROM="Matt Mo Cookbook <noreply@your-verified-domain>"
    APP_URL="http://localhost:5173"
+   FEEDBACK_EMAIL_TO="...the address that should get an email for each feedback..."
    ```
    `GEMINI_API_KEY` is only needed for flyer-deal extraction (uploading a flyer PDF/photo on the
    Flyers tab) and receipt import (the Inventory tab) — everything else works without it. `RESEND_API_KEY` (from
@@ -80,6 +81,10 @@ running app on Render — all free tiers.
     nobody else can claim it, and the server's log warns about a listed email with no account.
     Only this variable makes someone an admin; take an email out and that account loses Admin
     after the restart that follows the change.
+  - `FEEDBACK_EMAIL_TO` → optional. The one address that gets a short email each time someone
+    sends feedback from the app. Leave it out and no email is sent: everything still shows in
+    **Admin menu → Feedback inbox**. It also needs `RESEND_API_KEY` and `EMAIL_FROM`; see
+    [Feedback](#feedback) for what to set while Resend is still in testing mode.
 - **Inviting people:** signup needs an invite code. Open **Admin → Invite codes** in the app to
   make one (with a note like "for Emilie", how many times it can be used and when it expires),
   send it to the person, and switch it off when you're done. **AI usage** on the same page sets
@@ -137,6 +142,35 @@ What it prints: one line saying the command was used (the time and the email, ne
 the link. For an email with no account it prints only `No such account.` That line shows in the
 Shell window, or on your computer's screen: Render's **Logs** tab doesn't show what is run in a
 Shell. A link made in Admin → Members is written to the Logs.
+
+### Feedback
+Friends tell you what's wrong, or what they'd like, from the round account button at the top
+right → **Send feedback**. The last card of **Help** has the same button, and some error messages
+have a **Report a problem** link. If the app itself breaks, its "Something went wrong" page has
+one too. The app adds the page, the language, phone or computer and screen size, the browser, the
+app version and the time; no screenshots and nothing from anyone's recipes or Inventory. Each
+person can send 5 in 10 minutes and 30 a day.
+
+**You read it all in the avatar menu → Feedback inbox** (admins only; the page is
+`/admin/feedback`): newest first, who sent it, those details, and a **Done** button for each.
+Nothing to set up for this.
+
+**To also get an email for each one** (optional), add these three settings under your Render
+service's **Environment**, then let it redeploy:
+- `RESEND_API_KEY`: your key from [resend.com](https://resend.com) (see the local setup above).
+- `EMAIL_FROM`: the address the email comes from. While Resend is in testing mode (no domain
+  verified yet) Resend only sends from its own test sender address (the one named in Resend's
+  docs and in the comment at the top of `server/src/lib/mailer.js`).
+- `FEEDBACK_EMAIL_TO`: where it goes. While Resend is in testing mode this must be the email
+  address of your Resend account, because Resend refuses every other address.
+
+Setting `EMAIL_FROM` also switches on the "Forgot password" emails, and in testing mode Resend
+refuses all but your own address. The Forgot password page still says "We can't send emails yet.
+Ask Matt for a reset link." after the first refusal (for 10 minutes), so friends keep asking you
+for a reset link as before; the feedback email never changes that. Once you verify a domain at
+[resend.com/domains](https://resend.com/domains), put an address on it in `EMAIL_FROM`, and
+`FEEDBACK_EMAIL_TO` can be any address. If the email can't be sent, the feedback is still saved
+and in the inbox.
 
 ### Weekly database backup
 A GitHub Action (`.github/workflows/db-backup.yml`) copies the Neon database every Sunday at

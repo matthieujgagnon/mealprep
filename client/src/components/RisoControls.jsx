@@ -171,6 +171,41 @@ export function BottomSheet({ onClose, label, children }) {
   );
 }
 
+// The one pop-up for a form: the bottom sheet on a phone, a centred panel with a
+// round x on a computer (the Inventory item form and the Feedback form). Escape,
+// the x and a tap on the dimmed page close it; `narrow` is the smaller panel.
+//
+//   label    what a screen reader calls it
+//   isPhone  the caller's phone test (useIsPhone), so the form and the shell agree
+//   onClose
+export function Popup({ label, onClose, isPhone, narrow = false, children }) {
+  // The phone sheet closes on Escape by itself.
+  useEffect(() => {
+    if (isPhone) return undefined;
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isPhone, onClose]);
+
+  if (isPhone) {
+    return (
+      <BottomSheet label={label} onClose={onClose}>
+        {children}
+      </BottomSheet>
+    );
+  }
+  return (
+    <div className="riso-theme riso-popup-overlay" onClick={onClose}>
+      <div className={`riso-popup${narrow ? " narrow" : ""}`} role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="riso-popup-close" aria-label={t("common.close")} onClick={onClose}>
+          ×
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // FR | EN, each written in its own language. Signed in, the choice is
 // saved to the account so it follows you to other devices (and the app's
 // emails come in it too).

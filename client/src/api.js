@@ -75,6 +75,12 @@ export const api = {
   // The daily limit on flyer and receipt reading, and each account's use today.
   adminAiUsage: () => request("/admin/ai-usage"),
   adminSetAiLimit: (limit) => request("/admin/ai-limit", { method: "PUT", body: JSON.stringify({ limit }) }),
+  // A signed-in tester's feedback: { message, kind, page, locale, device, screen, appVersion, errorName? }.
+  sendFeedback: (payload) => request("/feedback", { method: "POST", body: JSON.stringify(payload) }),
+  // Admin only: what testers sent, newest first ({ items, total, notDone }), and Matt's Done tick.
+  adminFeedback: () => request("/admin/feedback"),
+  adminSetFeedbackDone: (id, done) =>
+    request(`/admin/feedback/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ done }) }),
   forgotPassword: (email) =>
     request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resetPassword: (token, password) =>

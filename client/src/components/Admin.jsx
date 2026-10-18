@@ -27,18 +27,19 @@ import { Segmented } from "./RisoControls.jsx";
 
 const HQ_URL = "https://claude.ai/artifact/S6zZyugUt88RSg4SXM8V2Y";
 
-function Heading() {
+// The heading of every admin page (Admin, and the Feedback inbox with its own words).
+export function Heading({ start = t("admin.titleStart"), accent = t("admin.titleAccent") }) {
   return (
     <div className="riso-recipes-heading">
       <div className="riso-eyebrow">{t("admin.eyebrow")}</div>
       <h1 className="riso-recipes-title riso-admin-title">
-        {t("admin.titleStart")} <span className="accent">{t("admin.titleAccent")}</span>
+        {start} <span className="accent">{accent}</span>
       </h1>
     </div>
   );
 }
 
-function NotAllowed({ onHome }) {
+export function NotAllowed({ onHome }) {
   return (
     <div className="riso-theme riso-admin" data-theme="light">
       <Heading />
@@ -53,7 +54,7 @@ function NotAllowed({ onHome }) {
   );
 }
 
-function dayText(date) {
+export function dayText(date) {
   const kind = dayKind(date);
   if (kind === "never") return t("admin.members.never");
   if (kind === "today") return t("admin.members.today");

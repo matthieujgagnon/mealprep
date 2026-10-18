@@ -8,6 +8,8 @@ import { leftoverItem, leftoverKeepDays, linkableCopies, FRIDGE_DAYS } from "../
 import { toDateKey } from "../lib/dates.js";
 import { currentMealType } from "../lib/homeWeek.js";
 import { DoneModal, LeftoversCard, TakeOutCard } from "./CookedViewParts.jsx";
+import { ReportProblemLink } from "./Feedback.jsx";
+import { ERROR_LABELS } from "../lib/feedback.js";
 import { ThemeSwitch } from "./ThemeSwitch.jsx";
 import { t } from "../i18n/index.js";
 
@@ -127,7 +129,7 @@ export function CookedView({ recipe, servings, variant, mealType, userId, rows, 
         </div>
         {error && (
           <p className="ck-error" role="alert">
-            {t("cooked.failed")}
+            {t("cooked.failed")} <ReportProblemLink errorName={ERROR_LABELS.cooked} />
           </p>
         )}
         <div className="ck-grid">
