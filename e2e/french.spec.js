@@ -248,6 +248,88 @@ for (const [where, size] of [
   });
 }
 
+// The Feedback form (the avatar menu's « Envoyer un commentaire »), the « Signaler un problème » link
+// beside the load error, Help's last card and the crash page: all French, and no label, button or
+// line runs out of its box (« Quelque chose ne marche pas » is the longest label).
+async function cutOff(page, selector, { tall = true } = {}) {
+  return page.evaluate(
+    ([sel, checkHeight]) =>
+      [...document.querySelectorAll(sel)]
+        .filter(
+          (e) =>
+            e.offsetParent &&
+            (e.scrollWidth > e.clientWidth + 1 || (checkHeight && e.scrollHeight > e.clientHeight + 1) || e.getBoundingClientRect().right > window.innerWidth + 1)
+        )
+        .map((e) => e.textContent.trim().slice(0, 40)),
+    [selector, tall]
+  );
+}
+
+for (const [where, size] of [
+  ["computer", { width: 1280, height: 900 }],
+  ["phone", { width: 390, height: 844 }],
+]) {
+  test(`the Feedback form, its link beside an error and Help's last card read French and fit, on a ${where}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    // The Planner can't be read when the app opens, so the red bar shows.
+    await page.route((url) => url.pathname === "/api/planner", (route) => route.fulfill({ status: 500, json: { error: "x" } }));
+    await signUpInFrench(page);
+
+    const banner = page.locator(".load-error-banner");
+    await expect(banner).toContainText("Impossible de tout charger");
+    await expect(banner.getByRole("button", { name: "Réessayer" })).toBeVisible();
+    expect(await cutOff(page, ".load-error-banner, .load-error-banner button")).toEqual([]);
+    await banner.getByRole("button", { name: "Signaler un problème" }).click();
+
+    const form = page.getByRole("dialog", { name: "Envoyer un commentaire" });
+    await expect(form.getByRole("button", { name: "Quelque chose ne marche pas" })).toHaveAttribute("aria-pressed", "true");
+    await expect(form.getByRole("button", { name: "Une idée" })).toBeVisible();
+    await expect(form.getByRole("button", { name: "Autre" })).toBeVisible();
+    await expect(form.getByRole("button", { name: "Annuler" })).toBeVisible();
+    await expect(form.getByRole("button", { name: "Envoyer", exact: true })).toBeDisabled();
+    await form.getByLabel("Votre message").fill("x".repeat(1850));
+    await expect(form.getByText("1850 / 2000")).toBeVisible();
+    await expectAllFrench(page, `commentaire-${where}`);
+    expect(await cutOff(page, ".riso-feedback label, .riso-feedback legend, .riso-feedback button, .riso-feedback p")).toEqual([]);
+    expect(await cutOff(page, ".riso-feedback h2", { tall: false })).toEqual([]); // tight line spacing: width only
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);
+    await form.getByRole("button", { name: "Annuler" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+    await expect(form).toBeHidden();
+
+    // The avatar menu names it, and Help's last card has the same button.
+    await page.locator(".app-header").getByRole("button", { name: "Compte" }).click();
+    await expect(page.getByRole("button", { name: "Envoyer un commentaire", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Aide", exact: true }).click();
+    const card = page.locator("#help-feedback");
+    await expect(card.getByRole("heading", { name: "Un problème, ou une idée?" })).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
+    await expectAllFrench(page, `aide-commentaire-${where}`);
+    expect(await cutOff(page, "#help-feedback p, #help-feedback button")).toEqual([]);
+    expect(await cutOff(page, "#help-feedback h2", { tall: false })).toEqual([]);
+    await expect(page.locator("#help-account")).toContainText("Un problème, ou une idée?");
+  });
+}
+
+test("the crash page reads French and fits on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route((url) => url.pathname === "/api/planner/upcoming", (route) => route.fulfill({ status: 200, json: { oups: "pas une liste" } }));
+  await page.goto("/");
+  await page.getByRole("button", { name: "S'inscrire" }).click();
+  await page.fill('input[type="email"]', `crash+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
+  await page.fill('input[type="password"]', "testpass123");
+  await page.fill('input[name="invite"]', E2E_INVITE);
+  await page.getByRole("button", { name: "Créer un compte" }).click();
+
+  const crash = page.locator(".riso-crash");
+  await expect(crash.getByRole("heading", { name: "Quelque chose s'est mal passé." })).toBeVisible();
+  await expect(crash.getByRole("button", { name: "Recharger" })).toBeVisible();
+  await expect(crash.getByRole("button", { name: "Signaler un problème" })).toBeVisible();
+  await expectAllFrench(page, "page-erreur");
+  expect(await cutOff(page, ".riso-crash p, .riso-crash button")).toEqual([]);
+  expect(await cutOff(page, ".riso-crash h1", { tall: false })).toEqual([]); // tight line spacing: width only
+});
+
 // The app name in the header is the link Home, named « Accueil » in French.
 test("the app name is the link « Accueil »", async ({ page }) => {
   await signUpInFrench(page);

@@ -25,7 +25,10 @@ import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore, newGroceryItemCount, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { Help } from "./components/Help.jsx";
 import { Admin } from "./components/Admin.jsx";
-import { ADMIN_PATH, isAdminPath } from "./lib/admin.js";
+import { FeedbackInbox } from "./components/FeedbackInbox.jsx";
+import { FeedbackContext, FeedbackForm, ReportProblemLink } from "./components/Feedback.jsx";
+import { adminTabFor, pathForTab } from "./lib/admin.js";
+import { ERROR_LABELS, setCurrentPage } from "./lib/feedback.js";
 import { Home } from "./components/Home.jsx";
 import { RecipeEditor } from "./components/RecipeEditor.jsx";
 import { Recipes } from "./components/Recipes.jsx";
@@ -178,10 +181,11 @@ function pageLabel(tab) {
 }
 
 export default function App({ user, onLogout }) {
-  // "home" | "collection" | "planner" | ... | "help" and "admin" (not in the
-  // nav: opened from the account area). Admin is the one page with its own
-  // address (/admin), so opening that address opens it.
-  const [tab, setTab] = useState(() => (isAdminPath(window.location.pathname) ? "admin" : "home"));
+  // "home" | "collection" | "planner" | ... | "help", "admin" and "feedbackInbox"
+  // (not in the nav: opened from the account area). The two admin pages are the
+  // only ones with their own address (/admin, /admin/feedback), so opening that
+  // address opens the page.
+  const [tab, setTab] = useState(() => adminTabFor(window.location.pathname) ?? "home");
   const isPhone = useIsPhone();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef(null);
@@ -206,17 +210,21 @@ export default function App({ user, onLogout }) {
       document.removeEventListener("keydown", onKey);
     };
   }, [avatarMenuOpen]);
-  // The address follows the Admin page: /admin while it is open, / otherwise.
-  // Back and Forward move between the two.
+  // The address follows the admin pages: /admin or /admin/feedback while one is
+  // open, / otherwise. Back and Forward move between them.
+  const isAdminTab = (name) => name === "admin" || name === "feedbackInbox";
   useEffect(() => {
-    if (isAdminPath(window.location.pathname) !== (tab === "admin")) {
-      window.history.pushState(null, "", tab === "admin" ? ADMIN_PATH : "/");
+    if (adminTabFor(window.location.pathname) !== (isAdminTab(tab) ? tab : null)) {
+      window.history.pushState(null, "", pathForTab(tab));
     }
   }, [tab]);
+  // The crash screen (which draws when this component has stopped) reports this page.
+  useEffect(() => setCurrentPage(tab), [tab]);
   useEffect(() => {
     const onPop = () => {
-      if (isAdminPath(window.location.pathname)) setTab("admin");
-      else setTab((current) => (current === "admin" ? "home" : current));
+      const adminTab = adminTabFor(window.location.pathname);
+      if (adminTab) setTab(adminTab);
+      else setTab((current) => (isAdminTab(current) ? "home" : current));
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -579,11 +587,20 @@ export default function App({ user, onLogout }) {
     });
   }
 
+  // The Feedback form: `feedback` is null while it is closed, else what opened it
+  // ({ kind?, errorName? }, see components/Feedback.jsx). Anything that wants to offer
+  // it reaches this through FeedbackContext.
+  const [feedback, setFeedback] = useState(null);
+  const openFeedback = (preset = {}) => {
+    setAvatarMenuOpen(false);
+    setFeedback(preset);
+  };
+
   async function handleLogout() {
     // A recipe deleted a moment ago (its toast still showing) is deleted for good first.
     await settleToast(toastRef.current);
     await api.logout();
-    if (isAdminPath(window.location.pathname)) window.history.replaceState(null, "", "/");
+    if (adminTabFor(window.location.pathname)) window.history.replaceState(null, "", "/");
     clearDeals();
     clearRecipes();
     clearGroceryShared();
@@ -592,12 +609,17 @@ export default function App({ user, onLogout }) {
 
   // What the account area offers besides the language switch and the name.
   // Shown in the avatar menu. A new entry shows up there by being added here.
-  // Admin is only offered to an admin (`user.isAdmin`, from the server); the
-  // server still checks every /api/admin call itself.
+  // Send feedback opens the Feedback form over the page you are on (it is not a page).
+  // Admin and the Feedback inbox are only offered to an admin (`user.isAdmin`, from
+  // the server); the server still checks every /api/admin call itself.
   const accountActions = [
     { id: "help", label: t("app.help"), current: tab === "help", onSelect: () => goToTab("help") },
+    { id: "feedback", label: t("feedback.menu"), onSelect: () => openFeedback() },
     ...(user.isAdmin
-      ? [{ id: "admin", label: t("same.admin"), current: tab === "admin", onSelect: () => goToTab("admin") }]
+      ? [
+          { id: "admin", label: t("same.admin"), current: tab === "admin", onSelect: () => goToTab("admin") },
+          { id: "feedbackInbox", label: t("admin.feedback.menu"), current: tab === "feedbackInbox", onSelect: () => goToTab("feedbackInbox") },
+        ]
       : []),
     { id: "logout", label: t("app.logOut"), onSelect: handleLogout },
   ];
@@ -1240,7 +1262,7 @@ export default function App({ user, onLogout }) {
 
   const plannableRecipes = recipes.filter((r) => !r.isPlaceholder);
 
-  return (
+  const app = (
     <DndContext
       sensors={sensors}
       collisionDetection={collisionDetection}
@@ -1385,11 +1407,13 @@ export default function App({ user, onLogout }) {
             <button type="button" className="btn subtle btn-sm" onClick={loadInitialData}>
               {t("app.tryAgain")}
             </button>
+            <ReportProblemLink errorName={ERROR_LABELS.load} className="btn subtle btn-sm" />
           </div>
         )}
 
         {tab === "help" && <Help />}
         {tab === "admin" && <Admin user={user} onHome={() => goToTab("home")} />}
+        {tab === "feedbackInbox" && <FeedbackInbox user={user} onHome={() => goToTab("home")} />}
 
         {inventoryAsk && (
           <InventoryConfirmSheet
@@ -1690,6 +1714,17 @@ export default function App({ user, onLogout }) {
             <StoreConfetti key={burst} burst />
           </div>
         )}
+        {feedback && (
+          <FeedbackForm
+            preset={feedback}
+            page={tab}
+            onClose={() => setFeedback(null)}
+            onSent={() => {
+              setFeedback(null);
+              showToast(t("feedback.thanks"));
+            }}
+          />
+        )}
         <Toast toast={toast} onClose={() => closeToast(toast)} />
       </div>
       {/* A shelf carried by its grip is the shelf itself moving, with no copy: with the
@@ -1701,4 +1736,8 @@ export default function App({ user, onLogout }) {
       )}
     </DndContext>
   );
+
+  // Anything under here that offers the Feedback form (Help, an error message) opens it
+  // through the context.
+  return <FeedbackContext.Provider value={openFeedback}>{app}</FeedbackContext.Provider>;
 }

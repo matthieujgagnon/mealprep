@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { canSwitch, dayKind, INVITE_DAYS, INVITE_TONES, INVITE_USES, isAdminPath, limitReached, parseAiLimit, usableCount } from "./admin.js";
+import { t } from "../i18n/index.js";
+import {
+  KIND_TONES,
+  adminTabFor,
+  canSwitch,
+  dayKind,
+  INVITE_DAYS,
+  INVITE_TONES,
+  INVITE_USES,
+  isAdminPath,
+  isFeedbackAdminPath,
+  limitReached,
+  pageKey,
+  pathForTab,
+  parseAiLimit,
+  usableCount,
+} from "./admin.js";
 
 describe("isAdminPath", () => {
   it("is /admin, with or without a trailing slash", () => {
@@ -73,5 +89,45 @@ describe("invite codes in the list", () => {
     const invites = [{ state: "active" }, { state: "used" }, { state: "off" }, { state: "active" }, { state: "expired" }];
     expect(usableCount(invites)).toBe(2);
     expect(invites.map(canSwitch)).toEqual([true, false, true, true, false]);
+  });
+});
+
+describe("the Feedback inbox's address", () => {
+  it("is /admin/feedback, with or without a trailing slash, and not the Admin page", () => {
+    expect(isFeedbackAdminPath("/admin/feedback")).toBe(true);
+    expect(isFeedbackAdminPath("/admin/feedback/")).toBe(true);
+    expect(isFeedbackAdminPath("/admin")).toBe(false);
+    expect(isFeedbackAdminPath("/admin/feedback/x")).toBe(false);
+    expect(isAdminPath("/admin/feedback")).toBe(false);
+  });
+
+  it("opens the page its address belongs to, and none for any other address", () => {
+    expect(adminTabFor("/admin")).toBe("admin");
+    expect(adminTabFor("/admin/")).toBe("admin");
+    expect(adminTabFor("/admin/feedback")).toBe("feedbackInbox");
+    expect(adminTabFor("/")).toBeNull();
+    expect(adminTabFor("/reset-password")).toBeNull();
+  });
+
+  it("gives each page its address, and / to the rest", () => {
+    expect(pathForTab("admin")).toBe("/admin");
+    expect(pathForTab("feedbackInbox")).toBe("/admin/feedback");
+    expect(pathForTab("home")).toBe("/");
+    expect(pathForTab("help")).toBe("/");
+    expect(adminTabFor(pathForTab("feedbackInbox"))).toBe("feedbackInbox");
+  });
+});
+
+describe("how the inbox reads a stored page and kind", () => {
+  it("has a title for each page the app can send, and none for one it doesn't know", () => {
+    for (const page of ["home", "collection", "planner", "makeable", "grocery", "flyers", "inventory", "help", "admin", "feedbackInbox"]) {
+      expect(t(pageKey(page))).not.toBe(pageKey(page));
+    }
+    expect(pageKey("somewhere")).toBeNull();
+    expect(pageKey("unknown")).toBeNull();
+  });
+
+  it("has a pill tone for each kind", () => {
+    expect(Object.keys(KIND_TONES).sort()).toEqual(["idea", "other", "wrong"]);
   });
 });

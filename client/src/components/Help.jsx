@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { dict, t, useLang } from "../i18n/index.js";
 import { HelpText } from "./HelpCopies.jsx";
+import { useFeedback } from "./Feedback.jsx";
 
 // The in-app guide: one section per screen, a FAQ and the outside sources.
 // Every word lives in en.js / fr.js under "help" (the sections and answers
@@ -94,6 +95,7 @@ export function Help() {
   useLang(); // re-render when the language changes: the lists below come straight from the dictionary
   const [openFaq, setOpenFaq] = useState(() => new Set());
   const help = dict().help;
+  const openFeedback = useFeedback();
 
   function toggleFaq(id) {
     setOpenFaq((prev) => {
@@ -174,6 +176,18 @@ export function Help() {
           ))}
         </ul>
       </section>
+
+      {openFeedback && (
+        <section id="help-feedback" tabIndex={-1} className="riso-help-card riso-help-feedback" aria-labelledby="help-feedback-title">
+          <h2 id="help-feedback-title" className="riso-help-card-title">
+            {t("feedback.helpTitle")}
+          </h2>
+          <p>{t("feedback.helpText")}</p>
+          <button type="button" className="riso-btn primary" onClick={() => openFeedback()}>
+            {t("feedback.menu")}
+          </button>
+        </section>
+      )}
     </div>
   );
 }

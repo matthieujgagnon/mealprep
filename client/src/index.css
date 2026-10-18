@@ -151,6 +151,7 @@ select {
 
 .load-error-banner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   background: var(--tomato);
@@ -6356,7 +6357,8 @@ button.riso-table-group-head:disabled {
   padding: 20px 48px 30px;
 }
 
-.riso-rc-notes textarea {
+.riso-rc-notes textarea,
+.riso-feedback textarea {
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
@@ -6369,11 +6371,13 @@ button.riso-table-group-head:disabled {
   outline: none;
 }
 
-.riso-rc-notes textarea:focus-visible {
+.riso-rc-notes textarea:focus-visible,
+.riso-feedback textarea:focus-visible {
   box-shadow: var(--riso-shadow-xs-accent);
 }
 
-.riso-rc-notes textarea::placeholder {
+.riso-rc-notes textarea::placeholder,
+.riso-feedback textarea::placeholder {
   color: var(--riso-placeholder);
 }
 
@@ -17712,10 +17716,15 @@ body.no-select {
 }
 
 /* ================================================================
+   The pop-up shell (Popup in RisoControls.jsx): a centred panel with a round x
+   on a computer; on a phone the bottom sheet is used instead. The Inventory item
+   form and the Feedback form are both drawn in it.
+   ================================================================ */
+/* ================================================================
    The Inventory item form: Add item and Edit item (design handoff:
    docs/design/inventory-item-form/README.md). One form, two modes.
    ================================================================ */
-.riso-itemform-overlay {
+.riso-popup-overlay {
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -17727,7 +17736,7 @@ body.no-select {
   background: rgba(22, 24, 31, 0.45);
 }
 
-.riso-itemform-modal {
+.riso-popup {
   position: relative;
   width: 860px;
   max-width: 100%;
@@ -17745,7 +17754,7 @@ body.no-select {
   font-family: var(--riso-font-display);
 }
 
-.riso-itemform-close {
+.riso-popup-close {
   position: absolute;
   top: -16px;
   right: -16px;
@@ -24638,5 +24647,300 @@ body.no-select {
     top: 12px;
     left: 12px;
     right: 12px;
+  }
+}
+
+/* ================================================================
+   Feedback: the form (components/Feedback.jsx, drawn in the shared Popup),
+   the "Report a problem" link, the crash screen (components/CrashScreen.jsx)
+   and the admin Feedback inbox (components/FeedbackInbox.jsx). The form's
+   textarea is the recipe card's notes box (shared rule near .riso-rc-notes);
+   the kind chips, the buttons and the cards are the shared ones.
+   ================================================================ */
+
+/* Above the pages and pop-ups it can be opened from (Cook mode, the recipe card, the
+   Inventory item form), below the "are you sure?" question (400) and the toast (500). */
+.riso-feedback-layer {
+  position: relative;
+  z-index: 350;
+}
+
+.riso-popup.narrow {
+  width: 520px;
+  padding: 26px 28px;
+}
+
+.riso-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  font-family: var(--riso-font-display);
+  color: var(--riso-ink);
+}
+
+.riso-feedback-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-feedback-title {
+  margin: 0;
+  font: 800 34px/1 var(--riso-font-display);
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.riso-feedback-title .accent {
+  color: var(--riso-accent);
+}
+
+.riso-feedback-intro {
+  margin: 0;
+  font: 400 14.5px/1.45 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.riso-feedback-label {
+  padding: 0;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-feedback-kinds {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A long French kind wraps onto a second row of chips instead of running out. */
+.riso-feedback-kinds .riso-chip {
+  max-width: 100%;
+}
+
+.riso-feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-feedback textarea {
+  min-height: 120px;
+}
+
+.riso-feedback-count {
+  align-self: flex-end;
+  font: 500 11.5px var(--riso-font-mono);
+  color: var(--riso-muted);
+}
+
+.riso-feedback-attached {
+  margin: 0;
+  font: 400 12.5px/1.45 var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.riso-feedback-error {
+  margin: 0;
+  font: 600 13.5px/1.4 var(--riso-font-body);
+  color: var(--riso-danger);
+}
+
+.riso-feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.riso-feedback-actions .riso-btn {
+  height: 44px;
+  padding: 0 22px;
+}
+
+/* On a phone the sheet is the form: buttons across the width, the title a little smaller. */
+@media (max-width: 767px) {
+  .riso-feedback-title {
+    font-size: 30px;
+  }
+
+  .riso-feedback-actions .riso-btn {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .riso-sheet:has(.riso-feedback) {
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+}
+
+/* "Report a problem" beside an error message: a plain underlined link. */
+.riso-report-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.riso-report-link:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+/* The last card of Help. */
+.riso-help-feedback p {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--riso-soft);
+}
+
+.riso-help-feedback .riso-btn {
+  height: 44px;
+}
+
+/* The crash screen. */
+.riso-crash {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  background: var(--riso-canvas);
+  color: var(--riso-ink);
+  font-family: var(--riso-font-body);
+}
+
+.riso-crash-card {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+}
+
+.riso-crash-card .riso-recipes-title {
+  margin: 0;
+}
+
+.riso-crash-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--riso-soft);
+}
+
+.riso-crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.riso-crash-actions .riso-btn {
+  height: 44px;
+}
+
+/* The Feedback inbox: one Admin-style card holding a list, newest first. */
+.riso-fbi-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.riso-fbi-item {
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riso-fbi-item + .riso-fbi-item {
+  border-top: 1px dashed var(--riso-dash-strong);
+}
+
+.riso-fbi-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.riso-fbi-from {
+  min-width: 0;
+  font: 700 14px var(--riso-font-body);
+  overflow-wrap: anywhere;
+}
+
+.riso-fbi-time {
+  margin-left: auto;
+  font: 400 12.5px var(--riso-font-mono);
+  color: var(--riso-soft);
+}
+
+.riso-fbi-message {
+  margin: 0;
+  font: 400 15.5px/1.5 var(--riso-font-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.riso-fbi-item.done .riso-fbi-message,
+.riso-fbi-item.done .riso-fbi-from {
+  color: var(--riso-muted);
+}
+
+.riso-fbi-details {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.riso-fbi-detail {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  font: 400 12.5px var(--riso-font-mono);
+  color: var(--riso-soft);
+}
+
+.riso-fbi-detail dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-fbi-detail dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.riso-fbi-actions {
+  display: flex;
+}
+
+@media (max-width: 767px) {
+  .riso-fbi-time {
+    margin-left: 0;
+    flex-basis: 100%;
   }
 }

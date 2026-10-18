@@ -26,6 +26,7 @@ import { watchlistRouter } from "./routes/watchlist.js";
 import { recipeImagesRouter } from "./routes/recipeImages.js";
 import { cronRouter } from "./routes/cron.js";
 import { adminRouter } from "./routes/admin.js";
+import { feedbackRouter } from "./routes/feedback.js";
 import { startFlyerScheduler } from "./lib/flyerImport.js";
 import { fail } from "./lib/i18n.js";
 
@@ -65,6 +66,7 @@ app.use("/api/receipts", requireAuth, receiptsRouter);
 app.use("/api/pantry-locations", requireAuth, pantryLocationsRouter);
 app.use("/api/watchlist", requireAuth, watchlistRouter);
 app.use("/api/recipe-images", requireAuth, recipeImagesRouter);
+app.use("/api/feedback", requireAuth, feedbackRouter);
 
 // Admin only: requireAdmin checks ADMIN_EMAILS on the server for every
 // /api/admin route and refuses everyone else with 403 (lib/admin.js).

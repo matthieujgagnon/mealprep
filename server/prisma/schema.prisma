@@ -47,6 +47,7 @@ model User {
   pantryInventoryItems  PantryInventoryItem[]
   pantryConsumptionLogs PantryConsumptionLog[]
   pantryRemovedItems    PantryRemovedItem[]
+  feedback              Feedback[]
   pantryLocations       PantryLocation[]
   watchlistItems        WatchlistItem[]
   recipeImages          RecipeImage[]
@@ -437,6 +438,33 @@ model PantryRemovedItem {
   removedAt DateTime @default(now())
 
   @@index([userId, removedAt])
+}
+
+// What a signed-in tester sent from the app's Feedback form, or from a "Report a
+// problem" link or the crash screen (routes/feedback.js). Matt reads it on the
+// Admin Feedback inbox (routes/admin.js) and gets a short email when
+// FEEDBACK_EMAIL_TO is set. A row is only ever added; the one thing that changes
+// afterwards is Matt's Done tick (`doneAt`). The details are exactly what the app
+// adds by itself and nothing else: no screenshots, no recipe or Inventory content.
+// A row goes with its account (ON DELETE CASCADE).
+model Feedback {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String // "wrong" | "idea" | "other"
+  message    String
+  page       String // the page they were on: "home", "planner", "help"...
+  locale     String // "fr" | "en"
+  device     String // "phone" | "computer"
+  screen     String // the window size, "390x844"
+  browser    String // "Safari 17 on iOS", read from the browser's own name
+  appVersion String // the short code of the build they were running
+  errorName  String? // only from the crash screen or an error message: the error's name, never its text
+  doneAt     DateTime? // Matt's Done tick; null until he ticks it
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 // A user-added storage place beyond the three built-in ones (Fridge,

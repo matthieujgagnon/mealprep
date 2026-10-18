@@ -164,6 +164,7 @@ export const HELP_COPIES = {
   // Account, in the header
   langSwitch: { kind: "lang" },
   helpButton: { kind: "pill", cls: "btn subtle btn-sm", label: "app.help" },
+  feedbackButton: { kind: "pill", cls: "btn subtle btn-sm", label: "feedback.menu" },
   logOutButton: { kind: "pill", cls: "btn subtle btn-sm", label: "app.logOut" },
   avatar: { kind: "avatar" },
 
