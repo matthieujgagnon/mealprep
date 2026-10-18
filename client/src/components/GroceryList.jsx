@@ -7,6 +7,7 @@ import { GROCERY, afterSaves, savesVersion } from "../lib/pendingSaves.js";
 import { saveInOrder } from "../lib/saveInOrder.js";
 import { daysBetween, quebecDay } from "../lib/quebecDay.js";
 import { useDeals } from "../lib/dealsStore.js";
+import { useLiveEntries } from "../lib/recipeStore.js";
 import { buildGroceryList } from "../lib/groceryList.js";
 import {
   BOUGHT,
@@ -280,7 +281,13 @@ export function GroceryList({
   const deals = useMemo(() => allDeals.filter((d) => !d.validUntil || d.validUntil >= dealsDay), [allDeals, dealsDay]);
   // Every planned meal from today onward, across all weeks: the list is built
   // from these, so a meal drops off the list once its day has passed.
-  const [entries, setEntries] = useState([]);
+  // The planned meals as the server sent them. The list is drawn from `entries`: the same
+  // meals read through the recipe store, so an edited recipe's ingredients and a deleted
+  // one's removal show at once, even on the copy kept from the last visit. What is written
+  // back to the server (the two tidy-ups below) goes by `entryRows`, as the server has them:
+  // a recipe deleted a moment ago can still be put back with Undo.
+  const [entryRows, setEntries] = useState([]);
+  const entries = useLiveEntries(entryRows);
   // The saved check rows, by row key - live on the server (see
   // api.listGroceryChecked/checkGroceryItem) so checking something off on one
   // device shows up on another instead of being stuck in that one browser's
@@ -418,19 +425,19 @@ export function GroceryList({
 
   const ready = loaded && dealsLoaded && sectionsLoaded;
   useEffect(() => {
-    if (loaded) groceryShared.list = { entries, checkRows, extraItems, overrides };
-  }, [loaded, entries, checkRows, extraItems, overrides]);
+    if (loaded) groceryShared.list = { entries: entryRows, checkRows, extraItems, overrides };
+  }, [loaded, entryRows, checkRows, extraItems, overrides]);
 
   // A removal (or own amount) on a recipe row lasts only while a planned meal
   // still needs the item: once the meals that needed it have left the plan,
   // the saved row is cleared, so a later meal that needs it starts fresh.
   useEffect(() => {
     if (!loaded || !fresh) return;
-    const stale = staleOverrideKeys(entries, overrides);
+    const stale = staleOverrideKeys(entryRows, overrides);
     if (stale.length === 0) return;
     setOverrides((prev) => prev.filter((o) => !stale.includes(o.key)));
     api.clearGroceryOverrides(stale).catch(() => {});
-  }, [loaded, fresh, entries, overrides]);
+  }, [loaded, fresh, entryRows, overrides]);
 
   const items = buildGroceryList(entries, customStaples, stapleCategories, excludedStaples, extraItems, overrides);
 
@@ -440,7 +447,7 @@ export function GroceryList({
   // theirs.
   useEffect(() => {
     if (!loaded || !fresh) return;
-    const { set, remove } = tidyChecks(items, checkRows);
+    const { set, remove } = tidyChecks(buildGroceryList(entryRows, customStaples, stapleCategories, excludedStaples, extraItems, overrides), checkRows);
     if (set.length === 0 && remove.length === 0) return;
     setCheckRows((prev) => {
       const next = { ...prev };
@@ -455,7 +462,7 @@ export function GroceryList({
       )
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, fresh, entries, extraItems, checkRows]);
+  }, [loaded, fresh, entryRows, extraItems, checkRows]);
   // What's left to buy: rows already bought are gone, and a row that needs
   // more than was checked or bought shows only the extra, unchecked.
   const applied = applyChecks(

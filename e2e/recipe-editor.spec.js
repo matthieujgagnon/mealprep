@@ -155,6 +155,7 @@ test("photos drag to reorder, and the cover moves with its photo", async ({ page
   const to = await tiles.nth(2).boundingBox();
   await page.mouse.move(from.x + 40, from.y + 60);
   await page.mouse.down();
+  await page.waitForTimeout(300); // a tile is picked up after a hold, like everything else (hooks/useHeldDrag.js)
   await page.mouse.move(from.x + 60, from.y + 60, { steps: 5 });
   await page.mouse.move(to.x + 60, to.y + 60, { steps: 10 });
   await page.mouse.up();

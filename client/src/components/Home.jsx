@@ -12,6 +12,7 @@ import { RecipePhoto } from "./RecipePhoto.jsx";
 import { currentMealType, makeableNow, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
 import { TOUCH_SCREEN, activeScreen, screensFit, scrollMode } from "../lib/homeScreens.js";
 import { refreshDeals, useDeals } from "../lib/dealsStore.js";
+import { useLiveEntries } from "../lib/recipeStore.js";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
 import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
@@ -124,10 +125,14 @@ export function Home({
   const todayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
   const nowMeal = currentMealType();
 
-  const [plannerEntries, setPlannerEntries] = useState([]);
+  // The meals as the server sent them; every one is read through the recipe store
+  // (`useLiveEntries`), so a recipe edited or deleted shows here at once.
+  const [plannerRows, setPlannerRows] = useState([]);
+  const plannerEntries = useLiveEntries(plannerRows);
   // Every planned meal from today onward, across weeks: what the grocery
   // card is built from (the same list the Grocery tab shows).
-  const [upcomingEntries, setUpcomingEntries] = useState([]);
+  const [upcomingRows, setUpcomingRows] = useState([]);
+  const upcomingEntries = useLiveEntries(upcomingRows);
   // The list's saved check rows (see GroceryList); what is checked or bought is worked out from them.
   const [checkRows, setCheckRows] = useState({});
   const [extraItems, setExtraItems] = useState([]);
@@ -139,7 +144,8 @@ export function Home({
   // real current week.
   const [stripWeekOffset, setStripWeekOffset] = useState(0);
   const stripWeekStart = shiftWeek(weekStart, stripWeekOffset);
-  const [stripEntries, setStripEntries] = useState([]);
+  const [stripRows, setStripRows] = useState([]);
+  const stripEntries = useLiveEntries(stripRows);
   // The week strip shows dinners; "all meals" (a quiet link, remembered on
   // this device) shows breakfast and lunch too.
   const [allMeals, setAllMeals] = useState(() => {
@@ -227,8 +233,8 @@ export function Home({
   }
 
   useEffect(() => {
-    api.listPlanner(weekStart).then(setPlannerEntries).catch(() => setPlannerEntries([]));
-    api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => setUpcomingEntries([]));
+    api.listPlanner(weekStart).then(setPlannerRows).catch(() => setPlannerRows([]));
+    api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingRows).catch(() => setUpcomingRows([]));
     api
       .listGroceryChecked()
       .then((rows) => setCheckRows(Object.fromEntries(rows.map((row) => [row.core, row]))))
@@ -241,11 +247,11 @@ export function Home({
 
   useEffect(() => {
     if (stripWeekOffset === 0) {
-      setStripEntries(plannerEntries);
+      setStripRows(plannerRows);
       return;
     }
-    api.listPlanner(stripWeekStart).then(setStripEntries).catch(() => setStripEntries([]));
-  }, [stripWeekOffset, stripWeekStart, plannerEntries]);
+    api.listPlanner(stripWeekStart).then(setStripRows).catch(() => setStripRows([]));
+  }, [stripWeekOffset, stripWeekStart, plannerRows]);
 
   const restaurantRecipe = recipes.find((r) => r.isPlaceholder && r.title === RESTAURANT_TITLE);
 
@@ -304,8 +310,8 @@ export function Home({
     if (tonightEntry) await api.removeFromPlanner(tonightEntry.id);
     await api.placeOnPlanner({ recipeId: restaurantRecipe.id, weekStart, dayOfWeek: todayIndex, mealType: nowMeal });
     const entries = await api.listPlanner(weekStart);
-    setPlannerEntries(entries);
-    api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingEntries).catch(() => {});
+    setPlannerRows(entries);
+    api.listPlannerUpcoming(toDateKey(new Date())).then(setUpcomingRows).catch(() => {});
   }
 
   const { shown: useSoonItems, soonest: useSoonest } = toUseItems(pantryInventory, daysUntil);
@@ -412,7 +418,7 @@ export function Home({
                           aria-label={t("cooked.buttonAria", { title: tonightEntry.recipe.title })}
                           onClick={() =>
                             onCooked(tonightEntry, (id, cookedAt) =>
-                              setPlannerEntries((prev) => prev.map((e) => (e.id === id ? { ...e, cookedAt } : e)))
+                              setPlannerRows((prev) => prev.map((e) => (e.id === id ? { ...e, cookedAt } : e)))
                             )
                           }
                         >

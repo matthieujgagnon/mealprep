@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
+import { useLiveEntries } from "../lib/recipeStore.js";
 import { formatDayLabel, formatWeekLabel, isPastDay, shiftWeek } from "../lib/dates.js";
 import { MEAL_TYPES, isCustomNote, isEmojiOnly, isNoteEntry, pickerSlot, slotKey, slotLabel } from "../lib/plannerSlots.js";
 import { weekendLayout } from "../lib/weekend.js";
@@ -27,7 +28,8 @@ import { dict, t } from "../i18n/index.js";
 // the week arrives, unless the person has already chosen one.
 export function SlotPicker({ recipe, weekStart, entries, loaded = true, weekend, initialSlot, onConfirm, onClose }) {
   const [week, setWeek] = useState(weekStart);
-  const [otherEntries, setOtherEntries] = useState(null); // the entries of `week` when it is not `weekStart`
+  const [otherRows, setOtherEntries] = useState(null); // the entries of `week` when it is not `weekStart`, as the server sent them
+  const otherEntries = useLiveEntries(otherRows); // read through the recipe store, like every page's meals
   const [picked, setPicked] = useState(initialSlot || null); // the slot chosen by the person, or the target it opened with
   const slot = pickerSlot({ picked, entries, weekStart, loaded });
   const names = dict().days.short;
