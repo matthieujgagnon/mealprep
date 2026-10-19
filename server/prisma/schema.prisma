@@ -483,6 +483,7 @@ model Feedback {
   appVersion String // the short code of the build they were running
   errorName  String? // only from the crash screen or an error message: the error's name, never its text
   doneAt     DateTime? // Matt's Done tick; null until he ticks it
+  archivedAt DateTime? // when Matt archived it out of the inbox; null = still in the inbox. Separate from Done
   createdAt  DateTime  @default(now())
 
   @@index([createdAt])

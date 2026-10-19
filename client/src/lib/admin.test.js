@@ -131,3 +131,20 @@ describe("how the inbox reads a stored page and kind", () => {
     expect(Object.keys(KIND_TONES).sort()).toEqual(["idea", "other", "wrong"]);
   });
 });
+
+describe("the Feedback inbox's Archive words", () => {
+  it("says how many 'Archive all done' moved, with French counting 0 and 1 as one", () => {
+    expect(t("admin.feedback.archivedMany", { count: 1 }, "en")).toBe("1 archived.");
+    expect(t("admin.feedback.archivedMany", { count: 3 }, "en")).toBe("3 archived.");
+    expect(t("admin.feedback.archivedMany", { count: 1 }, "fr")).toBe("1 archivé.");
+    expect(t("admin.feedback.archivedMany", { count: 3 }, "fr")).toBe("3 archivés.");
+  });
+
+  it("puts the count on the 'Archive all done' button and the Quebec French names on the tabs and buttons", () => {
+    expect(t("admin.feedback.archiveAll", { count: 7 }, "en")).toBe("Archive all done (7)");
+    expect(t("admin.feedback.archiveAll", { count: 7 }, "fr")).toBe("Archiver tous les traités (7)");
+    expect(t("admin.feedback.tabInbox", undefined, "fr")).toBe("Boîte de réception");
+    expect(t("admin.feedback.tabArchive", undefined, "fr")).toBe("Archives");
+    expect(t("admin.feedback.back", undefined, "en")).toBe("Back to inbox");
+  });
+});

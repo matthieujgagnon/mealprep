@@ -1403,7 +1403,7 @@ export default function App({ user, onLogout }) {
 
         {tab === "help" && <Help />}
         {tab === "admin" && <Admin user={user} onHome={() => goToTab("home")} />}
-        {tab === "feedbackInbox" && <FeedbackInbox user={user} onHome={() => goToTab("home")} />}
+        {tab === "feedbackInbox" && <FeedbackInbox user={user} onHome={() => goToTab("home")} onToast={showToast} />}
 
         {inventoryAsk && (
           <InventoryConfirmSheet

@@ -19,6 +19,11 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
+// One test after the other: the inbox tests look at the whole Feedback table (the number on a pill, and
+// "Archive all done" moves every done one), so no other test here may be adding feedback at the same
+// moment. No other spec file adds feedback, so those still run beside this one.
+test.describe.configure({ mode: "serial" });
+
 function stamp() {
   return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
@@ -279,6 +284,15 @@ test.describe("on a phone, in French", () => {
 test.describe("the Feedback inbox", () => {
   test.use({ viewport: { width: 1280, height: 900 }, locale: "en-CA" });
 
+  const feedbackBase = (userId) => ({ userId, locale: "en", device: "computer", screen: "1280x800", browser: "Chrome 126 on Windows", appVersion: "a1b2c3d" });
+  const tabButton = (page, name) => page.locator(".riso-fbi-tabs button", { hasText: name });
+  // The number on a pill is the same as the database's count (read again until they agree, so a row
+  // another test adds in between doesn't matter).
+  const expectCount = (pill, dbCount) => expect.poll(async () => `${(await pill.innerText()).trim()}|${await dbCount()}`).toMatch(/^(\d+)\|\1$/);
+  const archivedCount = () => prisma.feedback.count({ where: { archivedAt: { not: null } } });
+  const inboxCount = () => prisma.feedback.count({ where: { archivedAt: null } });
+  const toDoCount = () => prisma.feedback.count({ where: { archivedAt: null, doneAt: null } });
+
   test("an admin reads everything newest first, with who, the details and a Done tick that stays", async ({ page }) => {
     await adminAccount(ADMIN_INBOX, "en");
     const mark = stamp();
@@ -313,12 +327,14 @@ test.describe("the Feedback inbox", () => {
     expect(order).toEqual(["newer", "older"]);
 
     // Done: ticked, kept after a reload, and un-ticked.
+    // The "to do" pill is the server's own count of the inbox's not-done ones (it counts a row another
+    // test adds at the same moment too), so it is compared with the database, not with "before minus one".
     const pill = page.locator(".riso-admin-card-head .riso-pill");
-    const before = Number(await pill.innerText());
+    await expectCount(pill, toDoCount);
     const done = newer.getByRole("button", { name: `Mark the feedback from ${tester.email} as done` });
     await done.click();
     await expect(newer.getByRole("button", { name: /as not done/ })).toHaveAttribute("aria-pressed", "true");
-    await expect(pill).toHaveText(String(before - 1));
+    await expectCount(pill, toDoCount);
     await page.reload();
     await expect(page.locator(".riso-fbi-item", { hasText: `Newer one ${mark}` }).getByRole("button", { name: /as not done/ })).toBeVisible();
     expect((await prisma.feedback.findFirst({ where: { message: `Newer one ${mark}` } })).doneAt).toBeInstanceOf(Date);
@@ -364,6 +380,156 @@ test.describe("the Feedback inbox", () => {
     expect((await visitor.request.post("http://localhost:4000/api/feedback", { data: { message: "hi", kind: "idea" } })).status()).toBe(401);
     await visitor.close();
   });
+
+  test("Archive moves an item out of the inbox into the Archive tab with a toast; Undo brings it back; Back to inbox moves it again", async ({ page }) => {
+    await adminAccount(ADMIN_INBOX, "en");
+    const mark = stamp();
+    const tester = await prisma.user.create({ data: { email: uniqueEmail("fb-arch"), passwordHash: "x" } });
+    await prisma.feedback.createMany({
+      data: [
+        { ...feedbackBase(tester.id), kind: "idea", message: `Stay put ${mark}`, page: "home" },
+        { ...feedbackBase(tester.id), kind: "wrong", message: `Archive me ${mark}`, page: "grocery" },
+      ],
+    });
+    const stored = () => prisma.feedback.findFirst({ where: { message: `Archive me ${mark}` } });
+    await page.goto("/admin/feedback");
+    await logIn(page, ADMIN_INBOX, PASSWORD);
+    const item = page.locator(".riso-fbi-item", { hasText: `Archive me ${mark}` });
+    const stay = page.locator(".riso-fbi-item", { hasText: `Stay put ${mark}` });
+    const toDo = page.locator(".riso-admin-card-head .riso-pill");
+    await expect(item).toBeVisible();
+
+    // Two tabs, each with a count over everything; the Inbox is open.
+    await expect(tabButton(page, "Inbox")).toHaveAttribute("aria-pressed", "true");
+    await expect(tabButton(page, "Archive")).toHaveAttribute("aria-pressed", "false");
+    await expectCount(tabButton(page, "Inbox").locator(".riso-pill"), inboxCount);
+    await expectCount(tabButton(page, "Archive").locator(".riso-pill"), archivedCount);
+    await expectCount(toDo, toDoCount);
+
+    // Archive: it leaves the inbox at once with a toast, the other stays, Done is not ticked and nothing is deleted.
+    await item.getByRole("button", { name: `Archive the feedback from ${tester.email}` }).click();
+    await expect(item).toHaveCount(0);
+    await expect(stay).toBeVisible();
+    await expect(page.locator(".riso-toast")).toContainText("Archived.");
+    const archived = await stored();
+    expect(archived.archivedAt).toBeInstanceOf(Date);
+    expect(archived.doneAt).toBeNull();
+    await expectCount(tabButton(page, "Archive").locator(".riso-pill"), archivedCount);
+    await expectCount(toDo, toDoCount); // an archived one is no longer "to do"
+
+    // Undo brings it back to the inbox.
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(item).toBeVisible();
+    expect((await stored()).archivedAt).toBeNull();
+    await expectCount(toDo, toDoCount);
+
+    // Archive again and read it in the Archive tab: it has Back to inbox there, not Archive.
+    await item.getByRole("button", { name: `Archive the feedback from ${tester.email}` }).click();
+    await expect(item).toHaveCount(0);
+    await tabButton(page, "Archive").click();
+    await expect(tabButton(page, "Archive")).toHaveAttribute("aria-pressed", "true");
+    await expect(item).toBeVisible();
+    await expect(stay).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Archive all done/ })).toHaveCount(0); // only the Inbox tab has it
+    await expect(item.getByRole("button", { name: /^Archive the feedback/ })).toHaveCount(0);
+    const back = item.getByRole("button", { name: `Put the feedback from ${tester.email} back in the inbox` });
+    await expect(back).toHaveText("Back to inbox");
+    await page.screenshot({ path: test.info().outputPath("archive-tab.png"), fullPage: true });
+
+    // Back to inbox: it leaves the Archive with a toast, and that toast's Undo puts it back there.
+    await back.click();
+    await expect(item).toHaveCount(0);
+    await expect(page.locator(".riso-toast")).toContainText("Back in the inbox.");
+    expect((await stored()).archivedAt).toBeNull();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(item).toBeVisible();
+    expect((await stored()).archivedAt).toBeInstanceOf(Date);
+
+    // Done and Archive are separate: ticking Done in the Archive moves nothing and the "to do" number stays.
+    const toDoBefore = await toDoCount();
+    await item.getByRole("button", { name: `Mark the feedback from ${tester.email} as done` }).click();
+    await expect(item.getByRole("button", { name: /as not done/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(item).toBeVisible();
+    expect(await toDoCount()).toBe(toDoBefore);
+    await expectCount(toDo, toDoCount);
+  });
+
+  test("Archive all done moves only the done ones, and its Undo puts back exactly those", async ({ page }) => {
+    await adminAccount(ADMIN_INBOX, "en");
+    const mark = stamp();
+    const tester = await prisma.user.create({ data: { email: uniqueEmail("fb-all"), passwordHash: "x" } });
+    const longAgo = new Date(Date.now() - 5 * 86400000);
+    await prisma.feedback.createMany({
+      data: [
+        { ...feedbackBase(tester.id), kind: "idea", message: `Done one ${mark}`, page: "home", doneAt: new Date() },
+        { ...feedbackBase(tester.id), kind: "wrong", message: `Done two ${mark}`, page: "home", doneAt: new Date() },
+        { ...feedbackBase(tester.id), kind: "other", message: `Still open ${mark}`, page: "home" },
+        { ...feedbackBase(tester.id), kind: "idea", message: `Archived before ${mark}`, page: "home", doneAt: longAgo, archivedAt: longAgo },
+      ],
+    });
+    const find = (name) => prisma.feedback.findFirst({ where: { message: `${name} ${mark}` } });
+    const row = (name) => page.locator(".riso-fbi-item", { hasText: `${name} ${mark}` });
+
+    await page.goto("/admin/feedback");
+    await logIn(page, ADMIN_INBOX, PASSWORD);
+    await expect(row("Done one")).toBeVisible();
+    await expect(row("Still open")).toBeVisible();
+    await expect(row("Archived before")).toHaveCount(0); // it is in the Archive, not the inbox
+    const all = page.getByRole("button", { name: /^Archive all done/ });
+    await expect(all).toBeEnabled();
+
+    await all.click();
+    await expect(row("Done one")).toHaveCount(0);
+    await expect(row("Done two")).toHaveCount(0);
+    await expect(row("Still open")).toBeVisible();
+    await expect(page.locator(".riso-toast")).toContainText(/\d+ archived\./);
+    for (const name of ["Done one", "Done two"]) expect(await find(name)).toMatchObject({ archivedAt: expect.any(Date), doneAt: expect.any(Date) });
+    expect((await find("Still open")).archivedAt).toBeNull();
+    expect((await find("Archived before")).archivedAt.getTime()).toBe(longAgo.getTime());
+    await expect(all).toBeDisabled(); // nothing done is left to move
+    await expectCount(tabButton(page, "Archive").locator(".riso-pill"), archivedCount);
+
+    // Undo: the two it moved come back to the inbox, still done; what was archived before stays archived.
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(row("Done one")).toBeVisible();
+    await expect(row("Done two")).toBeVisible();
+    for (const name of ["Done one", "Done two"]) expect(await find(name)).toMatchObject({ archivedAt: null, doneAt: expect.any(Date) });
+    expect((await find("Archived before")).archivedAt.getTime()).toBe(longAgo.getTime());
+    await expect(row("Archived before")).toHaveCount(0);
+    await expectCount(tabButton(page, "Inbox").locator(".riso-pill"), inboxCount);
+  });
+
+  test("a tab shows 200 at a time and Show older loads the rest, with the counts over everything", async ({ page }) => {
+    await adminAccount(ADMIN_INBOX, "en");
+    const mark = stamp();
+    const tester = await prisma.user.create({ data: { email: uniqueEmail("fb-pages"), passwordHash: "x" } });
+    const sentAt = new Date("2001-02-03T04:05:06.000Z"); // all at one time: the page edge falls among rows with the same time
+    await prisma.feedback.createMany({
+      data: Array.from({ length: 205 }, (_, i) => ({ ...feedbackBase(tester.id), kind: "other", message: `Old ${i} ${mark}`, page: "home", createdAt: sentAt, archivedAt: new Date() })),
+    });
+    try {
+      await page.goto("/admin/feedback");
+      await logIn(page, ADMIN_INBOX, PASSWORD);
+      await tabButton(page, "Archive").click();
+      const items = page.locator(".riso-fbi-item");
+      await expect(items).toHaveCount(200);
+      const total = await archivedCount();
+      await expect(page.locator(".riso-fbi-more")).toContainText(`Showing 200 of ${total}`);
+      await expectCount(tabButton(page, "Archive").locator(".riso-pill"), archivedCount); // all of it, not just the 200
+
+      const older = page.getByRole("button", { name: "Show older" });
+      for (let press = 0; press < 30 && (await older.count()) > 0; press++) {
+        const shown = await items.count();
+        await older.click();
+        await expect.poll(() => items.count()).toBeGreaterThan(shown);
+      }
+      await expect(older).toHaveCount(0);
+      await expect(items).toHaveCount(await archivedCount());
+      for (const i of [0, 204]) await expect(page.locator(".riso-fbi-item", { hasText: `Old ${i} ${mark}` })).toHaveCount(1); // each exactly once
+    } finally {
+      await prisma.feedback.deleteMany({ where: { userId: tester.id } });
+    }
+  });
 });
 
 test.describe("the Feedback inbox on a phone, in French", () => {
@@ -393,5 +559,66 @@ test.describe("the Feedback inbox on a phone, in French", () => {
         .map((el) => el.textContent.trim().slice(0, 40))
     );
     expect(cut).toEqual([]);
+  });
+
+  test("the tabs, Archiver, Remettre dans la boîte and the toast read French and fit", async ({ page }) => {
+    await adminAccount(ADMIN_FRENCH, "fr");
+    const mark = stamp();
+    const tester = await prisma.user.create({ data: { email: uniqueEmail("fb-arch-fr"), passwordHash: "x" } });
+    const base = { userId: tester.id, locale: "fr", device: "phone", screen: "390x844", browser: "Safari 17 on iOS", appVersion: "a1b2c3d", page: "grocery" };
+    await prisma.feedback.createMany({
+      data: [
+        { ...base, kind: "wrong", message: `À archiver ${mark}` },
+        { ...base, kind: "idea", message: `Déjà traité ${mark}`, doneAt: new Date() },
+      ],
+    });
+    // Nothing is cut off and nothing makes the page wider than the phone.
+    const fits = async () => {
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      const cut = await page.evaluate(() =>
+        [...document.querySelectorAll(".riso-fbi button, .riso-fbi-from, .riso-fbi-detail, .riso-pill, .riso-toast, .riso-toast *")]
+          .filter((el) => el.offsetParent && (el.scrollWidth > el.clientWidth + 1 || el.getBoundingClientRect().right > window.innerWidth + 0.5 || el.getBoundingClientRect().left < -0.5))
+          .map((el) => el.textContent.trim().slice(0, 40))
+      );
+      expect(cut).toEqual([]);
+    };
+    const row = (name) => page.locator(".riso-fbi-item", { hasText: `${name} ${mark}` });
+
+    await page.goto("/admin/feedback");
+    await logIn(page, ADMIN_FRENCH, PASSWORD);
+    const tabs = page.locator(".riso-fbi-tabs");
+    await expect(tabs.getByRole("button", { name: /^Boîte de réception/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(tabs.getByRole("button", { name: /^Archives/ })).toBeVisible();
+    await expect(tabs.locator(".riso-pill")).toHaveCount(2);
+    await expect(row("À archiver").getByRole("button", { name: /^Archiver le commentaire de / })).toHaveText("Archiver");
+    const all = page.getByRole("button", { name: /^Archiver tous les traités \(\d+\)$/ });
+    await expect(all).toBeEnabled();
+    expect((await tabs.boundingBox()).width).toBeLessThanOrEqual(390);
+    await fits();
+    await page.screenshot({ path: test.info().outputPath("inbox-tabs.png") });
+
+    // Archiver: the French toast with « Annuler » (the shared Undo), then the item is in Archives.
+    await row("À archiver").getByRole("button", { name: /^Archiver le commentaire de / }).click();
+    await expect(row("À archiver")).toHaveCount(0);
+    await expect(page.locator(".riso-toast")).toContainText("Archivé.");
+    await expect(page.locator(".riso-toast-undo")).toBeVisible();
+    await fits();
+    await tabs.getByRole("button", { name: /^Archives/ }).click();
+    await expect(row("À archiver")).toBeVisible();
+    await expect(row("À archiver").getByRole("button", { name: /^Remettre dans la boîte de réception le commentaire de / })).toHaveText("Remettre dans la boîte");
+    await expect(page.getByRole("button", { name: /^Archiver tous les traités/ })).toHaveCount(0);
+    await fits();
+    await page.screenshot({ path: test.info().outputPath("archive-tab.png") });
+
+    // Back in the inbox the bulk button moves the done one, with the French toast and its count.
+    await tabs.getByRole("button", { name: /^Boîte de réception/ }).click();
+    await expect(row("Déjà traité")).toBeVisible();
+    await expect(all).toBeEnabled();
+    await all.click();
+    await expect(row("Déjà traité")).toHaveCount(0);
+    await expect(row("À archiver")).toHaveCount(0); // it is in the Archive tab
+    await expect(page.locator(".riso-toast")).toContainText(/\d+ archivés?\./);
+    await expect(all).toBeDisabled();
+    await fits();
   });
 });

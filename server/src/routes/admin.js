@@ -3,7 +3,16 @@ import { prisma } from "../lib/prisma.js";
 import { memberRows } from "../lib/admin.js";
 import { makeAdminResetLink } from "../lib/resetLink.js";
 import { fail } from "../lib/i18n.js";
-import { FEEDBACK_LIST_LIMIT, feedbackRow } from "../lib/feedback.js";
+import {
+  FEEDBACK_LIST_LIMIT,
+  FEEDBACK_MAX_IDS,
+  FEEDBACK_ORDER,
+  cleanFeedbackListQuery,
+  feedbackCounts,
+  feedbackCursor,
+  feedbackListWhere,
+  feedbackRow,
+} from "../lib/feedback.js";
 import { cleanInviteInput, expiryDate, generateCode, inviteRow } from "../lib/invites.js";
 import {
   DEFAULT_AI_DAILY_LIMIT,
@@ -118,32 +127,68 @@ adminRouter.put("/ai-limit", async (req, res) => {
   res.json({ limit });
 });
 
-// GET /api/admin/feedback - what testers sent, newest first (the latest
-// FEEDBACK_LIST_LIMIT), with who sent it and the details the app attached, and
-// how many of all of it are not done yet (lib/feedback.js).
+// GET /api/admin/feedback?box=inbox|archive&before=<cursor> - what testers sent,
+// newest first, one page of FEEDBACK_LIST_LIMIT, with who sent it and the details
+// the app attached. `box` is the inbox (the default) or the archive; `before` is the
+// `nextCursor` of the page before, for the next, older one (null when there is no
+// more). `counts` is over everything: { inbox, archive, notDone } (lib/feedback.js).
 adminRouter.get("/feedback", async (req, res) => {
-  const [rows, total, notDone] = await Promise.all([
+  const query = cleanFeedbackListQuery(req.query);
+  if (query.error) return res.status(400).json(fail(req, query.error, query.vars));
+  const [rows, counts] = await Promise.all([
     prisma.feedback.findMany({
-      orderBy: { createdAt: "desc" },
-      take: FEEDBACK_LIST_LIMIT,
+      where: feedbackListWhere(query.box, query.cursor),
+      orderBy: FEEDBACK_ORDER,
+      take: FEEDBACK_LIST_LIMIT + 1, // one extra, only to know whether there is an older page
       include: { user: { select: { email: true } } },
     }),
-    prisma.feedback.count(),
-    prisma.feedback.count({ where: { doneAt: null } }),
+    feedbackCounts(),
   ]);
-  res.json({ items: rows.map(feedbackRow), total, notDone });
+  const page = rows.slice(0, FEEDBACK_LIST_LIMIT);
+  res.json({
+    items: page.map(feedbackRow),
+    nextCursor: rows.length > page.length ? feedbackCursor(page[page.length - 1]) : null,
+    counts,
+  });
 });
 
-// PATCH /api/admin/feedback/:id { done } - Matt's Done tick (and un-tick). It is
-// the only thing about a feedback that can change.
+// POST /api/admin/feedback/archive-done - moves every done feedback in the inbox to
+// the archive at once (the ones not done stay). Answers with the ids it moved, so
+// its Undo can put back exactly those and nothing archived before.
+adminRouter.post("/feedback/archive-done", async (req, res) => {
+  const now = new Date();
+  await prisma.feedback.updateMany({ where: { archivedAt: null, doneAt: { not: null } }, data: { archivedAt: now } });
+  const moved = await prisma.feedback.findMany({ where: { archivedAt: now }, select: { id: true } });
+  res.json({ ids: moved.map((row) => row.id), counts: await feedbackCounts() });
+});
+
+// POST /api/admin/feedback/unarchive { ids } - puts those feedbacks back in the inbox
+// (the Undo of "Archive all done"). Ids that are not archived are left as they are.
+adminRouter.post("/feedback/unarchive", async (req, res) => {
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > FEEDBACK_MAX_IDS || ids.some((id) => typeof id !== "string")) {
+    return res.status(400).json(fail(req, "required", { fields: "ids" }));
+  }
+  const { count } = await prisma.feedback.updateMany({ where: { id: { in: ids }, archivedAt: { not: null } }, data: { archivedAt: null } });
+  res.json({ moved: count, counts: await feedbackCounts() });
+});
+
+// PATCH /api/admin/feedback/:id { done?, archived? } - Matt's Done tick (and un-tick)
+// and his Archive (and Back to inbox). They are separate: archiving doesn't tick Done,
+// and a done one stays done in the archive. These two are the only things about a
+// feedback that can change; the words and details stay as they were sent, and
+// archiving never deletes anything.
 adminRouter.patch("/feedback/:id", async (req, res) => {
-  if (typeof req.body?.done !== "boolean") return res.status(400).json(fail(req, "required", { fields: "done" }));
+  const { done, archived } = req.body && typeof req.body === "object" ? req.body : {};
+  const wrong = (value) => value !== undefined && typeof value !== "boolean";
+  if ((done === undefined && archived === undefined) || wrong(done) || wrong(archived)) {
+    return res.status(400).json(fail(req, "required", { fields: "done, archived" }));
+  }
   const found = await prisma.feedback.findUnique({ where: { id: req.params.id } });
   if (!found) return res.status(404).json(fail(req, "notFound.feedback"));
-  const row = await prisma.feedback.update({
-    where: { id: found.id },
-    data: { doneAt: req.body.done ? found.doneAt ?? new Date() : null },
-    include: { user: { select: { email: true } } },
-  });
-  res.json(feedbackRow(row));
+  const data = {};
+  if (done !== undefined) data.doneAt = done ? found.doneAt ?? new Date() : null;
+  if (archived !== undefined) data.archivedAt = archived ? found.archivedAt ?? new Date() : null;
+  const row = await prisma.feedback.update({ where: { id: found.id }, data, include: { user: { select: { email: true } } } });
+  res.json({ item: feedbackRow(row), counts: await feedbackCounts() });
 });
