@@ -15,8 +15,14 @@
 // or deleted). `saveArea` and `readArea` say which request belongs to it.
 export const GROCERY = "grocery";
 
+// The "links" area is the names Matt taught the matcher (« Je l'ai comme… »,
+// /inventory-links): a read of them waits for the teach and remove saves already sent
+// (lib/linkSaves.js), so a list read right after a change is never the one from before.
+export const LINKS = "links";
+
 // The area a save (a request that is not a GET) can change, or null.
 export function saveArea(path, method) {
+  if (path.startsWith("/inventory-links")) return LINKS;
   if (path.startsWith("/grocery") || path.startsWith("/planner")) return GROCERY;
   // Only a recipe saved or deleted by its id: reading a link (/recipes/scrape)
   // or a pasted list (/recipes/parse-ingredients) saves nothing and can be slow.
@@ -25,8 +31,9 @@ export function saveArea(path, method) {
 }
 
 // The area a read must wait for, or null: the grocery data itself and the
-// upcoming meals the list is built from.
+// upcoming meals the list is built from, and the taught names.
 export function readArea(path) {
+  if (path.startsWith("/inventory-links")) return LINKS;
   return path.startsWith("/grocery") || path.startsWith("/planner/upcoming") ? GROCERY : null;
 }
 

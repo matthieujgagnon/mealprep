@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { stepImage, stepIsHeading } from "../lib/steps.js";
 import { findDealsFor, findSaleDeal } from "../lib/similarRecipes.js";
-import { expiringItemsIn, matchingItems } from "../lib/inventoryMatch.js";
+import { expiringItemsIn, linkBehind, matchingItems } from "../lib/inventoryMatch.js";
 import { plannedDayOf, recipeIngredientNames, similarTo } from "../lib/finder.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
 import { MEAL_PRICING_READY, cardSteps, groceryItemOf, receiptTotals, recipeReceipt, stepServings } from "../lib/recipeCard.js";
@@ -15,6 +15,7 @@ import { formatMoney } from "../i18n/format.js";
 import { useStepTimers } from "../hooks/useStepTimers.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { CookMode } from "./CookMode.jsx";
+import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { PlannedPill } from "./RisoPills.jsx";
 import { BuySticker, OptionsMenu, PhotoLightbox, PricesSwitch, Receipt, SimilarStrip, SimilarView, StepList } from "./RecipeCardParts.jsx";
 import { t } from "../i18n/index.js";
@@ -52,7 +53,7 @@ import { t } from "../i18n/index.js";
 
 const CLOSE_MS = 220;
 // Overlays that open above the card and close with their own Escape.
-const ABOVE_CARD = ".riso-picker-backdrop, .riso-confirm-overlay, .rc-lightbox-overlay, .riso-deal-backdrop, .riso-ask-backdrop, .ck-sheet-backdrop, .ck-screen";
+const ABOVE_CARD = ".riso-picker-backdrop, .riso-confirm-overlay, .riso-link-layer, .rc-lightbox-overlay, .riso-deal-backdrop, .riso-ask-backdrop, .ck-sheet-backdrop, .ck-screen";
 const NOTE_SAVE_MS = 900;
 
 export function RecipeDetailModal({
@@ -216,6 +217,16 @@ export function RecipeDetailModal({
     if (row.short && row.need.quantity != null) Object.assign(draft, { quantity: row.need.quantity, unit: row.need.unit });
     onRequestInventoryAdd?.([draft], { title: t("inventoryConfirm.haveItTitle") });
   }
+
+  // "I have it as…": you keep it under another name. The pop-up links the two names (it
+  // adds nothing to Inventory). A blue row that is blue only because of such a link says
+  // so in its drawer, with Remove.
+  const links = useInventoryLinks();
+  const haveAs = (row) => links.ask(row.names, { label: row.name });
+  const becauseOf = (row) => {
+    const found = linkBehind(row.names, inventory);
+    return found && { link: found.link, onRemove: () => links.remove([found.link]) };
+  };
 
   // ---- Steps ------------------------------------------------------------------------
   const steps = useMemo(() => cardSteps(recipe.instructions || []), [recipe.instructions]);
@@ -427,6 +438,8 @@ export function RecipeDetailModal({
       onAddAll={(rows) => grocery.addWithUndo(rows.map(groceryItemOf))}
       onViewList={() => onNavigate?.("grocery")}
       onHaveIt={haveIt}
+      onHaveAs={links ? haveAs : undefined}
+      becauseOf={links ? becauseOf : undefined}
       onOutOfIt={outOfIt}
       onOpenInventory={() => onNavigate?.("inventory")}
     />

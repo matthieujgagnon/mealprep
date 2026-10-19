@@ -57,7 +57,7 @@ const unique = (values) => [...new Set(values.map((v) => String(v || "").trim())
 //                   recipe's unit ("400 g more")
 //   have     [row]  in your Inventory: the amount the recipe uses, the item it
 //                   comes from and `soon` (it wears the "Use soon!" sticker)
-// A row is { key, name, need, amount, notes, groups } (+ short, item, soon).
+// A row is { key, name, names, need, amount, notes, groups } (+ short, item, soon).
 // `soonItems` are the recipe's expiring items (expiringItemsIn).
 export function recipeReceipt(recipe, kitchen, servings, { soonItems = [] } = {}) {
   const scale = (servings || recipe?.baseServings || 1) / (recipe?.baseServings || 1);
@@ -71,6 +71,9 @@ export function recipeReceipt(recipe, kitchen, servings, { soonItems = [] } = {}
     const row = {
       key: line.key,
       name: line.name,
+      // The ingredient names the line is made of, as the recipe writes them (the
+      // taught names behind a blue row are looked up by these).
+      names: unique(line.ingredients.map((ing) => ing.name)),
       need,
       amount: amountText(need),
       notes: unique(line.ingredients.map((ing) => ing.notes)),

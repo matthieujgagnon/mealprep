@@ -1,4 +1,5 @@
 import { InStockPill, SalePill } from "./RisoPills.jsx";
+import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { t } from "../i18n/index.js";
 
 // The ingredient marks for the Planner's planned-meal card (so it agrees with the
@@ -10,7 +11,10 @@ import { t } from "../i18n/index.js";
 // `have` and `buy` are [{ key, name }] from lib/inventoryMatch.js recipeHave.
 // `saleOf(name)` (optional) gives a real flyer deal's green pill. `Section` is the
 // wrapper each caller uses; `headingTag` the heading level.
+// Beside each thing to buy a small ≈ button opens "I have it as…" (you keep it under
+// another name; it links the two names and adds nothing to Inventory).
 export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Section = "section", headingTag: H = "h3" }) {
+  const links = useInventoryLinks();
   return (
     <>
       {have.length > 0 && (
@@ -49,6 +53,17 @@ export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Sec
                     {item.name}
                   </button>
                   {sale && <SalePill size="tag" percent={sale.percent} store={sale.store} price={sale.price} />}
+                  {links && (
+                    <button
+                      type="button"
+                      className="ing-marks-haveas"
+                      aria-label={t("links.haveAsAria", { name: item.name })}
+                      title={t("links.chipTitle")}
+                      onClick={() => links.ask([item.name], { label: item.name })}
+                    >
+                      <span aria-hidden="true">≈</span>
+                    </button>
+                  )}
                 </span>
               );
             })}

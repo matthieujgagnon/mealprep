@@ -4,6 +4,7 @@ import { familyKey } from "./ingredientFamilies.js";
 import { convertToUnit } from "./units.js";
 import { daysUntil } from "./pantryInventory.js";
 import { isMealItem } from "./mealItem.js";
+import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLinks.js";
 
 // Which Inventory item a recipe ingredient is, and how much of it a cooked
 // meal takes out. The one matching in the app: every page that says whether you
@@ -30,7 +31,24 @@ import { isMealItem } from "./mealItem.js";
 //     pepper") is the vegetable, and the two never match;
 //   - several foods written on one line ("salt and pepper", « sel et poivre, au
 //     goût ») are looked up one by one: the line is had when each is;
-//   - water from the tap is never something to buy.
+//   - water from the tap is never something to buy;
+//   - words that only describe ("low sodium", "reduced fat", "liquid", "unwaxed",
+//     "bulb") are left out, in both languages, and a style word that names its own
+//     product ("balsamic", "dijon", "sriracha", "miso") is that product with or
+//     without it ("balsamic" is "balsamic vinegar", but plain vinegar is not);
+//   - a few names are one food written two ways (SYNONYMS: "rice wine vinegar" is
+//     "rice vinegar", in any word order and in French), a few cover one way only
+//     (ALSO_COVERS: seasoned rice vinegar is rice vinegar, not the other way round);
+//   - a whole lime or lemon covers its juice and zest, an orange its zest; bottled
+//     juice never covers the fruit (FRUIT_PARTS);
+//   - coriander on its own is cilantro, while ground coriander and coriander seeds
+//     are the spice;
+//   - lime, banana, grape, vine and curry leaves are products of their own, never
+//     the fruit or the plant, while every other leaf is its herb ("basil leaves");
+//   - and last, a name Matt taught (« Je l'ai comme… », lib/inventoryLinks.js): a recipe
+//     that says "rice vinegar" counts as had when he has "Rice wine vinegar" there, for
+//     exactly those two names, one way and one hop. This file is the only place that
+//     reads those links to decide whether a name counts.
 // Nothing else decides whether you have an ingredient: salt, oil and spices are
 // ingredients like any other, had when they are in Inventory.
 // A meal is not an ingredient and never matches (`isMealItem`, lib/mealItem.js): a
@@ -75,6 +93,10 @@ const KITCHEN_FR = [
   ["anis etoile", "star anise"], ["cardamome", "cardamom"], ["graines de fenouil", "fennel seeds"], ["graines de moutarde", "mustard seeds"],
   ["moutarde en poudre", "mustard powder"], ["cinq epices", "five spice powder"], ["seche", "dried"], ["sechee", "dried"],
   ["seches", "dried"], ["sechees", "dried"],
+  // Words the rules below need in English: leaves, zest, cider, bulbs and the like.
+  ["feuilles", "leaves"], ["feuille", "leaf"], ["zeste", "zest"], ["cidre", "cider"], ["limette", "lime"], ["bananier", "banana"],
+  ["vigne", "vine"], ["cari", "curry"], ["bulbe", "bulb"], ["assaisonne", "seasoned"], ["assaisonnee", "seasoned"],
+  ["balsamique", "balsamic"], ["pate de miso", "miso paste"], ["pate de tomate", "tomato paste"], ["pate de tomates", "tomato paste"],
   ["all purpose", "all-purpose"], ["eau froide", "cold water"], ["eau chaude", "hot water"], ["eau tiede", "warm water"], ["eau bouillante", "boiling water"], ["eau", "water"],
 ];
 
@@ -93,25 +115,46 @@ MULTI.sort((a, b) => b[0].length - a[0].length);
 const MULTI_RE = new RegExp(`(?<![a-z])(${MULTI.map(([fr]) => fr.replace(/[- ]/g, "[- ]+")).join("|")})(?![a-z])`, "g");
 const MULTI_MAP = new Map(MULTI.map(([fr, en]) => [fr.replace(/[- ]/g, ""), en]));
 
+// Words that say how a food is made or sold, never which food it is, written as
+// they arrive (two words, or hyphenated), in English and in Quebec French (the
+// feminine forms too, accents folded). They go before anything else is read.
+const DESCRIBING = [
+  "low sodium", "reduced sodium", "low fat", "reduced fat", "fat free", "no salt added", "full fat", "liquid", "unwaxed",
+  "faible en sodium", "faible teneur en sodium", "a faible teneur en sodium", "reduit en sodium", "reduite en sodium",
+  "teneur reduite en sodium", "a teneur reduite en sodium", "faible en gras", "faible teneur en gras", "a faible teneur en gras",
+  "reduit en gras", "reduite en gras", "teneur reduite en gras", "a teneur reduite en gras", "sans gras", "sans sel ajoute",
+  "sans sel ajoutee", "liquide", "non cire", "non ciree", "non cires", "non cirees",
+].sort((a, b) => b.length - a.length);
+const DESCRIBING_RE = new RegExp(`(?<![a-z])(${DESCRIBING.map((phrase) => phrase.replace(/ /g, "[- ]+")).join("|")})(?![a-z])`, "g");
+
+// The leaves that are a product of their own: "lime leaves" is not lime, "grape
+// leaves" are not grapes. Every other leaf is its herb ("basil leaves", "bay
+// leaves"), which canonicalize leaves out. Joined into one word before that.
+const OWN_LEAF_RE = /(?<![a-z])(?:(?:kaffir|makrut) )?(lime|banana|grape|vine|curry)s?[- ]+(?:leaf|leaves)(?![a-z])/g;
+const OWN_LEAF_FR_RE = /(?<![a-z])(?:leaf|leaves) (?:(?:kaffir|makrut) )?(lime|banana|grape|vine|curry)s?(?![a-z])/g;
+
 // A name in (mostly) English words: French phrases and words are swapped for
 // their English, anything unknown is kept as written.
 function toEnglish(name) {
   const text = fold(String(name || "").replace(/\([^)]*\)/g, " "))
     .replace(/['’]/g, " ")
+    .replace(DESCRIBING_RE, " ")
     .replace(MULTI_RE, (m) => ` ${MULTI_MAP.get(m.replace(/[- ]/g, "")) || m} `)
     .replace(/\b(\d+)\s*%/g, " ");
   return text
     .split(/[^a-z0-9-]+/)
     .filter((w) => w && !LITTLE.has(w) && !/^\d/.test(w))
     .map((w) => WORD_MAP.get(w) || WORD_MAP.get(w.replace(/[sx]$/, "")) || w)
-    .join(" ");
+    .join(" ")
+    .replace(OWN_LEAF_RE, "$1leaf")
+    .replace(OWN_LEAF_FR_RE, "$1leaf");
 }
 
 // Words that say how a food is sold or kept, never which food it is.
 const DESCRIPTORS = new Set(
   (
     "whole skim nonfat fat-free low-fat reduced-fat unsalted salted boneless skinless bone-in skin-on lean extra-lean extra-virgin virgin " +
-    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought mild moulu moulue moulus moulues all-purpose pure granulated"
+    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought mild moulu moulue moulus moulues all-purpose pure granulated bulb"
   ).split(" ")
 );
 // What a food was made into: not the food itself.
@@ -139,6 +182,25 @@ const PEPPER_COLOURS = new Set(["red", "yellow", "green", "purple"]);
 const TAP_WATER_WORDS = new Set("water cold warm hot boiling lukewarm ice iced tap filtered cool room-temperature".split(" "));
 // Words that only say what kind of thing it is ("pita bread" is pita).
 const GENERIC = new Set(["bread", "cheese"]);
+// Style words that never name another food, with the product they imply: "balsamic"
+// alone is "balsamic vinegar" and "sriracha" is "sriracha sauce". Plain "vinegar" is
+// not balsamic, so these stay part of the food; only the product word is filled in.
+const STYLE_WORDS = {
+  balsamic: "vinegar", dijon: "mustard", sriracha: "sauce", hoisin: "sauce", worcestershire: "sauce", tabasco: "sauce",
+  teriyaki: "sauce", tahini: "paste", miso: "paste", gochujang: "paste", harissa: "paste",
+};
+// Names that are one food written two ways, whatever the word order or the language:
+// the words on the left, all there, become the words on the right.
+const SYNONYMS = [
+  ["rice wine vinegar", "rice vinegar"],
+  ["apple cider vinegar", "cider vinegar"],
+  ["red vinegar", "red wine vinegar"],
+].map(([from, to]) => [from.split(" "), to.split(" ")]);
+// What an item named on the left also covers when a recipe names the one on the right,
+// and not the other way round.
+const ALSO_COVERS = [["seasoned rice vinegar", "rice vinegar"]];
+// The parts of a fruit that a whole one covers (bottled juice never covers the fruit).
+const FRUIT_PARTS = { lime: ["juice", "zest"], lemon: ["juice", "zest"], orange: ["zest"] };
 
 const profileCache = new Map();
 
@@ -153,7 +215,13 @@ export function foodProfile(name) {
   core = SAME_FOOD[core] || core;
   let joined = ` ${core} `;
   for (const [phrase, token] of COMPOUNDS) joined = joined.replace(` ${phrase} `, ` ${token} `);
-  const words = joined.trim().split(" ").filter(Boolean);
+  let words = joined.trim().split(" ").filter(Boolean);
+  for (const [from, to] of SYNONYMS) {
+    if (from.every((w) => words.includes(w))) words = [...new Set([...words.filter((w) => !from.includes(w)), ...to])];
+  }
+  // A style word on its own names its product: "miso" is "miso paste".
+  const styled = words.filter((w) => !KINDS.has(w));
+  if (styled.length === 1 && STYLE_WORDS[styled[0]]) words = [...words, STYLE_WORDS[styled[0]]];
 
   let derived = null;
   const cuts = new Set();
@@ -211,13 +279,39 @@ export function isTapWater(name) {
   return words.includes("water") && words.every((w) => TAP_WATER_WORDS.has(w));
 }
 
-function sameFoodAs(haveName, foodName) {
-  const have = foodProfile(haveName);
-  const want = foodProfile(foodName);
+// Two names that are the same food, once both are read.
+function sameProfile(have, want) {
   if (!have.food || !want.food) return false;
   if (have.derived !== want.derived) return false;
   if (have.food !== want.food) return false;
   return overlaps(have.cuts, want.cuts) && overlaps(have.kinds, want.kinds);
+}
+
+const alsoCovers = ALSO_COVERS.map(([from, to]) => [foodProfile(from), foodProfile(to)]);
+
+// Coriander written on its own (no "ground", no "seeds") is the herb, cilantro.
+const isBareCoriander = (p) => p.food === "coriander" && !p.derived && p.cuts.size === 0 && p.kinds.size === 0;
+const isCilantro = (p) => p.food === "cilantro" && !p.derived && p.cuts.size === 0 && p.kinds.size === 0;
+
+// The rules that make two differently written names one food, after sameProfile.
+function coveredAnotherWay(have, want) {
+  if ((isBareCoriander(have) && isCilantro(want)) || (isCilantro(have) && isBareCoriander(want))) return true;
+  // A whole fruit covers its juice and its zest.
+  if (!have.derived && have.food === want.food && FRUIT_PARTS[have.food]?.includes(want.derived)) return true;
+  return alsoCovers.some(([from, to]) => sameProfile(have, from) && sameProfile(to, want));
+}
+
+// The matcher's own rules: the two names are the same food.
+function rulesCover(haveName, foodName) {
+  const have = foodProfile(haveName);
+  const want = foodProfile(foodName);
+  if (!have.food || !want.food) return false;
+  return sameProfile(have, want) || coveredAnotherWay(have, want);
+}
+
+// The rules, then what Matt taught (the one place a link is read to decide a match).
+function sameFoodAs(haveName, foodName) {
+  return rulesCover(haveName, foodName) || Boolean(findLink(haveName, foodName));
 }
 
 // Whether something you have (an Inventory item) is this recipe ingredient, or
@@ -248,6 +342,45 @@ export function haveItemFor(ingredientName, inventory = []) {
   return matchingItems(ingredientName, inventory).find(notExpired) || null;
 }
 
+// ---- What Matt taught (« Je l'ai comme… ») ----------------------------------------
+
+// The foods a link is taught for when a recipe's ingredients are not in Inventory: for
+// each ingredient name the first food on its line that no Inventory item is yet
+// ("salt and pepper" with salt in Inventory is "pepper"), each food once. None when
+// everything is already had or is water from the tap.
+export function foodsToTeach(names, inventory = []) {
+  const foods = [];
+  for (const name of [].concat(names)) {
+    const food = foodsOnLine(name).find((f) => !isTapWater(f) && !haveItemFor(f, inventory));
+    if (food && !foods.some((other) => linkKey(other) === linkKey(food))) foods.push(food);
+  }
+  return foods;
+}
+
+// The link that makes this line count, and the Inventory item it points at, when the
+// line is had only because Matt said so: none of the matcher's own rules cover that
+// food. `names` are the ingredient names the line is made of ("garlic", "garlic
+// cloves"). null when no link is behind it.
+export function linkBehind(names, inventory = []) {
+  const items = inventory.filter((item) => isUsable(item) && notExpired(item));
+  for (const name of [].concat(names)) {
+    for (const food of foodsOnLine(name)) {
+      if (items.some((item) => rulesCover(item.name, food))) continue;
+      for (const item of items) {
+        const link = findLink(item.name, food);
+        if (link) return { link, item };
+      }
+    }
+  }
+  return null;
+}
+
+// What an Inventory item also counts as, because Matt said so: the links whose
+// Inventory side is this item's name (the item pop-up's "Also counts as").
+export function linksFromItem(item) {
+  return isUsable(item) ? linksOnItemName(item.name) : [];
+}
+
 // ---- A recipe next to your Inventory -------------------------------------------
 //
 // `kitchen` is what App.jsx keeps once: { inventory }.
@@ -259,9 +392,10 @@ const answers = new WeakMap();
 function answersFor(kitchen) {
   const inventory = kitchen?.inventory || NO_ITEMS;
   const day = new Date().toDateString();
+  const links = linksVersion();
   let table = answers.get(inventory);
-  if (!table || table.day !== day) {
-    table = { day, byName: new Map() };
+  if (!table || table.day !== day || table.links !== links) {
+    table = { day, links, byName: new Map() };
     answers.set(inventory, table);
   }
   return table;

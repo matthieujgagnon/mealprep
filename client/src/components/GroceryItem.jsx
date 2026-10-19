@@ -85,6 +85,7 @@ export function GroceryItem({
   dealStore = false, // name the sale's store after its price (By aisle, By recipe)
   brand = "",
   flyerDeal = null, // an item added from a flyer deal: its row opens that deal
+  onHaveAs, // "I have it as…" on a row that comes from recipes (not in Store mode): links its recipe names to an Inventory item
   onToggle,
   onOpenDeal,
   onDelete,
@@ -109,6 +110,7 @@ export function GroceryItem({
   const showDeal = !store && !checked && !!deal?.price;
   const mine = !!item.isManual;
   // Store mode shows the name and the number to buy, nothing else.
+  const haveAs = !store && !mine && hasRecipes && !!onHaveAs;
   const hasMeta = !store && (isQueued || mine || !!brand || hasRecipes || !!recipeQty);
   const afterQueued = mine || !!brand || hasRecipes;
 
@@ -128,6 +130,19 @@ export function GroceryItem({
         <span className="riso-row-need narrow" title={t("grocery.recipeQtyTitle")}>
           {recipeQty}
         </span>
+      )}
+      {haveAs && (
+        <button
+          type="button"
+          className="riso-row-haveas"
+          aria-label={t("links.haveAsAria", { name: shownName })}
+          onClick={(e) => {
+            e.stopPropagation();
+            onHaveAs();
+          }}
+        >
+          {t("links.haveAs")}
+        </button>
       )}
     </span>
   );

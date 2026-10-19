@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GROCERY, afterSaves, noteSave, readArea, saveArea, savesVersion } from "./pendingSaves.js";
+import { GROCERY, LINKS, afterSaves, noteSave, readArea, saveArea, savesVersion } from "./pendingSaves.js";
 
 // A save we can finish (or fail) when we choose.
 function later() {
@@ -99,5 +99,21 @@ describe("which requests the grocery list is made of", () => {
     expect(readArea("/planner?week=2026-10-12")).toBeNull();
     expect(readArea("/planner/dates?from=a&to=b")).toBeNull();
     expect(readArea("/recipes")).toBeNull();
+  });
+});
+
+describe("the taught names (I have it as…) are an area of their own", () => {
+  it("their saves are in the links area, and only a read of them waits for those", () => {
+    expect(saveArea("/inventory-links", "POST")).toBe(LINKS);
+    expect(saveArea("/inventory-links/abc", "DELETE")).toBe(LINKS);
+    expect(readArea("/inventory-links")).toBe(LINKS);
+    expect(readArea("/grocery-checked")).toBe(GROCERY);
+  });
+
+  it("a teach does not hold the grocery list back, nor the grocery list a read of the links", async () => {
+    noteSave(LINKS, later().promise); // never ends
+    await afterSaves(GROCERY);
+    noteSave(GROCERY, later().promise); // never ends
+    expect(saveArea("/pantry-inventory", "POST")).toBeNull();
   });
 });

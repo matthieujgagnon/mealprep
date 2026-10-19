@@ -47,6 +47,7 @@ model User {
   pantryInventoryItems  PantryInventoryItem[]
   pantryConsumptionLogs PantryConsumptionLog[]
   pantryRemovedItems    PantryRemovedItem[]
+  inventoryLinks        InventoryLink[]
   feedback              Feedback[]
   pantryLocations       PantryLocation[]
   watchlistItems        WatchlistItem[]
@@ -435,6 +436,30 @@ model PantryRemovedItem {
   removedAt DateTime @default(now())
 
   @@index([userId, removedAt])
+}
+
+// « Je l'ai comme… » / "I have it as…": a name Matt taught the matcher. A recipe that
+// says `recipeName` ("rice vinegar") counts as had when Inventory holds an item named
+// `itemName` ("Rice wine vinegar"). It adds nothing to Inventory; the server only keeps
+// the pairs and does no matching (the client's lib/inventoryMatch.js reads them).
+// Names, not item ids or matcher keys, so a new bottle with the same name still counts
+// and a later change to the matcher's rules does not break a link. The two names are
+// stored twice: `recipeName` and `itemName` are the keys the matcher compares (accents
+// and capitals folded, spaces collapsed: lib/inventoryLinks.js), `recipeLabel` and
+// `itemLabel` are the names as Matt saw them, for display. One link per pair of names
+// per account; links go with their account (ON DELETE CASCADE).
+model InventoryLink {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeName  String
+  itemName    String
+  recipeLabel String
+  itemLabel   String
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, recipeName, itemName])
+  @@index([userId, createdAt])
 }
 
 // What a signed-in tester sent from the app's Feedback form, or from a "Report a
