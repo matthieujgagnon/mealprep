@@ -156,10 +156,12 @@ function locationLabel(id) {
 }
 
 // What tapping a row opens under it: why it is where it is, and what can be done.
-// A thing to buy: put it on the grocery list or take it off, or "I have it" (the
-// Inventory confirmation sheet; nothing is added before it is confirmed). Something
-// in your Inventory: "I'm out of this" and "Open in Inventory".
-function RowDrawer({ row, kind, servings, onList, onToggleList, onHaveIt, onOutOfIt, onOpenInventory }) {
+// A thing to buy: put it on the grocery list or take it off, "I have it" (the
+// Inventory confirmation sheet; nothing is added before it is confirmed) or "I have it
+// as…" (you keep it under another name: it links the two names and adds nothing).
+// Something in your Inventory: "I'm out of this" and "Open in Inventory", and when the
+// row is blue only because you said so, which link did it, with Remove (`because`).
+function RowDrawer({ row, kind, servings, onList, onToggleList, onHaveIt, onHaveAs, because, onOutOfIt, onOpenInventory }) {
   const where = (row.item ? locationLabel(row.item.location) : t("recipeCard.inventory")).toLowerCase();
   let why;
   if (kind === "buy") {
@@ -182,6 +184,11 @@ function RowDrawer({ row, kind, servings, onList, onToggleList, onHaveIt, onOutO
             <button type="button" className="riso-rc-drawer-btn" onClick={onHaveIt}>
               {t("recipeCard.haveIt")}
             </button>
+            {onHaveAs && !row.short && (
+              <button type="button" className="riso-rc-drawer-btn" onClick={onHaveAs}>
+                {t("links.haveAs")}
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -194,6 +201,14 @@ function RowDrawer({ row, kind, servings, onList, onToggleList, onHaveIt, onOutO
           </>
         )}
       </div>
+      {kind === "have" && because && (
+        <p className="riso-rc-because">
+          {t("links.because", { item: because.link.itemLabel, recipe: because.link.recipeLabel })}{" "}
+          <button type="button" className="riso-rc-link" onClick={because.onRemove}>
+            {t("links.remove")}
+          </button>
+        </p>
+      )}
     </div>
   );
 }
@@ -283,6 +298,8 @@ export function Receipt({
   onAddAll,
   onViewList,
   onHaveIt,
+  onHaveAs,
+  becauseOf,
   onOutOfIt,
   onOpenInventory,
 }) {
@@ -296,6 +313,8 @@ export function Receipt({
       onList={grocery.isOnList(row.name)}
       onToggleList={() => onToggleRow(row)}
       onHaveIt={() => onHaveIt(row)}
+      onHaveAs={onHaveAs && (() => onHaveAs(row))}
+      because={kind === "have" ? becauseOf?.(row) : null}
       onOutOfIt={() => onOutOfIt(row)}
       onOpenInventory={onOpenInventory}
     />

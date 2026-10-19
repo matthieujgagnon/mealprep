@@ -41,6 +41,8 @@ export const HELP_COPIES = {
   rcPlan: { kind: "pill", cls: "riso-rc-pill", label: "finder.plan" },
   rcSimilar: { kind: "pill", cls: "riso-rc-pill cream", label: "finder.similar" },
   rcOpenFull: { kind: "pill", cls: "riso-rc-pill", label: "recipeCard.openFullRecipe" },
+  rcHaveIt: { kind: "pill", cls: "riso-rc-drawer-btn", label: "recipeCard.haveIt" },
+  rcHaveAs: { kind: "pill", cls: "riso-rc-drawer-btn", label: "links.haveAs" },
   timerStart: { kind: "pill", cls: "riso-rc-timer-pill", label: "recipeCard.timerStart", vars: { time: "20 min" } },
   timerReset: { kind: "icon", cls: "riso-rc-timer-reset", glyph: "↺" },
   moreButton: { kind: "icon", cls: "riso-rc-round", glyph: "⋯" },
@@ -88,6 +90,7 @@ export const HELP_COPIES = {
   finderAddIngredient: { kind: "pill", cls: "fnd-add-ing", label: "finder.addIngredient" },
   removeNote: { kind: "pill", cls: "riso-slotcard-remove", label: "planner.removeNote" },
   leftoversBtn: { kind: "pill", cls: "fnd-main-btn", label: "finder.placeLeftovers" },
+  chipHaveAs: { kind: "icon", cls: "ing-marks-haveas", glyph: "≈" },
   haveDot: { kind: "icon", cls: "riso-help-copy-have", glyph: "" },
 
   // Makeable
@@ -113,6 +116,7 @@ export const HELP_COPIES = {
   rowQueued: { kind: "icon", cls: "riso-row-check on queued", glyph: "+" },
   addQueued: { kind: "pill", cls: "riso-group-foot-btn", label: "grocery.addQueued", vars: { count: 2 }, strong: true },
   rowRemove: { kind: "icon", cls: "riso-row-delete", glyph: "×" },
+  rowHaveAs: { kind: "pill", cls: "riso-row-haveas", label: "links.haveAs" },
   removedChip: { kind: "removed" },
   putBackOnList: { kind: "pill", cls: "riso-removed-putback", label: "grocery.putBackOnList" },
   share: { kind: "pill", cls: "riso-grocery-share", label: "grocery.share" },

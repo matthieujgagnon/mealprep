@@ -342,7 +342,7 @@ test("the grocery marks, Add to grocery list, and I have it (which asks first)",
 
   // I have it: the Inventory confirmation sheet first; Cancel adds nothing.
   await parsley.locator(".riso-rc-buy-main").click();
-  await parsley.getByRole("button", { name: "I have it" }).click();
+  await parsley.getByRole("button", { name: "I have it", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Add to Inventory" });
   await expect(sheet).toBeVisible();
   // Escape closes the sheet, not the card under it.

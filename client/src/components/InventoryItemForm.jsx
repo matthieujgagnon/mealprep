@@ -25,7 +25,8 @@ import {
   useByKind,
 } from "../lib/inventoryForm.js";
 import { leftoverExpiry, leftoverKeepDays, thawPatch, FRIDGE_DAYS } from "../lib/leftovers.js";
-import { recipesUsingItem } from "../lib/inventoryMatch.js";
+import { linksFromItem, recipesUsingItem } from "../lib/inventoryMatch.js";
+import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { isMealItem } from "../lib/mealItem.js";
 import { MealTag } from "./InventoryItems.jsx";
 import { expiryDay } from "../lib/quebecDay.js";
@@ -422,6 +423,10 @@ export function InventoryItemForm({
   const asShown = edit ? { ...item, isPreparedMeal: prepared } : null;
   const isMeal = edit && isMealItem(asShown);
   const recipeCount = edit ? recipesUsingItem(asShown, recipes).length : 0;
+  // The recipe names you taught that count as this item (« Je l'ai comme… »), each with
+  // a × that stops counting it (with an Undo).
+  const links = useInventoryLinks();
+  const alsoCounts = edit && links ? linksFromItem(item) : [];
 
   async function submitAdd(keepOpen) {
     if (!trimmed || busy) return;
@@ -797,6 +802,24 @@ export function InventoryItemForm({
               >
                 {t("home.seeThem")}
               </button>
+            </div>
+          )}
+          {alsoCounts.length > 0 && !isMeal && (
+            <div className="riso-itemform-also">
+              <span className="riso-itemform-also-label">{t("links.alsoCounts")}</span>
+              {alsoCounts.map((link) => (
+                <span key={link.id} className="riso-linkchip">
+                  {link.recipeLabel}
+                  <button
+                    type="button"
+                    className="riso-linkchip-x"
+                    aria-label={t("links.removeAria", { item: link.itemLabel, recipe: link.recipeLabel })}
+                    onClick={() => links.remove([link])}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
             </div>
           )}
           {edit && isMeal && (

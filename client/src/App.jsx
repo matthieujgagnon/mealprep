@@ -47,6 +47,9 @@ import { Makeable } from "./components/Makeable.jsx";
 import { Inventory, InventoryDragPreview, SHELF_DRAG, shelfOptions } from "./components/Inventory.jsx";
 import { GripAwarePointerSensor, sectionCollision } from "./components/ReorderSections.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
+import { InventoryLinkPopup, InventoryLinksContext } from "./components/InventoryLinkPopup.jsx";
+import { createLinkSaver } from "./lib/linkSaves.js";
+import { foodsToTeach } from "./lib/inventoryMatch.js";
 import { CookedViewHost } from "./components/CookedView.jsx";
 import { mealTitle } from "./lib/leftovers.js";
 import { isPreparedMeal } from "./lib/mealItem.js";
@@ -263,6 +266,22 @@ export default function App({ user, onLogout }) {
   // What is on hand, for every page that says what you have of a recipe
   // (lib/inventoryMatch.js recipeHave and ingredientHave): one object, so they all agree.
   const kitchen = useMemo(() => ({ inventory: pantryInventory }), [pantryInventory]);
+  // « Je l'ai comme… » / "I have it as…": the names Matt taught the matcher
+  // (lib/inventoryLinks.js is the list every page reads, through the one matcher). When
+  // it changes, Inventory is handed on as a new array so every page asks the matcher
+  // again. It adds nothing to Inventory, so it has no confirmation sheet (CLAUDE.md).
+  const toastLatest = useRef(null);
+  const linkSaverRef = useRef(null);
+  if (!linkSaverRef.current) {
+    linkSaverRef.current = createLinkSaver({
+      api,
+      onChange: () => setPantryInventory((prev) => [...prev]),
+      onFailed: (what) => toastLatest.current?.(t(what === "teach" ? "links.saveFailed" : "links.removeFailed")),
+    });
+  }
+  const linkSaver = linkSaverRef.current;
+  toastLatest.current = showToast;
+  const [linkAsk, setLinkAsk] = useState(null); // { foods, label } while the "I have it as…" pop-up is open
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("all");
@@ -367,6 +386,7 @@ export default function App({ user, onLogout }) {
       api.listPantryInventory().then(setPantryInventory),
       api.listPantryLocations().then(setPantryLocations),
       api.getInventoryLayout().then(setInventoryLayout),
+      api.listInventoryLinks().then(linkSaver.load),
     ]).then((results) => {
       if (results.some((r) => r.status === "rejected")) setLoadError(true);
     });
@@ -597,6 +617,7 @@ export default function App({ user, onLogout }) {
     clearDeals();
     clearRecipes();
     clearGroceryShared();
+    linkSaver.clear();
     onLogout();
   }
 
@@ -726,6 +747,31 @@ export default function App({ user, onLogout }) {
     const item = await api.putBackRemovedPantryItem(entry.id);
     setPantryInventory((prev) => [...prev.filter((i) => i.id !== item.id), item]);
   }
+
+  // "I have it as…": opens the pop-up for the recipe names that Inventory does not hold
+  // yet ("salt and pepper" with salt in Inventory is just "pepper"); one pick links them
+  // to that Inventory item, with a toast whose Undo takes the links away again.
+  function askLink(names, { label } = {}) {
+    const foods = foodsToTeach(names, pantryInventory);
+    if (foods.length > 0) setLinkAsk({ foods, label: label || capitalize(foods[0]) });
+  }
+  function pickLinkItem(item) {
+    const { foods, label } = linkAsk;
+    setLinkAsk(null);
+    const added = linkSaver.teach(foods.map((food) => ({ recipeName: capitalize(food), itemName: item.name })));
+    showToast(t("links.taught", { item: item.name, recipe: label }), () => linkSaver.remove(added));
+  }
+  // The × on "Also counts as" and Remove on a blue row: Undo teaches them again.
+  function removeLinks(links) {
+    if (links.length === 0) return;
+    linkSaver.remove(links);
+    showToast(t("links.removed", { item: links[0].itemLabel, recipe: links[0].recipeLabel }), () =>
+      linkSaver.teach(links.map((link) => ({ recipeName: link.recipeLabel, itemName: link.itemLabel })))
+    );
+  }
+  const linkActions = useRef({});
+  linkActions.current = { askLink, removeLinks };
+  const linksApi = useMemo(() => ({ ask: (...args) => linkActions.current.askLink(...args), remove: (...args) => linkActions.current.removeLinks(...args) }), []);
 
   // "Used up"/"Tossed" on the Inventory page - removes the items like a
   // plain delete, but also logs each removal (see PantryConsumptionLog) so
@@ -1371,6 +1417,8 @@ export default function App({ user, onLogout }) {
           />
         )}
 
+        {linkAsk && <InventoryLinkPopup label={linkAsk.label} items={pantryInventory} onPick={pickLinkItem} onClose={() => setLinkAsk(null)} />}
+
         {tab === "flyers" && (
           <FlyerDeals
             user={user}
@@ -1673,5 +1721,9 @@ export default function App({ user, onLogout }) {
 
   // Anything under here that offers the Feedback form (Help, an error message) opens it
   // through the context.
-  return <FeedbackContext.Provider value={openFeedback}>{app}</FeedbackContext.Provider>;
+  return (
+    <FeedbackContext.Provider value={openFeedback}>
+      <InventoryLinksContext.Provider value={linksApi}>{app}</InventoryLinksContext.Provider>
+    </FeedbackContext.Provider>
+  );
 }

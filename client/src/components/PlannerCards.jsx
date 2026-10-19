@@ -54,6 +54,8 @@ function useCloseOutside(ref, anchor, onClose, enabled = true) {
     if (!enabled) return undefined;
     const onKey = (e) => e.key === "Escape" && onClose();
     const onDown = (e) => {
+      // The "I have it as…" pop-up opens from this card and sits outside it: a tap in it is not outside.
+      if (e.target.closest?.(".riso-link-layer")) return;
       if (!ref.current?.contains(e.target) && !anchor?.contains(e.target)) onClose();
     };
     document.addEventListener("keydown", onKey);

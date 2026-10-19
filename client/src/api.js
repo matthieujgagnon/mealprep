@@ -287,6 +287,14 @@ export const api = {
   renamePantryLocation: (id, name) =>
     request(`/pantry-locations/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
 
+  // « Je l'ai comme… » / "I have it as…": the names taught to the matcher
+  // ([{ id, recipeName, itemName, recipeLabel, itemLabel }]). Adding one adds nothing to
+  // Inventory (CLAUDE.md); saying the same pair again gives the same link back.
+  listInventoryLinks: () => request("/inventory-links"),
+  addInventoryLink: (recipeName, itemName) =>
+    request("/inventory-links", { method: "POST", body: JSON.stringify({ recipeName, itemName }) }),
+  deleteInventoryLink: (id) => request(`/inventory-links/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
   getInventoryLayout: () => request("/inventory-layout"),
   // sections: [{ sectionId, label?, size }] in display order.
   saveInventoryLayout: (sections) =>

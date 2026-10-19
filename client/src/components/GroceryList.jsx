@@ -8,8 +8,9 @@ import { saveInOrder } from "../lib/saveInOrder.js";
 import { daysBetween, quebecDay } from "../lib/quebecDay.js";
 import { useDeals } from "../lib/dealsStore.js";
 import { useLiveEntries } from "../lib/recipeStore.js";
-import { buildGroceryList } from "../lib/groceryList.js";
+import { buildGroceryList, capitalize } from "../lib/groceryList.js";
 import { splitAtHome } from "../lib/groceryAtHome.js";
+import { ingredientHave } from "../lib/inventoryMatch.js";
 import {
   BOUGHT,
   QUEUED,
@@ -32,6 +33,7 @@ import { brandOf, dealSavings } from "../lib/flyerIngredients.js";
 import { Segmented, HintStrip } from "./RisoControls.jsx";
 import { StoreMode } from "./StoreMode.jsx";
 import { GroceryItem } from "./GroceryItem.jsx";
+import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { GroceryCart, GroceryHowItWorks, GroupFooter } from "./GroceryParts.jsx";
 import { RemovedStrip } from "./RemovedStrip.jsx";
 import { LIFTED_CLASS, ReorderGrip, ReorderList, useReorderSection, useReorderSensors } from "./ReorderSections.jsx";
@@ -958,6 +960,17 @@ export function GroceryList({
     />
   );
 
+  // "I have it as…" on a row that comes from recipes: the recipe names behind the row
+  // (garlic, garlic cloves) that Inventory does not hold yet are linked to the item
+  // picked. It adds nothing to Inventory. Rows with nothing left to link have no link.
+  const links = useInventoryLinks();
+  function haveAsFor(item) {
+    if (!links || item.isManual) return undefined;
+    const names = item.ingredientNames || [];
+    if (!names.some((name) => ingredientHave(name, kitchen) === "need")) return undefined;
+    return () => links.ask(names, { label: capitalize(item.name) });
+  }
+
   // One row of a group, the same in every view (only By store's rows drag).
   function renderRow(group, row, Row = GroceryRow) {
     return (
@@ -971,6 +984,7 @@ export function GroceryList({
         dealStore={view !== "store"}
         flyerDeal={flyerDealFor(row.item)}
         onOpenDeal={(d) => openDealDetail(d, row.item.name)}
+        onHaveAs={haveAsFor(row.item)}
         onDelete={() => removeItem(row.item)}
         onSetQuantity={(quantity) => setOverride(row.item.key, { quantity })}
       />

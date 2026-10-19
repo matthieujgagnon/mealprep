@@ -75,7 +75,8 @@ describe("itemCovers", () => {
     ["jasmine rice", "basmati rice"],
     ["bread", "pita bread"],
     ["black pepper", "red bell pepper"],
-    ["lemons", "lemon juice"],
+    // Bottled juice is not the fruit (a whole lemon is its juice: inventoryMatchRules.test.js).
+    ["lemon juice", "lemons"],
     ["milk", "buttermilk"],
     ["Poivrons", "black pepper"],
     ["bell pepper", "pepper"],

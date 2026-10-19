@@ -35,6 +35,11 @@ The exceptions, which count as Matt confirming:
   which restores the row exactly as it was when it left (same id, shelf, amount and use-by
   date). It only undoes a removal from the last 7 days; it is never a way of adding something new.
 
+- « Je l'ai comme… » / "I have it as…" (`InventoryLinkPopup.jsx`, `lib/inventoryLinks.js`) is not a way of
+  adding: it adds nothing to Inventory, it only links a recipe's name to an item Matt already has
+  (the matcher reads the link, nowhere else), so it needs no sheet. « J'en ai » / "I have it" is the
+  one that adds, through the sheet.
+
 Do not call `api.addPantryInventoryItem` or `handleAddPantryItem` from anywhere else. A new
 way of adding must call `requestInventoryAdd(drafts)` and only act on the rows it resolves
 with (it resolves with the `ref` of each added row, or null if cancelled).
