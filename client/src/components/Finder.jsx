@@ -428,11 +428,10 @@ export function Finder({
 
   const hint = target ? t("tray.hintTarget", { slot: targetLabel }) : t("finder.hint");
 
-  const compact = !sheet && !page; // a computer's panel and a phone's panel have the grab bar, the hint and Browse; the sheet and the page don't
+  const compact = !sheet && !page; // a computer's panel and a phone's panel have the hint and Browse; the sheet and the page don't
   return (
     <div ref={finder.rootRef} className={`fnd fnd-${layout}${showResults ? " is-open" : ""}`}>
       {targetNotice && <div className="fnd-notice">{targetNotice}</div>}
-      {compact && <span className="fnd-grab" aria-hidden="true" />}
       {compact && (
         <div className="fnd-top">
           <p className="fnd-hint">{hint}</p>

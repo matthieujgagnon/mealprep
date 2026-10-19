@@ -12,7 +12,9 @@ Everything below is one piece used by every page that shows the same thing. The 
 | Toast | `components/Toast.jsx` | The one message with Undo. |
 | Media query | `hooks/useMediaQuery.js` (`useIsPhone` is built on it) | Whether a CSS media query matches, kept up to date. Home uses it with `TOUCH_SCREEN` (`(pointer: coarse)`, `lib/homeScreens.js`) to tell a touch screen from a computer. |
 | Planner header | `components/PlannerHeader.jsx` | The title on its own line, the week controls (‹, date pill, ›; the "this week" sticker on a computer, the page stickers on a phone) and the calendar they open. |
-| Week calendar | `components/WeekCalendar.jsx` | The month calendar the date pill opens, with the day preview and "Copy last week"; on a phone a panel that also holds the weekend's settings. |
+| Week calendar | `components/WeekCalendar.jsx` | The month calendar the date pill opens, with the day preview and "Copy last week"; on a phone a panel that also holds the weekend's settings. The panel and the day card are kept inside the window by Keep inside the window. |
+| Keep inside the window | `lib/placeInWindow.js` (`placeBeside`, `centerOn`, `keepInside`, `viewSize`) | **The one rule for a floating box that must stay on screen:** beside its anchor on the preferred side, on the other side when it does not fit, then shifted so no side leaves the window (12px margin). The Planner's slot cards and planned-meal cards (`useBesideSlot` in `PlannerCards.jsx`) and the week calendar's panel and day card use it. A new popover or card that opens next to something uses it too. |
+| Where a page starts | `lib/pageScroll.js` (`scrollPageToTop`), the `useLayoutEffect` on `tab` and `showTab` in `App.jsx` | **The one rule for scroll when the page changes:** any change of page (a header tab, the app name, Back and Forward, a link on another page) starts the new page at its top and Home on its first screen; tapping the tab you are already on scrolls that page smoothly back to the top. |
 | Weekend settings | `WeekendSettings` in `components/PlannerExtras.jsx` | The weekend's switch, days, evening before and presets: in the computer's menu under the tag, and in the phone calendar's "Fin de semaine" section. |
 | Planner legend | `components/PlannerLegend.jsx` | The legend under the Planner board on a computer. |
 | Planner board | `components/PlannerBoard.jsx` | The week board on a computer (seven days). Its card pieces (`PlannerMealCard`, `PlannerNoteCard`) are the phone board's too. |
@@ -125,9 +127,9 @@ Props: `weekStart`, `onChangeWeek(weekStart)`, `lastWeekCount`, `onCopyLastWeek`
 
 ## Week calendar
 
-`WeekCalendar` is what the date pill opens. A month drawn as weeks: three dashes under each day (breakfast, lunch, supper; blue when planned), the shown week yellow, today pink. On a computer it sits centred under the pill and a row **picks that week**. On a phone it is a panel from just under the controls row down to 14px from the bottom and the sides, with a caret under the pill, over a dimmed backdrop (the controls stay in front of it); a row does not pick the week. The month arrows only change the month; the arrows next to the pill change the week.
+`WeekCalendar` is what the date pill opens. A month drawn as weeks: three dashes under each day (breakfast, lunch, supper; blue when planned), the shown week yellow, today pink. On a computer it sits under the pill, centred on it and shifted sideways when that would take it out of the window (`centerOn`; the caret keeps pointing at the pill), and a row **picks that week**. On a phone it is a panel from just under the controls row down to 14px from the bottom and the sides, with a caret under the pill, over a dimmed backdrop (the controls stay in front of it); a row does not pick the week. The month arrows only change the month; the arrows next to the pill change the week.
 
-- **Day preview**: on a computer, hovering a day shows a card to the left with its three meals, real recipe photos and the rotated "leftover" tag (`Pill` sticker). On a phone there is no hover: tapping a day shows the same card under that day's row (« Jeudi 8 octobre », « 2 PRÉVUS »), with "Show this week".
+- **Day preview**: on a computer, hovering a day shows a card beside the calendar with its three meals, real recipe photos and the rotated "leftover" tag (`Pill` sticker). It is on the calendar's left when there is room there and on its right when there is not (the date pill sits near the left edge, so it is usually on the right), and always inside the window on all four sides (`DayPreview` places it with `placeBeside`, `position: fixed`, again on resize and scroll). It is `pointer-events: none`, so it never takes the hover. On a phone there is no hover: tapping a day shows the same card under that day's row (« Jeudi 8 octobre », « 2 PRÉVUS »), with "Show this week".
 - **Weekend (phone only)**: after a dashed rule, the « Fin de semaine » section is the shared `WeekendSettings` (`inCalendar`): the switch, `DAYS · summary`, seven one-letter day buttons, « la veille au souper », the presets. Every change is saved at once, the same setting as the computer's tag menu.
 - **Footer**: "Go to this week" (yellow on a phone) and "↺ Copy last week". Copy fills only empty slots, shows the toast with Undo (`actions.copyLastWeek`) and the button says "✓ Copied" for a moment. It is greyed out when last week is empty.
 
@@ -136,6 +138,23 @@ The data is `GET /api/planner/dates` (`{ date, meals }` for each planned day; ea
 Props: `weekStart`, `onPick(dateKey)`, `onThisWeek`, `onCopyLastWeek` (resolves with how many meals it copied), `canCopy`, `weekend`, `onWeekendChange` (a phone), `onClose`.
 
 Used by: `PlannerHeader`.
+
+## Keep inside the window
+
+`lib/placeInWindow.js` is the one rule for a box that floats next to something and has to stay on screen. Everything is in window coordinates (`getBoundingClientRect()`), with a 12px margin (`WINDOW_MARGIN`) from every side. `placeBeside({ anchor, size, view, prefer, gap, align, limit })` puts the box beside the anchor on the `prefer` side (`"right"` or `"left"`, 16px apart); if it does not fit there, on the other side; then `keepInside` shifts it so no side leaves the window. `align: "bottom"` lines its bottom up with the anchor's instead of its top. `limit` is the `{ left, right }` it has to fit between to count as fitting (the Planner's slot cards use the board's edges; with none it is the window less the margin). `centerOn(anchor, width, view)` is the left of a box centred on the anchor and shifted inside sideways (the week calendar's panel under the date pill). `viewSize()` is the window without a scrollbar.
+
+Used by: the Planner's slot card and planned-meal card (`useBesideSlot`), the week calendar's panel and its day card. `lib/placeInWindow.test.js` covers the four edges, the flip and every window width from 768. Browser test: `e2e/window-edges.spec.js` (the calendar and its card at 1280, 1100, 900 and 768px in English and French, and in a short scrolled window).
+
+## Where a page starts
+
+`lib/pageScroll.js` `scrollPageToTop({ smooth })` is the only thing that sends a whole page to its top, and `App.jsx` is its only caller.
+
+- **A page opens at its top, Home on its first screen.** `App.jsx` has a `useLayoutEffect` on `tab`, so it runs for every way the page can change (a header tab, the app name, Back and Forward on the admin pages, Home's buttons, "See in Flyers", the recipe form's "Recipes"), before the new page is drawn, and jumps (no animation). Home does not scroll the page: its two screens scroll inside `.home-scroller`, which is made again each time Home opens, so it starts on screen 1; the reset also sends it back if it somehow is not.
+- **Tapping the tab you are already on** (`goToTab` → `showTab` when `next === tab`, the app name on Home too) scrolls that page smoothly back to the top (instantly for someone who asked for less motion). It also closes the recipe form, as before.
+- **The scrolls that are on purpose are not touched,** because they do not change the page: Recipes' Cookbook / Imported buttons and the import landing on Imported, Flyers' Jump to and back-to-top, Help's jump links, Inventory scrolling to a new shelf, the Planner's Recipe / Replace scrolling to the search and "Plan around this" scrolling to the Main meal banner. **A link that opens a page at a given spot** (a deal on Flyers, Plan around this, a slot on the Planner) carries where to land in `App.jsx`'s state and the page scrolls there itself once it is drawn (a smooth `scrollIntoView` in `requestAnimationFrame`), which happens after the reset, so it wins.
+- **A page must not scroll the page by accident when it draws.** Flyers used to, as it appeared: it kept the highlighted category chip visible with `scrollIntoView`, which also scrolled the page down to its jump bar. It now scrolls only the row of chips (`FlyerDeals.jsx`). Do the same anywhere a small row has to follow a highlight: set the row's own `scrollLeft`.
+
+Browser test: `e2e/page-top.spec.js` (every page from a page scrolled far down, on a computer and at 390px; Home's first screen; tapping the current tab; Plan around this and Flyers' back-to-top still scroll).
 
 ## Weekend settings
 

@@ -2,9 +2,10 @@ import { clearDeals, useDeals } from "./lib/dealsStore.js";
 import { useFinder } from "./hooks/useFinder.js";
 import { useShowSales } from "./hooks/useShowSales.js";
 import { clearGroceryShared } from "./lib/groceryCache.js";
+import { scrollPageToTop } from "./lib/pageScroll.js";
 import { addRecipe, clearRecipes, hideRecipe, loadRecipes, saveRecipe, showRecipe, useLiveEntries, useRecipeStore } from "./lib/recipeStore.js";
 import { HELD_DRAG, useDragTouchGuard } from "./hooks/useHeldDrag.js";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -224,6 +225,13 @@ export default function App({ user, onLogout }) {
   }, [tab]);
   // The crash screen (which draws when this component has stopped) reports this page.
   useEffect(() => setCurrentPage(tab), [tab]);
+  // One rule for where a page starts: whatever changed the page (a header tab, the app name,
+  // Back and Forward, a link on another page), the new one opens at its top and Home on its
+  // first screen, before it is drawn. A link that opens a page at a given spot (a deal on
+  // Flyers, Plan around this) scrolls there itself once the page is up, after this.
+  useLayoutEffect(() => {
+    scrollPageToTop();
+  }, [tab]);
   useEffect(() => {
     const onPop = () => {
       const adminTab = adminTabFor(window.location.pathname);
@@ -572,8 +580,14 @@ export default function App({ user, onLogout }) {
       setLeaveFor(next);
       return;
     }
+    showTab(next);
+  }
+  // The page you are already on goes smoothly back to its top; another page opens at its
+  // top by the rule above.
+  function showTab(next) {
     setRecipeEditor(null);
     editorDirty.current = false;
+    if (next === tab) scrollPageToTop({ smooth: true });
     setTab(next);
   }
 
@@ -1672,9 +1686,7 @@ export default function App({ user, onLogout }) {
             onLeave={() => {
               const next = leaveFor;
               setLeaveFor(null);
-              setRecipeEditor(null);
-              editorDirty.current = false;
-              setTab(next);
+              showTab(next);
             }}
           />
         )}
