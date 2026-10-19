@@ -1531,10 +1531,17 @@ export function FlyerDeals({
     ro.observe(panel);
     return () => ro.disconnect();
   });
-  // Keep the highlighted chip visible in the bar.
+  // Keep the highlighted chip visible in the bar: the row of chips scrolls sideways, and
+  // only it does. (scrollIntoView would move the page too, which took Flyers down to its
+  // jump bar as soon as it was drawn, so it never opened at its top.)
   useEffect(() => {
-    const chip = jumpBarRef.current?.querySelector(".riso-jump-chip.active");
-    chip?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const row = jumpBarRef.current?.querySelector(".riso-jump-chips");
+    const chip = row?.querySelector(".riso-jump-chip.active");
+    if (!row || !chip) return;
+    const rowBox = row.getBoundingClientRect();
+    const chipBox = chip.getBoundingClientRect();
+    if (chipBox.left < rowBox.left) row.scrollLeft += chipBox.left - rowBox.left;
+    else if (chipBox.right > rowBox.right) row.scrollLeft += chipBox.right - rowBox.right;
   }, [activeGroup]);
   if (!deals) return <p className="riso-theme riso-flyers riso-empty">{t("flyers.loading")}</p>;
 
