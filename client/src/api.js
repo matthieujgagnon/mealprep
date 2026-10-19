@@ -77,10 +77,19 @@ export const api = {
   adminSetAiLimit: (limit) => request("/admin/ai-limit", { method: "PUT", body: JSON.stringify({ limit }) }),
   // A signed-in tester's feedback: { message, kind, page, locale, device, screen, appVersion, errorName? }.
   sendFeedback: (payload) => request("/feedback", { method: "POST", body: JSON.stringify(payload) }),
-  // Admin only: what testers sent, newest first ({ items, total, notDone }), and Matt's Done tick.
-  adminFeedback: () => request("/admin/feedback"),
+  // Admin only: one page of what testers sent, newest first, from the inbox or the archive
+  // ({ items, nextCursor, counts: { inbox, archive, notDone } }); `before` is the previous
+  // page's nextCursor, for the next, older one. Then Matt's Done tick, Archive and Back to
+  // inbox (each answers { item, counts }), "Archive all done" ({ ids, counts }: the ids it
+  // moved) and its Undo, which puts exactly those ids back ({ moved, counts }).
+  adminFeedback: ({ box = "inbox", before } = {}) =>
+    request(`/admin/feedback?box=${box}${before ? `&before=${encodeURIComponent(before)}` : ""}`),
   adminSetFeedbackDone: (id, done) =>
     request(`/admin/feedback/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ done }) }),
+  adminSetFeedbackArchived: (id, archived) =>
+    request(`/admin/feedback/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ archived }) }),
+  adminArchiveDoneFeedback: () => request("/admin/feedback/archive-done", { method: "POST" }),
+  adminUnarchiveFeedback: (ids) => request("/admin/feedback/unarchive", { method: "POST", body: JSON.stringify({ ids }) }),
   forgotPassword: (email) =>
     request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resetPassword: (token, password) =>

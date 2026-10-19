@@ -5,7 +5,7 @@ import { prisma } from "./prisma.js";
 import { requireAuth } from "./auth.js";
 import { requireAdmin } from "./admin.js";
 import { generateCode } from "./invites.js";
-import { FEEDBACK_BURST, FEEDBACK_MAX_LENGTH, FEEDBACK_PER_DAY } from "./feedback.js";
+import { FEEDBACK_BURST, FEEDBACK_LIST_LIMIT, FEEDBACK_MAX_LENGTH, FEEDBACK_PER_DAY } from "./feedback.js";
 import { authRouter } from "../routes/auth.js";
 import { adminRouter } from "../routes/admin.js";
 import { feedbackRouter } from "../routes/feedback.js";
@@ -58,7 +58,7 @@ describe.skipIf(!dbUp)("/api/feedback and /api/admin/feedback", () => {
   beforeAll(async () => {
     savedEnv = { ADMIN_EMAILS: process.env.ADMIN_EMAILS, FEEDBACK_EMAIL_TO: process.env.FEEDBACK_EMAIL_TO };
     delete process.env.FEEDBACK_EMAIL_TO; // no email in these tests
-    invite = await prisma.inviteCode.create({ data: { code: generateCode(), maxUses: 10 } });
+    invite = await prisma.inviteCode.create({ data: { code: generateCode(), maxUses: 20 } });
     const app = express();
     app.use(cookieParser());
     app.use(express.json());
@@ -171,6 +171,23 @@ describe.skipIf(!dbUp)("/api/feedback and /api/admin/feedback", () => {
   });
 
   describe("the Feedback inbox (admin only)", () => {
+    const rowData = (userId, extra = {}) => ({
+      userId,
+      kind: "idea",
+      message: "archive test",
+      page: "home",
+      locale: "en",
+      device: "computer",
+      screen: "1280x800",
+      browser: "x",
+      appVersion: "dev",
+      ...extra,
+    });
+    const patch = (id, body, cookie = admin.cookie) => call(`/api/admin/feedback/${id}`, { method: "PATCH", cookie, body });
+    const list = (box = "inbox") => call(`/api/admin/feedback?box=${box}`, { cookie: admin.cookie });
+    const ids = (res) => res.data.items.map((item) => item.id);
+    const counts = async () => (await list()).data.counts;
+
     it("refuses a visitor with 401 and a tester with 403, on every admin feedback route", async () => {
       const id = (await prisma.feedback.findFirst({ where: { userId: tester.id } })).id;
       expect((await call("/api/admin/feedback")).status).toBe(401);
@@ -180,40 +197,203 @@ describe.skipIf(!dbUp)("/api/feedback and /api/admin/feedback", () => {
       expect((await prisma.feedback.findUnique({ where: { id } })).doneAt).toBeNull();
     });
 
-    it("lists everything newest first with who sent it and the details, and counts what is not done", async () => {
+    it("refuses a visitor with 401 and a tester with 403 on archive, back to inbox, archive all done and the archive list, and archives nothing", async () => {
+      const owner = await account(`fb-guard-${stamp}@example.com`);
+      const done = await prisma.feedback.create({ data: rowData(owner.id, { message: "guarded", doneAt: new Date() }) });
+      const archived = await prisma.feedback.create({ data: rowData(owner.id, { message: "guarded archived", archivedAt: new Date(Date.now() - 86400000) }) });
+      const calls = [
+        ["/api/admin/feedback?box=archive", "GET", undefined],
+        [`/api/admin/feedback/${done.id}`, "PATCH", { archived: true }],
+        [`/api/admin/feedback/${archived.id}`, "PATCH", { archived: false }],
+        ["/api/admin/feedback/archive-done", "POST", undefined],
+        ["/api/admin/feedback/unarchive", "POST", { ids: [archived.id] }],
+      ];
+      for (const [path, method, body] of calls) {
+        expect((await call(path, { method, body })).status, `${method} ${path} as a visitor`).toBe(401);
+        expect((await call(path, { method, body, cookie: tester.cookie })).status, `${method} ${path} as a tester`).toBe(403);
+      }
+      expect((await prisma.feedback.findUnique({ where: { id: done.id } })).archivedAt).toBeNull();
+      expect((await prisma.feedback.findUnique({ where: { id: archived.id } })).archivedAt).toBeInstanceOf(Date);
+    });
+
+    it("lists the inbox newest first with who sent it and the details, and counts every box and what is not done", async () => {
       const res = await call("/api/admin/feedback", { cookie: admin.cookie });
       expect(res.status).toBe(200);
       const times = res.data.items.map((item) => new Date(item.createdAt).getTime());
       expect(times).toEqual([...times].sort((a, b) => b - a));
       const mine = res.data.items.find((item) => item.email === testerEmail);
-      expect(mine).toMatchObject({ kind: "wrong", message: send.message, page: "grocery", locale: "en", device: "computer", screen: "1280x800", browser: "Firefox 127 on macOS", appVersion: "a1b2c3d", doneAt: null });
+      expect(mine).toMatchObject({ kind: "wrong", message: send.message, page: "grocery", locale: "en", device: "computer", screen: "1280x800", browser: "Firefox 127 on macOS", appVersion: "a1b2c3d", doneAt: null, archivedAt: null });
       expect(mine).not.toHaveProperty("userId");
-      expect(res.data.notDone).toBe(await prisma.feedback.count({ where: { doneAt: null } }));
-      expect(res.data.total).toBe(await prisma.feedback.count());
+      expect(res.data.counts).toEqual({
+        inbox: await prisma.feedback.count({ where: { archivedAt: null } }),
+        archive: await prisma.feedback.count({ where: { archivedAt: { not: null } } }),
+        notDone: await prisma.feedback.count({ where: { archivedAt: null, doneAt: null } }),
+      });
+      expect(res.data.nextCursor).toBeNull();
     });
 
     it("ticks Done and un-ticks it", async () => {
       const id = (await prisma.feedback.findFirst({ where: { userId: tester.id } })).id;
-      const done = await call(`/api/admin/feedback/${id}`, { method: "PATCH", cookie: admin.cookie, body: { done: true } });
+      const done = await patch(id, { done: true });
       expect(done.status).toBe(200);
-      expect(done.data.doneAt).toBeTruthy();
+      expect(done.data.item.doneAt).toBeTruthy();
       expect((await prisma.feedback.findUnique({ where: { id } })).doneAt).toBeInstanceOf(Date);
-      const undone = await call(`/api/admin/feedback/${id}`, { method: "PATCH", cookie: admin.cookie, body: { done: false } });
-      expect(undone.data.doneAt).toBeNull();
+      const undone = await patch(id, { done: false });
+      expect(undone.data.item.doneAt).toBeNull();
     });
 
-    it("refuses a bad Done and an unknown feedback", async () => {
+    it("refuses a bad Done or Archive, nothing to change, and an unknown feedback", async () => {
       const id = (await prisma.feedback.findFirst({ where: { userId: tester.id } })).id;
-      expect((await call(`/api/admin/feedback/${id}`, { method: "PATCH", cookie: admin.cookie, body: { done: "yes" } })).status).toBe(400);
-      expect((await call("/api/admin/feedback/nope", { method: "PATCH", cookie: admin.cookie, body: { done: true } })).status).toBe(404);
+      expect((await patch(id, { done: "yes" })).status).toBe(400);
+      expect((await patch(id, { archived: "yes" })).status).toBe(400);
+      expect((await patch(id, { archived: true, done: 1 })).status).toBe(400);
+      expect((await patch(id, {})).status).toBe(400);
+      expect((await patch("nope", { done: true })).status).toBe(404);
+      expect((await patch("nope", { archived: true })).status).toBe(404);
+      expect((await prisma.feedback.findUnique({ where: { id } })).archivedAt).toBeNull();
     });
 
-    it("can't change anything but the tick (the words stay as they were sent)", async () => {
+    it("can't change anything but Done and Archive (the words stay as they were sent)", async () => {
       const before = await prisma.feedback.findFirst({ where: { userId: tester.id } });
-      await call(`/api/admin/feedback/${before.id}`, { method: "PATCH", cookie: admin.cookie, body: { done: true, message: "rewritten", kind: "idea" } });
+      await patch(before.id, { done: true, message: "rewritten", kind: "idea" });
       const after = await prisma.feedback.findUnique({ where: { id: before.id } });
       expect(after.message).toBe(before.message);
       expect(after.kind).toBe(before.kind);
+    });
+
+    it("archives one: out of the inbox, into the archive, Done untouched, counts move, nothing deleted", async () => {
+      const ownerEmail = `fb-arch1-${stamp}@example.com`;
+      const owner = await account(ownerEmail);
+      const row = await prisma.feedback.create({ data: rowData(owner.id, { message: `archive me ${stamp}` }) });
+      const before = await counts();
+      const total = await prisma.feedback.count();
+
+      const res = await patch(row.id, { archived: true });
+      expect(res.status).toBe(200);
+      expect(res.data.item.archivedAt).toBeTruthy();
+      expect(res.data.item.doneAt).toBeNull(); // archiving doesn't tick Done
+      expect(res.data.counts).toEqual({ inbox: before.inbox - 1, archive: before.archive + 1, notDone: before.notDone - 1 });
+
+      expect(ids(await list("inbox"))).not.toContain(row.id);
+      const archive = await list("archive");
+      expect(ids(archive)).toContain(row.id);
+      expect(archive.data.items.find((item) => item.id === row.id)).toMatchObject({ message: row.message, email: ownerEmail, doneAt: null });
+      expect(archive.data.counts).toEqual(res.data.counts);
+
+      // Archiving again keeps the first date, and nothing was ever removed.
+      expect((await patch(row.id, { archived: true })).data.item.archivedAt).toBe(res.data.item.archivedAt);
+      expect(await prisma.feedback.count()).toBe(total);
+      expect(await prisma.feedback.findUnique({ where: { id: row.id } })).toMatchObject({ message: row.message, doneAt: null });
+    });
+
+    it("Back to inbox puts it back, and it is still done if it was done", async () => {
+      const owner = await account(`fb-arch2-${stamp}@example.com`);
+      const row = await prisma.feedback.create({ data: rowData(owner.id, { doneAt: new Date(), archivedAt: new Date() }) });
+      const before = await counts();
+
+      const res = await patch(row.id, { archived: false });
+      expect(res.status).toBe(200);
+      expect(res.data.item.archivedAt).toBeNull();
+      expect(res.data.item.doneAt).toBeTruthy();
+      expect(res.data.counts).toEqual({ inbox: before.inbox + 1, archive: before.archive - 1, notDone: before.notDone });
+      expect(ids(await list("inbox"))).toContain(row.id);
+      expect(ids(await list("archive"))).not.toContain(row.id);
+    });
+
+    it("keeps Done and Archive apart: ticking Done in the archive moves nothing, and only the inbox counts as to do", async () => {
+      const owner = await account(`fb-arch3-${stamp}@example.com`);
+      const row = await prisma.feedback.create({ data: rowData(owner.id, { archivedAt: new Date() }) });
+      const before = await counts();
+
+      const ticked = await patch(row.id, { done: true });
+      expect(ticked.data.item).toMatchObject({ archivedAt: expect.any(String), doneAt: expect.any(String) });
+      expect(ticked.data.counts).toEqual(before); // an archived one is never "to do", ticked or not
+      expect(ids(await list("archive"))).toContain(row.id);
+      expect(ids(await list("inbox"))).not.toContain(row.id);
+    });
+
+    it("archive all done moves only the done ones in the inbox, and its Undo puts back exactly those", async () => {
+      const owner = await account(`fb-arch4-${stamp}@example.com`);
+      const earlier = new Date(Date.now() - 86400000);
+      const [doneA, doneB, open, archivedBefore] = await Promise.all([
+        prisma.feedback.create({ data: rowData(owner.id, { message: "done A", doneAt: new Date() }) }),
+        prisma.feedback.create({ data: rowData(owner.id, { message: "done B", doneAt: new Date() }) }),
+        prisma.feedback.create({ data: rowData(owner.id, { message: "not done" }) }),
+        prisma.feedback.create({ data: rowData(owner.id, { message: "archived yesterday", doneAt: earlier, archivedAt: earlier }) }),
+      ]);
+      const before = await counts();
+      const total = await prisma.feedback.count();
+
+      const res = await call("/api/admin/feedback/archive-done", { method: "POST", cookie: admin.cookie });
+      expect(res.status).toBe(200);
+      expect(res.data.ids).toEqual(expect.arrayContaining([doneA.id, doneB.id]));
+      expect(res.data.ids).not.toContain(open.id);
+      expect(res.data.ids).not.toContain(archivedBefore.id); // archived earlier: not part of this action
+      expect(res.data.counts).toEqual({ inbox: before.inbox - res.data.ids.length, archive: before.archive + res.data.ids.length, notDone: before.notDone });
+      const moved = await prisma.feedback.findMany({ where: { id: { in: [doneA.id, doneB.id] } } });
+      for (const row of moved) expect(row).toMatchObject({ archivedAt: expect.any(Date), doneAt: expect.any(Date) });
+      expect((await prisma.feedback.findUnique({ where: { id: open.id } })).archivedAt).toBeNull();
+      expect((await prisma.feedback.findUnique({ where: { id: archivedBefore.id } })).archivedAt.getTime()).toBe(earlier.getTime());
+
+      // Nothing is left to move, so a second press moves nothing.
+      expect((await call("/api/admin/feedback/archive-done", { method: "POST", cookie: admin.cookie })).data.ids).toEqual([]);
+
+      // Undo: exactly the ids it moved come back; what was archived yesterday stays archived.
+      const undo = await call("/api/admin/feedback/unarchive", { method: "POST", cookie: admin.cookie, body: { ids: res.data.ids } });
+      expect(undo.status).toBe(200);
+      expect(undo.data.moved).toBe(res.data.ids.length);
+      expect(undo.data.counts).toEqual(before);
+      const back = await prisma.feedback.findMany({ where: { id: { in: [doneA.id, doneB.id] } } });
+      for (const row of back) expect(row).toMatchObject({ archivedAt: null, doneAt: expect.any(Date) });
+      expect((await prisma.feedback.findUnique({ where: { id: archivedBefore.id } })).archivedAt.getTime()).toBe(earlier.getTime());
+      expect(await prisma.feedback.count()).toBe(total);
+    });
+
+    it("refuses an Undo without a list of ids, and leaves an unarchived or unknown id alone", async () => {
+      for (const body of [undefined, {}, { ids: [] }, { ids: "abc" }, { ids: [1] }, { ids: [null] }]) {
+        expect((await call("/api/admin/feedback/unarchive", { method: "POST", cookie: admin.cookie, body })).status).toBe(400);
+      }
+      const inboxRow = await prisma.feedback.findFirst({ where: { userId: tester.id, archivedAt: null } });
+      const res = await call("/api/admin/feedback/unarchive", { method: "POST", cookie: admin.cookie, body: { ids: [inboxRow.id, "nope"] } });
+      expect(res.status).toBe(200);
+      expect(res.data.moved).toBe(0);
+      expect((await prisma.feedback.findUnique({ where: { id: inboxRow.id } })).archivedAt).toBeNull();
+    });
+
+    it("refuses a box that does not exist and a cursor that is not one", async () => {
+      expect((await call("/api/admin/feedback?box=trash", { cookie: admin.cookie })).status).toBe(400);
+      expect((await call("/api/admin/feedback?box=archive&before=nope", { cookie: admin.cookie })).status).toBe(400);
+    });
+
+    it("pages a box 200 at a time with 'Show older': newest first, none twice or missing (even when many share one time), counts over everything", async () => {
+      const pagerEmail = `fb-pager-${stamp}@example.com`;
+      const pager = await account(pagerEmail);
+      const sentAt = new Date("2000-01-01T00:00:00.000Z"); // the same time on all of them: only the id tells them apart
+      const count = FEEDBACK_LIST_LIMIT + 5;
+      await prisma.feedback.createMany({ data: Array.from({ length: count }, (_, i) => rowData(pager.id, { message: `old ${i}`, createdAt: sentAt, archivedAt: new Date() })) });
+
+      const seen = [];
+      let before;
+      let pages = 0;
+      let last;
+      do {
+        const res = await call(`/api/admin/feedback?box=archive${before ? `&before=${encodeURIComponent(before)}` : ""}`, { cookie: admin.cookie });
+        expect(res.status).toBe(200);
+        if (res.data.nextCursor) expect(res.data.items).toHaveLength(FEEDBACK_LIST_LIMIT);
+        else expect(res.data.items.length).toBeLessThanOrEqual(FEEDBACK_LIST_LIMIT);
+        if (pages === 0) expect(res.data.counts.archive).toBeGreaterThan(res.data.items.length); // counted over everything, not just this page
+        seen.push(...res.data.items);
+        last = res;
+        before = res.data.nextCursor;
+        pages++;
+      } while (before && pages < 10);
+
+      expect(pages).toBeGreaterThan(1);
+      expect(seen.filter((item) => item.email === pagerEmail)).toHaveLength(count);
+      expect(new Set(seen.map((item) => item.id)).size).toBe(seen.length); // none twice
+      expect(seen).toHaveLength(last.data.counts.archive); // none missing
+      const times = seen.map((item) => new Date(item.createdAt).getTime());
+      expect(times).toEqual([...times].sort((a, b) => b - a));
     });
   });
 

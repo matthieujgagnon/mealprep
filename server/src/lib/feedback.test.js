@@ -5,10 +5,14 @@ import {
   FEEDBACK_PER_DAY,
   browserLabel,
   cleanFeedbackInput,
+  cleanFeedbackListQuery,
   cleanMessage,
+  feedbackCursor,
   feedbackLimitHit,
+  feedbackListWhere,
   feedbackRow,
   notifyFeedback,
+  parseFeedbackCursor,
 } from "./feedback.js";
 
 const good = { message: "The grocery list is empty", kind: "wrong", page: "grocery", locale: "fr", device: "phone", screen: "390x844", appVersion: "a1b2c3d" };
@@ -134,10 +138,57 @@ describe("feedbackLimitHit", () => {
 
 describe("feedbackRow", () => {
   it("gives the inbox the sender's email and the details, never the user id", () => {
-    const row = feedbackRow({ id: "f1", userId: "u1", user: { email: "a@example.com" }, kind: "idea", message: "hi", page: "home", locale: "en", device: "computer", screen: "1280x800", browser: "Chrome 126 on Windows", appVersion: "dev", errorName: null, createdAt: new Date(0), doneAt: null });
+    const row = feedbackRow({ id: "f1", userId: "u1", user: { email: "a@example.com" }, kind: "idea", message: "hi", page: "home", locale: "en", device: "computer", screen: "1280x800", browser: "Chrome 126 on Windows", appVersion: "dev", errorName: null, createdAt: new Date(0), doneAt: null, archivedAt: null });
     expect(row.email).toBe("a@example.com");
     expect(row).not.toHaveProperty("userId");
-    expect(Object.keys(row)).toEqual(["id", "email", "kind", "message", "page", "locale", "device", "screen", "browser", "appVersion", "errorName", "createdAt", "doneAt"]);
+    expect(Object.keys(row)).toEqual(["id", "email", "kind", "message", "page", "locale", "device", "screen", "browser", "appVersion", "errorName", "createdAt", "doneAt", "archivedAt"]);
+  });
+});
+
+describe("cleanFeedbackListQuery", () => {
+  it("lists the inbox from the start when nothing is asked", () => {
+    expect(cleanFeedbackListQuery({})).toEqual({ box: "inbox", cursor: null });
+    expect(cleanFeedbackListQuery(undefined)).toEqual({ box: "inbox", cursor: null });
+  });
+  it("accepts the archive, and a cursor from the page before", () => {
+    const cursor = feedbackCursor({ createdAt: new Date("2026-10-19T12:34:56.789Z"), id: "cabc123" });
+    expect(cleanFeedbackListQuery({ box: "archive", before: cursor })).toEqual({ box: "archive", cursor: { createdAt: new Date("2026-10-19T12:34:56.789Z"), id: "cabc123" } });
+  });
+  it("refuses a box that does not exist and a cursor that is not one, naming what is wrong", () => {
+    expect(cleanFeedbackListQuery({ box: "trash" })).toEqual({ error: "required", vars: { fields: "box" } });
+    expect(cleanFeedbackListQuery({ box: ["inbox", "archive"] })).toEqual({ error: "required", vars: { fields: "box" } });
+    expect(cleanFeedbackListQuery({ before: "yesterday" })).toEqual({ error: "required", vars: { fields: "before" } });
+    expect(cleanFeedbackListQuery({ before: "2026-13-45T99:99:99.999Z|abc" })).toEqual({ error: "required", vars: { fields: "before" } });
+    expect(cleanFeedbackListQuery({ before: ["a", "b"] })).toEqual({ error: "required", vars: { fields: "before" } });
+  });
+});
+
+describe("feedbackCursor", () => {
+  it("turns the last row of a page into text and back to the same time and id", () => {
+    const row = { createdAt: new Date("2026-01-02T03:04:05.006Z"), id: "ck9_x-1" };
+    expect(feedbackCursor(row)).toBe("2026-01-02T03:04:05.006Z|ck9_x-1");
+    expect(parseFeedbackCursor(feedbackCursor(row))).toEqual(row);
+  });
+  it("is null for anything else, so text can't change the query", () => {
+    expect(parseFeedbackCursor("")).toBeNull();
+    expect(parseFeedbackCursor(undefined)).toBeNull();
+    expect(parseFeedbackCursor("2026-01-02T03:04:05.006Z|")).toBeNull();
+    expect(parseFeedbackCursor("2026-01-02T03:04:05.006Z|a b")).toBeNull();
+    expect(parseFeedbackCursor("2026-01-02T03:04:05.006Z|a'; drop table")).toBeNull();
+  });
+});
+
+describe("feedbackListWhere", () => {
+  it("asks for the inbox (not archived) or the archive (archived)", () => {
+    expect(feedbackListWhere("inbox", null)).toEqual({ archivedAt: null });
+    expect(feedbackListWhere("archive", null)).toEqual({ archivedAt: { not: null } });
+  });
+  it("starts after the cursor: older, or the same time with a smaller id", () => {
+    const cursor = { createdAt: new Date(5000), id: "m" };
+    expect(feedbackListWhere("archive", cursor)).toEqual({
+      archivedAt: { not: null },
+      OR: [{ createdAt: { lt: new Date(5000) } }, { createdAt: new Date(5000), id: { lt: "m" } }],
+    });
   });
 });
 

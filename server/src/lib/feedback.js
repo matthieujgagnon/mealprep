@@ -17,8 +17,16 @@ export const FEEDBACK_MAX_LENGTH = 2000;
 export const FEEDBACK_BURST = { count: 5, windowMs: 10 * 60 * 1000 };
 export const FEEDBACK_PER_DAY = 30;
 
-// The Feedback inbox lists this many, newest first.
+// The Feedback inbox lists this many per page, newest first; "Show older" asks for
+// the next page (feedbackCursor), on both tabs.
 export const FEEDBACK_LIST_LIMIT = 200;
+
+// The inbox has two boxes: what Matt has not archived and what he has. Archiving only
+// sets archivedAt (Done is separate), so nothing is ever deleted by it.
+export const FEEDBACK_BOXES = ["inbox", "archive"];
+
+// The most ids one "Back to inbox" (the Undo of "Archive all done") may name.
+export const FEEDBACK_MAX_IDS = 10000;
 
 // Postgres text can't hold a NUL, and other control characters are only noise
 // (a new line and a tab are kept).
@@ -131,6 +139,57 @@ export async function accountOverFeedbackLimit(userId, now = new Date()) {
   );
 }
 
+// What the list asked for: { box, cursor } or { error, vars } (a server message key).
+// `box` is "inbox" (the default) or "archive"; `before` is the cursor of the last row
+// of the page already shown (feedbackCursor), for the next, older page.
+export function cleanFeedbackListQuery(query) {
+  const input = query && typeof query === "object" ? query : {};
+  const box = input.box ?? "inbox";
+  if (!FEEDBACK_BOXES.includes(box)) return { error: "required", vars: { fields: "box" } };
+  if (input.before === undefined) return { box, cursor: null };
+  const cursor = parseFeedbackCursor(input.before);
+  if (!cursor) return { error: "required", vars: { fields: "before" } };
+  return { box, cursor };
+}
+
+// Where a page ends, as text the client hands back as `before`: the sent time and the
+// id (two rows can share a millisecond), so the next page starts exactly after it.
+export function feedbackCursor(row) {
+  return `${row.createdAt.toISOString()}|${row.id}`;
+}
+
+const CURSOR = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\|([A-Za-z0-9_-]{1,40})$/;
+
+// The time and id inside a cursor, or null when it isn't one.
+export function parseFeedbackCursor(value) {
+  const match = CURSOR.exec(typeof value === "string" ? value : "");
+  if (!match) return null;
+  const createdAt = new Date(match[1]);
+  return Number.isNaN(createdAt.getTime()) ? null : { createdAt, id: match[2] };
+}
+
+// Newest sent first; the id keeps rows with the same time in one fixed order.
+export const FEEDBACK_ORDER = [{ createdAt: "desc" }, { id: "desc" }];
+
+// The rows of one box, or only those older than the cursor.
+export function feedbackListWhere(box, cursor) {
+  const where = { archivedAt: box === "archive" ? { not: null } : null };
+  if (cursor) where.OR = [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }];
+  return where;
+}
+
+// The numbers on the tabs and the "to do" pill, always over everything (never just the
+// page on screen): how many are in the inbox, how many in the archive, and how many
+// of the inbox are not done yet. An archived row never counts as "to do".
+export async function feedbackCounts() {
+  const [inbox, archive, notDone] = await Promise.all([
+    prisma.feedback.count({ where: { archivedAt: null } }),
+    prisma.feedback.count({ where: { archivedAt: { not: null } } }),
+    prisma.feedback.count({ where: { archivedAt: null, doneAt: null } }),
+  ]);
+  return { inbox, archive, notDone };
+}
+
 // One Feedback row as the inbox shows it (email: who sent it).
 export function feedbackRow(row) {
   return {
@@ -147,6 +206,7 @@ export function feedbackRow(row) {
     errorName: row.errorName,
     createdAt: row.createdAt,
     doneAt: row.doneAt,
+    archivedAt: row.archivedAt,
   };
 }
 

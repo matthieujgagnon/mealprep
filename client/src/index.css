@@ -25000,12 +25000,61 @@ body.no-select {
 
 .riso-fbi-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The Inbox / Archive tabs (the shared Segmented, each with a CountPill) and "Archive all done". */
+.riso-fbi-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-bottom: 4px;
+}
+
+.riso-fbi-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* "Showing 200 of 340" and the Show older button under the list. */
+.riso-fbi-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--riso-dash-strong);
+}
+
+.riso-fbi-more .riso-admin-status {
+  margin: 0;
 }
 
 @media (max-width: 767px) {
   .riso-fbi-time {
     margin-left: 0;
     flex-basis: 100%;
+  }
+
+  /* On a phone the two tabs share the whole width, and a long French name
+     (« Boîte de réception ») wraps inside its tab instead of being cut off. */
+  .riso-fbi-tabs {
+    width: 100%;
+  }
+
+  .riso-fbi-tabs button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: auto;
+    min-height: 38px;
+    padding: 6px 10px;
+    gap: 6px;
+    line-height: 1.15;
+    white-space: normal;
   }
 }
 

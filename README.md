@@ -153,7 +153,11 @@ person can send 5 in 10 minutes and 30 a day.
 
 **You read it all in the avatar menu → Feedback inbox** (admins only; the page is
 `/admin/feedback`): newest first, who sent it, those details, and a **Done** button for each.
-Nothing to set up for this.
+Press **Archive** on one you've dealt with to move it out of the **Inbox** tab into the
+**Archive** tab (**Back to inbox** brings it back, and every move shows an Undo). **Archive all
+done** moves every one you've ticked Done. Archiving never deletes anything, and it isn't the
+same as Done: Done means handled, Archive means out of sight. Each tab shows 200 at a time; press
+**Show older** for more. Nothing to set up for this.
 
 **To also get an email for each one** (optional), add these three settings under your Render
 service's **Environment**, then let it redeploy:
