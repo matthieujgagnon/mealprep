@@ -6,6 +6,7 @@ import { recipeHave } from "../lib/inventoryMatch.js";
 import { formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { stepIsHeading, stepText } from "../lib/steps.js";
 import { slotLabel } from "../lib/plannerSlots.js";
+import { placeBeside, viewSize } from "../lib/placeInWindow.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { t } from "../i18n/index.js";
 
@@ -23,9 +24,8 @@ import { t } from "../i18n/index.js";
 // colours (Recipe blue, Note yellow, Nothing planned white; on the planned meal
 // Cook blue, Use as a base yellow, Replace white). The board places the card.
 
-const GAP = 16;
-const MARGIN = 12;
-
+// The card sits beside its slot through the one "keep it inside the window" rule
+// (lib/placeInWindow.js, shared with the week calendar's day card).
 function useBesideSlot({ anchor, board, mealIndex }, deps) {
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
@@ -33,16 +33,16 @@ function useBesideSlot({ anchor, board, mealIndex }, deps) {
   useLayoutEffect(() => {
     const card = ref.current;
     if (!card || !anchor?.isConnected) return;
-    const cell = anchor.getBoundingClientRect();
-    const limit = (board?.getBoundingClientRect() || { right: window.innerWidth, left: 0 });
-    const width = card.offsetWidth;
-    const height = card.offsetHeight;
-    let left = cell.right + GAP;
-    if (left + width > limit.right) left = cell.left - GAP - width;
-    left = Math.min(Math.max(MARGIN, left), Math.max(MARGIN, window.innerWidth - width - MARGIN));
-    let top = mealIndex === 0 ? cell.top : cell.bottom - height;
-    top = Math.min(Math.max(MARGIN, top), Math.max(MARGIN, window.innerHeight - height - MARGIN));
-    setPos({ left: left + window.scrollX, top: top + window.scrollY });
+    const view = viewSize();
+    const placed = placeBeside({
+      anchor: anchor.getBoundingClientRect(),
+      size: { width: card.offsetWidth, height: card.offsetHeight },
+      view,
+      prefer: "right",
+      align: mealIndex === 0 ? "top" : "bottom",
+      limit: board?.getBoundingClientRect() || { left: 0, right: view.width },
+    });
+    setPos({ left: placed.left + window.scrollX, top: placed.top + window.scrollY });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchor, board, mealIndex, ...deps]);
 

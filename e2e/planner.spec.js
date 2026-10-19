@@ -736,7 +736,8 @@ test("the title is on its own line with the week controls under it; Copy last we
   await expect(calendar.locator(".wcal-day.today")).toHaveCount(1);
   await expect(calendar.locator(".wcal-day.today .wcal-dashes i")).toHaveCount(3);
   await expect(calendar.locator(".wcal-week.selected")).toHaveCount(1);
-  // Hovering a planned day shows its meals in a card to the left, with the leftover tag.
+  // Hovering a planned day shows its meals in a card beside the calendar (on its left when there is
+  // room, else its right: the date pill is at the left of the window), inside the window, with the leftover tag.
   await calendar.locator(".wcal-week.selected .wcal-day").nth(1).hover();
   const preview = calendar.locator(".wcal-preview.beside");
   await expect(preview).toBeVisible();
@@ -745,7 +746,10 @@ test("the title is on its own line with the week controls under it; Copy last we
   await expect(preview.locator(".riso-pill")).toHaveText("leftover");
   const calBox = await calendar.boundingBox();
   const previewBox = await preview.boundingBox();
-  expect(previewBox.x + previewBox.width).toBeLessThan(calBox.x);
+  const view = page.viewportSize();
+  expect(previewBox.x).toBeGreaterThanOrEqual(0);
+  expect(previewBox.x + previewBox.width).toBeLessThanOrEqual(view.width);
+  expect(previewBox.x + previewBox.width <= calBox.x || previewBox.x >= calBox.x + calBox.width).toBe(true);
 
   // Copy last week, from the calendar's footer: it fills the empty slot only, and says how many.
   const dashesBefore = await calendar.locator(".wcal-dashes i.on").count();

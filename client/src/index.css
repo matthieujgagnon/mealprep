@@ -19145,14 +19145,6 @@ body.no-select {
   color: var(--riso-ink);
 }
 
-.fnd-grab {
-  align-self: center;
-  width: 48px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--riso-dash-strong);
-}
-
 .fnd-top,
 .fnd-browse {
   display: flex;
@@ -20143,12 +20135,14 @@ body.no-select {
   transform: rotate(45deg);
 }
 
+/* A computer: under the date pill. Its left is set by WeekCalendar (centred on the pill,
+   shifted to stay inside the window); no transform, so the day card's position: fixed
+   below is relative to the window. */
 .wcal {
   position: absolute;
   z-index: 50;
   top: calc(100% + 14px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   width: 350px;
   padding: 18px;
   display: flex;
@@ -20359,10 +20353,12 @@ body.no-select {
   box-sizing: border-box;
 }
 
+/* Placed by DayPreview (left and top, in the window): on the calendar's left when there
+   is room, else its right, and always inside the window. */
 .wcal-preview.beside {
-  position: absolute;
+  position: fixed;
+  left: 0;
   top: 0;
-  right: calc(100% + 16px);
   width: 280px;
   box-shadow: 6px 6px 0 var(--riso-ink);
   pointer-events: none;
@@ -23320,7 +23316,6 @@ body.no-select {
     border-radius: 0;
   }
 
-  .fnd-panel .fnd-grab,
   .fnd-panel .fnd-top,
   .fnd-panel .fnd-browse,
   .fnd-panel .fnd-searchlabel,
