@@ -2,6 +2,7 @@ import { core, findSaleDeal } from "./similarRecipes.js";
 import { daysUntil } from "./pantryInventory.js";
 import { capitalize } from "./groceryList.js";
 import { expiringSoon, foodKey, recipeUsesItem } from "./inventoryMatch.js";
+import { isMealItem } from "./mealItem.js";
 import { dealSavings } from "./flyerIngredients.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
 import { inMealGroup, isMakeableMeal, makeableRuleOn, recipeSlot, recipeTotalMinutes } from "./mealSlots.js";
@@ -108,10 +109,10 @@ export function shelfTone(sectionId, customIndex) {
 // it: [{ id, label, tone, items: [{ key, name, item }] }]. `sections` is what
 // orderedSections() in Inventory.jsx gives: [{ id, label, custom }], in the
 // saved order. A shelf with nothing on it is left out, and so is anything
-// already past its use-by date. Leftovers are left out too: they are a meal,
-// planned from the Planner's « Restes » cards, not something to cook with.
+// already past its use-by date. Meals are left out too (leftovers and prepared
+// meals): they are planned from the Planner's search, not something to cook with.
 export function shelvesWithItems(pantryInventory, sections) {
-  const usable = pantryInventory.filter((item) => !item.isLeftover && (!item.expiresAt || daysUntil(item.expiresAt) >= 0));
+  const usable = pantryInventory.filter((item) => !isMealItem(item) && (!item.expiresAt || daysUntil(item.expiresAt) >= 0));
   let custom = 0;
   return sections
     .map((section) => {

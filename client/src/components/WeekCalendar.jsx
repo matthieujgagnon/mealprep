@@ -31,13 +31,13 @@ import { WeekendSettings } from "./PlannerExtras.jsx";
 //   weekend, onWeekendChange   the weekend setting and how to change it (a phone)
 //   onClose           Escape or a click outside
 //
-// A day's meals as { breakfast: { title, photoUrl, isLeftover }, ... }: a note
+// A day's meals as { breakfast: { title, photoUrl, isLeftover, prepared }, ... }: a note
 // shows its text, a "no meal planned" card says so.
 function mealsByType(meals) {
   return Object.fromEntries(
     meals.map((m) => [
       m.mealType,
-      { title: m.placeholder && m.title === "No meal planned" ? t("planner.blankName") : m.title, photoUrl: m.photoUrl, isLeftover: m.isLeftover },
+      { title: m.placeholder && m.title === "No meal planned" ? t("planner.blankName") : m.title, photoUrl: m.photoUrl, isLeftover: m.isLeftover, prepared: m.prepared },
     ])
   );
 }
@@ -65,8 +65,8 @@ function DayPreview({ date, meals, inline, onShowWeek }) {
               <span className={`wcal-meal-name${meal ? "" : " none"}`}>{meal ? meal.title : "—"}</span>
             </span>
             {meal?.isLeftover && (
-              <Pill size="tag" tone="yellow" sticker>
-                {t("planner.leftover")}
+              <Pill size="tag" tone={meal.prepared ? "ink" : "yellow"} sticker>
+                {t(meal.prepared ? "planner.prepared" : "planner.leftover")}
               </Pill>
             )}
           </div>

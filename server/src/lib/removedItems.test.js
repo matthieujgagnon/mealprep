@@ -43,8 +43,13 @@ describe("Recently removed", () => {
       expiresAt: "2026-10-16T00:00:00.000Z",
       imageUrl: null,
       isLeftover: false,
+      isPreparedMeal: null,
       recipeId: null,
       createdAt: "2026-10-10T12:00:00.000Z",
     });
+  });
+
+  it("keeps the Prepared meal flag, so Put back brings a tagged lasagna back tagged", () => {
+    expect(snapshotOf({ id: "lasagna", name: "Lasagna", isPreparedMeal: true }).isPreparedMeal).toBe(true);
   });
 });

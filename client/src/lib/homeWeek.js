@@ -1,6 +1,7 @@
 // Small rules behind Home's week strip, "To use" and Makeable now cards.
 
-import { recipeHave } from "./inventoryMatch.js";
+import { foodKey, recipeHave, recipeUsesItem } from "./inventoryMatch.js";
+import { isMealItem } from "./mealItem.js";
 import { isMakeableMeal } from "./mealSlots.js";
 
 // Home's Makeable now card: every recipe next to your Inventory, with the same
@@ -50,18 +51,42 @@ export function useBarPct(daysLeft) {
   return Math.max(8, Math.min(96, Math.round((1 - daysLeft / 7) * 100)));
 }
 
-// Leftovers about to expire (this many days or fewer) come first in "Use it up":
-// they are a meal ready to eat.
+// "N recipes use two or more of these" / "at least one", under Use it up: how many of
+// your recipes use the foods about to expire, by the one matcher (French names and
+// varieties count). A meal (a leftover, a prepared meal) is not an ingredient, so it
+// is not counted; two items of one food count once.
+export function useUpRecipeCounts(recipes, items) {
+  const seen = new Set();
+  const foods = (items || []).filter((item) => {
+    if (isMealItem(item)) return false;
+    const key = foodKey(item.name);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  let usesOne = 0;
+  let usesTwo = 0;
+  for (const recipe of recipes || []) {
+    if (recipe.isPlaceholder) continue;
+    const used = foods.filter((item) => recipeUsesItem(recipe, item.name)).length;
+    if (used >= 1) usesOne += 1;
+    if (used >= 2) usesTwo += 1;
+  }
+  return { usesOne, usesTwo };
+}
+
+// Meals about to expire (this many days or fewer) come first in "Use it up": a
+// leftover or a prepared meal is ready to eat.
 export const LEFTOVERS_FIRST_DAYS = 3;
 
-// The items to show in "Use it up": leftovers about to expire first, then
-// soonest first, only those not yet past their date and inside the window.
+// The items to show in "Use it up": meals about to expire first, then soonest
+// first, only those not yet past their date and inside the window.
 // { shown, soonest } (soonest is the few that "Cook with these" searches for:
-// ingredients, not leftovers).
+// ingredients, not meals).
 export function toUseItems(items, daysUntil) {
-  const first = (i) => (i.isLeftover && daysUntil(i.expiresAt) <= LEFTOVERS_FIRST_DAYS ? 1 : 0);
+  const first = (i) => (isMealItem(i) && daysUntil(i.expiresAt) <= LEFTOVERS_FIRST_DAYS ? 1 : 0);
   const shown = (items || [])
     .filter((i) => i.expiresAt && daysUntil(i.expiresAt) >= 0 && daysUntil(i.expiresAt) <= TO_USE_DAYS)
     .sort((a, b) => first(b) - first(a) || new Date(a.expiresAt) - new Date(b.expiresAt));
-  return { shown, soonest: shown.filter((i) => !i.isLeftover).slice(0, TO_USE_COOK) };
+  return { shown, soonest: shown.filter((i) => !isMealItem(i)).slice(0, TO_USE_COOK) };
 }

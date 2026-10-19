@@ -56,6 +56,7 @@ export const HELP_COPIES = {
   reset: { kind: "icon", cls: "cm-timer-btn cm-timer-reset", glyph: "↺" },
   themeSwitch: { kind: "icon", cls: "riso-theme-switch", glyph: "☾" },
   keepAwake: { kind: "group", cls: "riso-help-copy-awake", switch: true, items: [{ label: "cookMode.keepAwake" }] },
+  preparedMeal: { kind: "group", cls: "riso-help-copy-awake", switch: true, items: [{ label: "preparedMeal.switch" }] },
   previous: { kind: "pill", cls: "cm-prev", label: "cookMode.previous" },
   nextStep: { kind: "pill", cls: "cm-next", label: "cookMode.nextStep", strong: true },
   startStepOne: { kind: "pill", cls: "cm-next", label: "cookMode.prep.start", strong: true },

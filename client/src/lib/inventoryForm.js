@@ -107,7 +107,7 @@ export function useByKind({ days, custom, usda }) {
 }
 
 // The new item the Add form saves.
-export function buildAddPayload({ name, qtyText, unit, location, category, expiresAt, photo }) {
+export function buildAddPayload({ name, qtyText, unit, location, category, expiresAt, photo, isPreparedMeal }) {
   const quantity = parseQuantityInput(qtyText);
   const payload = {
     name: name.trim(),
@@ -118,6 +118,7 @@ export function buildAddPayload({ name, qtyText, unit, location, category, expir
     expiresAt: expiresAt || null,
   };
   if (photo) payload.imageUrl = photo;
+  if (isPreparedMeal) payload.isPreparedMeal = true;
   return payload;
 }
 
@@ -133,6 +134,8 @@ export function buildEditPatch(item, draft) {
   const saved = expiryDay(item.expiresAt) || "";
   if ((draft.expiresAt || "") !== saved) patch.expiresAt = draft.expiresAt || null;
   if ((draft.photo ?? null) !== (item.imageUrl ?? null)) patch.imageUrl = draft.photo ?? null;
+  // The Prepared meal switch (not given for a leftover, which is already a meal).
+  if (draft.isPreparedMeal !== undefined && draft.isPreparedMeal !== (item.isPreparedMeal === true)) patch.isPreparedMeal = draft.isPreparedMeal;
   return patch;
 }
 

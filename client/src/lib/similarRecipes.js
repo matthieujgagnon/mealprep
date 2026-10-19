@@ -73,41 +73,16 @@ const MATCH_ONLY_DESCRIPTOR_WORDS = new Set([
   "reduced-fat", "2%", "1%",
 ]);
 
-// Exported so callers that need to match a single ingredient name against
-// this same core (e.g. the recipe card's per-row "in inventory" dot) don't
-// have to reimplement canonicalize+familyKey+the ignored list themselves.
+// Exported so callers that compare one ingredient name with another (recipes with
+// each other, the grocery list, flyer deals) share canonicalize+familyKey+the ignored
+// list. It is never how Inventory is compared with a recipe: that is the one matcher,
+// lib/inventoryMatch.js (a guard test fails if it is used for that).
 export function core(ingredientName) {
   const rawCore = canonicalize(ingredientName).core;
   const words = rawCore.split(" ").filter((w) => !MATCH_ONLY_DESCRIPTOR_WORDS.has(w));
   const strippedCore = words.join(" ").trim() || rawCore;
   const c = familyKey(strippedCore);
   return IGNORED_WHEN_COMPARING.has(c) ? null : c;
-}
-
-// Cuts of meat and fish: "chicken thighs" and "chicken breast fillets" are
-// both chicken to plan around, but not the same thing to have on hand.
-const CUT_WORDS = new Set([
-  "breast", "thigh", "leg", "drumstick", "wing", "fillet", "tenderloin", "loin", "chop", "rib", "roast",
-  "steak", "ground", "shoulder", "belly", "shank", "brisket", "sirloin", "flank", "cutlet", "strip",
-]);
-function cutsOf(name) {
-  return new Set(
-    canonicalize(name)
-      .core.split(" ")
-      .filter((w) => CUT_WORDS.has(w))
-  );
-}
-
-// Whether an inventory item covers a recipe ingredient: the same ingredient
-// (core) and, when both say which cut, the same cut - plain "chicken"
-// covers any, but chicken breasts don't cover chicken thighs.
-export function coversIngredient(haveName, ingredientName) {
-  const c = core(ingredientName);
-  if (c === null || core(haveName) !== c) return false;
-  const have = cutsOf(haveName);
-  const want = cutsOf(ingredientName);
-  if (have.size === 0 || want.size === 0) return true;
-  return [...want].some((w) => have.has(w));
 }
 
 // Not every shared ingredient is equally worth surfacing. A shared

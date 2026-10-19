@@ -55,3 +55,52 @@ describe("portionsDue", () => {
     ).toEqual([{ id: "a", amount: 2 }]);
   });
 });
+
+describe("portionsDue with the Inventory items the meals are linked to", () => {
+  const meal = (itemId, extra = {}) => ({ isLeftover: true, leftoverItemId: itemId, ...extra });
+
+  it("takes one per planned meal from leftovers and from a prepared meal counted in boxes", () => {
+    const items = [
+      { id: "chili", isLeftover: true, unit: "portion", quantity: 3 },
+      { id: "lasagna", isPreparedMeal: true, unit: "box", quantity: 2 },
+      { id: "perogies", isPreparedMeal: true, unit: null, quantity: 1 },
+    ];
+    expect(portionsDue([meal("chili"), meal("chili"), meal("lasagna"), meal("perogies")], items)).toEqual([
+      { id: "chili", amount: 2 },
+      { id: "lasagna", amount: 1 },
+      { id: "perogies", amount: 1 },
+    ]);
+  });
+
+  it("takes a prepared meal counted by weight or volume whole", () => {
+    const items = [
+      { id: "a", isPreparedMeal: true, unit: "g", quantity: 900 },
+      { id: "b", isPreparedMeal: true, unit: "kg", quantity: 1.5 },
+      { id: "c", isPreparedMeal: true, unit: "L", quantity: 1 },
+    ];
+    expect(portionsDue([meal("a"), meal("a"), meal("b"), meal("c")], items)).toEqual([
+      { id: "a", amount: "all" },
+      { id: "b", amount: "all" },
+      { id: "c", amount: "all" },
+    ]);
+  });
+
+  it("never eats from an item that is not a meal, or from one that is gone", () => {
+    const items = [{ id: "chicken", isLeftover: false, isPreparedMeal: false, unit: "g", quantity: 900 }];
+    expect(portionsDue([meal("chicken"), meal("gone")], items)).toEqual([]);
+  });
+
+  it("still skips meals already taken off", () => {
+    const items = [{ id: "lasagna", isPreparedMeal: true, unit: "box", quantity: 2 }];
+    expect(portionsDue([meal("lasagna", { cookedAt: new Date() })], items)).toEqual([]);
+  });
+
+  it("a whole prepared meal comes off Inventory; one box of two leaves one", () => {
+    const items = [
+      { id: "a", isPreparedMeal: true, unit: "g", quantity: 900 },
+      { id: "b", isPreparedMeal: true, unit: "box", quantity: 2 },
+    ];
+    const takes = portionsDue([meal("a"), meal("b")], items);
+    expect(planTakeOut(items, takes)).toEqual({ updates: [{ id: "b", quantity: 1 }], removes: ["a"] });
+  });
+});

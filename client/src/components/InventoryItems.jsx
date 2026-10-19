@@ -6,6 +6,7 @@ import { daysUntil } from "../lib/pantryInventory.js";
 import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
 import { t } from "../i18n/index.js";
+import { isMealItem, isPreparedMeal } from "../lib/mealItem.js";
 
 // One Inventory item, in the two views of Matt's design
 // (docs/design/riso-v2-inventory-compact-tiles/README.md):
@@ -176,8 +177,13 @@ function ExpiredTag() {
   return <span className="inv-expired">{t("inventory.expiredTag")}</span>;
 }
 
-function LeftoverTag() {
-  return <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>;
+// The small tag on a meal in Inventory, Home's Use it up and the item pop-up's
+// preview: LEFTOVER (yellow), or PREPARED MEAL (plain ink: yellow is LEFTOVER's, and
+// blue and green mean "you have it" and "on your list"). Nothing for an ingredient.
+export function MealTag({ item }) {
+  if (item?.isLeftover) return <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>;
+  if (isPreparedMeal(item)) return <span className="inv-card-leftover-tag prepared">{t("preparedMeal.tag")}</span>;
+  return null;
 }
 
 // The item as Compact draws it (a row) or Tiles (a tile). `drag` is the
@@ -185,6 +191,7 @@ function LeftoverTag() {
 function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, onUpdate, drag, className, onClick, label }) {
   const [editing, setEditing] = useState(false);
   const leftover = !!item.isLeftover;
+  const meal = isMealItem(item);
   const photoItem = photoItemOf(item, recipe);
   const where = leftover ? t(`locations.${item.location}`) : "";
   const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
@@ -196,10 +203,10 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
           <ItemPhoto item={photoItem} />
         </div>
         {onToggleSelect && <SelectBox item={item} selected={selected} onToggle={onToggleSelect} />}
-        {(line?.expired || leftover) && (
+        {(line?.expired || meal) && (
           <span className="inv-tile-tags">
             {line?.expired && <ExpiredTag />}
-            {leftover && <LeftoverTag />}
+            <MealTag item={item} />
           </span>
         )}
         <div className="inv-tile-text">
@@ -230,10 +237,10 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
         </span>
         <div className="inv-row-main">
           <span className="inv-row-name">{item.name}</span>
-          {(line?.expired || leftover) && (
+          {(line?.expired || meal) && (
             <span className="inv-row-tags">
               {line?.expired && <ExpiredTag />}
-              {leftover && <LeftoverTag />}
+              <MealTag item={item} />
               {leftover && (
                 <span className="inv-row-where">
                   {where}

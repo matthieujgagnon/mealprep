@@ -7,6 +7,7 @@ import { planTakeOut, portionsDue, validTakes } from "../lib/inventoryTakeOut.js
 import { upcomingWhere } from "../lib/upcomingMeals.js";
 import { keptDays } from "../lib/quebecDay.js";
 import { listRemoved, recordRemoved } from "../lib/removedItems.js";
+import { looksLikeReadyMeal } from "../lib/dealAisle.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -78,8 +79,10 @@ pantryInventoryRouter.get("/suggest", async (req, res) => {
   const expiresAt = suggestExpiration(name, LOCATIONS.includes(location) ? location : "pantry", purchasedAt);
   const category = suggestCategory(name);
   // The shelf life for every shelf too (null where there's no data for a shelf), so the
-  // Add item form can show its shelf cards before anything is saved.
-  res.json({ expiresAt, category, location, locations: suggestAllLocations(name, purchasedAt) });
+  // Add item form can show its shelf cards before anything is saved. `readyMeal`: the
+  // name looks like a ready meal (« lasagne », "perogies"), so the form starts its
+  // "Prepared meal" switch on for a new item; the person can switch it off.
+  res.json({ expiresAt, category, location, locations: suggestAllLocations(name, purchasedAt), readyMeal: looksLikeReadyMeal(name) });
 });
 
 // GET /api/pantry-inventory/recent - the foods the Add item form offers as
@@ -141,6 +144,8 @@ pantryInventoryRouter.post("/", async (req, res) => {
       expiresAt: resolvedExpiresAt,
       imageUrl: imageUrl ?? null,
       isLeftover: isLeftover === true,
+      // A leftover is already a meal: the two are never both on.
+      isPreparedMeal: req.body.isPreparedMeal === true && isLeftover !== true,
       recipeId: recipeId ?? null,
     },
   });
@@ -179,6 +184,13 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
     data.imageUrl = imageUrl;
   }
   if (req.body.isLeftover !== undefined) data.isLeftover = req.body.isLeftover === true;
+  if (req.body.isPreparedMeal !== undefined) data.isPreparedMeal = req.body.isPreparedMeal === true;
+  // A leftover is already a meal: the two are never both on.
+  if (data.isLeftover === true) data.isPreparedMeal = false;
+  else if (data.isPreparedMeal === true && data.isLeftover === undefined) {
+    const current = await prisma.pantryInventoryItem.findFirst({ where: { id: req.params.id, userId: req.userId }, select: { isLeftover: true } });
+    if (current?.isLeftover) data.isPreparedMeal = false;
+  }
   if (req.body.recipeId !== undefined) {
     const recipeId = await leftoverRecipeId(req.userId, req.body.recipeId);
     if (recipeId === false) return res.status(404).json(fail(req, "notFound.recipe"));
@@ -259,6 +271,8 @@ async function restoreRow(userId, row) {
     expiresAt: row.expiresAt ? new Date(row.expiresAt) : null,
     imageUrl: imageUrl === false ? null : imageUrl ?? null,
     isLeftover: row.isLeftover === true,
+    // Put back exactly as it was: a lasagna that was tagged comes back tagged.
+    isPreparedMeal: row.isPreparedMeal === true && row.isLeftover !== true,
     recipeId: recipeId || null,
   };
   return existing
@@ -314,7 +328,7 @@ pantryInventoryRouter.post("/removed/:id/put-back", async (req, res) => {
 // planned leftover meal (linked to Inventory leftovers) whose day is before
 // `today` takes one portion off those leftovers, once: the meal is marked with
 // `cookedAt`. Leftovers at zero portions leave Inventory. Responds as takeOut()
-// plus `entryIds` (the meals marked) and `meals` ([{ title, count }]) for the
+// plus `entryIds` (the meals marked) and `meals` ([{ title, count, prepared }]) for the
 // message; Undo is put-back plus clearing `cookedAt` on those meals.
 pantryInventoryRouter.post("/leftovers/settle", async (req, res) => {
   const upcoming = upcomingWhere(req.body.today);
@@ -324,13 +338,24 @@ pantryInventoryRouter.post("/leftovers/settle", async (req, res) => {
     include: { recipe: { select: { title: true } } },
   });
   if (entries.length === 0) return res.json({ entryIds: [], meals: [], before: [], removedIds: [], logIds: [], items: [] });
-  const takes = portionsDue(entries);
+  // Only a meal item is eaten from (lib/mealItem.js), whatever a link says.
+  const linked = await prisma.pantryInventoryItem.findMany({
+    where: { id: { in: [...new Set(entries.map((e) => e.leftoverItemId))] }, userId: req.userId },
+  });
+  const takes = portionsDue(entries, linked);
   const result = await takeOut(req.userId, takes, "consumed");
   const entryIds = entries.map((e) => e.id);
   await prisma.plannerEntry.updateMany({ where: { id: { in: entryIds }, userId: req.userId }, data: { cookedAt: new Date() } });
+  // `prepared`: a meal ate from a prepared meal, so the message can say "meal", not "portion of leftovers".
+  const byId = new Map(linked.map((i) => [i.id, i]));
   const counts = new Map();
-  for (const e of entries) counts.set(e.recipe.title, (counts.get(e.recipe.title) || 0) + 1);
-  res.json({ ...result, entryIds, meals: [...counts].map(([title, count]) => ({ title, count })) });
+  for (const e of entries) {
+    const meal = counts.get(e.recipe.title) || { count: 0, prepared: false };
+    meal.count += 1;
+    if (byId.get(e.leftoverItemId)?.isPreparedMeal === true) meal.prepared = true;
+    counts.set(e.recipe.title, meal);
+  }
+  res.json({ ...result, entryIds, meals: [...counts].map(([title, { count, prepared }]) => ({ title, count, prepared })) });
 });
 
 // POST /api/pantry-inventory/consume { ids: [...], action: "consumed" | "wasted" } -

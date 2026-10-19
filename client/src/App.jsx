@@ -48,7 +48,8 @@ import { Inventory, InventoryDragPreview, SHELF_DRAG, shelfOptions } from "./com
 import { GripAwarePointerSensor, sectionCollision } from "./components/ReorderSections.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 import { CookedViewHost } from "./components/CookedView.jsx";
-import { leftoverTitle } from "./lib/leftovers.js";
+import { mealTitle } from "./lib/leftovers.js";
+import { isPreparedMeal } from "./lib/mealItem.js";
 import { StoreConfetti } from "./components/StoreModeParts.jsx";
 import { TRASH_ID } from "./components/TrashZone.jsx";
 
@@ -388,7 +389,9 @@ export default function App({ user, onLogout }) {
         api.listPantryInventory().then(setPantryInventory);
         api.listPlanner(currentWeekStart()).then((entries) => currentWeekStart() === weekStart && setPlannerRows(entries));
         const list = formatList(done.meals.map((m) => m.title));
-        showToast(t("cooked.eaten", { count: done.entryIds.length, list }), async () => {
+        // "portions of leftovers" when only leftovers were eaten, else plain "meals".
+        const eatenKey = done.meals.some((m) => m.prepared) ? "cooked.eatenMeals" : "cooked.eaten";
+        showToast(t(eatenKey, { count: done.entryIds.length, list }), async () => {
           await api.putBackPantryItems(done.before, done.logIds);
           setPantryInventory(await api.listPantryInventory());
         });
@@ -645,10 +648,10 @@ export default function App({ user, onLogout }) {
     setPickerFor({ recipe });
   }
 
-  // The slot picker for Inventory leftovers (the Planner search's « Restes · ... »).
+  // The slot picker for Inventory meals (the Planner search's « Restes · ... » and « Plat préparé · ... »).
   function requestPlanLeftover(item) {
     const recipe = recipes.find((r) => r.id === item.recipeId);
-    setPickerFor({ leftover: item, recipe: { id: item.recipeId, title: leftoverTitle(item), photoUrl: recipe?.photoUrl || null } });
+    setPickerFor({ leftover: item, recipe: { id: item.recipeId, title: mealTitle(item), photoUrl: recipe?.photoUrl || null } });
   }
 
   // After an in-card save (notes, Cookbook / Imported): the recipe store takes it, so every
@@ -948,6 +951,12 @@ export default function App({ user, onLogout }) {
     let entry;
     if (snap.recipe?.isPlaceholder) {
       entry = await api.markSlotBlank(snap.weekStart, snap.dayOfWeek, snap.mealType, isCustomNote(snap) ? snap.recipe.title : undefined);
+      // A leftover or a prepared meal planned as a note (it has no recipe): its marks and its
+      // link to the Inventory item come back too, so it still eats from it and wears its tag.
+      if (snap.isLeftover || snap.alreadyHave || snap.leftoverItemId) {
+        const marks = { isLeftover: !!snap.isLeftover, alreadyHave: !!snap.alreadyHave, leftoverItemId: snap.leftoverItemId || null };
+        entry = { ...entry, ...(await api.updatePlannerEntry(entry.id, marks)), recipe: entry.recipe };
+      }
     } else {
       entry = await api.placeOnPlanner({
         recipeId: snap.recipeId || snap.recipe.id,
@@ -1026,10 +1035,11 @@ export default function App({ user, onLogout }) {
     announcePlacement({ entry: saved, replaced: existingNote ? null : others[0] || null }, slot);
   }
 
-  // Inventory leftovers placed on a slot (the Planner search, drag or the slot
-  // picker): a leftover meal that eats one of their portions (`leftoverItemId`),
-  // replacing what was there; nothing goes on the grocery list. Leftovers typed in
-  // by hand with no recipe go in as a note, « Restes · pizza ». The toast has Undo.
+  // Inventory meals placed on a slot (the Planner search, drag or the slot picker):
+  // a leftover meal that eats one of their portions (`leftoverItemId`), replacing
+  // what was there; nothing goes on the grocery list. A prepared meal goes the same
+  // way (it has no recipe). Leftovers typed in by hand with no recipe go in as a note,
+  // « Restes · pizza »; a prepared meal as « Plat préparé · lasagne ». The toast has Undo.
   async function handlePlaceLeftoverItem(item, slot, week = weekStart) {
     const inView = week === weekStart;
     const weekEntries = inView ? plannerEntries : await api.listPlanner(week);
@@ -1039,14 +1049,17 @@ export default function App({ user, onLogout }) {
     if (item.recipeId) {
       entry = await api.placeOnPlanner({ recipeId: item.recipeId, weekStart: week, ...slot, isLeftover: true, leftoverItemId: item.id });
     } else {
-      const note = await api.markSlotBlank(week, slot.dayOfWeek, slot.mealType, t("planner.leftoverNote", { name: item.name }));
+      // Leftovers typed in by hand and prepared meals have no recipe: a note says what it is.
+      const noteKey = isPreparedMeal(item) ? "planner.preparedNote" : "planner.leftoverNote";
+      const note = await api.markSlotBlank(week, slot.dayOfWeek, slot.mealType, t(noteKey, { name: item.name }));
       entry = { ...note, ...(await api.updatePlannerEntry(note.id, { isLeftover: true, leftoverItemId: item.id })), recipe: note.recipe };
     }
     if (inView) setPlannerRows((prev) => [...without(prev, existing), entry]);
     else setUpcomingTick((n) => n + 1);
     setPlannerTarget(null);
     const recipe = recipes.find((r) => r.id === item.recipeId);
-    showToast(t("planner.leftoversAdded", { title: recipe?.title || item.name, slot: slotLabel(slot) }), async () => {
+    const addedKey = isPreparedMeal(item) ? "planner.preparedAdded" : "planner.leftoversAdded";
+    showToast(t(addedKey, { title: recipe?.title || item.name, slot: slotLabel(slot) }), async () => {
       await dropEntry(entry.id);
       if (existing[0]) await restoreEntry(existing[0]);
     });
@@ -1408,6 +1421,7 @@ export default function App({ user, onLogout }) {
               setRecipeProtein(null);
               setTab("collection");
             }}
+            onPlanMeal={requestPlanLeftover}
             onFindRecipesForSelection={() => setTab("makeable")}
             locations={pantryLocations}
             layout={inventoryLayout}

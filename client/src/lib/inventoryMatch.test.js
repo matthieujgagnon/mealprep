@@ -54,6 +54,11 @@ describe("itemCovers", () => {
     ["bell peppers", "red bell pepper"],
     ["Sel", "kosher salt"],
     ["Poivre noir", "black pepper"],
+    // A cut only matters when both names say one.
+    ["Chicken Breast Fillets", "boneless skinless chicken breasts"],
+    ["chicken", "chicken thighs"],
+    ["lean ground beef", "ground beef"],
+    ["mangoes", "mango"],
   ])("%s covers %s", (have, ingredient) => {
     expect(itemCovers(have, ingredient)).toBe(true);
   });
@@ -74,6 +79,8 @@ describe("itemCovers", () => {
     ["milk", "buttermilk"],
     ["Poivrons", "black pepper"],
     ["bell pepper", "pepper"],
+    ["Chicken Breast Fillets", "chicken thighs"],
+    ["pork chops", "pork tenderloin"],
   ])("%s does not cover %s", (have, ingredient) => {
     expect(itemCovers(have, ingredient)).toBe(false);
   });

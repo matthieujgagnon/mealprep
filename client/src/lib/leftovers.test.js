@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { leftoverExpiry, leftoverIsStale, leftoverItem, plannableLeftovers, thawPatch } from "./leftovers.js";
+import { leftoverExpiry, leftoverIsStale, leftoverItem, plannableMeals, thawPatch } from "./leftovers.js";
 import { buildAddPayload, dateFromDays, expiryTag, lineForDays, useByKind } from "./inventoryForm.js";
 import { daysUntil, formatExpiry } from "./pantryInventory.js";
 import { toUseItems } from "./homeWeek.js";
@@ -64,14 +64,14 @@ describe("leftoverIsStale", () => {
   });
 });
 
-describe("plannableLeftovers", () => {
+describe("plannableMeals", () => {
   it("lists the soonest use-by day first, whether the date is a day or a moment", () => {
     const items = [
       { id: "a", name: "Pizza", isLeftover: true, quantity: 1, expiresAt: "2026-10-16T00:00:00.000Z" },
       { id: "b", name: "Chili", isLeftover: true, quantity: 2, expiresAt: "2026-10-17T03:00:00.000Z" }, // the 16th, 11 p.m. in Quebec
       { id: "c", name: "Soup", isLeftover: true, quantity: 1, expiresAt: "2026-10-15T00:00:00.000Z" },
     ];
-    expect(plannableLeftovers(items, []).map((r) => r.item.id)).toEqual(["c", "a", "b"]);
+    expect(plannableMeals(items, []).map((r) => r.item.id)).toEqual(["c", "a", "b"]);
   });
 });
 

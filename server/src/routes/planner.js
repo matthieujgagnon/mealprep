@@ -4,6 +4,7 @@ import { fail } from "../lib/i18n.js";
 import { upcomingWhere } from "../lib/upcomingMeals.js";
 import { mondayKey, plannedDays, validKey } from "../lib/plannedDates.js";
 import { entriesToCopy } from "../lib/copyWeek.js";
+import { isMealItem } from "../lib/mealItem.js";
 
 export const plannerRouter = Router();
 
@@ -17,6 +18,16 @@ function serializeEntry(e) {
       tags: e.recipe.tags ? JSON.parse(e.recipe.tags) : [],
     },
   };
+}
+
+// A planned meal can only eat from an Inventory item that is a meal (a leftover or a
+// prepared meal, lib/mealItem.js), never from an ingredient. The item may already
+// have left Inventory (Undo puts it back with the same id), so a link to nothing is
+// fine; a link to an item that is not a meal is not.
+async function linksToNonMeal(userId, leftoverItemId) {
+  if (typeof leftoverItemId !== "string") return false;
+  const item = await prisma.pantryInventoryItem.findFirst({ where: { id: leftoverItemId, userId } });
+  return !!item && !isMealItem(item);
 }
 
 // GET /api/planner?week=YYYY-MM-DD - one week's placements (Monday of that
@@ -52,7 +63,7 @@ plannerRouter.get("/upcoming", async (req, res) => {
 // GET /api/planner/dates?from=YYYY-MM-DD&to=YYYY-MM-DD - the days in that
 // range (at most 400) that have a planned meal or note, each as
 // { date: "YYYY-MM-DD", meals: [{ mealType, title, placeholder, photoUrl,
-// isLeftover }] }. The Planner's month calendar (desktop and phone) draws three
+// isLeftover, prepared }] }. The Planner's month calendar (desktop and phone) draws three
 // dashes under each day and shows the meals, with photos, in a preview card.
 plannerRouter.get("/dates", async (req, res) => {
   const { from, to } = req.query;
@@ -68,10 +79,16 @@ plannerRouter.get("/dates", async (req, res) => {
       dayOfWeek: true,
       mealType: true,
       isLeftover: true,
+      leftoverItemId: true,
       recipe: { select: { title: true, isPlaceholder: true, photoUrl: true } },
     },
   });
-  res.json(plannedDays(entries, from, to));
+  // Which planned meals eat a prepared meal (they say so, not "leftovers").
+  const linkedIds = [...new Set(entries.map((e) => e.leftoverItemId).filter(Boolean))];
+  const prepared = linkedIds.length
+    ? await prisma.pantryInventoryItem.findMany({ where: { id: { in: linkedIds }, userId: req.userId, isPreparedMeal: true }, select: { id: true } })
+    : [];
+  res.json(plannedDays(entries, from, to, new Set(prepared.map((i) => i.id))));
 });
 
 // POST /api/planner - place a recipe card onto a day + meal slot
@@ -90,6 +107,7 @@ plannerRouter.post("/", async (req, res) => {
   // leaked recipeId from another account could be placed on this planner.
   const recipe = await prisma.recipe.findFirst({ where: { id: recipeId, userId: req.userId } });
   if (!recipe) return res.status(404).json(fail(req, "notFound.recipe"));
+  if (await linksToNonMeal(req.userId, leftoverItemId)) return res.status(400).json(fail(req, "notAMeal"));
 
   const entry = await prisma.plannerEntry.create({
     data: {
@@ -237,6 +255,7 @@ plannerRouter.put("/:id/note", async (req, res) => {
 // a date or null) or link it to Inventory leftovers (`leftoverItemId` or null)
 plannerRouter.put("/:id", async (req, res) => {
   const { weekStart, dayOfWeek, mealType, position, servings, isLeftover, alreadyHave, cookedAt, leftoverItemId } = req.body;
+  if (await linksToNonMeal(req.userId, leftoverItemId)) return res.status(400).json(fail(req, "notAMeal"));
   const { count } = await prisma.plannerEntry.updateMany({
     where: { id: req.params.id, userId: req.userId },
     data: {
