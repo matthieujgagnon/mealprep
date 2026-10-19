@@ -3,6 +3,7 @@ import { PHRASES, fold } from "./bilingual.js";
 import { familyKey } from "./ingredientFamilies.js";
 import { convertToUnit } from "./units.js";
 import { daysUntil } from "./pantryInventory.js";
+import { isMealItem } from "./mealItem.js";
 
 // Which Inventory item a recipe ingredient is, and how much of it a cooked
 // meal takes out. The one matching in the app: every page that says whether you
@@ -32,7 +33,9 @@ import { daysUntil } from "./pantryInventory.js";
 //   - water from the tap is never something to buy.
 // Nothing else decides whether you have an ingredient: salt, oil and spices are
 // ingredients like any other, had when they are in Inventory.
-// Leftovers (`isLeftover`) are a meal, not an ingredient, and never match.
+// A meal is not an ingredient and never matches (`isMealItem`, lib/mealItem.js): a
+// leftover, or a prepared meal the person tagged (a frozen "Chicken, Broccoli and
+// Cheddar Puff Pastry" is never chicken, broccoli or cheddar).
 
 // Kitchen words in French that the flyers' list doesn't have, singular and
 // plural, longest first where it matters.
@@ -223,7 +226,7 @@ export function itemCovers(haveName, ingredientName) {
   return foodsOnLine(ingredientName).some((food) => sameFoodAs(haveName, food));
 }
 
-const isUsable = (item) => !item.isLeftover;
+const isUsable = (item) => !isMealItem(item);
 const notExpired = (item) => !item.expiresAt || daysUntil(item.expiresAt) >= 0;
 
 // The Inventory items that are this ingredient, the one to use first first:
@@ -332,6 +335,14 @@ export function recipeUsesItem(recipe, itemName) {
   return (recipe?.ingredients || []).some((ing) => ing?.name && itemCovers(itemName, ing.name));
 }
 
+// The recipes that use an Inventory item (the item pop-up's "N of your recipes use X"):
+// the one matcher, so « Poulet » finds the chicken recipes. A meal (a leftover, a
+// prepared meal) is not an ingredient, so no recipe uses it.
+export function recipesUsingItem(item, recipes = []) {
+  if (isMealItem(item)) return [];
+  return recipes.filter((recipe) => !recipe.isPlaceholder && recipeUsesItem(recipe, item.name));
+}
+
 // One key per food, for lists that show each food once (Cook with's shelves and
 // its expiring strip): « Poulet » and "Chicken" are one.
 export function foodKey(name) {
@@ -341,7 +352,7 @@ export function foodKey(name) {
 }
 
 // Inventory items still good that go off within `withinDays` days, soonest first.
-// Leftovers are a meal, not an ingredient, and are left out.
+// Meals (leftovers, prepared meals) are not ingredients and are left out.
 export function expiringSoon(inventory = [], withinDays) {
   return inventory
     .filter((item) => isUsable(item) && item.expiresAt && daysUntil(item.expiresAt) >= 0 && daysUntil(item.expiresAt) <= withinDays)

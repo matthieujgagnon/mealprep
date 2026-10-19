@@ -18,15 +18,35 @@ describe("plannedDays", () => {
       meal("2026-11-02", 0, "lunch", "Outside"),
     ];
     expect(plannedDays(entries, "2026-10-05", "2026-10-31")).toEqual([
-      { date: "2026-10-05", meals: [{ mealType: "lunch", title: "No meal planned", placeholder: true, photoUrl: null, isLeftover: false }] },
+      { date: "2026-10-05", meals: [{ mealType: "lunch", title: "No meal planned", placeholder: true, photoUrl: null, isLeftover: false, prepared: false }] },
       {
         date: "2026-10-06",
         meals: [
-          { mealType: "breakfast", title: "Oats", placeholder: false, photoUrl: null, isLeftover: false },
-          { mealType: "dinner", title: "Soup", placeholder: false, photoUrl: "/photos/soup.jpg", isLeftover: true },
+          { mealType: "breakfast", title: "Oats", placeholder: false, photoUrl: null, isLeftover: false, prepared: false },
+          { mealType: "dinner", title: "Soup", placeholder: false, photoUrl: "/photos/soup.jpg", isLeftover: true, prepared: false },
         ],
       },
     ]);
+  });
+
+  it("says a planned meal is a prepared meal: by the Inventory item it eats, or by its note's name", () => {
+    const planned = (dayOfWeek, title, extra) => ({
+      weekStart: "2026-10-05",
+      dayOfWeek,
+      mealType: "dinner",
+      isLeftover: true,
+      recipe: { title, isPlaceholder: true },
+      ...extra,
+    });
+    const entries = [
+      planned(0, "Whatever it was renamed", { leftoverItemId: "lasagna" }),
+      planned(1, "Plat préparé · Pierogi", { leftoverItemId: "gone" }),
+      planned(2, "Prepared meal · Tourtière"),
+      planned(3, "Leftovers · pizza", { leftoverItemId: "pizza" }),
+      planned(4, "Plat préparé · Not a leftover", { isLeftover: false }),
+    ];
+    const days = plannedDays(entries, "2026-10-05", "2026-10-11", new Set(["lasagna"]));
+    expect(days.map((d) => d.meals[0].prepared)).toEqual([true, true, true, false, false]);
   });
 
   it("shows one thing per slot", () => {

@@ -114,7 +114,7 @@ describe("one leftovers system", () => {
   });
 
   it("offers Inventory leftovers in the Planner search, soonest first, by name or recipe", async () => {
-    const { plannableLeftovers } = await import("./leftovers.js");
+    const { plannableMeals } = await import("./leftovers.js");
     const items = [
       { id: "a", isLeftover: true, name: "Chili", quantity: 2, expiresAt: "2026-10-14", recipeId: "c" },
       { id: "b", isLeftover: true, name: "Pizza", quantity: 1, expiresAt: "2026-10-12" },
@@ -122,7 +122,7 @@ describe("one leftovers system", () => {
       { id: "d", name: "Chicken", quantity: 1 },
     ];
     const recipes = [{ id: "c", title: "Texas chili" }];
-    expect(plannableLeftovers(items, recipes).map((x) => x.item.id)).toEqual(["b", "a"]);
-    expect(plannableLeftovers(items, recipes, "texas").map((x) => x.item.id)).toEqual(["a"]);
+    expect(plannableMeals(items, recipes).map((x) => x.item.id)).toEqual(["b", "a"]);
+    expect(plannableMeals(items, recipes, "texas").map((x) => x.item.id)).toEqual(["a"]);
   });
 });

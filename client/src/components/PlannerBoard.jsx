@@ -6,7 +6,8 @@ import { formatRecipeTime, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { PlannerLegend } from "./PlannerLegend.jsx";
 import { weekendLayout } from "../lib/weekend.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
-import { leftoverIsStale } from "../lib/leftovers.js";
+import { leftoverIsStale, preparedEntryIds } from "../lib/leftovers.js";
+import { preparedNoteName } from "../lib/mealItem.js";
 import { dict, t } from "../i18n/index.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -123,25 +124,29 @@ export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, on
 
 // A slot you've written on (or marked "no meal planned"). Neither has a ×: click
 // written text to edit it in the slot's card (which has Remove note); click a
-// blank card to clear it (the toast has Undo).
-export function PlannerNoteCard({ entry, mealIndex, isPast, onEdit, onRemove }) {
+// blank card to clear it (the toast has Undo). A planned prepared meal has no recipe,
+// so it is held as a note too (« Plat préparé · Lasagne », like leftovers typed in by
+// hand): `isPrepared` gives it the yellow "nothing to buy" border and a plain-ink
+// « plat préparé » label in place of « ✎ NOTE ».
+export function PlannerNoteCard({ entry, mealIndex, isPast, isPrepared, onEdit, onRemove }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
     data: { recipe: entry.recipe, entryId: entry.id },
   });
-  const text = isCustomNote(entry) ? entry.recipe.title : "";
+  const written = isCustomNote(entry) ? entry.recipe.title : "";
+  const text = isPrepared ? preparedNoteName(written) : written;
 
   return (
     <div
       ref={setNodeRef}
-      className={`riso-planner-note${text ? "" : " blank"}${isPast ? " past" : ""}${isDragging ? " dragging" : ""}`}
+      className={`riso-planner-note${text ? "" : " blank"}${isPrepared ? " prepared" : ""}${isPast ? " past" : ""}${isDragging ? " dragging" : ""}`}
       onClick={(e) => (text ? onEdit(entry, cellOf(e), mealIndex) : onRemove(entry.id))}
       title={text ? t("planner.clickToEdit") : t("planner.clickToClear")}
       {...listeners}
       {...attributes}
       aria-label={text ? t("planner.noteAria", { text }) : t("planner.blankAria")}
     >
-      {text && <span className="riso-planner-note-label">{t("planner.noteTag")}</span>}
+      {text && <span className={`riso-planner-note-label${isPrepared ? " prepared" : ""}`}>{isPrepared ? t("planner.prepared") : t("planner.noteTag")}</span>}
       {text ? <span className={`riso-planner-note-text${isEmojiOnly(text) ? " emoji" : ""}`}>{text}</span> : <span className="riso-planner-note-blank">{t("planner.slotBlank")}</span>}
     </div>
   );
@@ -153,6 +158,7 @@ function PlannerCell({
   mealType,
   entries,
   staleIds,
+  preparedIds,
   isPast,
   selected,
   leftoverMode,
@@ -190,7 +196,7 @@ function PlannerCell({
           </span>
         </button>
       ) : isNoteEntry(entry) ? (
-        <PlannerNoteCard entry={entry} mealIndex={mealIndex} isPast={isPast} onEdit={onNoteClick} onRemove={onRemove} />
+        <PlannerNoteCard entry={entry} mealIndex={mealIndex} isPast={isPast} isPrepared={preparedIds.has(entry.id)} onEdit={onNoteClick} onRemove={onRemove} />
       ) : (
         <PlannerMealCard
           entry={entry}
@@ -250,6 +256,7 @@ export function PlannerBoard({
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
 
   const staleIds = computeStaleLeftoverIds(entries, leftoverItems);
+  const preparedIds = preparedEntryIds(entries, leftoverItems);
   const scrollRef = useRef(null);
   const layout = weekendLayout(weekend);
   const currentWeek = isCurrentWeek(weekStart);
@@ -328,6 +335,7 @@ export function PlannerBoard({
                   mealType={meal.id}
                   entries={grouped[slotKey(dayIndex, meal.id)] || []}
                   staleIds={staleIds}
+                  preparedIds={preparedIds}
                   isPast={isPastDay(weekStart, dayIndex)}
                   selected={selectedSlot?.dayOfWeek === dayIndex && selectedSlot?.mealType === meal.id}
                   leftoverMode={leftoverMode && !isPastDay(weekStart, dayIndex)}

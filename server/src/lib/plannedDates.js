@@ -3,6 +3,8 @@
 // "YYYY-MM-DD") and a day in it (0 = Monday). Pure calendar-date math on the
 // dates the browser sent, like upcomingMeals.js.
 
+import { isPreparedNoteTitle } from "./mealItem.js";
+
 const KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateKey(date) {
@@ -28,12 +30,14 @@ export function mondayKey(key) {
 const MEAL_ORDER = { breakfast: 0, lunch: 1, dinner: 2 };
 
 // The same days, with what is planned on each: { date, meals: [{ mealType,
-// title, placeholder, photoUrl, isLeftover }] }, days sorted, meals in the
+// title, placeholder, photoUrl, isLeftover, prepared }] }, days sorted, meals in the
 // day's order (breakfast, lunch, supper). A slot holds one thing, so a second
 // entry in the same slot is left out.
-export function plannedDays(entries, from, to) {
+// `preparedItemIds`: the ids of the user's prepared meals in Inventory, so a planned
+// meal that eats one says "prepared meal" and not "leftovers".
+export function plannedDays(entries, from, to, preparedItemIds = new Set()) {
   const byDay = new Map();
-  for (const { weekStart, dayOfWeek, mealType, isLeftover, recipe } of entries) {
+  for (const { weekStart, dayOfWeek, mealType, isLeftover, leftoverItemId, recipe } of entries) {
     const monday = validKey(weekStart);
     if (!monday) continue;
     const key = dateKey(new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + dayOfWeek)));
@@ -46,6 +50,7 @@ export function plannedDays(entries, from, to) {
         placeholder: !!recipe?.isPlaceholder,
         photoUrl: recipe?.photoUrl || null,
         isLeftover: !!isLeftover,
+        prepared: !!isLeftover && (preparedItemIds.has(leftoverItemId) || (!!recipe?.isPlaceholder && isPreparedNoteTitle(recipe.title))),
       });
     }
     byDay.set(key, meals);

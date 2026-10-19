@@ -19,8 +19,8 @@ This covers:
 - anything new that puts items in Inventory
 
 The exceptions, which count as Matt confirming:
-- Typing an item into Inventory's own "Add item" form (leftovers too, in its Leftovers mode)
-  goes in directly (`handleAddPantryItem` in `App.jsx`).
+- Typing an item into Inventory's own "Add item" form (leftovers too, in its Leftovers mode, and
+  its Prepared meal switch) goes in directly (`handleAddPantryItem` in `App.jsx`).
 - The Leftovers card in the finished view ("I cooked this", `components/CookedView.jsx`) is
   the confirmation for leftovers: it shows the exact item that will be added (name, portions,
   Fridge or Freezer, photo, the LEFTOVER tag), and "+ Add to Inventory" (« + Ajouter à
@@ -45,7 +45,7 @@ Inventory in both languages (`client/src/i18n/en.js` and `fr.js`, and the button
 
 ## Reuse what exists
 
-Before building any new piece of UI, check [docs/components.md](docs/components.md) and reuse or extend what is there. Never build a second version of something that exists: one recipe pop-out, one slot picker, one toast, one week calendar, one "Makeable now" rule, one Inventory matcher (`lib/inventoryMatch.js`: every "have it or not" goes through it), one `openRecipeCard`, one set of Riso pills, one recipe store (`lib/recipeStore.js`: a planned meal's recipe is read through `useLiveEntries`, never from the copy that came with the meal). If a shared piece almost fits, extend it and update its entry in `docs/components.md` in the same change.
+Before building any new piece of UI, check [docs/components.md](docs/components.md) and reuse or extend what is there. Never build a second version of something that exists: one "this item is a meal" rule (`lib/mealItem.js` `isMealItem`: a leftover or a prepared meal, never an ingredient; `isLeftover` on its own only where something is truly leftover-only; `server/src/oneMealRule.test.js` fails otherwise), one recipe pop-out, one slot picker, one toast, one week calendar, one "Makeable now" rule, one Inventory matcher (`lib/inventoryMatch.js`: every "have it or not" goes through it), one `openRecipeCard`, one set of Riso pills, one recipe store (`lib/recipeStore.js`: a planned meal's recipe is read through `useLiveEntries`, never from the copy that came with the meal). If a shared piece almost fits, extend it and update its entry in `docs/components.md` in the same change.
 
 ## Language
 

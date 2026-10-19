@@ -354,6 +354,7 @@ model PantryInventoryItem {
   expiresAt   DateTime? // suggested from the bundled USDA FoodKeeper data at add-time, or set/edited by the user - null means no suggestion was available and none was typed in
   imageUrl    String? // the item's photo on its Inventory card: an upload (/api/recipe-images/...) or a link; null shows a food emoji instead
   isLeftover  Boolean   @default(false) // a LEFTOVER item: a cooked meal kept in portions (quantity, unit "portion") on the Leftovers shelf, in the fridge or freezer (`location`). Never matched to a recipe ingredient, and can be planned on the Planner
+  isPreparedMeal Boolean @default(false) // a PREPARED MEAL: a ready-made dish kept as it is (a frozen lasagna, perogies), tagged by the person. Like a leftover it is a meal, not an ingredient (never matched to a recipe ingredient, can be planned on the Planner), but it stays on its own shelf, counted in whatever unit it was typed in. Never set together with isLeftover. See lib/mealItem.js
   recipeId    String? // the recipe the leftovers are from (their name and photo, and what the Planner places); null for leftovers added by hand
   recipe      Recipe?   @relation(fields: [recipeId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())

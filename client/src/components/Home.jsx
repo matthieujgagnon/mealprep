@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { currentWeekStart, formatDayLabel, isPastDay, shiftWeek, toDateKey } from "../lib/dates.js";
-import { buildGroceryList, canonicalize } from "../lib/groceryList.js";
+import { buildGroceryList } from "../lib/groceryList.js";
 import { splitAtHome } from "../lib/groceryAtHome.js";
 import { applyChecks } from "../lib/groceryChecks.js";
 import { findSaleDeal } from "../lib/similarRecipes.js";
@@ -10,7 +10,7 @@ import { useHomeFlickStop } from "../hooks/useHomeFlickStop.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
-import { currentMealType, makeableNow, toUseItems, useBarPct, useTone } from "../lib/homeWeek.js";
+import { currentMealType, makeableNow, toUseItems, useBarPct, useTone, useUpRecipeCounts } from "../lib/homeWeek.js";
 import { TOUCH_SCREEN, activeScreen, screensFit, scrollMode } from "../lib/homeScreens.js";
 import { refreshDeals, useDeals } from "../lib/dealsStore.js";
 import { useLiveEntries } from "../lib/recipeStore.js";
@@ -18,6 +18,7 @@ import { foodEmoji } from "../lib/dealEmoji.js";
 import { formatFractionQuantity, unitLabel } from "../lib/units.js";
 import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
 import { ItemPhoto } from "./Inventory.jsx";
+import { MealTag } from "./InventoryItems.jsx";
 import { dict, t } from "../i18n/index.js";
 import { formatList } from "../i18n/format.js";
 
@@ -88,7 +89,7 @@ function ToUseRow({ item }) {
           <div className="riso-useup-name-col">
             <span className="riso-useup-name">
               {item.name}
-              {item.isLeftover && <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>}
+              <MealTag item={item} />
             </span>
             {amount && <span className="riso-useup-qty">{amount}</span>}
           </div>
@@ -319,13 +320,8 @@ export function Home({
   }
 
   const { shown: useSoonItems, soonest: useSoonest } = toUseItems(pantryInventory, daysUntil);
-  // Recipes that would use up two or more of them (or at least one).
-  const useSoonCores = useSoonItems.map((i) => canonicalize(i.name).core);
-  const usesOf = (recipe) =>
-    new Set((recipe.ingredients || []).map((i) => canonicalize(i.name).core).filter((c) => useSoonCores.includes(c))).size;
-  const realRecipes = recipes.filter((r) => !r.isPlaceholder);
-  const usesTwo = realRecipes.filter((r) => usesOf(r) >= 2).length;
-  const usesOne = realRecipes.filter((r) => usesOf(r) >= 1).length;
+  // Recipes that would use up two or more of them (or at least one): the one matcher.
+  const { usesOne, usesTwo } = useUpRecipeCounts(recipes, useSoonItems);
 
   const tonightNote = tonightIsNote ? noteParts(tonightEntry.recipe.title) : null;
 

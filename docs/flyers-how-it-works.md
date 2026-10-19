@@ -118,7 +118,7 @@ There is one card per product, with each store's price side by side (`client/src
   - Chicken breasts
   - Chicken legs
   - Whole chicken
-- **Aisles** come from the name, using rules checked in order (`server/src/lib/dealAisle.js`). New: Blue Water and High Liner fish go under Fish & seafood (not Drinks or Snacks), Nestlé "Drumstick" cones go under Frozen, and ground coffee is no longer meat.
+- **Aisles** come from the name, using rules checked in order (`server/src/lib/dealAisle.js`). The dish words of the "Deli & ready meals" rule are one list shared with Inventory's "Prepared meal" suggestion (`looksLikeReadyMeal` in the same file); flyers sort exactly as they did. New: Blue Water and High Liner fish go under Fish & seafood (not Drinks or Snacks), Nestlé "Drumstick" cones go under Frozen, and ground coffee is no longer meat.
 
 ## 4. How everything is calculated
 

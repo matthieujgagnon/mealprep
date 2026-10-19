@@ -23,7 +23,8 @@ import {
 } from "../lib/finder.js";
 import { orderedSections } from "./Inventory.jsx";
 import { RecipePhoto } from "./RecipePhoto.jsx";
-import { leftoverTitle, plannableLeftovers } from "../lib/leftovers.js";
+import { mealTitle, plannableMeals } from "../lib/leftovers.js";
+import { isPreparedMeal } from "../lib/mealItem.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { formatList } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
@@ -114,9 +115,10 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
   );
 }
 
-// Leftovers in Inventory, on the Planner (`onAddLeftover`): « Restes · Chili · 2
-// portions ». The same photo card as a recipe; placing one plans a leftover meal
-// that eats one of its portions, and puts nothing on the grocery list. The whole
+// Meals in Inventory, on the Planner (`onAddLeftover`): « Restes · Chili · 2
+// portions », or « Plat préparé · Lasagne · 2 boîtes ». The same photo card as a
+// recipe; placing one plans a leftover meal that eats one of it, and puts nothing on
+// the grocery list. The whole
 // card and its + add it (into the chosen slot, else the slot picker); it drags onto
 // a slot like a recipe.
 function LeftoverResultCard({ entry, draggable, onAdd }) {
@@ -126,11 +128,11 @@ function LeftoverResultCard({ entry, draggable, onAdd }) {
     data: { leftoverItem: item, fromTray: true },
     disabled: !draggable,
   });
-  const title = leftoverTitle(item);
+  const title = mealTitle(item);
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
   // The use-by day itself says it expires today (the app's own `expiry.today`), not "0 days left".
   const left = days === 0 ? t("expiry.today").toUpperCase() : days != null ? t("finder.leftoverDays", { count: Math.max(0, days) }) : null;
-  const caption = [t("cooked.leftovers.tag"), left].filter(Boolean).join(" · ");
+  const caption = [t(isPreparedMeal(item) ? "preparedMeal.tag" : "cooked.leftovers.tag"), left].filter(Boolean).join(" · ");
   return (
     <RecipePhotoCard
       variant="finder"
@@ -326,7 +328,7 @@ export function Finder({
   // On the Planner, Inventory's leftovers come first (not with a Main meal, which
   // is about other recipes).
   const leftoverTiles = useMemo(
-    () => (onAddLeftover && !mainRecipe ? plannableLeftovers(pantryInventory, recipes, finder.query) : []),
+    () => (onAddLeftover && !mainRecipe ? plannableMeals(pantryInventory, recipes, finder.query) : []),
     [onAddLeftover, mainRecipe, pantryInventory, recipes, finder.query]
   );
   const filtersOn = finder.filtered;

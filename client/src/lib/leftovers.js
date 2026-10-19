@@ -1,5 +1,7 @@
 import { t } from "../i18n/index.js";
 import { addDays, quebecDay, expiryDay } from "./quebecDay.js";
+import { isMealItem, isPreparedMeal, isPreparedNoteTitle } from "./mealItem.js";
+import { formatFractionQuantity, unitLabel } from "./units.js";
 
 // Leftovers are one thing everywhere: a LEFTOVER item in Inventory (portions of
 // a cooked meal, on the Leftovers shelf, in the fridge or the freezer) that the
@@ -74,22 +76,42 @@ export function leftoverIsStale(entry, { item, cookedDay } = {}) {
   return entry.dayOfWeek - cookedDay > leftoverKeepDays(entry.recipe, "fridge");
 }
 
-// « Restes · Chili · 2 portions »: how leftovers are named on the Planner (their
-// name is the recipe's title unless it was changed).
-export function leftoverTitle(item) {
+// How a meal is named on the Planner and in its search: « Restes · Chili · 2 portions »
+// for leftovers (their name is the recipe's title unless it was changed), « Plat
+// préparé · Lasagne · 2 boîtes » for a prepared meal (in the unit it was typed in).
+export function mealTitle(item) {
+  if (isPreparedMeal(item)) {
+    const amount = item.quantity == null ? "" : [formatFractionQuantity(item.quantity), unitLabel(item.unit, item.quantity)].filter(Boolean).join(" ");
+    return amount ? t("finder.preparedTitleAmount", { title: item.name, amount }) : t("finder.preparedTitle", { title: item.name });
+  }
   return t("finder.leftoverTitle", { title: item.name, count: item.quantity ?? 1 });
 }
 
-// The leftovers the Planner search offers, soonest use-by first: each Inventory
-// leftover with portions left, whose name (or recipe's name) has the words typed.
-export function plannableLeftovers(items, recipes, query = "") {
+// The meals the Planner search offers, soonest use-by first: each Inventory meal
+// (a leftover or a prepared meal, lib/mealItem.js) with some left, whose name (or
+// recipe's name) has the words typed.
+export function plannableMeals(items, recipes, query = "") {
   const words = String(query).trim().toLowerCase().split(/\s+/).filter(Boolean);
   return items
-    .filter((i) => i.isLeftover && (i.quantity == null || i.quantity > 0))
+    .filter((i) => isMealItem(i) && (i.quantity == null || i.quantity > 0))
     .map((item) => ({ item, recipe: recipes.find((r) => r.id === item.recipeId) || null }))
     .filter(({ item, recipe }) => {
       const text = `${item.name} ${recipe?.title || ""}`.toLowerCase();
       return words.every((w) => text.includes(w));
     })
     .sort((a, b) => (expiryDay(a.item.expiresAt) || "9").localeCompare(expiryDay(b.item.expiresAt) || "9"));
+}
+
+// The planned meals that eat a prepared meal, not leftovers: the card says « plat
+// préparé » (the Inventory item it is linked to says so; when the last box has gone,
+// its note's own name does).
+export function preparedEntryIds(entries, items = []) {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const ids = new Set();
+  for (const entry of entries) {
+    if (!entry.isLeftover) continue;
+    const item = entry.leftoverItemId ? byId.get(entry.leftoverItemId) : null;
+    if (item ? isPreparedMeal(item) : entry.recipe?.isPlaceholder && isPreparedNoteTitle(entry.recipe.title)) ids.add(entry.id);
+  }
+  return ids;
 }

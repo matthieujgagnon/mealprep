@@ -19,6 +19,13 @@ export const AISLES = [
   { id: "other", label: "Other" },
 ];
 
+// The words that name a whole dish, not a food to cook with. They are the dishes the
+// "Deli & ready meals" rule below has always known; the same list is what
+// `looksLikeReadyMeal` reads, so the words live in one place. The flyer rule keeps
+// its plain `\b` on purpose, so flyers sort exactly as they did (only
+// `looksLikeReadyMeal` reads accents properly).
+const READY_MEAL_WORDS = String.raw`pr[eê]t-[aà]-manger|ready meals?|pizza|lasagn[ae]|quiche|tourti[eè]re|p[aâ]t[eé]s?`;
+
 const RULES = [
   // Cooking ingredients whose names say "juice", "milk", "pepper" or
   // "ground" but live in the pantry aisle.
@@ -33,7 +40,7 @@ const RULES = [
   ["drinks", /\b(juice|jus|soda|soft drinks?|boissons? gazeuses?|cola|pepsi|coca-cola|sparkling water|eau p[eé]tillante|(?<!blue )water|eau|kombucha|iced tea|th[eé] glac[eé]|energy drinks?|beer|bi[eè]re|wine|vin|cider|cidre|lemonade|limonade|sports? drinks?|gatorade)\b/i],
   ["pantry", /\b(broth|bouillon|stock|soups?|soupes?|sauces?|ketchup|mustard|moutarde|mayo(nnaise)?|vinaigrette|dressing|salsa|peanut butter|beurre d'arachide|jam|confiture|honey|miel|maple syrup|sirop d'[eé]rable|syrup|sirop|oil|huile|vinegar|vinaigre|flour|farine|sugar|sucre|baking|rice|riz|pasta|p[aâ]tes|spaghetti|macaroni|noodles?|nouilles|cereals?|c[eé]r[eé]ales|oats|avoine|granola|canned|en conserve|conserves?|beans|haricots|lentils|lentilles|chickpeas|pois chiches|tomato paste|p[aâ]te de tomates|spices?|[eé]pices|salt|sel|pepper sauce|coffee|caf[eé]|tea|th[eé]|nuts?|noix|almonds?|amandes)\b/i],
   ["snacks", /\b(chips|croustilles|crackers?|biscuits?|cookies?|chocolate|chocolat|candy|bonbons?|gummies|jujubes|popcorn|ma[iï]s souffl[eé]|pretzels?|bretzels|granola bars?|barres?|snacks?|collations?|dessert)\b/i],
-  ["deli", /\b(deli|charcuterie|salami|pepperoni|prosciutto|sliced (ham|turkey|chicken)|tranch[eé]|cold cuts|pr[eê]t-[aà]-manger|ready meals?|rotisserie|r[oô]ti cuit|hummus|houmous|dips?|trempettes?|sushi|pizza|lasagn[ae]|quiche|tourti[eè]re|p[aâ]t[eé]s?)\b/i],
+  ["deli", new RegExp(String.raw`\b(deli|charcuterie|salami|pepperoni|prosciutto|sliced (ham|turkey|chicken)|tranch[eé]|cold cuts|rotisserie|r[oô]ti cuit|hummus|houmous|dips?|trempettes?|sushi|${READY_MEAL_WORDS})\b`, "i")],
   ["seafood", /\b(salmon|saumon|tuna|thon|shrimps?|crevettes?|cod|morue|tilapia|haddock|aiglefin|trout|truite|halibut|fl[eé]tan|sole|scallops?|p[eé]toncles?|mussels?|moules|lobster|homard|crab|crabe|fish|poissons?|seafood|fruits de mer|sardines?|mackerel|maquereau|basa)\b/i],
   ["meat", /\b(chicken|poulet|beef|b(oe|œ)uf|pork|porc|ham|jambon|bacon|sausages?|saucisses?|turkey|dinde|lamb|agneau|veal|veau|steaks?|roast|r[oô]ti|ground|hach[eé]|ribs?|c[oô]tes|wings?|ailes|drumsticks?|pilons?|thighs?|hauts de cuisse|breasts?|poitrines?|chops?|tenderloin|filet mignon|meatballs?|boulettes|hot dogs?|wieners?)\b/i],
   ["dairy", /\b(milk|lait|cheese|fromages?|cheddar|mozzarella|brie|feta|parmesan|yogh?urt|yogourt|butter|beurre|cream|cr[eè]me|sour cream|cottage|kefir|eggs?|oeufs?|œufs?|margarine)\b/i],
@@ -48,4 +55,30 @@ export function aisleFor(deal) {
   const text = `${deal.item || ""} ${deal.matchName || ""}`;
   for (const [aisle, re] of RULES) if (re.test(text)) return aisle;
   return FROM_STORED[deal.category] || "other";
+}
+
+// ---- Does an Inventory item's name look like a ready meal? ------------------------
+//
+// Behind the "Prepared meal" switch's suggestion for a NEW Inventory item
+// (`GET /pantry-inventory/suggest`): « lasagne », "frozen pierogies", « tourtière ».
+// It only suggests; the person decides with the switch, and an item that is
+// already in Inventory is never changed by it.
+//
+// The flyer words above, plus dishes flyers rarely print. The boundaries are
+// written for letters with accents (`\b` only knows a-z, so it missed « pâté » at
+// the end of a name).
+const MORE_MEAL_WORDS = String.raw`p[aâ]t[eé] chinois|pierogi(es)?|perogi(es)?|perogy|pyrohy|pyrogy|pirogi|pot[- ]?pies?|shepherd'?s pie|tv dinners?|frozen (meals?|dinners?|entr[eé]es?)|repas|plats? (pr[eé]par[eé]s?|cuisin[eé]s?)`;
+
+// Words that make it an ingredient or a part of a dish, not the dish: pizza dough,
+// pizza sauce, lasagna noodles, pot pie mix, « pâte à pizza » (« pâtes » and « pâte »
+// are pasta and dough; « pâté » is the meat spread, and « pâté chinois » a dish).
+const NOT_A_MEAL_WORDS = String.raw`dough|crusts?|cro[uû]tes?|sauces?|noodles?|nouilles|sheets?|bases?|mix|kit|seasonings?|assaisonnements?|spices?|[eé]pices?|cheeses?|fromages?|toppings?|p[aâ]tes?(?![\p{L}])(?! chinois)`;
+
+const LETTER = String.raw`[\p{L}\p{N}]`;
+const READY_MEAL = new RegExp(`(?<!${LETTER})(${READY_MEAL_WORDS}|${MORE_MEAL_WORDS})(?!${LETTER})`, "iu");
+const NOT_A_MEAL = new RegExp(`(?<!${LETTER})(${NOT_A_MEAL_WORDS})(?!${LETTER})`, "iu");
+
+export function looksLikeReadyMeal(name) {
+  const text = String(name || "").trim();
+  return READY_MEAL.test(text) && !NOT_A_MEAL.test(text);
 }

@@ -17,6 +17,7 @@ import {
   weekendBands,
 } from "../lib/plannerPhone.js";
 import { PlannerMealCard, PlannerNoteCard, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
+import { preparedEntryIds } from "../lib/leftovers.js";
 
 // The Planner board on a phone (design: docs/design/riso-v2-planner-mobile-v2).
 // Three days in view, seven on a track that slides under the pinned meal names.
@@ -41,7 +42,7 @@ function dayName(i) {
   return dict().days.short[i].replace(/\.$/, "").toUpperCase();
 }
 
-function PhoneCell({ day, meal, mealType, entry, staleIds, isPast, selected, leftoverMode, x, y, onCardClick, onNoteClick, onRemove, onCycleState, onEmptyClick }) {
+function PhoneCell({ day, meal, mealType, entry, staleIds, preparedIds, isPast, selected, leftoverMode, x, y, onCardClick, onNoteClick, onRemove, onCycleState, onEmptyClick }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${day}-${mealType}` });
   const classes = ["pmb-cell"];
   if (isPast) classes.push("past");
@@ -62,7 +63,16 @@ function PhoneCell({ day, meal, mealType, entry, staleIds, isPast, selected, lef
       </button>
     );
   } else if (isNoteEntry(entry)) {
-    inside = <PlannerNoteCard entry={entry} mealIndex={meal} isPast={isPast} onEdit={isPast ? () => {} : onNoteClick} onRemove={isPast ? () => {} : onRemove} />;
+    inside = (
+      <PlannerNoteCard
+        entry={entry}
+        mealIndex={meal}
+        isPast={isPast}
+        isPrepared={preparedIds.has(entry.id)}
+        onEdit={isPast ? () => {} : onNoteClick}
+        onRemove={isPast ? () => {} : onRemove}
+      />
+    );
   } else {
     inside = (
       <PlannerMealCard
@@ -105,6 +115,7 @@ export function PlannerBoardPhone({
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
   const staleIds = computeStaleLeftoverIds(entries, leftoverItems);
+  const preparedIds = preparedEntryIds(entries, leftoverItems);
 
   const viewportRef = useRef(null);
   const insRef = useRef(null);
@@ -282,6 +293,7 @@ export function PlannerBoardPhone({
                 mealType={meal.id}
                 entry={(grouped[slotKey(day, meal.id)] || [])[0]}
                 staleIds={staleIds}
+                preparedIds={preparedIds}
                 isPast={isPastDay(weekStart, day)}
                 selected={selected(day, meal.id)}
                 leftoverMode={leftoverMode && !isPastDay(weekStart, day)}

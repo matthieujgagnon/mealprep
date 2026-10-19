@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
-import { Popup } from "./RisoControls.jsx";
+import { Popup, Switch } from "./RisoControls.jsx";
 import { ReportProblemLink } from "./Feedback.jsx";
 import { ERROR_LABELS } from "../lib/feedback.js";
 import { ItemPhoto, photoFor } from "./ItemPhoto.jsx";
@@ -25,6 +25,9 @@ import {
   useByKind,
 } from "../lib/inventoryForm.js";
 import { leftoverExpiry, leftoverKeepDays, thawPatch, FRIDGE_DAYS } from "../lib/leftovers.js";
+import { recipesUsingItem } from "../lib/inventoryMatch.js";
+import { isMealItem } from "../lib/mealItem.js";
+import { MealTag } from "./InventoryItems.jsx";
 import { expiryDay } from "../lib/quebecDay.js";
 import { t } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
@@ -157,6 +160,22 @@ function PhotoPanel({ item, photo, onChange, optional }) {
   );
 }
 
+// "Prepared meal": a ready-made dish (a frozen lasagna, perogies) is a meal, not an
+// ingredient. `suggested` says the switch was started on because the name looks like a
+// ready meal; the person can switch it off.
+function PreparedMealSwitch({ on, onToggle, suggested }) {
+  return (
+    <div className="riso-itemform-prepared">
+      <div className="riso-itemform-prepared-row">
+        <Switch on={on} onToggle={onToggle} label={t("preparedMeal.switch")} />
+        <span className="riso-itemform-prepared-label">{t("preparedMeal.switch")}</span>
+      </div>
+      {suggested && on && <p className="riso-itemform-prepared-hint">{t("preparedMeal.looksLike")}</p>}
+      <p className="riso-itemform-prepared-help">{t("preparedMeal.switchHelp")}</p>
+    </div>
+  );
+}
+
 export function InventoryItemForm({
   mode,
   item,
@@ -168,6 +187,7 @@ export function InventoryItemForm({
   onDelete,
   onConsume,
   onFindRecipes,
+  onPlanMeal,
   onToast,
   onClose,
   isPhone,
@@ -189,6 +209,12 @@ export function InventoryItemForm({
   const usdaDate = edit ? expiryDay(item.locations?.[item.location]?.expiresAt) : null;
 
   const [leftover, setLeftover] = useState(startLeftover);
+  // Prepared meal. A NEW item whose name looks like a ready meal starts on (`suggested`)
+  // until the person touches the switch; an item already in Inventory is never changed
+  // by its name, only by its saved flag and the switch.
+  const [prepared, setPrepared] = useState(edit ? item.isPreparedMeal === true : false);
+  const [preparedSuggested, setPreparedSuggested] = useState(false);
+  const preparedTouched = useRef(false);
   const [recipeId, setRecipeId] = useState(edit ? item.recipeId || "" : "");
   const leftoverRecipe = recipes.find((r) => r.id === recipeId) || null;
   const [name, setName] = useState(edit ? item.name : "");
@@ -238,6 +264,10 @@ export function InventoryItemForm({
       () => {
         if (!q) {
           setOpts({});
+          if (!preparedTouched.current) {
+            setPrepared(false);
+            setPreparedSuggested(false);
+          }
           if (!live.current.custom && !live.current.leftover) setExpiresAt(dateFromDays(startDays(null, live.current.loc).days));
           return;
         }
@@ -249,6 +279,10 @@ export function InventoryItemForm({
             const locations = res.locations || {};
             setOpts(locations);
             if (res.category) setCategory(res.category);
+            if (!preparedTouched.current) {
+              setPrepared(res.readyMeal === true);
+              setPreparedSuggested(res.readyMeal === true);
+            }
             const cur = live.current;
             let nextLoc = cur.loc;
             if (!cur.locTouched && res.location && sections.some((s) => s.id === res.location)) {
@@ -275,9 +309,15 @@ export function InventoryItemForm({
   }
 
   // The Leftovers chip (add mode): portions in the fridge, kept the leftover time.
+  function togglePrepared() {
+    preparedTouched.current = true;
+    setPrepared((on) => !on);
+  }
+
   function toggleLeftover() {
     const on = !leftover;
     setLeftover(on);
+    if (on) setPrepared(false);
     setUnit(on ? "portion" : "");
     setCategory(on ? "Deli & Prepared Foods" : "Other");
     const place = on ? (loc === "freezer" ? "freezer" : "fridge") : loc;
@@ -377,16 +417,18 @@ export function InventoryItemForm({
   const canFreeze = edit && item.location !== "freezer" && (leftover || !!opts.freezer);
   const canThaw = edit && leftover && item.location === "freezer";
   const plannable = recipes.filter((r) => !r.isPlaceholder);
-  const recipeCount = edit
-    ? recipes.filter((r) => !r.isPlaceholder && r.ingredients?.some((i) => i.name?.toLowerCase().includes(item.name.toLowerCase()))).length
-    : 0;
+  // How many recipes use it: the one matcher decides (lib/inventoryMatch.js), so
+  // « Poulet » finds the chicken recipes. A meal is not an ingredient: no count.
+  const asShown = edit ? { ...item, isPreparedMeal: prepared } : null;
+  const isMeal = edit && isMealItem(asShown);
+  const recipeCount = edit ? recipesUsingItem(asShown, recipes).length : 0;
 
   async function submitAdd(keepOpen) {
     if (!trimmed || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const payload = buildAddPayload({ name, qtyText, unit, location: loc, category, expiresAt, photo });
+      const payload = buildAddPayload({ name, qtyText, unit, location: loc, category, expiresAt, photo, isPreparedMeal: prepared && !leftover });
       const created = await onAdd(leftover ? { ...payload, unit: "portion", isLeftover: true, recipeId: recipeId || null } : payload);
       setAdded((rows) => [...rows, { id: created?.id, name: trimmed, qtyText, unit, loc }]);
       onToast(t("inventory.form.toastAdded", { name: trimmed, location: (leftover ? labelFor.leftovers : labelFor[loc]) || "" }));
@@ -398,6 +440,9 @@ export function InventoryItemForm({
         setPhoto(null);
         setCategory(leftover ? "Deli & Prepared Foods" : "Other");
         setUnit(leftover ? "portion" : "");
+        setPrepared(false);
+        setPreparedSuggested(false);
+        preparedTouched.current = false;
         setOpts({});
         setCustom(false);
         qtyTouched.current = false;
@@ -430,7 +475,7 @@ export function InventoryItemForm({
     setBusy(true);
     setError(null);
     try {
-      const patch = buildEditPatch(item, { name, qtyText, unit, location: loc, expiresAt, photo });
+      const patch = buildEditPatch(item, { name, qtyText, unit, location: loc, expiresAt, photo, isPreparedMeal: leftover ? undefined : prepared });
       if (leftover && (recipeId || null) !== (item.recipeId || null)) patch.recipeId = recipeId || null;
       if (Object.keys(patch).length > 0) await onSave(item.id, patch);
       onToast(t("inventory.form.toastSaved"));
@@ -502,6 +547,11 @@ export function InventoryItemForm({
 
       <div className="riso-itemform-cols">
         <div className="riso-itemform-main">
+          {edit && !leftover && (
+            <div className="riso-itemform-block">
+              <PreparedMealSwitch on={prepared} onToggle={togglePrepared} suggested={false} />
+            </div>
+          )}
           {!edit && (
             <div className="riso-itemform-block">
               <Step n={1}>{t("inventory.form.stepName")}</Step>
@@ -541,6 +591,7 @@ export function InventoryItemForm({
                   </select>
                 )}
               </div>
+              {!leftover && <PreparedMealSwitch on={prepared} onToggle={togglePrepared} suggested={preparedSuggested} />}
               {!leftover && !trimmed && recent.length > 0 && (
                 <div className="riso-itemform-recent" role="group" aria-label={t("inventory.form.recentAria")}>
                   <span className="riso-itemform-recent-label">{t("inventory.form.recent")}</span>
@@ -716,7 +767,7 @@ export function InventoryItemForm({
                 {trimmed || photo ? <ItemPhoto item={previewItem} /> : <span className="inv-card-photo placeholder stripes">{t("inventory.form.photo")}</span>}
                 <div className="inv-card-main">
                   <span className={`inv-card-name${trimmed ? "" : " empty"}`}>{trimmed || t("inventory.form.itemNamePlaceholder")}</span>
-                  {leftover && <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>}
+                  <MealTag item={{ isLeftover: leftover, isPreparedMeal: prepared }} />
                 </div>
                 <span className="inv-card-qty">
                   <span className="inv-card-qty-num">{qtyText}</span>
@@ -733,7 +784,7 @@ export function InventoryItemForm({
 
           <PhotoPanel item={{ name: trimmed }} photo={photo} onChange={setPhoto} optional={!edit} />
 
-          {edit && (
+          {edit && !isMeal && (
             <div className="riso-itemform-recipes">
               {t("home.recipesUse", { count: recipeCount, name: item.name })}{" "}
               <button
@@ -746,6 +797,23 @@ export function InventoryItemForm({
               >
                 {t("home.seeThem")}
               </button>
+            </div>
+          )}
+          {edit && isMeal && (
+            <div className="riso-itemform-recipes">
+              {t("preparedMeal.popupLine")}{" "}
+              {isMealItem(item) && (
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    onClose();
+                    onPlanMeal(item);
+                  }}
+                >
+                  {t("preparedMeal.planIt")}
+                </button>
+              )}
             </div>
           )}
 

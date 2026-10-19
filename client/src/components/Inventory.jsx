@@ -592,6 +592,7 @@ export function Inventory({
   onPutBackRemoved,
   recipes,
   onFindRecipes,
+  onPlanMeal,
   onFindRecipesForSelection,
   locations,
   layout,
@@ -847,6 +848,7 @@ export function Inventory({
           onDelete={onDelete}
           onConsume={onConsume}
           onFindRecipes={onFindRecipes}
+          onPlanMeal={onPlanMeal}
           onToast={showToast}
           onClose={closeItem(activeItem.id)}
           isPhone={isPhone}

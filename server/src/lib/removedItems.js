@@ -14,7 +14,7 @@ export const REMOVED_HOW = ["consumed", "wasted", "deleted", "cooked"];
 export const REMOVED_KEEP_DAYS = 7;
 
 // The fields of an Inventory row that Put back needs, as plain JSON.
-const FIELDS = ["id", "name", "core", "category", "quantity", "unit", "location", "purchasedAt", "expiresAt", "imageUrl", "isLeftover", "recipeId", "createdAt"];
+const FIELDS = ["id", "name", "core", "category", "quantity", "unit", "location", "purchasedAt", "expiresAt", "imageUrl", "isLeftover", "isPreparedMeal", "recipeId", "createdAt"];
 export function snapshotOf(item) {
   const out = {};
   for (const key of FIELDS) {
