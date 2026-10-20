@@ -811,8 +811,8 @@ export default function App({ user, onLogout }) {
     await api.consumePantryInventoryItems(ids, action);
   }
 
-  async function handleAddPantryLocation(name) {
-    const created = await api.addPantryLocation(name);
+  async function handleAddPantryLocation(name, options) {
+    const created = await api.addPantryLocation(name, options);
     setPantryLocations((prev) => [...prev, created]);
     return created;
   }

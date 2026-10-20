@@ -15,11 +15,16 @@ export function shelfCard(page, shelf) {
     .filter({ has: page.locator(".riso-itemform-loc-name", { hasText: new RegExp(`^${label}$`, "i") }) });
 }
 
-// Fill the open Add form: the name, and the shelf if given.
+// Fill the open Add form: the name, and where it goes if given. Fridge, Freezer and Pantry are the
+// "Stored in" cards (where it is KEPT); any other shelf (Prepared meals, a section of their own)
+// is the separate Shelf choice under them.
 export async function fillAddForm(page, name, { shelf } = {}) {
   const form = itemForm(page);
   await form.getByLabel("Item name").fill(name);
-  if (shelf) await shelfCard(page, shelf).click();
+  if (!shelf) return;
+  const label = SHELVES[shelf] || shelf;
+  if (/^(fridge|freezer|pantry)$/i.test(label)) await shelfCard(page, shelf).click();
+  else await form.locator(".riso-itemform-shelf-select").selectOption({ label });
 }
 
 // "+ Add item" (or a shelf's own +, if already open skip), then add one item and

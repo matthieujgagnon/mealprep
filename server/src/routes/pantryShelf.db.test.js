@@ -192,6 +192,12 @@ describe.skipIf(!dbUp)("storage and shelf (database)", () => {
     expect((await layout([{ sectionId: "prepared", label: "Prepared meals" }, { sectionId: old.id }])).status).toBe(200);
     expect((await layout([{ sectionId: "prepared", label: "Prepared meals" }, { sectionId: old.id }])).status).toBe(200);
     expect((await call(`/api/pantry-locations/${old.id}`, { method: "DELETE" })).status).toBe(204);
+    // Undo of that delete brings the shelf back even though its name is a built-in shelf's: it is
+    // not a new shelf. Only the Undo says so (`restore`); a new shelf of that name is still refused.
+    expect((await call("/api/pantry-locations", { method: "POST", body: { name: "Prepared meals" } })).status).toBe(409);
+    const back = await call("/api/pantry-locations", { method: "POST", body: { name: "Prepared meals", restore: true } });
+    expect(back.status).toBe(201);
+    expect(back.data.name).toBe("Prepared meals");
   });
 
   it("the migration that added `shelf` merges Matt's « Prepared meals » shelf, moves its place, size and name, and deletes nothing", async () => {

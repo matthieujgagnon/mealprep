@@ -28,14 +28,16 @@ pantryLocationsRouter.get("/", async (req, res) => {
   res.json(locations);
 });
 
-// POST /api/pantry-locations { name } - add a new custom section.
+// POST /api/pantry-locations { name, restore? } - add a new custom section. `restore` is the Undo
+// of deleting a section (the old « Prepared meals » one, whose name is also a built-in shelf's):
+// it brings back what was there, so it is not a new shelf and the name check is skipped.
 pantryLocationsRouter.post("/", async (req, res) => {
-  const { name } = req.body;
+  const { name, restore } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json(fail(req, "required", { fields: "name" }));
   }
   const trimmedName = name.trim();
-  if (await takenByBuiltIn(req.userId, trimmedName)) return res.status(409).json(fail(req, "sectionExists", { name: trimmedName }));
+  if (restore !== true && (await takenByBuiltIn(req.userId, trimmedName))) return res.status(409).json(fail(req, "sectionExists", { name: trimmedName }));
   const count = await prisma.pantryLocation.count({ where: { userId: req.userId } });
   try {
     const location = await prisma.pantryLocation.create({

@@ -764,7 +764,7 @@ export function Inventory({
 
   async function deleteOldShelf(shelf) {
     await onDeleteLocation(shelf.id);
-    showToast(t("inventory.storageSheet.oldDeleted", { name: shelf.name }), () => onAddLocation(shelf.name));
+    showToast(t("inventory.storageSheet.oldDeleted", { name: shelf.name }), () => onAddLocation(shelf.name, { restore: true }));
   }
 
   async function putBack(entry) {

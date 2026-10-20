@@ -295,8 +295,9 @@ export const api = {
     request(`/pantry-inventory/removed/${encodeURIComponent(id)}/put-back`, { method: "POST" }).then(removedChanged),
 
   listPantryLocations: () => request("/pantry-locations"),
-  addPantryLocation: (name) =>
-    request("/pantry-locations", { method: "POST", body: JSON.stringify({ name }) }),
+  // `restore`: the Undo of deleting a shelf, which may share a built-in shelf's name.
+  addPantryLocation: (name, { restore } = {}) =>
+    request("/pantry-locations", { method: "POST", body: JSON.stringify(restore ? { name, restore: true } : { name }) }),
   deletePantryLocation: (id) => request(`/pantry-locations/${id}`, { method: "DELETE" }),
   renamePantryLocation: (id, name) =>
     request(`/pantry-locations/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
