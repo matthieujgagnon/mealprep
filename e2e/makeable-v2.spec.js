@@ -95,8 +95,8 @@ test("sections by what is missing; planned recipes only in Meals of the week; no
   await expect(card(page, "Riso Pancakes")).toHaveCSS("border-top-color", "rgb(35, 35, 255)");
   await expect(card(page, "Riso Soup")).toHaveCSS("border-top-color", "rgb(22, 24, 31)");
 
-  // Include pantry and sides brings the dessert back (the same setting as every page).
-  await page.getByRole("button", { name: "Include pantry and sides" }).click();
+  // Include sides, desserts and prepared brings the dessert back (the same setting as every page).
+  await page.getByRole("button", { name: "Include sides, desserts and prepared" }).click();
   await expect(page.locator(".fnd-sec.ready .rpc-title")).toHaveCount(2);
   await expect(page.locator(".fnd-sec.ready").getByText("Riso Brownies")).toBeVisible();
 });

@@ -71,7 +71,7 @@ test("a planned meal's Cook opens the recipe card over the Planner, not Cook mod
   await expect(page.locator(".cm-overlay")).toHaveCount(0);
 });
 
-test("Makeable now counts meals only; Include pantry and sides brings the rest back, on every page", async ({ page }) => {
+test("Makeable now counts meals only; Include sides, desserts and prepared brings the rest back, on every page", async ({ page }) => {
   await setup(page, [
     { title: "Chicken Dinner", mealSlot: "dinner", ingredients: [{ name: "chicken" }] },
     { title: "Plain Rice", mealSlot: "side", ingredients: [{ name: "rice" }] },
@@ -84,7 +84,7 @@ test("Makeable now counts meals only; Include pantry and sides brings the rest b
   await page.reload();
   await page.getByRole("button", { name: "Makeable", exact: true }).click();
   await expect(page.locator(".mk-page .rpc-title")).toHaveCount(2);
-  await page.getByRole("button", { name: "Include pantry and sides" }).click();
+  await page.getByRole("button", { name: "Include sides, desserts and prepared" }).click();
   await expect(page.locator(".mk-page .rpc-title")).toHaveCount(4);
 
   // The same setting is on Home (the card's count). Recipes has no Makeable now chip any more.

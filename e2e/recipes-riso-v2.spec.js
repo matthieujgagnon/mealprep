@@ -55,7 +55,8 @@ test.describe("on a desktop", () => {
     await goRecipes(page);
     const bar = page.locator(".riso-recipes-searchbar");
     await expect(bar.getByRole("button", { name: "+ New recipe" })).toBeVisible();
-    await expect(page.locator(".riso-recipes-heading").getByRole("button")).toHaveCount(0);
+    // The heading's only button is the Makeable setting, which changes the "N makeable" count (not the list).
+    await expect(page.locator(".riso-recipes-heading").getByRole("button")).toHaveText(["Include sides, desserts and prepared"]);
     await expect(page.locator(".riso-hint-list li")).toHaveCount(4);
 
     await bar.locator("input").fill("https://example.com/some-recipe");

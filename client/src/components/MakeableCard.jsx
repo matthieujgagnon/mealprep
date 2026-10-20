@@ -4,7 +4,7 @@ import { DealDetailHost } from "./SaleTag.jsx";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { saleFor } from "../lib/finder.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
-import { recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { isPreparedRecipe, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { cardButtons, cardCaption, cardState, haveBar, namesToAdd, pickPills, pillFontSize, saleCount } from "../lib/photoCard.js";
 import { t } from "../i18n/index.js";
 
@@ -132,6 +132,7 @@ export function MakeableCard({ tile, soon, reason, grocery, deals, showSales, on
       title={recipe.title}
       photoUrl={recipe.photoUrl}
       caption={cardCaption(meal, recipeTotalMinutes(recipe))}
+      prepared={isPreparedRecipe(recipe)}
       openLabel={t("planner.open", { title: recipe.title })}
       onOpen={open}
     >
