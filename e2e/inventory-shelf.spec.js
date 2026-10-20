@@ -44,35 +44,39 @@ test.describe("on a computer", () => {
     await signUp(page);
     const garage = await (await page.request.post("/api/pantry-locations", { data: { name: "Garage" } })).json();
     const useBy = quebecDayIn(40);
-    await add(page, { name: "Ice cream", quantity: 1, unit: "unit", location: "freezer", expiresAt: useBy });
+    // (a food that can be kept in more than one place, so the pop-up offers more than one card)
+    await add(page, { name: "Chicken breast", quantity: 1, unit: "unit", location: "freezer", expiresAt: useBy });
     await openInventory(page);
-    await expect(shelf(page, "freezer").getByText("Ice cream")).toBeVisible();
+    await expect(shelf(page, "freezer").getByText("Chicken breast")).toBeVisible();
     // On the Freezer shelf the label would only repeat the shelf, so there is none.
     await expect(shelf(page, "freezer").locator(".storage-label")).toHaveCount(0);
 
     // From the pop-up: Stored in stays Freezer, Shelf becomes Garage; nothing is saved until Save changes.
-    await page.getByText("Ice cream", { exact: true }).click();
+    await page.getByText("Chicken breast", { exact: true }).click();
     await expect(itemForm(page)).toBeVisible();
+    await expect(itemForm(page).locator(".riso-itemform-loc.on")).toContainText("Freezer");
     await itemForm(page).locator(".riso-itemform-shelf-select").selectOption({ label: "Garage" });
-    expect((await find(page, "Ice cream")).shelf).toBeNull();
+    expect((await find(page, "Chicken breast")).shelf).toBeNull();
     await itemForm(page).getByRole("button", { name: "Save changes" }).click();
     await expect(itemForm(page)).toHaveCount(0);
 
-    const moved = await find(page, "Ice cream");
+    const moved = await find(page, "Chicken breast");
     expect(moved).toMatchObject({ location: "freezer", shelf: garage.id });
     expect(moved.expiresAt.slice(0, 10)).toBe(useBy);
-    const tile = shelf(page, garage.id).locator(".inv-tile", { hasText: "Ice cream" });
+    const tile = shelf(page, garage.id).locator(".inv-tile", { hasText: "Chicken breast" });
     await expect(tile).toBeVisible();
     await expect(tile.locator(".storage-label")).toHaveText("Freezer");
-    await expect(shelf(page, "freezer").getByText("Ice cream")).toHaveCount(0);
+    await expect(shelf(page, "freezer").getByText("Chicken breast")).toHaveCount(0);
 
     // Changing where it is kept (Stored in) does not move it off the shelf that was chosen.
     await tile.click();
+    await expect(itemForm(page).locator(".riso-itemform-shelf-select")).toHaveValue(garage.id);
     await itemForm(page).locator(".riso-itemform-loc", { hasText: "Fridge" }).click();
+    await expect(itemForm(page).locator(".riso-itemform-shelf-select")).toHaveValue(garage.id);
     await itemForm(page).getByRole("button", { name: "Save changes" }).click();
     await expect(itemForm(page)).toHaveCount(0);
-    expect(await find(page, "Ice cream")).toMatchObject({ location: "fridge", shelf: garage.id });
-    await expect(shelf(page, garage.id).locator(".inv-tile", { hasText: "Ice cream" }).locator(".storage-label")).toHaveText("Fridge");
+    expect(await find(page, "Chicken breast")).toMatchObject({ location: "fridge", shelf: garage.id });
+    await expect(shelf(page, garage.id).locator(".inv-tile", { hasText: "Chicken breast" }).locator(".storage-label")).toHaveText("Fridge");
   });
 
   test("dragging an item to a shelf of your own changes only the shelf; Compact rows say where it is kept too", async ({ page }) => {
@@ -113,11 +117,13 @@ test.describe("on a computer", () => {
     // Its name looks like a ready meal, so the switch starts on, in ink and not the blue of "you have it".
     const toggle = itemForm(page).getByRole("switch", { name: "Prepared meal" });
     await expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(await toggle.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(22, 24, 31)");
+    const track = () => toggle.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await expect.poll(track).toBe("rgb(22, 24, 31)"); // after its short colour change
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-checked", "false");
-    expect(await toggle.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgb(22, 24, 31)");
+    await expect.poll(track).not.toBe("rgb(22, 24, 31)");
     await toggle.click();
+    await expect.poll(track).toBe("rgb(22, 24, 31)");
     await itemForm(page).getByRole("button", { name: "Add to inventory" }).click();
     await expect(itemForm(page)).toHaveCount(0);
 
@@ -151,7 +157,7 @@ test.describe("on a computer", () => {
     await itemForm(page).getByRole("button", { name: "Save changes" }).click();
     await expect(shelf(page, garage.id).getByText("Perogies")).toBeVisible();
     expect(await find(page, "Perogies")).toMatchObject({ location: "freezer", shelf: garage.id });
-    await page.reload();
+    await openInventory(page);
     await expect(shelf(page, garage.id).getByText("Perogies")).toBeVisible();
     await expect(shelf(page, "prepared").getByText("Perogies")).toHaveCount(0);
   });
@@ -271,7 +277,8 @@ test.describe("on a phone, in French", () => {
     await openInventory(page);
     const prepared = shelf(page, "prepared");
     await expect(prepared.locator(".inv-tile")).toHaveCount(3);
-    await expect(prepared.locator(".storage-label")).toHaveText(["Frigo", "Congél.", "Garde-manger"]);
+    // (in the order of their use-by dates, whichever that is)
+    expect((await prepared.locator(".storage-label").allTextContents()).sort()).toEqual(["Congél.", "Frigo", "Garde-manger"]);
 
     const fits = async (selector) => {
       const items = await prepared.locator(selector).all();
