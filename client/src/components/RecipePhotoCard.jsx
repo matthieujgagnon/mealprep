@@ -28,11 +28,13 @@ import { RecipePhoto } from "./RecipePhoto.jsx";
 //                     inside the open button like the finder's card.
 //
 // `ready` turns the outline blue (--riso-accent: "you already have everything").
-// `caption` is the text over the top of the photo; each variant lays it out.
+// `caption` is the text over the top of the photo; each variant lays it out. `tag` is a
+// sticker on the photo (the shared <PreparedTag>): each variant puts it where the design
+// says (the finder's card: top left, 12px in, 10px on a phone).
 // `cardRef` and any other props (drag listeners, for instance) go on the card
 // itself. A new recipe card is this with another caption and children, not a new
 // card.
-export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, lineColor, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
+export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, tag, lineColor, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
   // The finder and strip cards hold their photo in a box of fixed height, with the
   // text under it inside the button.
   const finder = variant === "finder" || variant === "strip";
@@ -41,6 +43,7 @@ export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, li
       {photoUrl ? <RecipePhoto className="rpc-img" src={photoUrl} alt="" draggable="false" /> : null}
       <span className="rpc-scrim-top" aria-hidden="true" />
       <span className="rpc-caption">{caption}</span>
+      {tag ? <span className="rpc-tag">{tag}</span> : null}
       <span className="rpc-scrim-bottom">
         <span className="rpc-title">{title}</span>
       </span>

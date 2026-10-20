@@ -6,8 +6,9 @@ import { formatRecipeTime, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { PlannerLegend } from "./PlannerLegend.jsx";
 import { weekendLayout } from "../lib/weekend.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
-import { leftoverIsStale, preparedEntryIds } from "../lib/leftovers.js";
-import { preparedNoteName } from "../lib/mealItem.js";
+import { leftoverIsStale } from "../lib/leftovers.js";
+import { linkedMeals } from "../lib/linkedMeal.js";
+import { PreparedTag } from "./RisoPills.jsx";
 import { dict, t } from "../i18n/index.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -124,30 +125,85 @@ export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, on
 
 // A slot you've written on (or marked "no meal planned"). Neither has a ×: click
 // written text to edit it in the slot's card (which has Remove note); click a
-// blank card to clear it (the toast has Undo). A planned prepared meal has no recipe,
-// so it is held as a note too (« Plat préparé · Lasagne », like leftovers typed in by
-// hand): `isPrepared` gives it the yellow "nothing to buy" border and a plain-ink
-// « plat préparé » label in place of « ✎ NOTE ».
-export function PlannerNoteCard({ entry, mealIndex, isPast, isPrepared, onEdit, onRemove }) {
+// blank card to clear it (the toast has Undo). A planned prepared meal, or leftovers
+// typed in by hand, is held as a note too but is drawn as `PlannerLinkedCard` (a photo
+// card), not as this.
+export function PlannerNoteCard({ entry, mealIndex, isPast, onEdit, onRemove }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `planner-${entry.id}`,
     data: { recipe: entry.recipe, entryId: entry.id },
   });
-  const written = isCustomNote(entry) ? entry.recipe.title : "";
-  const text = isPrepared ? preparedNoteName(written) : written;
+  const text = isCustomNote(entry) ? entry.recipe.title : "";
 
   return (
     <div
       ref={setNodeRef}
-      className={`riso-planner-note${text ? "" : " blank"}${isPrepared ? " prepared" : ""}${isPast ? " past" : ""}${isDragging ? " dragging" : ""}`}
+      className={`riso-planner-note${text ? "" : " blank"}${isPast ? " past" : ""}${isDragging ? " dragging" : ""}`}
       onClick={(e) => (text ? onEdit(entry, cellOf(e), mealIndex) : onRemove(entry.id))}
       title={text ? t("planner.clickToEdit") : t("planner.clickToClear")}
       {...listeners}
       {...attributes}
       aria-label={text ? t("planner.noteAria", { text }) : t("planner.blankAria")}
     >
-      {text && <span className={`riso-planner-note-label${isPrepared ? " prepared" : ""}`}>{isPrepared ? t("planner.prepared") : t("planner.noteTag")}</span>}
+      {text && <span className="riso-planner-note-label">{t("planner.noteTag")}</span>}
       {text ? <span className={`riso-planner-note-text${isEmojiOnly(text) ? " emoji" : ""}`}>{text}</span> : <span className="riso-planner-note-blank">{t("planner.slotBlank")}</span>}
+    </div>
+  );
+}
+
+// A planned prepared meal, or leftovers typed in by hand that have a photo, as a photo card
+// like a recipe's (design: docs/design/prepared-tag/): the Inventory item's photo, its
+// name and, on a phone, what is left of it. `meal` is `linkedMeal(entry, items)`
+// (lib/linkedMeal.js), which reads the photo live through the link. A prepared meal has the
+// 3px ink border and the shared tag; leftovers keep the 3px yellow border and the yellow
+// « restes » sticker of a leftover recipe card. Clicking it opens the note's card.
+export function PlannerLinkedCard({ entry, meal, mealIndex, isPast, isStale, onEdit, onRemove }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `planner-${entry.id}`,
+    data: { recipe: entry.recipe, entryId: entry.id },
+  });
+  const classes = ["riso-planner-card", "press-hold", "linked", meal.prepared ? "prepared" : "leftover"];
+  if (isPast) classes.push("past");
+  if (isDragging) classes.push("dragging");
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={classes.join(" ")}
+      onClick={(e) => onEdit(entry, cellOf(e), mealIndex)}
+      title={t("planner.clickToEdit")}
+      {...listeners}
+      {...attributes}
+      aria-label={t("planner.noteAria", { text: meal.name })}
+    >
+      <div className="riso-planner-card-photo-wrap">
+        {meal.photoUrl ? (
+          <RecipePhoto src={meal.photoUrl} alt="" className="riso-planner-card-photo" draggable="false" />
+        ) : (
+          <div className="riso-planner-card-photo placeholder" />
+        )}
+        {!meal.prepared && (
+          <span className={`riso-planner-card-leftover${isStale ? " stale" : ""}`}>{isStale ? t("planner.pastFridge") : t("planner.leftover")}</span>
+        )}
+      </div>
+      {meal.prepared && <PreparedTag size="s" sticker className="riso-planner-card-prepared" />}
+      <button
+        type="button"
+        className="riso-planner-card-remove"
+        aria-label={t("planner.removeFromSlot", { title: meal.name })}
+        title={t("planner.remove")}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(entry.id);
+        }}
+      >
+        ×
+      </button>
+      <div className="riso-planner-card-body">
+        <p className="riso-planner-card-name">{meal.name}</p>
+        {meal.amount && <span className="riso-planner-card-time">{meal.amount}</span>}
+      </div>
     </div>
   );
 }
@@ -158,7 +214,7 @@ function PlannerCell({
   mealType,
   entries,
   staleIds,
-  preparedIds,
+  linked,
   isPast,
   selected,
   leftoverMode,
@@ -195,8 +251,10 @@ function PlannerCell({
             {leftoverMode ? t("planner.leftoversCell") : "+"}
           </span>
         </button>
+      ) : linked.has(entry.id) ? (
+        <PlannerLinkedCard entry={entry} meal={linked.get(entry.id)} mealIndex={mealIndex} isPast={isPast} isStale={staleIds.has(entry.id)} onEdit={onNoteClick} onRemove={onRemove} />
       ) : isNoteEntry(entry) ? (
-        <PlannerNoteCard entry={entry} mealIndex={mealIndex} isPast={isPast} isPrepared={preparedIds.has(entry.id)} onEdit={onNoteClick} onRemove={onRemove} />
+        <PlannerNoteCard entry={entry} mealIndex={mealIndex} isPast={isPast} onEdit={onNoteClick} onRemove={onRemove} />
       ) : (
         <PlannerMealCard
           entry={entry}
@@ -256,7 +314,7 @@ export function PlannerBoard({
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
 
   const staleIds = computeStaleLeftoverIds(entries, leftoverItems);
-  const preparedIds = preparedEntryIds(entries, leftoverItems);
+  const linked = linkedMeals(entries, leftoverItems);
   const scrollRef = useRef(null);
   const layout = weekendLayout(weekend);
   const currentWeek = isCurrentWeek(weekStart);
@@ -335,7 +393,7 @@ export function PlannerBoard({
                   mealType={meal.id}
                   entries={grouped[slotKey(dayIndex, meal.id)] || []}
                   staleIds={staleIds}
-                  preparedIds={preparedIds}
+                  linked={linked}
                   isPast={isPastDay(weekStart, dayIndex)}
                   selected={selectedSlot?.dayOfWeek === dayIndex && selectedSlot?.mealType === meal.id}
                   leftoverMode={leftoverMode && !isPastDay(weekStart, dayIndex)}

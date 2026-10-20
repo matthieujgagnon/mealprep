@@ -19,6 +19,8 @@ import { formatFractionQuantity, unitLabel } from "../lib/units.js";
 import { ProteinsOnSale } from "./ProteinsOnSale.jsx";
 import { ItemPhoto } from "./Inventory.jsx";
 import { MealTag } from "./InventoryItems.jsx";
+import { PreparedTag } from "./RisoPills.jsx";
+import { linkedMeal } from "../lib/linkedMeal.js";
 import { dict, t } from "../i18n/index.js";
 import { formatList } from "../i18n/format.js";
 
@@ -585,7 +587,26 @@ export function Home({
                   // - there's no real recipe or photo behind it, so it renders as
                   // plain text with no click target, instead of a fake recipe card.
                   const label = `${weekday.toUpperCase()} ${dayNum}`;
-                  return entry?.recipe.isPlaceholder ? (
+                  // A planned prepared meal (or leftovers typed by hand that have a photo) is held as
+                  // a note but shows its Inventory item's photo, read live through the link.
+                  const linked = entry?.recipe.isPlaceholder ? linkedMeal(entry, pantryInventory) : null;
+                  return linked ? (
+                    <div key={d} className={`riso-home-week-day linked ${linked.prepared ? "prepared" : "leftover"}${state}`} title={linked.name}>
+                      <div className="riso-home-week-day-well">
+                        {linked.photoUrl ? (
+                          <RecipePhoto src={linked.photoUrl} alt="" className="riso-home-week-day-photo" />
+                        ) : (
+                          <div className="riso-home-week-day-photo placeholder" />
+                        )}
+                        {!linked.prepared && <span className="riso-planner-card-leftover">{t("planner.leftover")}</span>}
+                      </div>
+                      {linked.prepared && <PreparedTag size="s" sticker className="riso-home-week-day-prepared" />}
+                      <div className="riso-home-week-day-body">
+                        <span className="riso-home-week-day-label">{label}</span>
+                        <span className="riso-home-week-day-title">{linked.name}</span>
+                      </div>
+                    </div>
+                  ) : entry?.recipe.isPlaceholder ? (
                     <div key={d} className={`riso-home-week-day note${state}`}>
                       <div className="riso-home-week-day-body">
                         <span className="riso-home-week-day-label">{label}</span>

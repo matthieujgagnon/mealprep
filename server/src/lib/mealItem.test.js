@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { isMealItem as server } from "./mealItem.js";
-import { isMealItem as client } from "../../../client/src/lib/mealItem.js";
+import { isMealItem as server, isPreparedMeal as serverPrepared } from "./mealItem.js";
+import { isMealItem as client, isPreparedMeal as clientPrepared } from "../../../client/src/lib/mealItem.js";
 
 // The browser's copy of the "is a meal" rule (client/src/lib/mealItem.js) must give
 // the same answers as the server's.
@@ -22,6 +22,21 @@ describe("an Inventory item is a meal when it is a leftover or a prepared meal",
   it.each(cases)("%j -> %s", (item, expected) => {
     expect(server(item)).toBe(expected);
     expect(client(item)).toBe(expected);
+  });
+});
+
+// A prepared meal is a meal that was tagged by hand, never a leftover (the two are never both on).
+describe("an Inventory item is a prepared meal", () => {
+  it.each([
+    [{ isPreparedMeal: true }, true],
+    [{ isPreparedMeal: true, isLeftover: true }, false],
+    [{ isLeftover: true }, false],
+    [{ isPreparedMeal: "true" }, false],
+    [{}, false],
+    [null, false],
+  ])("%j -> %s", (item, expected) => {
+    expect(serverPrepared(item)).toBe(expected);
+    expect(clientPrepared(item)).toBe(expected);
   });
 });
 

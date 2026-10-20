@@ -16,13 +16,13 @@ import {
   trackX,
   weekendBands,
 } from "../lib/plannerPhone.js";
-import { PlannerMealCard, PlannerNoteCard, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
-import { preparedEntryIds } from "../lib/leftovers.js";
+import { PlannerLinkedCard, PlannerMealCard, PlannerNoteCard, computeStaleLeftoverIds } from "./PlannerBoard.jsx";
+import { linkedMeals } from "../lib/linkedMeal.js";
 
 // The Planner board on a phone (design: docs/design/riso-v2-planner-mobile-v2).
 // Three days in view, seven on a track that slides under the pinned meal names.
 // It draws the same cards as the computer's board (PlannerMealCard,
-// PlannerNoteCard) and the same drop slots (`day-<d>-<meal>`), so dragging,
+// PlannerLinkedCard, PlannerNoteCard) and the same drop slots (`day-<d>-<meal>`), so dragging,
 // swapping and removing all go through the one setup in App.jsx.
 //
 //   page, onPageChange  which three days are in view (0 = Mon–Wed, 1 = Thu–Sat,
@@ -42,7 +42,7 @@ function dayName(i) {
   return dict().days.short[i].replace(/\.$/, "").toUpperCase();
 }
 
-function PhoneCell({ day, meal, mealType, entry, staleIds, preparedIds, isPast, selected, leftoverMode, x, y, onCardClick, onNoteClick, onRemove, onCycleState, onEmptyClick }) {
+function PhoneCell({ day, meal, mealType, entry, staleIds, linked, isPast, selected, leftoverMode, x, y, onCardClick, onNoteClick, onRemove, onCycleState, onEmptyClick }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${day}-${mealType}` });
   const classes = ["pmb-cell"];
   if (isPast) classes.push("past");
@@ -62,13 +62,24 @@ function PhoneCell({ day, meal, mealType, entry, staleIds, preparedIds, isPast, 
         {leftoverMode ? t("planner.leftoversCell") : t("planner.addShort")}
       </button>
     );
+  } else if (linked.has(entry.id)) {
+    inside = (
+      <PlannerLinkedCard
+        entry={entry}
+        meal={linked.get(entry.id)}
+        mealIndex={meal}
+        isPast={isPast}
+        isStale={staleIds.has(entry.id)}
+        onEdit={isPast ? () => {} : onNoteClick}
+        onRemove={isPast ? () => {} : onRemove}
+      />
+    );
   } else if (isNoteEntry(entry)) {
     inside = (
       <PlannerNoteCard
         entry={entry}
         mealIndex={meal}
         isPast={isPast}
-        isPrepared={preparedIds.has(entry.id)}
         onEdit={isPast ? () => {} : onNoteClick}
         onRemove={isPast ? () => {} : onRemove}
       />
@@ -115,7 +126,7 @@ export function PlannerBoardPhone({
   const grouped = {};
   for (const entry of entries) (grouped[slotKey(entry.dayOfWeek, entry.mealType)] ||= []).push(entry);
   const staleIds = computeStaleLeftoverIds(entries, leftoverItems);
-  const preparedIds = preparedEntryIds(entries, leftoverItems);
+  const linked = linkedMeals(entries, leftoverItems);
 
   const viewportRef = useRef(null);
   const insRef = useRef(null);
@@ -293,7 +304,7 @@ export function PlannerBoardPhone({
                 mealType={meal.id}
                 entry={(grouped[slotKey(day, meal.id)] || [])[0]}
                 staleIds={staleIds}
-                preparedIds={preparedIds}
+                linked={linked}
                 isPast={isPastDay(weekStart, day)}
                 selected={selected(day, meal.id)}
                 leftoverMode={leftoverMode && !isPastDay(weekStart, day)}

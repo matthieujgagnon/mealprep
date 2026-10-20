@@ -26,6 +26,14 @@ import { pillClass, salePillText } from "../lib/pills.js";
 //                     Only a label; SaleTag is the one that opens the deal.
 //   <CountPill>       round count. tone: green (ready), yellow (nearly), none (the rest),
 //                     blue; outlineBlue for the In your week group.
+//   <PreparedTag>     the « plat préparé » / "prepared meal" tag: an ink pill with cream text
+//                     and a takeout-box glyph (design: docs/design/prepared-tag/). The ONE tag
+//                     for a prepared meal, on Inventory items and on recipes. Props: size
+//                     ("s" 15px: tiles, rows, Planner cards; "m" 18px: recipe and search
+//                     cards; "l" 22px: the pop-out chip row and the item pop-up's switch) and
+//                     sticker (tilted +3° and not clickable, for on top of a photo or across a
+//                     card's edge; upright in a line of text or chips). Where it sits is the
+//                     caller's CSS class (`className`), never a second tag.
 //
 // Colour roles: pink = when (planned, expiring), yellow = a measure or something
 // to buy, green = good (ready, on sale, in stock), blue = the main action or
@@ -140,5 +148,20 @@ export function CountPill({ count, tone, outlineBlue, ...rest }) {
     <Pill size="badge" tone={tone} outlineBlue={outlineBlue} {...rest}>
       {count}
     </Pill>
+  );
+}
+
+// « plat préparé » / "prepared meal": see the comment at the top. Decorative glyph, the word
+// is the accessible name.
+export function PreparedTag({ size = "s", sticker = false, className, ...rest }) {
+  return (
+    <span className={`prepared-tag size-${size}${sticker ? " sticker" : ""}${className ? ` ${className}` : ""}`} {...rest}>
+      <svg className="prepared-tag-glyph" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2.5 6.5h11l-1.6 7.5H4.1z" />
+        <path d="M2.5 6.5 4.6 3.6h6.8l2.1 2.9" />
+        <path d="M6.1 3.6c.4-2 3.4-2 3.8 0" />
+      </svg>
+      {t("preparedMeal.tag")}
+    </span>
   );
 }

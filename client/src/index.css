@@ -1639,7 +1639,7 @@ select {
 .inv-row-tags {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   max-width: 100%;
 }
@@ -1802,6 +1802,18 @@ button.inv-qty:focus-visible {
 
 .inv-tile-well.dish {
   padding: 0;
+}
+
+/* A prepared meal's sticker sits at the bottom left of the white photo well; the top left
+   stays for « Expiré », the top right for the checkbox. */
+.inv-tile-well {
+  position: relative;
+}
+
+.inv-tile-prepared {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
 }
 
 .inv-tile-well .inv-card-photo.placeholder {
@@ -3847,6 +3859,66 @@ button.riso-pill:disabled {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* The « plat préparé » tag (<PreparedTag>, design: docs/design/prepared-tag/): an ink pill with
+   cream text, a lower-case Bricolage 800 word and a takeout-box glyph, the opposite tilt of
+   « restes » (-4deg). Fill --riso-ink-fixed, text and glyph --riso-knob, outline --riso-ink (a
+   light outline on the black canvas in dark mode). No shadow. Sizes S 15px, M 18px, L 22px.
+   In a line of text or chips it is upright; on a photo or across a card's edge it is a sticker.
+   Where it sits is in the class of the place that draws it, never here. */
+.prepared-tag {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  box-sizing: border-box;
+  height: 18px;
+  gap: 3px;
+  padding: 0 7px 0 5px;
+  background: var(--riso-ink-fixed);
+  color: var(--riso-knob);
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 999px;
+  font: 800 10.5px/1 var(--riso-font-display);
+  letter-spacing: -0.005em;
+  text-transform: none;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.prepared-tag-glyph {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+
+.prepared-tag.size-s {
+  height: 15px;
+  gap: 2px;
+  padding: 0 5px 0 3px;
+  font-size: 9px;
+}
+
+.prepared-tag.size-s .prepared-tag-glyph {
+  width: 9px;
+  height: 9px;
+}
+
+.prepared-tag.size-l {
+  height: 22px;
+  gap: 4px;
+  padding: 0 9px 0 6px;
+  font-size: 12px;
+}
+
+.prepared-tag.size-l .prepared-tag-glyph {
+  width: 13px;
+  height: 13px;
+}
+
+.prepared-tag.sticker {
+  transform: rotate(3deg);
+  pointer-events: none;
 }
 
 /* ---------- Riso Poster shared components ---------- */
@@ -8577,13 +8649,6 @@ button.riso-table-group-head:disabled {
   vertical-align: middle;
 }
 
-/* A prepared meal's tag is the same pill in plain ink: yellow is LEFTOVER's, and blue
-   and green mean "you have it" and "on your grocery list". */
-.inv-card-leftover-tag.prepared {
-  background: var(--riso-ink);
-  color: var(--riso-surface);
-}
-
 .inv-card-thaw {
   white-space: nowrap;
   align-self: flex-start;
@@ -9527,6 +9592,46 @@ button.riso-table-group-head:disabled {
   background: var(--riso-track);
 }
 
+/* A planned prepared meal (or leftovers typed in by hand, with a photo): the Inventory item's
+   photo in the same place a recipe's goes. A prepared meal shows its product whole on white,
+   with the 3px ink border and the shared tag across the photo's bottom edge; leftovers keep
+   the 3px yellow border and the « restes » sticker. */
+.riso-home-week-day.linked {
+  position: relative;
+  cursor: default;
+}
+
+.riso-home-week-day.linked.prepared {
+  border-width: 3px;
+}
+
+.riso-home-week-day.linked.leftover {
+  border: 3px solid var(--riso-yellow);
+}
+
+.riso-home-week-day-well {
+  position: relative;
+  flex: none;
+}
+
+.riso-home-week-day.prepared .riso-home-week-day-photo {
+  box-sizing: border-box;
+  padding: 4px 10px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.riso-home-week-day.linked .riso-home-week-day-photo.placeholder {
+  background: repeating-linear-gradient(135deg, #e9e4d8 0 8px, #ddd6c6 8px 16px);
+}
+
+.riso-home-week-day-prepared {
+  position: absolute;
+  right: 4px;
+  top: 62px;
+  z-index: 1;
+}
+
 .riso-home-week-day-body {
   padding: 8px 9px 9px;
   display: flex;
@@ -9731,6 +9836,10 @@ button.riso-table-group-head:disabled {
 .riso-useup-name {
   font: 700 15px/1.2 var(--riso-font-display);
   overflow-wrap: anywhere;
+}
+
+.riso-useup-name .prepared-tag {
+  margin-left: 6px;
 }
 
 .riso-useup-qty,
@@ -10724,20 +10833,34 @@ button.riso-protein-card:hover .riso-protein-name {
   color: var(--riso-muted);
 }
 
-/* A planned prepared meal is held as a note: the yellow "nothing to buy" border of a
-   leftover meal, and its label in plain ink (yellow is LEFTOVER's own tag colour). */
-.riso-planner-note.prepared {
-  border-color: var(--riso-yellow);
+/* A planned prepared meal (or leftovers typed in by hand that have a photo) is a photo card:
+   a recipe card whose photo is the Inventory item's (design: docs/design/prepared-tag/). A
+   prepared meal has the 3px ink border (a recipe's is 2px, a leftover's 3px yellow), a white
+   well that shows the product whole, and the shared tag across the photo's bottom edge, at
+   the same place « restes » goes. No photo: the striped placeholder. */
+.riso-planner-card.prepared {
+  border: 3px solid var(--riso-ink);
 }
 
-.riso-planner-note-label.prepared {
-  align-self: flex-start;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--riso-ink);
-  color: var(--riso-surface);
-  line-height: 15px;
-  white-space: nowrap;
+.riso-planner-card.prepared .riso-planner-card-photo-wrap {
+  box-sizing: border-box;
+  padding: 8px 14px 12px;
+  background: #fff;
+}
+
+.riso-planner-card.prepared .riso-planner-card-photo {
+  object-fit: contain;
+}
+
+.riso-planner-card.linked .riso-planner-card-photo.placeholder {
+  background: repeating-linear-gradient(135deg, #e9e4d8 0 8px, #ddd6c6 8px 16px);
+}
+
+.riso-planner-card-prepared {
+  position: absolute;
+  right: 5px;
+  top: calc(58% - 10px);
+  z-index: 1;
 }
 
 /* A note that's only emoji shows big, like a picture. */
@@ -18270,8 +18393,21 @@ body.no-select {
 }
 
 .riso-itemform-prepared-label {
-  font: 700 14px var(--riso-font-display);
-  overflow-wrap: anywhere;
+  display: flex;
+  min-width: 0;
+}
+
+/* The preview's product photo wears the small tag across its bottom-left corner. */
+.riso-itemform-card-photo {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.riso-itemform-card-prepared {
+  position: absolute;
+  left: -6px;
+  bottom: -8px;
 }
 
 .riso-itemform-prepared-hint {
@@ -20435,6 +20571,17 @@ body.no-select {
   object-fit: cover;
 }
 
+/* A prepared meal's photo is a product shot: white well, shown whole. */
+.wcal-photo.prepared {
+  background: #fff;
+}
+
+.wcal-photo.prepared img {
+  object-fit: contain;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
 .wcal-meal-text {
   display: flex;
   flex-direction: column;
@@ -20543,11 +20690,6 @@ body.no-select {
   background: var(--riso-yellow);
   font: 800 10px var(--riso-font-display);
   transform: rotate(-4deg);
-}
-
-.plg-swatch.leftover.prepared {
-  background: var(--riso-ink);
-  color: var(--riso-surface);
 }
 
 .plg-swatch.note {
@@ -22933,13 +23075,26 @@ body.no-select {
     box-shadow: none;
   }
 
-  .pmb-cell .riso-planner-card.have {
+  .pmb-cell .riso-planner-card.have,
+  .pmb-cell .riso-planner-card.prepared {
     border-width: 3px;
   }
 
   .pmb-cell .riso-planner-card-photo-wrap,
   .pmb-cell .riso-planner-card.leftover .riso-planner-card-photo-wrap {
     height: 50px;
+  }
+
+  /* The prepared meal's well: 4px 10px of white round the whole product, and the tag across the
+     photo's bottom edge (the card's 3px border is outside these offsets). Over 104px a French
+     « plat préparé » (about 75px) and an English « prepared meal » (about 85px) both fit. */
+  .pmb-cell .riso-planner-card.prepared .riso-planner-card-photo-wrap {
+    padding: 4px 10px;
+  }
+
+  .pmb-cell .riso-planner-card-prepared {
+    right: 1px;
+    top: 33px;
   }
 
   .pmb-cell .riso-planner-card-have,
@@ -22978,15 +23133,6 @@ body.no-select {
     gap: 5px;
     padding: 8px;
     background: var(--riso-canvas);
-  }
-
-  /* « plat préparé » is the longest label a 104px card takes: a little tighter so it fits in French. */
-  .pmb-cell .riso-planner-note-label.prepared {
-    padding: 0 5px;
-    font-size: 9px;
-    letter-spacing: 0.02em;
-    max-width: 100%;
-    box-sizing: border-box;
   }
 
   .pmb-cell .riso-planner-note > .riso-planner-note-label {
@@ -24152,6 +24298,49 @@ body.no-select {
 .rpc-finder .rpc-title {
   font-size: 16px;
   -webkit-line-clamp: 3;
+}
+
+/* The shared « plat préparé » sticker on a finder card's photo: top left, 12px in (10px on a
+   phone), where the caption starts. A prepared meal's photo is a product shot: a white well,
+   shown whole. */
+.rpc-finder .rpc-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  pointer-events: none;
+}
+
+.fnd-card.prepared .rpc-photo {
+  background: #fff;
+}
+
+.fnd-card.prepared .rpc-img {
+  object-fit: contain;
+  padding: 38px 24px 72px; /* clear of the sticker above and of the title's dark band below */
+  box-sizing: border-box;
+}
+
+.fnd-card.prepared .rpc-scrim-top {
+  display: none; /* nothing is written over the top of a prepared meal's photo but the sticker */
+}
+
+.fnd-card.prepared .rpc-scrim-bottom {
+  height: 46%;
+}
+
+/* The days left may need a second line on a two-across phone card. */
+.fnd-card.prepared .rpc-info {
+  flex-wrap: wrap;
+  row-gap: 3px;
+  white-space: normal;
+}
+
+@media (max-width: 767px) {
+  .rpc-finder .rpc-tag {
+    top: 10px;
+    left: 10px;
+  }
 }
 
 .rpc-info {

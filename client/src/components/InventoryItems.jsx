@@ -7,6 +7,7 @@ import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
 import { t } from "../i18n/index.js";
 import { isMealItem, isPreparedMeal } from "../lib/mealItem.js";
+import { PreparedTag } from "./RisoPills.jsx";
 
 // One Inventory item, in the two views of Matt's design
 // (docs/design/riso-v2-inventory-compact-tiles/README.md):
@@ -178,11 +179,13 @@ function ExpiredTag() {
 }
 
 // The small tag on a meal in Inventory, Home's Use it up and the item pop-up's
-// preview: LEFTOVER (yellow), or PREPARED MEAL (plain ink: yellow is LEFTOVER's, and
-// blue and green mean "you have it" and "on your list"). Nothing for an ingredient.
+// preview: LEFTOVER (yellow), or the shared « plat préparé » tag (`PreparedTag`, plain
+// ink: yellow is LEFTOVER's, and blue and green mean "you have it" and "on your list").
+// Nothing for an ingredient. A tile and the pop-up's photo draw the prepared tag
+// themselves, as a sticker on the photo.
 export function MealTag({ item }) {
   if (item?.isLeftover) return <span className="inv-card-leftover-tag">{t("cooked.leftovers.tag")}</span>;
-  if (isPreparedMeal(item)) return <span className="inv-card-leftover-tag prepared">{t("preparedMeal.tag")}</span>;
+  if (isPreparedMeal(item)) return <PreparedTag size="s" />;
   return null;
 }
 
@@ -201,9 +204,10 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
       <div {...drag} className={`inv-tile ${className}`} onClick={onClick} aria-label={label}>
         <div className={`inv-tile-well${leftover && photoItem.imageUrl ? " dish" : ""}`}>
           <ItemPhoto item={photoItem} />
+          {isPreparedMeal(item) && <PreparedTag size="s" sticker className="inv-tile-prepared" />}
         </div>
         {onToggleSelect && <SelectBox item={item} selected={selected} onToggle={onToggleSelect} />}
-        {(line?.expired || meal) && (
+        {(line?.expired || leftover) && (
           <span className="inv-tile-tags">
             {line?.expired && <ExpiredTag />}
             <MealTag item={item} />

@@ -1015,6 +1015,9 @@ export default function App({ user, onLogout }) {
       // link to the Inventory item come back too, so it still eats from it and wears its tag.
       if (snap.isLeftover || snap.alreadyHave || snap.leftoverItemId) {
         const marks = { isLeftover: !!snap.isLeftover, alreadyHave: !!snap.alreadyHave, leftoverItemId: snap.leftoverItemId || null };
+        // The photo copy it kept comes back too, for when the item is no longer in Inventory (if it
+        // still is, the server copies the item's photo as it is now).
+        if (snap.photoUrl && !pantryInventory.some((i) => i.id === snap.leftoverItemId)) marks.photoUrl = snap.photoUrl;
         entry = { ...entry, ...(await api.updatePlannerEntry(entry.id, marks)), recipe: entry.recipe };
       }
     } else {

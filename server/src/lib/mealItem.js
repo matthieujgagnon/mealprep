@@ -8,6 +8,12 @@ export function isMealItem(item) {
   return !!item && (item.isLeftover === true || item.isPreparedMeal === true);
 }
 
+// A prepared meal (tagged by the person), as opposed to a leftover. The same as
+// client/src/lib/mealItem.js.
+export function isPreparedMeal(item) {
+  return !!item && item.isPreparedMeal === true && item.isLeftover !== true;
+}
+
 // A prepared meal has no recipe, so the Planner holds it as a note named « Plat préparé ·
 // lasagne » / "Prepared meal · lasagna" (planner.preparedNote). When the Inventory item
 // it eats from has left Inventory (the last box was eaten), the note's name still says

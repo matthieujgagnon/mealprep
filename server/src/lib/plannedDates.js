@@ -3,7 +3,7 @@
 // "YYYY-MM-DD") and a day in it (0 = Monday). Pure calendar-date math on the
 // dates the browser sent, like upcomingMeals.js.
 
-import { isPreparedNoteTitle } from "./mealItem.js";
+import { isPreparedMeal, isPreparedNoteTitle } from "./mealItem.js";
 import { realPhoto } from "./itemPhoto.js";
 
 const KEY = /^\d{4}-\d{2}-\d{2}$/;
@@ -57,7 +57,7 @@ export function plannedDays(entries, from, to, linked = new Map()) {
         placeholder: !!recipe?.isPlaceholder,
         photoUrl: (note ? (item ? realPhoto(item.imageUrl) : realPhoto(photoUrl)) : null) || recipe?.photoUrl || null,
         isLeftover: !!isLeftover,
-        prepared: !!isLeftover && (item ? item.isPreparedMeal === true : !!recipe?.isPlaceholder && isPreparedNoteTitle(recipe.title)),
+        prepared: !!isLeftover && (item ? isPreparedMeal(item) : !!recipe?.isPlaceholder && isPreparedNoteTitle(recipe.title)),
       });
     }
     byDay.set(key, meals);

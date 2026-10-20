@@ -3,7 +3,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
-import { Pill } from "./RisoPills.jsx";
+import { Pill, PreparedTag } from "./RisoPills.jsx";
 import { FinderPicker } from "./FinderPicker.jsx";
 import { SectionHeader } from "./FinderTiles.jsx";
 import { MakeableCard } from "./MakeableCard.jsx";
@@ -132,16 +132,20 @@ function LeftoverResultCard({ entry, draggable, onAdd }) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
   // The use-by day itself says it expires today (the app's own `expiry.today`), not "0 days left".
   const left = days === 0 ? t("expiry.today").toUpperCase() : days != null ? t("finder.leftoverDays", { count: Math.max(0, days) }) : null;
-  const caption = [t(isPreparedMeal(item) ? "preparedMeal.tag" : "cooked.leftovers.tag"), left].filter(Boolean).join(" · ");
+  const prepared = isPreparedMeal(item);
+  // A leftover says LEFTOVER over the photo; a prepared meal wears the shared tag there
+  // instead, and its days left go in the info row.
+  const caption = prepared ? null : [t("cooked.leftovers.tag"), left].filter(Boolean).join(" · ");
   return (
     <RecipePhotoCard
       variant="finder"
       cardRef={setNodeRef}
-      className={`fnd-card leftover${isDragging ? " dragging" : ""}${draggable ? " draggable press-hold" : ""}`}
+      className={`fnd-card leftover${prepared ? " prepared" : ""}${isDragging ? " dragging" : ""}${draggable ? " draggable press-hold" : ""}`}
       ready
       title={title}
       photoUrl={item.imageUrl && item.imageUrl !== "none" ? item.imageUrl : recipe?.photoUrl}
       caption={caption}
+      tag={prepared ? <PreparedTag size="m" sticker /> : null}
       openLabel={t("finder.leftoverAdd", { title })}
       onOpen={() => onAdd(entry)}
       action={
@@ -160,6 +164,7 @@ function LeftoverResultCard({ entry, draggable, onAdd }) {
     >
       <span className="rpc-info">
         <span>{t("finder.leftoverInfo")}</span>
+        {prepared && left && <span>{left}</span>}
       </span>
     </RecipePhotoCard>
   );
