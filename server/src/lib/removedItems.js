@@ -3,7 +3,7 @@ import { daysBetween, quebecDay } from "./quebecDay.js";
 // Inventory's "Recently removed" (« Récemment retirés »): what left Inventory in
 // the last 7 Quebec days, and how. The Inventory row is deleted as it always was;
 // a copy of it waits in PantryRemovedItem so Put back can restore it as it was
-// (same id, shelf, amount, use-by date, photo and leftover link).
+// (same id, storage and shelf, amount, use-by date, photo and leftover link).
 
 // How an item left: Used up, Tossed, Deleted (the pop-up's Remove), or Cooked
 // ("I cooked this" took it out to zero). A planned leftover whose day passed and
@@ -14,7 +14,7 @@ export const REMOVED_HOW = ["consumed", "wasted", "deleted", "cooked"];
 export const REMOVED_KEEP_DAYS = 7;
 
 // The fields of an Inventory row that Put back needs, as plain JSON.
-const FIELDS = ["id", "name", "core", "category", "quantity", "unit", "location", "purchasedAt", "expiresAt", "imageUrl", "isLeftover", "isPreparedMeal", "recipeId", "createdAt"];
+const FIELDS = ["id", "name", "core", "category", "quantity", "unit", "location", "shelf", "purchasedAt", "expiresAt", "imageUrl", "isLeftover", "isPreparedMeal", "recipeId", "createdAt"];
 export function snapshotOf(item) {
   const out = {};
   for (const key of FIELDS) {

@@ -9,6 +9,7 @@ import { keptDays } from "../lib/quebecDay.js";
 import { listRemoved, recordRemoved } from "../lib/removedItems.js";
 import { looksLikeReadyMeal } from "../lib/dealAisle.js";
 import { photoUrl, realPhoto } from "../lib/itemPhoto.js";
+import { isStorage, readPlacement, restorePlacement } from "../lib/shelves.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -27,10 +28,14 @@ const LOCATIONS = ["pantry", "fridge", "freezer"];
 // only after the next full reload.
 // Leftovers keep for the time they were given when saved or moved to the fridge
 // (the recipe's own fridge life, or the freezer's), so that is their bar.
+// The estimate and the shelf life only ever read where the item is STORED (`location`), never
+// which shelf it shows on (`shelf`, lib/shelves.js). An item whose storage is not known yet (a
+// `location` that is not fridge, freezer or pantry) has none until it is said.
 function enrichItem(item) {
   const locations = suggestAllLocations(item.name, item.purchasedAt);
   const kept = item.isLeftover ? keptDays(item.purchasedAt, item.expiresAt) : null;
-  return { ...item, locations, shelfLifeDays: kept ?? locations[item.location]?.defaultDays ?? null };
+  const storedIn = isStorage(item.location) ? locations[item.location] : null;
+  return { ...item, locations, shelfLifeDays: kept ?? storedIn?.defaultDays ?? null };
 }
 
 // A leftover's recipe must be one of this user's own. undefined = not given;
@@ -40,16 +45,6 @@ async function leftoverRecipeId(userId, value) {
   if (value === null || value === "") return null;
   const recipe = await prisma.recipe.findFirst({ where: { id: String(value), userId }, select: { id: true } });
   return recipe ? recipe.id : false;
-}
-
-// A built-in location (fridge/pantry/freezer) or one of the user's own
-// custom PantryLocation ids (see routes/pantryLocations.js). Returns null
-// when `location` is neither, so callers can tell "not given" from
-// "invalid" apart.
-async function resolveLocation(userId, location) {
-  if (LOCATIONS.includes(location)) return location;
-  const custom = await prisma.pantryLocation.findFirst({ where: { id: location, userId } });
-  return custom ? location : null;
 }
 
 // GET /api/pantry-inventory - every item currently in stock, soonest-expiring first.
@@ -71,13 +66,16 @@ pantryInventoryRouter.get("/suggest", async (req, res) => {
   if (!name || !name.trim()) return res.status(400).json(fail(req, "required", { fields: "name" }));
   // No location given: suggest one too (the confirmation sheet asks for a
   // shelf for every item it's about to add).
-  const location = req.query.location ? await resolveLocation(req.userId, req.query.location) : suggestLocation(name);
-  if (!location) {
-    return res.status(400).json(fail(req, "mustBeOneOf", { field: "location", options: LOCATIONS.join(", ") }));
+  // `location` is where it is kept (fridge, freezer or pantry). One of the person's own sections is
+  // not a place to keep things: it only says which shelf, so the storage is guessed from the name.
+  let location = suggestLocation(name);
+  if (req.query.location) {
+    const placement = await readPlacement(prisma, req.userId, { location: req.query.location });
+    if (placement.error) return res.status(400).json(fail(req, "mustBeOneOf", { field: "location", options: LOCATIONS.join(", ") }));
+    if (placement.location) location = placement.location;
   }
   const purchasedAt = req.query.purchasedAt ? new Date(req.query.purchasedAt) : new Date();
-  // A shelf of your own keeps things like the pantry does.
-  const expiresAt = suggestExpiration(name, LOCATIONS.includes(location) ? location : "pantry", purchasedAt);
+  const expiresAt = suggestExpiration(name, location, purchasedAt);
   const category = suggestCategory(name);
   // The shelf life for every shelf too (null where there's no data for a shelf), so the
   // Add item form can show its shelf cards before anything is saved. `readyMeal`: the
@@ -114,7 +112,14 @@ pantryInventoryRouter.post("/", async (req, res) => {
   const recipeId = await leftoverRecipeId(req.userId, req.body.recipeId);
   if (recipeId === false) return res.status(404).json(fail(req, "notFound.recipe"));
 
-  const location = (await resolveLocation(req.userId, req.body.location)) || suggestLocation(name);
+  // Where it is kept, and which shelf it shows on (lib/shelves.js). A storage that is not one is
+  // guessed from the name; a shelf that is not one of theirs is refused.
+  let placement = await readPlacement(prisma, req.userId, req.body);
+  if (placement.error === "location") placement = await readPlacement(prisma, req.userId, { shelf: req.body.shelf });
+  if (placement.error) return res.status(400).json(fail(req, "shelfInvalid"));
+  const location = placement.location || suggestLocation(name);
+  // A leftover is always on the Leftovers shelf: it has no shelf of its own to choose.
+  const shelf = isLeftover === true ? null : placement.shelf ?? null;
   const purchasedAt = req.body.purchasedAt ? new Date(req.body.purchasedAt) : new Date();
   const resolvedExpiresAt =
     expiresAt !== undefined ? (expiresAt ? new Date(expiresAt) : null) : suggestExpiration(name, location, purchasedAt);
@@ -129,6 +134,7 @@ pantryInventoryRouter.post("/", async (req, res) => {
       quantity: typeof quantity === "number" ? quantity : null,
       unit: unit || null,
       location,
+      shelf,
       purchasedAt,
       expiresAt: resolvedExpiresAt,
       imageUrl: imageUrl ?? null,
@@ -152,12 +158,11 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   }
   if (req.body.quantity !== undefined) data.quantity = typeof req.body.quantity === "number" ? req.body.quantity : null;
   if (req.body.unit !== undefined) data.unit = req.body.unit || null;
-  if (req.body.location !== undefined) {
-    const resolved = await resolveLocation(req.userId, req.body.location);
-    if (!resolved) {
-      return res.status(400).json(fail(req, "locationInvalid"));
-    }
-    data.location = resolved;
+  if (req.body.location !== undefined || req.body.shelf !== undefined) {
+    const placement = await readPlacement(prisma, req.userId, req.body);
+    if (placement.error) return res.status(400).json(fail(req, placement.error === "shelf" ? "shelfInvalid" : "locationInvalid"));
+    if (placement.location !== undefined) data.location = placement.location;
+    if (placement.shelf !== undefined) data.shelf = placement.shelf;
   }
   if (req.body.category !== undefined) {
     if (!CATEGORIES.includes(req.body.category)) {
@@ -174,9 +179,11 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
   }
   if (req.body.isLeftover !== undefined) data.isLeftover = req.body.isLeftover === true;
   if (req.body.isPreparedMeal !== undefined) data.isPreparedMeal = req.body.isPreparedMeal === true;
-  // A leftover is already a meal: the two are never both on.
-  if (data.isLeftover === true) data.isPreparedMeal = false;
-  else if (data.isPreparedMeal === true && data.isLeftover === undefined) {
+  // A leftover is already a meal: the two are never both on, and it has no shelf of its own.
+  if (data.isLeftover === true) {
+    data.isPreparedMeal = false;
+    data.shelf = null;
+  } else if (data.isPreparedMeal === true && data.isLeftover === undefined) {
     const current = await prisma.pantryInventoryItem.findFirst({ where: { id: req.params.id, userId: req.userId }, select: { isLeftover: true } });
     if (current?.isLeftover) data.isPreparedMeal = false;
   }
@@ -246,22 +253,26 @@ pantryInventoryRouter.post("/take-out", async (req, res) => {
   res.json(await takeOut(req.userId, req.body.takes, "cooked"));
 });
 
-// Puts one Inventory row back exactly as it was (same id, amount, shelf, dates,
-// photo, leftover link), whether it was lowered or removed. A shelf that no
-// longer exists puts it in the Pantry. null for a row that isn't this user's.
+// Puts one Inventory row back exactly as it was (same id, amount, storage and shelf,
+// dates, photo, leftover link), whether it was lowered or removed. A storage that no
+// longer exists puts it in the Pantry, a shelf that no longer exists on its default
+// shelf. null for a row that isn't this user's.
 async function restoreRow(userId, row) {
   if (!row || typeof row.id !== "string" || !String(row.name || "").trim()) return null;
   const existing = await prisma.pantryInventoryItem.findUnique({ where: { id: row.id } });
   if (existing && existing.userId !== userId) return null;
   const imageUrl = photoUrl(row.imageUrl);
   const recipeId = await leftoverRecipeId(userId, row.recipeId ?? null);
+  // Both fields as they were: where it was kept and which shelf it was on.
+  const placement = await restorePlacement(prisma, userId, row);
   const data = {
     name: String(row.name).trim(),
     core: String(row.name).trim().toLowerCase(),
     category: CATEGORIES.includes(row.category) ? row.category : "other",
     quantity: typeof row.quantity === "number" ? row.quantity : null,
     unit: row.unit || null,
-    location: (await resolveLocation(userId, row.location)) || "pantry",
+    location: placement.location,
+    shelf: row.isLeftover === true ? null : placement.shelf,
     purchasedAt: row.purchasedAt ? new Date(row.purchasedAt) : new Date(),
     expiresAt: row.expiresAt ? new Date(row.expiresAt) : null,
     imageUrl: imageUrl === false ? null : imageUrl ?? null,
@@ -276,6 +287,22 @@ async function restoreRow(userId, row) {
         data: { ...data, id: row.id, userId, ...(row.createdAt && { createdAt: new Date(row.createdAt) }) },
       });
 }
+
+// POST /api/pantry-inventory/storage { items: [{ id, location }] } - says where items that were
+// moved to one of the person's own sections before the app kept storage and shelf apart are
+// KEPT (fridge, freezer or pantry): only `location` changes, never the shelf, the use-by date or
+// anything else. Responds { items, before }: the items as they are now and every row as it was,
+// which is what the Undo sends to /put-back.
+pantryInventoryRouter.post("/storage", async (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) return res.status(400).json(fail(req, "mustBeArray", { field: "items" }));
+  if (!items.every((i) => i && typeof i.id === "string" && isStorage(i.location))) return res.status(400).json(fail(req, "storageInvalid"));
+  const rows = await prisma.pantryInventoryItem.findMany({ where: { id: { in: items.map((i) => i.id) }, userId: req.userId } });
+  const where = new Map(items.map((i) => [i.id, i.location]));
+  await prisma.$transaction(rows.map((row) => prisma.pantryInventoryItem.update({ where: { id: row.id }, data: { location: where.get(row.id) } })));
+  const after = await prisma.pantryInventoryItem.findMany({ where: { id: { in: rows.map((r) => r.id) }, userId: req.userId } });
+  res.json({ items: after.map(enrichItem), before: rows });
+});
 
 // POST /api/pantry-inventory/put-back { rows, logIds? } - Undo for a take-out:
 // puts each row back exactly as it was (restoreRow), drops the "used up" log

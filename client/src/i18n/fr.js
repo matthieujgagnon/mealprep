@@ -1986,6 +1986,7 @@ export const fr = {
     pantry: "Garde-manger",
     freezer: "Congélateur",
     leftovers: "Restes",
+    prepared: "Plats préparés",
   },
   expiry: {
     none: "Aucune date",

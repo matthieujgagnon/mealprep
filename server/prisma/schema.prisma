@@ -350,7 +350,8 @@ model PantryInventoryItem {
   category    String    @default("other") // one of foodkeeper.js's CATEGORIES - auto-suggested from the same FoodKeeper product match the expiration date comes from, editable like any other field
   quantity    Float?
   unit        String?
-  location    String    @default("fridge") // "pantry" | "fridge" | "freezer" - which USDA FoodKeeper column the expiration suggestion was drawn from
+  location    String    @default("fridge") // WHERE IT IS KEPT: "pantry" | "fridge" | "freezer" - which USDA FoodKeeper column the expiration suggestion and the shelf life are drawn from. Never the shelf it shows on (see `shelf`). A value that is none of the three is a PantryLocation id left by the old one-field setup: where it is kept is not known yet (see lib/shelves.js)
+  shelf       String? // WHICH SHELF it shows on, when the person chose one: one of their own PantryLocation ids, or a built-in shelf ("fridge" | "freezer" | "pantry" | "prepared"). null = the default: the shelf of where it is kept, "prepared" for a prepared meal, Leftovers for a leftover. Never read to pick the use-by estimate
   purchasedAt DateTime  @default(now())
   expiresAt   DateTime? // suggested from the bundled USDA FoodKeeper data at add-time, or set/edited by the user - null means no suggestion was available and none was typed in
   imageUrl    String? // the item's photo on its Inventory card: an upload (/api/recipe-images/...) or a link; null shows a food emoji instead

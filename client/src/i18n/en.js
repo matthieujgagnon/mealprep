@@ -1984,6 +1984,7 @@ export const en = {
     pantry: "Pantry",
     freezer: "Freezer",
     leftovers: "Leftovers",
+    prepared: "Prepared meals",
   },
   expiry: {
     none: "No date set",
