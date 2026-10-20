@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#E9E4D8}a{color:#2323FF;text-decoration:none}a:hover{color:#16181F}</style></helmet>
+<div style="padding:56px;display:flex;flex-direction:column;gap:88px;font-family:'Bricolage Grotesque',sans-serif;color:#16181F;width:max-content">
+
+<div style="display:flex;flex-direction:column;gap:10px;max-width:940px">
+<span style="font:500 12px 'DM Mono',monospace;letter-spacing:.14em">RISO V2 · ÉTIQUETTE · 19 OCT. 2026</span>
+<span style="font:800 60px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.035em">« Plat <span style="color:#2323FF">préparé »</span></span>
+<span style="font:500 16px/1.55 Inter,sans-serif;color:#3F3E37;text-wrap:pretty">Une seule étiquette pour les plats tout faits (lasagne surgelée, pierogis, croissants du commerce), sur l'Inventaire et sur les recettes. Même famille que l'autocollant jaune « restes » : le noir de PR #164 devient un autocollant en Bricolage minuscules, avec un pictogramme de boîte à emporter. Téléphone 390 px d'abord, puis bureau à la taille réelle. Le bouton Tweaks change la langue (FR / EN) et la piste affichée partout.</span>
+</div>
+
+<section id="1" data-screen-label="1 Pistes" style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="background:#16181F;color:#F4F1EA;border-radius:999px;padding:3px 14px;font:500 13px 'DM Mono',monospace">1</span><span style="font:800 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Trois pistes</span></div>
+<span style="font:500 15px/1.5 Inter,sans-serif;color:#3F3E37;max-width:900px">Même gabarit pour les trois : texte Bricolage 800 en minuscules (comme « restes »), contour encre 1,5 px, pictogramme boîte à emporter en trait. Elles changent sur la couleur et la forme. 1d reprend le noir de PR #164 dans ce gabarit. Tailles S 15 px, M 18 px, L 22 px. Chaque piste est montrée à côté des restes, à 104 px, sur une tuile d'Inventaire et en anglais.</span>
+<div style="display:flex;gap:28px;align-items:stretch">
+
+<div style="width:250px;flex:none;display:flex;flex-direction:column;gap:14px;padding:22px;background:#F4F1EA;border:2px dashed #8A877D;border-radius:22px;box-sizing:border-box">
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">AVANT · PR #164</span>
+<span style="font:800 20px/1.15 'Bricolage Grotesque',sans-serif">Pastille noire, petites capitales mono</span>
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:16px;background:#FFFDF8;border:2px solid #16181F;border-radius:14px">
+<span style="height:15px;padding:0 6px;border-radius:999px;background:#16181F;color:#FFFDF8;display:inline-flex;align-items:center;font:500 9px 'DM Mono',monospace;letter-spacing:.08em;white-space:nowrap">{{ t.oldTag }}</span>
+<span style="transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;white-space:nowrap;font:800 10.5px/1.35 'Bricolage Grotesque',sans-serif">{{ t.left }}</span>
+</div>
+<span style="font:500 13px/1.5 Inter,sans-serif;color:#3F3E37">Lu comme un code, pas comme une étiquette. Il ne ressemble à rien d'autre dans l'app, et sur le Planificateur le plat préparé est une simple note texte.</span>
+</div>
+
+<sc-for list="{{ opts }}" as="o" hint-placeholder-count="3">
+<div id="{{ o.id }}" style="width:430px;flex:none;display:flex;flex-direction:column;gap:16px;padding:22px;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:{{ o.sh }};box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:10px"><span style="background:#16181F;color:#F4F1EA;border-radius:999px;padding:2px 11px;font:500 12px 'DM Mono',monospace">{{ o.id }}</span><span style="font:800 21px/1.1 'Bricolage Grotesque',sans-serif;flex:1">{{ o.name }}</span><sc-if value="{{ o.chosen }}" hint-placeholder-val="{{ false }}"><span style="transform:rotate(-3deg);height:26px;padding:0 11px;border-radius:13px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:2px 2px 0 #16181F;display:inline-flex;align-items:center;font:800 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">Recommandée</span></sc-if></div>
+<span style="font:500 13.5px/1.5 Inter,sans-serif;color:#3F3E37;min-height:60px">{{ o.desc }}</span>
+<div style="display:flex;flex-direction:column;gap:14px;padding:16px;background:#F4F1EA;border:2px solid #16181F;border-radius:16px">
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><dc-import name="part-prepared-tag" v="{{ o.v }}" lang="{{ lang }}" size="l" hint-size="108px,22px"></dc-import><dc-import name="part-prepared-tag" v="{{ o.v }}" lang="{{ lang }}" size="m" hint-size="94px,18px"></dc-import><dc-import name="part-prepared-tag" v="{{ o.v }}" lang="{{ lang }}" size="s" hint-size="78px,15px"></dc-import></div>
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52">{{ t.otherLang }}</span><dc-import name="part-prepared-tag" v="{{ o.v }}" lang="{{ otherLang }}" size="m" hint-size="104px,18px"></dc-import><dc-import name="part-prepared-tag" v="{{ o.v }}" lang="{{ otherLang }}" size="s" sticker="{{ true }}" hint-size="86px,15px"></dc-import></div>
+<div style="display:flex;gap:8px;align-items:flex-start">
+<div style="position:relative;width:104px;height:104px;flex:none">
+<div style="position:absolute;inset:0;border-radius:14px;background:#FFFDF8;border:3px solid #FFE14D;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box"><div style="height:50px;flex:none;border-bottom:2px solid #16181F;background:#E9E4D8"><img src="{{ img.tacos }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div><div style="padding:5px 7px;display:flex;flex-direction:column;justify-content:space-between;flex:1;min-height:0"><div style="font:800 12px/1.15 'Bricolage Grotesque',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ n.tacosShort }}</div><div style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.08em;color:#3F3E37">{{ t.p2 }}</div></div></div>
+<div style="position:absolute;right:4px;top:36px;transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;white-space:nowrap;font:800 10.5px/1.35 'Bricolage Grotesque',sans-serif">{{ t.left }}</div>
+</div>
+<div style="position:relative;width:104px;height:104px;flex:none">
+<div style="position:absolute;inset:0;border-radius:14px;background:#FFFDF8;border:{{ o.cardBd }};overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box"><div style="height:50px;flex:none;border-bottom:2px solid #16181F;background:#FFFFFF;padding:4px 10px;box-sizing:border-box"><img src="{{ img.lasagne }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"></div><div style="padding:5px 7px;display:flex;flex-direction:column;justify-content:space-between;flex:1;min-height:0"><div style="font:800 12px/1.15 'Bricolage Grotesque',sans-serif">{{ n.lasagne }}</div><div style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.08em;color:#3F3E37">{{ t.p4 }}</div></div></div>
+<div style="position:absolute;right:4px;top:36px;display:flex"><dc-import name="part-prepared-tag" v="{{ o.v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div>
+</div>
+<div style="width:112px;flex:none;background:#FFFDF8;border:2px solid #16181F;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-sizing:border-box">
+<div style="height:92px;background:#FFFFFF;border-bottom:2px solid #16181F;padding:8px;box-sizing:border-box;position:relative"><img src="{{ img.pierogi }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"><div style="position:absolute;left:6px;bottom:6px;display:flex;pointer-events:none"><dc-import name="part-prepared-tag" v="{{ o.v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div></div>
+<div style="padding:6px 8px 7px;display:flex;flex-direction:column;gap:2px"><div style="font:700 13px/1.15 'Bricolage Grotesque',sans-serif;min-height:2.3em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ n.pierogi }}</div><div style="font:800 12.5px 'Bricolage Grotesque',sans-serif">1<span style="font-weight:600;color:#5E5B52"> {{ t.bag }}</span></div></div>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;font:500 13px/1.45 Inter,sans-serif;color:#3F3E37">
+<span><b style="font-weight:600;color:#16181F">Couleur</b> · {{ o.color }}</span>
+<span><b style="font-weight:600;color:#16181F">Pour</b> · {{ o.pro }}</span>
+<span><b style="font-weight:600;color:#16181F">Contre</b> · {{ o.con }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section id="2" data-screen-label="2 Inventaire" style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="background:#16181F;color:#F4F1EA;border-radius:999px;padding:3px 14px;font:500 13px 'DM Mono',monospace">2</span><span style="font:800 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Inventaire : tuiles et vue compacte</span></div>
+<span style="font:500 15px/1.5 Inter,sans-serif;color:#3F3E37;max-width:900px">Tuile : autocollant S en bas à gauche du puits photo, incliné (le haut à gauche reste à « Expiré », le haut à droite à la case). Vue compacte : étiquette S droite sous le nom, rangée de 48 px inchangée. Les restes gardent leur autocollant jaune.</span>
+<div style="display:flex;gap:44px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Téléphone <span style="font-weight:500;color:#5E5B52">· 390</span></div>
+<div style="width:390px;background:#F4F1EA;border:2px solid #16181F;border-radius:32px;box-shadow:8px 8px 0 #16181F;padding:20px 18px 24px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">{{ t.freezer }} · 5</span>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+<sc-for list="{{ inv }}" as="i" hint-placeholder-count="5">
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;min-width:0;box-sizing:border-box">
+<div style="height:92px;background:#FFFFFF;border-bottom:2px solid #16181F;padding:8px;box-sizing:border-box;position:relative"><img src="{{ i.img }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block">
+<sc-if value="{{ i.prep }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:6px;bottom:6px;display:flex;pointer-events:none"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div></sc-if>
+<sc-if value="{{ i.left }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:6px;bottom:6px;transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;white-space:nowrap;font:800 10.5px/1.35 'Bricolage Grotesque',sans-serif">{{ t.left }}</span></sc-if>
+</div>
+<div style="position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:4px;box-sizing:border-box;border:2px solid #16181F;background:#FFFDF8"></div>
+<div style="padding:6px 8px 7px;display:flex;flex-direction:column;gap:2px"><div style="font:700 13px/1.15 'Bricolage Grotesque',sans-serif;min-height:2.3em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ i.name }}</div><div style="font:800 12.5px 'Bricolage Grotesque',sans-serif">{{ i.q }}<span style="font-weight:600;color:#5E5B52"> {{ i.u }}</span></div></div>
+<div style="height:5px;background:#F4F1EA;border-top:2px solid #16181F"><div style="height:100%;width:{{ i.bar }};background:#2323FF"></div></div>
+</div>
+</sc-for>
+</div>
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em;margin-top:10px">{{ t.freezer }} · {{ t.compact }}</span>
+<div style="display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ inv }}" as="i" hint-placeholder-count="5">
+<div style="height:48px;background:#FFFDF8;border:2px solid #16181F;border-radius:12px;overflow:hidden;display:flex;box-sizing:border-box">
+<div style="width:6px;flex:none;border-right:2px solid #16181F;background:#F4F1EA;display:flex;align-items:flex-end"><div style="width:100%;height:{{ i.bar }};background:#2323FF"></div></div>
+<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:5px 10px 5px 6px">
+<div style="width:34px;height:34px;border:2px solid #16181F;border-radius:8px;box-sizing:border-box;flex:none;background:#FFFFFF;padding:2px"><img src="{{ i.img }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"></div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px"><div style="font:700 14.5px/1.15 'Bricolage Grotesque',sans-serif;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.name }}</div>
+<sc-if value="{{ i.prep }}" hint-placeholder-val="{{ false }}"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" hint-size="78px,15px"></dc-import></sc-if>
+<sc-if value="{{ i.left }}" hint-placeholder-val="{{ false }}"><span style="height:17px;background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;display:inline-flex;align-items:center;box-sizing:border-box;white-space:nowrap;font:800 10.5px 'Bricolage Grotesque',sans-serif">{{ t.left }}</span></sc-if>
+</div>
+<div style="white-space:nowrap;text-align:right;font:800 14.5px 'Bricolage Grotesque',sans-serif">{{ i.q }}<span style="font:600 12px 'Bricolage Grotesque',sans-serif;color:#5E5B52"> {{ i.u }}</span></div>
+<div style="width:16px;height:16px;border-radius:4px;flex:none;box-sizing:border-box;border:2px solid #16181F;background:#FFFDF8"></div>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Bureau <span style="font-weight:500;color:#5E5B52">· 1280, tailles réelles</span></div>
+<div style="width:1040px;background:#F4F1EA;border:2px solid #16181F;border-radius:18px;box-shadow:8px 8px 0 #16181F;padding:28px 32px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em">{{ t.freezer }} · 5</span>
+<div style="display:grid;grid-template-columns:repeat(6,150px);gap:12px">
+<sc-for list="{{ inv }}" as="i" hint-placeholder-count="5">
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;min-width:0;box-sizing:border-box">
+<div style="height:92px;background:#FFFFFF;border-bottom:2px solid #16181F;padding:8px;box-sizing:border-box;position:relative"><img src="{{ i.img }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block">
+<sc-if value="{{ i.prep }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:6px;bottom:6px;display:flex;pointer-events:none"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div></sc-if>
+<sc-if value="{{ i.left }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:6px;bottom:6px;transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;white-space:nowrap;font:800 10.5px/1.35 'Bricolage Grotesque',sans-serif">{{ t.left }}</span></sc-if>
+</div>
+<div style="position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:4px;box-sizing:border-box;border:2px solid #16181F;background:#FFFDF8"></div>
+<div style="padding:6px 8px 7px;display:flex;flex-direction:column;gap:2px"><div style="font:700 13px/1.15 'Bricolage Grotesque',sans-serif;min-height:2.3em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ i.name }}</div><div style="font:800 12.5px 'Bricolage Grotesque',sans-serif">{{ i.q }}<span style="font-weight:600;color:#5E5B52"> {{ i.u }}</span></div></div>
+<div style="height:5px;background:#F4F1EA;border-top:2px solid #16181F"><div style="height:100%;width:{{ i.bar }};background:#2323FF"></div></div>
+</div>
+</sc-for>
+</div>
+<span style="font:500 11px 'DM Mono',monospace;letter-spacing:.12em;margin-top:12px">{{ t.freezer }} · {{ t.compact }}</span>
+<div style="display:grid;grid-template-columns:repeat(2,360px);gap:8px 14px">
+<sc-for list="{{ inv }}" as="i" hint-placeholder-count="5">
+<div style="height:48px;background:#FFFDF8;border:2px solid #16181F;border-radius:12px;overflow:hidden;display:flex;box-sizing:border-box">
+<div style="width:6px;flex:none;border-right:2px solid #16181F;background:#F4F1EA;display:flex;align-items:flex-end"><div style="width:100%;height:{{ i.bar }};background:#2323FF"></div></div>
+<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:5px 10px 5px 6px">
+<div style="width:34px;height:34px;border:2px solid #16181F;border-radius:8px;box-sizing:border-box;flex:none;background:#FFFFFF;padding:2px"><img src="{{ i.img }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"></div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px"><div style="font:700 14.5px/1.15 'Bricolage Grotesque',sans-serif;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.name }}</div>
+<sc-if value="{{ i.prep }}" hint-placeholder-val="{{ false }}"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" hint-size="78px,15px"></dc-import></sc-if>
+<sc-if value="{{ i.left }}" hint-placeholder-val="{{ false }}"><span style="height:17px;background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;display:inline-flex;align-items:center;box-sizing:border-box;white-space:nowrap;font:800 10.5px 'Bricolage Grotesque',sans-serif">{{ t.left }}</span></sc-if>
+</div>
+<div style="white-space:nowrap;text-align:right;font:800 14.5px 'Bricolage Grotesque',sans-serif">{{ i.q }}<span style="font:600 12px 'Bricolage Grotesque',sans-serif;color:#5E5B52"> {{ i.u }}</span></div>
+<div style="width:16px;height:16px;border-radius:4px;flex:none;box-sizing:border-box;border:2px solid #16181F;background:#FFFDF8"></div>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="3" data-screen-label="3 Fiche" style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="background:#16181F;color:#F4F1EA;border-radius:999px;padding:3px 14px;font:500 13px 'DM Mono',monospace">3</span><span style="font:800 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Fiche de l'article : interrupteur « Plat préparé »</span></div>
+<span style="font:500 15px/1.5 Inter,sans-serif;color:#3F3E37;max-width:900px">L'étiquette est l'intitulé de l'interrupteur : on voit tout de suite ce que l'article portera. Activé, l'autocollant apparaît aussi sur la photo de la fiche, comme sur la tuile. L'interrupteur reste noir (la couleur appartient à l'étiquette). Cliquez pour basculer.</span>
+<div style="display:flex;gap:44px;align-items:flex-start">
+<sc-for list="{{ sheets }}" as="s" hint-placeholder-count="2">
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">{{ s.label }} <span style="font-weight:500;color:#5E5B52">· 390</span></div>
+<div style="width:390px;height:430px;background:rgba(22,24,31,.55);border:2px solid #16181F;border-radius:32px;box-shadow:8px 8px 0 #16181F;overflow:hidden;position:relative;box-sizing:border-box">
+<div style="position:absolute;left:0;right:0;bottom:0;background:#FFFDF8;border-radius:24px 24px 0 0;padding:10px 18px 22px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box">
+<div style="width:44px;height:5px;border-radius:3px;background:#BDB6A6;align-self:center"></div>
+<div style="display:flex;gap:14px;align-items:center">
+<div style="width:96px;height:96px;flex:none;border:2px solid #16181F;border-radius:14px;background:#FFFFFF;padding:8px;box-sizing:border-box;position:relative"><img src="{{ img.lasagne }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"><sc-if value="{{ s.on }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:-6px;bottom:-8px;display:flex"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div></sc-if></div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px"><span style="font:500 10px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">{{ s.cat }}</span><span style="height:44px;border:2px solid #16181F;border-radius:12px;background:#FFFFFF;display:flex;align-items:center;padding:0 12px;font:800 19px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ n.lasagne }}</span></div>
+</div>
+<div onClick="{{ s.toggle }}" style="display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer">
+<div style="flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="l" hint-size="110px,22px"></dc-import><span style="font:400 12.5px/1.4 Inter,sans-serif;color:#5E5B52">{{ t.help }}</span></div>
+<div role="switch" aria-checked="{{ s.on }}" aria-label="{{ t.switch }}" style="width:48px;height:28px;flex:none;border-radius:14px;border:2px solid #16181F;background:{{ s.track }};position:relative;box-sizing:border-box;transition:background .15s ease"><span style="position:absolute;top:2px;left:{{ s.knob }};width:20px;height:20px;border-radius:10px;background:#FFFDF8;border:2px solid #16181F;box-sizing:border-box;transition:left .15s ease"></span></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1.5px dashed #BDB6A6"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em">{{ t.qty }}</span><span style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:18px;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">−</span><span style="font:800 17px 'Bricolage Grotesque',sans-serif">4 <span style="font-weight:600;font-size:14px;color:#5E5B52">{{ t.portions }}</span></span><span style="width:36px;height:36px;border-radius:18px;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">+</span></span></div>
+</div>
+</div>
+</div>
+</sc-for>
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Bureau, activé <span style="font-weight:500;color:#5E5B52">· fenêtre 560</span></div>
+<div style="width:680px;height:430px;background:rgba(22,24,31,.55);border:2px solid #16181F;border-radius:18px;box-shadow:8px 8px 0 #16181F;position:relative;box-sizing:border-box;display:flex;align-items:center;justify-content:center">
+<div style="width:560px;background:#FFFDF8;border:2px solid #16181F;border-radius:22px;box-shadow:6px 6px 0 #16181F;padding:24px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;position:relative">
+<span style="position:absolute;top:-16px;right:-16px;width:42px;height:42px;border-radius:21px;background:#FFFDF8;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 17px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">×</span>
+<div style="display:flex;gap:16px;align-items:center">
+<div style="width:110px;height:110px;flex:none;border:2px solid #16181F;border-radius:14px;background:#FFFFFF;padding:8px;box-sizing:border-box;position:relative"><img src="{{ img.lasagne }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"><div style="position:absolute;left:-6px;bottom:-8px;display:flex"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div></div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em;color:#5E5B52">{{ t.catOn }}</span><span style="height:46px;border:2px solid #16181F;border-radius:12px;background:#FFFFFF;display:flex;align-items:center;padding:0 14px;font:800 21px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ n.lasagne }}</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="l" hint-size="110px,22px"></dc-import><span style="font:400 12.5px/1.4 Inter,sans-serif;color:#5E5B52">{{ t.help }}</span></div>
+<div role="switch" aria-checked="true" style="width:48px;height:28px;flex:none;border-radius:14px;border:2px solid #16181F;background:#16181F;position:relative;box-sizing:border-box"><span style="position:absolute;top:2px;left:22px;width:20px;height:20px;border-radius:10px;background:#FFFDF8;border:2px solid #16181F;box-sizing:border-box"></span></div>
+</div>
+<div style="display:flex;align-items:center;gap:14px;padding-top:14px;border-top:1.5px dashed #BDB6A6"><span style="flex:1;font:400 13.5px/1.5 Inter,sans-serif">{{ t.planLine }}</span><span style="height:44px;padding:0 22px;border-radius:22px;background:#2323FF;color:#fff;border:2px solid #16181F;box-shadow:3px 3px 0 #16181F;display:flex;align-items:center;font:800 15px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ t.planIt }}</span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="4" data-screen-label="4 Planificateur" style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="background:#16181F;color:#F4F1EA;border-radius:999px;padding:3px 14px;font:500 13px 'DM Mono',monospace">4</span><span style="font:800 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Planificateur : carte avec photo, à côté des restes</span></div>
+<span style="font:500 15px/1.5 Inter,sans-serif;color:#3F3E37;max-width:900px">Un plat préparé planifié devient une vraie carte, comme une recette : la photo du produit (Inventaire) sur fond blanc, entière (contain), puis le nom et les portions. L'autocollant chevauche le bas de la photo, au même endroit que « restes ». Bordure encre 3 px, comme la bordure jaune 3 px des restes.</span>
+<div style="display:flex;gap:44px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Téléphone <span style="font-weight:500;color:#5E5B52">· 390, cartes de 104 px</span></div>
+<div style="width:390px;background:#F4F1EA;border:2px solid #16181F;border-radius:32px;box-shadow:8px 8px 0 #16181F;padding:18px 0 22px;box-sizing:border-box;overflow:hidden;position:relative">
+<div style="position:relative;height:{{ plH }}px">
+<sc-for list="{{ plTiles }}" as="d" hint-placeholder-count="4">
+<div style="position:absolute;left:{{ d.x }}px;top:0;width:104px;height:44px;border-radius:14px;background:{{ d.bg }};border:2px solid {{ d.bd }};box-shadow:{{ d.sh }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-sizing:border-box"><div style="font:500 10px 'DM Mono',monospace;letter-spacing:.12em">{{ d.dow }}</div><div style="font:800 18px/1 'Bricolage Grotesque',sans-serif">{{ d.n }}</div></div>
+</sc-for>
+<sc-for list="{{ plTabs }}" as="m" hint-placeholder-count="2"><div style="position:absolute;left:14px;top:{{ m.y }}px;font:400 11px/18px 'DM Mono',monospace;color:#7A7668;white-space:nowrap">{{ m.label }}</div></sc-for>
+<sc-for list="{{ plCells }}" as="c" hint-placeholder-count="8">
+<div style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:104px;height:104px">
+<sc-if value="{{ c.card }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;inset:0;border-radius:14px;background:#FFFDF8;border:{{ c.bd }};overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box">
+<div style="height:50px;flex:none;border-bottom:2px solid #16181F;background:{{ c.wellBg }};padding:{{ c.wellPad }};box-sizing:border-box"><img src="{{ c.img }}" alt="" style="width:100%;height:100%;object-fit:{{ c.fit }};display:block"></div>
+<div style="padding:5px 7px;display:flex;flex-direction:column;justify-content:space-between;flex:1;min-height:0"><div style="font:800 12px/1.15 'Bricolage Grotesque',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ c.name }}</div><div style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.08em;color:#3F3E37">{{ c.stat }}</div></div>
+</div>
+<sc-if value="{{ c.left }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:4px;top:36px;transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:999px;padding:0 7px;white-space:nowrap;font:800 10.5px/1.35 'Bricolage Grotesque',sans-serif">{{ t.left }}</div></sc-if>
+<sc-if value="{{ c.prep }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:4px;top:36px;display:flex"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div></sc-if>
+</sc-if>
+<sc-if value="{{ c.empty }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;border-radius:14px;border:2px dashed #BDB6A6;display:flex;align-items:center;justify-content:center;color:#2323FF;font:700 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ t.add }}</div></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;gap:14px;align-items:center;width:390px;padding:4px 2px 0;box-sizing:border-box">
+<div style="width:104px;height:104px;flex:none;border-radius:14px;background:#F4F1EA;border:3px solid #FFE14D;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;text-align:center;box-sizing:border-box"><span style="height:15px;padding:0 6px;border-radius:999px;background:#16181F;color:#FFFDF8;display:inline-flex;align-items:center;font:500 8.5px 'DM Mono',monospace;letter-spacing:.06em;white-space:nowrap">{{ t.oldTag }}</span><div style="font:700 13px/1.15 'Bricolage Grotesque',sans-serif">{{ n.lasagne }}</div></div>
+<span style="font:500 13px/1.45 Inter,sans-serif;color:#5E5B52">Avant (PR #164) : la même lasagne en carte-note, sans photo, bordure jaune des restes.</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Bureau <span style="font-weight:500;color:#5E5B52">· 1280, cases de 156 × 150</span></div>
+<div style="background:#F4F1EA;border:2px solid #16181F;border-radius:18px;box-shadow:8px 8px 0 #16181F;padding:24px 28px 30px;box-sizing:border-box;display:grid;grid-template-columns:76px repeat(5,156px);gap:10px;align-items:stretch">
+<span></span>
+<sc-for list="{{ dkHeads }}" as="d" hint-placeholder-count="5"><div style="height:46px;border-radius:14px;background:{{ d.bg }};border:2px solid {{ d.bd }};box-shadow:{{ d.sh }};display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em">{{ d.dow }}</span><span style="font:800 19px/1 'Bricolage Grotesque',sans-serif">{{ d.n }}</span></div></sc-for>
+<sc-for list="{{ dkRows }}" as="r" hint-placeholder-count="2">
+<div style="display:contents">
+<div style="font:500 11px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52;align-self:center">{{ r.label }}</div>
+<sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="5">
+<div style="height:150px;display:flex">
+<sc-if value="{{ c.card }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-width:0;border-radius:16px;background:#FFFDF8;border:{{ c.bd }};overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;position:relative">
+<div style="height:58%;flex:none;border-bottom:2px solid #16181F;background:{{ c.wellBg }};padding:{{ c.wellPadD }};box-sizing:border-box;position:relative"><img src="{{ c.img }}" alt="" style="width:100%;height:100%;object-fit:{{ c.fit }};display:block"></div>
+<div style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:12px;border:2px solid #16181F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font:700 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">×</div>
+<div style="padding:12px 9px 8px;overflow:hidden"><span style="font:800 12.5px/1.2 'Bricolage Grotesque',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ c.name }}</span></div>
+<sc-if value="{{ c.left }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;right:5px;top:calc(58% - 10px);transform:rotate(-4deg);background:#FFE14D;border:1.5px solid #16181F;border-radius:30px;padding:0 7px;font:800 10.5px/16px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ t.left }}</span></sc-if>
+<sc-if value="{{ c.prep }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:5px;top:calc(58% - 10px);display:flex"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="s" sticker="{{ true }}" hint-size="78px,15px"></dc-import></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ c.empty }}" hint-placeholder-val="{{ false }}"><div style="flex:1;border-radius:16px;border:2px dashed #BDB6A6;display:flex;align-items:center;justify-content:center;color:#2323FF;font:700 13px 'Bricolage Grotesque',sans-serif">{{ t.add }}</div></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</section>
+
+<section id="5" data-screen-label="5 Recettes" style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="background:#16181F;color:#F4F1EA;border-radius:999px;padding:3px 14px;font:500 13px 'DM Mono',monospace">5</span><span style="font:800 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Recettes : carte, tuile bento et en-tête de la fiche</span></div>
+<span style="font:500 15px/1.5 Inter,sans-serif;color:#3F3E37;max-width:900px">Une recette marquée « plat préparé » (pizza surgelée, croissants à réchauffer). Carte : autocollant M en haut à gauche de la photo, là où vont les drapeaux. Tuile bento : centré au-dessus du titre. Fiche : première pastille de la rangée sous le titre, droite.</span>
+
+<div style="display:flex;gap:44px;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Téléphone <span style="font-weight:500;color:#5E5B52">· 390</span></div>
+<div style="width:390px;background:#F4F1EA;border:2px solid #16181F;border-radius:32px;box-shadow:8px 8px 0 #16181F;padding:20px 18px 24px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px">
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+<sc-for list="{{ recCards }}" as="r" hint-placeholder-count="2">
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:16px;box-shadow:3px 3px 0 #16181F;overflow:hidden;display:flex;flex-direction:column;min-width:0">
+<div style="aspect-ratio:4/3;border-bottom:2px solid #16181F;background:#E9E4D8;position:relative"><img src="{{ r.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"><sc-if value="{{ r.prep }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:6px;top:7px;display:flex"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="m" sticker="{{ true }}" hint-size="94px,18px"></dc-import></div></sc-if></div>
+<div style="padding:9px 10px 10px;display:flex;flex-direction:column;gap:4px"><span style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.caps }}</span><span style="font:800 14px/1.2 'Bricolage Grotesque',sans-serif;min-height:2.4em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty">{{ r.name }}</span></div>
+</div>
+</sc-for>
+</div>
+<div style="height:340px;border-radius:20px;border:2px solid #16181F;position:relative;overflow:hidden;background:#E9E4D8 url({{ img.pizzaL }}) center/cover no-repeat;box-shadow:0 10px 24px -6px rgba(22,24,31,.35),0 2px 6px rgba(22,24,31,.15)">
+<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(22,24,31,.45),rgba(22,24,31,0) 22%)"></div>
+<div style="position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;color:#FFFDF8;font:500 10.5px 'DM Mono',monospace;letter-spacing:.1em"><span style="font-weight:600">{{ t.supperCaps }}</span><span>15 MIN</span></div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:52%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:10px;padding:0 18px 18px;background:linear-gradient(to top,rgba(14,16,22,.9) 0%,rgba(14,16,22,.64) 38%,rgba(14,16,22,0) 100%);box-sizing:border-box"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="m" sticker="{{ true }}" hint-size="94px,18px"></dc-import><span style="font:700 20px/1.12 'Bricolage Grotesque',sans-serif;color:#FFFDF8;text-align:center;text-wrap:balance;text-shadow:0 1px 8px rgba(0,0,0,.45)">{{ n.pizza }}</span></div>
+<div style="position:absolute;left:25%;right:25%;bottom:0;height:2px;border-radius:2px 2px 0 0;background:#2323FF;opacity:.55"></div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Bureau <span style="font-weight:500;color:#5E5B52">· 1280, cartes de 285 px, bento 4 colonnes</span></div>
+<div style="width:1280px;background:#F4F1EA;border:2px solid #16181F;border-radius:18px;box-shadow:8px 8px 0 #16181F;padding:32px 40px 40px;box-sizing:border-box;display:flex;flex-direction:column;gap:32px">
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px">
+<sc-for list="{{ recCardsD }}" as="r" hint-placeholder-count="4">
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:20px;box-shadow:4px 4px 0 #16181F;overflow:hidden;display:flex;flex-direction:column;min-width:0">
+<div style="aspect-ratio:4/3;border-bottom:2px solid #16181F;background:#E9E4D8;position:relative"><img src="{{ r.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"><sc-if value="{{ r.prep }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:8px;top:9px;display:flex"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="m" sticker="{{ true }}" hint-size="94px,18px"></dc-import></div></sc-if></div>
+<div style="padding:12px 14px 13px;display:flex;flex-direction:column;gap:6px"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.1em;color:#5E5B52;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.caps }}</span><span style="font:800 17px/1.2 'Bricolage Grotesque',sans-serif;min-height:2.4em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty">{{ r.name }}</span></div>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:300px;gap:28px">
+<sc-for list="{{ bento }}" as="b" hint-placeholder-count="3">
+<div style="grid-column:span {{ b.span }};border-radius:20px;border:2px solid #16181F;position:relative;overflow:hidden;background:#E9E4D8 url({{ b.img }}) center/cover no-repeat;box-shadow:0 10px 24px -6px rgba(22,24,31,.35),0 2px 6px rgba(22,24,31,.15)">
+<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(22,24,31,.45),rgba(22,24,31,0) 22%)"></div>
+<div style="position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;color:#FFFDF8;font:500 10.5px 'DM Mono',monospace;letter-spacing:.1em"><span style="font-weight:600">{{ b.meal }}</span><span>{{ b.time }}</span></div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:52%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:10px;padding:0 18px 18px;background:linear-gradient(to top,rgba(14,16,22,.9) 0%,rgba(14,16,22,.64) 38%,rgba(14,16,22,0) 100%);box-sizing:border-box">
+<sc-if value="{{ b.prep }}" hint-placeholder-val="{{ false }}"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="m" sticker="{{ true }}" hint-size="94px,18px"></dc-import></sc-if>
+<span style="font:700 {{ b.fs }}/1.12 'Bricolage Grotesque',sans-serif;color:#FFFDF8;text-align:center;text-wrap:balance;text-shadow:0 1px 8px rgba(0,0,0,.45)">{{ b.name }}</span></div>
+<div style="position:absolute;left:25%;right:25%;bottom:0;height:2px;border-radius:2px 2px 0 0;background:{{ b.stripe }};opacity:.55"></div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;gap:44px;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Fiche recette, téléphone <span style="font-weight:500;color:#5E5B52">· 390</span></div>
+<div style="width:390px;background:rgba(22,24,31,.55);border:2px solid #16181F;border-radius:32px;box-shadow:8px 8px 0 #16181F;padding:14px 14px 0;box-sizing:border-box;overflow:hidden;height:420px">
+<div style="background:#FFFDF8;border:2px solid #16181F;border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px"><div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:800 26px/1.08 'Bricolage Grotesque',sans-serif;letter-spacing:-.015em;text-wrap:pretty">{{ n.pizza }}</span>
+<span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="l" hint-size="110px,22px"></dc-import><span style="height:26px;padding:0 12px;border-radius:13px;border:1.5px solid #16181F;background:#FFE14D;display:inline-flex;align-items:center;gap:9px;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">⏱ 15 min<span style="width:1px;height:12px;background:#16181F;opacity:.4"></span>{{ t.p4l }}</span><span style="height:26px;padding:0 11px;border-radius:13px;background:#F4F1EA;border:1.5px solid #16181F;display:inline-flex;align-items:center;font:600 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ t.supper }}</span></span></div>
+<span style="width:34px;height:34px;flex:none;border-radius:17px;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">×</span></div>
+<div style="height:150px;border:2px solid #16181F;border-radius:16px;overflow:hidden;background:#E9E4D8"><img src="{{ img.pizzaL }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">Fiche recette, bureau <span style="font-weight:500;color:#5E5B52">· 680</span></div>
+<div style="width:760px;height:420px;background:rgba(22,24,31,.55);border:2px solid #16181F;border-radius:18px;box-shadow:8px 8px 0 #16181F;padding:36px 38px 0;box-sizing:border-box;overflow:hidden">
+<div style="width:680px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px 22px;align-items:start;border:2px solid #16181F;border-radius:30px;background:#FFFDF8;padding:26px;box-shadow:8px 8px 0 #16181F;box-sizing:border-box">
+<div style="grid-column:1 / -1;display:flex;align-items:flex-start;justify-content:space-between;gap:14px"><div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:800 32px/1.08 'Bricolage Grotesque',sans-serif;letter-spacing:-.015em">{{ n.pizza }}</span>
+<span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="l" hint-size="110px,22px"></dc-import><span style="height:26px;padding:0 12px;border-radius:13px;border:1.5px solid #16181F;background:#FFE14D;display:inline-flex;align-items:center;gap:9px;font:800 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap;box-sizing:border-box">⏱ 15 min<span style="width:1px;height:12px;background:#16181F;opacity:.4"></span>{{ t.p4l }}</span><span style="height:26px;padding:0 11px;border-radius:13px;background:#F4F1EA;border:1.5px solid #16181F;display:inline-flex;align-items:center;font:600 12.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ t.supper }}</span></span></div>
+<span style="width:34px;height:34px;flex:none;border-radius:17px;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 15px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">×</span></div>
+<div style="height:220px;border:2px solid #16181F;border-radius:16px;overflow:hidden;background:#E9E4D8"><img src="{{ img.pizzaL }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.12em">{{ t.youHave }}</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ haveChips }}" as="h" hint-placeholder-count="2"><span style="min-height:32px;padding:0 12px 0 6px;border-radius:16px;background:#E8E8FF;border:2px solid #16181F;display:inline-flex;align-items:center;gap:7px;font:700 13.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box"><span style="width:20px;height:20px;border-radius:10px;background:#2323FF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">✓</span>{{ h }}</span></sc-for></div></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="6" data-screen-label="6 Recherche" style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="background:#16181F;color:#F4F1EA;border-radius:999px;padding:3px 14px;font:500 13px 'DM Mono',monospace">6</span><span style="font:800 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em">Recherche du planificateur</span></div>
+<span style="font:500 15px/1.5 Inter,sans-serif;color:#3F3E37;max-width:900px">« Déjà prêt » : restes et plats préparés de l'Inventaire. L'autocollant M en haut à gauche remplace la ligne REPAS · TEMPS, comme « restes ». Plus bas, une recette marquée plat préparé garde sa photo pleine et prend le même autocollant.</span>
+<div style="display:flex;gap:44px;align-items:flex-start">
+<sc-for list="{{ searchFrames }}" as="f" hint-placeholder-count="2">
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="font:800 17px 'Bricolage Grotesque',sans-serif">{{ f.label }} <span style="font-weight:500;color:#5E5B52">· {{ f.size }}</span></div>
+<div style="width:{{ f.w }};background:#F4F1EA;border:2px solid #16181F;border-radius:{{ f.r }};box-shadow:8px 8px 0 #16181F;padding:{{ f.pad }};box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+<sc-for list="{{ f.groups }}" as="g" hint-placeholder-count="2">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px;padding-bottom:8px;border-bottom:2px solid rgba(22,24,31,.15)"><span style="font:800 18px 'Bricolage Grotesque',sans-serif">{{ g.title }}</span><span style="height:26px;min-width:28px;padding:0 8px;border-radius:13px;background:#FFFDF8;border:2px solid #16181F;display:inline-flex;align-items:center;justify-content:center;font:800 13px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ g.count }}</span></div>
+<sc-if value="{{ g.desc }}" hint-placeholder-val="{{ false }}"><span style="font:500 13px/1.45 Inter,sans-serif;color:#3F3E37">{{ g.desc }}</span></sc-if>
+<div style="display:grid;grid-template-columns:{{ f.cols }};gap:{{ f.gap }}">
+<sc-for list="{{ g.cards }}" as="c" hint-placeholder-count="4">
+<div style="border-radius:{{ f.cr }};border:2px solid #16181F;background:#FFFDF8;overflow:hidden;display:flex;flex-direction:column;min-width:0;box-shadow:0 8px 18px -8px rgba(22,24,31,.35)">
+<div style="height:{{ f.ph }};position:relative;border-bottom:2px solid #16181F;background:{{ c.wellBg }};display:flex;flex-direction:column">
+<sc-if value="{{ c.prod }}" hint-placeholder-val="{{ false }}"><div style="flex:1;min-height:0;padding:{{ f.prodPad }};box-sizing:border-box"><img src="{{ c.img }}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"></div><span style="padding:4px 12px 10px;font:700 {{ f.prodFs }}/1.12 'Bricolage Grotesque',sans-serif;text-align:center;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ c.name }}</span></sc-if>
+<sc-if value="{{ c.photo }}" hint-placeholder-val="{{ true }}"><img src="{{ c.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(22,24,31,.55),rgba(22,24,31,0) 30%),linear-gradient(to top,rgba(14,16,22,.85),rgba(14,16,22,0) 55%)"></div><span style="position:absolute;left:12px;right:12px;bottom:10px;font:800 {{ f.titleFs }}/1.15 'Bricolage Grotesque',sans-serif;color:#FFFDF8;text-shadow:0 1px 6px rgba(0,0,0,.4);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ c.name }}</span></sc-if>
+<sc-if value="{{ c.caps }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:12px;top:12px;font:500 10px 'DM Mono',monospace;letter-spacing:.1em;color:#FFFDF8">{{ c.caps }}</span></sc-if>
+<sc-if value="{{ c.left }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:{{ f.inset }};top:{{ f.inset }};transform:rotate(-3deg);height:22px;padding:0 9px;border-radius:11px;background:#FFE14D;border:1.5px solid #16181F;display:inline-flex;align-items:center;font:800 12px 'Bricolage Grotesque',sans-serif;box-sizing:border-box;white-space:nowrap">{{ t.left }}</span></sc-if>
+<sc-if value="{{ c.prep }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ f.inset }};top:{{ f.inset }};display:flex"><dc-import name="part-prepared-tag" v="{{ v }}" lang="{{ lang }}" size="m" sticker="{{ true }}" hint-size="94px,18px"></dc-import></div></sc-if>
+<span style="position:absolute;right:10px;top:10px;width:{{ f.plus }};height:{{ f.plus }};border-radius:50%;background:#2323FF;color:#fff;border:2px solid #16181F;display:flex;align-items:center;justify-content:center;font:700 18px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">+</span>
+</div>
+<div style="padding:8px 12px 10px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:3px 8px;font:500 10px 'DM Mono',monospace;letter-spacing:.1em;color:#3F3E37"><span style="white-space:nowrap">{{ c.a }}</span><span style="white-space:nowrap;color:{{ c.bFg }}">{{ c.b }}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;tag&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;d&quot;,&quot;b&quot;,&quot;c&quot;],&quot;default&quot;:&quot;d&quot;,&quot;tsType&quot;:&quot;'d'|'b'|'c'&quot;,&quot;section&quot;:&quot;Étiquette&quot;},&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;fr&quot;,&quot;en&quot;],&quot;default&quot;:&quot;fr&quot;,&quot;tsType&quot;:&quot;'fr'|'en'&quot;,&quot;section&quot;:&quot;Étiquette&quot;}}">
+class Component extends DCLogic {
+  state = { sw: { off: false, on: true } };
+  renderVals() {
+    const P = this.props, v = ['b', 'c', 'd'].indexOf(P.tag) >= 0 ? P.tag : 'd', lang = P.lang === 'en' ? 'en' : 'fr', en = lang === 'en', L = (f, e) => en ? e : f;
+    const U = (id, w) => 'https://images.unsplash.com/photo-' + id + '?w=' + (w || 400) + '&q=70&auto=format&fit=crop';
+    const img = { lasagne: U('1574894709920-11b28e7367e3'), pierogi: U('1496116218417-1a781b1c416c'), croissant: U('1555507036-ab1f4038808a'), tacos: U('1551504734-5ee1c4a1479b'), spinach: U('1576045057995-568f588f82fb'), pizza: U('1565299624946-b28f40a0ae38'), pizzaL: U('1565299624946-b28f40a0ae38', 900), orzo: U('1473093295043-cdd812d0e601'), bol: U('1540189549336-e6e99c3679fe'), shaw: U('1546069901-ba9599a7e63c'), shawL: U('1546069901-ba9599a7e63c', 900), bolL: U('1540189549336-e6e99c3679fe', 900) };
+    const n = { lasagne: L('Lasagne', 'Lasagna'), pierogi: L('Pierogis cheddar et bacon', 'Cheddar bacon perogies'), croissant: L('Croissants au beurre', 'Butter croissants'), tacos: L('Restes de tacos au porc', 'Pork taco leftovers'), tacosShort: L('Tacos au porc', 'Pork tacos'), spinach: L('Bébés épinards', 'Baby spinach'), pizza: L('Pizza surgelée du vendredi', 'Friday frozen pizza'), orzo: L('Orzo poulet citron', 'Lemon chicken orzo'), bol: L('Bol vert déesse', 'Green goddess bowl'), shaw: L('Bols shawarma poulet', 'Chicken shawarma bowls') };
+    const t = {
+      oldTag: L('PLAT PRÉPARÉ', 'PREPARED MEAL'), left: L('restes', 'leftovers'), otherLang: en ? 'FR' : 'EN', add: L('+ ajouter', '+ add'),
+      p2: L('2 PORTIONS', '2 PORTIONS'), p4: L('4 PORTIONS', '4 PORTIONS'), p4l: L('4 portions', '4 portions'), bag: L('sac', 'bag'), portions: L('portions', 'portions'),
+      freezer: L('CONGÉLATEUR', 'FREEZER'), compact: L('COMPACT', 'COMPACT'), switch: L('Plat préparé', 'Prepared meal'),
+      help: L('Se mange tel quel, sans recette. Se planifie comme un repas.', 'Eaten as is, no recipe. Plan it like any meal.'),
+      catOn: L('CONGÉLATEUR · PLATS PRÉPARÉS', 'FREEZER · PREPARED MEALS'), catOff: L('CONGÉLATEUR · AUTRE', 'FREEZER · OTHER'), qty: L('QUANTITÉ', 'QUANTITY'),
+      planLine: L('Prêt à manger, rien à cuisiner. Mettez-le dans une case du planificateur.', 'Ready to eat, nothing to cook. Put it in a planner slot.'), planIt: L('Planifier', 'Plan it'),
+      supper: L('Souper', 'Supper'), supperCaps: L('SOUPER', 'SUPPER'), youHave: L('VOUS AVEZ · 2', 'YOU HAVE · 2'),
+    };
+    const OPTS = [
+      { id: '1d', v: 'd', name: L('Encre, version amicale', 'Ink, friendly'), chosen: true, cardBd: '3px solid #16181F',
+        desc: 'Le noir de PR #164, mais dans la famille des autocollants : Bricolage 800 en minuscules, pictogramme crème, penché à +3°.',
+        color: 'Encre #16181F, texte crème. Contraste 17:1.', pro: 'Aucune couleur nouvelle; garde l\'esprit du tag actuel en plus lisible.', con: 'Le noir signifie déjà « choisi » sur les filtres actifs; carte du Planificateur plus lourde.' },
+      { id: '1b', v: 'b', name: L('Crème + pastille', 'Cream + badge'), cardBd: '2px solid #16181F',
+        desc: 'Aucune couleur nouvelle : crème #FFFDF8 et contour encre, le pictogramme dans une pastille noire. Penché à −3°.',
+        color: 'Aucune nouvelle. Contraste 17:1.', pro: 'Zéro risque de sens de couleur.', con: 'Se confond avec les pastilles neutres (repas « Souper » dans la fiche, filtres). Faible à côté du jaune.' },
+      { id: '1c', v: 'c', name: L('Lilas, étiquette carrée', 'Lilac, square label'), cardBd: '3px solid #CDBBFF',
+        desc: 'Lilas #CDBBFF, coins carrés (4–5 px) comme une étiquette d\'emballage, posé droit. Se distingue des restes par la forme autant que par la couleur.',
+        color: '#CDBBFF, nouvelle encre. Contraste 10,3:1.', pro: 'Forme différente de toutes les pastilles rondes de l\'app.', con: 'Proche du violet « Congélateur » #A56BFF du sélecteur, alors qu\'un plat préparé vit souvent au congélateur.' },
+    ].map(o => Object.assign(o, { sh: o.v === v ? '6px 6px 0 #2323FF' : '6px 6px 0 #16181F' }));
+    const prepBd = OPTS.find(o => o.v === v).cardBd;
+    const inv = [
+      { img: img.lasagne, name: n.lasagne, q: 4, u: t.portions, bar: '70%', prep: true },
+      { img: img.pierogi, name: n.pierogi, q: 1, u: t.bag, bar: '90%', prep: true },
+      { img: img.tacos, name: n.tacos, q: 2, u: t.portions, bar: '40%', left: true },
+      { img: img.croissant, name: n.croissant, q: 6, u: '', bar: '55%', prep: true },
+      { img: img.spinach, name: n.spinach, q: 5, u: 'oz', bar: '25%' },
+    ];
+    const card = k => {
+      const D = {
+        orzo: { img: img.orzo, name: n.orzo, stat: '35 MIN', bd: '2px solid #16181F' },
+        bol: { img: img.bol, name: n.bol, stat: '20 MIN', bd: '3px solid #2323FF' },
+        tacos: { img: img.tacos, name: n.tacosShort, stat: t.p2, bd: '3px solid #FFE14D', left: true },
+        lasagne: { img: img.lasagne, name: n.lasagne, stat: t.p4, bd: prepBd, prep: true },
+        pierogi: { img: img.pierogi, name: n.pierogi, stat: L('1 SAC', '1 BAG'), bd: prepBd, prep: true },
+        croissant: { img: img.croissant, name: n.croissant, stat: '6', bd: prepBd, prep: true },
+      }[k];
+      if (!D) return { card: false, empty: true };
+      return Object.assign({ card: true, empty: false, left: false, prep: false, fit: D.prep ? 'contain' : 'cover', wellBg: D.prep ? '#FFFFFF' : '#E9E4D8', wellPad: D.prep ? '4px 10px' : '0', wellPadD: D.prep ? '8px 14px 12px' : '0' }, D);
+    };
+    const step = 112, X0 = 14, rowY = [44 + 6 + 18, 44 + 6 + 18 + 104 + 6 + 18];
+    const plGrid = [['pierogi', 'bol', ''], ['orzo', 'tacos', 'lasagne']];
+    const plCells = []; plGrid.forEach((r, m) => r.concat(['croissant', 'orzo'][m] ? [m ? 'orzo' : 'croissant'] : []).forEach((k, d) => plCells.push(Object.assign(card(k), { x: X0 + d * step, y: rowY[m] }))));
+    const DOW = en ? ['MON', 'TODAY', 'WED', 'THU', 'FRI'] : ['LUN', 'AUJ.', 'MER', 'JEU', 'VEN'];
+    const plTiles = [0, 1, 2, 3].map(i => ({ x: X0 + i * step, dow: DOW[i], n: 5 + i, bg: i === 1 ? '#FF48B0' : 'transparent', bd: i === 1 ? '#16181F' : 'transparent', sh: i === 1 ? '3px 3px 0 #16181F' : 'none' }));
+    const plTabs = [{ y: rowY[0] - 18, label: L('Dîner', 'Lunch') }, { y: rowY[1] - 18, label: L('Souper', 'Supper') }];
+    const dkHeads = [0, 1, 2, 3, 4].map(i => ({ dow: DOW[i], n: 5 + i, bg: i === 1 ? '#FF48B0' : 'transparent', bd: i === 1 ? '#16181F' : 'transparent', sh: i === 1 ? '3px 3px 0 #16181F' : 'none' }));
+    const dkRows = [{ label: L('DÉJEUNER', 'BREAKFAST'), cells: ['croissant', '', 'croissant', '', ''].map(card) }, { label: L('SOUPER', 'SUPPER'), cells: ['orzo', 'tacos', 'lasagne', 'bol', 'pierogi'].map(card) }];
+    const recCards = [{ img: img.pizza, name: n.pizza, caps: L('SOUPER', 'SUPPER'), prep: true }, { img: img.orzo, name: n.orzo, caps: L('SOUPER · POULET', 'SUPPER · CHICKEN') }];
+    const recCardsD = recCards.concat([{ img: img.bol, name: n.bol, caps: L('DÎNER', 'LUNCH') }, { img: img.shaw, name: n.shaw, caps: L('SOUPER · POULET', 'SUPPER · CHICKEN') }]);
+    const bento = [
+      { span: 2, img: img.pizzaL, name: n.pizza, meal: t.supperCaps, time: '15 MIN', fs: '26px', stripe: '#2323FF', prep: true },
+      { span: 1, img: img.shawL, name: n.shaw, meal: t.supperCaps, time: '40 MIN', fs: '18px', stripe: '#2323FF' },
+      { span: 1, img: img.bolL, name: n.bol, meal: L('DÎNER', 'LUNCH'), time: '20 MIN', fs: '18px', stripe: '#FF48B0' },
+    ];
+    const sheets = [['off', L('Désactivé', 'Off')], ['on', L('Activé', 'On')]].map(([k, lab]) => { const on = this.state.sw[k]; return { label: lab, on, cat: on ? t.catOn : t.catOff, track: on ? '#16181F' : '#E9E4D8', knob: on ? '22px' : '2px', toggle: () => this.setState(s => ({ sw: Object.assign({}, s.sw, { [k]: !s.sw[k] }) })) }; });
+    const sc = (k) => ({
+      tacos: { photo: true, img: img.tacos, name: n.tacos, left: true, a: t.p2, b: L('FRIGO · 2 J', 'FRIDGE · 2 D') },
+      lasagne: { prod: true, img: img.lasagne, name: n.lasagne, prep: true, a: t.p4, b: L('CONGÉL. · 2 MOIS', 'FREEZER · 2 MO') },
+      pierogi: { prod: true, img: img.pierogi, name: n.pierogi, prep: true, a: L('1 SAC', '1 BAG'), b: L('CONGÉL. · 5 MOIS', 'FREEZER · 5 MO') },
+      croissant: { prod: true, img: img.croissant, name: n.croissant, prep: true, a: '6', b: L('CONGÉL. · 1 MOIS', 'FREEZER · 1 MO') },
+      pizza: { photo: true, img: img.pizza, name: n.pizza, prep: true, a: '15 MIN', b: L('RIEN À ACHETER', 'NOTHING TO BUY'), bFg: '#00753F' },
+      orzo: { photo: true, img: img.orzo, name: n.orzo, caps: L('SOUPER · 35 MIN', 'SUPPER · 35 MIN'), a: '35 MIN', b: L('2 À ACHETER', '2 TO BUY') },
+      bol: { photo: true, img: img.bol, name: n.bol, caps: L('DÎNER · 20 MIN', 'LUNCH · 20 MIN'), a: '20 MIN', b: L('RIEN À ACHETER', 'NOTHING TO BUY'), bFg: '#00753F' },
+      shaw: { photo: true, img: img.shaw, name: n.shaw, caps: L('SOUPER · 40 MIN', 'SUPPER · 40 MIN'), a: '40 MIN', b: L('1 À ACHETER', '1 TO BUY') },
+    }[k]);
+    const norm = c => Object.assign({ photo: false, prod: false, left: false, prep: false, caps: '', bFg: '#3F3E37', wellBg: c.prod ? '#FFFFFF' : '#E9E4D8' }, c);
+    const ready = ['tacos', 'lasagne', 'pierogi', 'croissant'].map(sc).map(norm);
+    const groups = recs => [
+      { title: L('Déjà prêt', 'Ready to eat'), count: 4, desc: L('Restes et plats préparés de votre inventaire. Rien à cuisiner, rien à acheter.', 'Leftovers and prepared meals from your Inventory. Nothing to cook, nothing to buy.'), cards: ready },
+      { title: L('Recettes', 'Recipes'), count: 24, desc: '', cards: recs.map(sc).map(norm) },
+    ];
+    const searchFrames = [
+      { label: L('Téléphone', 'Phone'), size: '390', w: '390px', r: '32px', pad: '20px 18px 24px', cols: 'repeat(2,minmax(0,1fr))', gap: '10px', cr: '16px', ph: '190px', prodPad: '34px 14px 4px', prodFs: '14px', titleFs: '14px', inset: '10px', plus: '28px', groups: groups(['pizza', 'orzo']) },
+      { label: L('Bureau', 'Desktop'), size: L('1280, 4 colonnes', '1280, 4 columns'), w: '1280px', r: '18px', pad: '28px 40px 36px', cols: 'repeat(4,minmax(0,1fr))', gap: '16px', cr: '20px', ph: '230px', prodPad: '40px 18px 4px', prodFs: '16px', titleFs: '17px', inset: '12px', plus: '32px', groups: groups(['pizza', 'orzo', 'bol', 'shaw']) },
+    ];
+    return {
+      v, lang, otherLang: en ? 'fr' : 'en', t, n, img, opts: OPTS, inv,
+      plCells, plTiles, plTabs, plH: rowY[1] + 104 + 4, dkHeads, dkRows,
+      recCards, recCardsD, bento, sheets, searchFrames,
+      haveChips: [L('Pizza surgelée', 'Frozen pizza'), L('Roquette', 'Arugula')],
+    };
+  }
+}
+</script>
+</body>
+</html>
