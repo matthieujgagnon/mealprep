@@ -226,11 +226,11 @@ test.describe("on a phone, in French", () => {
 
     // A shelf: hold the Freezer's grip, then move it above the Fridge.
     const order = () => page.locator(".inv-shelf").evaluateAll((els) => els.map((e) => e.dataset.sectionId));
-    await expect.poll(order).toEqual(["fridge", "freezer", "pantry", "leftovers"]);
+    await expect.poll(order).toEqual(["fridge", "freezer", "pantry", "leftovers", "prepared"]);
     const grip = page.getByRole("button", { name: 'Déplacer la section « Congélateur »' });
     const fridge = await page.locator('.inv-shelf[data-section-id="fridge"]').boundingBox();
     await holdAndDrag(page, client, middle(await grip.boundingBox()), { x: fridge.x + fridge.width / 2, y: fridge.y + 12 });
-    await expect.poll(order).toEqual(["freezer", "fridge", "pantry", "leftovers"]);
+    await expect.poll(order).toEqual(["freezer", "fridge", "pantry", "leftovers", "prepared"]);
 
     // A quick tap still opens the item's pop-up.
     await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Pois" }).tap();

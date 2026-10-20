@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { expiryDay } from "../lib/quebecDay.js";
 import { UnitSelect } from "./UnitSelect.jsx";
+import { STORAGES, isStorage } from "../lib/shelves.js";
 import { t } from "../i18n/index.js";
 
 // The one confirmation sheet in front of everything that adds to Inventory
@@ -14,10 +15,13 @@ import { t } from "../i18n/index.js";
 // them can be changed or the row switched off. Cancel adds nothing. (Typing
 // an item into Inventory's own add form already counts as confirming.)
 //
-// `drafts`: [{ ref, name, quantity?, unit?, location?, expiresAt?, category?, on? }].
-// `ref` is handed back for each row that was added. A missing shelf or
-// use-by date is filled in from the USDA FoodKeeper suggestion, and stays
-// editable. A draft with `on: false` starts switched off (Done shopping: the
+// `drafts`: [{ ref, name, quantity?, unit?, location?, shelf?, expiresAt?, category?, on? }].
+// `ref` is handed back for each row that was added. `location` is where it is KEPT (fridge,
+// freezer, pantry: the use-by comes from it) and `shelf` the shelf it shows on (lib/shelves.js);
+// a row's Shelf choice is one control, and a second "Stored in" choice appears under it when the
+// shelf is not Fridge, Freezer or Pantry (Prepared meals, a section of their own), so both are
+// said before anything is added. A missing storage or use-by date is filled in from the USDA
+// FoodKeeper suggestion, and stays editable. A draft with `on: false` starts switched off (Done shopping: the
 // items bought ✓ but not queued for Inventory), and can be switched on.
 // `confirmNone`: the button's words when every row is off, for a caller that
 // can be confirmed with nothing added (Done shopping, which still clears the
@@ -32,11 +36,13 @@ function toRow(draft) {
     name: draft.name || "",
     quantity: draft.quantity != null ? String(draft.quantity) : "",
     unit: draft.unit || "",
-    location: draft.location || "",
+    // Where it is kept. A draft that names one of the person's own sections is naming the shelf.
+    location: isStorage(draft.location) ? draft.location : "",
+    shelf: draft.shelf || (draft.location && !isStorage(draft.location) ? draft.location : ""),
     expiresAt: expiryDay(draft.expiresAt) || "",
     category: draft.category || null,
     // What the person typed wins over a later suggestion.
-    locationTouched: !!draft.location,
+    locationTouched: isStorage(draft.location),
     dateTouched: !!draft.expiresAt,
   };
 }
@@ -109,20 +115,43 @@ function ConfirmRow({ row, sections, onChange }) {
           disabled={!row.on}
         />
       </span>
-      <select
-        className="riso-confirm-shelf"
-        aria-label={t("inventoryConfirm.shelfAria", { name: row.name })}
-        value={row.location}
-        disabled={!row.on}
-        onChange={(e) => onChange({ location: e.target.value, locationTouched: true })}
-      >
-        {!row.location && <option value="">…</option>}
-        {sections.map((l) => (
-          <option key={l.id} value={l.id}>
-            {l.label}
-          </option>
-        ))}
-      </select>
+      <span className="riso-confirm-shelfcell">
+        <select
+          className="riso-confirm-shelf"
+          aria-label={t("inventoryConfirm.shelfAria", { name: row.name })}
+          value={row.shelf || row.location}
+          disabled={!row.on}
+          onChange={(e) =>
+            // Fridge, Freezer or Pantry says where it is kept; any other shelf only says which shelf.
+            isStorage(e.target.value) ? onChange({ location: e.target.value, shelf: "", locationTouched: true }) : onChange({ shelf: e.target.value })
+          }
+        >
+          {!row.shelf && !row.location && <option value="">…</option>}
+          {sections.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        {row.shelf && (
+          <span className="riso-confirm-kept">
+            <span className="riso-confirm-kept-label">{t("inventory.form.stepStored")}</span>
+            <select
+              aria-label={t("inventory.form.keptAria", { name: row.name })}
+              value={row.location}
+              disabled={!row.on}
+              onChange={(e) => onChange({ location: e.target.value, locationTouched: true })}
+            >
+              {!row.location && <option value="">…</option>}
+              {STORAGES.map((id) => (
+                <option key={id} value={id}>
+                  {t(`inventory.storage.short.${id}`)}
+                </option>
+              ))}
+            </select>
+          </span>
+        )}
+      </span>
       <input
         type="date"
         className="riso-confirm-date"
@@ -168,6 +197,7 @@ export function InventoryConfirmSheet({ drafts, sections, title, intro, confirmN
             quantity: parseQuantityInput(r.quantity),
             unit: r.unit || null,
             location: r.location || undefined,
+            shelf: r.shelf || undefined,
             category: r.category || undefined,
             expiresAt: r.expiresAt || null,
           }))

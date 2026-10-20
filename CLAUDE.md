@@ -7,7 +7,7 @@ Read [docs/how-it-works.md](docs/how-it-works.md) for the stack and folders, and
 Every way of adding items to Inventory must open the same confirmation sheet first
 (`InventoryConfirmSheet` in `client/src/components/InventoryConfirm.jsx`, opened through
 `requestInventoryAdd` in `client/src/App.jsx`). The sheet lists each item with its name,
-amount, shelf and use-by date. Matt can change any of those or switch a row off, then confirm
+amount, shelf, where it is kept and use-by date. Matt can change any of those or switch a row off, then confirm
 with "Add N to inventory" (« Ajouter N à l'inventaire »), or cancel. **Cancel adds nothing and
 leaves whatever it came from (the grocery list, a receipt, a recipe) as it was.**
 
@@ -32,8 +32,8 @@ The exceptions, which count as Matt confirming:
   a removal; it is never a way of adding something new.
 - « Remettre » / Put back in Inventory's Recently removed puts an item back without the sheet,
   like Undo. It calls `api.putBackRemovedPantryItem` (`handlePutBackRemoved` in `App.jsx`),
-  which restores the row exactly as it was when it left (same id, shelf, amount and use-by
-  date). It only undoes a removal from the last 7 days; it is never a way of adding something new.
+  which restores the row exactly as it was when it left (same id, shelf, where it is kept, amount and
+  use-by date). It only undoes a removal from the last 7 days; it is never a way of adding something new.
 
 - « Je l'ai comme… » / "I have it as…" (`InventoryLinkPopup.jsx`, `lib/inventoryLinks.js`) is not a way of
   adding: it adds nothing to Inventory, it only links a recipe's name to an item Matt already has
@@ -50,7 +50,7 @@ Inventory in both languages (`client/src/i18n/en.js` and `fr.js`, and the button
 
 ## Reuse what exists
 
-Before building any new piece of UI, check [docs/components.md](docs/components.md) and reuse or extend what is there. Never build a second version of something that exists: one "this item is a meal" rule (`lib/mealItem.js` `isMealItem`: a leftover or a prepared meal, never an ingredient; `isLeftover` on its own only where something is truly leftover-only; `server/src/oneMealRule.test.js` fails otherwise), one recipe pop-out, one slot picker, one toast, one week calendar, one "Makeable now" rule, one Inventory matcher (`lib/inventoryMatch.js`: every "have it or not" goes through it), one `openRecipeCard`, one set of Riso pills, one recipe store (`lib/recipeStore.js`: a planned meal's recipe is read through `useLiveEntries`, never from the copy that came with the meal). If a shared piece almost fits, extend it and update its entry in `docs/components.md` in the same change.
+Before building any new piece of UI, check [docs/components.md](docs/components.md) and reuse or extend what is there. Never build a second version of something that exists: one "this item is a meal" rule (`lib/mealItem.js` `isMealItem`: a leftover or a prepared meal, never an ingredient; `isLeftover` on its own only where something is truly leftover-only; `server/src/oneMealRule.test.js` fails otherwise), one recipe pop-out, one slot picker, one toast, one week calendar, one "Makeable now" rule, one Inventory matcher (`lib/inventoryMatch.js`: every "have it or not" goes through it), one "which shelf is this item on" rule (`lib/shelves.js` `shelfOf`; where it is KEPT is `location`, which the use-by date follows, and the shelf is `shelf`; `server/src/shelfRule.test.js` fails otherwise), one `openRecipeCard`, one set of Riso pills, one recipe store (`lib/recipeStore.js`: a planned meal's recipe is read through `useLiveEntries`, never from the copy that came with the meal). If a shared piece almost fits, extend it and update its entry in `docs/components.md` in the same change.
 
 ## Language
 

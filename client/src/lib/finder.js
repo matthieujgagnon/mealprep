@@ -3,6 +3,7 @@ import { daysUntil } from "./pantryInventory.js";
 import { capitalize } from "./groceryList.js";
 import { expiringSoon, foodKey, recipeUsesItem } from "./inventoryMatch.js";
 import { isMealItem } from "./mealItem.js";
+import { onShelf } from "./shelves.js";
 import { dealSavings } from "./flyerIngredients.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
 import { inMealGroup, isMakeableMeal, makeableRuleOn, recipeSlot, recipeTotalMinutes } from "./mealSlots.js";
@@ -112,6 +113,7 @@ export function shelfTone(sectionId, customIndex) {
 // already past its use-by date. Meals are left out too (leftovers and prepared
 // meals): they are planned from the Planner's search, not something to cook with.
 export function shelvesWithItems(pantryInventory, sections) {
+  const shelfIds = new Set(sections.map((section) => section.id));
   const usable = pantryInventory.filter((item) => !isMealItem(item) && (!item.expiresAt || daysUntil(item.expiresAt) >= 0));
   let custom = 0;
   return sections
@@ -120,7 +122,7 @@ export function shelvesWithItems(pantryInventory, sections) {
       if (section.custom) custom += 1;
       const seen = new Set();
       const items = usable
-        .filter((item) => item.location === section.id)
+        .filter((item) => onShelf(item, section.id, shelfIds))
         .filter((item) => {
           const key = itemKey(item);
           if (seen.has(key)) return false;

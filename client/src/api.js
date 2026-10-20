@@ -277,6 +277,11 @@ export const api = {
   // Undo of a take-out: the rows exactly as they were, same ids. Not a way of adding.
   putBackPantryItems: (rows, logIds) =>
     request("/pantry-inventory/put-back", { method: "POST", body: JSON.stringify({ rows, logIds }) }).then(removedChanged),
+  // Says where items that were moved to a shelf of their own before storage and shelf were kept
+  // apart are KEPT ([{ id, location }], a storage each): only `location` changes. Resolves
+  // { items, before }; `before` is what putBackPantryItems needs to undo it.
+  setPantryStorage: (items) =>
+    request("/pantry-inventory/storage", { method: "POST", body: JSON.stringify({ items }) }),
   // One portion off the Inventory leftovers for each planned leftover meal
   // before `today`, once. Resolves like a take-out plus { entryIds, meals }.
   settleLeftovers: (today) =>
@@ -290,8 +295,9 @@ export const api = {
     request(`/pantry-inventory/removed/${encodeURIComponent(id)}/put-back`, { method: "POST" }).then(removedChanged),
 
   listPantryLocations: () => request("/pantry-locations"),
-  addPantryLocation: (name) =>
-    request("/pantry-locations", { method: "POST", body: JSON.stringify({ name }) }),
+  // `restore`: the Undo of deleting a shelf, which may share a built-in shelf's name.
+  addPantryLocation: (name, { restore } = {}) =>
+    request("/pantry-locations", { method: "POST", body: JSON.stringify(restore ? { name, restore: true } : { name }) }),
   deletePantryLocation: (id) => request(`/pantry-locations/${id}`, { method: "DELETE" }),
   renamePantryLocation: (id, name) =>
     request(`/pantry-locations/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),

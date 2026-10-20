@@ -1,5 +1,6 @@
 import { formatFractionQuantity, unitLabel } from "./units.js";
 import { roundAmount } from "./inventoryMatch.js";
+import { shelfOf } from "./shelves.js";
 
 // The plain logic behind the finished view (components/CookedView.jsx): which
 // planned meal a cooked recipe is, how the "Take out of your Inventory" rows are
@@ -26,15 +27,15 @@ export function editedRow(row, edit = {}) {
 }
 
 // The rows in shelves, in the order the recipe first uses each shelf: Inventory
-// items under their shelf, then what isn't in Inventory at all. `shelfName(id)`
-// names a shelf.
+// items under the shelf they show on (`shelfOf`: where the person sees them), then what isn't
+// in Inventory at all. `shelfName(id)` names a shelf.
 export function shelfGroups(rows, shelfName) {
   const groups = new Map();
   const add = (key, label, row) => {
     if (!groups.has(key)) groups.set(key, { key, label, rows: [] });
     groups.get(key).rows.push(row);
   };
-  for (const row of rows) if (row.kind === "item") add(`shelf:${row.item.location}`, shelfName(row.item.location), row);
+  for (const row of rows) if (row.kind === "item") add(`shelf:${shelfOf(row.item)}`, shelfName(shelfOf(row.item)), row);
   for (const row of rows) if (row.kind === "missing") add("missing", null, row);
   return [...groups.values()];
 }

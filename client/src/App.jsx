@@ -45,7 +45,8 @@ import { entriesOnDay, findNextEmptySlot, isCustomNote, slotLabel } from "./lib/
 import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { Makeable } from "./components/Makeable.jsx";
-import { Inventory, InventoryDragPreview, SHELF_DRAG, shelfOptions } from "./components/Inventory.jsx";
+import { Inventory, InventoryDragPreview, SHELF_DRAG, orderedSections, shelfOptions } from "./components/Inventory.jsx";
+import { keptThere, placeOnShelf } from "./lib/shelves.js";
 import { GripAwarePointerSensor, sectionCollision } from "./components/ReorderSections.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 import { InventoryLinkPopup, InventoryLinksContext } from "./components/InventoryLinkPopup.jsx";
@@ -741,6 +742,20 @@ export default function App({ user, onLogout }) {
     setInventoryAsk(null);
   }
 
+  // The one-time list of where items are KEPT after the move to two fields: only `location`
+  // changes. Resolves with the rows as they were, for the toast's Undo.
+  async function handleSetPantryStorage(choices) {
+    const { items: updated, before } = await api.setPantryStorage(choices);
+    setPantryInventory((prev) => prev.map((i) => updated.find((u) => u.id === i.id) || i));
+    return before;
+  }
+
+  // Undo of that: the rows exactly as they were (it only undoes, it adds nothing: CLAUDE.md).
+  async function handleRestorePantryRows(rows) {
+    const restored = await api.putBackPantryItems(rows);
+    setPantryInventory((prev) => prev.map((i) => restored.find((r) => r.id === i.id) || i));
+  }
+
   async function handleUpdatePantryItem(id, payload) {
     const updated = await api.updatePantryInventoryItem(id, payload);
     setPantryInventory((prev) => prev.map((i) => (i.id === id ? updated : i)));
@@ -796,20 +811,22 @@ export default function App({ user, onLogout }) {
     await api.consumePantryInventoryItems(ids, action);
   }
 
-  async function handleAddPantryLocation(name) {
-    const created = await api.addPantryLocation(name);
+  async function handleAddPantryLocation(name, options) {
+    const created = await api.addPantryLocation(name, options);
     setPantryLocations((prev) => [...prev, created]);
     return created;
   }
 
-  // Items still in a deleted section move back to Pantry server-side (see
-  // POST /pantry-locations/:id) - mirrored here so the shelves don't show a
-  // stale/missing column for them until the next full reload.
+  // Items still on a deleted section go back to their default shelf server-side (DELETE
+  // /pantry-locations/:id clears their `shelf`; where they are kept is never lost), mirrored here
+  // so the shelves don't show a stale column for them. An item whose storage was not known yet
+  // gets one guessed from its name by the server, so Inventory is read again once it is done.
   async function handleDeletePantryLocation(id) {
     setPantryLocations((prev) => prev.filter((l) => l.id !== id));
-    setPantryInventory((prev) => prev.map((i) => (i.location === id ? { ...i, location: "pantry" } : i)));
+    setPantryInventory((prev) => prev.map((i) => (i.shelf === id ? { ...i, shelf: null } : i)));
     setInventoryLayout((prev) => prev.filter((s) => s.sectionId !== id));
     await api.deletePantryLocation(id);
+    api.listPantryInventory().then(setPantryInventory).catch(() => {});
   }
 
   async function handleRenamePantryLocation(id, name) {
@@ -837,19 +854,18 @@ export default function App({ user, onLogout }) {
     return layoutSaves.current.chain;
   }
 
-  // Drag a card from one Inventory shelf onto another - the drag-and-drop
-  // equivalent of clicking a storage pill in the edit panel, but reachable
-  // for any location including a custom section (pills only cover the
-  // three USDA-backed ones). Recomputes expiresAt from the target's own
-  // USDA range when it's a built-in location with data for this item;
-  // dropped onto a custom section (or a built-in one with no data for this
-  // item), the date is left as-is rather than guessed.
-  async function handleMoveInventoryItem(itemId, newLocation) {
+  // Drag a card from one Inventory shelf onto another. What a drop changes is `placeOnShelf`
+  // (lib/shelves.js): onto Fridge, Freezer or Pantry it says the item is KEPT there now, and the
+  // use-by date is recomputed from that place's own USDA range when there is one for this item;
+  // onto Prepared meals or a section of their own it changes the SHELF only, never where it is
+  // kept or the date. A prepared meal moved to another shelf stays there (the choice sticks).
+  async function handleMoveInventoryItem(itemId, target) {
     const item = pantryInventory.find((i) => i.id === itemId);
     // Leftovers stay on their own shelf (they move to the fridge to thaw instead).
-    if (!item || item.isLeftover || newLocation === "leftovers" || item.location === newLocation) return;
-    const targetData = item.locations?.[newLocation];
-    const payload = { location: newLocation, ...(targetData ? { expiresAt: targetData.expiresAt } : {}) };
+    const patch = placeOnShelf(item, target, new Set(orderedSections(pantryLocations, inventoryLayout).map((sec) => sec.id)));
+    if (!patch) return;
+    const kept = keptThere(item, patch);
+    const payload = { ...patch, ...(kept ? { expiresAt: kept } : {}) };
     setPantryInventory((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...payload } : i)));
     const updated = await api.updatePantryInventoryItem(itemId, payload);
     setPantryInventory((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
@@ -1479,6 +1495,8 @@ export default function App({ user, onLogout }) {
             onDelete={handleDeletePantryItem}
             onConsume={handleConsumePantryItems}
             onPutBackRemoved={handlePutBackRemoved}
+            onSetStorage={handleSetPantryStorage}
+            onRestoreRows={handleRestorePantryRows}
             recipes={recipes}
             onFindRecipes={(query) => {
               setRecipeSearch(query);

@@ -111,6 +111,9 @@ describe("what gets saved", () => {
     expect(buildAddPayload({ name: " Milk ", qtyText: "1 1/2", unit: "L", location: "fridge", category: "Dairy", expiresAt: "2026-10-18", photo: "" })).toEqual({
       name: "Milk", quantity: 1.5, unit: "L", location: "fridge", category: "Dairy", expiresAt: "2026-10-18",
     });
+    // The shelf is its own field, sent only when the person chose one.
+    expect(buildAddPayload({ name: "Perogies", qtyText: "1", unit: "", location: "freezer", shelf: "spices-id", category: "Other", expiresAt: "", photo: "" })).toMatchObject({ location: "freezer", shelf: "spices-id" });
+    expect(buildAddPayload({ name: "Perogies", qtyText: "1", unit: "", location: "freezer", shelf: null, category: "Other", expiresAt: "", photo: "" })).not.toHaveProperty("shelf");
     const bare = buildAddPayload({ name: "Rice", qtyText: "", unit: "", location: "pantry", category: "", expiresAt: "", photo: "https://x.test/a.png" });
     expect(bare).toMatchObject({ quantity: 1, unit: null, category: "Other", expiresAt: null, imageUrl: "https://x.test/a.png" });
   });
@@ -122,5 +125,20 @@ describe("what gets saved", () => {
     expect(buildEditPatch(item, { ...same, name: "Oat milk", qtyText: "½", location: "freezer", expiresAt: "", photo: "/api/recipe-images/a1" })).toEqual({
       name: "Oat milk", quantity: 0.5, location: "freezer", expiresAt: null, imageUrl: "/api/recipe-images/a1",
     });
+  });
+
+  it("changes where it is kept and which shelf it is on separately", () => {
+    const item = { name: "Peas", quantity: 1, unit: "", location: "freezer", shelf: "spices-id", expiresAt: null, imageUrl: null };
+    const same = { name: "Peas", qtyText: "1", unit: "", location: "freezer", shelf: "spices-id", expiresAt: "", photo: null };
+    expect(buildEditPatch(item, same)).toEqual({});
+    // Only the storage: the shelf is not in the patch.
+    expect(buildEditPatch(item, { ...same, location: "fridge" })).toEqual({ location: "fridge" });
+    // Only the shelf: where it is kept is not in the patch.
+    expect(buildEditPatch(item, { ...same, shelf: "prepared" })).toEqual({ shelf: "prepared" });
+    // Back to the default shelf is null, and a draft that does not say is left alone.
+    expect(buildEditPatch(item, { ...same, shelf: null })).toEqual({ shelf: null });
+    expect(buildEditPatch(item, { ...same, shelf: undefined })).toEqual({});
+    // An item with no chosen shelf and a draft that still has none changes nothing.
+    expect(buildEditPatch({ ...item, shelf: null }, { ...same, shelf: null })).toEqual({});
   });
 });

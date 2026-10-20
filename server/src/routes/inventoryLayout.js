@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { fail } from "../lib/i18n.js";
+import { BUILT_IN_NAMES, normalizeName } from "../lib/shelves.js";
 
 export const inventoryLayoutRouter = Router();
 
@@ -42,6 +43,23 @@ inventoryLayoutRouter.put("/", async (req, res) => {
       size: normalizeSize(s.size),
       height: Number.isInteger(s.height) && s.height >= 120 && s.height <= 2000 ? s.height : null,
     });
+  }
+  // A built-in shelf may not be renamed to the name of another shelf (a section of their own, or
+  // another built-in one), so there are never two shelves with the same name. Only a NEW name is
+  // asked: a name a row already has stays, whatever it is.
+  const [stored, customs] = await Promise.all([
+    prisma.inventorySectionLayout.findMany({ where: { userId: req.userId }, select: { sectionId: true, label: true } }),
+    prisma.pantryLocation.findMany({ where: { userId: req.userId }, select: { name: true } }),
+  ]);
+  const before = new Map(stored.map((r) => [r.sectionId, r.label]));
+  for (const row of data) {
+    if (!row.label || !Object.hasOwn(BUILT_IN_NAMES, row.sectionId) || row.label === (before.get(row.sectionId) ?? null)) continue;
+    const name = normalizeName(row.label);
+    const taken =
+      customs.some((c) => normalizeName(c.name) === name) ||
+      Object.entries(BUILT_IN_NAMES).some(([id, names]) => id !== row.sectionId && names.some((n) => normalizeName(n) === name)) ||
+      data.some((other) => other.sectionId !== row.sectionId && Object.hasOwn(BUILT_IN_NAMES, other.sectionId) && other.label && normalizeName(other.label) === name);
+    if (taken) return res.status(409).json(fail(req, "sectionExists", { name: row.label }));
   }
   // Upsert row by row (and drop sections no longer listed) rather than
   // delete-all-then-insert: two saves landing together - a rename right

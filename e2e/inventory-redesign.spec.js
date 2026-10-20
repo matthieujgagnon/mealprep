@@ -134,7 +134,7 @@ test("selecting items shows the floating action bar, and Used up removes them", 
   await expect(page.locator(":is(.inv-row, .inv-tile)")).toHaveCount(0);
 });
 
-test("custom sections can be added, used, and removed (items fall back to Pantry)", async ({ page }) => {
+test("custom sections can be added, used, and removed (items go back to the shelf of where they are kept)", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
@@ -143,7 +143,7 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await expect(page.locator(".riso-inv-header-actions").getByRole("button", { name: "+ Add section" })).toBeVisible();
   await page.getByRole("button", { name: "+ Add section" }).click();
   await page.getByLabel("Shelf name").press("Escape");
-  await expect(page.locator(".inv-shelf")).toHaveCount(4);
+  await expect(page.locator(".inv-shelf")).toHaveCount(5); // Fridge, Freezer, Pantry, Leftovers, Prepared meals
   await page.getByRole("button", { name: "+ Add section" }).click();
   await page.getByLabel("Shelf name").fill("Garage Freezer");
   await page.keyboard.press("Enter");
@@ -156,11 +156,20 @@ test("custom sections can be added, used, and removed (items fall back to Pantry
   await addItem(page, "Elk", "Garage Freezer");
 
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" }).getByText("Elk")).toBeVisible();
+  // It is on that shelf AND still says where it is kept (the shelf is its own field).
+  const stock = async () => (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === "Elk");
+  const placed = await stock();
+  expect(["fridge", "freezer", "pantry"]).toContain(placed.location);
+  expect(placed.shelf).toBeTruthy();
+  expect(placed.shelfLifeDays).toBe(placed.locations[placed.location]?.defaultDays ?? null);
 
   await page.getByRole("button", { name: 'Edit the "Garage Freezer" section' }).click();
   await page.getByRole("button", { name: "Delete shelf" }).click();
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toHaveCount(0);
-  await expect(page.locator(".inv-shelf", { hasText: "Pantry" }).getByText("Elk")).toBeVisible();
+  // Deleting the shelf puts it back on the shelf of where it is kept; where it is kept is not lost.
+  const back = await stock();
+  expect(back).toMatchObject({ location: placed.location, shelf: null });
+  await expect(page.locator(`.inv-shelf[data-section-id="${placed.location}"]`).getByText("Elk")).toBeVisible();
 });
 
 test("sections can be renamed, dragged to move and resized, and the layout is saved", async ({ page }) => {
@@ -168,7 +177,7 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   const order = () => page.locator(".inv-shelf").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  await expect.poll(order).toEqual(["Fridge section", "Freezer section", "Pantry section", "Leftovers section"]);
+  await expect.poll(order).toEqual(["Fridge section", "Freezer section", "Pantry section", "Leftovers section", "Prepared meals section"]);
   // No arrow or size buttons any more.
   await expect(page.getByRole("button", { name: /Move section earlier|Width 1\/3/ })).toHaveCount(0);
 
@@ -220,12 +229,12 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.mouse.down();
   await page.mouse.move(fb.x + 20, fb.y + fb.height / 2, { steps: 12 });
   await page.mouse.up();
-  await expect.poll(order).toEqual(["Pantry section", "Kitchen fridge section", "Freezer section", "Leftovers section"]);
+  await expect.poll(order).toEqual(["Pantry section", "Kitchen fridge section", "Freezer section", "Leftovers section", "Prepared meals section"]);
 
   // The grip also moves with the arrow keys.
   await page.getByRole("button", { name: 'Move the "Freezer" section' }).focus();
   await page.keyboard.press("ArrowLeft");
-  await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Leftovers section"]);
+  await expect.poll(order).toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Leftovers section", "Prepared meals section"]);
 
   // A new shelf is added after the others.
   await page.getByRole("button", { name: "+ Add section" }).click();
@@ -239,10 +248,12 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect
     .poll(order)
-    .toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Leftovers section", "Garage freezer section"]);
+    .toEqual(["Pantry section", "Freezer section", "Kitchen fridge section", "Leftovers section", "Prepared meals section", "Garage freezer section"]);
   await expect.poll(async () => Math.round((await fridge.boundingBox()).width)).toBe(Math.round(fridgeWidth));
   await page.getByRole("button", { name: "+ Add item" }).click();
-  await expect(itemForm(page).locator(".riso-itemform-loc-name")).toHaveText(["Pantry", "Freezer", "Kitchen fridge", "Garage freezer"]);
+  // "Stored in" is only where it is kept; every shelf (and the renamed ones) is in the separate Shelf choice.
+  await expect(itemForm(page).locator(".riso-itemform-loc-name")).toHaveText(["Pantry", "Freezer", "Kitchen fridge"]);
+  await expect(itemForm(page).locator(".riso-itemform-shelf-select option")).toHaveText(["Pantry", "Freezer", "Kitchen fridge", "Prepared meals", "Garage freezer"]);
 });
 
 

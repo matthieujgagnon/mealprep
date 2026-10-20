@@ -163,6 +163,7 @@ export const HELP_COPIES = {
   addItemHere: { kind: "icon", cls: "inv-shelf-edit inv-shelf-add", glyph: "+" },
   putBack: { kind: "pill", cls: "riso-removed-putback", label: "inventory.removed.putBack" },
   thaw: { kind: "pill", cls: "inv-card-thaw", label: "inventory.thaw" },
+  reviewStorage: { kind: "pill", cls: "riso-inv-btn", label: "inventory.storageBanner.review" },
   leftoversChip: { kind: "pill", cls: "riso-itemform-chip small on", label: "inventory.form.leftovers" },
   editShelf: { kind: "icon", cls: "inv-shelf-edit", glyph: "✎" },
 

@@ -5,11 +5,13 @@ import { Pill } from "./RisoPills.jsx";
 import { LANGS, setLang, t, useLang } from "../i18n/index.js";
 
 // 48x28 track switch - design_handoff_riso's shared "Switch" component.
-export function Switch({ on, onToggle, label }) {
+// `tone="ink"`: the track is ink when on, not blue (blue means "you have it"); the Prepared meal
+// switch is the one that uses it (design: docs/design/prepared-tag/).
+export function Switch({ on, onToggle, label, tone }) {
   return (
     <button
       type="button"
-      className={`riso-switch${on ? " on" : ""}`}
+      className={`riso-switch${tone ? ` tone-${tone}` : ""}${on ? " on" : ""}`}
       role="switch"
       aria-checked={on}
       aria-label={label}

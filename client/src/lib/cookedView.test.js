@@ -20,6 +20,19 @@ describe("the take-out list", () => {
     ]);
   });
 
+  it("groups an item under the shelf it shows on, not where it is kept", () => {
+    const stored = (id, location, extra) => ({ key: `item:${id}`, kind: "item", item: { ...item(id, location), ...extra }, amount: 1, on: true });
+    const groups = shelfGroups(
+      [stored("peas", "freezer"), stored("pierogi", "freezer", { isPreparedMeal: true }), stored("paprika", "pantry", { shelf: "spices" }), stored("ice", "freezer", { shelf: "spices" })],
+      (id) => id.toUpperCase()
+    );
+    expect(groups.map((g) => [g.label, g.rows.map((r) => r.key)])).toEqual([
+      ["FREEZER", ["item:peas"]],
+      ["PREPARED", ["item:pierogi"]],
+      ["SPICES", ["item:paprika", "item:ice"]],
+    ]);
+  });
+
   it("counts what comes out and sends each switched-on amount", () => {
     expect(takeOutCounts(rows)).toEqual({ on: 2, total: 3, stays: 1, pct: 67 });
     expect(takesFrom(rows)).toEqual([

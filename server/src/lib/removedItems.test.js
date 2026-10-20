@@ -39,6 +39,7 @@ describe("Recently removed", () => {
       quantity: 0.5,
       unit: "l",
       location: "fridge",
+      shelf: null,
       purchasedAt: "2026-10-10T12:00:00.000Z",
       expiresAt: "2026-10-16T00:00:00.000Z",
       imageUrl: null,
@@ -47,6 +48,10 @@ describe("Recently removed", () => {
       recipeId: null,
       createdAt: "2026-10-10T12:00:00.000Z",
     });
+  });
+
+  it("keeps both where it was kept and which shelf it was on, so Put back brings back both", () => {
+    expect(snapshotOf({ id: "i", name: "Lasagna", location: "freezer", shelf: "prepared" })).toMatchObject({ location: "freezer", shelf: "prepared" });
   });
 
   it("keeps the Prepared meal flag, so Put back brings a tagged lasagna back tagged", () => {

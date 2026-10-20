@@ -7,7 +7,8 @@ import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
 import { t } from "../i18n/index.js";
 import { isMealItem, isPreparedMeal } from "../lib/mealItem.js";
-import { PreparedTag } from "./RisoPills.jsx";
+import { PreparedTag, StorageLabel } from "./RisoPills.jsx";
+import { storageLabelOf } from "../lib/shelves.js";
 
 // One Inventory item, in the two views of Matt's design
 // (docs/design/riso-v2-inventory-compact-tiles/README.md):
@@ -191,12 +192,13 @@ export function MealTag({ item }) {
 
 // The item as Compact draws it (a row) or Tiles (a tile). `drag` is the
 // draggable's props, or null for a copy that doesn't drag (the drag preview).
-function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, onUpdate, drag, className, onClick, label }) {
+function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, onUpdate, drag, className, onClick, label, shelfIds }) {
   const [editing, setEditing] = useState(false);
   const leftover = !!item.isLeftover;
   const meal = isMealItem(item);
   const photoItem = photoItemOf(item, recipe);
-  const where = leftover ? t(`locations.${item.location}`) : "";
+  // Where it is KEPT, when the item sits on a shelf that is not the shelf of where it is kept.
+  const kept = storageLabelOf(item, shelfIds);
   const unit = item.unit ? unitLabel(item.unit, item.quantity) : "";
 
   if (view === "tiles") {
@@ -218,8 +220,8 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
           <span className="inv-qty">
             {item.quantity != null && <span className="inv-qty-num">{amountText(item.quantity)}</span>}
             {item.quantity != null && unit && <span className="inv-qty-unit"> {unit}</span>}
-            {where && <span className="inv-qty-unit"> · {where}</span>}
           </span>
+          {kept && <StorageLabel storage={kept} className="inv-tile-kept" />}
         </div>
         <span className="inv-tile-bar" aria-hidden="true">
           {line && <span className={`inv-life ${line.color}`} style={{ width: line.width }} />}
@@ -241,16 +243,12 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
         </span>
         <div className="inv-row-main">
           <span className="inv-row-name">{item.name}</span>
-          {(line?.expired || meal) && (
+          {(line?.expired || meal || kept) && (
             <span className="inv-row-tags">
               {line?.expired && <ExpiredTag />}
               <MealTag item={item} />
-              {leftover && (
-                <span className="inv-row-where">
-                  {where}
-                  {days != null && days >= 0 ? ` · ${daysLabel(days)}` : ""}
-                </span>
-              )}
+              {kept && <StorageLabel storage={kept} />}
+              {leftover && days != null && days >= 0 && <span className="inv-row-where">{daysLabel(days)}</span>}
             </span>
           )}
         </div>
@@ -269,7 +267,7 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
 // the "inv-shelf-<id>" drop targets). The app's one drag setup picks it up after a
 // short hold (200 ms), so on a phone a swipe still scrolls and a press-and-hold
 // carries it. Leftovers stay on their own shelf.
-export function InventoryItem({ item, view, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true, recipe }) {
+export function InventoryItem({ item, view, active, selected, onSelect, onToggleSelect, onUpdate, draggable = true, recipe, shelfIds }) {
   const days = daysLeftOf(item);
   const line = lineForDays(days);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -294,6 +292,7 @@ export function InventoryItem({ item, view, active, selected, onSelect, onToggle
       line={line}
       days={days}
       recipe={recipe}
+      shelfIds={shelfIds}
       selected={selected}
       onToggleSelect={onToggleSelect}
       onUpdate={view === "tiles" ? null : onUpdate}

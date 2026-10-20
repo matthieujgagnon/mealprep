@@ -40,6 +40,8 @@ const MAY_READ_ITEM_FLAGS = {
   "client/src/components/InventoryItems.jsx": "a leftover's dish photo and look, where it is kept",
   "client/src/App.jsx": "leftovers do not move between shelves",
   "client/src/lib/inventoryForm.js": "the saved Prepared meal value the edit patch compares with",
+  "client/src/lib/shelves.js": "the Leftovers shelf: a leftover is always on it, whatever shelf it says",
+  "server/src/lib/shelves.js": "the server's side of the same: a leftover has no shelf of its own",
   "server/src/lib/inventoryTakeOut.js": "a prepared meal counted by weight or volume comes off whole",
   "server/src/routes/pantryInventory.js": "leftover keep times, and writing the item's own flags (create, edit, restore)",
 };

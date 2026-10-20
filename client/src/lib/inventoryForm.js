@@ -107,7 +107,9 @@ export function useByKind({ days, custom, usda }) {
 }
 
 // The new item the Add form saves.
-export function buildAddPayload({ name, qtyText, unit, location, category, expiresAt, photo, isPreparedMeal }) {
+// `location` is where it is KEPT (fridge, freezer, pantry); `shelf` is the shelf the person chose,
+// left out when they did not (null = the default shelf: lib/shelves.js).
+export function buildAddPayload({ name, qtyText, unit, location, shelf, category, expiresAt, photo, isPreparedMeal }) {
   const quantity = parseQuantityInput(qtyText);
   const payload = {
     name: name.trim(),
@@ -117,6 +119,7 @@ export function buildAddPayload({ name, qtyText, unit, location, category, expir
     category: category || "Other",
     expiresAt: expiresAt || null,
   };
+  if (shelf) payload.shelf = shelf;
   if (photo) payload.imageUrl = photo;
   if (isPreparedMeal) payload.isPreparedMeal = true;
   return payload;
@@ -131,6 +134,8 @@ export function buildEditPatch(item, draft) {
   if (quantity != null && Math.round(quantity * 1000) / 1000 !== (item.quantity ?? null)) patch.quantity = Math.round(quantity * 1000) / 1000;
   if ((draft.unit || null) !== (item.unit || null)) patch.unit = draft.unit || null;
   if (draft.location !== item.location) patch.location = draft.location;
+  // The shelf is its own choice (null = back to the default shelf); not given, it is left alone.
+  if (draft.shelf !== undefined && (draft.shelf ?? null) !== (item.shelf ?? null)) patch.shelf = draft.shelf ?? null;
   const saved = expiryDay(item.expiresAt) || "";
   if ((draft.expiresAt || "") !== saved) patch.expiresAt = draft.expiresAt || null;
   if ((draft.photo ?? null) !== (item.imageUrl ?? null)) patch.imageUrl = draft.photo ?? null;

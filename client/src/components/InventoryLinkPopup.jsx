@@ -4,6 +4,7 @@ import { useIsPhone } from "../hooks/useIsPhone.js";
 import { fold } from "../lib/bilingual.js";
 import { isMealItem } from "../lib/mealItem.js";
 import { LOCATIONS } from "../lib/pantryInventory.js";
+import { storageOf } from "../lib/shelves.js";
 import { t } from "../i18n/index.js";
 import { Popup } from "./RisoControls.jsx";
 
@@ -22,7 +23,8 @@ import { Popup } from "./RisoControls.jsx";
 export const InventoryLinksContext = createContext(null);
 export const useInventoryLinks = () => useContext(InventoryLinksContext);
 
-const shelfLabel = (id) => LOCATIONS.find((l) => l.id === id)?.label || id || "";
+// Where the item is kept ("" while that is not known yet).
+const keptLabel = (item) => LOCATIONS.find((l) => l.id === storageOf(item))?.label || "";
 
 // label    the recipe's name for it, as shown ("Rice vinegar")
 // items    your Inventory items (meals are left out here)
@@ -81,7 +83,7 @@ export function InventoryLinkPopup({ label, items, onPick, onClose }) {
                 <li key={item.id}>
                   <button type="button" className="riso-linkpop-item" onClick={() => onPick(item)}>
                     <span className="riso-linkpop-name">{item.name}</span>
-                    <span className="riso-linkpop-shelf">{shelfLabel(item.location)}</span>
+                    <span className="riso-linkpop-shelf">{keptLabel(item)}</span>
                   </button>
                 </li>
               ))}

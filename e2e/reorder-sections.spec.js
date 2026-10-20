@@ -31,7 +31,8 @@ const near = (a, b, px = 2) => Math.abs(a - b) <= px;
 
 // The shelves' sizes, in columns of the 12-column grid (what "Third" and "Half" save).
 async function setSizes(page, sizes) {
-  const sections = ["fridge", "freezer", "pantry", "leftovers"].map((sectionId) => ({ sectionId, size: `c12:${sizes[sectionId]}`, height: null }));
+  // Prepared meals (the fifth built-in shelf) stays a full row at the bottom, out of the way.
+  const sections = ["fridge", "freezer", "pantry", "leftovers", "prepared"].map((sectionId) => ({ sectionId, size: `c12:${sizes[sectionId] ?? 12}`, height: null }));
   const res = await page.request.put("/api/inventory-layout", { data: { sections } });
   expect(res.ok()).toBe(true);
 }
@@ -60,7 +61,7 @@ test.describe("on a computer", () => {
   test("a shelf lifts, the others make room where they will really be, and it lands and is saved", async ({ page }) => {
     await signUp(page);
     await openInventory(page);
-    await expect.poll(() => order(page)).toEqual(["fridge", "freezer", "pantry", "leftovers"]);
+    await expect.poll(() => order(page)).toEqual(["fridge", "freezer", "pantry", "leftovers", "prepared"]);
 
     // Pantry (a full row) is carried up onto the Fridge (a half).
     const fridge = await shelf(page, "fridge").boundingBox();
@@ -77,7 +78,7 @@ test.describe("on a computer", () => {
     expect(during.fridge.x).toBeLessThan(during.freezer.x);
 
     await page.mouse.up();
-    await expect.poll(() => order(page)).toEqual(["pantry", "fridge", "freezer", "leftovers"]);
+    await expect.poll(() => order(page)).toEqual(["pantry", "fridge", "freezer", "leftovers", "prepared"]);
     // What they showed while Pantry was carried is where they are now.
     const after = await boxes(page);
     for (const id of ["fridge", "freezer"]) {
@@ -89,7 +90,7 @@ test.describe("on a computer", () => {
 
     // Saved: still so after a reload.
     await openInventory(page);
-    await expect.poll(() => order(page)).toEqual(["pantry", "fridge", "freezer", "leftovers"]);
+    await expect.poll(() => order(page)).toEqual(["pantry", "fridge", "freezer", "leftovers", "prepared"]);
   });
 
   test("shelves of different widths slide to where the grid puts them, none stretched", async ({ page }) => {
@@ -110,7 +111,7 @@ test.describe("on a computer", () => {
     expect(during.freezer.y).toBeGreaterThan(before.fridge.y + 100); // wrapped to the next row
 
     await page.mouse.up();
-    await expect.poll(() => order(page)).toEqual(["leftovers", "fridge", "freezer", "pantry"]);
+    await expect.poll(() => order(page)).toEqual(["leftovers", "fridge", "freezer", "pantry", "prepared"]);
     const after = await boxes(page);
     for (const id of ["fridge", "freezer", "pantry"]) {
       expect(near(after[id].x, during[id].x)).toBe(true);
@@ -159,7 +160,7 @@ test.describe("on a phone", () => {
     await signUp(page);
     await openInventory(page);
     const client = await context.newCDPSession(page);
-    await expect.poll(() => order(page)).toEqual(["fridge", "freezer", "pantry", "leftovers"]);
+    await expect.poll(() => order(page)).toEqual(["fridge", "freezer", "pantry", "leftovers", "prepared"]);
 
     // Freezer's grip, then straight up onto the Fridge (a finger that does not hold still first).
     const grip = middle(await gripOf(page, "Freezer").boundingBox());
@@ -183,10 +184,10 @@ test.describe("on a phone", () => {
     await page.screenshot({ path: test.info().outputPath("shelf-carried-on-phone.png") });
 
     await touch(client, "touchEnd", []);
-    await expect.poll(() => order(page)).toEqual(["freezer", "fridge", "pantry", "leftovers"]);
+    await expect.poll(() => order(page)).toEqual(["freezer", "fridge", "pantry", "leftovers", "prepared"]);
     await page.screenshot({ path: test.info().outputPath("shelf-dropped-on-phone.png") });
     await openInventory(page);
-    await expect.poll(() => order(page)).toEqual(["freezer", "fridge", "pantry", "leftovers"]);
+    await expect.poll(() => order(page)).toEqual(["freezer", "fridge", "pantry", "leftovers", "prepared"]);
   });
 });
 
