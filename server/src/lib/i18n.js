@@ -44,6 +44,7 @@ const MESSAGES = {
     required: "Missing: {fields}.",
     mustBeArray: "{field} must be a list.",
     mustBeOneOf: "{field} must be one of: {options}.",
+    mealTypeRequired: "A recipe needs at least one meal type.",
     notFound: {
       recipe: "Recipe not found.",
       deal: "Deal not found.",
@@ -162,6 +163,7 @@ const MESSAGES = {
     required: "Champs manquants : {fields}.",
     mustBeArray: "{field} doit être une liste.",
     mustBeOneOf: "{field} doit être l'un de : {options}.",
+    mealTypeRequired: "Une recette doit avoir au moins un type de repas.",
     notFound: {
       recipe: "Recette introuvable.",
       deal: "Aubaine introuvable.",
