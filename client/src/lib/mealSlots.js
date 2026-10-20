@@ -111,6 +111,14 @@ export function makeableRuleOn(includeSides, narrowedTo = null) {
   return !includeSides && !NON_MEAL_SLOTS.includes(narrowedTo) && narrowedTo !== "prepared";
 }
 
+// The line under the editor's meal type chips, for however many are on.
+export function slotsHint(slots) {
+  const list = slots || [];
+  if (list.length === 0) return slotHint(null);
+  if (list.length === 1) return slotHint(list[0]);
+  return t("recipeSlots.hintMany", { list: list.map((id) => RECIPE_SLOT_LABEL[id].toLowerCase()).join(", ") });
+}
+
 export function slotHint(slotId) {
   if (slotId === "prep") return t("recipeSlots.hintPrep");
   if (slotId === "snack") return t("recipeSlots.hintSnack");

@@ -16,7 +16,7 @@ import { useStepTimers } from "../hooks/useStepTimers.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { CookMode } from "./CookMode.jsx";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
-import { PlannedPill } from "./RisoPills.jsx";
+import { PlannedPill, PreparedTag } from "./RisoPills.jsx";
 import { BuySticker, OptionsMenu, PhotoLightbox, PricesSwitch, Receipt, SimilarStrip, SimilarView, StepList } from "./RecipeCardParts.jsx";
 import { t } from "../i18n/index.js";
 
@@ -300,6 +300,8 @@ export function RecipeDetailModal({
 
   const factLine = (
     <div className="riso-rc-facts">
+      {/* « Plat préparé » comes first in the row under the title: the same tag, size L, upright. */}
+      {isPreparedRecipe(recipe) && <PreparedTag size="l" className="riso-rc-prepared" />}
       {[
         totalTime > 0 && <b key="time">{formatRecipeTime(totalTime)}</b>,
         <span key="serves">

@@ -99,6 +99,11 @@ export const api = {
   getRecipe: (id) => request(`/recipes/${id}`),
   importRecipe: (url) =>
     request("/recipes/import", { method: "POST", body: JSON.stringify({ url }) }),
+  // What a title and ingredients suggest (rules only, nothing is saved): [{ slots, prepared }], one for
+  // each recipe given. The editor and the sort screen show it; nothing is typed or tagged until the
+  // person says so.
+  suggestRecipeTypes: (recipes) =>
+    request("/recipes/suggest-types", { method: "POST", body: JSON.stringify({ recipes }) }).then((res) => res.suggestions),
   createRecipe: (payload) =>
     request("/recipes", { method: "POST", body: JSON.stringify(payload) }),
   updateRecipe: (id, payload) =>

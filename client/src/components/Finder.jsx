@@ -9,7 +9,7 @@ import { SectionHeader } from "./FinderTiles.jsx";
 import { MakeableCard } from "./MakeableCard.jsx";
 import { RecipePhotoCard } from "./RecipePhotoCard.jsx";
 import { PROTEINS } from "../lib/proteins.js";
-import { RECIPE_SLOTS, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, isPreparedRecipe, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { cardCaption, haveBar, soonItemFor } from "../lib/photoCard.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
 import {
@@ -76,6 +76,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
       title={recipe.title}
       photoUrl={recipe.photoUrl}
       caption={caption}
+      prepared={isPreparedRecipe(recipe)}
       openLabel={draggable ? t("tray.dragAria", { title: recipe.title }) : t("planner.open", { title: recipe.title })}
       onOpen={(rect) => onOpen(recipe, rect)}
       action={

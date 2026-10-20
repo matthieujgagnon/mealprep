@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
-import { Popup, Switch } from "./RisoControls.jsx";
+import { Popup } from "./RisoControls.jsx";
+import { PreparedMealSwitch } from "./PreparedMealSwitch.jsx";
 import { ReportProblemLink } from "./Feedback.jsx";
 import { ERROR_LABELS } from "../lib/feedback.js";
 import { ItemPhoto, photoFor } from "./ItemPhoto.jsx";
@@ -159,24 +160,6 @@ function PhotoPanel({ item, photo, onChange, optional }) {
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-// "Prepared meal": a ready-made dish (a frozen lasagna, perogies) is a meal, not an
-// ingredient. `suggested` says the switch was started on because the name looks like a
-// ready meal; the person can switch it off.
-function PreparedMealSwitch({ on, onToggle, suggested }) {
-  return (
-    <div className="riso-itemform-prepared">
-      <div className="riso-itemform-prepared-row">
-        <Switch tone="ink" on={on} onToggle={onToggle} label={t("preparedMeal.switch")} />
-        <span className="riso-itemform-prepared-label">
-          <PreparedTag size="l" />
-        </span>
-      </div>
-      {suggested && on && <p className="riso-itemform-prepared-hint">{t("preparedMeal.looksLike")}</p>}
-      <p className="riso-itemform-prepared-help">{t("preparedMeal.switchHelp")}</p>
     </div>
   );
 }
@@ -575,7 +558,7 @@ export function InventoryItemForm({
         <div className="riso-itemform-main">
           {edit && !leftover && (
             <div className="riso-itemform-block">
-              <PreparedMealSwitch on={prepared} onToggle={togglePrepared} suggested={false} />
+              <PreparedMealSwitch on={prepared} onToggle={togglePrepared} />
             </div>
           )}
           {!edit && (
@@ -617,7 +600,7 @@ export function InventoryItemForm({
                   </select>
                 )}
               </div>
-              {!leftover && <PreparedMealSwitch on={prepared} onToggle={togglePrepared} suggested={preparedSuggested} />}
+              {!leftover && <PreparedMealSwitch on={prepared} onToggle={togglePrepared} hint={preparedSuggested && prepared ? t("preparedMeal.looksLike") : null} />}
               {!leftover && !trimmed && recent.length > 0 && (
                 <div className="riso-itemform-recent" role="group" aria-label={t("inventory.form.recentAria")}>
                   <span className="riso-itemform-recent-label">{t("inventory.form.recent")}</span>

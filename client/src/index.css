@@ -13880,6 +13880,32 @@ body.no-select {
   padding: 0 6px 5px 0;
 }
 
+/* « Plat préparé » chips (the sort sheet): ink when on, like the switch (blue means "you have it"). */
+.re-slot.prepared.on {
+  background: var(--riso-ink);
+  border-color: var(--riso-ink);
+  color: var(--riso-knob);
+}
+
+.re-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font: 500 13px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.re-suggest-use {
+  padding: 4px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  cursor: pointer;
+}
+
 .re-slot {
   height: 40px;
   padding: 0 20px;
@@ -18397,6 +18423,20 @@ body.no-select {
   margin: 0;
   color: var(--riso-hot-ink, #a30b5e);
   font: 600 13px var(--riso-font-body);
+}
+
+/* The sort sheet's rows: the chips take the room they need and wrap under the title. */
+.riso-sortsheet-row .riso-storagesheet-pick {
+  flex: 1 1 300px;
+  justify-content: flex-start;
+}
+
+.riso-sortsheet-row .re-slot {
+  min-height: 34px;
+}
+
+.riso-recipes-sortbanner {
+  margin: 0 0 4px;
 }
 
 .riso-storagesheet-actions {
@@ -24568,6 +24608,56 @@ body.no-select {
   left: 12px;
   display: flex;
   pointer-events: none;
+}
+
+/* « Plat préparé » on a recipe's card (docs/design/prepared-tag/): the same tag, size M, as a
+   sticker. The Recipes card and the Makeable card carry it top left, 8px in (6px on a phone),
+   where the meal caption starts, so the caption's left half gives way (the time stays); the
+   finder's card has it in its own corner (above) in place of the meal and time caps; the
+   Cookbook's tile holds it in its bottom band, centred above the title. */
+.rpc-grid .rpc-tag,
+.rpc-panel .rpc-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  display: flex;
+  pointer-events: none;
+}
+
+.rpc-grid.has-tag .rpc-cap-left,
+.rpc-panel.has-tag .rpc-cap-left {
+  visibility: hidden;
+}
+
+.rpc-finder.has-tag .rpc-caption {
+  display: none;
+}
+
+.rpc-bento .rpc-scrim-bottom {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.rpc-bento .rpc-scrim-bottom .rpc-tag {
+  display: flex;
+  flex: none;
+}
+
+@media (max-width: 767px) {
+  .rpc-grid .rpc-tag,
+  .rpc-panel .rpc-tag {
+    top: 6px;
+    left: 6px;
+  }
+}
+
+/* In the recipe pop-out the tag leads the row of facts under the title: size L, upright. */
+.riso-rc-facts .riso-rc-prepared {
+  flex: none;
+  margin-right: 10px;
 }
 
 .fnd-card.prepared .rpc-photo {

@@ -1,4 +1,5 @@
 import { RecipePhoto } from "./RecipePhoto.jsx";
+import { PreparedTag } from "./RisoPills.jsx";
 
 // The one photo card behind the recipe cards (design: docs/design/
 // riso-v2-recipe-cards/ and docs/design/riso-v2-planner-search-cards/): a
@@ -30,27 +31,34 @@ import { RecipePhoto } from "./RecipePhoto.jsx";
 // `ready` turns the outline blue (--riso-accent: "you already have everything").
 // `caption` is the text over the top of the photo; each variant lays it out. `tag` is a
 // sticker on the photo (the shared <PreparedTag>): each variant puts it where the design
-// says (the finder's card: top left, 12px in, 10px on a phone).
+// says (the finder's card: top left, 12px in, 10px on a phone). `prepared` is a recipe that is
+// « Plat préparé »: it wears that same tag (size M), the grid card's top left corner, the bento
+// tile's bottom band above the title and the finder card's corner, where it replaces the meal and
+// time caps (docs/design/prepared-tag/).
 // `cardRef` and any other props (drag listeners, for instance) go on the card
 // itself. A new recipe card is this with another caption and children, not a new
 // card.
-export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, tag, lineColor, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
+export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, tag, prepared, lineColor, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
   // The finder and strip cards hold their photo in a box of fixed height, with the
   // text under it inside the button.
   const finder = variant === "finder" || variant === "strip";
+  const sticker = tag || (prepared && variant !== "strip" ? <PreparedTag size="m" sticker /> : null);
+  // The bento tile holds it in the band with the title; every other card on the photo itself.
+  const inBand = variant === "bento";
   const photo = (
     <>
       {photoUrl ? <RecipePhoto className="rpc-img" src={photoUrl} alt="" draggable="false" /> : null}
       <span className="rpc-scrim-top" aria-hidden="true" />
       <span className="rpc-caption">{caption}</span>
-      {tag ? <span className="rpc-tag">{tag}</span> : null}
+      {sticker && !inBand ? <span className="rpc-tag">{sticker}</span> : null}
       <span className="rpc-scrim-bottom">
+        {sticker && inBand ? <span className="rpc-tag">{sticker}</span> : null}
         <span className="rpc-title">{title}</span>
       </span>
     </>
   );
   return (
-    <article ref={cardRef} className={`rpc rpc-${variant}${ready ? " is-ready" : ""}${className ? ` ${className}` : ""}`} {...rest}>
+    <article ref={cardRef} className={`rpc rpc-${variant}${ready ? " is-ready" : ""}${sticker ? " has-tag" : ""}${className ? ` ${className}` : ""}`} {...rest}>
       {/* The photo, the caption and the title are one button (spans only, so it stays valid inside a button). */}
       <button type="button" className="rpc-open" aria-label={openLabel} onClick={(e) => onOpen?.(e.currentTarget.closest(".rpc").getBoundingClientRect())}>
         {finder ? <span className="rpc-photo">{photo}</span> : photo}

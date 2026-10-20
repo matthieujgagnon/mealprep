@@ -1605,6 +1605,7 @@ export default function App({ user, onLogout }) {
             onProteinChange={setRecipeProtein}
             onSelectRecipe={openRecipeCard}
             onImported={handleImported}
+            onRecipeUpdated={handleRecipeUpdated}
             onNewRecipe={() => openRecipeEditor(null)}
             onToast={showToast}
           />

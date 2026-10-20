@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { expiringItemsIn, recipeHave } from "../lib/inventoryMatch.js";
 import { HintStrip, IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
+import { RecipeSortSheet } from "./RecipeSortSheet.jsx";
 import { RecipePhotoCard } from "./RecipePhotoCard.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
@@ -10,7 +11,7 @@ import { QUICK_MINUTES } from "../lib/finder.js";
 import { bentoLayout } from "../lib/bento.js";
 import { captionTime, mealLineColor } from "../lib/photoCard.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
-import { RECIPE_SLOTS, hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, recipeSlot, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, recipeSlot, recipeSlotCaption, recipeSlots, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { TIME_FILTERS, isUrlLike, matchesTime, proteinOfRecipe, sortRecipes } from "../lib/recipesView.js";
 import { t } from "../i18n/index.js";
 
@@ -56,6 +57,7 @@ function RecipeCard({ recipe, onOpen, tile }) {
       title={recipe.title}
       photoUrl={recipe.photoUrl}
       lineColor={mealLineColor(slot)}
+      prepared={isPreparedRecipe(recipe)}
       openLabel={t("planner.open", { title: recipe.title })}
       onOpen={(rect) => onOpen(recipe, rect)}
       caption={
@@ -84,6 +86,7 @@ export function Recipes({
   onProteinChange,
   onSelectRecipe,
   onImported,
+  onRecipeUpdated,
   onNewRecipe,
   onToast,
 }) {
@@ -102,8 +105,26 @@ export function Recipes({
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
   const [includeSides, setIncludeSides] = useIncludeSides();
+  const [sortOpen, setSortOpen] = useState(false); // the "sort your recipes" sheet
 
   const allRecipes = useMemo(() => recipes.filter((r) => !r.isPlaceholder), [recipes]);
+  // Recipes with no meal type yet (just imported, or saved before types): the sheet sorts them.
+  const unsorted = useMemo(() => allRecipes.filter((r) => recipeSlots(r).length === 0), [allRecipes]);
+  const unsortedFirst = useMemo(() => [...unsorted].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))), [unsorted]);
+
+  async function applySort(changes) {
+    const failed = [];
+    for (const { id, mealSlots, isPrepared } of changes) {
+      try {
+        onRecipeUpdated?.(await api.updateRecipe(id, { mealSlots, isPrepared }));
+      } catch {
+        failed.push(id);
+      }
+    }
+    if (failed.length > 0) throw new Error(t("recipes.sorting.failed"));
+    setSortOpen(false);
+    onToast(t("recipes.sorting.done", { count: changes.length }));
+  }
   const query = search.trim();
   const isUrl = isUrlLike(query);
 
@@ -240,6 +261,8 @@ export function Recipes({
       setSortIndex(0);
       setJump({ id: "imported" });
       onToast(t("recipes.d.importedToast"));
+      // An import has no meal type yet: it lands in the sort sheet, with a guess to confirm.
+      setSortOpen(true);
     } catch (err) {
       setImportError(err);
     } finally {
@@ -318,6 +341,16 @@ export function Recipes({
           {t("recipes.titleStart")} <span className="accent">{t("recipes.titleAccent")}</span>
         </h1>
       </div>
+
+      {unsorted.length > 0 && (
+        <div className="riso-inv-storagebanner riso-recipes-sortbanner" role="status">
+          <span className="riso-inv-storagebanner-text">{t("recipes.sorting.banner", { count: unsorted.length })}</span>
+          <button type="button" className="riso-inv-btn" onClick={() => setSortOpen(true)}>
+            {t("recipes.sorting.open")}
+          </button>
+        </div>
+      )}
+      {sortOpen && unsortedFirst.length > 0 && <RecipeSortSheet recipes={unsortedFirst} isPhone={phone} onApply={applySort} onClose={() => setSortOpen(false)} />}
 
       {/* The search pill and "+ New recipe" in one bar; on a phone the button sits under the pill. */}
       <form className="riso-recipes-searchbar rv2-searchbar" onSubmit={handleImportSubmit}>

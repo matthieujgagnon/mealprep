@@ -18,7 +18,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { HELD_DRAG, useDragTouchGuard } from "../hooks/useHeldDrag.js";
 import { UnitSelect } from "./UnitSelect.jsx";
-import { RECIPE_SLOTS, formatRecipeTime, slotHint } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, formatRecipeTime, recipeSlots, slotsHint } from "../lib/mealSlots.js";
+import { PreparedMealSwitch } from "./PreparedMealSwitch.jsx";
 import { stepHeadingText, stepIsHeading, stepTimer } from "../lib/steps.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 import { recipeHave } from "../lib/inventoryMatch.js";
@@ -168,7 +169,10 @@ function initialState(recipe) {
   return {
     title: recipe?.title || "",
     sourceUrl: recipe?.sourceUrl || "",
-    mealSlot: recipe?.mealSlot || null,
+    // Any number of meal types (a recipe is a supper and a lunch); none yet for an old recipe that was never sorted.
+    mealSlots: recipeSlots(recipe),
+    // « Plat préparé »: nothing to cook.
+    isPrepared: recipe?.isPrepared === true,
     inCookbook: recipe ? !!recipe.inCookbook : true,
     photos,
     coverId: photos[Math.max(0, coverIdx)]?.id || null,
@@ -195,7 +199,8 @@ function toPayload(s) {
   return {
     title: s.title.trim(),
     sourceUrl: s.sourceUrl.trim() || null,
-    mealSlot: s.mealSlot,
+    mealSlots: s.mealSlots,
+    isPrepared: s.isPrepared,
     inCookbook: s.inCookbook,
     photoUrl: cover,
     photos,
@@ -508,9 +513,38 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
     }
   }
 
+  // What the title and ingredients suggest (rules on the server, nothing saved): offered, never applied.
+  const [suggestion, setSuggestion] = useState(null);
+  const suggestKey = `${payload.title}|${payload.ingredients.map((i) => i.name).join(",")}`;
+  useEffect(() => {
+    if (!payload.title) {
+      setSuggestion(null);
+      return undefined;
+    }
+    let stale = false;
+    const timer = setTimeout(() => {
+      api
+        .suggestRecipeTypes([{ title: payload.title, ingredients: payload.ingredients.map((i) => ({ name: i.name })) }])
+        .then(([found]) => !stale && setSuggestion(found || null))
+        .catch(() => !stale && setSuggestion(null));
+    }, 500);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestKey]);
+  const toggleSlot = (id) => set((s) => ({ mealSlots: s.mealSlots.includes(id) ? s.mealSlots.filter((x) => x !== id) : RECIPE_SLOTS.map((slot) => slot.id).filter((x) => x === id || s.mealSlots.includes(x)) }));
+
   async function handleSave() {
     if (!payload.title) {
       setError(t("editor.titleFirst"));
+      return;
+    }
+    // A recipe is never saved without at least one meal type.
+    if (payload.mealSlots.length === 0) {
+      setError(t("editor.slotRequired"));
+      document.getElementById("re-slots")?.scrollIntoView?.({ block: "center" });
       return;
     }
     setSaving(true);
@@ -561,7 +595,7 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
   const checks = [
     { id: "title", ok: !!payload.title, label: t("editor.checks.title") },
     { id: "time", ok: total > 0, label: t("editor.checks.time"), hint: t("editor.checks.timeHint") },
-    { id: "slot", ok: !!state.mealSlot, label: t("editor.checks.slot"), hint: t("editor.checks.slotHint") },
+    { id: "slot", ok: state.mealSlots.length > 0, label: t("editor.checks.slot"), hint: t("editor.checks.slotHint") },
     { id: "photo", ok: state.photos.length > 0, label: t("editor.checks.photo") },
     { id: "body", ok: payload.ingredients.length > 0 && stepCount > 0, label: t("editor.checks.body") },
   ];
@@ -619,17 +653,17 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
             </div>
             <div className="re-field">
               <span className="re-label">{t("editor.slotLabel")}</span>
-              <div className="re-slots" role="radiogroup" aria-label={t("editor.slotAria")}>
+              <div id="re-slots" className="re-slots" role="group" aria-label={t("editor.slotAria")}>
                 {RECIPE_SLOTS.map((slot) => {
-                  const on = state.mealSlot === slot.id;
+                  const on = state.mealSlots.includes(slot.id);
                   return (
                     <button
                       key={slot.id}
                       type="button"
-                      role="radio"
+                      role="checkbox"
                       aria-checked={on}
                       className={`re-slot${on ? " on" : ""}`}
-                      onClick={() => set({ mealSlot: on ? null : slot.id })}
+                      onClick={() => toggleSlot(slot.id)}
                     >
                       {on ? "✓ " : ""}
                       {slot.label}
@@ -637,7 +671,24 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
                   );
                 })}
               </div>
-              <span className="re-help">{slotHint(state.mealSlot)}</span>
+              <span className="re-help">{slotsHint(state.mealSlots)}</span>
+              {state.mealSlots.length === 0 && suggestion?.slots?.length > 0 && (
+                <span className="re-suggest">
+                  {t("editor.suggestLooksLike", { types: suggestion.slots.map((id) => RECIPE_SLOTS.find((slot) => slot.id === id).label).join(" + ") })}
+                  <button type="button" className="re-suggest-use" onClick={() => set({ mealSlots: suggestion.slots })}>
+                    {t("editor.suggestUse")}
+                  </button>
+                </span>
+              )}
+            </div>
+            <div className="re-field">
+              <span className="re-label">{t("editor.preparedLabel")}</span>
+              <PreparedMealSwitch
+                on={state.isPrepared}
+                onToggle={() => set((s) => ({ isPrepared: !s.isPrepared }))}
+                hint={!state.isPrepared && suggestion?.prepared ? t("editor.preparedLooksLike") : null}
+                help={t("editor.preparedHelp")}
+              />
             </div>
             {!isNew && (
               <div className="re-field">
