@@ -1,4 +1,5 @@
 import { itemCovers, haveItemFor, lineNeed, recipeLines, shortBy } from "./inventoryMatch.js";
+import { isPreparedRecipe } from "./mealSlots.js";
 import { formatQuantity, unitLabel } from "./units.js";
 import { stepIsHeading, stepTimer } from "./steps.js";
 
@@ -63,6 +64,7 @@ export function recipeReceipt(recipe, kitchen, servings, { soonItems = [] } = {}
   const scale = (servings || recipe?.baseServings || 1) / (recipe?.baseServings || 1);
   const inventory = kitchen?.inventory || [];
   const lines = recipeLines(recipe, kitchen);
+  const matching = { prepared: isPreparedRecipe(recipe) }; // a prepared recipe is had by a prepared meal of that name
   const buy = [];
   const short = [];
   const have = [];
@@ -85,10 +87,10 @@ export function recipeReceipt(recipe, kitchen, servings, { soonItems = [] } = {}
     }
     have.push({
       ...row,
-      item: haveItemFor(line.name, inventory),
+      item: haveItemFor(line.name, inventory, matching),
       soon: line.ingredients.some((ing) => soonItems.some((item) => itemCovers(item.name, ing.name))),
     });
-    const missing = shortBy(need, line.name, inventory);
+    const missing = shortBy(need, line.name, inventory, matching);
     if (missing > 0) {
       const more = { quantity: missing, unit: need.unit, parts: [] };
       short.push({ ...row, key: `${line.key}|more`, short: true, need: more, amount: amountText(more) });

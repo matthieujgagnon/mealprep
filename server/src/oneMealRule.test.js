@@ -102,8 +102,19 @@ describe("Inventory items are matched to ingredients only through the one matche
 
   it("the matcher skips meals through the one rule", () => {
     const matcher = readFileSync(join(root, "client/src/lib/inventoryMatch.js"), "utf8");
-    expect(matcher).toMatch(/import \{ isMealItem \} from "\.\/mealItem\.js";/);
+    expect(matcher).toMatch(/import \{ isMealItem(?:, isPreparedMeal)? \} from "\.\/mealItem\.js";/);
     expect(matcher).toMatch(/const isUsable = \(item\) => !isMealItem\(item\);/);
+  });
+
+  it("a prepared recipe is had by a prepared meal only through the matcher, and nothing else is matched to it", () => {
+    const matcher = readFileSync(join(root, "client/src/lib/inventoryMatch.js"), "utf8");
+    // The one pool a recipe is matched against: ingredients, or prepared meals for a prepared recipe.
+    expect(matcher).toMatch(/const poolOf = \(prepared\) => \(prepared \? isPreparedMeal : isUsable\);/);
+    expect(matcher).toMatch(/const prepared = isPreparedRecipe\(recipe\);\n\s+for \(const ing of recipe\?\.ingredients/);
+    // The grocery list, the recipe card and the take-out go through it too.
+    for (const file of ["client/src/lib/groceryAtHome.js", "client/src/lib/recipeCard.js"]) {
+      expect(readFileSync(join(root, file), "utf8")).toMatch(/prepared/);
+    }
   });
 
   it("the server only eats from a meal item", () => {

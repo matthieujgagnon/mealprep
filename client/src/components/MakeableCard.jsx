@@ -4,7 +4,7 @@ import { DealDetailHost } from "./SaleTag.jsx";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { saleFor } from "../lib/finder.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
-import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { cardButtons, cardCaption, cardState, haveBar, namesToAdd, pickPills, pillFontSize, saleCount } from "../lib/photoCard.js";
 import { t } from "../i18n/index.js";
 
@@ -74,8 +74,7 @@ export function MakeableCard({ tile, soon, reason, grocery, deals, showSales, on
   const twoColumns = right.length > 0; // a recipe with no protein (or only proteins) is one column: its pills get the whole width
   const saleOf = (name) => saleFor(name, deals);
   const onSale = saleCount(names, saleOf);
-  const slot = recipeSlot(recipe);
-  const meal = slot ? t(`recipes.mealTypes.${slot}`) : "";
+  const meal = recipeSlotCaption(recipe);
   const open = (rect) => onOpen(recipe, rect);
 
   const pill = (item) => (

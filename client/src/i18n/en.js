@@ -380,7 +380,7 @@ export const en = {
     },
   },
   recipes: {
-    filters: { all: "All", meals: "Meals" },
+    filters: { all: "All", meals: "Meals", prepared: "Prepared" },
     sources: { cookbook: "Cookbook", imported: "Imported" },
     mealTypes: { breakfast: "Breakfast", lunch: "Lunch", dinner: "Supper", side: "Sides", snack: "Snacks", dessert: "Desserts", prep: "Pantry / Prep", none: "No meal type" },
     sorts: { recent: "Recently added", fewest: "Fewest missing", quickest: "Quickest" },
@@ -990,7 +990,7 @@ export const en = {
     replaces: "Replaces {title}",
   },
   makeable: {
-    includeSides: "Include pantry and sides",
+    includeSides: "Include sides, desserts and prepared",
     addToList: "Add {name} to grocery list",
     addToListTitle: "Not on your grocery list. Tap to add it.",
     showSales: "Show sales",

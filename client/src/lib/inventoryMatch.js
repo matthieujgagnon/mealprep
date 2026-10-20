@@ -3,7 +3,8 @@ import { PHRASES, fold } from "./bilingual.js";
 import { familyKey } from "./ingredientFamilies.js";
 import { convertToUnit } from "./units.js";
 import { daysUntil } from "./pantryInventory.js";
-import { isMealItem } from "./mealItem.js";
+import { isMealItem, isPreparedMeal } from "./mealItem.js";
+import { isPreparedRecipe } from "./mealSlots.js";
 import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLinks.js";
 
 // Which Inventory item a recipe ingredient is, and how much of it a cooked
@@ -54,6 +55,11 @@ import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLin
 // A meal is not an ingredient and never matches (`isMealItem`, lib/mealItem.js): a
 // leftover, or a prepared meal the person tagged (a frozen "Chicken, Broccoli and
 // Cheddar Puff Pastry" is never chicken, broccoli or cheddar).
+// The one exception is the other way round: a recipe that is « Plat préparé » (croissants, a
+// frozen lasagna: nothing to cook) is had by a prepared meal in Inventory with the same
+// name, by these same rules, and by nothing else (not an ingredient, not a leftover); and
+// its ingredients are not looked for among the ingredients. `{ prepared: true }` on the
+// functions below is that; the ones that take a recipe read the recipe's own flag.
 
 // Kitchen words in French that the flyers' list doesn't have, singular and
 // plural, longest first where it matters.
@@ -322,13 +328,16 @@ export function itemCovers(haveName, ingredientName) {
 
 const isUsable = (item) => !isMealItem(item);
 const notExpired = (item) => !item.expiresAt || daysUntil(item.expiresAt) >= 0;
+// What can be had: the ingredients (not meals), or, for a prepared recipe, the prepared meals.
+const poolOf = (prepared) => (prepared ? isPreparedMeal : isUsable);
 
 // The Inventory items that are this ingredient, the one to use first first:
 // still good before past its date, then the soonest use-by date, then the oldest.
-export function matchingItems(ingredientName, inventory = []) {
+export function matchingItems(ingredientName, inventory = [], { prepared = false } = {}) {
   const time = (d) => (d ? new Date(d).getTime() : Infinity);
+  const inPool = poolOf(prepared);
   return inventory
-    .filter((item) => isUsable(item) && itemCovers(item.name, ingredientName))
+    .filter((item) => inPool(item) && itemCovers(item.name, ingredientName))
     .sort(
       (a, b) =>
         Number(notExpired(b)) - Number(notExpired(a)) ||
@@ -338,8 +347,8 @@ export function matchingItems(ingredientName, inventory = []) {
 }
 
 // The first item still good that is this ingredient: what the blue ✓ shows.
-export function haveItemFor(ingredientName, inventory = []) {
-  return matchingItems(ingredientName, inventory).find(notExpired) || null;
+export function haveItemFor(ingredientName, inventory = [], options) {
+  return matchingItems(ingredientName, inventory, options).find(notExpired) || null;
 }
 
 // ---- What Matt taught (« Je l'ai comme… ») ----------------------------------------
@@ -403,16 +412,18 @@ function answersFor(kitchen) {
 
 // Whether you have an ingredient: every food on its line is water from the tap or
 // an Inventory item still good.
-function lineHave(name, inventory) {
-  return foodsOnLine(name).every((food) => isTapWater(food) || haveItemFor(food, inventory));
+function lineHave(name, inventory, options) {
+  return foodsOnLine(name).every((food) => isTapWater(food) || haveItemFor(food, inventory, options));
 }
 
 // Where one ingredient stands: "have" (Inventory holds it, still good) or "need".
-// What the recipe card's ✓ beside each ingredient shows.
-export function ingredientHave(name, kitchen) {
+// What the recipe card's ✓ beside each ingredient shows. `prepared`: the ingredient is a
+// prepared recipe's, had by a prepared meal of that name.
+export function ingredientHave(name, kitchen, { prepared = false } = {}) {
   const table = answersFor(kitchen);
-  if (!table.byName.has(name)) table.byName.set(name, lineHave(name, kitchen?.inventory || NO_ITEMS) ? "have" : "need");
-  return table.byName.get(name);
+  const key = prepared ? `prepared:${name}` : name;
+  if (!table.byName.has(key)) table.byName.set(key, lineHave(name, kitchen?.inventory || NO_ITEMS, { prepared }) ? "have" : "need");
+  return table.byName.get(key);
 }
 
 // Two ingredients of one recipe are the same food when each covers the other:
@@ -428,10 +439,11 @@ function sameFood(a, b) {
 //   [{ key, name, had, ingredients }]
 export function recipeLines(recipe, kitchen) {
   const lines = [];
+  const prepared = isPreparedRecipe(recipe);
   for (const ing of recipe?.ingredients || []) {
     const name = String(ing?.name || "").trim();
     if (!name || isTapWater(name)) continue;
-    const status = ingredientHave(name, kitchen);
+    const status = ingredientHave(name, kitchen, { prepared });
     const line = lines.find((l) => sameFood(l.written, name));
     if (!line) lines.push({ written: name, had: status === "have", missingName: status === "have" ? null : name, ingredients: [ing] });
     else {
@@ -464,9 +476,16 @@ export function recipeHave(recipe, kitchen) {
   };
 }
 
-// Whether a recipe uses an Inventory item (Cook with, "uses expiring").
+// Whether a recipe uses an Inventory item (Cook with, "uses expiring"). A prepared recipe is
+// not made of ingredients, so it uses none (it is had by a prepared meal: `usesPreparedItem`).
 export function recipeUsesItem(recipe, itemName) {
+  if (isPreparedRecipe(recipe)) return false;
   return (recipe?.ingredients || []).some((ing) => ing?.name && itemCovers(itemName, ing.name));
+}
+
+// Whether a prepared recipe is this prepared meal in Inventory: the same name, by the matcher.
+export function usesPreparedItem(recipe, item) {
+  return isPreparedRecipe(recipe) && isPreparedMeal(item) && (recipe?.ingredients || []).some((ing) => ing?.name && itemCovers(item.name, ing.name));
 }
 
 // The recipes that use an Inventory item (the item pop-up's "N of your recipes use X"):
@@ -487,9 +506,10 @@ export function foodKey(name) {
 
 // Inventory items still good that go off within `withinDays` days, soonest first.
 // Meals (leftovers, prepared meals) are not ingredients and are left out.
-export function expiringSoon(inventory = [], withinDays) {
+export function expiringSoon(inventory = [], withinDays, { prepared = false } = {}) {
+  const inPool = poolOf(prepared);
   return inventory
-    .filter((item) => isUsable(item) && item.expiresAt && daysUntil(item.expiresAt) >= 0 && daysUntil(item.expiresAt) <= withinDays)
+    .filter((item) => inPool(item) && item.expiresAt && daysUntil(item.expiresAt) >= 0 && daysUntil(item.expiresAt) <= withinDays)
     .sort((a, b) => daysUntil(a.expiresAt) - daysUntil(b.expiresAt));
 }
 
@@ -498,7 +518,9 @@ export function expiringSoon(inventory = [], withinDays) {
 // days that this recipe uses and no other planned meal uses already, soonest
 // first.
 export function expiringItemsIn(recipe, inventory, plannerEntries = [], allRecipes = [], withinDays = 3) {
-  const soon = expiringSoon(inventory, withinDays).filter((item) => recipeUsesItem(recipe, item.name));
+  // A prepared recipe is about the prepared meals that go off soon, a recipe about its ingredients.
+  const prepared = isPreparedRecipe(recipe);
+  const soon = expiringSoon(inventory, withinDays, { prepared }).filter((item) => (prepared ? usesPreparedItem(recipe, item) : recipeUsesItem(recipe, item.name)));
   if (soon.length === 0) return soon;
   const byId = new Map(allRecipes.map((r) => [r.id, r]));
   const others = [];
@@ -507,7 +529,7 @@ export function expiringItemsIn(recipe, inventory, plannerEntries = [], allRecip
     const other = byId.get(entry.recipeId) || entry.recipe;
     if (other && other.id !== recipe.id && !other.isPlaceholder) others.push(other);
   }
-  return soon.filter((item) => !others.some((other) => recipeUsesItem(other, item.name)));
+  return soon.filter((item) => !others.some((other) => (prepared ? usesPreparedItem(other, item) : recipeUsesItem(other, item.name))));
 }
 
 // A count is a count: "", "unit", "piece" and "each" are the same unit.
@@ -551,9 +573,9 @@ export function lineNeed(ingredients = [], scale = 1) {
 // minus what your Inventory items that are this food, still good, hold, in the
 // need's unit. 0 when they hold enough; null when it can't be told (no amount,
 // an item with no amount, units that don't convert, nothing in Inventory).
-export function shortBy(need, name, inventory = []) {
+export function shortBy(need, name, inventory = [], options) {
   if (need?.quantity == null) return null;
-  const items = matchingItems(name, inventory).filter(notExpired);
+  const items = matchingItems(name, inventory, options).filter(notExpired);
   if (items.length === 0) return null;
   let held = 0;
   for (const item of items) {
@@ -601,7 +623,7 @@ export function buildTakeOut({ recipe, servings, inventory = [] }) {
 
   for (const ing of ingredients) {
     if (isTapWater(ing.name)) continue;
-    const items = matchingItems(ing.name, inventory);
+    const items = matchingItems(ing.name, inventory, { prepared: isPreparedRecipe(recipe) });
     const qty = ing.quantity != null ? ing.quantity * scale : null;
 
     if (items.length === 0) {

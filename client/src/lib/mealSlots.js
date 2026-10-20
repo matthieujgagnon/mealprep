@@ -1,7 +1,8 @@
-// Where a recipe sits on the Planner (Recipe.mealSlot on the server). One
-// per recipe. "Side" (garlic asparagus, rice), "Snack" and "Dessert" fit any
-// meal; "Pantry / Prep" (pickles, roasted veg, sauces) never takes a meal
-// on the calendar.
+// What a recipe is: any number of meal types at once (Recipe.mealSlots on the server: Chow
+// Mein is a supper and a lunch), and « Plat préparé » or not (Recipe.isPrepared: croissants
+// are a breakfast AND nothing to cook). "Side" (garlic asparagus, rice), "Snack" and "Dessert"
+// fit any meal; "Pantry / Prep" (pickles, roasted veg, sauces) never takes a meal on the
+// calendar. server/src/lib/mealTypes.js has the same ids.
 import { t } from "../i18n/index.js";
 
 const SLOT_IDS = ["breakfast", "lunch", "dinner", "side", "snack", "dessert", "prep"];
@@ -33,17 +34,51 @@ const TAG_SLOTS = [
   ["side dish", "side"],
 ];
 
-export function recipeSlot(recipe) {
-  if (recipe?.mealSlot) return recipe.mealSlot;
-  const tags = (recipe?.tags || []).map((t) => t.toLowerCase());
-  return TAG_SLOTS.find(([tag]) => tags.includes(tag))?.[1] || null;
+// The ONE place that says what meal types a recipe has, in the usual order. The list first
+// (`mealSlots`); a recipe read from before the list existed has the one old `mealSlot`; and a
+// recipe that only carries the meal as an old tag is read that way. [] = not sorted yet.
+export function recipeSlots(recipe) {
+  const listed = Array.isArray(recipe?.mealSlots) ? recipe.mealSlots.filter((id) => SLOT_IDS.includes(id)) : [];
+  if (listed.length > 0) return SLOT_IDS.filter((id) => listed.includes(id));
+  if (recipe?.mealSlot && SLOT_IDS.includes(recipe.mealSlot)) return [recipe.mealSlot];
+  const tags = (recipe?.tags || []).map((tag) => tag.toLowerCase());
+  const fromTag = TAG_SLOTS.find(([tag]) => tags.includes(tag))?.[1];
+  return fromTag ? [fromTag] : [];
 }
 
-// The groups the Recipes "Meals" chip and Makeable's meal-type chips filter
-// by: Meals is lunch and dinner, so it leaves out breakfast, sides, snacks,
-// desserts and pantry prep. A recipe with no slot yet is in none of them.
+// The first meal type: where a card needs just one (its line colour, the caption's lead).
+export function recipeSlot(recipe) {
+  return recipeSlots(recipe)[0] || null;
+}
+
+export const hasSlot = (recipe, slotId) => recipeSlots(recipe).includes(slotId);
+
+// « Plat préparé »: nothing to cook.
+export const isPreparedRecipe = (recipe) => recipe?.isPrepared === true;
+
+// A card has room for one meal type: the first, then "+1" for each other ("Lunch +1").
+// "" when the recipe has none yet.
+export function recipeSlotCaption(recipe) {
+  const slots = recipeSlots(recipe);
+  if (slots.length === 0) return "";
+  const first = t(`recipes.mealTypes.${slots[0]}`);
+  return slots.length > 1 ? `${first} +${slots.length - 1}` : first;
+}
+
+// What "Meals" means everywhere (Recipes' Meals chip, Makeable's "Meals only", Home, the
+// Planner's Makeable now): a recipe with breakfast, lunch or supper among its types that is
+// not « plat préparé ». A side that is also a supper is a meal; a recipe that is a dessert, a
+// side, a snack or a pantry prep and nothing else is not.
+export const MEAL_SLOT_IDS = ["breakfast", "lunch", "dinner"];
+
+export function isMealRecipe(recipe) {
+  return !isPreparedRecipe(recipe) && recipeSlots(recipe).some((id) => MEAL_SLOT_IDS.includes(id));
+}
+
+// The groups the Recipes "Meals" chip and Makeable's meal-type chips filter by. A recipe with
+// no type yet is in none of them.
 export const MEAL_GROUPS = {
-  meals: ["lunch", "dinner"],
+  meals: MEAL_SLOT_IDS,
   breakfast: ["breakfast"],
   desserts: ["dessert"],
   snacks: ["snack"],
@@ -51,24 +86,29 @@ export const MEAL_GROUPS = {
 };
 
 export function inMealGroup(recipe, groupId) {
-  return MEAL_GROUPS[groupId]?.includes(recipeSlot(recipe)) ?? false;
+  if (groupId === "meals") return isMealRecipe(recipe);
+  return recipeSlots(recipe).some((id) => MEAL_GROUPS[groupId]?.includes(id));
 }
 
-// "Makeable now" counts meals only. A recipe typed as a side, snack, dessert
-// or pantry / prep (sauces live there) is left out, unless "Include pantry and
-// sides" is on. A recipe with no type yet counts like a meal. This is the one
-// rule every count and filter uses (Recipes, Home, Makeable, the finder).
+// "Makeable now" counts meals only (isMealRecipe). A recipe that is only a side, snack, dessert or
+// pantry / prep (sauces live there), or « plat préparé » (nothing to cook), is left out, unless
+// "Include sides, desserts and prepared" is on. A recipe with no type yet counts like a meal, so
+// nothing disappears before it is sorted. This is the one rule every count and filter uses
+// (Recipes, Home, Makeable, the finder).
 export const NON_MEAL_SLOTS = ["side", "snack", "dessert", "prep"];
 
 export function isMakeableMeal(recipe, includeSides = false) {
-  return includeSides || !NON_MEAL_SLOTS.includes(recipeSlot(recipe));
+  if (includeSides) return true;
+  if (isPreparedRecipe(recipe)) return false;
+  const slots = recipeSlots(recipe);
+  return slots.length === 0 || slots.some((id) => MEAL_SLOT_IDS.includes(id));
 }
 
-// Whether the rule applies at all: not when "Include pantry and sides" is on,
-// and not when the person has narrowed to one of the left-out types themselves
-// (the Sides chip, the Meal menu on Dessert): that choice is explicit.
-export function makeableRuleOn(includeSides, narrowedToSlot = null) {
-  return !includeSides && !NON_MEAL_SLOTS.includes(narrowedToSlot);
+// Whether the rule applies at all: not when "Include sides, desserts and prepared" is on, and
+// not when the person has narrowed to one of the left-out kinds themselves (the Sides chip, the
+// Meal menu on Dessert or Prepared): that choice is explicit.
+export function makeableRuleOn(includeSides, narrowedTo = null) {
+  return !includeSides && !NON_MEAL_SLOTS.includes(narrowedTo) && narrowedTo !== "prepared";
 }
 
 export function slotHint(slotId) {

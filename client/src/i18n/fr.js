@@ -380,7 +380,7 @@ export const fr = {
     },
   },
   recipes: {
-    filters: { all: "Toutes", meals: "Repas" },
+    filters: { all: "Toutes", meals: "Repas", prepared: "Plats préparés" },
     sources: { cookbook: "Livre de recettes", imported: "Importées" },
     mealTypes: { breakfast: "Déjeuner", lunch: "Dîner", dinner: "Souper", side: "Accompagnements", snack: "Collations", dessert: "Desserts", prep: "Garde-manger / Prépa", none: "Sans type de repas" },
     sorts: { recent: "Ajout récent", fewest: "Le moins à acheter", quickest: "Les plus rapides" },
@@ -990,7 +990,7 @@ export const fr = {
     replaces: "Remplace {title}",
   },
   makeable: {
-    includeSides: "Inclure garde-manger et accompagnements",
+    includeSides: "Inclure accompagnements, desserts et plats préparés",
     addToList: "Ajouter {name} à la liste d'épicerie",
     addToListTitle: "Pas sur votre liste d'épicerie. Touchez pour l'ajouter.",
     showSales: "Montrer les rabais",

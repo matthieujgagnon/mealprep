@@ -6,7 +6,7 @@ import { formatClock, stepBody, stepImage, stepIngredients, stepTitle, scaleStep
 import { amountText, nextCurrent, stepState, timerPill, stepSeconds } from "../lib/recipeCard.js";
 import { lineNeed } from "../lib/inventoryMatch.js";
 import { captionTime, cardCaption } from "../lib/photoCard.js";
-import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { storageOf } from "../lib/shelves.js";
 import { formatMoney } from "../i18n/format.js";
@@ -637,8 +637,7 @@ export function SimilarView({ recipe, chips, leftOut, onToggleChip, tiles, onOpe
       <span className="riso-rc-caps">{t("recipeCard.shareCount", { count: tiles.length })}</span>
       <div className="riso-rc-sim-grid">
         {tiles.map((x) => {
-          const slot = recipeSlot(x.recipe);
-          const caption = cardCaption(slot ? t(`recipes.mealTypes.${slot}`) : "", recipeTotalMinutes(x.recipe));
+          const caption = cardCaption(recipeSlotCaption(x.recipe), recipeTotalMinutes(x.recipe));
           return (
             <RecipePhotoCard
               key={x.recipe.id}
