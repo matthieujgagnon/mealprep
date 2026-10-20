@@ -59,7 +59,7 @@ test.describe("on a computer, in English", () => {
     // Inventory: the pop-up of an ordinary item says how many recipes use it.
     await tab(page, "Inventory").click();
     const tile = page.locator(".inv-tile", { hasText: PASTRY });
-    await expect(tile.locator(".inv-card-leftover-tag")).toHaveCount(0);
+    await expect(tile.locator(".prepared-tag")).toHaveCount(0);
     await tile.click();
     await expect(itemForm(page)).toBeVisible();
     await expect(itemForm(page).locator(".riso-itemform-recipes")).toContainText(`recipes use ${PASTRY}`);
@@ -72,16 +72,18 @@ test.describe("on a computer, in English", () => {
     await expect(itemForm(page)).toHaveCount(0);
     expect((await inventory(page)).find((i) => i.name === PASTRY)).toMatchObject({ isPreparedMeal: true, isLeftover: false });
 
-    // A small plain-ink tag on the tile and on the compact row: no yellow, blue or green.
-    await expect(tile.locator(".inv-card-leftover-tag.prepared")).toHaveText("PREPARED MEAL");
-    const tagColours = await tile.locator(".inv-card-leftover-tag.prepared").evaluate((e) => {
+    // The shared tag, in plain ink (no yellow, blue or green), as a sticker on the tile's photo and
+    // upright on the compact row.
+    await expect(tile.locator(".prepared-tag.sticker")).toHaveText("prepared meal");
+    const tagColours = await tile.locator(".prepared-tag").evaluate((e) => {
       const css = getComputedStyle(e);
-      const ink = getComputedStyle(document.documentElement).getPropertyValue("--riso-ink").trim();
-      return { bg: css.backgroundColor, fg: css.color, ink };
+      return { bg: css.backgroundColor, fg: css.color };
     });
-    expect(tagColours.bg).not.toBe(tagColours.fg);
+    expect(tagColours).toEqual({ bg: "rgb(22, 24, 31)", fg: "rgb(255, 253, 248)" });
     await pickCompact(page);
-    await expect(page.locator(".inv-row", { hasText: PASTRY }).locator(".inv-card-leftover-tag.prepared")).toHaveText("PREPARED MEAL");
+    const rowTag = page.locator(".inv-row", { hasText: PASTRY }).locator(".prepared-tag");
+    await expect(rowTag).toHaveText("prepared meal");
+    await expect(rowTag).not.toHaveClass(/sticker/);
 
     // The pop-up now offers Plan it instead of a recipe count.
     await page.locator(".inv-row", { hasText: PASTRY }).click();
@@ -117,8 +119,9 @@ test.describe("on a computer, in English", () => {
     await form.getByLabel("Item name").fill("Frozen lasagna");
     await expect(prepared(page)).toHaveAttribute("aria-checked", "true");
     await expect(form.locator(".riso-itemform-prepared-hint")).toHaveText("Looks like a ready meal");
-    // The preview card wears the tag.
-    await expect(form.locator(".inv-card-leftover-tag.prepared")).toHaveText("PREPARED MEAL");
+    // The switch's label is the tag itself, and the preview's photo wears it as a sticker.
+    await expect(form.locator(".riso-itemform-prepared-label .prepared-tag")).toHaveText("prepared meal");
+    await expect(form.locator(".riso-itemform-card .prepared-tag.sticker")).toHaveText("prepared meal");
 
     // Switched off by hand: the name stays as a plain food, and typing more does not turn it back on.
     await prepared(page).click();
@@ -183,35 +186,33 @@ test.describe("on a computer, in English", () => {
     await page.getByRole("button", { name: "Browse" }).click();
     await expect(page.locator(".fnd-card.leftover")).toHaveCount(2);
     const search = page.locator(".fnd-card.leftover", { hasText: "Prepared meal · Lasagna · 2 boxes" });
-    await expect(search.locator(".rpc-caption, .rpc-top").first()).toContainText("PREPARED MEAL");
+    await expect(search.locator(".rpc-tag .prepared-tag.sticker")).toHaveText("prepared meal");
     await expect(search).toContainText("Nothing to buy");
     await search.locator(".rpc-add").click();
     await page.locator(".riso-picker").getByRole("button", { name: /^Add to / }).click();
     await expect(page.locator(".riso-toast")).toContainText("Prepared meal Lasagna added to");
 
-    // On the board it has no recipe, so it is held as a note, like leftovers typed in by hand:
-    // the yellow "nothing to buy" border, and a plain-ink « prepared meal » label.
+    // On the board it has no recipe, so it is held as a note, like leftovers typed in by hand, but it is
+    // drawn as a photo card: the 3px ink border and the shared « prepared meal » tag.
     const today = quebecDay(Date.now());
     const upcoming = async () => (await (await page.request.get(`/api/planner/upcoming?from=${today}`)).json()).find((e) => e.isLeftover);
     expect(await upcoming()).toMatchObject({ leftoverItemId: lasagna.id });
     expect((await upcoming()).recipe.title).toBe("Prepared meal · Lasagna");
-    const note = page.locator(".riso-planner-note.prepared");
-    await expect(note.locator(".riso-planner-note-label.prepared")).toHaveText("prepared meal");
-    await expect(note.locator(".riso-planner-note-text")).toHaveText("Lasagna");
-    // The border is the leftover meal's yellow (the legend's leftover swatch), the label plain ink.
-    const yellow = await page.locator(".plg-swatch.leftover:not(.prepared)").evaluate((e) => getComputedStyle(e).backgroundColor);
-    expect(await note.evaluate((e) => getComputedStyle(e).borderTopColor)).toBe(yellow);
-    expect(await note.locator(".riso-planner-note-label.prepared").evaluate((e) => getComputedStyle(e).backgroundColor)).not.toBe(yellow);
-    // The legend names it.
-    await expect(page.locator(".plg .plg-swatch.prepared")).toHaveText("prepared meal");
+    const note = page.locator(".riso-planner-card.linked.prepared");
+    await expect(note.locator(".prepared-tag.sticker")).toHaveText("prepared meal");
+    await expect(note.locator(".riso-planner-card-name")).toHaveText("Lasagna");
+    // The border is 3px of ink (a leftover's is yellow), and the tag is the same ink.
+    expect(await note.evaluate((e) => [getComputedStyle(e).borderTopWidth, getComputedStyle(e).borderTopColor])).toEqual(["3px", "rgb(22, 24, 31)"]);
+    // The legend names it with the same tag.
+    await expect(page.locator(".plg .prepared-tag")).toHaveText("prepared meal");
     expect(chili.id).toBeTruthy();
 
     // Removing the note and pressing Undo brings it back still eating from the lasagna.
     await note.click();
     await page.getByRole("button", { name: "Remove note" }).click();
-    await expect(page.locator(".riso-planner-note.prepared")).toHaveCount(0);
+    await expect(page.locator(".riso-planner-card.linked.prepared")).toHaveCount(0);
     await page.locator(".riso-toast").getByRole("button", { name: "Undo" }).click();
-    await expect(page.locator(".riso-planner-note.prepared")).toHaveCount(1);
+    await expect(page.locator(".riso-planner-card.linked.prepared")).toHaveCount(1);
     await expect.poll(async () => (await upcoming())?.leftoverItemId).toBe(lasagna.id);
 
     // A day goes by (the browser's clock is two days on): one box comes off, once.
@@ -305,12 +306,12 @@ test.describe("on a phone, in French", () => {
 
     // Inventory: the tag on the tile and on the compact row.
     await tab(page, "Inventaire").click();
-    await expect(page.locator(".inv-tile", { hasText: "Lasagne" }).locator(".inv-card-leftover-tag.prepared")).toHaveText("PLAT PRÉPARÉ");
-    expect(await cramped(".inv-tile .inv-card-leftover-tag")).toEqual([]);
+    await expect(page.locator(".inv-tile", { hasText: "Lasagne" }).locator(".prepared-tag")).toHaveText("plat préparé");
+    expect(await cramped(".inv-tile .prepared-tag")).toEqual([]);
     await noSideways();
     await pickCompact(page);
-    await expect(page.locator(".inv-row", { hasText: "Lasagne" }).locator(".inv-card-leftover-tag.prepared")).toHaveText("PLAT PRÉPARÉ");
-    expect(await cramped(".inv-row .inv-card-leftover-tag")).toEqual([]);
+    await expect(page.locator(".inv-row", { hasText: "Lasagne" }).locator(".prepared-tag")).toHaveText("plat préparé");
+    expect(await cramped(".inv-row .prepared-tag")).toEqual([]);
     await noSideways();
 
     // The pop-up of the prepared meal: the line and Planifier fit.
@@ -334,12 +335,12 @@ test.describe("on a phone, in French", () => {
     await page.screenshot({ path: test.info().outputPath("prepared-add-phone-fr.png"), fullPage: true });
     await itemForm(page).getByRole("button", { name: "Annuler" }).click();
 
-    // The phone board: the planned meal wears « plat préparé ».
+    // The phone board: the planned meal is a photo card and wears « plat préparé », whole, inside the 104px card.
     await tab(page, "Planificateur").click();
-    const label = page.locator(".pmb-cell .riso-planner-note.prepared .riso-planner-note-label.prepared");
-    await expect(label).toHaveText("plat préparé");
-    await expect(page.locator(".pmb-cell .riso-planner-note.prepared .riso-planner-note-text")).toHaveText("Lasagne à la viande surgelée");
-    expect(await cramped(".pmb-cell .riso-planner-note.prepared, .pmb-cell .riso-planner-note.prepared *")).toEqual([]);
+    const card = page.locator(".pmb-cell .riso-planner-card.linked.prepared");
+    await expect(card.locator(".prepared-tag")).toHaveText("plat préparé");
+    await expect(card.locator(".riso-planner-card-name")).toHaveText("Lasagne à la viande surgelée");
+    expect(await cramped(".pmb-cell .riso-planner-card.linked.prepared, .pmb-cell .riso-planner-card.linked.prepared *")).toEqual([]);
     await noSideways();
     await page.screenshot({ path: test.info().outputPath("prepared-planner-phone-fr.png"), fullPage: true });
   });

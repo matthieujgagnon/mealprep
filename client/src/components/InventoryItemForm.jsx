@@ -29,6 +29,7 @@ import { linksFromItem, recipesUsingItem } from "../lib/inventoryMatch.js";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { isMealItem } from "../lib/mealItem.js";
 import { MealTag } from "./InventoryItems.jsx";
+import { PreparedTag } from "./RisoPills.jsx";
 import { expiryDay } from "../lib/quebecDay.js";
 import { t } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
@@ -169,7 +170,9 @@ function PreparedMealSwitch({ on, onToggle, suggested }) {
     <div className="riso-itemform-prepared">
       <div className="riso-itemform-prepared-row">
         <Switch on={on} onToggle={onToggle} label={t("preparedMeal.switch")} />
-        <span className="riso-itemform-prepared-label">{t("preparedMeal.switch")}</span>
+        <span className="riso-itemform-prepared-label">
+          <PreparedTag size="l" />
+        </span>
       </div>
       {suggested && on && <p className="riso-itemform-prepared-hint">{t("preparedMeal.looksLike")}</p>}
       <p className="riso-itemform-prepared-help">{t("preparedMeal.switchHelp")}</p>
@@ -769,10 +772,13 @@ export function InventoryItemForm({
                 </span>
               )}
               <div className="inv-card-body">
-                {trimmed || photo ? <ItemPhoto item={previewItem} /> : <span className="inv-card-photo placeholder stripes">{t("inventory.form.photo")}</span>}
+                <span className="riso-itemform-card-photo">
+                  {trimmed || photo ? <ItemPhoto item={previewItem} /> : <span className="inv-card-photo placeholder stripes">{t("inventory.form.photo")}</span>}
+                  {prepared && !leftover && <PreparedTag size="s" sticker className="riso-itemform-card-prepared" />}
+                </span>
                 <div className="inv-card-main">
                   <span className={`inv-card-name${trimmed ? "" : " empty"}`}>{trimmed || t("inventory.form.itemNamePlaceholder")}</span>
-                  <MealTag item={{ isLeftover: leftover, isPreparedMeal: prepared }} />
+                  {leftover && <MealTag item={{ isLeftover: true }} />}
                 </div>
                 <span className="inv-card-qty">
                   <span className="inv-card-qty-num">{qtyText}</span>

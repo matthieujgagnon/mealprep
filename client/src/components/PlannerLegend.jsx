@@ -1,9 +1,10 @@
 import { t } from "../i18n/index.js";
+import { PreparedTag } from "./RisoPills.jsx";
 
 // The legend under the Planner board, on every size (design:
 // docs/design/riso-v2-planner-header). What the board's cards and cells look
 // like, in this order: planned meal, ingredients on hand (blue outline),
-// leftovers (yellow tag), prepared meals (ink tag), cooked (the ✓ tag "I cooked this" puts on a meal), note,
+// leftovers (yellow tag), prepared meals (the shared ink tag), cooked (the ✓ tag "I cooked this" puts on a meal), note,
 // empty slot, today, and the weekend (only when the board shows one).
 export function PlannerLegend({ weekendOn }) {
   return (
@@ -23,9 +24,7 @@ export function PlannerLegend({ weekendOn }) {
         {t("planner.legendLeftover")}
       </span>
       <span className="plg-item">
-        <i className="plg-swatch leftover prepared" aria-hidden="true">
-          {t("planner.prepared")}
-        </i>
+        <PreparedTag size="s" sticker aria-hidden="true" />
         {t("planner.legendPrepared")}
       </span>
       <span className="plg-item">

@@ -3,10 +3,11 @@ import { api } from "../api.js";
 import { formatLongWeekdayMonthDay, formatShortWeekdayMonthDay, formatWeekLabel, parseDateKey, toDateKey } from "../lib/dates.js";
 import { gridRange, inWeek, monthOf, monthWeeks, shiftMonth } from "../lib/plannerCalendar.js";
 import { MEAL_TYPES } from "../lib/plannerSlots.js";
+import { preparedNoteName } from "../lib/mealItem.js";
 import { centerOn, placeBeside, viewSize } from "../lib/placeInWindow.js";
 import { dict, t } from "../i18n/index.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
-import { Pill } from "./RisoPills.jsx";
+import { Pill, PreparedTag } from "./RisoPills.jsx";
 import { WeekendSettings } from "./PlannerExtras.jsx";
 
 // The week calendar: what the Planner's date pill opens, on a computer and on a
@@ -36,12 +37,13 @@ import { WeekendSettings } from "./PlannerExtras.jsx";
 //   onClose           Escape or a click outside
 //
 // A day's meals as { breakfast: { title, photoUrl, isLeftover, prepared }, ... }: a note
-// shows its text, a "no meal planned" card says so.
+// shows its text, a "no meal planned" card says so, and a planned prepared meal's note says
+// its name without the « Plat préparé · » lead (the tag next to it says what it is).
 function mealsByType(meals) {
   return Object.fromEntries(
     meals.map((m) => [
       m.mealType,
-      { title: m.placeholder && m.title === "No meal planned" ? t("planner.blankName") : m.title, photoUrl: m.photoUrl, isLeftover: m.isLeftover, prepared: m.prepared },
+      { title: m.placeholder && m.title === "No meal planned" ? t("planner.blankName") : m.prepared && m.placeholder ? preparedNoteName(m.title) : m.title, photoUrl: m.photoUrl, isLeftover: m.isLeftover, prepared: m.prepared },
     ])
   );
 }
@@ -95,18 +97,21 @@ function DayPreview({ date, meals, inline, onShowWeek, anchorRef }) {
         const meal = meals?.[m.id];
         return (
           <div key={m.id} className="wcal-meal">
-            <span className={`wcal-photo${meal ? "" : " empty"}`}>
+            <span className={`wcal-photo${meal ? "" : " empty"}${meal?.prepared ? " prepared" : ""}`}>
               {meal?.photoUrl && <img src={meal.photoUrl} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
             </span>
             <span className="wcal-meal-text">
               <span className="wcal-meal-slot">{m.label}</span>
               <span className={`wcal-meal-name${meal ? "" : " none"}`}>{meal ? meal.title : "—"}</span>
             </span>
-            {meal?.isLeftover && (
-              <Pill size="tag" tone={meal.prepared ? "ink" : "yellow"} sticker>
-                {t(meal.prepared ? "planner.prepared" : "planner.leftover")}
-              </Pill>
-            )}
+            {meal?.isLeftover &&
+              (meal.prepared ? (
+                <PreparedTag size="s" sticker />
+              ) : (
+                <Pill size="tag" tone="yellow" sticker>
+                  {t("planner.leftover")}
+                </Pill>
+              ))}
           </div>
         );
       })}

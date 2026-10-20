@@ -5,6 +5,7 @@ import { upcomingWhere } from "../lib/upcomingMeals.js";
 import { mondayKey, plannedDays, validKey } from "../lib/plannedDates.js";
 import { entriesToCopy } from "../lib/copyWeek.js";
 import { isMealItem } from "../lib/mealItem.js";
+import { photoUrl, realPhoto } from "../lib/itemPhoto.js";
 
 export const plannerRouter = Router();
 
@@ -28,6 +29,15 @@ async function linksToNonMeal(userId, leftoverItemId) {
   if (typeof leftoverItemId !== "string") return false;
   const item = await prisma.pantryInventoryItem.findFirst({ where: { id: leftoverItemId, userId } });
   return !!item && !isMealItem(item);
+}
+
+// The photo a planned meal keeps a copy of when it is linked to an Inventory item: the
+// item's own photo (null if it has none), or undefined when the item is not in
+// Inventory (then whatever copy the entry has stays).
+async function photoCopyFor(userId, leftoverItemId) {
+  if (typeof leftoverItemId !== "string") return undefined;
+  const item = await prisma.pantryInventoryItem.findFirst({ where: { id: leftoverItemId, userId }, select: { imageUrl: true } });
+  return item ? realPhoto(item.imageUrl) : undefined;
 }
 
 // GET /api/planner?week=YYYY-MM-DD - one week's placements (Monday of that
@@ -80,23 +90,28 @@ plannerRouter.get("/dates", async (req, res) => {
       mealType: true,
       isLeftover: true,
       leftoverItemId: true,
+      photoUrl: true,
       recipe: { select: { title: true, isPlaceholder: true, photoUrl: true } },
     },
   });
-  // Which planned meals eat a prepared meal (they say so, not "leftovers").
+  // The Inventory meals the planned ones eat: they say "prepared meal", not "leftovers",
+  // and give their photo live (the entry's own copy is only for when the item is gone).
   const linkedIds = [...new Set(entries.map((e) => e.leftoverItemId).filter(Boolean))];
-  const prepared = linkedIds.length
-    ? await prisma.pantryInventoryItem.findMany({ where: { id: { in: linkedIds }, userId: req.userId, isPreparedMeal: true }, select: { id: true } })
+  const linked = linkedIds.length
+    ? await prisma.pantryInventoryItem.findMany({ where: { id: { in: linkedIds }, userId: req.userId }, select: { id: true, isPreparedMeal: true, imageUrl: true } })
     : [];
-  res.json(plannedDays(entries, from, to, new Set(prepared.map((i) => i.id))));
+  res.json(plannedDays(entries, from, to, new Map(linked.map((i) => [i.id, i]))));
 });
 
 // POST /api/planner - place a recipe card onto a day + meal slot
 // body: { recipeId, weekStart, dayOfWeek (0-6), mealType ("breakfast"|"lunch"|"dinner"), servings?, isLeftover?, alreadyHave?, position?,
-//   cookedAt?, leftoverItemId? } - the last two put a cooked meal or a planned leftover back as it was (Undo), or
-//   place Inventory leftovers (the planned meal eats one of their portions)
+//   cookedAt?, leftoverItemId?, photoUrl? } - the last three put a cooked meal or a planned leftover back as it was
+//   (Undo), or place Inventory leftovers (the planned meal eats one of their portions); `photoUrl` is the copy of the
+//   linked item's photo a planned meal keeps for when the item has left Inventory
 plannerRouter.post("/", async (req, res) => {
   const { recipeId, weekStart, dayOfWeek, mealType, servings, isLeftover, alreadyHave, position, cookedAt, leftoverItemId } = req.body;
+  let photo = photoUrl(req.body.photoUrl);
+  if (photo === false) return res.status(400).json(fail(req, "imageUrlInvalid"));
   if (!recipeId || !weekStart || dayOfWeek === undefined || !mealType) {
     return res
       .status(400)
@@ -108,6 +123,8 @@ plannerRouter.post("/", async (req, res) => {
   const recipe = await prisma.recipe.findFirst({ where: { id: recipeId, userId: req.userId } });
   if (!recipe) return res.status(404).json(fail(req, "notFound.recipe"));
   if (await linksToNonMeal(req.userId, leftoverItemId)) return res.status(400).json(fail(req, "notAMeal"));
+  // Linked to an Inventory meal: keep a copy of its photo (an Undo that sends the copy it had keeps that one).
+  if (photo === undefined || photo === null) photo = (await photoCopyFor(req.userId, leftoverItemId)) ?? photo;
 
   const entry = await prisma.plannerEntry.create({
     data: {
@@ -122,6 +139,7 @@ plannerRouter.post("/", async (req, res) => {
       position: position ?? 0,
       cookedAt: cookedAt ? new Date(cookedAt) : null,
       leftoverItemId: typeof leftoverItemId === "string" ? leftoverItemId : null,
+      photoUrl: photo && photo !== "none" ? photo : null,
     },
     include: { recipe: { include: { ingredients: true } } },
   });
@@ -252,10 +270,15 @@ plannerRouter.put("/:id/note", async (req, res) => {
 
 // PUT /api/planner/:id - move a card (within or across weeks), change
 // planned servings, toggle leftovers/already-have, mark it cooked (`cookedAt`,
-// a date or null) or link it to Inventory leftovers (`leftoverItemId` or null)
+// a date or null) or link it to Inventory leftovers (`leftoverItemId` or null);
+// `photoUrl` keeps the copy of the linked item's photo (or null)
 plannerRouter.put("/:id", async (req, res) => {
   const { weekStart, dayOfWeek, mealType, position, servings, isLeftover, alreadyHave, cookedAt, leftoverItemId } = req.body;
+  let photo = photoUrl(req.body.photoUrl);
+  if (photo === false) return res.status(400).json(fail(req, "imageUrlInvalid"));
   if (await linksToNonMeal(req.userId, leftoverItemId)) return res.status(400).json(fail(req, "notAMeal"));
+  // Linking to an Inventory meal copies its photo (when the item is gone, the copy sent, if any, stays).
+  if (photo === undefined) photo = await photoCopyFor(req.userId, leftoverItemId);
   const { count } = await prisma.plannerEntry.updateMany({
     where: { id: req.params.id, userId: req.userId },
     data: {
@@ -268,6 +291,7 @@ plannerRouter.put("/:id", async (req, res) => {
       ...(alreadyHave !== undefined && { alreadyHave }),
       ...(cookedAt !== undefined && { cookedAt: cookedAt ? new Date(cookedAt) : null }),
       ...(leftoverItemId !== undefined && { leftoverItemId: typeof leftoverItemId === "string" ? leftoverItemId : null }),
+      ...(photo !== undefined && { photoUrl: photo === "none" ? null : photo }),
     },
   });
   if (count === 0) return res.status(404).json(fail(req, "notFound.plannerEntry"));

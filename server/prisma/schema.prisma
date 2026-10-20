@@ -391,6 +391,7 @@ model PlannerEntry {
   position       Int       @default(0) // order within the day+mealType slot
   cookedAt       DateTime? // when "I cooked this" was confirmed for this meal, or, for a planned leftover, when its portion came off the Inventory leftovers; a cooked meal adds nothing to the grocery list
   leftoverItemId String? // the Inventory leftovers (PantryInventoryItem with isLeftover) this planned leftover eats from. A plain id, not a relation: the item leaves Inventory at zero portions and Undo puts it back with the same id, so the link must survive
+  photoUrl       String? // a copy of the linked Inventory meal's photo (a planned prepared meal or hand-typed leftover has no recipe photo). Only the fallback: the Planner reads the photo live through leftoverItemId and uses this once the item has left Inventory
   createdAt      DateTime  @default(now())
 
   @@index([userId, weekStart])

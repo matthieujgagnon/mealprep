@@ -8,6 +8,7 @@ import { upcomingWhere } from "../lib/upcomingMeals.js";
 import { keptDays } from "../lib/quebecDay.js";
 import { listRemoved, recordRemoved } from "../lib/removedItems.js";
 import { looksLikeReadyMeal } from "../lib/dealAisle.js";
+import { photoUrl, realPhoto } from "../lib/itemPhoto.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -95,18 +96,6 @@ pantryInventoryRouter.get("/recent", async (req, res) => {
   ]);
   res.json(mergeRecent(items, logs));
 });
-
-// An item's photo: one uploaded through /api/recipe-images, a web link, or
-// "none" (no picture, not even the generic one the client would pick).
-// undefined = not given; null = no photo of its own; false = not a photo.
-function photoUrl(value) {
-  if (value === undefined) return undefined;
-  if (value === null || value === "") return null;
-  const url = String(value).trim();
-  if (url === "none") return url;
-  if (url.length > 2000) return false;
-  return /^\/api\/recipe-images\/[\w-]+$/.test(url) || /^https?:\/\/\S+$/i.test(url) ? url : false;
-}
 
 // POST /api/pantry-inventory { name, quantity?, unit?, location?, category?, purchasedAt?, expiresAt?, imageUrl? }
 // If expiresAt/category aren't given, they're suggested from the bundled
@@ -202,6 +191,12 @@ pantryInventoryRouter.put("/:id", async (req, res) => {
     data,
   });
   if (result.count === 0) return res.status(404).json(fail(req, "notFound.item"));
+  // A planned meal that eats this item keeps a copy of its photo for when the item is gone
+  // (PlannerEntry.photoUrl): a changed photo is copied to them here, so the fallback is
+  // never older than the picture last seen.
+  if (data.imageUrl !== undefined) {
+    await prisma.plannerEntry.updateMany({ where: { userId: req.userId, leftoverItemId: req.params.id }, data: { photoUrl: realPhoto(data.imageUrl) } });
+  }
   const item = await prisma.pantryInventoryItem.findFirst({ where: { id: req.params.id, userId: req.userId } });
   res.json(enrichItem(item));
 });
