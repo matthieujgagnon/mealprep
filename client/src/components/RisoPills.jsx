@@ -1,12 +1,13 @@
 import { dict, t } from "../i18n/index.js";
 import { formatRecipeTime } from "../lib/mealSlots.js";
 import { pillClass, salePillText } from "../lib/pills.js";
+import { isStorage } from "../lib/shelves.js";
 
 // Riso v2 shared pills and chips (design: docs/design/riso-v2, "Pill Study").
 // Use these instead of writing a new pill class on a screen. The look lives
 // in index.css under "Riso v2 pills"; the strings are in `pills.*` (en.js, fr.js).
 //
-//   <Pill>            the base. Props: size ("tag" 22px, "fact" 26px, "chip" 32px,
+//   <Pill>            the base. Props: size ("mini" 15px, "tag" 22px, "fact" 26px, "chip" 32px,
 //                     "badge" round count), tone (yellow, pink, hot, green, blue,
 //                     ink, canvas, dash; none = paper), sticker (tilted),
 //                     selected (light blue fill + small blue shadow), outlineBlue.
@@ -26,6 +27,10 @@ import { pillClass, salePillText } from "../lib/pills.js";
 //                     Only a label; SaleTag is the one that opens the deal.
 //   <CountPill>       round count. tone: green (ready), yellow (nearly), none (the rest),
 //                     blue; outlineBlue for the In your week group.
+//   <StorageLabel>    « Congél. » / « Frigo » / « Garde-manger »: where an item is KEPT, on a tile or a
+//                     row that sits on a shelf that is not the shelf of where it is kept (Prepared
+//                     meals, Leftovers, a section of their own). A mini dashed pill, neutral: no blue,
+//                     green, yellow or pink. `storage` is "fridge" | "freezer" | "pantry".
 //   <PreparedTag>     the « plat préparé » / "prepared meal" tag: an ink pill with cream text
 //                     and a takeout-box glyph (design: docs/design/prepared-tag/). The ONE tag
 //                     for a prepared meal, on Inventory items and on recipes. Props: size
@@ -163,5 +168,15 @@ export function PreparedTag({ size = "s", sticker = false, className, ...rest })
       </svg>
       {t("preparedMeal.tag")}
     </span>
+  );
+}
+
+// « Congél. » and friends: see the comment at the top.
+export function StorageLabel({ storage, className, ...rest }) {
+  if (!isStorage(storage)) return null;
+  return (
+    <Pill size="mini" tone="dash" className={`storage-label${className ? ` ${className}` : ""}`} title={t(`inventory.storage.title.${storage}`)} {...rest}>
+      {t(`inventory.storage.short.${storage}`)}
+    </Pill>
   );
 }

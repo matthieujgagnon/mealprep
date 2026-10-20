@@ -28,6 +28,7 @@ import { leftoverExpiry, leftoverKeepDays, thawPatch, FRIDGE_DAYS } from "../lib
 import { linksFromItem, recipesUsingItem } from "../lib/inventoryMatch.js";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { isMealItem } from "../lib/mealItem.js";
+import { defaultShelfOf, isStorage } from "../lib/shelves.js";
 import { MealTag } from "./InventoryItems.jsx";
 import { PreparedTag } from "./RisoPills.jsx";
 import { expiryDay } from "../lib/quebecDay.js";
@@ -169,7 +170,7 @@ function PreparedMealSwitch({ on, onToggle, suggested }) {
   return (
     <div className="riso-itemform-prepared">
       <div className="riso-itemform-prepared-row">
-        <Switch on={on} onToggle={onToggle} label={t("preparedMeal.switch")} />
+        <Switch tone="ink" on={on} onToggle={onToggle} label={t("preparedMeal.switch")} />
         <span className="riso-itemform-prepared-label">
           <PreparedTag size="l" />
         </span>
@@ -199,15 +200,19 @@ export function InventoryItemForm({
   const edit = mode === "edit";
   const labelFor = Object.fromEntries(sections.map((s) => [s.id, s.label]));
   const startLeftover = edit ? !!item.isLeftover : defaultLocation === "leftovers";
-  // The Leftovers shelf isn't a place to keep things: the shelf cards are the others.
-  const storage = sections.filter((s) => s.id !== "leftovers");
-  const startLoc = edit
-    ? item.location
-    : startLeftover
-    ? "fridge"
-    : storage.some((s) => s.id === defaultLocation)
+  // "Stored in" is WHERE IT IS KEPT: Fridge, Freezer or Pantry only (the USDA use-by comes from it).
+  // Which SHELF it shows on is the separate choice under it (`shelf`, lib/shelves.js).
+  const storage = sections.filter((s) => isStorage(s.id));
+  // Pressing a shelf's own + starts there: a storage shelf says where it is kept, Prepared meals
+  // starts the Prepared meal switch on, one of the person's own shelves is the shelf chosen.
+  const startLoc = edit ? item.location : startLeftover ? "fridge" : isStorage(defaultLocation) ? defaultLocation : "fridge";
+  const startShelf = edit
+    ? sections.some((s) => s.id === item.shelf) ? item.shelf : null
+    : startLeftover || isStorage(defaultLocation) || defaultLocation === "prepared"
+    ? null
+    : sections.some((s) => s.id === defaultLocation)
     ? defaultLocation
-    : storage[0]?.id || "fridge";
+    : null;
   const savedDate = edit ? expiryDay(item.expiresAt) || "" : "";
   // A saved date that isn't USDA's own figure for this food is the user's date.
   const usdaDate = edit ? expiryDay(item.locations?.[item.location]?.expiresAt) : null;
@@ -216,17 +221,20 @@ export function InventoryItemForm({
   // Prepared meal. A NEW item whose name looks like a ready meal starts on (`suggested`)
   // until the person touches the switch; an item already in Inventory is never changed
   // by its name, only by its saved flag and the switch.
-  const [prepared, setPrepared] = useState(edit ? item.isPreparedMeal === true : false);
+  const [prepared, setPrepared] = useState(edit ? item.isPreparedMeal === true : defaultLocation === "prepared");
   const [preparedSuggested, setPreparedSuggested] = useState(false);
-  const preparedTouched = useRef(false);
+  const preparedTouched = useRef(!edit && defaultLocation === "prepared");
   const [recipeId, setRecipeId] = useState(edit ? item.recipeId || "" : "");
   const leftoverRecipe = recipes.find((r) => r.id === recipeId) || null;
   const [name, setName] = useState(edit ? item.name : "");
   const [qtyText, setQtyText] = useState(edit ? formatFractionQuantity(item.quantity ?? 0) : "1");
   const [qtyDraft, setQtyDraft] = useState(null);
   const [unit, setUnit] = useState(edit ? item.unit || "" : "");
-  const [loc, setLoc] = useState(startLoc);
+  const [loc, setLoc] = useState(startLoc); // where it is KEPT
   const [locTouched, setLocTouched] = useState(false);
+  // WHICH SHELF it shows on, when the person chose one; null = the default (where it is kept, or
+  // Prepared meals for a prepared meal), which keeps following the two as they change.
+  const [shelf, setShelf] = useState(startShelf);
   const [opts, setOpts] = useState(edit ? item.locations || {} : {});
   const [category, setCategory] = useState(edit ? item.category : "Other");
   const [expiresAt, setExpiresAt] = useState(
@@ -289,7 +297,7 @@ export function InventoryItemForm({
             }
             const cur = live.current;
             let nextLoc = cur.loc;
-            if (!cur.locTouched && res.location && sections.some((s) => s.id === res.location)) {
+            if (!cur.locTouched && isStorage(res.location)) {
               nextLoc = res.location;
               setLoc(nextLoc);
             }
@@ -344,7 +352,7 @@ export function InventoryItemForm({
       setUnit(row.unit || "");
       qtyTouched.current = true;
     }
-    if (row.location && sections.some((s) => s.id === row.location)) {
+    if (isStorage(row.location)) {
       setLoc(row.location);
       setLocTouched(true);
     }
@@ -378,6 +386,13 @@ export function InventoryItemForm({
   const days = daysFromDate(expiresAt);
   const tag = expiryTag(days);
   const line = lineForDays(days);
+  // The shelf it shows on: the one chosen, else the default (it follows where it is kept, and
+  // Prepared meals while the switch is on). Choosing the default one is "no choice".
+  const defaultShelf = defaultShelfOf({ isLeftover: leftover, isPreparedMeal: prepared, location: loc });
+  const shownShelf = shelf ?? defaultShelf;
+  const shelfChoices = sections.filter((s) => s.id !== "leftovers");
+  const shelfName = labelFor[shownShelf] || "";
+  const chooseShelf = (id) => setShelf(id === defaultShelf ? null : id);
   const here = startDays(opts[loc], loc);
   const kind = useByKind({ days, custom, usda: here.usda });
   const trimmed = name.trim();
@@ -436,10 +451,10 @@ export function InventoryItemForm({
     setBusy(true);
     setError(null);
     try {
-      const payload = buildAddPayload({ name, qtyText, unit, location: loc, category, expiresAt, photo, isPreparedMeal: prepared && !leftover });
+      const payload = buildAddPayload({ name, qtyText, unit, location: loc, shelf: leftover ? null : shelf, category, expiresAt, photo, isPreparedMeal: prepared && !leftover });
       const created = await onAdd(leftover ? { ...payload, unit: "portion", isLeftover: true, recipeId: recipeId || null } : payload);
-      setAdded((rows) => [...rows, { id: created?.id, name: trimmed, qtyText, unit, loc }]);
-      onToast(t("inventory.form.toastAdded", { name: trimmed, location: (leftover ? labelFor.leftovers : labelFor[loc]) || "" }));
+      setAdded((rows) => [...rows, { id: created?.id, name: trimmed, qtyText, unit, loc: leftover ? "leftovers" : shownShelf }]);
+      onToast(t("inventory.form.toastAdded", { name: trimmed, location: (leftover ? labelFor.leftovers : shelfName) || "" }));
       if (keepOpen) {
         setName("");
         setQtyText("1");
@@ -483,7 +498,7 @@ export function InventoryItemForm({
     setBusy(true);
     setError(null);
     try {
-      const patch = buildEditPatch(item, { name, qtyText, unit, location: loc, expiresAt, photo, isPreparedMeal: leftover ? undefined : prepared });
+      const patch = buildEditPatch(item, { name, qtyText, unit, location: loc, shelf: leftover ? undefined : shelf, expiresAt, photo, isPreparedMeal: leftover ? undefined : prepared });
       if (leftover && (recipeId || null) !== (item.recipeId || null)) patch.recipeId = recipeId || null;
       if (Object.keys(patch).length > 0) await onSave(item.id, patch);
       onToast(t("inventory.form.toastSaved"));
@@ -541,7 +556,10 @@ export function InventoryItemForm({
               aria-label={t("inventory.itemName")}
               onChange={(e) => setName(e.target.value)}
             />
-            <span className="riso-itemform-category">{categoryLabel(category)}</span>
+            <span className="riso-itemform-category">
+              {categoryLabel(category)}
+              {prepared && !leftover ? ` · ${t("locations.prepared")}` : ""}
+            </span>
           </>
         ) : (
           <>
@@ -695,6 +713,31 @@ export function InventoryItemForm({
                 </button>
               ))}
             </div>
+            {!leftover && (
+              <label className="riso-itemform-shelf">
+                <span className="riso-itemform-shelf-name">{t("inventory.form.shelf")}</span>
+                <select
+                  className="riso-itemform-shelf-select"
+                  aria-label={t("inventory.form.shelfAria", { name: trimmed || t("inventory.form.thisItem") })}
+                  value={shownShelf}
+                  onChange={(e) => chooseShelf(e.target.value)}
+                >
+                  {shelfChoices.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                  {!shelfChoices.some((s) => s.id === shownShelf) && <option value={shownShelf}>…</option>}
+                </select>
+                <span className="re-help riso-itemform-shelf-hint">
+                  {shelf !== null
+                    ? t("inventory.form.shelfHintChosen")
+                    : prepared
+                    ? t("inventory.form.shelfHintPrepared", { shelf: shelfName })
+                    : t("inventory.form.shelfHintFollows", { shelf: shelfName })}
+                </span>
+              </label>
+            )}
           </div>
 
           <div className="riso-itemform-block">
@@ -764,7 +807,7 @@ export function InventoryItemForm({
 
         <div className="riso-itemform-side">
           <div>
-            <div className="riso-itemform-label">{t("inventory.form.previewLabel", { location: (leftover ? labelFor.leftovers : labelFor[loc]) || "" })}</div>
+            <div className="riso-itemform-label">{t("inventory.form.previewLabel", { location: (leftover ? labelFor.leftovers : shelfName) || "" })}</div>
             <div className="inv-card active riso-itemform-card" aria-hidden="true">
               {line?.height && (
                 <span className="inv-card-line">

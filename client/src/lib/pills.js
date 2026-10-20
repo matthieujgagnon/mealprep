@@ -4,7 +4,7 @@ import { localizePrice } from "../i18n/format.js";
 // The text and class names behind components/RisoPills.jsx, kept here so they
 // can be tested without a browser.
 
-const SIZES = ["tag", "fact", "chip", "badge"];
+const SIZES = ["mini", "tag", "fact", "chip", "badge"];
 const TONES = ["yellow", "pink", "hot", "green", "blue", "ink", "canvas", "dash"];
 
 // "riso-pill size-tag tone-yellow is-selected": a size, an optional tone

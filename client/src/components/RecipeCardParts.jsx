@@ -8,6 +8,7 @@ import { lineNeed } from "../lib/inventoryMatch.js";
 import { captionTime, cardCaption } from "../lib/photoCard.js";
 import { recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
+import { storageOf } from "../lib/shelves.js";
 import { formatMoney } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
 
@@ -151,8 +152,11 @@ function RowPrice({ row }) {
   );
 }
 
-function locationLabel(id) {
-  return LOCATIONS.find((l) => l.id === id)?.label || id;
+// "in your freezer": where the item is KEPT (a shelf of its own says nothing about that), or
+// just "Inventory" while that is not known yet.
+function locationLabel(item) {
+  const kept = storageOf(item);
+  return kept ? LOCATIONS.find((l) => l.id === kept).label : t("recipeCard.inventory");
 }
 
 // What tapping a row opens under it: why it is where it is, and what can be done.
@@ -162,7 +166,7 @@ function locationLabel(id) {
 // Something in your Inventory: "I'm out of this" and "Open in Inventory", and when the
 // row is blue only because you said so, which link did it, with Remove (`because`).
 function RowDrawer({ row, kind, servings, onList, onToggleList, onHaveIt, onHaveAs, because, onOutOfIt, onOpenInventory }) {
-  const where = (row.item ? locationLabel(row.item.location) : t("recipeCard.inventory")).toLowerCase();
+  const where = (row.item ? locationLabel(row.item) : t("recipeCard.inventory")).toLowerCase();
   let why;
   if (kind === "buy") {
     why = row.short ? t("recipeCard.whyShort", { count: servings }) : onList ? t("recipeCard.whyOnList") : t("recipeCard.whyNeed");

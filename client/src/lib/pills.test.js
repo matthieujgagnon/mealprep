@@ -14,6 +14,7 @@ describe("pillClass", () => {
       "riso-pill size-chip tone-yellow is-selected mine"
     );
     expect(pillClass({ size: "badge", outlineBlue: true })).toBe("riso-pill size-badge outline-blue");
+    expect(pillClass({ size: "mini", tone: "dash" })).toBe("riso-pill size-mini tone-dash");
     expect(pillClass({ tone: "pink", sticker: true })).toBe("riso-pill size-tag tone-pink sticker");
   });
 

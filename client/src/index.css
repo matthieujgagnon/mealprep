@@ -1642,6 +1642,30 @@ select {
   gap: 4px;
   min-width: 0;
   max-width: 100%;
+  overflow: hidden;
+}
+
+/* « Congél. » under the name, next to the tag: it gives way (an ellipsis) before the row grows. */
+.inv-row-tags .storage-label {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 12px;
+}
+
+/* On a tile it is its own line under the amount. */
+.inv-tile-kept {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 12px;
 }
 
 .inv-row-tags .inv-card-leftover-tag {
@@ -2112,6 +2136,35 @@ button.inv-qty:focus-visible {
   min-width: 0;
 }
 
+/* The shelf, and under it "Stored in" when the shelf is not Fridge, Freezer or Pantry. */
+.riso-confirm-shelfcell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.riso-confirm-kept {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.riso-confirm-kept-label {
+  flex: none;
+  font: 500 9.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-confirm-kept select {
+  flex: 1;
+  height: 30px;
+  font-size: 13px;
+}
+
 .riso-confirm-amount input {
   flex: 0 0 62px;
   width: 62px;
@@ -2223,7 +2276,7 @@ button.inv-qty:focus-visible {
   .riso-confirm-on { grid-area: on; }
   .riso-confirm-name { grid-area: name; }
   .riso-confirm-amount { grid-area: amount; }
-  .riso-confirm-shelf { grid-area: shelf; }
+  .riso-confirm-shelfcell { grid-area: shelf; }
   .riso-confirm-date { grid-area: date; }
 
   .riso-confirm {
@@ -3682,6 +3735,7 @@ input[type="date"].planner-week-picker {
      .size-tag  22px   label on a surface or a photo: time, expiry, sale
      .size-fact 26px   facts in a pop-out: time | portions, meal
      .size-chip 32px   filters, menus, ingredients you have
+     .size-mini 15px   the line of a tile or row (« Congél. »)
      .size-badge 26px  a round count
      .sticker          tilted -3deg, for a label laid on an edge or photo
      .tone-yellow      a measure or something to deal with: time, to buy, leftovers
@@ -3710,6 +3764,15 @@ input[type="date"].planner-week-picker {
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
+}
+
+.riso-pill.size-mini {
+  height: 15px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .riso-pill.size-tag {
@@ -4001,6 +4064,17 @@ button.riso-pill:disabled {
 .riso-switch.on {
   border-color: var(--riso-accent);
   background: var(--riso-accent);
+}
+
+/* The Prepared meal switch is ink when on: its knob is the cream one, its outline ink. */
+.riso-switch.tone-ink.on {
+  border-color: var(--riso-ink-fixed);
+  background: var(--riso-ink-fixed);
+}
+
+.riso-switch.tone-ink.on .riso-switch-knob {
+  background: var(--riso-knob);
+  border-color: var(--riso-ink-fixed);
 }
 
 .riso-switch-knob {
@@ -18180,6 +18254,165 @@ body.no-select {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* The one-time list after the move to two fields: a quiet banner on Inventory, then the sheet. */
+.riso-inv-storagebanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  border: 2px dashed var(--riso-ink);
+  border-radius: 18px;
+  background: var(--riso-surface);
+}
+
+.riso-inv-storagebanner-text {
+  flex: 1 1 220px;
+  min-width: 0;
+  font: 400 14px/1.45 var(--riso-font-body);
+}
+
+.riso-storagesheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.riso-storagesheet-title {
+  margin: 0;
+  font: 800 26px/1.1 var(--riso-font-display);
+}
+
+.riso-storagesheet-subtitle {
+  margin: 0;
+  font: 800 17px/1.2 var(--riso-font-display);
+}
+
+.riso-storagesheet-intro,
+.riso-storagesheet-oldrow p {
+  margin: 0;
+  font: 400 14px/1.45 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.riso-storagesheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.riso-storagesheet-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 10px 0;
+  border-top: 1.5px dashed var(--riso-dash-strong);
+}
+
+.riso-storagesheet-row:first-child {
+  border-top: none;
+}
+
+.riso-storagesheet-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.riso-storagesheet-name {
+  font: 800 15px/1.2 var(--riso-font-display);
+  overflow-wrap: anywhere;
+}
+
+.riso-storagesheet-shelf {
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-storagesheet-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.riso-storagesheet-old {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--riso-dash-strong);
+}
+
+.riso-storagesheet-oldrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.riso-storagesheet-oldrow p {
+  flex: 1 1 220px;
+}
+
+.riso-storagesheet-error {
+  margin: 0;
+  color: var(--riso-hot-ink, #a30b5e);
+  font: 600 13px var(--riso-font-body);
+}
+
+.riso-storagesheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Under the "Stored in" cards: the separate "Shelf" choice. */
+.riso-itemform-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 12px;
+}
+
+.riso-itemform-shelf-name {
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-itemform-shelf-select {
+  box-sizing: border-box;
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 19px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+}
+
+.riso-itemform-shelf-hint {
+  flex: 1 0 100%;
+  margin: 0;
 }
 
 .riso-itemform-locs {

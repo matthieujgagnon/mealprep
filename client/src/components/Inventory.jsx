@@ -4,6 +4,9 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { leftoverExpiry } from "../lib/leftovers.js";
+import { onShelf } from "../lib/shelves.js";
+import { emptyDuplicateShelves, normalizeName, unknownStorageItems } from "../lib/storageList.js";
+import { InventoryStorageSheet } from "./InventoryStorageSheet.jsx";
 import { removedHowLabel, removedWhenLabel } from "../lib/removedItems.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
 import { InventoryItem, InventoryDragPreview } from "./InventoryItems.jsx";
@@ -24,18 +27,19 @@ export { ItemPhoto, InventoryDragPreview };
 // but this app has no dedicated shelf for yet (deferred per the handoff's
 // own note that it's optional).
 // Leftovers (LEFTOVER items: a cooked meal's portions) have a shelf of their own,
-// whether they are kept in the fridge or the freezer (lib/leftovers.js).
+// whether they are kept in the fridge or the freezer (lib/leftovers.js), and so do
+// prepared meals (Prepared meals, until one is moved to another shelf).
 const SHELF_LOCATIONS = [
   { id: "fridge", get label() { return t("locations.fridge"); } },
   { id: "freezer", get label() { return t("locations.freezer"); } },
   { id: "pantry", get label() { return t("locations.pantry"); } },
   { id: "leftovers", get label() { return t("locations.leftovers"); } },
+  { id: "prepared", get label() { return t("locations.prepared"); } },
 ];
 
-// Which shelf an item is on: leftovers on Leftovers, everything else on its own.
-export function onShelf(item, shelfId) {
-  return shelfId === "leftovers" ? !!item.isLeftover : !item.isLeftover && item.location === shelfId;
-}
+// Which shelf an item is on is `shelfOf` (lib/shelves.js), the one rule: leftovers on Leftovers,
+// a prepared meal on Prepared meals until it is moved, an item on the shelf of where it is kept
+// unless its owner chose another. Where it is KEPT is a separate field (`location`).
 
 // Shelves sit on a 12-column grid (Riso Inventory handoff): Fridge and
 // Freezer at half, Pantry the whole row. A width snaps to whole columns,
@@ -353,6 +357,7 @@ function byDaysLeft(items) {
 function ShelfColumn({
   location,
   items,
+  shelfIds,
   view,
   onUpdate,
   activeItemId,
@@ -467,6 +472,7 @@ function ShelfColumn({
             onToggleSelect={() => onToggleSelect(item.id)}
             onUpdate={onUpdate}
             recipe={item.isLeftover ? recipes.find((r) => r.id === item.recipeId) : null}
+            shelfIds={shelfIds}
           />
         ))}
         {sorted.length === 0 && <div className="inv-shelf-empty">{t("inventory.dropHere")}</div>}
@@ -590,6 +596,8 @@ export function Inventory({
   onDelete,
   onConsume,
   onPutBackRemoved,
+  onSetStorage,
+  onRestoreRows,
   recipes,
   onFindRecipes,
   onPlanMeal,
@@ -611,6 +619,7 @@ export function Inventory({
   const [showScan, setShowScan] = useState(false);
   const [view, setView] = useInventoryView(user.id);
   const [removed] = useRemovedItems();
+  const [storageOpen, setStorageOpen] = useState(false);
   const [removedOpen, setRemovedOpen] = useState(false);
   const isPhone = useIsPhone();
   const showToast = onToast;
@@ -699,6 +708,8 @@ export function Inventory({
   // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed, and Leftovers) and the
   // user's own custom sections, in the user's order, with their names and sizes.
   const sections = orderedSections(locations, layout);
+  // Every shelf that exists: an item that says it is on one that was just deleted is on its default shelf.
+  const shelfIds = new Set(sections.map((sec) => sec.id));
 
   function scrollToShelf(id) {
     document.querySelector(`.inv-shelves [data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -733,6 +744,27 @@ export function Inventory({
   async function renameSection(sec, name) {
     if (sec.custom) await onRenameLocation(sec.id, name);
     else updateSection(sec.id, { label: name });
+  }
+
+  // The one-time list after the move to two fields: items whose storage was lost, and an old shelf
+  // that is now an empty copy of a built-in one. Nothing here changes by itself.
+  const unknownStorage = unknownStorageItems(items);
+  const oldShelves = emptyDuplicateShelves(locations, layout, items).map((shelf) => ({
+    id: shelf.id,
+    name: shelf.name,
+    builtIn: sections.find((sec) => !sec.custom && normalizeName(sec.label) === normalizeName(shelf.name))?.label || shelf.name,
+  }));
+  const shelfName = (id) => sections.find((sec) => sec.id === id)?.label || "";
+
+  async function confirmStorage(choices) {
+    const before = await onSetStorage(choices);
+    setStorageOpen(false);
+    showToast(t("inventory.storageSheet.done", { count: choices.length }), () => onRestoreRows(before));
+  }
+
+  async function deleteOldShelf(shelf) {
+    await onDeleteLocation(shelf.id);
+    showToast(t("inventory.storageSheet.oldDeleted", { name: shelf.name }), () => onAddLocation(shelf.name));
   }
 
   async function putBack(entry) {
@@ -786,6 +818,19 @@ export function Inventory({
         {t("inventory.hint")}
       </HintStrip>
 
+      {(unknownStorage.length > 0 || oldShelves.length > 0) && (
+        <div className="riso-inv-storagebanner" role="status">
+          <span className="riso-inv-storagebanner-text">
+            {unknownStorage.length > 0 && t("inventory.storageBanner.unknown", { count: unknownStorage.length })}
+            {unknownStorage.length > 0 && oldShelves.length > 0 ? " " : ""}
+            {oldShelves.length > 0 && t("inventory.storageBanner.oldShelf", { name: oldShelves[0].name })}
+          </span>
+          <button type="button" className="riso-inv-btn" onClick={() => setStorageOpen(true)}>
+            {t("inventory.storageBanner.review")}
+          </button>
+        </div>
+      )}
+
       {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
       <div className="inv-shelves" ref={gridRef} onClickCapture={swallowClick}>
@@ -794,7 +839,8 @@ export function Inventory({
             <ShelfColumn
               key={loc.id}
               location={loc}
-              items={items.filter((i) => onShelf(i, loc.id))}
+              items={items.filter((i) => onShelf(i, loc.id, shelfIds))}
+              shelfIds={shelfIds}
               view={view}
               onUpdate={onUpdate}
               recipes={recipes}
@@ -852,6 +898,18 @@ export function Inventory({
           onToast={showToast}
           onClose={closeItem(activeItem.id)}
           isPhone={isPhone}
+        />
+      )}
+
+      {storageOpen && (
+        <InventoryStorageSheet
+          items={unknownStorage}
+          shelfName={shelfName}
+          oldShelves={oldShelves}
+          isPhone={isPhone}
+          onConfirm={confirmStorage}
+          onDeleteShelf={deleteOldShelf}
+          onClose={() => setStorageOpen(false)}
         />
       )}
 
