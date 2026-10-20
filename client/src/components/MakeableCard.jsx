@@ -131,7 +131,7 @@ export function MakeableCard({ tile, soon, reason, grocery, deals, showSales, on
       ready={ready}
       title={recipe.title}
       photoUrl={recipe.photoUrl}
-      caption={cardCaption(meal, recipeTotalMinutes(recipe))}
+      caption={cardCaption(isPreparedRecipe(recipe) ? "" : meal, recipeTotalMinutes(recipe))}
       prepared={isPreparedRecipe(recipe)}
       openLabel={t("planner.open", { title: recipe.title })}
       onOpen={open}

@@ -18425,9 +18425,23 @@ body.no-select {
   font: 600 13px var(--riso-font-body);
 }
 
-/* The sort sheet's rows: the chips take the room they need and wrap under the title. */
+/* The sort sheet's rows: the title (and its « guess ») on one line, the chips in rows under it. */
+.riso-sortsheet-row {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.riso-sortsheet-row .riso-storagesheet-who {
+  flex: none;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
 .riso-sortsheet-row .riso-storagesheet-pick {
-  flex: 1 1 300px;
+  flex: none;
   justify-content: flex-start;
 }
 
@@ -24632,6 +24646,11 @@ body.no-select {
 
 .rpc-finder.has-tag .rpc-caption {
   display: none;
+}
+
+/* The Makeable card keeps only the time beside the tag, at the right. */
+.rpc-panel.has-tag .rpc-caption {
+  text-align: right;
 }
 
 .rpc-bento .rpc-scrim-bottom {
