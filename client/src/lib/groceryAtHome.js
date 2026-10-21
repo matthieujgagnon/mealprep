@@ -20,14 +20,16 @@ export function splitAtHome(items, kitchen, checkRows = {}) {
   for (const item of items) {
     const names = item.ingredientNames || [];
     if (names.length > 0 && names.every(isTapWater)) continue;
+    // A row only prepared recipes need (croissants) is had by a prepared meal of that name.
+    const matching = { prepared: item.fromPrepared === true };
     const covered =
       names.length > 0 &&
       !item.isManual &&
       !item.keep &&
       !checkRows[item.key] &&
-      names.every((name) => ingredientHave(name, kitchen) === "have");
+      names.every((name) => ingredientHave(name, kitchen, matching) === "have");
     if (!covered) toBuy.push(item);
-    else atHome.push({ item, by: haveItemFor(foodsOnLine(names[0])[0], kitchen?.inventory || []) });
+    else atHome.push({ item, by: haveItemFor(foodsOnLine(names[0])[0], kitchen?.inventory || [], matching) });
   }
   return { toBuy, atHome };
 }

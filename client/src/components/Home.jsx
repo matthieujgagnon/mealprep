@@ -6,6 +6,7 @@ import { splitAtHome } from "../lib/groceryAtHome.js";
 import { applyChecks } from "../lib/groceryChecks.js";
 import { findSaleDeal } from "../lib/similarRecipes.js";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
+import { isPreparedRecipe } from "../lib/mealSlots.js";
 import { useHomeFlickStop } from "../hooks/useHomeFlickStop.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { daysUntil } from "../lib/pantryInventory.js";
@@ -627,6 +628,7 @@ export function Home({
                       ) : (
                         <div className="riso-home-week-day-photo placeholder" />
                       )}
+                      {isPreparedRecipe(entry.recipe) && <PreparedTag size="s" sticker className="riso-home-week-day-prepared" />}
                       <div className="riso-home-week-day-body">
                         <span className="riso-home-week-day-label">{label}</span>
                         <span className="riso-home-week-day-title">{entry.recipe.title}</span>

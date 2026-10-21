@@ -10,6 +10,7 @@ import { listRemoved, recordRemoved } from "../lib/removedItems.js";
 import { looksLikeReadyMeal } from "../lib/dealAisle.js";
 import { photoUrl, realPhoto } from "../lib/itemPhoto.js";
 import { isStorage, readPlacement, restorePlacement } from "../lib/shelves.js";
+import { isPreparedMeal } from "../lib/mealItem.js";
 
 export const pantryInventoryRouter = Router();
 
@@ -378,6 +379,67 @@ pantryInventoryRouter.post("/leftovers/settle", async (req, res) => {
     counts.set(e.recipe.title, meal);
   }
   res.json({ ...result, entryIds, meals: [...counts].map(([title, { count, prepared }]) => ({ title, count, prepared })) });
+});
+
+// A planned meal that is a prepared RECIPE (« Plat préparé »: croissants, a frozen lasagna) is eaten
+// from the prepared meal in Inventory that has the same name, once its day has passed. Which
+// item that is, is the matcher's call (client/src/lib/inventoryMatch.js: the one place that
+// says whether two names are the same food), so it is two steps: the meals that are due, then
+// the matches the browser worked out. The server only checks them: the meal is one of this
+// person's due prepared recipes and the item one of their prepared meals (lib/mealItem.js).
+const DUE_PREPARED = (userId, upcoming) => ({
+  userId,
+  isLeftover: false,
+  alreadyHave: false,
+  cookedAt: null,
+  recipe: { isPrepared: true },
+  NOT: upcoming,
+});
+
+// GET /api/pantry-inventory/prepared-recipes/due?today=YYYY-MM-DD - the planned prepared recipes
+// whose day is before `today` and that have not been settled: [{ entryId, servings, recipe }].
+pantryInventoryRouter.get("/prepared-recipes/due", async (req, res) => {
+  const upcoming = upcomingWhere(req.query.today);
+  if (!upcoming) return res.status(400).json(fail(req, "required", { fields: "today (YYYY-MM-DD)" }));
+  const entries = await prisma.plannerEntry.findMany({
+    where: DUE_PREPARED(req.userId, upcoming),
+    include: { recipe: { select: { id: true, title: true, baseServings: true, ingredients: { select: { name: true, quantity: true, unit: true } } } } },
+  });
+  res.json(entries.map((e) => ({ entryId: e.id, servings: e.servings, recipe: e.recipe })));
+});
+
+// POST /api/pantry-inventory/prepared-recipes/settle { today, matches: [{ entryId, itemId }] } -
+// every due prepared recipe is marked eaten (`cookedAt`), once, and each match takes one box off
+// that prepared meal (a prepared meal counted by weight or volume comes off whole, like a planned
+// prepared meal: portionsDue). A meal with no match takes nothing but is still settled, so a
+// prepared meal added to Inventory later is never eaten for a day long gone. Responds as
+// takeOut() plus `entryIds` (every meal settled) and `meals` ([{ title, count, prepared }], the
+// ones that took something) for the message; Undo is put-back, the meals stay counted.
+pantryInventoryRouter.post("/prepared-recipes/settle", async (req, res) => {
+  const upcoming = upcomingWhere(req.body.today);
+  if (!upcoming) return res.status(400).json(fail(req, "required", { fields: "today (YYYY-MM-DD)" }));
+  const matches = Array.isArray(req.body.matches) ? req.body.matches : [];
+  const entries = await prisma.plannerEntry.findMany({
+    where: DUE_PREPARED(req.userId, upcoming),
+    include: { recipe: { select: { title: true } } },
+  });
+  const empty = { before: [], removedIds: [], logIds: [], items: [] };
+  if (entries.length === 0) return res.json({ ...empty, entryIds: [], meals: [] });
+  const dueById = new Map(entries.map((e) => [e.id, e]));
+  const wanted = matches.filter((m) => m && typeof m.entryId === "string" && typeof m.itemId === "string" && dueById.has(m.entryId));
+  const items = await prisma.pantryInventoryItem.findMany({ where: { id: { in: [...new Set(wanted.map((m) => m.itemId))] }, userId: req.userId } });
+  const prepared = new Map(items.filter((i) => isPreparedMeal(i)).map((i) => [i.id, i]));
+  const eaten = wanted.filter((m) => prepared.has(m.itemId));
+  const takes = portionsDue(eaten.map((m) => ({ isLeftover: true, leftoverItemId: m.itemId, cookedAt: null })), [...prepared.values()]);
+  const result = takes.length > 0 ? await takeOut(req.userId, takes, "consumed") : empty;
+  const entryIds = entries.map((e) => e.id);
+  await prisma.plannerEntry.updateMany({ where: { id: { in: entryIds }, userId: req.userId }, data: { cookedAt: new Date() } });
+  const counts = new Map();
+  for (const m of eaten) {
+    const title = dueById.get(m.entryId).recipe.title;
+    counts.set(title, (counts.get(title) || 0) + 1);
+  }
+  res.json({ ...result, entryIds, meals: [...counts].map(([title, count]) => ({ title, count, prepared: true })) });
 });
 
 // POST /api/pantry-inventory/consume { ids: [...], action: "consumed" | "wasted" } -

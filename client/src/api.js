@@ -99,6 +99,11 @@ export const api = {
   getRecipe: (id) => request(`/recipes/${id}`),
   importRecipe: (url) =>
     request("/recipes/import", { method: "POST", body: JSON.stringify({ url }) }),
+  // What a title and ingredients suggest (rules only, nothing is saved): [{ slots, prepared }], one for
+  // each recipe given. The editor and the sort screen show it; nothing is typed or tagged until the
+  // person says so.
+  suggestRecipeTypes: (recipes) =>
+    request("/recipes/suggest-types", { method: "POST", body: JSON.stringify({ recipes }) }).then((res) => res.suggestions),
   createRecipe: (payload) =>
     request("/recipes", { method: "POST", body: JSON.stringify(payload) }),
   updateRecipe: (id, payload) =>
@@ -286,6 +291,12 @@ export const api = {
   // before `today`, once. Resolves like a take-out plus { entryIds, meals }.
   settleLeftovers: (today) =>
     request("/pantry-inventory/leftovers/settle", { method: "POST", body: JSON.stringify({ today }) }).then(removedChanged),
+  // The planned prepared recipes (« Plat préparé ») whose day has passed and that are not settled
+  // yet: [{ entryId, servings, recipe }]. The matcher says which prepared meal each is
+  // (lib/preparedRecipes.js); settlePreparedRecipes then takes one box off each, once.
+  listPreparedRecipesDue: (today) => request(`/pantry-inventory/prepared-recipes/due?today=${encodeURIComponent(today)}`),
+  settlePreparedRecipes: (today, matches) =>
+    request("/pantry-inventory/prepared-recipes/settle", { method: "POST", body: JSON.stringify({ today, matches }) }).then(removedChanged),
   // Recently removed: what left Inventory in the last 7 Quebec days, newest first
   // ([{ id, itemId, how, removedAt, item }]).
   listRemovedPantryItems: () => request("/pantry-inventory/removed"),

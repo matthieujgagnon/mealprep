@@ -6,7 +6,7 @@ import { isMealItem } from "./mealItem.js";
 import { onShelf } from "./shelves.js";
 import { dealSavings } from "./flyerIngredients.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
-import { inMealGroup, isMakeableMeal, makeableRuleOn, recipeSlot, recipeTotalMinutes } from "./mealSlots.js";
+import { hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, makeableRuleOn, recipeTotalMinutes } from "./mealSlots.js";
 import { matchesSearch } from "./recipeSearch.js";
 
 // The logic behind the shared recipe finder (components/Finder.jsx): the
@@ -193,7 +193,8 @@ function pickedBy(x, picks) {
 }
 
 // Narrows the ranked recipes by everything the finder can filter on and sorts
-// them. `filters`: query, meal ("all", "meals" or a recipe slot id), protein (a
+// them. `filters`: query, meal ("all", "meals", "prepared" or a recipe slot id: a recipe is in it
+// when it is one of its meal types), protein (a
 // protein id or ""), quick, expiring, picks (the Cook with picks: [{ key, name }]),
 // base (the Main meal's cores still switched on, or null), baseId,
 // includeSides (the Makeable now rule, see isMakeableMeal: "ready" leaves out
@@ -217,7 +218,7 @@ export function findRecipes(ranked, filters) {
     .filter((x) => x.recipe.id !== baseId)
     .filter((x) => !makeable || ((!ruleOn || isMakeableMeal(x.recipe)) && x.stats.totalCount > 0))
     .filter((x) => !searching || matchesSearch(x.recipe, query))
-    .filter((x) => meal === "all" || (meal === "meals" ? inMealGroup(x.recipe, "meals") : recipeSlot(x.recipe) === meal))
+    .filter((x) => meal === "all" || (meal === "meals" ? inMealGroup(x.recipe, "meals") : meal === "prepared" ? isPreparedRecipe(x.recipe) : hasSlot(x.recipe, meal)))
     .filter((x) => !kind || recipeUsesProtein(x.recipe, kind))
     .filter((x) => !quick || (recipeTotalMinutes(x.recipe) > 0 && recipeTotalMinutes(x.recipe) <= QUICK_MINUTES))
     .filter((x) => !expiring || x.usesExpiring)

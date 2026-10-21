@@ -105,7 +105,9 @@ model Recipe {
   fridgeLifeDays  Int? // how many days this keeps well as a fridge leftover; user-set, powers the "past its fridge life" warning on leftover-marked planner cards
   instructions    String // JSON-stringified array of step strings
   tags            String          @default("[]") // JSON-stringified array of tag strings, e.g. ["shrimp","summer"]
-  mealSlot        String? // where it sits on the Planner: "breakfast" | "lunch" | "dinner" | "snack" (any slot) | "prep" (pantry/prep - no calendar slot); null = not set yet
+  mealSlot        String? // the old single meal type. Unused for reading since mealSlots; the server still writes the first of the list here so nothing that read it breaks (add-only: nothing is dropped)
+  mealSlots       String[]        @default([]) // every meal type it is: any of "breakfast" | "lunch" | "dinner" | "side" | "snack" | "dessert" | "prep" (pantry/prep - no calendar slot); empty = not sorted yet
+  isPrepared      Boolean         @default(false) // « Plat préparé »: nothing to cook (croissants, a frozen lasagna). Separate from the meal types (croissants are a breakfast AND prepared): left out of Makeable's Meals, matches a prepared Inventory item by name
   categoryId      String? // user-created cookbook category, e.g. "Breakfast", "Sides"; null = uncategorized
   category        RecipeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   position        Int             @default(0) // manual drag-to-reorder position within whichever grid (Imported / Cookbook / a category) it's shown in

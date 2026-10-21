@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { TimePill } from "./RisoPills.jsx";
 import { IngredientMarks } from "./IngredientMarks.jsx";
 import { recipeHave } from "../lib/inventoryMatch.js";
-import { formatRecipeTime, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { formatRecipeTime, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { stepIsHeading, stepText } from "../lib/steps.js";
 import { slotLabel } from "../lib/plannerSlots.js";
 import { placeBeside, viewSize } from "../lib/placeInWindow.js";
@@ -285,7 +285,7 @@ export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, in
   const { have, buy } = recipeHave(recipe, kitchen);
   const steps = (recipe.instructions || []).filter((s) => stepText(s).trim());
   const numbered = steps.filter((s) => !stepIsHeading(s));
-  const slotName = recipeSlot(recipe);
+  const slotName = recipeSlotCaption(recipe);
   let n = 0;
 
   if (inline) {
@@ -336,7 +336,7 @@ export function PlannedCard({ slot, mealIndex, anchor, board, inline = false, in
         <h3 className="riso-plannedcard-name">{recipe.title}</h3>
         <div className="riso-plannedcard-facts">
           <TimePill minutes={recipeTotalMinutes(recipe)} serves={recipe.baseServings} />
-          {slotName && <span className="riso-plannedcard-meal">{t(`recipes.mealTypes.${slotName}`)}</span>}
+          {slotName && <span className="riso-plannedcard-meal">{slotName}</span>}
         </div>
         <IngredientMarks have={have} buy={buy} isOnList={grocery.isOnList} onToggleList={grocery.toggle} headingTag="h4" />
         {steps.length > 0 && (

@@ -2,12 +2,13 @@ import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import { accountButton, langSwitch } from "./account-menu.js";
+import { chooseMealType } from "./recipe-form.js";
 
 const prisma = new PrismaClient();
 
 // The header on one row at every desktop width, Tofu on Home, the Recipes
 // filters (Meals, Cookbook / Imported, SORT in the chips row) and Makeable's
-// Include pantry and sides, Meal menu and search.
+// Include sides, desserts and prepared, Meal menu and search.
 
 async function signUp(page, name = "Matt") {
   await page.goto("/");
@@ -190,7 +191,7 @@ test.describe("Proteins on sale panel on a phone", () => {
 test.describe("Recipes", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
-  test("Meals hides breakfast, sides and pantry prep; Time and Sort sit beside the tabs", async ({ page }) => {
+  test("Meals is breakfast, lunch and supper (not sides or pantry prep); Time and Sort sit beside the tabs", async ({ page }) => {
     await signUp(page);
     await recipe(page, "Chicken curry", "dinner", ["chicken"]);
     await recipe(page, "Lunch wrap", "lunch", ["tortilla"]);
@@ -205,7 +206,7 @@ test.describe("Recipes", () => {
 
     await page.getByRole("button", { name: /^MEAL/ }).click();
     await page.getByRole("option", { name: /^Meals/ }).click();
-    await expect(page.locator(".rpc-title")).toHaveText(["Lunch wrap", "Chicken curry"]);
+    await expect(page.locator(".rpc-title")).toHaveText(["Pancakes", "Lunch wrap", "Chicken curry"]);
   });
 
   test("Cookbook and Imported are two sections with their own counts, one under the other", async ({ page }) => {
@@ -227,6 +228,7 @@ test.describe("Recipes", () => {
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Edit recipe" }).click();
     await page.getByRole("radio", { name: "Cookbook" }).click();
+    await chooseMealType(page); // an import has no meal type yet, and a recipe is not saved without one
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.locator(".riso-rc-title")).toHaveText("Imported pad thai");
     await page.keyboard.press("Escape");
@@ -317,7 +319,7 @@ test.describe("Makeable", () => {
     const names = page.locator(".mk-page .rpc-title");
     // Makeable now counts meals only: the dessert and the side come with the switch.
     await expect(names).toHaveCount(2);
-    await page.getByRole("button", { name: "Include pantry and sides" }).click();
+    await page.getByRole("button", { name: "Include sides, desserts and prepared" }).click();
     await expect(names).toHaveCount(4);
 
     // The Meal menu is the same menu as on Recipes.

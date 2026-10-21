@@ -10,13 +10,13 @@ import { loadStorePrefs, namedStoreFor, storeSetup } from "../lib/groceryStores.
 import { groceryCore } from "../lib/groceryDedupe.js";
 import { groceryShared } from "../lib/groceryCache.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { formatRecipeTime } from "../lib/mealSlots.js";
+import { formatRecipeTime, isPreparedRecipe } from "../lib/mealSlots.js";
 import { formatMoney } from "../i18n/format.js";
 import { useStepTimers } from "../hooks/useStepTimers.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { CookMode } from "./CookMode.jsx";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
-import { PlannedPill } from "./RisoPills.jsx";
+import { PlannedPill, PreparedTag } from "./RisoPills.jsx";
 import { BuySticker, OptionsMenu, PhotoLightbox, PricesSwitch, Receipt, SimilarStrip, SimilarView, StepList } from "./RecipeCardParts.jsx";
 import { t } from "../i18n/index.js";
 
@@ -207,13 +207,15 @@ export function RecipeDetailModal({
   // (Recently removed lists them as Used up).
   async function outOfIt(row) {
     if (!onDeletePantryItem) return;
-    for (const item of matchingItems(row.name, inventory)) await onDeletePantryItem(item.id, { how: "consumed" });
+    for (const item of matchingItems(row.name, inventory, { prepared: isPreparedRecipe(recipe) })) await onDeletePantryItem(item.id, { how: "consumed" });
     setOpenRow(null);
   }
 
   // "I have it": the Inventory confirmation sheet; nothing is added before it is confirmed.
   function haveIt(row) {
     const draft = { ref: row.name, name: row.name };
+    // A prepared recipe is had by a prepared meal, so that is what is added (the sheet says so).
+    if (isPreparedRecipe(recipe)) draft.isPreparedMeal = true;
     if (row.short && row.need.quantity != null) Object.assign(draft, { quantity: row.need.quantity, unit: row.need.unit });
     onRequestInventoryAdd?.([draft], { title: t("inventoryConfirm.haveItTitle") });
   }
@@ -298,6 +300,8 @@ export function RecipeDetailModal({
 
   const factLine = (
     <div className="riso-rc-facts">
+      {/* « Plat préparé » comes first in the row under the title: the same tag, size L, upright. */}
+      {isPreparedRecipe(recipe) && <PreparedTag size="l" className="riso-rc-prepared" />}
       {[
         totalTime > 0 && <b key="time">{formatRecipeTime(totalTime)}</b>,
         <span key="serves">

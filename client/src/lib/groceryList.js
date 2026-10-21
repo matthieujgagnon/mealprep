@@ -3,6 +3,7 @@ import { formatNumber } from "../i18n/format.js";
 import { getLang } from "../i18n/index.js";
 import { canonicalUnit, canonicalize, capitalize, singularize } from "./ingredientNames.js";
 import { foodsOnLine } from "./inventoryMatch.js";
+import { isPreparedRecipe } from "./mealSlots.js";
 
 export { canonicalUnit, canonicalize, capitalize, singularize };
 
@@ -93,10 +94,12 @@ export function buildGroceryList(plannerEntries, extraItems = [], overrides = []
           usedIn: new Set(),
           varieties: new Set(),
           ingredientNames: new Set(),
+          fromPrepared: true, // until a recipe that is not « plat préparé » needs it too
         });
       }
 
       const existing = map.get(resolvedCore);
+      if (!isPreparedRecipe(recipe)) existing.fromPrepared = false;
       existing.usedIn.add(recipe.title);
       existing.ingredientNames.add(ing.name);
       varieties.forEach((v) => existing.varieties.add(v));
@@ -122,6 +125,8 @@ export function buildGroceryList(plannerEntries, extraItems = [], overrides = []
       usedIn: [...item.usedIn],
       varieties: [...item.varieties].map(capitalize),
       ingredientNames: [...item.ingredientNames],
+      // Only prepared recipes (croissants) need it: "at home" means a prepared meal in Inventory, not an ingredient.
+      fromPrepared: item.fromPrepared,
     };
   });
 

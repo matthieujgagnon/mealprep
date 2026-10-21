@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { expiringItemsIn, recipeHave } from "../lib/inventoryMatch.js";
-import { HintStrip, PillMenu } from "./RisoControls.jsx";
+import { HintStrip, IncludeSidesToggle, PillMenu } from "./RisoControls.jsx";
+import { RecipeSortSheet } from "./RecipeSortSheet.jsx";
 import { RecipePhotoCard } from "./RecipePhotoCard.jsx";
 import { useIncludeSides } from "../hooks/useIncludeSides.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
@@ -10,7 +11,7 @@ import { QUICK_MINUTES } from "../lib/finder.js";
 import { bentoLayout } from "../lib/bento.js";
 import { captionTime, mealLineColor } from "../lib/photoCard.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
-import { RECIPE_SLOTS, inMealGroup, isMakeableMeal, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, recipeSlot, recipeSlotCaption, recipeSlots, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { TIME_FILTERS, isUrlLike, matchesTime, proteinOfRecipe, sortRecipes } from "../lib/recipesView.js";
 import { t } from "../i18n/index.js";
 
@@ -36,6 +37,7 @@ const ALL_CHIP = chip("all", () => t("recipes.filters.all"));
 const MEAL_CHIPS = [
   chip("meals", () => t("recipes.filters.meals")),
   ...RECIPE_SLOTS.map((slot) => chip(`slot:${slot.id}`, () => t(`recipes.mealTypes.${slot.id}`))),
+  chip("prepared", () => t("recipes.filters.prepared")),
 ];
 
 // One card (RecipePhotoCard, the same photo card as Makeable's): the meal, the
@@ -44,7 +46,8 @@ const MEAL_CHIPS = [
 // recipe's card. An Imported card is 3:4, all the same size; a Cookbook tile
 // (`tile`, from lib/bento.js) is the same card in the bento grid's size.
 function RecipeCard({ recipe, onOpen, tile }) {
-  const slot = recipeSlot(recipe);
+  const slot = recipeSlot(recipe); // the first meal type colours the line; the caption says "Lunch +1" when there are more
+  const caption = recipeSlotCaption(recipe);
   const protein = proteinOfRecipe(recipe);
   const time = captionTime(recipeTotalMinutes(recipe));
   return (
@@ -54,12 +57,13 @@ function RecipeCard({ recipe, onOpen, tile }) {
       title={recipe.title}
       photoUrl={recipe.photoUrl}
       lineColor={mealLineColor(slot)}
+      prepared={isPreparedRecipe(recipe)}
       openLabel={t("planner.open", { title: recipe.title })}
       onOpen={(rect) => onOpen(recipe, rect)}
       caption={
         <>
           <span className="rpc-cap-left">
-            {slot && <span className="rpc-cap-meal">{t(`recipes.mealTypes.${slot}`)}</span>}
+            {caption && <span className="rpc-cap-meal">{caption}</span>}
             {protein && <span className="rpc-cap-protein">{protein.label}</span>}
           </span>
           {time && <span className="rpc-cap-time">{time}</span>}
@@ -82,6 +86,7 @@ export function Recipes({
   onProteinChange,
   onSelectRecipe,
   onImported,
+  onRecipeUpdated,
   onNewRecipe,
   onToast,
 }) {
@@ -99,9 +104,27 @@ export function Recipes({
   const [menu, setMenu] = useState(null); // null | "meal" | "protein" | "time" | "sort"
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
-  const [includeSides] = useIncludeSides();
+  const [includeSides, setIncludeSides] = useIncludeSides();
+  const [sortOpen, setSortOpen] = useState(false); // the "sort your recipes" sheet
 
   const allRecipes = useMemo(() => recipes.filter((r) => !r.isPlaceholder), [recipes]);
+  // Recipes with no meal type yet (just imported, or saved before types): the sheet sorts them.
+  const unsorted = useMemo(() => allRecipes.filter((r) => recipeSlots(r).length === 0), [allRecipes]);
+  const unsortedFirst = useMemo(() => [...unsorted].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))), [unsorted]);
+
+  async function applySort(changes) {
+    const failed = [];
+    for (const { id, mealSlots, isPrepared } of changes) {
+      try {
+        onRecipeUpdated?.(await api.updateRecipe(id, { mealSlots, isPrepared }));
+      } catch {
+        failed.push(id);
+      }
+    }
+    if (failed.length > 0) throw new Error(t("recipes.sorting.failed"));
+    setSortOpen(false);
+    onToast(t("recipes.sorting.done", { count: changes.length }));
+  }
   const query = search.trim();
   const isUrl = isUrlLike(query);
 
@@ -125,8 +148,10 @@ export function Recipes({
         return true;
       case "meals":
         return inMealGroup(recipe, "meals");
+      case "prepared":
+        return isPreparedRecipe(recipe);
       default:
-        return chipId.startsWith("slot:") ? recipeSlot(recipe) === chipId.slice(5) : true;
+        return chipId.startsWith("slot:") ? hasSlot(recipe, chipId.slice(5)) : true;
     }
   }
 
@@ -236,6 +261,8 @@ export function Recipes({
       setSortIndex(0);
       setJump({ id: "imported" });
       onToast(t("recipes.d.importedToast"));
+      // An import has no meal type yet: it lands in the sort sheet, with a guess to confirm.
+      setSortOpen(true);
     } catch (err) {
       setImportError(err);
     } finally {
@@ -303,13 +330,27 @@ export function Recipes({
   return (
     <div className="riso-theme riso-recipes rv2" data-theme="light">
       <div className="riso-recipes-heading">
-        <div className="riso-eyebrow">
-          {t("recipes.eyebrow", { count: allRecipes.length, makeable: makeableCount, expiring: expiringCount })}
+        <div className="riso-recipes-eyebrow-row">
+          <div className="riso-eyebrow">
+            {t("recipes.eyebrow", { count: allRecipes.length, makeable: makeableCount, expiring: expiringCount })}
+          </div>
+          {/* The same setting as Makeable's: it only changes the "N makeable" count here, never the list. */}
+          <IncludeSidesToggle on={includeSides} onChange={setIncludeSides} />
         </div>
         <h1 className="riso-recipes-title">
           {t("recipes.titleStart")} <span className="accent">{t("recipes.titleAccent")}</span>
         </h1>
       </div>
+
+      {unsorted.length > 0 && (
+        <div className="riso-inv-storagebanner riso-recipes-sortbanner" role="status">
+          <span className="riso-inv-storagebanner-text">{t("recipes.sorting.banner", { count: unsorted.length })}</span>
+          <button type="button" className="riso-inv-btn" onClick={() => setSortOpen(true)}>
+            {t("recipes.sorting.open")}
+          </button>
+        </div>
+      )}
+      {sortOpen && unsortedFirst.length > 0 && <RecipeSortSheet recipes={unsortedFirst} isPhone={phone} onApply={applySort} onClose={() => setSortOpen(false)} />}
 
       {/* The search pill and "+ New recipe" in one bar; on a phone the button sits under the pill. */}
       <form className="riso-recipes-searchbar rv2-searchbar" onSubmit={handleImportSubmit}>

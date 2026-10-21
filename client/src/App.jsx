@@ -22,6 +22,7 @@ import { dict, t } from "./i18n/index.js";
 import { formatList } from "./i18n/format.js";
 import { LanguageSwitch } from "./components/RisoControls.jsx";
 import { currentWeekStart, isPastDay, shiftWeek, toDateKey } from "./lib/dates.js";
+import { preparedMatches } from "./lib/preparedRecipes.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
 import { coresOnGroceryList, groceryCore, newGroceryItemCount, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { Help } from "./components/Help.jsx";
@@ -408,24 +409,49 @@ export default function App({ user, onLogout }) {
 
   // A planned leftover meal whose day has passed takes one portion off the
   // Inventory leftovers it eats from, once (the server marks the meal); the
-  // leftovers leave Inventory at zero. The toast says so; its Undo puts the
-  // portions back (the meal stays counted, so they aren't taken again).
+  // leftovers leave Inventory at zero. A planned prepared recipe does the same with the prepared
+  // meal of its name (below). The toast says so; its Undo puts the portions back (the meal stays
+  // counted, so they aren't taken again).
   useEffect(() => {
-    api
-      .settleLeftovers(toDateKey(new Date()))
-      .then((done) => {
-        if (!done?.entryIds?.length) return;
-        api.listPantryInventory().then(setPantryInventory);
-        api.listPlanner(currentWeekStart()).then((entries) => currentWeekStart() === weekStart && setPlannerRows(entries));
-        const list = formatList(done.meals.map((m) => m.title));
-        // "portions of leftovers" when only leftovers were eaten, else plain "meals".
-        const eatenKey = done.meals.some((m) => m.prepared) ? "cooked.eatenMeals" : "cooked.eaten";
-        showToast(t(eatenKey, { count: done.entryIds.length, list }), async () => {
-          await api.putBackPantryItems(done.before, done.logIds);
-          setPantryInventory(await api.listPantryInventory());
-        });
-      })
-      .catch(() => {});
+    let alive = true;
+    (async () => {
+      const today = toDateKey(new Date());
+      const dones = [];
+      try {
+        dones.push(await api.settleLeftovers(today));
+      } catch {
+        // leftovers settle next time
+      }
+      // A planned prepared RECIPE (croissants, a frozen lasagna) whose day has passed is eaten from
+      // the prepared meal in Inventory with its name: the matcher says which item (one box off,
+      // once), the server checks and takes it. A meal with nothing to eat from is only settled.
+      try {
+        const due = await api.listPreparedRecipesDue(today);
+        if (due?.length) {
+          const inventory = await api.listPantryInventory();
+          dones.push(await api.settlePreparedRecipes(today, preparedMatches(due, inventory)));
+        }
+      } catch {
+        // settles next time
+      }
+      const settled = dones.filter((d) => d?.entryIds?.length);
+      if (!alive || settled.length === 0) return;
+      api.listPantryInventory().then(setPantryInventory);
+      api.listPlanner(currentWeekStart()).then((entries) => currentWeekStart() === weekStart && setPlannerRows(entries));
+      const meals = settled.flatMap((d) => d.meals);
+      if (meals.length === 0) return;
+      const count = meals.reduce((n, m) => n + m.count, 0);
+      const list = formatList([...new Set(meals.map((m) => m.title))]);
+      // "portions of leftovers" when only leftovers were eaten, else plain "meals".
+      const eatenKey = meals.some((m) => m.prepared) ? "cooked.eatenMeals" : "cooked.eaten";
+      showToast(t(eatenKey, { count, list }), async () => {
+        for (const done of settled) if (done.before?.length) await api.putBackPantryItems(done.before, done.logIds);
+        setPantryInventory(await api.listPantryInventory());
+      });
+    })();
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1579,6 +1605,7 @@ export default function App({ user, onLogout }) {
             onProteinChange={setRecipeProtein}
             onSelectRecipe={openRecipeCard}
             onImported={handleImported}
+            onRecipeUpdated={handleRecipeUpdated}
             onNewRecipe={() => openRecipeEditor(null)}
             onToast={showToast}
           />

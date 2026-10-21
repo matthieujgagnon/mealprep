@@ -967,6 +967,7 @@ export function GroceryList({
   function haveAsFor(item) {
     if (!links || item.isManual) return undefined;
     const names = item.ingredientNames || [];
+    if (item.fromPrepared) return undefined; // a prepared recipe's row has no recipe names to teach: add the prepared meal instead
     if (!names.some((name) => ingredientHave(name, kitchen) === "need")) return undefined;
     return () => links.ask(names, { label: capitalize(item.name) });
   }

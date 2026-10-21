@@ -35,6 +35,7 @@ const TITLE = "Store shawarma";
 const RECIPE = {
   title: TITLE,
   baseServings: 4,
+  mealSlots: ["dinner"], // a recipe is not saved again without a meal type (Edit recipe)
   fridgeLifeDays: 3,
   instructions: ["Roast: Roast the chicken.", "Serve: Warm the pitas."],
   ingredients: [

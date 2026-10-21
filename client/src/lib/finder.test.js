@@ -162,6 +162,33 @@ describe("findRecipes", () => {
     expect(ready({ meal: "dessert" }).tiles.map((x) => x.recipe.id)).toEqual(["cake"]);
   });
 
+  it("a recipe with several meal types is under each of them and counted once in the totals", () => {
+    const tile = (id, slots, extra = {}) => ({ recipe: { id, mealSlots: slots, ingredients: [], ...extra }, stats: { totalCount: 2, missingCount: 1, matchedCount: 1 }, cores: [] });
+    const ranked = [tile("chow", ["lunch", "dinner"]), tile("soup", ["dinner"]), tile("toast", ["breakfast"])];
+    const ids = (meal) => findRecipes(ranked, { avail: "all", meal }).tiles.map((x) => x.recipe.id).sort();
+    expect(ids("lunch")).toEqual(["chow"]);
+    expect(ids("dinner")).toEqual(["chow", "soup"]);
+    expect(ids("meals")).toEqual(["chow", "soup", "toast"]); // Meals: breakfast, lunch and supper
+    expect(findRecipes(ranked, { avail: "all" }).counts.all).toBe(3); // three recipes, not four placements
+    expect(findRecipes(ranked, { avail: "all", meal: "meals" }).counts.all).toBe(3);
+  });
+
+  it("a prepared recipe is left out of Ready by default, found under Prepared, and back with the toggle", () => {
+    const ready = { totalCount: 1, missingCount: 0, matchedCount: 1 };
+    const tile = (id, slots, isPrepared = false) => ({ recipe: { id, mealSlots: slots, isPrepared, ingredients: [] }, stats: ready, cores: [] });
+    const ranked = [tile("croissants", ["breakfast"], true), tile("oats", ["breakfast"]), tile("lasagna", ["dinner"], true)];
+    const readyIds = (filters) => findRecipes(ranked, { avail: "ready", ...filters }).tiles.map((x) => x.recipe.id).sort();
+    expect(readyIds({})).toEqual(["oats"]);
+    expect(findRecipes(ranked, { avail: "ready" }).counts.ready).toBe(1);
+    expect(readyIds({ includeSides: true })).toEqual(["croissants", "lasagna", "oats"]);
+    // Meals and Breakfast stay what they say; Prepared is its own choice, and asking for it is explicit.
+    expect(readyIds({ meal: "meals" })).toEqual(["oats"]);
+    expect(readyIds({ meal: "prepared" })).toEqual(["croissants", "lasagna"]);
+    expect(findRecipes(ranked, { avail: "all", meal: "breakfast" }).tiles.map((x) => x.recipe.id).sort()).toEqual(["croissants", "oats"]);
+    // Makeable page: the rule applies to every result.
+    expect(findRecipes(ranked, { avail: "all", makeable: true }).tiles.map((x) => x.recipe.id)).toEqual(["oats"]);
+  });
+
   it("Expiring soon keeps the recipes that use food going off", () => {
     const { ranked } = rank();
     const { tiles } = findRecipes(ranked, { avail: "all", expiring: true });

@@ -2,7 +2,7 @@ import { Fragment, useLayoutEffect, useRef } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { formatDayLabel, isCurrentWeek, isPastDay } from "../lib/dates.js";
 import { DAY_SHORT, MEAL_LABEL, MEAL_TYPES, canClearDay, isCustomNote, isEmojiOnly, isNoteEntry, slotKey } from "../lib/plannerSlots.js";
-import { formatRecipeTime, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { formatRecipeTime, isPreparedRecipe, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { PlannerLegend } from "./PlannerLegend.jsx";
 import { weekendLayout } from "../lib/weekend.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
@@ -89,6 +89,7 @@ export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, on
         )}
         {entry.cookedAt && !entry.isLeftover && <span className="riso-planner-card-cooked">{t("cooked.status")}</span>}
       </div>
+      {isPreparedRecipe(recipe) && <PreparedTag size="s" sticker className="riso-planner-card-prepared" />}
       <button
         type="button"
         className={`riso-planner-card-have${entry.alreadyHave ? " on" : ""}`}

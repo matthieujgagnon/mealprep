@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import { parseQuantityInput } from "../lib/units.js";
 import { expiryDay } from "../lib/quebecDay.js";
 import { UnitSelect } from "./UnitSelect.jsx";
+import { PreparedTag } from "./RisoPills.jsx";
 import { STORAGES, isStorage } from "../lib/shelves.js";
 import { t } from "../i18n/index.js";
 
@@ -15,7 +16,7 @@ import { t } from "../i18n/index.js";
 // them can be changed or the row switched off. Cancel adds nothing. (Typing
 // an item into Inventory's own add form already counts as confirming.)
 //
-// `drafts`: [{ ref, name, quantity?, unit?, location?, shelf?, expiresAt?, category?, on? }].
+// `drafts`: [{ ref, name, quantity?, unit?, location?, shelf?, expiresAt?, category?, isPreparedMeal?, on? }].
 // `ref` is handed back for each row that was added. `location` is where it is KEPT (fridge,
 // freezer, pantry: the use-by comes from it) and `shelf` the shelf it shows on (lib/shelves.js);
 // a row's Shelf choice is one control, and a second "Stored in" choice appears under it when the
@@ -41,6 +42,8 @@ function toRow(draft) {
     shelf: draft.shelf || (draft.location && !isStorage(draft.location) ? draft.location : ""),
     expiresAt: expiryDay(draft.expiresAt) || "",
     category: draft.category || null,
+    // A prepared recipe's "I have it" adds a prepared meal (the row says so); anything else is an ingredient.
+    prepared: draft.isPreparedMeal === true,
     // What the person typed wins over a later suggestion.
     locationTouched: isStorage(draft.location),
     dateTouched: !!draft.expiresAt,
@@ -89,14 +92,17 @@ function ConfirmRow({ row, sections, onChange }) {
         onChange={(e) => onChange({ on: e.target.checked })}
         aria-label={t("inventoryConfirm.include", { name: row.name })}
       />
-      <input
-        type="text"
-        className="riso-confirm-name"
-        aria-label={t("inventoryConfirm.nameAria", { name: row.name })}
-        value={row.name}
-        disabled={!row.on}
-        onChange={(e) => onChange({ name: e.target.value })}
-      />
+      <span className="riso-confirm-namecell">
+        <input
+          type="text"
+          className="riso-confirm-name"
+          aria-label={t("inventoryConfirm.nameAria", { name: row.name })}
+          value={row.name}
+          disabled={!row.on}
+          onChange={(e) => onChange({ name: e.target.value })}
+        />
+        {row.prepared && <PreparedTag size="s" className="riso-confirm-prepared" />}
+      </span>
       <span className="riso-confirm-amount">
         <input
           type="text"
@@ -199,6 +205,7 @@ export function InventoryConfirmSheet({ drafts, sections, title, intro, confirmN
             location: r.location || undefined,
             shelf: r.shelf || undefined,
             category: r.category || undefined,
+            isPreparedMeal: r.prepared || undefined,
             expiresAt: r.expiresAt || null,
           }))
       );

@@ -2106,6 +2106,18 @@ button.inv-qty:focus-visible {
   opacity: 0.45;
 }
 
+.riso-confirm-namecell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.riso-confirm-namecell .riso-confirm-name {
+  align-self: stretch;
+}
+
 .riso-confirm-on {
   width: 20px;
   height: 20px;
@@ -2281,7 +2293,7 @@ button.inv-qty:focus-visible {
   }
 
   .riso-confirm-on { grid-area: on; }
-  .riso-confirm-name { grid-area: name; }
+  .riso-confirm-namecell { grid-area: name; }
   .riso-confirm-amount { grid-area: amount; }
   .riso-confirm-shelfcell { grid-area: shelf; }
   .riso-confirm-date { grid-area: date; }
@@ -5028,6 +5040,13 @@ button.riso-table-group-head:disabled {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.riso-recipes-eyebrow-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
 }
 
 .riso-recipes-title {
@@ -13861,6 +13880,32 @@ body.no-select {
   padding: 0 6px 5px 0;
 }
 
+/* « Plat préparé » chips (the sort sheet): ink when on, like the switch (blue means "you have it"). */
+.re-slot.prepared.on {
+  background: var(--riso-ink);
+  border-color: var(--riso-ink);
+  color: var(--riso-knob);
+}
+
+.re-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font: 500 13px var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.re-suggest-use {
+  padding: 4px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 12.5px var(--riso-font-display);
+  cursor: pointer;
+}
+
 .re-slot {
   height: 40px;
   padding: 0 20px;
@@ -18378,6 +18423,34 @@ body.no-select {
   margin: 0;
   color: var(--riso-hot-ink, #a30b5e);
   font: 600 13px var(--riso-font-body);
+}
+
+/* The sort sheet's rows: the title (and its « guess ») on one line, the chips in rows under it. */
+.riso-sortsheet-row {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.riso-sortsheet-row .riso-storagesheet-who {
+  flex: none;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.riso-sortsheet-row .riso-storagesheet-pick {
+  flex: none;
+  justify-content: flex-start;
+}
+
+.riso-sortsheet-row .re-slot {
+  min-height: 34px;
+}
+
+.riso-recipes-sortbanner {
+  margin: 0 0 4px;
 }
 
 .riso-storagesheet-actions {
@@ -24549,6 +24622,61 @@ body.no-select {
   left: 12px;
   display: flex;
   pointer-events: none;
+}
+
+/* « Plat préparé » on a recipe's card (docs/design/prepared-tag/): the same tag, size M, as a
+   sticker. The Recipes card and the Makeable card carry it top left, 8px in (6px on a phone),
+   where the meal caption starts, so the caption's left half gives way (the time stays); the
+   finder's card has it in its own corner (above) in place of the meal and time caps; the
+   Cookbook's tile holds it in its bottom band, centred above the title. */
+.rpc-grid .rpc-tag,
+.rpc-panel .rpc-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  display: flex;
+  pointer-events: none;
+}
+
+.rpc-grid.has-tag .rpc-cap-left,
+.rpc-panel.has-tag .rpc-cap-left {
+  visibility: hidden;
+}
+
+.rpc-finder.has-tag .rpc-caption {
+  display: none;
+}
+
+/* The Makeable card keeps only the time beside the tag, at the right. */
+.rpc-panel.has-tag .rpc-caption {
+  text-align: right;
+}
+
+.rpc-bento .rpc-scrim-bottom {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.rpc-bento .rpc-scrim-bottom .rpc-tag {
+  display: flex;
+  flex: none;
+}
+
+@media (max-width: 767px) {
+  .rpc-grid .rpc-tag,
+  .rpc-panel .rpc-tag {
+    top: 6px;
+    left: 6px;
+  }
+}
+
+/* In the recipe pop-out the tag leads the row of facts under the title: size L, upright. */
+.riso-rc-facts .riso-rc-prepared {
+  flex: none;
+  margin-right: 10px;
 }
 
 .fnd-card.prepared .rpc-photo {

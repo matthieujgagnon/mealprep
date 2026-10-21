@@ -9,7 +9,7 @@ import { SectionHeader } from "./FinderTiles.jsx";
 import { MakeableCard } from "./MakeableCard.jsx";
 import { RecipePhotoCard } from "./RecipePhotoCard.jsx";
 import { PROTEINS } from "../lib/proteins.js";
-import { RECIPE_SLOTS, recipeSlot, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, isPreparedRecipe, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { cardCaption, haveBar, soonItemFor } from "../lib/photoCard.js";
 import { rankRecipesForTray } from "../lib/plannerSuggestions.js";
 import {
@@ -65,8 +65,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
   // Only the pointer listeners: the open button inside is what a keyboard reaches.
   const dragProps = draggable ? listeners : {};
   const bar = haveBar(stats);
-  const slot = recipeSlot(recipe);
-  const caption = cardCaption(slot ? t(`recipes.mealTypes.${slot}`) : "", recipeTotalMinutes(recipe));
+  const caption = cardCaption(recipeSlotCaption(recipe), recipeTotalMinutes(recipe));
 
   return (
     <RecipePhotoCard
@@ -77,6 +76,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
       title={recipe.title}
       photoUrl={recipe.photoUrl}
       caption={caption}
+      prepared={isPreparedRecipe(recipe)}
       openLabel={draggable ? t("tray.dragAria", { title: recipe.title }) : t("planner.open", { title: recipe.title })}
       onOpen={(rect) => onOpen(recipe, rect)}
       action={
@@ -413,6 +413,7 @@ export function Finder({
     { id: "all", label: t("recipes.filters.all") },
     { id: "meals", label: t("recipes.filters.meals") },
     ...RECIPE_SLOTS.map((slot) => ({ id: slot.id, label: t(`recipes.mealTypes.${slot.id}`) })),
+    { id: "prepared", label: t("recipes.filters.prepared") },
   ];
   const proteinOptions = [{ id: "", label: t("recipes.d.anyProtein") }, ...PROTEINS.map((p) => ({ id: p.id, label: p.label }))];
   const toggleMenu = (id) => setMenu((cur) => (cur === id ? null : id));

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { chooseMealType } from "./recipe-form.js";
 
 // "Fewest missing" puts what you can make with the least shopping first.
 
@@ -77,6 +78,7 @@ test("an ingredient can be a count of units", async ({ page }) => {
   await page.fill('input[aria-label="Quantity"]', "3");
   await page.getByLabel("Unit").first().selectOption("unit");
   await page.fill('textarea[placeholder="Describe this step"]', "Stuff them.");
+  await chooseMealType(page);
   await page.getByRole("button", { name: "Save recipe" }).click();
 
   await page.locator(".rpc", { hasText: "Stuffed peppers" }).click();
@@ -106,6 +108,7 @@ test("any photo can be made the cover, and photos keep their order", async ({ pa
   await expect(page.locator(".re-photo").nth(1)).toHaveClass(/cover/);
   await page.fill('input[aria-label="Ingredient"]', "beef");
   await page.fill('textarea[placeholder="Describe this step"]', "Stew it.");
+  await chooseMealType(page);
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.locator(".rpc", { hasText: "Two photo stew" })).toBeVisible();
 

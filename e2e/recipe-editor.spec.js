@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
-import { saveRecipe } from "./recipe-form.js";
+import { chooseMealType, saveRecipe } from "./recipe-form.js";
 
 // The recipe editor (design handoff: Riso Recipe Editor.dc.html). A new recipe
 // opens as a pop-up over the Recipes page; editing one is the full page.
@@ -31,7 +31,7 @@ test("a new recipe with a slot, pasted steps and a pasted ingredient list", asyn
   await expect(page.getByRole("heading", { name: "New recipe." })).toBeVisible();
 
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Quick pickled shallots");
-  await page.getByRole("radio", { name: "Pantry / Prep" }).click();
+  await page.getByRole("checkbox", { name: "Pantry / Prep" }).click();
   await expect(page.getByText("Doesn't take a meal slot on the calendar.")).toBeVisible();
 
   await page.getByRole("button", { name: "Paste a whole list" }).click();
@@ -61,7 +61,8 @@ test("a new recipe with a slot, pasted steps and a pasted ingredient list", asyn
 
   const recipes = await (await page.request.get("/api/recipes")).json();
   const saved = recipes.find((r) => r.title === "Quick pickled shallots");
-  expect(saved.mealSlot).toBe("prep");
+  expect(saved.mealSlots).toEqual(["prep"]);
+  expect(saved.mealSlot).toBe("prep"); // the old column follows the first type
   expect(saved.instructions).toEqual([
     "Slice the shallots.",
     "Bring the brine to a boil:",
@@ -99,6 +100,10 @@ test("editing from the recipe card: uploaded photo, save returns to the card", a
   await expect(ask).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Edit recipe." })).toBeVisible();
 
+  // This recipe was saved with no meal type: it cannot be saved again until it has one.
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("alert")).toContainText("Pick at least one meal type first.");
+  await chooseMealType(page);
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator(".riso-rc-title")).toHaveText("Weeknight red dal");
   const src = await page.locator(".riso-rc-photo-img").getAttribute("src");
@@ -242,6 +247,7 @@ test("a recipe typed in the pop-up saves and lands first in the list", async ({ 
   await signUp(page);
   await page.getByRole("button", { name: "+ New recipe" }).click();
   await page.fill('input[placeholder="Grandma\'s lasagna"]', "Popup pancakes");
+  await chooseMealType(page);
   await page.getByRole("button", { name: "Save recipe" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".rpc", { hasText: "Popup pancakes" })).toBeVisible();

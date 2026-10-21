@@ -3,18 +3,26 @@ import { prisma } from "../lib/prisma.js";
 import { scrapeRecipe, parseIngredientText } from "../lib/scrapeRecipe.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 import { fail } from "../lib/i18n.js";
+import { MEAL_SLOTS, readMealTypes, readPrepared, suggestForRecipe } from "../lib/mealTypes.js";
 
 export const recipesRouter = Router();
 
-// Where a recipe sits on the Planner - see Recipe.mealSlot.
-export const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "side", "snack", "dessert", "prep"];
-
-// undefined = leave as-is (PUT), null/"" = clear, anything else must be a
-// known slot.
-function readMealSlot(value) {
-  if (value === undefined) return { ok: true, value: undefined };
-  if (value === null || value === "") return { ok: true, value: null };
-  return MEAL_SLOTS.includes(value) ? { ok: true, value } : { ok: false };
+// What a request says about a recipe's meal types and « Plat préparé » flag, as the columns to
+// write (lib/mealTypes.js). A refusal comes back as { error } to answer with. The old single
+// `mealSlot` column is kept as the first of the list, so nothing that read it breaks.
+function readTypeFields(req) {
+  const types = readMealTypes(req.body);
+  if (!types.ok) {
+    return { error: types.key === "mealTypeRequired" ? fail(req, "mealTypeRequired") : fail(req, "mustBeOneOf", { field: "mealSlots", options: MEAL_SLOTS.join(", ") }) };
+  }
+  const prepared = readPrepared(req.body.isPrepared);
+  if (!prepared.ok) return { error: fail(req, "mustBeOneOf", { field: "isPrepared", options: "true, false" }) };
+  return {
+    data: {
+      ...(types.value !== undefined && { mealSlots: types.value, mealSlot: types.value[0] }),
+      ...(prepared.value !== undefined && { isPrepared: prepared.value }),
+    },
+  };
 }
 
 // The scraper's English reasons, as messages in the reader's language.
@@ -136,6 +144,16 @@ recipesRouter.post("/scrape", async (req, res) => {
   }
 });
 
+// POST /api/recipes/suggest-types { recipes: [{ id?, title, ingredients: [{ name }] }] } - what
+// the title and ingredients suggest for each: { suggestions: [{ id, slots, prepared }] }. Rules
+// only, no AI (lib/mealTypes.js), and it changes nothing: the "sort your recipes" screen and the
+// editor show it, and nothing is typed or tagged until the person says so.
+recipesRouter.post("/suggest-types", (req, res) => {
+  const { recipes } = req.body;
+  if (!Array.isArray(recipes)) return res.status(400).json(fail(req, "mustBeArray", { field: "recipes" }));
+  res.json({ suggestions: recipes.slice(0, 500).map((r) => ({ id: r?.id ?? null, ...suggestForRecipe({ title: r?.title, ingredients: Array.isArray(r?.ingredients) ? r.ingredients : [] }) })) });
+});
+
 // POST /api/recipes/parse-ingredients { text } - splits a pasted ingredient
 // list into qty/unit/name/note rows with the importer's own parser.
 recipesRouter.post("/parse-ingredients", async (req, res) => {
@@ -151,8 +169,8 @@ recipesRouter.post("/", async (req, res) => {
   if (!title || !Array.isArray(ingredients)) {
     return res.status(400).json(fail(req, "required", { fields: "title, ingredients[]" }));
   }
-  const mealSlot = readMealSlot(req.body.mealSlot);
-  if (!mealSlot.ok) return res.status(400).json(fail(req, "mustBeOneOf", { field: "mealSlot", options: MEAL_SLOTS.join(", ") }));
+  const typeFields = readTypeFields(req);
+  if (typeFields.error) return res.status(400).json(typeFields.error);
 
   const recipe = await prisma.recipe.create({
     data: {
@@ -168,7 +186,7 @@ recipesRouter.post("/", async (req, res) => {
       prepTimeMinutes: prepTimeMinutes || null,
       cookTimeMinutes: cookTimeMinutes || null,
       fridgeLifeDays: fridgeLifeDays || null,
-      mealSlot: mealSlot.value ?? null,
+      ...typeFields.data,
       instructions: JSON.stringify(instructions || []),
       ...(Array.isArray(tags) && { tags: JSON.stringify(tags) }),
       ingredients: {
@@ -207,8 +225,8 @@ recipesRouter.put("/reorder", async (req, res) => {
 // PUT /api/recipes/:id - edit a recipe (title, servings, ingredients, instructions)
 recipesRouter.put("/:id", async (req, res) => {
   const { title, photoUrl, photos, notes, sourceUrl, baseServings, prepTimeMinutes, cookTimeMinutes, fridgeLifeDays, instructions, ingredients, inCookbook, inImported, tags, categoryId } = req.body;
-  const mealSlot = readMealSlot(req.body.mealSlot);
-  if (!mealSlot.ok) return res.status(400).json(fail(req, "mustBeOneOf", { field: "mealSlot", options: MEAL_SLOTS.join(", ") }));
+  const typeFields = readTypeFields(req);
+  if (typeFields.error) return res.status(400).json(typeFields.error);
 
   const { count } = await prisma.recipe.updateMany({
     where: { id: req.params.id, userId: req.userId },
@@ -226,7 +244,7 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(inImported !== undefined && { inImported }),
       ...(tags !== undefined && { tags: JSON.stringify(tags) }),
       ...(categoryId !== undefined && { categoryId }),
-      ...(mealSlot.value !== undefined && { mealSlot: mealSlot.value }),
+      ...typeFields.data,
       ...(instructions !== undefined && { instructions: JSON.stringify(instructions) }),
     },
   });
