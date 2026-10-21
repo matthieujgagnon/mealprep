@@ -167,6 +167,8 @@ test("custom sections can be added, used, and removed (items go back to the shel
   await page.getByRole("button", { name: "Delete shelf" }).click();
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toHaveCount(0);
   // Deleting the shelf puts it back on the shelf of where it is kept; where it is kept is not lost.
+  // (The page takes the shelf off at once and the server a moment later, so wait for the server.)
+  await expect.poll(async () => (await stock()).shelf).toBeNull();
   const back = await stock();
   expect(back).toMatchObject({ location: placed.location, shelf: null });
   await expect(page.locator(`.inv-shelf[data-section-id="${placed.location}"]`).getByText("Elk")).toBeVisible();

@@ -1154,13 +1154,25 @@ select {
   padding: 2px;
   background: none;
   border: none;
+  flex: none;
 }
 
+/* A long name gives way (…) instead of pushing the count, + and ✎ out of a narrow shelf, where the
+   next shelf would sit over them. The count, + and ✎ never shrink. */
 .inv-shelf-title {
   margin: 0;
   font: 800 20px var(--riso-font-display);
   letter-spacing: -0.02em;
   white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Old copy, empty": the tag that tells Matt's old « Prepared meals » shelf from the built-in one. */
+.inv-shelf-oldtag {
+  align-self: flex-start;
   flex: none;
 }
 

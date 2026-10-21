@@ -13,6 +13,7 @@ import { InventoryItem, InventoryDragPreview } from "./InventoryItems.jsx";
 import { InventoryItemForm } from "./InventoryItemForm.jsx";
 import { HintStrip, Segmented } from "./RisoControls.jsx";
 import { RemovedStrip } from "./RemovedStrip.jsx";
+import { Pill } from "./RisoPills.jsx";
 import { LIFTED_CLASS, ReorderGrip, ReorderList, useReorderDrop, useReorderSection } from "./ReorderSections.jsx";
 import { gridSortingStrategy } from "../lib/reorderGrid.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
@@ -197,8 +198,10 @@ const WIDTH_PRESETS = [
 ];
 
 // A shelf's header in edit mode: its name as an input, the size presets
-// and (for your own shelves) Delete shelf.
-function useShelfEditor({ location, span, height, onRename, onResize, onDelete, onDone }) {
+// and (for your own shelves) Delete shelf; a built-in shelf says it can't be deleted.
+// `focusName` puts the cursor in the name on a computer; on a phone the keyboard it opens
+// would cover the controls just below it (Delete included), so rename is a tap on the name.
+function useShelfEditor({ location, span, height, focusName, onRename, onResize, onDelete, onDone }) {
   const [name, setName] = useState(location.label);
   const [error, setError] = useState(null);
   useEffect(() => setName(location.label), [location.label]);
@@ -224,7 +227,7 @@ function useShelfEditor({ location, span, height, onRename, onResize, onDelete, 
         aria-label={t("inventory.sectionName")}
         value={name}
         maxLength={40}
-        autoFocus
+        autoFocus={focusName}
         onFocus={(e) => e.target.select()}
         onChange={(e) => setName(e.target.value)}
         onBlur={commitName}
@@ -258,7 +261,7 @@ function useShelfEditor({ location, span, height, onRename, onResize, onDelete, 
           </button>
         )}
         <span className="inv-shelf-controls-note">
-          {location.custom ? `${t("inventory.itemsToPantry")} ` : ""}
+          {location.custom ? t("inventory.itemsGoBack") : t("inventory.builtInNote")}{" "}
           {t("inventory.dragBetween")}
         </span>
         {error && <p className="inv-section-editor-error">{error}</p>}
@@ -371,6 +374,8 @@ function ShelfColumn({
   onRename,
   onDelete,
   resizable,
+  focusName,
+  oldCopy,
   onResize,
   onMoveByKey,
 }) {
@@ -397,6 +402,7 @@ function ShelfColumn({
     location,
     span: location.span,
     height: location.height,
+    focusName,
     onRename,
     onResize,
     onDelete,
@@ -427,7 +433,13 @@ function ShelfColumn({
             if (e.key === "ArrowRight" || e.key === "ArrowDown") onMoveByKey(location.id, 1, e);
           }}
         />
-        {editing ? editor.nameInput : <h3 className="inv-shelf-title">{location.label}</h3>}
+        {editing ? (
+          editor.nameInput
+        ) : (
+          <h3 className="inv-shelf-title" title={location.label}>
+            {location.label}
+          </h3>
+        )}
         <span className="inv-shelf-count">{items.length}</span>
         <span className="inv-shelf-spacer" />
         {(editing || preview) && <span className="inv-shelf-size">{sizeLabel}</span>}
@@ -458,6 +470,11 @@ function ShelfColumn({
           {editing ? "✓" : "✎"}
         </button>
       </div>
+      {oldCopy && (
+        <Pill size="mini" tone="dash" className="inv-shelf-oldtag">
+          {t("inventory.oldCopyTag")}
+        </Pill>
+      )}
       {editing && editor.controls}
       <div className={`inv-shelf-items ${view}`}>
         {sorted.map((item) => (
@@ -754,6 +771,7 @@ export function Inventory({
     name: shelf.name,
     builtIn: sections.find((sec) => !sec.custom && normalizeName(sec.label) === normalizeName(shelf.name))?.label || shelf.name,
   }));
+  const oldCopyIds = new Set(oldShelves.map((shelf) => shelf.id));
   const shelfName = (id) => sections.find((sec) => sec.id === id)?.label || "";
 
   async function confirmStorage(choices) {
@@ -860,6 +878,8 @@ export function Inventory({
                 onDeleteLocation(loc.id);
               }}
               resizable={!isPhone}
+              focusName={!isPhone}
+              oldCopy={oldCopyIds.has(loc.id)}
               onResize={({ span, height }) => updateSection(loc.id, { span, height })}
               onMoveByKey={moveSectionByKey}
             />
