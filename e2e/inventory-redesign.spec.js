@@ -134,7 +134,7 @@ test("selecting items shows the floating action bar, and Used up removes them", 
   await expect(page.locator(":is(.inv-row, .inv-tile)")).toHaveCount(0);
 });
 
-test("custom sections can be added, used, and removed (items go back to the shelf of where they are kept)", async ({ page }) => {
+test("custom sections can be added, used, and removed (hidden: their items show on the shelf picked, nothing is written to them)", async ({ page }) => {
   await signUp(page, uniqueEmail());
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
 
@@ -165,13 +165,13 @@ test("custom sections can be added, used, and removed (items go back to the shel
 
   await page.getByRole("button", { name: 'Edit the "Garage Freezer" section' }).click();
   await page.getByRole("button", { name: "Delete shelf" }).click();
+  // Delete shelf asks where its items go (its own shelf starts on Pantry) and hides the shelf.
+  await page.getByRole("dialog").getByRole("button", { name: "Delete shelf" }).click();
   await expect(page.locator(".inv-shelf", { hasText: "Garage Freezer" })).toHaveCount(0);
-  // Deleting the shelf puts it back on the shelf of where it is kept; where it is kept is not lost.
-  // (The page takes the shelf off at once and the server a moment later, so wait for the server.)
-  await expect.poll(async () => (await stock()).shelf).toBeNull();
+  // Nothing is written onto the item: where it is kept is not lost, and it shows on the shelf it moved to.
   const back = await stock();
-  expect(back).toMatchObject({ location: placed.location, shelf: null });
-  await expect(page.locator(`.inv-shelf[data-section-id="${placed.location}"]`).getByText("Elk")).toBeVisible();
+  expect(back).toMatchObject({ location: placed.location, shelf: placed.shelf });
+  await expect(page.locator('.inv-shelf[data-section-id="pantry"]').getByText("Elk")).toBeVisible();
 });
 
 test("sections can be renamed, dragged to move and resized, and the layout is saved", async ({ page }) => {

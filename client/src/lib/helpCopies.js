@@ -167,6 +167,9 @@ export const HELP_COPIES = {
   sortThem: { kind: "pill", cls: "riso-inv-btn", label: "recipes.sorting.open" },
   leftoversChip: { kind: "pill", cls: "riso-itemform-chip small on", label: "inventory.form.leftovers" },
   editShelf: { kind: "icon", cls: "inv-shelf-edit", glyph: "✎" },
+  // The Delete shelf sheet's button, and Bring back in + Add section (components/InventoryShelfSheets.jsx).
+  deleteShelf: { kind: "pill", cls: "riso-btn primary", label: "inventory.deleteShelf", strong: true },
+  bringBack: { kind: "pill", cls: "riso-btn small", label: "inventory.addShelfSheet.bringBack" },
 
   // Account, in the header
   langSwitch: { kind: "lang" },

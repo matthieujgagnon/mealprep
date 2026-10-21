@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { fail } from "../lib/i18n.js";
-import { BUILT_IN_NAMES, normalizeName } from "../lib/shelves.js";
+import { BUILT_IN_NAMES, hidingAfter, hidingError, normalizeName } from "../lib/shelves.js";
 
 export const inventoryLayoutRouter = Router();
 
@@ -24,8 +24,10 @@ inventoryLayoutRouter.get("/", async (req, res) => {
   res.json(rows);
 });
 
-// PUT /api/inventory-layout { sections: [{ sectionId, label?, size?, height? }] }
-// Replaces the whole layout; list order is the display order.
+// PUT /api/inventory-layout { sections: [{ sectionId, label?, size?, height?, hidden?, movedTo? }] }
+// Replaces the whole layout; list order is the display order. `hidden` is how any shelf is deleted
+// (nothing is deleted: the row stays with its name, place and size) and `movedTo` is the shelf its
+// items show on meanwhile (lib/shelves.js). A field that is not sent is left as it is.
 inventoryLayoutRouter.put("/", async (req, res) => {
   const { sections } = req.body;
   if (!Array.isArray(sections)) return res.status(400).json(fail(req, "mustBeArray", { field: "sections" }));
@@ -39,6 +41,9 @@ inventoryLayoutRouter.put("/", async (req, res) => {
       userId: req.userId,
       sectionId: s.sectionId,
       label,
+      // undefined = not sent (left as it is); see hidingAfter.
+      hidden: typeof s.hidden === "boolean" ? s.hidden : undefined,
+      movedTo: s.movedTo === null ? null : typeof s.movedTo === "string" && s.movedTo ? s.movedTo : undefined,
       position: data.length,
       size: normalizeSize(s.size),
       height: Number.isInteger(s.height) && s.height >= 120 && s.height <= 2000 ? s.height : null,
@@ -48,9 +53,15 @@ inventoryLayoutRouter.put("/", async (req, res) => {
   // another built-in one), so there are never two shelves with the same name. Only a NEW name is
   // asked: a name a row already has stays, whatever it is.
   const [stored, customs] = await Promise.all([
-    prisma.inventorySectionLayout.findMany({ where: { userId: req.userId }, select: { sectionId: true, label: true } }),
-    prisma.pantryLocation.findMany({ where: { userId: req.userId }, select: { name: true } }),
+    prisma.inventorySectionLayout.findMany({ where: { userId: req.userId }, select: { sectionId: true, label: true, hidden: true, movedTo: true } }),
+    prisma.pantryLocation.findMany({ where: { userId: req.userId }, select: { id: true, name: true } }),
   ]);
+  // Hiding a shelf: never the last one that can hold ingredients, and its items only go to a shelf
+  // that is showing. Only what this save changes is judged.
+  const hiding = hidingError(new Set(customs.map((c) => c.id)), new Map(stored.map((r) => [r.sectionId, r])), data);
+  if (hiding === "lastShelf") return res.status(409).json(fail(req, "lastShelf"));
+  if (hiding) return res.status(400).json(fail(req, hiding));
+  const after = hidingAfter(new Map(stored.map((r) => [r.sectionId, r])), data);
   const before = new Map(stored.map((r) => [r.sectionId, r.label]));
   for (const row of data) {
     if (!row.label || !Object.hasOwn(BUILT_IN_NAMES, row.sectionId) || row.label === (before.get(row.sectionId) ?? null)) continue;
@@ -66,15 +77,20 @@ inventoryLayoutRouter.put("/", async (req, res) => {
   // before a drag - would otherwise both insert and trip the unique key.
   const save = () =>
     prisma.$transaction(async (tx) => {
+      // A hidden shelf's row is never dropped, even by a save that does not list it: it is the
+      // shelf, waiting to be brought back.
       await tx.inventorySectionLayout.deleteMany({
-        where: { userId: req.userId, sectionId: { notIn: data.map((d) => d.sectionId) } },
+        where: { userId: req.userId, hidden: false, sectionId: { notIn: data.map((d) => d.sectionId) } },
       });
       for (const row of data) {
-        const { userId, sectionId, ...fields } = row;
+        const { userId, sectionId, hidden, movedTo, ...fields } = row;
+        const now = after.get(sectionId);
+        // The two fields are only written when this save sent one of them.
+        const hideFields = hidden !== undefined || movedTo !== undefined ? { hidden: now.hidden, movedTo: now.movedTo } : {};
         await tx.inventorySectionLayout.upsert({
           where: { userId_sectionId: { userId, sectionId } },
-          create: row,
-          update: fields,
+          create: { userId, sectionId, ...fields, hidden: now.hidden, movedTo: now.movedTo },
+          update: { ...fields, ...hideFields },
         });
       }
     });

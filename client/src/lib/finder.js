@@ -3,7 +3,7 @@ import { daysUntil } from "./pantryInventory.js";
 import { capitalize } from "./groceryList.js";
 import { expiringSoon, foodKey, recipeUsesItem } from "./inventoryMatch.js";
 import { isMealItem } from "./mealItem.js";
-import { onShelf } from "./shelves.js";
+import { onShelf, shelfSetOf } from "./shelves.js";
 import { dealSavings } from "./flyerIngredients.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
 import { hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, makeableRuleOn, recipeTotalMinutes } from "./mealSlots.js";
@@ -108,15 +108,17 @@ export function shelfTone(sectionId, customIndex) {
 // The user's own Inventory shelves, in the order and under the names they gave
 // them (Fridge, Freezer, Pantry and any custom shelf), each with the items on
 // it: [{ id, label, tone, items: [{ key, name, item }] }]. `sections` is what
-// orderedSections() in Inventory.jsx gives: [{ id, label, custom }], in the
+// orderedSections() in Inventory.jsx gives: [{ id, label, custom, hidden, movedTo }], in the
 // saved order. A shelf with nothing on it is left out, and so is anything
 // already past its use-by date. Meals are left out too (leftovers and prepared
 // meals): they are planned from the Planner's search, not something to cook with.
+// A deleted shelf (hidden) has no drawer: its items are in the drawer of the shelf they moved to.
 export function shelvesWithItems(pantryInventory, sections) {
-  const shelfIds = new Set(sections.map((section) => section.id));
+  const shelfIds = shelfSetOf(sections);
   const usable = pantryInventory.filter((item) => !isMealItem(item) && (!item.expiresAt || daysUntil(item.expiresAt) >= 0));
   let custom = 0;
   return sections
+    .filter((section) => !section.hidden)
     .map((section) => {
       const tone = shelfTone(section.id, section.custom ? custom : 0);
       if (section.custom) custom += 1;

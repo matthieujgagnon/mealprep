@@ -42,6 +42,10 @@ describe("the old shelf that is a copy of a built-in one", () => {
     expect(emptyDuplicateShelves([{ id: "c", name: "Cave" }], [{ sectionId: "custom-id", label: "Cave" }], [])).toEqual([]);
   });
 
+  it("an old copy Matt has already deleted is not offered again", () => {
+    expect(emptyDuplicateShelves(locations, [{ sectionId: "old-prep", hidden: true, movedTo: "pantry" }], []).map((l) => l.id)).toEqual(["plats"]);
+  });
+
   it("names are compared without case, accents or extra spaces", () => {
     expect(normalizeName("  Plats   PRÉPARÉS ")).toBe("plats prepares");
   });

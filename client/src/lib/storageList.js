@@ -46,10 +46,12 @@ export function builtInShelfNames(layout = []) {
 
 // The old sections that are now a copy of a built-in shelf and have nothing on them: Matt's old
 // « Prepared meals » once it was merged into the built-in one. The sheet offers to delete each
-// (with Undo); nothing deletes it for him.
+// (with Undo); nothing deletes it for him. One he has already deleted (hidden) is not offered.
 export function emptyDuplicateShelves(locations, layout, items) {
   const names = builtInShelfNames(layout);
+  const deleted = new Set((layout || []).filter((row) => row.hidden).map((row) => row.sectionId));
   return (locations || []).filter((shelf) => {
+    if (deleted.has(shelf.id)) return false;
     if (!names.has(normalizeName(shelf.name))) return false;
     // Nothing on it: by shelfOf, which also counts an item whose storage is not known yet and that
     // is still on this section.

@@ -39,7 +39,7 @@ function useLeftoverPlaces(recipe) {
   );
 }
 
-export function CookedView({ recipe, servings, variant, mealType, userId, rows, shelfName, portionsStart, actions, onClose, onBackToStep1 }) {
+export function CookedView({ recipe, servings, variant, mealType, userId, rows, shelfName, shelfIds, portionsStart, actions, onClose, onBackToStep1 }) {
   const isPhone = useIsPhone();
   const { theme, dark, toggle } = useTheme();
   const places = useLeftoverPlaces(recipe);
@@ -154,6 +154,7 @@ export function CookedView({ recipe, servings, variant, mealType, userId, rows, 
             dim={lf === "active"}
             busy={busy}
             shelfName={shelfName}
+            shelfIds={shelfIds}
             onToggle={(row) => setEdits((prev) => ({ ...prev, [row.key]: { ...prev[row.key], on: !row.on } }))}
             onAmount={(row, amount) => {
               if (amount === undefined) return;
@@ -229,6 +230,7 @@ export function CookedViewHost({
   pantryInventory,
   setPantryInventory,
   shelfName,
+  shelfIds,
   entries,
   addItem,
   setCooked,
@@ -336,6 +338,7 @@ export function CookedViewHost({
       userId={userId}
       rows={rows}
       shelfName={shelfName}
+      shelfIds={shelfIds}
       portionsStart={startingPortions(servings, copies.length)}
       actions={actions}
       onClose={close}

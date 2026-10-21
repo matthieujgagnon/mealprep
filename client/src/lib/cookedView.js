@@ -28,14 +28,15 @@ export function editedRow(row, edit = {}) {
 
 // The rows in shelves, in the order the recipe first uses each shelf: Inventory
 // items under the shelf they show on (`shelfOf`: where the person sees them), then what isn't
-// in Inventory at all. `shelfName(id)` names a shelf.
-export function shelfGroups(rows, shelfName) {
+// in Inventory at all. `shelfName(id)` names a shelf, and `shelfIds` (lib/shelves.js `shelfSetOf`)
+// is the shelves as the page shows them: an item on a deleted shelf is under the shelf it moved to.
+export function shelfGroups(rows, shelfName, shelfIds) {
   const groups = new Map();
   const add = (key, label, row) => {
     if (!groups.has(key)) groups.set(key, { key, label, rows: [] });
     groups.get(key).rows.push(row);
   };
-  for (const row of rows) if (row.kind === "item") add(`shelf:${shelfOf(row.item)}`, shelfName(shelfOf(row.item)), row);
+  for (const row of rows) if (row.kind === "item") add(`shelf:${shelfOf(row.item, shelfIds)}`, shelfName(shelfOf(row.item, shelfIds)), row);
   for (const row of rows) if (row.kind === "missing") add("missing", null, row);
   return [...groups.values()];
 }

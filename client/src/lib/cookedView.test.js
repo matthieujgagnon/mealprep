@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { amountText, editedRow, plannedMealFor, shelfGroups, startingPortions, takeOutCounts, takesFrom } from "./cookedView.js";
 import { leftoverItem, leftoverKeepDays, thawPatch } from "./leftovers.js";
+import { shelfSetOf } from "./shelves.js";
 
 const item = (id, location, quantity = 1, unit = "kg") => ({ id, location, quantity, unit, name: id });
 const rows = [
@@ -31,6 +32,13 @@ describe("the take-out list", () => {
       ["PREPARED", ["item:pierogi"]],
       ["SPICES", ["item:paprika", "item:ice"]],
     ]);
+  });
+
+  it("groups an item on a deleted shelf under the shelf it moved to, never under a raw id", () => {
+    const stored = (id, location, extra) => ({ key: `item:${id}`, kind: "item", item: { ...item(id, location), ...extra }, amount: 1, on: true });
+    const shelves = shelfSetOf([{ id: "fridge" }, { id: "freezer", hidden: true, movedTo: "fridge" }, { id: "pantry" }, { id: "prepared", hidden: true, movedTo: "freezer" }]);
+    const groups = shelfGroups([stored("peas", "freezer"), stored("milk", "fridge"), stored("pierogi", "freezer", { isPreparedMeal: true })], (id) => id.toUpperCase(), shelves);
+    expect(groups.map((g) => [g.label, g.rows.map((r) => r.key)])).toEqual([["FRIDGE", ["item:peas", "item:milk", "item:pierogi"]]]);
   });
 
   it("counts what comes out and sends each switched-on amount", () => {
