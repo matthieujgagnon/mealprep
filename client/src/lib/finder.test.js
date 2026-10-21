@@ -124,6 +124,19 @@ describe("shelvesWithItems", () => {
     const withLeftover = [...inventory, { name: "Chili (leftovers)", location: "fridge", isLeftover: true, expiresAt: inDays(2) }];
     expect(shelvesWithItems(withLeftover, sections)[0].items.map((i) => i.name)).toEqual(["Spinach", "Eggs"]);
   });
+
+  it("a deleted shelf has no drawer: its items are in the drawer of the shelf they moved to", () => {
+    const gone = sections.map((s) => (s.id === "freezer" ? { ...s, hidden: true, movedTo: "fridge" } : s));
+    const before = shelvesWithItems(inventory, sections);
+    const after = shelvesWithItems(inventory, gone);
+    expect(after.map((s) => s.label)).toEqual(["Fridge", "Pantry", "Spice rack"]);
+    const frozen = before.find((s) => s.id === "freezer").items.map((i) => i.name);
+    expect(frozen.length).toBeGreaterThan(0);
+    expect(after[0].items.map((i) => i.name)).toEqual([...before[0].items.map((i) => i.name), ...frozen]);
+    // Nothing is lost or counted twice.
+    const count = (shelves) => shelves.reduce((n, s) => n + s.items.length, 0);
+    expect(count(after)).toBe(count(before));
+  });
 });
 
 describe("availabilityOf", () => {

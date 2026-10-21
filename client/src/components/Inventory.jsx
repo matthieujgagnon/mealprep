@@ -4,9 +4,11 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { api } from "../api.js";
 import { daysUntil } from "../lib/pantryInventory.js";
 import { leftoverExpiry } from "../lib/leftovers.js";
-import { onShelf } from "../lib/shelves.js";
+import { onShelf, shelfSetOf } from "../lib/shelves.js";
 import { emptyDuplicateShelves, normalizeName, unknownStorageItems } from "../lib/storageList.js";
+import { countOnShelf, defaultMoveTarget, hiddenShelves, moveChoices } from "../lib/shelfDelete.js";
 import { InventoryStorageSheet } from "./InventoryStorageSheet.jsx";
+import { AddShelfSheet, DeleteShelfSheet } from "./InventoryShelfSheets.jsx";
 import { removedHowLabel, removedWhenLabel } from "../lib/removedItems.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
 import { InventoryItem, InventoryDragPreview } from "./InventoryItems.jsx";
@@ -73,7 +75,9 @@ const shelfDragId = (id) => `inv-shelf-${id}`;
 
 // Built-in shelves plus custom sections, in the user's saved order (anything
 // not in the saved layout yet - a brand-new section - goes at the end), with
-// their names, widths (in grid columns) and heights.
+// their names, widths (in grid columns) and heights. A shelf that was deleted is `hidden`:
+// it is still here (its name, place and size wait for Bring back) but the page does not draw
+// it, and `movedTo` is the shelf its items show on meanwhile (lib/shelves.js).
 export function orderedSections(locations, layout) {
   const all = [
     ...SHELF_LOCATIONS.map((l) => ({ id: l.id, defaultLabel: l.label, custom: false })),
@@ -93,24 +97,31 @@ export function orderedSections(locations, layout) {
         defaultLabel: sec.defaultLabel,
         span: spanOf(row?.size, sec.id),
         height: row?.height ? Math.max(MIN_HEIGHT, row.height) : null,
+        hidden: row?.hidden === true,
+        movedTo: row?.hidden === true ? row.movedTo ?? null : null,
       };
     });
 }
 
 // The shelves as plain { id, label } choices, in the saved order: the places a
-// thing can be kept (Leftovers is a shelf to look at, not a place to choose).
+// thing can be kept (Leftovers is a shelf to look at, not a place to choose, and a deleted
+// shelf is not a place at all).
 export function shelfOptions(locations, layout) {
   return orderedSections(locations, layout)
-    .filter(({ id }) => id !== "leftovers")
+    .filter(({ id, hidden }) => id !== "leftovers" && !hidden)
     .map(({ id, label }) => ({ id, label }));
 }
 
-function layoutPayload(sections) {
+// The layout as the server takes it. Whether a shelf is hidden (and where its items go) is only
+// sent for the one shelf `change` is about ({ id, hidden, movedTo }): every other shelf is left as
+// the server has it, so a tab that is out of date can't bring a deleted shelf back by saving a resize.
+function layoutPayload(sections, change) {
   return sections.map((s) => ({
     sectionId: s.id,
     label: !s.custom && s.label !== s.defaultLabel ? s.label : null,
     size: `c12:${s.span}`,
     height: s.height,
+    ...(change?.id === s.id ? { hidden: change.hidden, movedTo: change.hidden ? change.movedTo ?? null : null } : {}),
   }));
 }
 
@@ -197,8 +208,9 @@ const WIDTH_PRESETS = [
   { id: "third", span: 4, get label() { return t("inventory.widthThird"); } },
 ];
 
-// A shelf's header in edit mode: its name as an input, the size presets
-// and (for your own shelves) Delete shelf; a built-in shelf says it can't be deleted.
+// A shelf's header in edit mode: its name as an input, the size presets and Delete shelf (any
+// shelf, built-in or your own: it asks where the items go and hides the shelf, see
+// InventoryShelfSheets.jsx).
 // `focusName` puts the cursor in the name on a computer; on a phone the keyboard it opens
 // would cover the controls just below it (Delete included), so rename is a tap on the name.
 function useShelfEditor({ location, span, height, focusName, onRename, onResize, onDelete, onDone }) {
@@ -255,14 +267,11 @@ function useShelfEditor({ location, span, height, focusName, onRename, onResize,
         <button type="button" className={height ? "" : "on"} onClick={() => onResize({ span, height: null })}>
           {t("inventory.autoHeight")}
         </button>
-        {location.custom && (
-          <button type="button" className="danger" onClick={onDelete}>
-            {t("inventory.deleteShelf")}
-          </button>
-        )}
+        <button type="button" className="danger" onClick={onDelete}>
+          {t("inventory.deleteShelf")}
+        </button>
         <span className="inv-shelf-controls-note">
-          {location.custom ? t("inventory.itemsGoBack") : t("inventory.builtInNote")}{" "}
-          {t("inventory.dragBetween")}
+          {t("inventory.deleteNote")} {t("inventory.dragBetween")}
         </span>
         {error && <p className="inv-section-editor-error">{error}</p>}
       </div>
@@ -511,7 +520,8 @@ function ShelfColumn({
 // "+ Add section" in the title row: it turns into a field for the new shelf's
 // name (Enter adds it, Escape or an empty field cancels), so nothing is made
 // until it has a name. The new shelf goes at the end, and the page scrolls to it.
-function AddSectionButton({ onAdd }) {
+// With a shelf deleted it opens the Add a shelf sheet instead, which also brings it back.
+function AddSectionButton({ onAdd, hasHidden, onOpenSheet }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
@@ -535,7 +545,7 @@ function AddSectionButton({ onAdd }) {
 
   if (!open) {
     return (
-      <button type="button" className="riso-inv-btn" onClick={() => setOpen(true)}>
+      <button type="button" className="riso-inv-btn" onClick={() => (hasHidden ? onOpenSheet() : setOpen(true))}>
         {t("inventory.addSection")}
       </button>
     );
@@ -641,6 +651,8 @@ export function Inventory({
   const isPhone = useIsPhone();
   const showToast = onToast;
   const [editingId, setEditingId] = useState(null);
+  const [deleting, setDeleting] = useState(null); // { id, count }: the shelf Delete shelf is asking about
+  const [shelfSheetOpen, setShelfSheetOpen] = useState(false); // Add a shelf / Bring back
 
   useEffect(() => {
     if (activeItemId && !items.some((i) => i.id === activeItemId)) setActiveItemId(null);
@@ -725,8 +737,12 @@ export function Inventory({
   // Built-in shelves (Fridge/Freezer/Pantry, USDA-backed, and Leftovers) and the
   // user's own custom sections, in the user's order, with their names and sizes.
   const sections = orderedSections(locations, layout);
-  // Every shelf that exists: an item that says it is on one that was just deleted is on its default shelf.
-  const shelfIds = new Set(sections.map((sec) => sec.id));
+  // The shelves on the page; a deleted one is not drawn (Bring back), and its items show on the
+  // shelf it moved to. `shelfIds` is what `shelfOf` asks (lib/shelves.js).
+  const showing = sections.filter((sec) => !sec.hidden);
+  const shelfIds = shelfSetOf(sections);
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
 
   function scrollToShelf(id) {
     document.querySelector(`.inv-shelves [data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -736,6 +752,7 @@ export function Inventory({
   // around it (the shared reorder piece, as Grocery's stores). Saved at once, with
   // the widths and heights as they were.
   function moveSection(id, overId) {
+    // A deleted shelf keeps its place in the saved order, so Bring back puts it where it was.
     const from = sections.findIndex((sec) => sec.id === id);
     const to = sections.findIndex((sec) => sec.id === overId);
     if (from < 0 || to < 0 || from === to) return;
@@ -745,8 +762,8 @@ export function Inventory({
 
   function moveSectionByKey(id, dir, e) {
     e.preventDefault();
-    const i = sections.findIndex((sec) => sec.id === id);
-    const target = sections[i + dir];
+    const i = showing.findIndex((sec) => sec.id === id);
+    const target = showing[i + dir];
     if (target) moveSection(id, target.id);
   }
 
@@ -763,14 +780,40 @@ export function Inventory({
     else updateSection(sec.id, { label: name });
   }
 
+  // Delete shelf (any shelf) hides it, going to the shelf picked in the sheet; nothing is deleted
+  // and no item is changed. Undo shows it again exactly as it was (its row keeps the name, place
+  // and size), and so does Bring back. A refusal (the server won't hide the last shelf) is shown
+  // in the sheet.
+  async function saveHiding(change) {
+    const error = await onSaveLayout(layoutPayload(sectionsRef.current, change));
+    if (error) throw new Error(error);
+  }
+
+  async function confirmDelete(sec, targetId) {
+    await saveHiding({ id: sec.id, hidden: true, movedTo: targetId });
+    setDeleting(null);
+    showToast(t("inventory.shelfDeleted", { name: sec.label, target: shelfName(targetId) }), () => saveHiding({ id: sec.id, hidden: false }));
+  }
+
+  async function bringBack(shelf) {
+    const movedTo = sections.find((sec) => sec.id === shelf.id)?.movedTo ?? null;
+    await saveHiding({ id: shelf.id, hidden: false });
+    showToast(t("inventory.shelfBack", { name: shelf.label }), () => saveHiding({ id: shelf.id, hidden: true, movedTo }));
+    setTimeout(() => scrollToShelf(shelf.id), 50);
+  }
+
   // The one-time list after the move to two fields: items whose storage was lost, and an old shelf
   // that is now an empty copy of a built-in one. Nothing here changes by itself.
   const unknownStorage = unknownStorageItems(items);
-  const oldShelves = emptyDuplicateShelves(locations, layout, items).map((shelf) => ({
-    id: shelf.id,
-    name: shelf.name,
-    builtIn: sections.find((sec) => !sec.custom && normalizeName(sec.label) === normalizeName(shelf.name))?.label || shelf.name,
-  }));
+  const oldShelves = emptyDuplicateShelves(locations, layout, items)
+    .map((shelf) => ({
+      id: shelf.id,
+      name: shelf.name,
+      twin: sections.find((sec) => !sec.custom && normalizeName(sec.label) === normalizeName(shelf.name)),
+    }))
+    // The sheet says its items are on the built-in shelf: not when that one is deleted.
+    .filter((shelf) => !shelf.twin?.hidden)
+    .map((shelf) => ({ id: shelf.id, name: shelf.name, builtIn: shelf.twin?.label || shelf.name }));
   const oldCopyIds = new Set(oldShelves.map((shelf) => shelf.id));
   const shelfName = (id) => sections.find((sec) => sec.id === id)?.label || "";
 
@@ -783,6 +826,12 @@ export function Inventory({
   async function deleteOldShelf(shelf) {
     await onDeleteLocation(shelf.id);
     showToast(t("inventory.storageSheet.oldDeleted", { name: shelf.name }), () => onAddLocation(shelf.name, { restore: true }));
+  }
+
+  async function addShelf(name) {
+    const created = await onAddLocation(name);
+    // Scroll to it once it's on the page.
+    if (created?.id) setTimeout(() => scrollToShelf(created.id), 50);
   }
 
   async function putBack(entry) {
@@ -813,11 +862,9 @@ export function Inventory({
             {t("inventory.scanReceipt")}
           </button>
           <AddSectionButton
-            onAdd={async (name) => {
-              const created = await onAddLocation(name);
-              // Scroll to it once it's on the page.
-              if (created?.id) setTimeout(() => scrollToShelf(created.id), 50);
-            }}
+            hasHidden={sections.some((sec) => sec.hidden)}
+            onOpenSheet={() => setShelfSheetOpen(true)}
+            onAdd={addShelf}
           />
           <button
             type="button"
@@ -852,8 +899,8 @@ export function Inventory({
       {items.length === 0 && <p className="empty-state">{t("inventory.empty")}</p>}
 
       <div className="inv-shelves" ref={gridRef} onClickCapture={swallowClick}>
-        <ReorderList ids={sections.map((loc) => shelfDragId(loc.id))} strategy={shelfStrategy}>
-          {sections.map((loc) => (
+        <ReorderList ids={showing.map((loc) => shelfDragId(loc.id))} strategy={shelfStrategy}>
+          {showing.map((loc) => (
             <ShelfColumn
               key={loc.id}
               location={loc}
@@ -875,7 +922,7 @@ export function Inventory({
               onRename={(name) => renameSection(loc, name)}
               onDelete={() => {
                 setEditingId(null);
-                onDeleteLocation(loc.id);
+                setDeleting({ id: loc.id, count: countOnShelf(items, sections, loc.id) });
               }}
               resizable={!isPhone}
               focusName={!isPhone}
@@ -921,10 +968,34 @@ export function Inventory({
         />
       )}
 
+      {deleting && sections.some((sec) => sec.id === deleting.id) && (
+        <DeleteShelfSheet
+          key={deleting.id}
+          shelf={sections.find((sec) => sec.id === deleting.id)}
+          count={deleting.count}
+          choices={moveChoices(sections, deleting.id)}
+          initial={defaultMoveTarget(sections, deleting.id)}
+          isPhone={isPhone}
+          onConfirm={(target) => confirmDelete(sections.find((sec) => sec.id === deleting.id), target)}
+          onClose={() => setDeleting(null)}
+        />
+      )}
+
+      {shelfSheetOpen && (
+        <AddShelfSheet
+          hidden={hiddenShelves(sections, items)}
+          isPhone={isPhone}
+          onAdd={addShelf}
+          onBringBack={bringBack}
+          onClose={() => setShelfSheetOpen(false)}
+        />
+      )}
+
       {storageOpen && (
         <InventoryStorageSheet
           items={unknownStorage}
           shelfName={shelfName}
+          shelfIds={shelfIds}
           oldShelves={oldShelves}
           isPhone={isPhone}
           onConfirm={confirmStorage}

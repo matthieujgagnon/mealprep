@@ -24,6 +24,9 @@ export const LEFTOVERS_SHELF = "leftovers";
 // leftover is always there).
 export const CHOOSABLE_BUILT_IN = [...STORAGES, PREPARED_SHELF];
 
+// Every built-in shelf id (Leftovers included: it is a shelf to look at, but it can be hidden).
+export const BUILT_IN_SHELVES = [...STORAGES, PREPARED_SHELF, LEFTOVERS_SHELF];
+
 // "Plats préparés" and "plats prepares" are the same name: lower case, no accents, one space.
 export function normalizeName(text) {
   return String(text ?? "")
@@ -115,4 +118,56 @@ export async function restorePlacement(prisma, userId, row) {
     shelf = resolved || null;
   }
   return { location, shelf };
+}
+
+// ---- Hiding a shelf (any shelf can be deleted; nothing is ever deleted) -----------------------
+//
+// A deleted shelf is HIDDEN: its InventorySectionLayout row stays, with `hidden` on and `movedTo`
+// naming the shelf its items and new items show on meanwhile. Nothing is written onto any item.
+// client/src/lib/shelves.js reads the same two fields when it draws the shelves.
+
+// What a layout save leaves each shelf as: `before` is Map(sectionId -> { hidden, movedTo }) of the
+// rows already stored, `rows` the rows sent ({ sectionId, hidden?, movedTo? }, undefined = not
+// sent, which leaves it as it was, so an old tab that never heard of hiding changes nothing).
+// A shelf that is shown has no `movedTo`.
+export function hidingAfter(before, rows) {
+  const after = new Map();
+  for (const [id, row] of before) after.set(id, { hidden: row.hidden === true, movedTo: row.hidden === true ? row.movedTo ?? null : null });
+  for (const row of rows) {
+    const was = after.get(row.sectionId) ?? { hidden: false, movedTo: null };
+    const hidden = typeof row.hidden === "boolean" ? row.hidden : was.hidden;
+    after.set(row.sectionId, { hidden, movedTo: hidden ? (row.movedTo !== undefined ? row.movedTo : was.movedTo) : null });
+  }
+  return after;
+}
+
+// Why a layout save may not hide shelves, or null when it may. `customIds` are the person's own
+// PantryLocation ids. A rule only judges what THIS save changes (a shelf newly hidden, or a hidden
+// one given a new target), so a save that only resizes is never refused.
+//   "shelfInvalid"     a shelf that is not one of theirs is hidden
+//   "lastShelf"        this would leave no shelf that can hold ordinary items (Leftovers can't)
+//   "shelfMoveInvalid" the items would go to a shelf that is missing, hidden, Leftovers or the shelf itself
+export function hidingError(customIds, before, rows) {
+  const known = new Set([...BUILT_IN_SHELVES, ...customIds]);
+  const after = hidingAfter(before, rows);
+  const wasHidden = (id) => before.get(id)?.hidden === true;
+  const newlyHidden = [];
+  const retargeted = [];
+  for (const row of rows) {
+    const now = after.get(row.sectionId);
+    if (!now.hidden) continue;
+    if (!known.has(row.sectionId)) return "shelfInvalid";
+    if (!wasHidden(row.sectionId)) newlyHidden.push(row.sectionId);
+    if (row.movedTo !== undefined && row.movedTo !== (before.get(row.sectionId)?.movedTo ?? null)) retargeted.push(row.sectionId);
+  }
+  if (newlyHidden.length > 0) {
+    const left = [...known].filter((id) => id !== LEFTOVERS_SHELF && after.get(id)?.hidden !== true);
+    if (left.length === 0) return "lastShelf";
+  }
+  for (const id of new Set([...newlyHidden, ...retargeted])) {
+    const target = after.get(id).movedTo;
+    if (target == null) continue;
+    if (target === id || target === LEFTOVERS_SHELF || !known.has(target) || after.get(target)?.hidden === true) return "shelfMoveInvalid";
+  }
+  return null;
 }

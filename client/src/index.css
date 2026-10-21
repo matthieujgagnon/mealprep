@@ -18472,6 +18472,38 @@ body.no-select {
   gap: 10px;
 }
 
+/* Delete shelf and Bring back (components/InventoryShelfSheets.jsx), in the one-time list's sheet. */
+.riso-shelfsheet-select,
+.riso-shelfsheet-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 20px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+}
+
+.riso-shelfsheet-new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.riso-shelfsheet-new .riso-shelfsheet-input {
+  flex: 1 1 160px;
+  width: auto;
+}
+
+.riso-shelfsheet-last {
+  color: var(--riso-ink);
+  font-weight: 600;
+}
+
 /* Under the "Stored in" cards: the separate "Shelf" choice. */
 .riso-itemform-shelf {
   display: flex;

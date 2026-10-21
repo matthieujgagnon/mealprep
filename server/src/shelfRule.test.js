@@ -69,7 +69,18 @@ describe("which shelf an item is on is one rule, and it is not where the item is
   it("the shelves on Inventory, Cook with and the finished view are placed by shelfOf", () => {
     expect(readFileSync(join(root, "client/src/components/Inventory.jsx"), "utf8")).toMatch(/onShelf\(i, loc\.id, shelfIds\)/);
     expect(readFileSync(join(root, "client/src/lib/finder.js"), "utf8")).toMatch(/onShelf\(item, section\.id, shelfIds\)/);
-    expect(readFileSync(join(root, "client/src/lib/cookedView.js"), "utf8")).toMatch(/shelfOf\(row\.item\)/);
+    // The finished view gives shelfOf the shelves as the page shows them, so an item on a deleted
+    // shelf is under the shelf it moved to and never under a raw id.
+    expect(readFileSync(join(root, "client/src/lib/cookedView.js"), "utf8")).toMatch(/shelfOf\(row\.item, shelfIds\)/);
+  });
+
+  it("any shelf can be deleted, so what is offered as a place to KEEP something never comes from the shelf list", () => {
+    const form = readFileSync(join(root, "client/src/components/InventoryItemForm.jsx"), "utf8");
+    // "Stored in" is the fixed Fridge / Freezer / Pantry, even with Freezer deleted.
+    expect(form).toMatch(/const storage = STORAGES\.map\(/);
+    expect(form).not.toMatch(/sections\.filter\(\(s\) => isStorage/);
+    // A deleted shelf is not offered as a shelf to choose.
+    expect(form).toMatch(/const shelfChoices = sections\.filter\(\(s\) => s\.id !== "leftovers" && !s\.hidden\)/);
   });
 
   it("a drop on a shelf is decided by placeOnShelf, not by writing the shelf's id into location", () => {

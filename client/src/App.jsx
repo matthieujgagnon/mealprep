@@ -47,7 +47,7 @@ import { GroceryList } from "./components/GroceryList.jsx";
 import { FlyerDeals } from "./components/FlyerDeals.jsx";
 import { Makeable } from "./components/Makeable.jsx";
 import { Inventory, InventoryDragPreview, SHELF_DRAG, orderedSections, shelfOptions } from "./components/Inventory.jsx";
-import { keptThere, placeOnShelf } from "./lib/shelves.js";
+import { keptThere, placeOnShelf, shelfSetOf } from "./lib/shelves.js";
 import { GripAwarePointerSensor, sectionCollision } from "./components/ReorderSections.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 import { InventoryLinkPopup, InventoryLinksContext } from "./components/InventoryLinkPopup.jsx";
@@ -864,20 +864,27 @@ export default function App({ user, onLogout }) {
   // restores the previous layout.
   // Saves go out one at a time, in order (a rename then a quick drag used to
   // race each other); only the newest one's answer is applied.
+  // A shelf's hidden state (a deleted shelf, see lib/shelves.js) is only in the save for the shelf
+  // it is about; every other row keeps what the page already has until the server answers.
+  // Resolves to null when saved, or to the refusal's message (the server won't hide the last shelf).
   const layoutSaves = useRef({ chain: Promise.resolve(), latest: 0 });
   function handleSaveInventoryLayout(sections) {
     const prev = inventoryLayout;
-    setInventoryLayout(sections.map((s, position) => ({ ...s, sectionId: s.sectionId, position })));
+    const had = new Map(prev.map((row) => [row.sectionId, row]));
+    setInventoryLayout(sections.map((s, position) => ({ ...(had.get(s.sectionId) ?? {}), ...s, sectionId: s.sectionId, position })));
     const ticket = ++layoutSaves.current.latest;
-    layoutSaves.current.chain = layoutSaves.current.chain.then(async () => {
+    const run = layoutSaves.current.chain.then(async () => {
       try {
         const saved = await api.saveInventoryLayout(sections);
         if (ticket === layoutSaves.current.latest) setInventoryLayout(saved);
-      } catch {
+        return null;
+      } catch (err) {
         if (ticket === layoutSaves.current.latest) setInventoryLayout(prev);
+        return err?.message || t("inventory.shelfSheet.failed");
       }
     });
-    return layoutSaves.current.chain;
+    layoutSaves.current.chain = run;
+    return run;
   }
 
   // Drag a card from one Inventory shelf onto another. What a drop changes is `placeOnShelf`
@@ -888,7 +895,7 @@ export default function App({ user, onLogout }) {
   async function handleMoveInventoryItem(itemId, target) {
     const item = pantryInventory.find((i) => i.id === itemId);
     // Leftovers stay on their own shelf (they move to the fridge to thaw instead).
-    const patch = placeOnShelf(item, target, new Set(orderedSections(pantryLocations, inventoryLayout).map((sec) => sec.id)));
+    const patch = placeOnShelf(item, target, shelfSetOf(orderedSections(pantryLocations, inventoryLayout)));
     if (!patch) return;
     const kept = keptThere(item, patch);
     const payload = { ...patch, ...(kept ? { expiresAt: kept } : {}) };
@@ -1468,6 +1475,7 @@ export default function App({ user, onLogout }) {
           <InventoryConfirmSheet
             drafts={inventoryAsk.drafts}
             sections={shelfOptions(pantryLocations, inventoryLayout)}
+            shelfIds={shelfSetOf(orderedSections(pantryLocations, inventoryLayout))}
             title={inventoryAsk.title}
             intro={inventoryAsk.intro}
             confirmNone={inventoryAsk.confirmNone}
@@ -1744,6 +1752,7 @@ export default function App({ user, onLogout }) {
           pantryInventory={pantryInventory}
           setPantryInventory={setPantryInventory}
           shelfName={(id) => shelfOptions(pantryLocations, inventoryLayout).find((s) => s.id === id)?.label || id}
+          shelfIds={shelfSetOf(orderedSections(pantryLocations, inventoryLayout))}
           entries={[...plannerEntries, ...upcomingEntries]}
           addItem={handleAddPantryItem}
           setCooked={setMealCooked}

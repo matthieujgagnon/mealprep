@@ -5,7 +5,7 @@ import { parseQuantityInput } from "../lib/units.js";
 import { expiryDay } from "../lib/quebecDay.js";
 import { UnitSelect } from "./UnitSelect.jsx";
 import { PreparedTag } from "./RisoPills.jsx";
-import { STORAGES, isStorage } from "../lib/shelves.js";
+import { STORAGES, followHidden, isStorage } from "../lib/shelves.js";
 import { t } from "../i18n/index.js";
 
 // The one confirmation sheet in front of everything that adds to Inventory
@@ -21,7 +21,9 @@ import { t } from "../i18n/index.js";
 // freezer, pantry: the use-by comes from it) and `shelf` the shelf it shows on (lib/shelves.js);
 // a row's Shelf choice is one control, and a second "Stored in" choice appears under it when the
 // shelf is not Fridge, Freezer or Pantry (Prepared meals, a section of their own), so both are
-// said before anything is added. A missing storage or use-by date is filled in from the USDA
+// said before anything is added. A shelf that was deleted is not offered: a row whose own shelf is
+// deleted shows on the shelf its items moved to (`shelfIds`, lib/shelves.js) and says where it is
+// kept in that second choice. A missing storage or use-by date is filled in from the USDA
 // FoodKeeper suggestion, and stays editable. A draft with `on: false` starts switched off (Done shopping: the
 // items bought ✓ but not queued for Inventory), and can be switched on.
 // `confirmNone`: the button's words when every row is off, for a caller that
@@ -50,7 +52,7 @@ function toRow(draft) {
   };
 }
 
-function ConfirmRow({ row, sections, onChange }) {
+function ConfirmRow({ row, sections, shelfIds, onChange }) {
   const [suggesting, setSuggesting] = useState(false);
   const latest = useRef(row);
   latest.current = row;
@@ -82,6 +84,21 @@ function ConfirmRow({ row, sections, onChange }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.name, row.location]);
+
+  // The shelf the row will show on, and whether it is not the shelf of where it is kept (a chosen
+  // shelf, or its own shelf is deleted): then where it is kept is said too.
+  const own = row.shelf || row.location;
+  const shown = own ? followHidden(own, shelfIds) : "";
+  const showKept = !!row.shelf || (isStorage(row.location) && shown !== row.location);
+
+  function pickShelf(id) {
+    // Fridge, Freezer or Pantry says where it is kept; any other shelf only says which shelf.
+    if (!isStorage(id)) return onChange({ shelf: id });
+    // The shelf a deleted one moved its items to is where this row already shows: it stays kept
+    // where it was, and only follows the shelf again.
+    if (isStorage(row.location) && row.location !== id && followHidden(row.location, shelfIds) === id) return onChange({ shelf: "" });
+    onChange({ location: id, shelf: "", locationTouched: true });
+  }
 
   return (
     <li className={`riso-confirm-row${row.on ? "" : " off"}`}>
@@ -125,12 +142,9 @@ function ConfirmRow({ row, sections, onChange }) {
         <select
           className="riso-confirm-shelf"
           aria-label={t("inventoryConfirm.shelfAria", { name: row.name })}
-          value={row.shelf || row.location}
+          value={shown}
           disabled={!row.on}
-          onChange={(e) =>
-            // Fridge, Freezer or Pantry says where it is kept; any other shelf only says which shelf.
-            isStorage(e.target.value) ? onChange({ location: e.target.value, shelf: "", locationTouched: true }) : onChange({ shelf: e.target.value })
-          }
+          onChange={(e) => pickShelf(e.target.value)}
         >
           {!row.shelf && !row.location && <option value="">…</option>}
           {sections.map((l) => (
@@ -139,7 +153,7 @@ function ConfirmRow({ row, sections, onChange }) {
             </option>
           ))}
         </select>
-        {row.shelf && (
+        {showKept && (
           <span className="riso-confirm-kept">
             <span className="riso-confirm-kept-label">{t("inventory.form.stepStored")}</span>
             <select
@@ -171,7 +185,7 @@ function ConfirmRow({ row, sections, onChange }) {
   );
 }
 
-export function InventoryConfirmSheet({ drafts, sections, title, intro, confirmNone, onConfirm, onCancel }) {
+export function InventoryConfirmSheet({ drafts, sections, shelfIds, title, intro, confirmNone, onConfirm, onCancel }) {
   const [rows, setRows] = useState(() => drafts.map(toRow));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -241,7 +255,7 @@ export function InventoryConfirmSheet({ drafts, sections, title, intro, confirmN
         </div>
         <ul className="riso-confirm-list">
           {rows.map((row) => (
-            <ConfirmRow key={row.id} row={row} sections={sections} onChange={(patch) => patchRow(row.id, patch)} />
+            <ConfirmRow key={row.id} row={row} sections={sections} shelfIds={shelfIds} onChange={(patch) => patchRow(row.id, patch)} />
           ))}
         </ul>
         {error && <p className="riso-confirm-error">{error}</p>}

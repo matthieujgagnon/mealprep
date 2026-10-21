@@ -15,10 +15,12 @@ import { t } from "../i18n/index.js";
 //
 //   items       the items whose storage is not known yet (lib/storageList.js)
 //   shelfName   id -> the shelf's name, for the line under each name
+//   shelfIds    the shelves as the page shows them (lib/shelves.js `shelfSetOf`), so an item on a
+//               deleted shelf is named by the shelf it moved to
 //   oldShelves  [{ id, name, builtIn }] empty copies of a built-in shelf, `builtIn` its name
 //   onConfirm   (choices: [{ id, location }]) -> resolves when saved
 //   onDeleteShelf  (shelf) -> resolves when deleted
-export function InventoryStorageSheet({ items, shelfName, oldShelves = [], isPhone, onConfirm, onDeleteShelf, onClose }) {
+export function InventoryStorageSheet({ items, shelfName, shelfIds, oldShelves = [], isPhone, onConfirm, onDeleteShelf, onClose }) {
   const [picks, setPicks] = useState({});
   const [guessed, setGuessed] = useState(() => new Set()); // ids whose pick is still a guess
   const touched = useRef(new Set());
@@ -93,7 +95,7 @@ export function InventoryStorageSheet({ items, shelfName, oldShelves = [], isPho
                 <li key={item.id} className="riso-storagesheet-row">
                   <div className="riso-storagesheet-who">
                     <span className="riso-storagesheet-name">{item.name}</span>
-                    <span className="riso-storagesheet-shelf">{shelfName(shelfOf(item))}</span>
+                    <span className="riso-storagesheet-shelf">{shelfName(shelfOf(item, shelfIds))}</span>
                   </div>
                   <div className="riso-storagesheet-pick">
                     <Segmented

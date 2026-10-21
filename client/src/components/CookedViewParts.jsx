@@ -262,7 +262,7 @@ function OtherRow({ row }) {
 
 // The review list: each ingredient's Inventory item and the amount that comes
 // out, under its shelf, then what isn't in Inventory.
-export function TakeOutCard({ userId, rows, state, dim, busy, shelfName, onToggle, onAmount, onRemove, onNotNow, onUndo }) {
+export function TakeOutCard({ userId, rows, state, dim, busy, shelfName, shelfIds, onToggle, onAmount, onRemove, onNotNow, onUndo }) {
   const [editing, setEditing] = useState(null);
   const counts = takeOutCounts(rows);
   if (state !== "active") {
@@ -283,7 +283,7 @@ export function TakeOutCard({ userId, rows, state, dim, busy, shelfName, onToggl
       </section>
     );
   }
-  const groups = shelfGroups(rows, shelfName);
+  const groups = shelfGroups(rows, shelfName, shelfIds);
   return (
     <section className={`ck-card${dim ? " dim" : " live"}`} aria-label={t("cooked.inventory.title")} aria-disabled={dim || undefined} inert={dim ? "" : undefined}>
       <CardHead badge="−" tone="green">

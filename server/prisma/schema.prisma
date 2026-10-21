@@ -510,6 +510,11 @@ model Feedback {
 // columns of the 6-column grid ("1"-"6"; older rows say "third", "half" or
 // "full") and `height` its height in px (null = fits its items). Sections
 // without a row use the defaults.
+// `hidden` is how ANY shelf is deleted (a built-in one or one of the person's own): the shelf is
+// not drawn, nothing is deleted, and its row keeps the name, place and size for when it is
+// brought back. `movedTo` is the shelf its items and new items show on while it is hidden (the
+// choice made when it was deleted); nothing is written onto the items themselves, see
+// lib/shelves.js. Both are add-only (migration 20261021120000_inventory_shelf_hidden).
 model InventorySectionLayout {
   id        String  @id @default(cuid())
   userId    String
@@ -519,6 +524,8 @@ model InventorySectionLayout {
   position  Int     @default(0)
   size      String  @default("half")
   height    Int?
+  hidden    Boolean @default(false)
+  movedTo   String?
 
   @@unique([userId, sectionId])
 }
