@@ -111,7 +111,7 @@ test.describe("desktop, English", () => {
     // The Grocery and Store mode lines show the real labels inside the sentences.
     const grocery = page.locator("#help-grocery");
     await expect(grocery.locator("li", { hasText: "Choose a view" }).locator(".riso-segmented")).toHaveText("By storeBy aisleBy recipe");
-    await expect(grocery.locator("li", { hasText: "Press" }).locator(".riso-grocery-store-btn")).toContainText("I'm at the store");
+    await expect(grocery.locator("li", { hasText: "Press" }).locator(".riso-grocery-cartbar-store")).toContainText("I'm at the store");
     await expect(grocery.locator("li", { hasText: "When a store has queued items" }).locator(".riso-group-foot-btn")).toHaveText("+ Add 2 to inventory");
     await expect(grocery.locator("li", { hasText: "Press Done shopping" })).toContainText("Done shopping · add 3 to inventory when you've finished");
     // The box's three steps are drawn as they look: empty, ✓ and +.
@@ -123,7 +123,7 @@ test.describe("desktop, English", () => {
 
     // Tapping a copy does nothing: still on Help, nothing was opened.
     const before = page.url();
-    await grocery.locator(".riso-grocery-store-btn").click({ force: true });
+    await grocery.locator(".riso-grocery-cartbar-store").click({ force: true });
     await expect(page.locator(".store-mode")).toHaveCount(0);
     await expect(page.locator(".riso-help h1")).toBeVisible();
     expect(page.url()).toBe(before);
@@ -202,7 +202,7 @@ test.describe("phone, Quebec French", () => {
 
     const grocery = page.locator("#help-grocery");
     await expect(grocery.locator("li", { hasText: "Choisissez une vue" }).locator(".riso-segmented")).toHaveText("Par magasinPar rayonPar recette");
-    await expect(grocery.locator("li", { hasText: "Appuyez sur" }).locator(".riso-grocery-store-btn")).toContainText("Je suis à l'épicerie");
+    await expect(grocery.locator("li", { hasText: "Appuyez sur" }).locator(".riso-grocery-cartbar-store")).toContainText("Je suis à l'épicerie");
     await expect(page.locator("#help-flyers")).toContainText("Faites des réserves");
 
     // Nothing pokes out of its card or the screen, and no copy is cut off.

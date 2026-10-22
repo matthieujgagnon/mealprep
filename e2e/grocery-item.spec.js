@@ -294,8 +294,10 @@ test.describe("on a phone", () => {
     expect(look).toEqual({ row: "rgb(17, 17, 21)", name: "rgb(244, 241, 234)", qty: "rgb(244, 241, 234)" });
     await beef.click();
     await expect(beef).toHaveClass(/\bon\b/);
-    const box = await beef.locator(".store-mode-check").evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).borderTopColor]);
-    expect(box).toEqual(["rgb(35, 35, 255)", "rgb(35, 35, 255)"]); // blue, with a tick
+    // Blue, with a tick (the box fills over 160 ms, so wait for it to be full).
+    await expect
+      .poll(() => beef.locator(".store-mode-check").evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).borderTopColor]))
+      .toEqual(["rgb(35, 35, 255)", "rgb(35, 35, 255)"]);
     const cut = await mode.locator(".store-mode-name").evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
     expect(cut).toBe(false);
   });

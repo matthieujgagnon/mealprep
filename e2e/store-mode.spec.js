@@ -137,7 +137,8 @@ test("a checked row fades and strikes through but never moves; the count and the
   const row = metro.locator(".store-mode-row", { hasText: "Cilantro" });
   await expect(row).toHaveClass(/\bon\b/);
   await expect(row).toHaveCSS("opacity", "0.45");
-  await expect(row.locator(".store-mode-name")).toHaveCSS("text-decoration-line", "line-through");
+  // The strike-through is a line drawn in the name's background (it sweeps across in 200 ms).
+  await expect(row.locator(".store-mode-name .mm-strike")).toHaveCSS("background-size", "100% 2px");
   await expect(row.locator(".store-mode-check")).toHaveText("✓");
   await expect(mode.locator(".store-mode-num")).toHaveText("5");
   await expect(metro.locator(".store-mode-badge")).toHaveText("4 LEFT");
