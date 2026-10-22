@@ -9,8 +9,10 @@ import { t } from "../i18n/index.js";
 // rest all use this one.
 //
 //   toast    { id, message, undo?, variant? } or null
-//   message  a text, or { name, rest } for a grocery check: the item's name (bold, cut
-//            with … when long) then its "· rest", which never wraps
+//   message  a text, or { name, rest } for a grocery check: the item's name (bold) then its
+//            "· rest", which never breaks inside. The name matters more: when both don't fit on
+//            a line the rest drops under the name, and the name is cut with … only when it
+//            alone is too long
 //   variant  "store-dark" / "store-light": Store mode's own pill (lower, a bigger Undo)
 //   onClose  hides it
 //

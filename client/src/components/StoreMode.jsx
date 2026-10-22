@@ -6,7 +6,7 @@ import { ThemeSwitch } from "./ThemeSwitch.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { useTheme } from "../hooks/useTheme.js";
 import { capitalize } from "../lib/groceryList.js";
-import { EASE, T, flash, play, prefersReducedMotion } from "../lib/motion.js";
+import { EASE, T, flash as flashColour, play, prefersReducedMotion } from "../lib/motion.js"; // (`flash` below is the item just moved)
 import { brandOf } from "../lib/flyerIngredients.js";
 import { colorOfStore, readStoreColors, writeStoreColors } from "../lib/storeColors.js";
 import { getLang, t } from "../i18n/index.js";
@@ -185,7 +185,7 @@ export function StoreMode({
     if (!pulse || pulse.n === lastPulse.current) return;
     lastPulse.current = pulse.n;
     if (prefersReducedMotion()) {
-      flash(summaryRef.current, "rgba(255, 225, 77, 0.28)");
+      flashColour(summaryRef.current, "rgba(255, 225, 77, 0.28)");
       return;
     }
     play(numberRef.current, [{ transform: "scale(1)" }, { transform: "scale(1.22)", offset: 0.4 }, { transform: "scale(1)" }], {

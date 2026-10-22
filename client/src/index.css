@@ -21682,13 +21682,17 @@ body.no-select {
   padding-right: 8px;
 }
 
+/* The name matters more than the verb: when both don't fit on one line the verb (which never breaks
+   inside) drops under the name, and the name is cut with a … only when it alone is too long. */
 .riso-toast-text.parts {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  column-gap: 6px;
 }
 
 .riso-toast-name {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

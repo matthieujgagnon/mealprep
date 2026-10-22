@@ -361,7 +361,15 @@ test.describe("twenty taps in a row", () => {
     // The shown number catches up when the chips have landed.
     await expect(page.locator(".riso-grocery-cart-num")).toHaveText("21", { timeout: 4000 });
     // Every save goes out, one item's in the order of its taps; the server keeps each item's last tap.
-    await expect.poll(async () => Object.keys(await savedChecks(page)).length, { timeout: 15000 }).toBe(21);
+    // ... until every save has been sent and has landed (a count of 21 can pass on the way, with the last
+    // DELETE still to go).
+    await expect.poll(() => saves.length, { timeout: 20000 }).toBe(25);
+    await expect
+      .poll(async () => {
+        const kept = await savedChecks(page);
+        return Object.keys(kept).length === 21 && !(keys.lemons in kept) && kept[keys["aluminum foil"]]?.queued === true;
+      }, { timeout: 20000 })
+      .toBe(true);
     const forItem = (key) => saves.filter((s) => s.split(" ")[1] === key);
     expect(forItem(keys.lemons)).toEqual([`POST ${keys.lemons}`, `POST ${keys.lemons} queued`, `DELETE ${keys.lemons}`]);
     expect(forItem(keys["aluminum foil"])).toEqual([`POST ${keys["aluminum foil"]}`, `POST ${keys["aluminum foil"]} queued`]);
@@ -507,6 +515,28 @@ for (const size of [{ width: 390, height: 664 }, { width: 390, height: 844 }]) {
   });
 }
 
+test.describe("a hard jump down the page, on a phone", () => {
+  test.use({ locale: "fr-CA", viewport: { width: 390, height: 700 }, hasTouch: true, isMobile: true });
+
+  test("the docked cart appears when the bar goes from below the screen to above it in one jump", async ({ page }) => {
+    const userId = await signUp(page, true);
+    await seed(page, userId);
+    await openGrocery(page, true);
+    // The page opens with How it works showing, so the cart bar is under the fold: not reached yet, no dock.
+    const barTop = await page.locator(".riso-grocery-cartbar").evaluate((el) => el.getBoundingClientRect().top);
+    expect(barTop).toBeGreaterThan(700);
+    await page.waitForTimeout(500);
+    await expect(page.locator(".riso-grocery-dock")).toHaveCount(0);
+    // One jump (the End key, a hard flick): the bar never crosses the screen on the way.
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(page.locator(".riso-grocery-dock")).toBeVisible();
+    // And back to the top in one jump: the bar is in view again, so the dock leaves.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => document.querySelector(".riso-grocery-cartbar").scrollIntoView({ block: "center" }));
+    await expect(page.locator(".riso-grocery-dock")).toHaveCount(0);
+  });
+});
+
 for (const width of [360, 390]) {
   test.describe(`${width} px wide, in French`, () => {
     test.use({ locale: "fr-CA", viewport: { width, height: 700 }, hasTouch: true, isMobile: true });
@@ -543,3 +573,94 @@ for (const width of [360, 390]) {
     });
   });
 }
+
+// The toast says the item's name first: a typical long name (« Papier d'aluminium », "Aluminum foil") is never cut,
+// whatever the verb, at the two phone widths that matter, on the list and in Store mode (16 px text, a bigger Undo).
+// When name and verb don't both fit on a line, the verb drops under the name.
+for (const lang of [
+  { code: "fr-CA", fr: true, typed: "papier d'aluminium", shown: "Papier d'aluminium", verbs: ["· dans le panier", "· → inventaire", "· dans la liste"], storeVerbs: ["· dans le panier", "· dans la liste"] },
+  { code: "en-CA", fr: false, typed: "aluminum foil", shown: "Aluminum foil", verbs: ["· in your cart", "· queued for inventory", "· back on the list"], storeVerbs: ["· in your cart", "· back on the list"] },
+]) {
+  for (const width of [360, 390]) {
+    test.describe(`${lang.code} toasts at ${width} px`, () => {
+      test.use({ locale: lang.code, viewport: { width, height: 800 }, hasTouch: true, isMobile: true });
+
+      test(`the name « ${lang.shown} » is never cut, on the list and in Store mode`, async ({ page }) => {
+        const userId = await signUp(page, lang.fr);
+        await seed(page, userId);
+        if (lang.fr) await page.request.post("/api/grocery-extra-items", { data: { name: lang.typed, quantity: 1 } });
+        await openGrocery(page, lang.fr);
+        const fits = async (verb) => {
+          const toast = page.locator(".riso-toast");
+          await expect(toast.locator(".riso-toast-name")).toHaveText(lang.shown);
+          await expect(toast.locator(".riso-toast-rest")).toHaveText(verb);
+          const m = await toast.evaluate((el) => {
+            const name = el.querySelector(".riso-toast-name");
+            const rest = el.querySelector(".riso-toast-rest");
+            const r = el.getBoundingClientRect();
+            const undo = el.querySelector(".riso-toast-undo").getBoundingClientRect();
+            return { cut: name.scrollWidth - name.clientWidth, restCut: rest.scrollWidth - rest.clientWidth, left: r.left, right: r.right, height: r.height, undoInside: undo.right <= r.right && undo.left >= r.left, width: innerWidth };
+          });
+          expect(m.cut, `${verb}: the name needs ${m.cut}px more room`).toBeLessThanOrEqual(1);
+          expect(m.restCut, `${verb} is whole`).toBeLessThanOrEqual(1);
+          expect(m.left).toBeGreaterThanOrEqual(0);
+          expect(m.right).toBeLessThanOrEqual(m.width);
+          expect(m.undoInside).toBe(true);
+          expect(m.height, "never taller than a two-line pill").toBeLessThanOrEqual(64);
+        };
+
+        const checkbox = box(page, lang.typed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        await checkbox.scrollIntoViewIfNeeded();
+        for (const verb of lang.verbs) {
+          await checkbox.tap();
+          await fits(verb);
+        }
+
+        // Store mode: bigger text in a narrower pill.
+        await page.locator(".riso-grocery-cartbar-store").tap();
+        const mode = page.locator(".store-mode");
+        await expect(mode).toBeVisible();
+        const row = mode.locator(".store-mode-row").filter({ hasText: lang.shown });
+        await row.tap();
+        await expect(page.locator(".riso-toast")).toHaveClass(/store-dark/);
+        await fits(lang.storeVerbs[0]);
+        await row.tap();
+        await fits(lang.storeVerbs[1]);
+      });
+    });
+  }
+}
+
+test.describe("Store mode, for someone who asked for less motion", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("a tap checks the row, says so in the toast and the count, flashes a colour, and sends no chip", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const userId = await signUp(page);
+    await seed(page, userId);
+    await openGrocery(page);
+    await page.locator(".riso-grocery-cartbar-store").tap();
+    const mode = page.getByRole("dialog", { name: "Store mode" });
+    await expect(mode).toBeVisible();
+    await recordAnimations(page);
+    const count = mode.locator(".store-mode-num");
+    const before = Number(await count.textContent());
+    const cilantro = mode.locator(".store-mode-row").filter({ hasText: "Cilantro" });
+    await cilantro.tap();
+    // The app is still there (an earlier version crashed here), the row is checked and the count is at once.
+    await expect(page.getByText(/What you already saved is safe/)).toHaveCount(0);
+    await expect(cilantro).toHaveAttribute("data-step", "1");
+    await expect(count).toHaveText(String(before - 1));
+    await expect(page.locator(".riso-toast .riso-toast-rest")).toHaveText("· in your cart");
+    expect(await page.evaluate(() => window.chips)).toBe(0);
+    // The row and the count's row flash (600 ms), nothing moves.
+    const all = await page.evaluate(() => window.started);
+    expect(all.some((a) => a.duration === 600 && a.props.join() === "backgroundColor" && a.what === "row")).toBe(true);
+    expect(all.filter((a) => a.props.some((p) => !["backgroundColor", "opacity"].includes(p)))).toEqual([]);
+    await cilantro.tap(); // out again
+    await expect(cilantro).toHaveAttribute("data-step", "0");
+    await expect(count).toHaveText(String(before));
+    await page.locator(".riso-toast").getByRole("button", { name: "Undo" }).tap();
+    await expect(cilantro).toHaveAttribute("data-step", "1");
+  });
+});

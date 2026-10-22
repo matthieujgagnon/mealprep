@@ -1162,8 +1162,8 @@ export const fr = {
     addQueued: "+ Ajouter {count} à l'inventaire",
     // Le message unique après chaque toucher de la case d'un article (le nom est en gras, puis le reste) : ce que le toucher a fait.
     toastInCart: "{name} · dans le panier",
-    toastQueued: "{name} · en attente pour l'inventaire",
-    toastBack: "{name} · de retour dans la liste",
+    toastQueued: "{name} · → inventaire",
+    toastBack: "{name} · dans la liste",
     colOnSale: "EN SOLDE",
     colRecipe: "RECETTE",
     colBuy: "ACHETER",

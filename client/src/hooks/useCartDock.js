@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { dockWanted } from "../lib/cartDock.js";
 
 // The height of the page header while it is pinned to the top of a phone's screen (it is
 // `position: sticky` there), else 0: the part of the window that rows and bars slide under.
@@ -13,28 +14,35 @@ export function pinnedHeaderHeight() {
 // the top of the scroll area"; that area starts under the header). A bar that is still below the
 // screen, or in view, shows no dock. It leaves at once when the bar comes back. Pass `null`
 // (no bar: a computer) and it is always false.
+//
+// The bar is measured on every scroll, resize and change of layout (not watched by an
+// IntersectionObserver: that reports only when the bar enters or leaves the screen, so a jump from
+// below the screen straight to above it, a hard flick or the End key, would tell it nothing).
 export function useCartDock(bar) {
   const [on, setOn] = useState(false);
   useEffect(() => {
-    if (!bar || typeof IntersectionObserver === "undefined") {
+    if (!bar) {
       setOn(false);
       return undefined;
     }
-    let observer = null;
-    function watch() {
-      observer?.disconnect();
-      const pinned = pinnedHeaderHeight();
-      observer = new IntersectionObserver(
-        ([entry]) => setOn(!entry.isIntersecting && entry.boundingClientRect.bottom <= pinned + 1),
-        { rootMargin: `-${pinned}px 0px 0px 0px` }
-      );
-      observer.observe(bar);
-    }
-    watch();
-    window.addEventListener("resize", watch); // the header is pinned or not as the window turns
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      setOn(dockWanted(bar.getBoundingClientRect(), pinnedHeaderHeight()));
+    };
+    const soon = () => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", soon, { passive: true });
+    window.addEventListener("resize", soon);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(soon) : null; // How it works closed, a footer opened...
+    observer?.observe(document.body);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", soon);
+      window.removeEventListener("resize", soon);
       observer?.disconnect();
-      window.removeEventListener("resize", watch);
     };
   }, [bar]);
   return on;
