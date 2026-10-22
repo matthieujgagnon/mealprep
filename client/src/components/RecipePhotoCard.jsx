@@ -8,8 +8,8 @@ import { PreparedTag } from "./RisoPills.jsx";
 // (--riso-shadow-photo-card). Tapping the photo or the title opens the recipe
 // (`onOpen`): they are one button.
 //
-//   variant="grid"    the Recipes card: the whole card is the photo, 3:4, a thin
-//                     meal-colour line (`lineColor`) along the bottom.
+//   variant="grid"    the Recipes card: the whole card is the photo, 3:4. The meal type
+//                     is the caption's words only, never a colour.
 //   variant="bento"   the Cookbook's tile (design: docs/design/riso-v2-recipes-bento/): the
 //                     same card as "grid", but it takes its size from the grid it sits in. The
 //                     caller passes `style` with --bento-col and --bento-row (a grid span, for
@@ -38,7 +38,7 @@ import { PreparedTag } from "./RisoPills.jsx";
 // `cardRef` and any other props (drag listeners, for instance) go on the card
 // itself. A new recipe card is this with another caption and children, not a new
 // card.
-export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, tag, prepared, lineColor, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
+export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, tag, prepared, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
   // The finder and strip cards hold their photo in a box of fixed height, with the
   // text under it inside the button.
   const finder = variant === "finder" || variant === "strip";
@@ -62,7 +62,6 @@ export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, ta
       {/* The photo, the caption and the title are one button (spans only, so it stays valid inside a button). */}
       <button type="button" className="rpc-open" aria-label={openLabel} onClick={(e) => onOpen?.(e.currentTarget.closest(".rpc").getBoundingClientRect())}>
         {finder ? <span className="rpc-photo">{photo}</span> : photo}
-        {lineColor ? <span className="rpc-line" style={{ background: lineColor }} aria-hidden="true" /> : null}
         {finder ? children : null}
       </button>
       {action}

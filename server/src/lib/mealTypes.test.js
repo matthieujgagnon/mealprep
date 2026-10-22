@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEAL_SLOTS, readMealTypes, readPrepared, suggestForRecipe, suggestMealSlots, suggestPrepared } from "./mealTypes.js";
+import { MEAL_SLOTS, readHiddenFromMakeable, readMealTypes, readPrepared, suggestForRecipe, suggestMealSlots, suggestPrepared } from "./mealTypes.js";
 
 const ing = (...names) => names.map((name) => ({ name }));
 
@@ -35,6 +35,17 @@ describe("readPrepared", () => {
     expect(readPrepared(undefined)).toEqual({ ok: true, value: undefined });
     expect(readPrepared("yes").ok).toBe(false);
     expect(readPrepared(null).ok).toBe(false);
+  });
+});
+
+describe("readHiddenFromMakeable", () => {
+  it("is a yes or no, and silence leaves it as it is", () => {
+    expect(readHiddenFromMakeable(true)).toEqual({ ok: true, value: true });
+    expect(readHiddenFromMakeable(false)).toEqual({ ok: true, value: false });
+    expect(readHiddenFromMakeable(undefined)).toEqual({ ok: true, value: undefined });
+    expect(readHiddenFromMakeable("true").ok).toBe(false);
+    expect(readHiddenFromMakeable(1).ok).toBe(false);
+    expect(readHiddenFromMakeable(null).ok).toBe(false);
   });
 });
 

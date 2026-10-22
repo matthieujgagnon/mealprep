@@ -6,7 +6,6 @@ import {
   cardCaption,
   cardState,
   haveBar,
-  mealLineColor,
   namesToAdd,
   pickPills,
   pillFontSize,
@@ -32,20 +31,12 @@ const TIMES = [
 
 afterEach(() => vi.useRealTimers());
 
-describe("the Recipes card caption and meal line", () => {
+describe("the Recipes card caption", () => {
   it("writes the time in capitals, with hours", () => {
     expect(captionTime(35)).toBe("35 MIN");
     expect(captionTime(240)).toBe("4 H");
     expect(captionTime(75)).toBe("1 H 15 MIN");
     expect(captionTime(0)).toBe("");
-  });
-
-  it("colours only breakfast, lunch and supper", () => {
-    expect(mealLineColor("dinner")).toBe("var(--riso-accent)");
-    expect(mealLineColor("lunch")).toBe("var(--riso-hot)");
-    expect(mealLineColor("breakfast")).toBe("var(--riso-yellow)");
-    expect(mealLineColor("dessert")).toBeNull();
-    expect(mealLineColor(null)).toBeNull();
   });
 });
 

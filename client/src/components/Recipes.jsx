@@ -9,9 +9,9 @@ import { useIsPhone } from "../hooks/useIsPhone.js";
 import { matchesSearch } from "../lib/recipeSearch.js";
 import { QUICK_MINUTES } from "../lib/finder.js";
 import { bentoLayout } from "../lib/bento.js";
-import { captionTime, mealLineColor } from "../lib/photoCard.js";
+import { captionTime } from "../lib/photoCard.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
-import { RECIPE_SLOTS, hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, recipeSlot, recipeSlotCaption, recipeSlots, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, recipeSlotCaption, recipeSlots, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { TIME_FILTERS, isUrlLike, matchesTime, proteinOfRecipe, sortRecipes } from "../lib/recipesView.js";
 import { t } from "../i18n/index.js";
 
@@ -42,12 +42,12 @@ const MEAL_CHIPS = [
 
 // One card (RecipePhotoCard, the same photo card as Makeable's): the meal, the
 // protein and the time over the top of the photo, the title over a dark gradient
-// at the bottom, and a thin line in the meal's colour. Tapping it opens the
-// recipe's card. An Imported card is 3:4, all the same size; a Cookbook tile
+// at the bottom. The meal type is the caption's words, with no colour. Tapping it
+// opens the recipe's card. An Imported card is 3:4, all the same size; a Cookbook tile
 // (`tile`, from lib/bento.js) is the same card in the bento grid's size.
 function RecipeCard({ recipe, onOpen, tile }) {
-  const slot = recipeSlot(recipe); // the first meal type colours the line; the caption says "Lunch +1" when there are more
-  const caption = recipeSlotCaption(recipe);
+  const caption = recipeSlotCaption(recipe); // "Lunch +1" when there are more meal types
+
   const protein = proteinOfRecipe(recipe);
   const time = captionTime(recipeTotalMinutes(recipe));
   return (
@@ -56,7 +56,6 @@ function RecipeCard({ recipe, onOpen, tile }) {
       style={tile ? { "--bento-col": `span ${tile.cols}`, "--bento-row": `span ${tile.rows}`, "--bento-title": `${tile.title}px` } : undefined}
       title={recipe.title}
       photoUrl={recipe.photoUrl}
-      lineColor={mealLineColor(slot)}
       prepared={isPreparedRecipe(recipe)}
       openLabel={t("planner.open", { title: recipe.title })}
       onOpen={(rect) => onOpen(recipe, rect)}

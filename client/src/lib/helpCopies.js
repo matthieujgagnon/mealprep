@@ -50,6 +50,8 @@ export const HELP_COPIES = {
   editRecipe: { kind: "pill", cls: "riso-help-copy-menu", label: "recipeCard.editRecipe" },
   addToCookbook: { kind: "pill", cls: "riso-help-copy-menu", label: "recipeCard.addToCookbook" },
   moveToImported: { kind: "pill", cls: "riso-help-copy-menu", label: "recipeCard.moveToImported" },
+  hideFromMakeable: { kind: "pill", cls: "riso-help-copy-menu", label: "recipeCard.hideFromMakeable" },
+  showInMakeable: { kind: "pill", cls: "riso-help-copy-menu", label: "recipeCard.showInMakeable" },
   deleteRecipe: { kind: "pill", cls: "riso-help-copy-menu danger", label: "recipeCard.deleteRecipe" },
 
   // Cook mode
@@ -95,6 +97,7 @@ export const HELP_COPIES = {
 
   // Makeable
   includeSides: { kind: "pill", cls: "riso-pill size-chip", label: "makeable.includeSides" },
+  showAgain: { kind: "pill", cls: "riso-removed-putback", label: "makeable.hidden.showAgain" },
   finderReady: { kind: "pill", cls: "riso-pill size-chip", label: "finder.avail.ready" },
   finderFew: { kind: "pill", cls: "riso-pill size-chip", label: "finder.avail.few" },
   showSales: { kind: "pill", cls: "riso-pill size-chip", label: "makeable.showSales" },

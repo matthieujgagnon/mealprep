@@ -25,6 +25,11 @@ export function readPrepared(value) {
   return typeof value === "boolean" ? { ok: true, value } : { ok: false };
 }
 
+// `hiddenFromMakeable` (« Masquer de Faisable ») is the same kind of yes or no, read the same way.
+export function readHiddenFromMakeable(value) {
+  return readPrepared(value);
+}
+
 // ---- Suggestions (rules only, no AI) ------------------------------------------------------
 //
 // For the "sort your recipes" screen and the editor: what a recipe's title and ingredients

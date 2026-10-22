@@ -722,6 +722,23 @@ export default function App({ user, onLogout }) {
     saveRecipe(updated);
   }
 
+  // « Masquer de Faisable » / « Afficher dans Faisable »: the recipe card's ⋯ menu hides a recipe,
+  // and "Show again" under Makeable's list of hidden ones shows it. It is Matt's own choice for
+  // one recipe (avocado toast), saved on the recipe (`hiddenFromMakeable`): Makeable stops
+  // suggesting it, nothing else changes. The recipe store takes the saved recipe, so every page
+  // agrees at once, and the toast has Undo.
+  async function handleSetMakeableHidden(recipe, hidden) {
+    try {
+      saveRecipe(await api.updateRecipe(recipe.id, { hiddenFromMakeable: hidden }));
+    } catch {
+      showToast(t("recipeCard.hideNote.error"));
+      return;
+    }
+    showToast(t(`recipeCard.hideNote.${hidden ? "hidden" : "shown"}`, { title: recipe.title }), async () => {
+      saveRecipe(await api.updateRecipe(recipe.id, { hiddenFromMakeable: !hidden }));
+    });
+  }
+
   async function handleAddPantryItem(item) {
     const created = await api.addPantryInventoryItem(item);
     setPantryInventory((prev) => [...prev, created]);
@@ -1516,6 +1533,7 @@ export default function App({ user, onLogout }) {
             onCook={openRecipeCard}
             onPlan={requestPlan}
             onOpenFlyerDeal={openFlyerDeal}
+            onShowAgain={(recipe) => handleSetMakeableHidden(recipe, false)}
           />
         )}
 
@@ -1705,6 +1723,7 @@ export default function App({ user, onLogout }) {
             }}
             onEdit={openRecipeEditor}
             onDelete={handleDeleteRecipe}
+            onSetMakeableHidden={handleSetMakeableHidden}
             onRecipeUpdated={handleRecipeUpdated}
             onRequestInventoryAdd={requestInventoryAdd}
             onDeletePantryItem={handleDeletePantryItem}
