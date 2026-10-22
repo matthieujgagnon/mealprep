@@ -18,6 +18,7 @@ import { CookMode } from "./CookMode.jsx";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { PlannedPill, PreparedTag } from "./RisoPills.jsx";
 import { BuySticker, OptionsMenu, PhotoLightbox, PricesSwitch, Receipt, SimilarStrip, SimilarView, StepList } from "./RecipeCardParts.jsx";
+import { prefersReducedMotion } from "../lib/motion.js";
 import { t } from "../i18n/index.js";
 
 // The recipe card (design: docs/design/riso-v2-recipe-card/): the one card every
@@ -111,7 +112,7 @@ export function RecipeDetailModal({
   const pricesOn = MEAL_PRICING_READY && showPrices;
 
   // ---- Closing, Escape, focus ---------------------------------------------------
-  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const reduced = prefersReducedMotion();
   function onClose() {
     if (closing) return;
     if (reduced) return close();

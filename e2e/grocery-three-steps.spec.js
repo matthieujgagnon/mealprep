@@ -419,126 +419,6 @@ test.describe("on a phone, in French", () => {
   });
 });
 
-// The sticky « Je suis à l'épicerie » floats at the bottom of a phone screen.
-// Scrolling through every view, it must never sit on the cart bar, a store's
-// "+ Ajouter N à l'inventaire" or the list's last row. At each step, the parts
-// of those still on screen are checked against the button's box. Returns what
-// it covered, and at how many steps it was showing (it slides away while one of
-// them is under it, so it must still show most of the time).
-async function coveredWhileScrolling(page) {
-  const hits = [];
-  let steps = 0;
-  let shown = 0;
-  const height = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
-  for (let y = 0; y <= height + 40; y += 40) {
-    await page.evaluate((top) => window.scrollTo(0, top), Math.min(y, height));
-    // The button settles in the next frames (a scroll event, then a check).
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    const found = await page.evaluate(() => {
-      const view = { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
-      const clip = (r) => ({ top: Math.max(r.top, view.top), bottom: Math.min(r.bottom, view.bottom), left: Math.max(r.left, view.left), right: Math.min(r.right, view.right) });
-      const area = (r) => Math.max(0, r.bottom - r.top) * Math.max(0, r.right - r.left);
-      const button = document.querySelector(".riso-grocery-main ~ .riso-grocery-store-btn");
-      if (!button || getComputedStyle(button).visibility === "hidden" || Number(getComputedStyle(button).opacity) === 0) return null;
-      const b = clip(button.getBoundingClientRect());
-      if (area(b) === 0) return null;
-      const rows = [...document.querySelectorAll(".riso-grocery-main .riso-group .riso-row")];
-      const watched = [
-        ...[...document.querySelectorAll(".riso-grocery-cartbar")].map((el) => ["the cart bar", el]),
-        ...[...document.querySelectorAll(".riso-grocery-main .riso-group-foot-btn:not(.sample)")].map((el) => [`a footer's « ${el.textContent} »`, el]),
-        ...(rows.length ? [[`the last row (${rows[rows.length - 1].querySelector(".riso-row-name").textContent})`, rows[rows.length - 1]]] : []),
-      ];
-      return watched
-        .filter(([, el]) => {
-          const r = clip(el.getBoundingClientRect());
-          const both = { top: Math.max(r.top, b.top), bottom: Math.min(r.bottom, b.bottom), left: Math.max(r.left, b.left), right: Math.min(r.right, b.right) };
-          return area(r) > 0 && area(both) > 1;
-        })
-        .map(([what]) => what);
-    });
-    steps++;
-    if (found) shown++;
-    for (const what of found || []) hits.push(`${what} at scroll ${Math.min(y, height)}`);
-  }
-  return { hits, steps, shown };
-}
-
-for (const size of [{ width: 390, height: 664 }, { width: 390, height: 844 }]) {
-  test.describe(`on a ${size.width} x ${size.height} phone, in French`, () => {
-    test.use({ locale: "fr-CA", viewport: size, hasTouch: true, isMobile: true });
-
-    test("scrolling through every view, the sticky « Je suis à l'épicerie » never covers the cart bar, a store's + Ajouter or the last row", async ({ page }) => {
-      const userId = await signUp(page, true);
-      await seed(page, userId);
-      await openGrocery(page);
-      // Something in the cart, and something queued in two stores, so there are footers.
-      await box(page, "Old cheddar").tap();
-      await box(page, "Old cheddar").tap();
-      await box(page, "Milk 2%").tap();
-      await box(page, "Milk 2%").tap();
-      await box(page, "Cilantro").tap();
-      await page.emulateMedia({ reducedMotion: "reduce" }); // no slide to wait for
-      await expect(page.locator(".riso-grocery-store-btn")).toBeVisible();
-      const hits = [];
-      const check = async (label) => {
-        const { hits: found, steps, shown } = await coveredWhileScrolling(page);
-        for (const hit of found) hits.push(`${label}: ${hit}`);
-        // It only steps aside while one of them is under it: it shows most of the way down.
-        expect(shown / steps, `${label}: shown at ${shown} of ${steps} steps`).toBeGreaterThan(0.5);
-      };
-      for (const view of ["Par magasin", "Par rayon", "Par recette"]) {
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await page.getByRole("button", { name: view, exact: true }).tap();
-        await expect(page.locator(".riso-group-foot").first()).toBeVisible();
-        await check(view);
-      }
-      // How it works closed: the cart bar moves up to just above the add field.
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await page.getByRole("button", { name: "Par magasin", exact: true }).tap();
-      await page.locator(".riso-hint-strip").getByRole("button", { name: "Compris" }).tap();
-      await check("Par magasin, sans « Comment ça marche »");
-      expect(hits).toEqual([]);
-
-      // At the very end the button is back in its place, below the list.
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      const [last, button] = await Promise.all([
-        page.locator(".riso-grocery-main .riso-group .riso-row").last().boundingBox(),
-        page.locator(".riso-grocery-store-btn").boundingBox(),
-      ]);
-      expect(button.y).toBeGreaterThan(last.y + last.height);
-    });
-  });
-}
-
-test.describe("a normal-height phone, in French", () => {
-  test.use({ locale: "fr-CA", viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-
-  test("screenshot: the sticky « Je suis à l'épicerie » just under a store's + Ajouter, both in full", async ({ page }) => {
-    const userId = await signUp(page, true);
-    await seed(page, userId);
-    await openGrocery(page);
-    await box(page, "Old cheddar").tap();
-    await box(page, "Old cheddar").tap();
-    await box(page, "Cilantro").tap();
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    // Scroll until Super C's footer button sits 12 px above where the sticky button rests.
-    const footer = page.locator(".riso-group-foot-btn:not(.sample)").first();
-    const button = page.locator(".riso-grocery-store-btn");
-    const target = await footer.evaluate((el, gap) => {
-      const r = el.getBoundingClientRect();
-      const btn = document.querySelector(".riso-grocery-store-btn");
-      return window.scrollY + r.bottom - (window.innerHeight - 12 - btn.offsetHeight - gap);
-    }, 12);
-    await page.evaluate((y) => window.scrollTo(0, y), target);
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    await expect(button).not.toHaveClass(/dodge/);
-    const [f, b] = await Promise.all([footer.boundingBox(), button.boundingBox()]);
-    expect(f.y + f.height).toBeLessThanOrEqual(b.y);
-    expect(b.y + b.height).toBeLessThanOrEqual(844);
-    await page.screenshot({ path: test.info().outputPath("phone-fr-sticky-button.png") });
-  });
-});
-
 test.describe("Store mode", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
@@ -549,7 +429,9 @@ test.describe("Store mode", () => {
     await box(page, "Milk 2%").tap();
     await box(page, "Milk 2%").tap(); // queued on the list
 
-    await page.getByRole("button", { name: /I'm at the store/ }).tap();
+    // « Je suis à l'épicerie » is in the cart bar at the top of the list (a small copy of the bar docks at
+    // the bottom once the bar has scrolled away; see grocery-check-feedback.spec.js).
+    await page.locator(".riso-grocery-cartbar").getByRole("button", { name: /I'm at the store/ }).tap();
     const mode = page.getByRole("dialog", { name: "Store mode" });
     const storeRow = (name) => mode.locator(".store-mode-row").filter({ hasText: name });
     await expect(storeRow("Milk 2%")).toHaveAttribute("data-step", "2");

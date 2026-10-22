@@ -323,26 +323,28 @@ test.describe("Button feedback", () => {
     await expect.poll(() => row.evaluate((e) => getComputedStyle(e).backgroundColor)).not.toBe(before);
   });
 
-  test("checking a grocery item pops the box once", async ({ page }) => {
+  test("checking a grocery item pops the box's ✓ once", async ({ page }) => {
     await groceryWithItem(page);
     const box = page.locator(".riso-row", { has: page.getByRole("checkbox", { name: "Check off Chicken", exact: true }) }).locator(".riso-row-check");
-    await expect(box).not.toHaveClass(/pop/);
-    // The pop is over in a fraction of a second, and on a busy machine the test's own steps can
-    // take longer than that. So the page writes down what the box does, as it does it: each time
-    // `pop` comes on (and which animation it has then), and each time it goes off.
-    await box.evaluate((el) => {
-      el.popLog = [];
-      let had = el.classList.contains("pop");
-      new MutationObserver(() => {
-        const has = el.classList.contains("pop");
-        if (has !== had) el.popLog.push(has ? `on: ${getComputedStyle(el).animationName}` : "off");
-        had = has;
-      }).observe(el, { attributes: true, attributeFilter: ["class"] });
+    await expect(box.locator("[data-gi-mark]")).toHaveCount(0);
+    // The pop is over in 160 ms, and on a busy machine the test's own steps can take longer than
+    // that. So the page writes down every animation it starts, as it starts it.
+    await page.evaluate(() => {
+      const start = Element.prototype.animate;
+      window.startedAnimations = [];
+      Element.prototype.animate = function (keyframes, options) {
+        window.startedAnimations.push({ what: this.hasAttribute("data-gi-mark") ? "mark" : "other", keyframes, duration: options.duration });
+        return start.call(this, keyframes, options);
+      };
     });
     await page.getByRole("checkbox", { name: "Check off Chicken", exact: true }).click();
     await expect(box).toHaveClass(/on/);
-    // Once, then it settles.
-    await expect.poll(() => box.evaluate((el) => el.popLog)).toEqual(["on: riso-check-pop", "off"]);
+    await expect(box.locator("[data-gi-mark]")).toHaveText("✓");
+    // Once: scale 0.6 (unseen), 1.12 at 60%, then 1, in 160 ms.
+    const pops = await page.evaluate(() => window.startedAnimations.filter((a) => a.what === "mark"));
+    expect(pops).toHaveLength(1);
+    expect(pops[0].duration).toBe(160);
+    expect(pops[0].keyframes.map((k) => k.transform)).toEqual(["scale(0.6)", "scale(1.12)", "scale(1)"]);
   });
 
   test("with reduce motion on, nothing animates or transitions", async ({ page }) => {

@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&amp;family=DM+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>html,body{margin:0;background:#e4e0d6}a{color:#2323ff;text-decoration:none}a:hover{color:#16181f}input::placeholder{color:#8a8677}</style></helmet>
+<div style="padding:64px;display:flex;flex-direction:column;gap:64px;font-family:Inter,system-ui,sans-serif;color:#16181f;width:max-content;min-width:100%;box-sizing:border-box">
+  <div style="display:flex;flex-direction:column;gap:16px;width:1100px">
+    <a href="Grocery.dc.html" style="font:500 12px 'DM Mono',monospace;letter-spacing:0.1em">← GROCERY (6A)</a>
+    <span style="font:500 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">MOTION STUDY · GROCERY · CHECK FEEDBACK</span>
+    <h1 style="margin:0;font:800 56px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">What happens when you tap the box</h1>
+    <p style="margin:0;font:400 17px/1.5 Inter,sans-serif;color:#3f3e37;max-width:760px;text-wrap:pretty">Matt, Oct 13: "When you tap an item's box, it just disappears. You don't really see what you checked or where it went." Every board below is live. Tap the boxes, scroll the phone lists, and use Slow motion to watch each part.</p>
+    <ul style="margin:0;padding-left:18px;max-width:760px;font:400 14px/1.6 Inter,sans-serif;color:#3f3e37">
+      <li>A checked row never leaves the list. It stays where it is, tinted, until its store's Add to inventory takes it.</li>
+      <li>Each tap gives one confirmation on the row and one short trip to where the item is counted: the cart for ✓, the store footer for +.</li>
+      <li>Each sequence ends within 600 ms and never blocks the next tap. You can check the next item while the chip is still flying.</li>
+      <li>Every tap updates one shared toast with the item's name and Undo. It never stacks and stays 5 s after the last tap.</li>
+      <li>Phone: when the pink cart bar scrolls off the top, a small copy docks at the bottom, so the chip always has somewhere to land. Desktop: the cart card is sticky.</li>
+    </ul>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px">
+      <span onClick="{{ onSlow }}" style="height:40px;padding:0 18px;box-sizing:border-box;border:2px solid #16181f;border-radius:20px;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:{{ slowBg }};color:{{ slowFg }}">Slow motion ×4</span>
+      <span onClick="{{ onReduced }}" style="height:40px;padding:0 18px;box-sizing:border-box;border:2px solid #16181f;border-radius:20px;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer;background:{{ redBg }};color:{{ redFg }}">Reduced motion</span>
+      <span onClick="{{ onReset }}" style="height:40px;padding:0 18px;box-sizing:border-box;border:2px dashed #16181f;border-radius:20px;display:flex;align-items:center;font:700 14px 'Bricolage Grotesque',sans-serif;cursor:pointer">Reset lists</span>
+      <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;color:#5e5b52">SCROLL INSIDE A PHONE TO SEE THE CART DOCK</span>
+    </div>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1400px">
+      <span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:4px 8px;border-radius:6px">1–3 · 5 · 6</span>
+      <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Phone · 390</h2>
+      <span style="font:400 15px Inter,sans-serif;color:#5e5b52">Tap once, twice, again. Undo from the toast. Replay any step from its timing card.</span>
+    </div>
+    <div style="display:flex;gap:40px;align-items:flex-start">
+      <sc-for list="{{ phones }}" as="b" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:10px;flex:none">
+          <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.label }}</span>
+          <div data-frame="{{ b.key }}" data-screen-label="{{ b.screenLabel }}" style="position:relative;width:390px;height:844px;background:#f4f1ea;border:1px solid #bdb6a6;overflow:hidden;box-sizing:border-box;color:#16181f;font-family:Inter,system-ui,sans-serif">
+            <div data-scroller="" onScroll="{{ b.onScroll }}" style="position:absolute;inset:0;overflow-y:auto;overflow-x:hidden">
+              <dc-import name="AppHeader" active="grocery" lang="{{ b.lang }}" phone="{{ true }}" hint-size="100%,88px"></dc-import>
+              <div style="padding:0 18px 140px;margin-top:18px;display:flex;flex-direction:column;gap:18px">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52;margin:0 0 6px;text-transform:uppercase">{{ b.subLabel }}</div>
+                  <h1 style="margin:0;font:800 38px/0.95 'Bricolage Grotesque',sans-serif;letter-spacing:-0.035em">{{ b.title }} <span style="color:#2323ff">{{ b.titleAccent }}</span></h1>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);border:2px solid #16181f;border-radius:999px;overflow:hidden;background:#fffdf8">
+                  <sc-for list="{{ b.segs }}" as="sg" hint-placeholder-count="3"><span style="height:40px;padding:0 10px;display:flex;align-items:center;justify-content:center;background:{{ sg.bg }};color:{{ sg.fg }};font:600 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ sg.label }}</span></sc-for>
+                </div>
+                <div data-cart="bar" style="display:flex;flex-direction:column;gap:10px;background:#ff48b0;border:2px solid #16181f;border-radius:18px;box-shadow:3px 3px 0 #16181f;padding:10px 10px 12px 14px">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span data-count="" style="flex:none;font:800 34px/0.9 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;font-variant-numeric:tabular-nums">{{ b.checkedCount }}</span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.12em;text-transform:uppercase">{{ b.inCart }}</span><span style="font:700 13.5px/1.2 'Bricolage Grotesque',sans-serif">{{ b.itemsChecked }}</span></span>
+                    <span style="flex:none;height:36px;padding:0 14px;border-radius:18px;background:#16181f;color:#f4f1ea;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;opacity:{{ b.cartBtnOp }}">{{ b.doneShort }}</span>
+                  </div>
+                  <div style="height:8px;margin-right:4px;border-radius:4px;background:#f4f1ea;border:2px solid #16181f;overflow:hidden"><div style="height:100%;width:{{ b.cartPct }}%;background:#16181f;transition:{{ b.barTr }}"></div></div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;background:#fffdf8;border:2px solid #16181f;border-radius:999px;padding:6px 6px 6px 22px">
+                  <input type="text" readonly="" placeholder="{{ b.addPlaceholder }}" style="flex:1;min-width:0;height:40px;border:none;outline:none;background:transparent;font:500 15.5px 'Bricolage Grotesque',sans-serif">
+                  <span style="height:40px;padding:0 20px;border-radius:20px;background:#2323ff;color:#fff;border:2px solid #16181f;box-shadow:2px 2px 0 #16181f;font:700 14.5px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;flex:none;box-sizing:border-box">{{ b.addLabel }}</span>
+                </div>
+                <sc-for list="{{ b.groups }}" as="g" hint-placeholder-count="3">
+                  <div style="background:#fffdf8;border:2px solid #16181f;border-radius:24px;overflow:hidden;display:flex;flex-direction:column">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-bottom:2px solid #16181f">
+                      <span style="flex:none;margin-right:4px;padding:4px 2px;color:#5e5b52;font-size:16px;line-height:1">⠿</span>
+                      <h3 style="margin:0;font:800 20px 'Bricolage Grotesque',sans-serif">{{ g.name }}</h3>
+                      <span style="margin-left:auto;font:400 10.5px 'DM Mono',monospace;letter-spacing:0.08em;white-space:nowrap">{{ g.count }}</span>
+                      <sc-if value="{{ g.removable }}" hint-placeholder-val="{{ false }}"><span style="flex:none;width:26px;height:26px;border-radius:13px;border:1.5px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;line-height:1;font-size:13px;box-sizing:border-box">×</span></sc-if>
+                    </div>
+                    <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                      <div data-row="{{ r.id }}" style="display:flex;align-items:center;box-sizing:border-box;width:100%;min-height:108px;padding:12px 10px 12px 14px;border-top:{{ r.bt }};background:{{ r.bg }}">
+                        <span onClick="{{ r.onTap }}" title="{{ r.tip }}" style="flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span data-box="" style="width:30px;height:30px;flex:none;box-sizing:border-box;border-radius:9px;border:2px solid #16181f;background:{{ r.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center"><span data-glyph="" style="display:block;font:800 {{ r.glyphSize }}/1 'Bricolage Grotesque',sans-serif">{{ r.glyph }}</span></span></span>
+                        <span style="flex:1;min-width:0;padding:0 8px;display:flex;flex-direction:column;gap:4px">
+                          <span><span data-name="" style="font:800 15.5px/19px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;overflow-wrap:break-word;color:{{ r.nameFg }};background-image:linear-gradient(#5e5b52,#5e5b52);background-repeat:no-repeat;background-position:0 58%;background-size:{{ r.strike }}">{{ r.name }}</span></span>
+                          <span style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-height:24px">
+                            <sc-if value="{{ r.queued }}" hint-placeholder-val="{{ false }}"><span data-qlabel="" style="flex:none;font:600 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;color:#2323ff;white-space:nowrap">{{ b.queuedLabel }}</span></sc-if>
+                            <sc-if value="{{ r.manual }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:400 11px/1.4 'DM Mono',monospace;letter-spacing:0.04em;color:#a9a598;white-space:nowrap">{{ b.manualLabel }}</span></sc-if>
+                            <sc-if value="{{ r.hasBrand }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:600 12.5px 'Bricolage Grotesque',sans-serif;color:{{ r.brandFg }};white-space:nowrap">{{ r.brand }}</span><span style="flex:none;width:4px;height:4px;margin:0 -4px;border-radius:2px;background:#5e5b52"></span></sc-if>
+                            <span style="display:flex;align-items:baseline;gap:5px;min-width:0;max-width:100%;font:500 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:{{ r.recFg }}"><span style="flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.recipes }}</span><span style="flex:none;white-space:nowrap">{{ r.more }}</span></span>
+                            <sc-if value="{{ r.hasNeed }}" hint-placeholder-val="{{ false }}"><span style="flex:none;box-sizing:border-box;display:flex;align-items:center;border:1.5px dashed #8a877d;color:#3f3e37;font:500 10.5px 'DM Mono',monospace;white-space:nowrap;height:20px;padding:0 7px;border-radius:10px">{{ r.need }}</span></sc-if>
+                          </span>
+                        </span>
+                        <span style="flex:none;width:50px;display:flex;align-items:center;justify-content:center"><span style="width:42px;height:42px;box-sizing:border-box;border:2px solid {{ r.qtyBorder }};border-radius:50%;background:{{ r.qtyBg }};color:{{ r.qtyFg }};font:700 16px 'DM Mono',monospace;display:flex;align-items:center;justify-content:center">{{ r.qty }}</span></span>
+                        <span style="position:relative;flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:#5e5b52;font:600 18px/1 'Bricolage Grotesque',sans-serif"><span style="position:absolute;width:30px;height:30px;box-sizing:border-box;border-radius:15px;border:2px solid #5e5b52"></span>×</span>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ g.hasFoot }}" hint-placeholder-val="{{ false }}">
+                      <div data-foot="{{ g.key }}" style="display:flex;flex-direction:column;align-items:stretch;gap:12px;box-sizing:border-box;overflow:hidden;padding:14px 16px 14px 20px;border-top:2px solid #16181f;background:#ebebff">
+                        <span style="min-width:0;font:500 12px/1.5 'DM Mono',monospace;letter-spacing:0.08em;color:#16181f;text-transform:uppercase"><span data-foot-n="" style="display:inline-block">{{ g.footN }}</span>{{ b.queuedWord }}{{ g.footNames }}</span>
+                        <span data-foot-btn="" onClick="{{ g.onAdd }}" style="flex:none;height:40px;padding:0 18px;box-sizing:border-box;border:2px solid #16181f;border-radius:20px;background:#2323ff;color:#fff;box-shadow:3px 3px 0 #16181f;display:flex;align-items:center;justify-content:center;font:600 14px 'Bricolage Grotesque',sans-serif;white-space:pre;cursor:pointer;overflow:hidden" style-active="transform:translate(2px,2px);box-shadow:1px 1px 0 #16181f">{{ b.addPre }}<span data-foot-n="" style="display:inline-block">{{ g.footN }}</span>{{ b.addPost }}</span>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <span style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:56px;margin:4px 0;border-radius:28px;border:2px solid #16181f;background:#ff48b0;box-shadow:3px 3px 0 #16181f;font:800 17px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ b.atStore }} <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em">{{ b.bigMode }}</span></span>
+              </div>
+            </div>
+            <sc-if value="{{ b.dockOn }}" hint-placeholder-val="{{ false }}">
+              <div data-cart="dock" data-dock="" style="position:absolute;z-index:450;left:18px;right:18px;bottom:16px;height:52px;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:0 7px 0 16px;background:#ff48b0;border:2px solid #16181f;border-radius:26px;box-shadow:3px 3px 0 #16181f">
+                <span data-count="" style="flex:none;font:800 26px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;font-variant-numeric:tabular-nums">{{ b.checkedCount }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span style="font:700 13px/1.1 'Bricolage Grotesque',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.inCartLower }}</span><span style="height:6px;border-radius:3px;background:#f4f1ea;border:1.5px solid #16181f;overflow:hidden"><span style="display:block;height:100%;width:{{ b.cartPct }}%;background:#16181f;transition:{{ b.barTr }}"></span></span></span>
+                <span style="flex:none;height:36px;padding:0 14px;border-radius:18px;background:#16181f;color:#f4f1ea;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;opacity:{{ b.cartBtnOp }}">{{ b.doneShort }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ b.toastOn }}" hint-placeholder-val="{{ false }}">
+              <div data-toast="" style="position:absolute;z-index:500;left:50%;bottom:96px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;padding:2px 6px 2px 20px;display:flex;align-items:center;gap:12px;background:#16181f;color:#f4f1ea;border-radius:999px;box-shadow:4px 4px 0 #2323ff;font:700 14px 'Bricolage Grotesque',sans-serif">
+                <span data-toast-text="" style="min-width:0;display:flex;gap:6px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.toastName }}</span><span style="flex:none;white-space:nowrap;font-weight:500;color:#d6cfbf">· {{ b.toastVerb }}</span></span>
+                <span onClick="{{ b.onUndo }}" style="flex:none;height:44px;padding:0 2px;display:flex;align-items:center;cursor:pointer"><span style="height:28px;padding:0 12px;border-radius:14px;background:#ffe14d;color:#16181f;font:800 13px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;white-space:nowrap">{{ b.undo }}</span></span>
+              </div>
+            </sc-if>
+            <div data-overlay="" style="position:absolute;inset:0;z-index:600;pointer-events:none;overflow:hidden"></div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="display:flex;flex-direction:column;gap:20px;flex:none;width:580px;padding-top:24px">
+        <sc-for list="{{ tlPhone }}" as="tl" hint-placeholder-count="5">
+          <div style="background:#fffdf8;border:2px solid #16181f;border-radius:20px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="flex:none;font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:3px 7px;border-radius:6px">{{ tl.num }}</span>
+              <span style="flex:1;min-width:0;font:800 18px/1.2 'Bricolage Grotesque',sans-serif">{{ tl.title }}</span>
+              <span style="flex:none;font:600 12px 'DM Mono',monospace;color:#3f3e37">{{ tl.total }}</span>
+              <span onClick="{{ tl.play }}" style="flex:none;height:32px;padding:0 14px;box-sizing:border-box;border:2px solid #16181f;border-radius:16px;background:#ffe14d;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap" style-active="transform:translate(1px,1px)">▶ Replay</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ tl.parts }}" as="p" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:210px 64px minmax(0,1fr);gap:10px;align-items:center">
+                  <span style="font:400 12.5px/1.35 Inter,sans-serif;color:#3f3e37;text-wrap:pretty">{{ p.label }}</span>
+                  <span style="font:500 11px 'DM Mono',monospace;color:#5e5b52;white-space:nowrap">{{ p.ms }}</span>
+                  <span style="position:relative;height:16px;background-image:linear-gradient(90deg,#d6cfbf 1px,transparent 1px);background-size:16.666% 100%;border-right:1px solid #d6cfbf">
+                    <span style="position:absolute;top:0;bottom:0;left:{{ p.left }}%;width:{{ p.width }}%;background:{{ p.color }};border:1.5px solid #16181f;border-radius:4px;box-sizing:border-box"></span>
+                  </span>
+                </div>
+              </sc-for>
+              <div style="display:grid;grid-template-columns:210px 64px minmax(0,1fr);gap:10px">
+                <span></span><span></span>
+                <span style="display:flex;justify-content:space-between;font:500 10px 'DM Mono',monospace;color:#8a8677"><span>0</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span></span>
+              </div>
+            </div>
+            <p style="margin:0;font:400 13px/1.5 Inter,sans-serif;color:#3f3e37;text-wrap:pretty">{{ tl.note }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1400px">
+      <span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:4px 8px;border-radius:6px">4</span>
+      <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Store mode · dark · 390</h2>
+      <span style="font:400 15px Inter,sans-serif;color:#5e5b52">Tap anywhere on a row. The chip flies to the big "left" count at the top.</span>
+    </div>
+    <div style="display:flex;gap:40px;align-items:flex-start">
+      <sc-for list="{{ stores }}" as="b" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:10px;flex:none">
+          <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.label }}</span>
+          <div data-frame="{{ b.key }}" data-screen-label="{{ b.screenLabel }}" style="position:relative;width:390px;height:844px;background:#000000;color:#f4f1ea;border:1px solid #bdb6a6;overflow:hidden;display:flex;flex-direction:column;font-family:'Bricolage Grotesque',sans-serif;box-sizing:border-box">
+            <header style="flex:none">
+              <div style="display:flex;align-items:center;gap:8px;padding:18px">
+                <span style="flex:none;height:36px;padding:0 14px;border-radius:18px;border:2px solid #f4f1ea;font:700 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap;display:flex;align-items:center;box-sizing:border-box">{{ b.back }}</span>
+                <span style="flex:1"></span>
+                <span style="flex:none;height:36px;padding:0 14px;border-radius:18px;border:2px solid #f4f1ea;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;display:flex;align-items:center;box-sizing:border-box">{{ b.colours }}</span>
+                <span style="flex:none;width:36px;height:36px;border-radius:18px;border:2px solid #f4f1ea;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box">☀</span>
+              </div>
+              <div data-cart="store" style="display:flex;align-items:center;gap:12px;padding:18px;border-top:2px solid #2a2a34">
+                <span data-count="" style="flex:none;color:#f4f1ea;font:800 28px/0.9 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;font-variant-numeric:tabular-nums">{{ b.left }}</span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                  <span style="font:700 15px/1.1 'Bricolage Grotesque',sans-serif">{{ b.leftOnList }}</span>
+                  <div style="height:8px;border-radius:4px;background:#15151b;border:1.5px solid #2a2a34;overflow:hidden;box-sizing:border-box"><div style="height:100%;width:{{ b.pct }}%;background:#ff48b0;transition:{{ b.barTr }}"></div></div>
+                </div>
+              </div>
+            </header>
+            <div data-scroller="" style="flex:1;min-height:0;overflow-y:auto;padding:0 14px 120px;display:flex;flex-direction:column;gap:12px;border-top:2px solid #2a2a34">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 2px 4px">
+                <div style="display:flex;border:1.5px solid #f4f1ea;border-radius:16px;overflow:hidden;box-sizing:border-box">
+                  <span style="height:32px;padding:0 18px;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ b.all }}</span>
+                  <span style="height:32px;padding:0 18px;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ b.aisle }}</span>
+                </div>
+                <span style="height:32px;padding:0 16px;border:1.5px solid #f4f1ea;border-radius:16px;box-sizing:border-box;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ b.hideDone }}</span>
+              </div>
+              <sc-for list="{{ b.groups }}" as="g" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="padding:8px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px">
+                    <span style="display:flex;align-items:center;gap:6px;min-width:0">
+                      <span style="flex:none;width:18px;height:18px;display:flex;align-items:center;justify-content:center"><span style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #f4f1ea"></span></span>
+                      <span style="display:inline-block;padding:2px 11px;border-radius:999px;transform:rotate(-2deg);font:800 14px/1.15 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:{{ g.color }};color:#16181f">{{ g.name }}</span>
+                    </span>
+                    <span style="flex:none;height:24px;margin-right:2px;padding:0 10px;display:flex;align-items:center;border-radius:999px;background:#2323ff;color:#fff;font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;white-space:nowrap">{{ g.badge }}</span>
+                  </div>
+                  <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                    <div data-row="{{ r.id }}" onClick="{{ r.onTap }}" style="display:flex;align-items:center;gap:14px;box-sizing:border-box;width:100%;min-height:72px;padding:12px 16px;border:2px solid #26262e;border-radius:16px;background:#111115;opacity:{{ r.op }};cursor:pointer">
+                      <span data-box="" style="flex:none;width:34px;height:34px;box-sizing:border-box;border-radius:10px;border:2px solid #2323ff;background:{{ r.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center"><span data-glyph="" style="display:block;font:800 18px/1 'Bricolage Grotesque',sans-serif">{{ r.glyph }}</span></span>
+                      <span style="flex:1;min-width:0"><span data-name="" style="font:700 19px/1.2 'Bricolage Grotesque',sans-serif;overflow-wrap:break-word;background-image:linear-gradient(#f4f1ea,#f4f1ea);background-repeat:no-repeat;background-position:0 58%;background-size:{{ r.strike }}">{{ r.name }}</span></span>
+                      <span style="flex:none;text-align:right;white-space:nowrap;font:700 18px 'DM Mono',monospace">{{ r.qty }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ b.toastOn }}" hint-placeholder-val="{{ false }}">
+              <div data-toast="" style="position:absolute;z-index:500;left:50%;bottom:24px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 28px);box-sizing:border-box;padding:4px 6px 4px 20px;display:flex;align-items:center;gap:12px;background:#f4f1ea;color:#16181f;border-radius:999px;box-shadow:4px 4px 0 #2323ff;font:700 16px 'Bricolage Grotesque',sans-serif">
+                <span data-toast-text="" style="min-width:0;display:flex;gap:6px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.toastName }}</span><span style="flex:none;white-space:nowrap;font-weight:500;color:#3f3e37">· {{ b.toastVerb }}</span></span>
+                <span onClick="{{ b.onUndo }}" style="flex:none;height:48px;display:flex;align-items:center;cursor:pointer"><span style="height:40px;padding:0 16px;border-radius:20px;background:#ffe14d;border:2px solid #16181f;box-sizing:border-box;color:#16181f;font:800 15px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;white-space:nowrap">{{ b.undo }}</span></span>
+              </div>
+            </sc-if>
+            <div data-overlay="" style="position:absolute;inset:0;z-index:600;pointer-events:none;overflow:hidden"></div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="display:flex;flex-direction:column;gap:20px;flex:none;width:580px;padding-top:24px">
+        <sc-for list="{{ tlStore }}" as="tl" hint-placeholder-count="1">
+          <div style="background:#fffdf8;border:2px solid #16181f;border-radius:20px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="flex:none;font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:3px 7px;border-radius:6px">{{ tl.num }}</span>
+              <span style="flex:1;min-width:0;font:800 18px/1.2 'Bricolage Grotesque',sans-serif">{{ tl.title }}</span>
+              <span style="flex:none;font:600 12px 'DM Mono',monospace;color:#3f3e37">{{ tl.total }}</span>
+              <span onClick="{{ tl.play }}" style="flex:none;height:32px;padding:0 14px;box-sizing:border-box;border:2px solid #16181f;border-radius:16px;background:#ffe14d;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;cursor:pointer;white-space:nowrap" style-active="transform:translate(1px,1px)">▶ Replay</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ tl.parts }}" as="p" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:210px 64px minmax(0,1fr);gap:10px;align-items:center">
+                  <span style="font:400 12.5px/1.35 Inter,sans-serif;color:#3f3e37;text-wrap:pretty">{{ p.label }}</span>
+                  <span style="font:500 11px 'DM Mono',monospace;color:#5e5b52;white-space:nowrap">{{ p.ms }}</span>
+                  <span style="position:relative;height:16px;background-image:linear-gradient(90deg,#d6cfbf 1px,transparent 1px);background-size:16.666% 100%;border-right:1px solid #d6cfbf">
+                    <span style="position:absolute;top:0;bottom:0;left:{{ p.left }}%;width:{{ p.width }}%;background:{{ p.color }};border:1.5px solid #16181f;border-radius:4px;box-sizing:border-box"></span>
+                  </span>
+                </div>
+              </sc-for>
+              <div style="display:grid;grid-template-columns:210px 64px minmax(0,1fr);gap:10px">
+                <span></span><span></span>
+                <span style="display:flex;justify-content:space-between;font:500 10px 'DM Mono',monospace;color:#8a8677"><span>0</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span></span>
+              </div>
+            </div>
+            <p style="margin:0;font:400 13px/1.5 Inter,sans-serif;color:#3f3e37;text-wrap:pretty">{{ tl.note }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1400px">
+      <span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:4px 8px;border-radius:6px">1–3 · 5 · 6</span>
+      <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Desktop · 1280</h2>
+      <span style="font:400 15px Inter,sans-serif;color:#5e5b52">Same steps and timings. The cart card in the side column stays in view (sticky), so the chip always lands on its big count. The sale card is unchanged and left out here.</span>
+    </div>
+    <div style="display:flex;gap:40px;align-items:flex-start">
+      <sc-for list="{{ desks }}" as="b" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:10px;flex:none">
+          <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.label }}</span>
+          <div data-frame="{{ b.key }}" data-screen-label="{{ b.screenLabel }}" style="position:relative;width:1280px;height:820px;background:#f4f1ea;border:1px solid #bdb6a6;overflow:hidden;box-sizing:border-box;color:#16181f;font-family:Inter,system-ui,sans-serif">
+            <div data-scroller="" style="position:absolute;inset:0;overflow-y:auto;overflow-x:hidden">
+              <dc-import name="AppHeader" active="grocery" lang="{{ b.lang }}" phone="{{ false }}" hint-size="100%,88px"></dc-import>
+              <div style="padding:0 40px 80px;margin-top:24px;display:flex;flex-direction:column;gap:24px">
+                <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+                  <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:6px">
+                    <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52;margin:0 0 6px;text-transform:uppercase">{{ b.subLabel }}</div>
+                    <h1 style="margin:0;font:800 60px/0.95 'Bricolage Grotesque',sans-serif;letter-spacing:-0.035em">{{ b.title }} <span style="color:#2323ff">{{ b.titleAccent }}</span></h1>
+                  </div>
+                  <div style="display:inline-flex;border:2px solid #16181f;border-radius:999px;overflow:hidden;background:#fffdf8">
+                    <sc-for list="{{ b.segs }}" as="sg" hint-placeholder-count="3"><span style="height:38px;padding:0 16px;display:flex;align-items:center;justify-content:center;background:{{ sg.bg }};color:{{ sg.fg }};font:600 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ sg.label }}</span></sc-for>
+                  </div>
+                  <span style="height:44px;padding:0 20px;border-radius:22px;border:2px solid #16181f;background:#fffdf8;font:600 14.5px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;flex:none;box-sizing:border-box">{{ b.share }}</span>
+                </div>
+                <div style="display:flex;gap:22px;align-items:flex-start">
+                  <div style="flex:3 1 600px;min-width:0;display:flex;flex-direction:column;gap:18px">
+                    <div style="display:flex;gap:10px;align-items:center;background:#fffdf8;border:2px solid #16181f;border-radius:999px;padding:6px 6px 6px 22px">
+                      <input type="text" readonly="" placeholder="{{ b.addPlaceholder }}" style="flex:1;min-width:0;height:40px;border:none;outline:none;background:transparent;font:500 15.5px 'Bricolage Grotesque',sans-serif">
+                      <span style="height:40px;padding:0 20px;border-radius:20px;background:#2323ff;color:#fff;border:2px solid #16181f;box-shadow:2px 2px 0 #16181f;font:700 14.5px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;flex:none;box-sizing:border-box">{{ b.addLabel }}</span>
+                    </div>
+                    <sc-for list="{{ b.groups }}" as="g" hint-placeholder-count="3">
+                      <div style="background:#fffdf8;border:2px solid #16181f;border-radius:24px;overflow:hidden;display:flex;flex-direction:column">
+                        <div style="display:grid;grid-template-columns:44px minmax(0,1fr) 128px 76px 56px 32px;column-gap:12px;align-items:end;padding:14px 12px 10px 14px;border-bottom:2px solid #16181f">
+                          <span style="grid-column:1 / 3;display:flex;align-items:center;gap:12px;min-width:0"><span style="flex:none;padding:4px 2px;color:#5e5b52;font-size:16px;line-height:1">⠿</span><h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ g.name }}</h3><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;color:#3f3e37;white-space:nowrap">{{ g.count }}</span></span>
+                          <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.colSale }}</span>
+                          <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.colRecipe }}</span>
+                          <span style="text-align:right;font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.colBuy }}</span>
+                          <span style="display:flex;justify-content:center"><sc-if value="{{ g.removable }}" hint-placeholder-val="{{ false }}"><span style="flex:none;width:26px;height:26px;border-radius:13px;border:1.5px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;line-height:1;font-size:13px;box-sizing:border-box">×</span></sc-if></span>
+                        </div>
+                        <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                          <div data-row="{{ r.id }}" style="display:grid;grid-template-columns:44px minmax(0,1fr) 128px 76px 56px 32px;column-gap:12px;align-items:center;box-sizing:border-box;min-height:68px;padding:10px 12px 10px 14px;border-top:{{ r.bt }};background:{{ r.bg }}">
+                            <span onClick="{{ r.onTap }}" title="{{ r.tip }}" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span data-box="" style="width:30px;height:30px;box-sizing:border-box;border-radius:9px;border:2px solid #16181f;background:{{ r.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center"><span data-glyph="" style="display:block;font:800 {{ r.glyphSize }}/1 'Bricolage Grotesque',sans-serif">{{ r.glyph }}</span></span></span>
+                            <span style="min-width:0;display:flex;flex-direction:column;gap:4px">
+                              <span><span data-name="" style="font:800 15.5px/19px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;overflow-wrap:break-word;color:{{ r.nameFg }};background-image:linear-gradient(#5e5b52,#5e5b52);background-repeat:no-repeat;background-position:0 58%;background-size:{{ r.strike }}">{{ r.name }}</span></span>
+                              <span style="display:flex;align-items:center;gap:8px;min-width:0">
+                                <sc-if value="{{ r.queued }}" hint-placeholder-val="{{ false }}"><span data-qlabel="" style="flex:none;display:flex;align-items:center;gap:8px"><span style="font:600 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;color:#2323ff;white-space:nowrap">{{ b.queuedLabel }}</span><span style="flex:none;width:4px;height:4px;border-radius:2px;background:#5e5b52"></span></span></sc-if>
+                                <sc-if value="{{ r.manual }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:400 11px/1.4 'DM Mono',monospace;letter-spacing:0.04em;color:#a9a598;white-space:nowrap">{{ b.manualLabel }}</span></sc-if>
+                                <sc-if value="{{ r.hasBrand }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:600 12.5px 'Bricolage Grotesque',sans-serif;color:{{ r.brandFg }};white-space:nowrap">{{ r.brand }}</span><span style="flex:none;width:4px;height:4px;border-radius:2px;background:#5e5b52"></span></sc-if>
+                                <span style="display:flex;align-items:baseline;gap:5px;min-width:0;font:500 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:{{ r.recFg }}"><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.recipes }}</span><span style="flex:none;white-space:nowrap">{{ r.more }}</span></span>
+                              </span>
+                            </span>
+                            <span style="height:36px;display:flex;align-items:center">
+                              <sc-if value="{{ r.showDeal }}" hint-placeholder-val="{{ false }}"><a href="Deal Card.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:32px;margin-left:-8px;padding:0 8px;border-radius:16px;color:#16181f;cursor:pointer;white-space:nowrap" style-hover="background:#c9f5da"><span style="flex:none;width:10px;height:10px;box-sizing:border-box;border:1.5px solid #16181f;border-radius:5px;background:#10c95c"></span><span style="font:700 13.5px 'DM Mono',monospace;border-bottom:1.5px dotted #16181f">{{ r.dealPrice }}</span><span style="font:700 13px/1 'Bricolage Grotesque',sans-serif">›</span></a></sc-if>
+                            </span>
+                            <span style="height:36px;display:flex;align-items:center;font:500 12.5px 'DM Mono',monospace;color:#5e5b52;white-space:nowrap">{{ r.need }}</span>
+                            <span style="height:36px;display:flex;align-items:center;justify-content:flex-end"><span style="width:52px;height:36px;box-sizing:border-box;border:2px solid {{ r.qtyBorder }};border-radius:18px;background:#fffdf8;color:{{ r.qtyFg }};display:flex;align-items:center;justify-content:center;font:700 15px 'DM Mono',monospace">{{ r.qty }}</span></span>
+                            <span style="width:32px;height:44px;display:flex;align-items:center;justify-content:center;color:#5e5b52;font:600 20px/1 'Bricolage Grotesque',sans-serif">×</span>
+                          </div>
+                        </sc-for>
+                        <sc-if value="{{ g.hasFoot }}" hint-placeholder-val="{{ false }}">
+                          <div data-foot="{{ g.key }}" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box;overflow:hidden;padding:14px 16px 14px 20px;border-top:2px solid #16181f;background:#ebebff">
+                            <span style="min-width:0;font:500 12px/1.5 'DM Mono',monospace;letter-spacing:0.08em;color:#16181f;text-transform:uppercase"><span data-foot-n="" style="display:inline-block">{{ g.footN }}</span>{{ b.queuedWord }}{{ g.footNames }}</span>
+                            <span data-foot-btn="" onClick="{{ g.onAdd }}" style="flex:none;height:40px;padding:0 18px;box-sizing:border-box;border:2px solid #16181f;border-radius:20px;background:#2323ff;color:#fff;box-shadow:3px 3px 0 #16181f;display:flex;align-items:center;justify-content:center;font:600 14px 'Bricolage Grotesque',sans-serif;white-space:pre;cursor:pointer;overflow:hidden" style-active="transform:translate(2px,2px);box-shadow:1px 1px 0 #16181f">{{ b.addPre }}<span data-foot-n="" style="display:inline-block">{{ g.footN }}</span>{{ b.addPost }}</span>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="flex:1 1 300px;position:sticky;top:24px;display:flex;flex-direction:column;gap:18px">
+                    <div data-cart="card" style="background:#ff48b0;border:2px solid #16181f;border-radius:24px;box-shadow:8px 8px 0 #16181f;padding:20px;display:flex;flex-direction:column;gap:12px">
+                      <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#16181f;text-transform:uppercase">{{ b.inCart }}</div>
+                      <div style="display:flex;align-items:baseline;gap:10px"><span data-count="" style="display:inline-block;font:800 84px/0.9 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;font-variant-numeric:tabular-nums">{{ b.checkedCount }}</span><span style="font:700 16px 'Bricolage Grotesque',sans-serif">{{ b.itemsChecked }}</span></div>
+                      <div style="height:14px;border-radius:7px;background:#f4f1ea;border:2px solid #16181f;overflow:hidden"><div style="height:100%;width:{{ b.cartPct }}%;background:#16181f;transition:{{ b.barTr }}"></div></div>
+                      <span style="height:44px;border-radius:22px;background:#16181f;color:#f4f1ea;display:flex;align-items:center;justify-content:center;font:700 14.5px 'Bricolage Grotesque',sans-serif;text-align:center;padding:0 12px;opacity:{{ b.cartBtnOp }}">{{ b.doneShopping }}</span>
+                      <p style="margin:0;font-size:12.5px;line-height:1.5">{{ b.cartNote }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <sc-if value="{{ b.toastOn }}" hint-placeholder-val="{{ false }}">
+              <div data-toast="" style="position:absolute;z-index:500;left:50%;bottom:28px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;padding:2px 6px 2px 20px;display:flex;align-items:center;gap:12px;background:#16181f;color:#f4f1ea;border-radius:999px;box-shadow:4px 4px 0 #2323ff;font:700 14px 'Bricolage Grotesque',sans-serif">
+                <span data-toast-text="" style="min-width:0;display:flex;gap:6px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.toastName }}</span><span style="flex:none;white-space:nowrap;font-weight:500;color:#d6cfbf">· {{ b.toastVerb }}</span></span>
+                <span onClick="{{ b.onUndo }}" style="flex:none;height:44px;padding:0 2px;display:flex;align-items:center;cursor:pointer"><span style="height:28px;padding:0 12px;border-radius:14px;background:#ffe14d;color:#16181f;font:800 13px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;white-space:nowrap">{{ b.undo }}</span></span>
+              </div>
+            </sc-if>
+            <div data-overlay="" style="position:absolute;inset:0;z-index:600;pointer-events:none;overflow:hidden"></div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;both&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;fr&quot;,&quot;en&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { q: {}, slow: false, reduced: false, dock: {}, toast: {} };
+  E = { out: 'cubic-bezier(0.2, 0.7, 0.2, 1)', move: 'cubic-bezier(0.5, 0, 0.2, 1)', linear: 'linear' };
+  T = {
+    buy: { num: '1', title: 'Tap once: to buy → ✓ bought', total: 580, parts: [
+      ['box', 'Box fills #2323ff, ✓ pops 0.6 → 1.12 → 1', 0, 160, 'out'],
+      ['row', 'Row tint → #f4f1ea, name → #5e5b52', 40, 160, 'out'],
+      ['strike', 'Strike-through draws left to right', 40, 200, 'out'],
+      ['ghost', 'Name chip lifts 6px, flies to the cart count, shrinks to 35%', 160, 260, 'move'],
+      ['count', 'Cart count +1, bumps 1 → 1.22 → 1; bar fills', 420, 160, 'out'],
+    ], note: 'The row stays where it is. The cart number only changes when the chip lands, so the eye follows one thing from the row to the count. On phone the chip lands on the pink bar, or on the docked copy at the bottom when the bar is scrolled away.' },
+    queue: { num: '2', title: 'Tap twice: ✓ → + queued', total: 540, parts: [
+      ['box', '✓ becomes +, pops 0.6 → 1.12 → 1', 0, 160, 'out'],
+      ['row', 'Row tint → #ebebff', 0, 160, 'out'],
+      ['foot', 'Store footer opens (first item) or its count rolls up', 0, 200, 'out'],
+      ['label', '"→ INVENTAIRE" fades in, slides 8px from the left', 80, 160, 'out'],
+      ['ghost', 'Blue chip "+ name" flies to the Add button', 120, 260, 'move'],
+      ['count', 'Add button pulses 1 → 1.06 → 1', 380, 160, 'out'],
+    ], note: 'The cart count does not move: a queued item is still in the cart. If the footer is below the fold, the chip is skipped and only the footer updates.' },
+    back: { num: '3', title: 'Tap again: + → back to buy', total: 600, parts: [
+      ['box', 'Box empties', 0, 120, 'out'],
+      ['row', 'Row tint clears, name → ink', 0, 160, 'out'],
+      ['strike', 'Strike-through retracts right to left', 0, 200, 'out'],
+      ['foot', 'Footer count rolls down (closes at 0)', 0, 200, 'out'],
+      ['count', 'Cart count −1, dips 1 → 0.88 → 1', 0, 160, 'out'],
+      ['ghost', 'Chip flies from the cart back into the row', 100, 260, 'move'],
+      ['wash', 'Row flashes #fff1a8, fades to its tint', 300, 300, 'linear'],
+    ], note: 'The reverse of step 1: the item leaves the cart and lands back in its row, which flashes yellow once so you can find it.' },
+    store: { num: '4', title: 'Store mode: tap a row', total: 580, parts: [
+      ['box', 'Box (34px) fills, ✓ pops 0.6 → 1.12 → 1', 0, 160, 'out'],
+      ['strike', 'Strike-through draws left to right', 40, 200, 'out'],
+      ['ghost', 'Name chip flies to the "left" count', 160, 260, 'move'],
+      ['row', 'Row fades to 45% opacity', 240, 200, 'out'],
+      ['count', 'Count −1, bumps 1 → 1.22 → 1; pink bar fills', 420, 160, 'out'],
+    ], note: 'The whole 72px row is the target. Tapping a checked row puts it back with step 3\'s timings: row to full opacity, chip from the count back to the row, one flash (#3d3714 on the dark card). Store mode keeps one step: queueing for inventory still happens on ← List. Its toast is the light version, 16px, with a 40px Undo.' },
+    undo: { num: '5', title: 'Undo', total: 160, parts: [
+      ['toastIn', 'First tap: toast rises 8px and fades in', 0, 160, 'out'],
+      ['toastSwap', 'Next taps: the text cross-fades in place', 0, 120, 'linear'],
+      ['toastOut', 'On Undo, or 5 s after the last tap: fades out', 0, 160, 'out'],
+    ], note: 'One toast per screen, never stacked: "Citrons · dans le panier · Annuler". Undo puts that item back in its previous state and plays the matching step (undoing ✓ plays step 3). Undo has a 44px hit area around the 28px pill.' },
+    reduced: { num: '6', title: 'Reduced motion', total: 600, parts: [
+      ['instant', 'Box, tint, strike and counts change at once', 0, 0, 'linear'],
+      ['wash', 'Row flashes #fff1a8, fades to its tint', 0, 600, 'linear'],
+      ['flash', 'Cart bar (or footer) flashes #ffe14d, fades back', 0, 600, 'linear'],
+      ['toastIn', 'Toast fades in with the item name, no rise', 0, 120, 'linear'],
+    ], note: 'Follows prefers-reduced-motion. No chip, no scaling, no sliding: colour fades only. The toast carries the "where it went" message in words.' },
+  };
+  COLORS = { box: '#2323ff', row: '#d6cfbf', strike: '#16181f', ghost: '#ff48b0', count: '#ffe14d', foot: '#ebebff', label: '#2323ff', wash: '#fff1a8', toastIn: '#16181f', toastSwap: '#5e5b52', toastOut: '#a9a598', instant: '#16181f', flash: '#ffe14d' };
+  ITEMS = [
+    { id: 'tom', en: 'Diced tomatoes', fr: 'Tomates en dés', qty: 3, brand: 'Unico', rec: ['Pasta e fagioli'], need: ['2 cans', '2 boîtes'], deal: 2.49, store: 'Metro' },
+    { id: 'chk', en: 'Chicken thighs', fr: 'Hauts de cuisse de poulet', qty: 2, rec: ['Sheet-pan chicken shawarma'], need: ['900 g', '900 g'], deal: 2.99, store: 'Metro' },
+    { id: 'lem', en: 'lemons', fr: 'citrons', qty: 2, manual: true, store: 'Metro' },
+    { id: 'mlk', en: 'Milk 2%', fr: 'Lait 2 %', qty: 1, rec: ['Buttermilk pancakes'], need: ['750 mL', '750 mL'], store: 'Metro', init: 2 },
+    { id: 'brd', en: 'Sourdough loaf', fr: 'Pain au levain', qty: 1, rec: ['Shakshuka'], need: ['1 loaf', '1 pain'], store: 'Metro' },
+    { id: 'yog', en: 'Greek yogurt', fr: 'Yogourt grec', qty: 1, rec: ['Sheet-pan chicken shawarma'], need: ['500 g', '500 g'], store: 'Metro' },
+    { id: 'ched', en: 'Old cheddar, thinly sliced', fr: 'Fromage cheddar fort vieilli, tranché mince', qty: 1, rec: ['Lentil salad with feta', 'Chicken caesar wraps', 'Shakshuka'], need: ['350 g', '350 g'], store: 'Super C' },
+    { id: 'foil', en: 'aluminum foil', fr: "papier d'aluminium", qty: 1, manual: true, store: 'Super C' },
+    { id: 'cil', en: 'Cilantro', fr: 'Coriandre', qty: 1, rec: ['Salmon rice bowls'], need: ['1 bunch', '1 botte'], store: 'Super C', init: 1 },
+    { id: 'oni', en: 'Yellow onions', fr: 'Oignons jaunes', qty: 3, rec: ['Pasta e fagioli', 'Shakshuka'], need: ['3', '3'], store: 'Super C' },
+    { id: 'rice', en: 'Basmati rice', fr: 'Riz basmati', qty: 1, rec: ['Salmon rice bowls'], need: ['2 cups', '2 tasses'], store: 'Super C' },
+    { id: 'sal', en: 'Salmon fillets', fr: 'Filets de saumon', qty: 2, rec: ['Salmon rice bowls'], need: ['450 g', '450 g'], deal: 9.99, store: 'IGA' },
+    { id: 'spn', en: 'Baby spinach', fr: 'Bébés épinards', qty: 1, rec: ['Shakshuka'], need: ['142 g', '142 g'], store: 'IGA' },
+  ];
+  STORES = ['Metro', 'Super C', 'IGA'];
+  STICKER = { Metro: '#FF48B0', 'Super C': '#FFE14D', IGA: '#4DE3FF' };
+  inflight = {}; hold = {}; lastFoot = {}; tt = {};
+
+  componentDidMount() {
+    import('./kit.js').then(k => { this.k = k; this.forceUpdate(); });
+    try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) this.setState({ reduced: true }); } catch (e) {}
+  }
+  componentWillUnmount() { Object.values(this.tt).forEach(clearTimeout); }
+
+  S() { return this.state.slow ? 4 : 1; }
+  part(step, key) { return this.T[step].parts.find(p => p[0] === key); }
+  root(bk) { return document.querySelector(`[data-frame="${bk}"]`); }
+  isStoreBk(bk) { return bk.startsWith('s-'); }
+  qOf(bk) {
+    const saved = this.state.q[bk];
+    if (saved) return saved;
+    const store = this.isStoreBk(bk);
+    return Object.fromEntries(this.ITEMS.map(i => [i.id, store ? (i.init ? 1 : 0) : (i.init || 0)]));
+  }
+  inf(bk) { return this.inflight[bk] || (this.inflight[bk] = new Set()); }
+  name(i, L) { const s = L === 'fr' ? i.fr : i.en; return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  tap(bk, id) {
+    const from = this.qOf(bk)[id] || 0, to = this.isStoreBk(bk) ? (from ? 0 : 1) : (from + 1) % 3;
+    this.go(bk, id, from, to, true);
+  }
+  go(bk, id, from, to, withToast) {
+    const R = this.state.reduced, isStore = this.isStoreBk(bk), root = this.root(bk);
+    const item = this.ITEMS.find(i => i.id === id), q = this.qOf(bk), fkey = bk + ':' + item.store;
+    const footWas = !!(root && root.querySelector(`[data-foot="${item.store}"]`));
+    const queuedHere = this.ITEMS.filter(i => i.store === item.store && q[i.id] === 2).length;
+    if (!isStore && from === 2 && queuedHere === 1 && !R) this.hold[fkey] = true;
+    if (from === 0 && to === 1 && !R) this.inf(bk).add(id);
+    if (to === 0) this.inf(bk).delete(id);
+    const wasToast = !!this.state.toast[bk];
+    this.setState(s => {
+      const toast = { ...s.toast };
+      if (withToast) toast[bk] = { id, from, to }; else delete toast[bk];
+      return { q: { ...s.q, [bk]: { ...q, [id]: to } }, toast };
+    }, () => {
+      this.run(bk, id, from, to, footWas);
+      if (withToast) this.toastIn(bk, wasToast);
+    });
+  }
+  setSilently(bk, id, v, cb) {
+    this.inf(bk).delete(id);
+    this.setState(s => ({ q: { ...s.q, [bk]: { ...this.qOf(bk), [id]: v } } }), cb);
+  }
+
+  A(el, kf, step, key, o) {
+    if (!el) return null;
+    const p = this.part(step, key), S = this.S();
+    return el.animate(kf, { delay: p[2] * S, duration: p[3] * S, easing: this.E[p[4]], fill: 'backwards', ...(o || {}) });
+  }
+  pop() { return [{ transform: 'scale(0.6)', opacity: 0 }, { transform: 'scale(1.12)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)', opacity: 1 }]; }
+  rowBg(st) { return st === 2 ? '#ebebff' : st === 1 ? '#f4f1ea' : 'rgba(244,241,234,0)'; }
+  cartTarget(root) {
+    for (const sel of ['dock', 'bar', 'card', 'store']) { const el = root.querySelector(`[data-cart="${sel}"] [data-count]`); if (el) return el; }
+    return null;
+  }
+  inView(root, el) {
+    const sc = root.querySelector('[data-scroller]'); if (!sc || !el) return false;
+    const a = sc.getBoundingClientRect(), b = el.getBoundingClientRect();
+    return b.bottom > a.top + 4 && b.top < a.bottom - 4;
+  }
+  bump(root, step, peak) {
+    const el = this.cartTarget(root); if (!el) return;
+    const p = this.part(step, 'count');
+    el.animate([{ transform: 'scale(1)' }, { transform: `scale(${peak})`, offset: 0.4 }, { transform: 'scale(1)' }], { duration: p[3] * this.S(), easing: this.E.out });
+  }
+  roll(foot, dir, step) {
+    const p = this.part(step, 'foot');
+    foot.querySelectorAll('[data-foot-n]').forEach(e => e.animate([{ transform: `translateY(${dir > 0 ? 70 : -70}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 160 * this.S(), delay: p[2] * this.S(), easing: this.E.out, fill: 'backwards' }));
+  }
+  footLeave(bk, root, store, step) {
+    const foot = root.querySelector(`[data-foot="${store}"]`); if (!foot) return;
+    const fkey = bk + ':' + store, p = this.part(step, 'foot');
+    if (this.hold[fkey]) {
+      const h = foot.offsetHeight;
+      const a = foot.animate([{ height: h + 'px', opacity: 1 }, { height: '0px', paddingTop: '0px', paddingBottom: '0px', borderTopWidth: '0px', opacity: 0 }], { duration: p[3] * this.S(), easing: this.E.out, fill: 'forwards' });
+      a.onfinish = () => { delete this.hold[fkey]; this.forceUpdate(); };
+    } else this.roll(foot, -1, step);
+  }
+  fly(root, nameEl, tgtEl, step, variant, text, reverse, done) {
+    const ov = root.querySelector('[data-overlay]');
+    if (!ov || !nameEl || !tgtEl) { if (done) done(); return; }
+    const p = this.part(step, 'ghost'), S = this.S();
+    const or = ov.getBoundingClientRect(), sc = or.width / ov.offsetWidth || 1;
+    const rel = r => ({ x: (r.left - or.left) / sc, y: (r.top - or.top) / sc, w: r.width / sc, h: r.height / sc });
+    const V = { paper: ['#fffdf8', '#16181f', '#16181f'], blue: ['#2323ff', '#ffffff', '#16181f'], store: ['#f4f1ea', '#16181f', '#2323ff'] }[variant];
+    const g = document.createElement('div');
+    g.textContent = text;
+    Object.assign(g.style, { position: 'absolute', left: '0px', top: '0px', padding: '5px 12px', borderRadius: '999px', border: '2px solid #16181f', background: V[0], color: V[1], boxShadow: `2px 2px 0 ${V[2]}`, font: "700 14px 'Bricolage Grotesque', sans-serif", whiteSpace: 'nowrap', maxWidth: '230px', overflow: 'hidden', textOverflow: 'ellipsis', boxSizing: 'border-box', opacity: '0', willChange: 'transform, opacity' });
+    ov.appendChild(g);
+    const gw = g.offsetWidth, gh = g.offsetHeight, n = rel(nameEl.getBoundingClientRect()), t = rel(tgtEl.getBoundingClientRect());
+    const hx = n.x - 14, hy = n.y + 10 - gh / 2;
+    g.style.left = hx + 'px'; g.style.top = hy + 'px';
+    const dx = t.x + t.w / 2 - (hx + gw / 2), dy = t.y + t.h / 2 - (hy + gh / 2);
+    const home = 'translate(0px, 0px) scale(1)', lift = 'translate(0px, -6px) scale(1.04)', away = `translate(${dx}px, ${dy}px) scale(0.35)`;
+    const kf = reverse
+      ? [{ transform: away, opacity: 0 }, { transform: away, opacity: 1, offset: 0.12 }, { transform: home, opacity: 1, offset: 0.85 }, { transform: home, opacity: 0 }]
+      : [{ transform: home, opacity: 0 }, { transform: lift, opacity: 1, offset: 0.15 }, { transform: away, opacity: 1, offset: 0.88 }, { transform: away, opacity: 0 }];
+    const a = g.animate(kf, { delay: p[2] * S, duration: p[3] * S, easing: this.E.move, fill: 'both' });
+    a.onfinish = () => { g.remove(); if (done) done(); };
+  }
+
+  run(bk, id, from, to, footWas) {
+    const root = this.root(bk); if (!root) return;
+    const row = root.querySelector(`[data-row="${id}"]`); if (!row) return;
+    const R = this.state.reduced, S = this.S(), isStore = this.isStoreBk(bk);
+    const box = row.querySelector('[data-box]'), glyph = row.querySelector('[data-glyph]'), nameEl = row.querySelector('[data-name]'), label = row.querySelector('[data-qlabel]');
+    [row, box, glyph, nameEl].forEach(e => e && e.getAnimations().forEach(a => a.cancel()));
+    const item = this.ITEMS.find(i => i.id === id), L = bk.endsWith('fr') ? 'fr' : 'en', nm = this.name(item, L);
+    const target = this.cartTarget(root);
+    const foot = root.querySelector(`[data-foot="${item.store}"]`);
+
+    if (R) {
+      const wash = isStore ? ['#3d3714', '#111115'] : ['#fff1a8', this.rowBg(to)];
+      row.animate([{ background: wash[0] }, { background: wash[1] }], { duration: 600 * S, easing: 'linear' });
+      const cartChange = (from === 0 && to === 1) || (to === 0 && from > 0);
+      const holder = cartChange ? (isStore ? root.querySelector('[data-cart="store"]') : target && target.closest('[data-cart]')) : foot;
+      if (holder) {
+        const base = isStore ? 'rgba(255,225,77,0)' : cartChange ? '#ff48b0' : '#ebebff';
+        holder.animate([{ background: isStore ? 'rgba(255,225,77,0.28)' : '#ffe14d' }, { background: base }], { duration: 600 * S, easing: 'linear' });
+      }
+      return;
+    }
+
+    if (isStore) {
+      if (to === 1) {
+        this.A(box, [{ background: 'rgba(35,35,255,0)' }, { background: '#2323ff' }], 'store', 'box');
+        this.A(glyph, this.pop(), 'store', 'box');
+        this.A(nameEl, [{ backgroundSize: '0% 2px' }, { backgroundSize: '100% 2px' }], 'store', 'strike');
+        this.A(row, [{ opacity: 1 }, { opacity: 0.45 }], 'store', 'row');
+        this.fly(root, nameEl, target, 'store', 'store', nm, false, () => { this.inf(bk).delete(id); this.forceUpdate(() => this.bump(root, 'store', 1.22)); });
+      } else {
+        this.A(box, [{ background: '#2323ff' }, { background: 'rgba(35,35,255,0)' }], 'back', 'box');
+        this.A(row, [{ opacity: 0.45 }, { opacity: 1 }], 'back', 'row');
+        this.A(nameEl, [{ backgroundSize: '100% 2px' }, { backgroundSize: '0% 2px' }], 'back', 'strike');
+        this.bump(root, 'back', 1.22);
+        this.fly(root, nameEl, target, 'back', 'store', nm, true);
+        this.A(row, [{ background: '#3d3714' }, { background: '#111115' }], 'back', 'wash', { fill: 'none', composite: 'replace' });
+      }
+      return;
+    }
+
+    if (from === 0 && to === 1) {
+      this.A(box, [{ background: '#fffdf8' }, { background: '#2323ff' }], 'buy', 'box');
+      this.A(glyph, this.pop(), 'buy', 'box');
+      this.A(row, [{ background: this.rowBg(0) }, { background: this.rowBg(1) }], 'buy', 'row');
+      this.A(nameEl, [{ backgroundSize: '0% 2px', color: '#16181f' }, { backgroundSize: '100% 2px', color: '#5e5b52' }], 'buy', 'strike');
+      this.fly(root, nameEl, target, 'buy', 'paper', nm, false, () => { this.inf(bk).delete(id); this.forceUpdate(() => this.bump(root, 'buy', 1.22)); });
+    } else if (from === 1 && to === 2) {
+      this.A(glyph, this.pop(), 'queue', 'box');
+      this.A(row, [{ background: this.rowBg(1) }, { background: this.rowBg(2) }], 'queue', 'row');
+      this.A(label, [{ opacity: 0, transform: 'translateX(-8px)' }, { opacity: 1, transform: 'none' }], 'queue', 'label');
+      if (foot) {
+        if (!footWas) {
+          const h = foot.offsetHeight;
+          this.A(foot, [{ height: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 }, { height: h + 'px', paddingTop: '14px', paddingBottom: '14px', opacity: 1 }], 'queue', 'foot');
+        } else this.roll(foot, 1, 'queue');
+        const btn = foot.querySelector('[data-foot-btn]');
+        if (this.inView(root, foot)) {
+          this.fly(root, nameEl, btn, 'queue', 'blue', '+ ' + nm, false);
+          this.A(btn, [{ transform: 'scale(1)' }, { transform: 'scale(1.06)', offset: 0.4 }, { transform: 'scale(1)' }], 'queue', 'count', { fill: 'none' });
+        }
+      }
+    } else if (from === 2 && to === 1) {
+      this.A(glyph, this.pop(), 'queue', 'box');
+      this.A(row, [{ background: this.rowBg(2) }, { background: this.rowBg(1) }], 'queue', 'row');
+      this.footLeave(bk, root, item.store, 'back');
+    } else if (to === 0) {
+      this.A(box, [{ background: '#2323ff' }, { background: '#fffdf8' }], 'back', 'box');
+      this.A(row, [{ background: this.rowBg(from) }, { background: this.rowBg(0) }], 'back', 'row');
+      this.A(nameEl, [{ backgroundSize: '100% 2px', color: '#5e5b52' }, { backgroundSize: '0% 2px', color: '#16181f' }], 'back', 'strike');
+      if (from === 2) this.footLeave(bk, root, item.store, 'back');
+      this.bump(root, 'back', 0.88);
+      this.fly(root, nameEl, target, 'back', 'paper', nm, true);
+      this.A(row, [{ background: '#fff1a8' }, { background: this.rowBg(0) }], 'back', 'wash', { fill: 'none' });
+    }
+  }
+
+  toastIn(bk, wasVisible) {
+    const root = this.root(bk), el = root && root.querySelector('[data-toast]');
+    clearTimeout(this.tt[bk]);
+    this.tt[bk] = setTimeout(() => this.toastOut(bk), 5000);
+    if (!el) return;
+    const S = this.S(), R = this.state.reduced;
+    if (!wasVisible) {
+      el.animate(R ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translate(-50%, 8px)' }, { opacity: 1, transform: 'translate(-50%, 0px)' }], { duration: (R ? 120 : 160) * S, easing: R ? 'linear' : this.E.out });
+    } else {
+      const tx = el.querySelector('[data-toast-text]');
+      tx && tx.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120 * S, easing: 'linear' });
+    }
+  }
+  toastOut(bk, cb) {
+    clearTimeout(this.tt[bk]);
+    const root = this.root(bk), el = root && root.querySelector('[data-toast]');
+    const done = () => this.setState(s => { const t = { ...s.toast }; delete t[bk]; return { toast: t }; }, cb);
+    if (!el) { done(); return; }
+    const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160 * this.S(), easing: this.E.out, fill: 'forwards' });
+    a.onfinish = done;
+  }
+  undo(bk) {
+    const t = this.state.toast[bk]; if (!t) return;
+    this.toastOut(bk);
+    this.go(bk, t.id, t.to, t.from, false);
+  }
+  checkDock(bk, el) {
+    const bar = el.querySelector('[data-cart="bar"]'); if (!bar) return;
+    const on = bar.getBoundingClientRect().bottom < el.getBoundingClientRect().top + 2;
+    if (on === !!this.state.dock[bk]) return;
+    this.setState(s => ({ dock: { ...s.dock, [bk]: on } }), () => {
+      if (!on) return;
+      const d = this.root(bk) && this.root(bk).querySelector('[data-dock]'), R = this.state.reduced;
+      d && d.animate(R ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 180 * this.S(), easing: this.E.out });
+    });
+  }
+  reset() {
+    Object.keys(this.tt).forEach(k => clearTimeout(this.tt[k]));
+    this.inflight = {}; this.hold = {};
+    document.querySelectorAll('[data-overlay]').forEach(o => { o.innerHTML = ''; });
+    document.querySelectorAll('[data-frame] [data-scroller]').forEach(s => { s.scrollTop = 0; });
+    this.setState({ q: {}, toast: {}, dock: {} });
+  }
+  replay(step) {
+    const lang = this.props.lang === 'en' ? 'en' : 'fr';
+    const pb = 'p-' + lang, sb = 's-' + lang, S = this.S();
+    const top = bk => { const r = this.root(bk), s = r && r.querySelector('[data-scroller]'); if (s) { s.scrollTop = 0; this.checkDock(bk, s); } };
+    if (step === 'store') { top(sb); this.setSilently(sb, 'lem', 0, () => this.go(sb, 'lem', 0, 1, true)); return; }
+    top(pb);
+    if (step === 'buy') this.setSilently(pb, 'lem', 0, () => this.go(pb, 'lem', 0, 1, true));
+    if (step === 'queue') this.setSilently(pb, 'lem', 1, () => this.go(pb, 'lem', 1, 2, true));
+    if (step === 'back') this.setSilently(pb, 'lem', 2, () => this.go(pb, 'lem', 2, 0, true));
+    if (step === 'undo') this.setSilently(pb, 'lem', 0, () => { this.go(pb, 'lem', 0, 1, true); setTimeout(() => this.undo(pb), 1100 * S); });
+    if (step === 'reduced') {
+      const was = this.state.reduced;
+      this.setState({ reduced: true }, () => this.setSilently(pb, 'lem', 0, () => { this.go(pb, 'lem', 0, 1, true); setTimeout(() => this.setState({ reduced: was }), 900 * S); }));
+    }
+  }
+
+  tl(step) {
+    const s = this.T[step];
+    return { num: s.num, title: s.title, total: `${s.total} ms`, note: s.note, play: () => this.replay(step),
+      parts: s.parts.map(([key, label, st, d]) => ({ label, ms: d ? `${st}–${st + d}` : '0', left: st / 600 * 100, width: Math.max(d / 600 * 100, 1), color: this.COLORS[key] || '#d6cfbf' })) };
+  }
+
+  gBoard(k, bk, L, P) {
+    const t = k.tr(L), FR = L === 'fr', money = n => k.money(L, n), q = this.qOf(bk), inf = this.inf(bk);
+    const items = this.ITEMS.map(i => ({ ...i, st: q[i.id] || 0 })).filter(i => i.st !== 3);
+    const tips = FR ? ['Marquer comme acheté', "Mettre en attente pour l'inventaire", 'Remettre dans la liste'] : ['Mark as bought', 'Queue for inventory', 'Put back on the list'];
+    const row = (i, idx) => {
+      const c = i.st > 0, recipes = i.rec || [], need = i.need ? i.need[FR ? 1 : 0] : '';
+      return {
+        id: i.id, name: this.name(i, L), bt: idx ? '1.5px dashed #d6cfbf' : 'none', bg: i.st === 2 ? '#ebebff' : c ? '#f4f1ea' : 'transparent',
+        boxBg: c ? '#2323ff' : '#fffdf8', glyph: i.st === 2 ? '+' : c ? '✓' : '', glyphSize: i.st === 2 ? '22px' : '17px',
+        nameFg: c ? '#5e5b52' : '#16181f', strike: c ? '100% 2px' : '0% 2px', queued: i.st === 2, manual: !!i.manual,
+        hasBrand: !!i.brand && recipes.length > 0, brand: i.brand || '', brandFg: c ? '#5e5b52' : '#16181f',
+        recipes: recipes.length > 2 ? recipes[0] : recipes.join(', '), more: recipes.length > 2 ? `+${recipes.length - 1}` : '', recFg: c ? '#5e5b52' : '#3f3e37',
+        need, hasNeed: !!need, showDeal: !c && !!i.deal, dealPrice: i.deal ? money(i.deal) : '',
+        qty: i.qty, qtyBorder: c ? '#a9a598' : '#16181f', qtyFg: c ? '#5e5b52' : '#16181f', qtyBg: c ? 'transparent' : '#e9e4d8',
+        tip: tips[i.st], onTap: () => this.tap(bk, i.id),
+      };
+    };
+    const countTxt = list => { const left = list.filter(i => !i.st).length, sale = list.filter(i => !i.st && i.deal).length; return sale ? `${t('grocery.groupToBuy', { count: left })} · ${t('grocery.groupOnSale', { count: sale })}` : t('grocery.groupToBuy', { count: left }); };
+    const groups = this.STORES.map(store => {
+      const list = items.filter(i => i.store === store), qd = list.filter(i => i.st === 2), fkey = bk + ':' + store;
+      let foot = null;
+      if (qd.length) { foot = { n: qd.length, names: qd.map(i => this.name(i, L)).join(', ') }; this.lastFoot[fkey] = foot; }
+      else if (this.hold[fkey]) foot = this.lastFoot[fkey];
+      return { key: store, name: store, removable: store === 'Super C', count: countTxt(list), rows: list.map(row), hasFoot: !!foot, footN: foot ? foot.n : 0, footNames: foot ? foot.names : '',
+        onAdd: () => this.setState(s => ({ q: { ...s.q, [bk]: { ...this.qOf(bk), ...Object.fromEntries(qd.map(i => [i.id, 3])) } } })) };
+    }).filter(g => g.rows.length || g.hasFoot);
+    const checked = items.filter(i => i.st > 0 && !inf.has(i.id)).length, left = items.filter(i => !i.st).length, onSale = items.filter(i => !i.st && i.deal).length;
+    const ts = this.state.toast[bk], ti = ts && this.ITEMS.find(i => i.id === ts.id);
+    const verbs = FR ? ['de retour dans la liste', 'dans le panier', "en attente pour l'inventaire"] : ['back on the list', 'in your cart', 'queued for inventory'];
+    const C = v => v.charAt(0).toUpperCase() + v.slice(1);
+    return {
+      key: bk, lang: L, label: `${P ? 'PHONE' : 'DESKTOP'} · ${L.toUpperCase()} · ${P ? 390 : 1280}`, screenLabel: `Check feedback ${P ? 'phone' : 'desktop'} ${L.toUpperCase()}`,
+      subLabel: C(t('grocery.subLabel', { count: left, sales: onSale })), title: t('grocery.title'), titleAccent: t('grocery.titleAccent'),
+      segs: [['store', 'viewStore'], ['aisle', 'viewAisle'], ['recipe', 'viewRecipe']].map(([id, key]) => ({ label: C(t('grocery.' + key)), bg: id === 'store' ? '#16181f' : 'transparent', fg: id === 'store' ? '#f4f1ea' : '#16181f' })),
+      share: C(t('grocery.share')), addPlaceholder: C(t('grocery.addPlaceholder')), addLabel: C(t('grocery.add')), atStore: C(t('grocery.atStore')), bigMode: t('grocery.bigMode'),
+      inCart: C(t('grocery.inCart')), inCartLower: C(t('grocery.inCart')), itemsChecked: C(t('grocery.itemsChecked', { count: checked })), checkedCount: checked,
+      cartPct: items.length ? Math.round(checked / items.length * 100) : 0, cartBtnOp: checked ? 1 : 0.5, doneShort: FR ? 'Terminé' : 'Done shopping',
+      doneShopping: C(t('grocery.doneShopping', { count: checked })), cartNote: C(t('grocery.cartNote')),
+      barTr: this.state.reduced ? 'none' : `width ${240 * this.S()}ms ${this.E.out}`,
+      colSale: FR ? 'EN SOLDE' : 'ON SALE', colRecipe: FR ? 'RECETTE' : 'RECIPE', colBuy: FR ? 'ACHETER' : 'BUY',
+      queuedLabel: FR ? '→ INVENTAIRE' : '→ INVENTORY', manualLabel: FR ? 'Ajouté par vous' : 'Added by you',
+      queuedWord: FR ? ' en attente · ' : ' queued · ', addPre: FR ? '+ Ajouter ' : '+ Add ', addPost: FR ? " à l'inventaire" : ' to inventory',
+      groups, dockOn: !!this.state.dock[bk], onScroll: e => this.checkDock(bk, e.currentTarget),
+      toastOn: !!ts, toastName: ti ? this.name(ti, L) : '', toastVerb: ts ? verbs[ts.to] : '', undo: C(t('common.undo')), onUndo: () => this.undo(bk),
+    };
+  }
+
+  sBoard(k, bk, L) {
+    const t = k.tr(L), q = this.qOf(bk), inf = this.inf(bk), FR = L === 'fr';
+    const items = this.ITEMS.map(i => ({ ...i, on: (q[i.id] || 0) > 0, flying: inf.has(i.id) }));
+    const isLeft = i => !i.on || i.flying;
+    const left = items.filter(isLeft).length;
+    const groups = this.STORES.map(store => {
+      const here = items.filter(i => i.store === store).sort((a, b) => this.name(a, L).localeCompare(this.name(b, L), L));
+      return { name: store, color: this.STICKER[store], badge: t('storeMode.leftBadge', { count: here.filter(isLeft).length }),
+        rows: here.map(i => ({ id: i.id, name: this.name(i, L), qty: i.qty, op: i.on ? 0.45 : 1, glyph: i.on ? '✓' : '', boxBg: i.on ? '#2323ff' : 'transparent', strike: i.on ? '100% 2px' : '0% 2px', onTap: () => this.tap(bk, i.id) })) };
+    });
+    const ts = this.state.toast[bk], ti = ts && this.ITEMS.find(i => i.id === ts.id);
+    return {
+      key: bk, label: `STORE MODE · ${L.toUpperCase()} · 390`, screenLabel: `Check feedback store mode ${L.toUpperCase()}`,
+      back: t('storeMode.back'), colours: t('storeMode.colours'), left, leftOnList: t('storeMode.leftOnList'), pct: Math.round((items.length - left) / items.length * 100),
+      barTr: this.state.reduced ? 'none' : `width ${240 * this.S()}ms ${this.E.out}`,
+      all: t('storeMode.all'), aisle: t('storeMode.aisle'), hideDone: t('storeMode.hideDone'), groups,
+      toastOn: !!ts, toastName: ti ? this.name(ti, L) : '', toastVerb: ts ? (ts.to ? (FR ? 'dans le panier' : 'in your cart') : (FR ? 'de retour dans la liste' : 'back on the list')) : '',
+      undo: t('common.undo'), onUndo: () => this.undo(bk),
+    };
+  }
+
+  renderVals() {
+    const on = ['#16181f', '#f4f1ea'], off = ['#fffdf8', '#16181f'];
+    const ctrl = {
+      slowBg: this.state.slow ? on[0] : off[0], slowFg: this.state.slow ? on[1] : off[1],
+      redBg: this.state.reduced ? on[0] : off[0], redFg: this.state.reduced ? on[1] : off[1],
+      onSlow: () => this.setState(s => ({ slow: !s.slow })), onReduced: () => this.setState(s => ({ reduced: !s.reduced })), onReset: () => this.reset(),
+      tlPhone: ['buy', 'queue', 'back', 'undo', 'reduced'].map(s => this.tl(s)), tlStore: [this.tl('store')],
+    };
+    const k = this.k;
+    if (!k) return { phones: [], desks: [], stores: [], ...ctrl };
+    const pref = this.props.lang || 'both', langs = pref === 'en' ? ['en'] : pref === 'fr' ? ['fr'] : ['fr', 'en'];
+    return {
+      ...ctrl,
+      phones: langs.map(L => this.gBoard(k, 'p-' + L, L, true)),
+      stores: langs.map(L => this.sBoard(k, 's-' + L, L)),
+      desks: langs.map(L => this.gBoard(k, 'd-' + L, L, false)),
+    };
+  }
+}
+</script>
+</body>
+</html>

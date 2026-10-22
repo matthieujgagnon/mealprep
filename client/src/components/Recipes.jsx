@@ -13,6 +13,7 @@ import { captionTime } from "../lib/photoCard.js";
 import { PROTEINS, recipeUsesProtein } from "../lib/proteins.js";
 import { RECIPE_SLOTS, hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, recipeSlotCaption, recipeSlots, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { TIME_FILTERS, isUrlLike, matchesTime, proteinOfRecipe, sortRecipes } from "../lib/recipesView.js";
+import { prefersReducedMotion } from "../lib/motion.js";
 import { t } from "../i18n/index.js";
 
 // The Recipes page, on a phone and on a desktop (design handoff: docs/design/
@@ -199,7 +200,7 @@ export function Recipes({
     if (!section) return;
     const header = document.querySelector(".app-header");
     const pinned = header && getComputedStyle(header).position === "sticky" ? header.getBoundingClientRect().height : 0;
-    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const calm = prefersReducedMotion();
     window.scrollTo({ top: Math.max(0, section.getBoundingClientRect().top + window.scrollY - pinned - SCROLL_GAP), behavior: calm ? "auto" : "smooth" });
   }
   function pickTab(id) {

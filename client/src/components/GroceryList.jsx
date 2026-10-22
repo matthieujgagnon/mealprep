@@ -39,7 +39,8 @@ import { RemovedStrip } from "./RemovedStrip.jsx";
 import { LIFTED_CLASS, ReorderGrip, ReorderList, useReorderSection, useReorderSensors } from "./ReorderSections.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
-import { useStickyDodge } from "../hooks/useStickyDodge.js";
+import { useCartDock } from "../hooks/useCartDock.js";
+import { useCheckFeedback } from "../hooks/useCheckFeedback.js";
 import { displayQuantity, inventoryAmount } from "../lib/groceryQuantity.js";
 import { DealDetailModal, DealPhoto } from "./FlyerDeals.jsx";
 import { t } from "../i18n/index.js";
@@ -666,21 +667,43 @@ export function GroceryList({
   const checkSaves = useRef(null);
   if (!checkSaves.current) checkSaves.current = saveInOrder({ area: GROCERY });
 
+  // Where each row's box is, kept up to date at the tap itself and not only when the screen has
+  // been drawn: a second tap that comes before the next draw still reads the step the first one
+  // made, so a quick run of taps never loses or repeats one.
+  const steps = useRef({});
+  steps.current = Object.fromEntries(shoppingItems.map((i) => [i.key, stepOf(i.key, checked, queued)]));
+  const latest = useRef({});
+  latest.current = { shoppingItems, checkRows, checked, storeMode };
+
+  // What happens around a tap besides the row's own motion: the one toast with Undo, the name
+  // chip, the cart's count and the footer's pulse (hooks/useCheckFeedback.js).
+  const feedback = useCheckFeedback({
+    onToast,
+    nameOf: (key) => capitalize(latest.current.shoppingItems.find((i) => i.key === key)?.name ?? ""),
+    isChecked: (key) => !!latest.current.checked[key],
+  });
+
   // Optimistic: the box moves at once, then the save goes out after the ones
   // already sent for the same item, so the last tap is what the server keeps,
   // even on a slow phone. If a save fails and no tap came after it, the row goes
   // back to how it was before that tap. A check covers what the row shows now.
-  function setStep(key, step) {
-    const item = shoppingItems.find((i) => i.key === key);
+  // `rowEl` is the row that was tapped (the chip flies from it); `undo` is the toast's Undo,
+  // which puts the item back one step and says nothing more.
+  function setStep(key, step, { rowEl = null, undo = false } = {}) {
+    const item = latest.current.shoppingItems.find((i) => i.key === key);
     if (!item) return;
-    const before = checkRows[key];
+    const from = steps.current[key] ?? TO_BUY;
+    if (from === step) return;
+    steps.current[key] = step;
+    const before = latest.current.checkRows[key];
     const covered = step === TO_BUY ? null : checkSnapshot(item);
     const isQueued = step === QUEUED;
     setCheckRows((prev) => setCovered(prev, key, covered, isQueued));
+    feedback.stepped({ key, from, to: step, rowEl, store: latest.current.storeMode, undo, undoTo: () => setStep(key, from, { undo: true }) });
     checkSaves.current
       .run(key, () => (covered ? api.checkGroceryItem(key, covered, isQueued) : api.uncheckGroceryItem(key)))
-      .then(({ ok, latest }) => {
-        if (ok || !latest) return;
+      .then(({ ok, latest: newest }) => {
+        if (ok || !newest) return;
         setCheckRows((prev) => {
           const next = { ...prev };
           if (before) next[key] = before;
@@ -691,10 +714,10 @@ export function GroceryList({
   }
 
   // A tap of a list row's box: to buy -> bought ✓ -> queued + -> to buy.
-  const cycle = (key) => setStep(key, nextStep(stepOf(key, checked, queued)));
+  const cycle = (key, rowEl) => setStep(key, nextStep(steps.current[key] ?? TO_BUY), { rowEl });
   // A tap in Store mode: in or out of the cart (to buy <-> bought ✓). What to
   // queue is chosen at the till, in Done shopping's sheet.
-  const toggleCart = (key) => setStep(key, checked[key] ? TO_BUY : BOUGHT);
+  const toggleCart = (key, rowEl) => setStep(key, (steps.current[key] ?? TO_BUY) === TO_BUY ? BOUGHT : TO_BUY, { rowEl });
 
   // What goes to the confirmation sheet for one grocery item (see
   // inventoryAmount: the recipe quantity, with its unit, unless you set a
@@ -751,7 +774,7 @@ export function GroceryList({
   function listAsText() {
     const lines = [t("grocery.shareTitle")];
     for (const group of groups) {
-      const open = group.sorted.filter((r) => !checked[r.item.key]);
+      const open = group.rows.filter((r) => !checked[r.item.key]);
       if (open.length === 0) continue;
       lines.push("", group.label);
       for (const { item } of open) {
@@ -879,7 +902,6 @@ export function GroceryList({
         const groupRows = buckets.get(key);
         const sales = groupRows.filter((r) => r.deal).length;
         const remaining = groupRows.filter((r) => !checked[r.item.key]).length;
-        const sorted = [...groupRows].sort((a, b) => (checked[a.item.key] ? 1 : 0) - (checked[b.item.key] ? 1 : 0));
         const label =
           view === "store"
             ? storeLabel(key)
@@ -893,7 +915,9 @@ export function GroceryList({
           key,
           name: key,
           label,
-          sorted,
+          // A checked row never leaves its place: it stays where it is, tinted, until its
+          // store's "+ Add to inventory" (or Done shopping) takes it.
+          rows: groupRows,
           count: sales ? `${left} · ${t("grocery.groupOnSale", { count: sales })}` : left,
         };
       });
@@ -922,7 +946,11 @@ export function GroceryList({
   // Once everything is bought the card keeps showing the trip: all of them.
   const cartDone = allBought ? boughtCount : doneCount;
   const cartTotal = allBought ? boughtCount : totalCount;
-  const pct = cartTotal > 0 ? Math.round((cartDone / cartTotal) * 100) : 0;
+  // The number shown leaves out an item whose chip is still on its way: it counts when the chip lands
+  // (README §10). Done shopping and everything else that acts goes by the real cart.
+  const flying = allBought ? 0 : shoppingItems.filter((i) => checked[i.key] && feedback.flights[i.key] > 0).length;
+  const cartShown = cartDone - flying;
+  const pct = cartTotal > 0 ? Math.round((cartShown / cartTotal) * 100) : 0;
 
   // The sidebar's On sale list: what on this list is on sale, the saving,
   // and when each sale ends (soonest first), so you know what to buy first.
@@ -935,30 +963,23 @@ export function GroceryList({
   const subLabel = t("grocery.subLabel", { count: totalCount - doneCount, sales: onSaleRows.length });
 
   const phone = useIsPhone();
-  // The phone's sticky "I'm at the store" never sits on the cart bar, a store's
-  // "+ Add N to inventory" or the list's last row: it slides away while one is
-  // under it (hooks/useStickyDodge.js).
-  const storeBtnRef = useRef(null);
-  const storeBtnAside = useStickyDodge(storeBtnRef, () => {
-    const main = listRef.current;
-    if (!main) return [];
-    const rows = main.querySelectorAll(".riso-group .riso-row");
-    return [
-      ...main.querySelectorAll(".riso-grocery-cartbar, .riso-group-foot-btn:not(.sample)"),
-      ...(rows.length > 0 ? [rows[rows.length - 1]] : []),
-    ];
-  });
-  const cart = (
-    <GroceryCart
-      bar={phone}
-      count={cartDone}
-      pct={pct}
-      done={allInCart || allBought}
-      allBought={allBought}
-      queuedCount={queuedCount}
-      onDone={handleDoneShopping}
-    />
-  );
+  // The cart: a bar at the top of the list on a phone (with « Je suis à l'épicerie » in it), and
+  // once that bar has scrolled away its docked copy at the bottom (with a shop-icon button): the
+  // one thing that floats there. On a computer the card in the side column.
+  const [barEl, setBarEl] = useState(null);
+  const dockOn = useCartDock(phone ? barEl : null);
+  const cartProps = {
+    count: cartShown,
+    canDone: cartDone > 0,
+    pct,
+    done: allInCart || allBought,
+    allBought,
+    queuedCount,
+    onDone: handleDoneShopping,
+    onStoreMode: totalCount > 0 ? () => setStoreMode(true) : undefined,
+    pulse: feedback.pulse,
+  };
+  const cart = <GroceryCart bar={phone} cartRef={phone ? setBarEl : undefined} {...cartProps} />;
 
   // "I have it as…" on a row that comes from recipes: the recipe names behind the row
   // (garlic, garlic cloves) that Inventory does not hold yet are linked to the item
@@ -980,7 +1001,7 @@ export function GroceryList({
         item={row.item}
         checked={!!checked[row.item.key]}
         queued={!!queued[row.item.key]}
-        onToggle={() => cycle(row.item.key)}
+        onToggle={(rowEl) => cycle(row.item.key, rowEl)}
         deal={row.deal}
         dealStore={view !== "store"}
         flyerDeal={flyerDealFor(row.item)}
@@ -994,8 +1015,9 @@ export function GroceryList({
 
   // Under a group with something queued: the one button that adds those (§2).
   function renderFooter(group) {
-    const items = group.sorted.map((r) => r.item).filter((item) => queued[item.key]);
-    return items.length > 0 && <GroupFooter items={items} onAdd={() => sendToInventory(items)} />;
+    const items = group.rows.map((r) => r.item).filter((item) => queued[item.key]);
+    // Always drawn: it opens, rolls and closes on its own (and draws nothing while empty).
+    return <GroupFooter items={items} onAdd={() => sendToInventory(items)} />;
   }
 
   return (
@@ -1080,8 +1102,8 @@ export function GroceryList({
                             onRemove={() => removeStore(section)}
                             grip={grip}
                           />
-                          {group.sorted.length === 0 && <p className="riso-group-empty">{t("grocery.dragHere")}</p>}
-                          {group.sorted.map((row) => renderRow(group, row, DraggableGroceryRow))}
+                          {group.rows.length === 0 && <p className="riso-group-empty">{t("grocery.dragHere")}</p>}
+                          {group.rows.map((row) => renderRow(group, row, DraggableGroceryRow))}
                           {renderFooter(group)}
                         </>
                       )}
@@ -1102,7 +1124,7 @@ export function GroceryList({
                   group={group}
                   onOpenName={view === "recipe" && group.name !== MANUAL_GROUP_LABEL && onOpenRecipe ? () => onOpenRecipe(group.name) : null}
                 />
-                {group.sorted.map((row) => renderRow(group, row))}
+                {group.rows.map((row) => renderRow(group, row))}
                 {renderFooter(group)}
               </section>
             ))
@@ -1139,18 +1161,6 @@ export function GroceryList({
             }))}
           />
         </div>
-
-        {totalCount > 0 && (
-          <button
-            type="button"
-            ref={storeBtnRef}
-            className={`riso-grocery-store-btn${storeBtnAside ? " dodge" : ""}`}
-            tabIndex={storeBtnAside ? -1 : undefined}
-            onClick={() => setStoreMode(true)}
-          >
-            {t("grocery.atStore")} <span>{t("grocery.bigMode")}</span>
-          </button>
-        )}
 
         <aside className="riso-grocery-aside">
           {!phone && cart}
@@ -1201,8 +1211,11 @@ export function GroceryList({
           </section>
         </aside>
       </div>
+      {phone && <GroceryCart dock on={dockOn} {...cartProps} />}
       {storeMode && (
         <StoreMode
+          flights={feedback.flights}
+          pulse={feedback.pulse}
           rows={storeRows}
           stores={storesWithItems.length > 0 ? storesWithItems : storeOrder}
           checked={checked}
