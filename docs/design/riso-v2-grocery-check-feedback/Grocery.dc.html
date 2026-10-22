@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&amp;family=DM+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>html,body{margin:0;background:#e4e0d6}a{color:#2323ff;text-decoration:none}a:hover{color:#16181f}input::placeholder{color:#8a8677}</style></helmet>
+<div style="padding:64px;display:flex;flex-direction:column;gap:64px;font-family:Inter,system-ui,sans-serif;color:#16181f;width:max-content;min-width:100%;box-sizing:border-box">
+  <div style="display:flex;flex-direction:column;gap:16px;width:1100px">
+    <a href="Index.dc.html" style="font:500 12px 'DM Mono',monospace;letter-spacing:0.1em">← ALL PAGES</a>
+    <span style="font:500 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52">BASELINE · 08 / 12 · APPROVED DESIGN (<a href="Grocery Row Rework.dc.html#6a">6A</a>)</span>
+    <h1 style="margin:0;font:800 56px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Grocery list</h1>
+    <p style="margin:0;font:400 17px/1.5 Inter,sans-serif;color:#3f3e37;max-width:760px;text-wrap:pretty">The approved Grocery page, built on row 6a. What the live code draws today is in the <a href="Archive - Grocery (live code).dc.html">archive</a>. Every checkbox is clickable and shared between English and French: once for bought, twice to queue for inventory, three times to put it back. Each store adds its queued items with one button at the bottom.</p>
+    <ul style="margin:0;padding-left:18px;max-width:760px;font:400 14px/1.6 Inter,sans-serif;color:#3f3e37">
+      <li>Desktop rows use one grid: check, name, On sale, Recipe, Buy, ×. The store header labels the columns.</li>
+      <li>The sale price links to the <a href="Deal Card.dc.html">Deal card</a>. In By aisle and By recipe the store name follows the price.</li>
+      <li>The number is a 52 × 36 pill instead of the 42px round number.</li>
+      <li>No + Inventory button on rows. Queued rows turn pale blue and get a blue + in the box.</li>
+      <li>Item names always start with a capital. Items you added yourself say "Added by you" in faint type under the name.</li>
+      <li>On a phone the cart is a small pink bar under the How it works box (above the add field when the box is dismissed) instead of the big card in the side column.</li>
+      <li>Phone keeps its baseline layout but uses the same three-step checkbox and store footer.</li>
+    </ul>
+  </div>
+  <sc-for list="{{ states }}" as="st" hint-placeholder-count="2">
+    <section style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;max-width:1400px">
+        <span style="font:600 12px 'DM Mono',monospace;letter-spacing:0.1em;background:#16181f;color:#f4f1ea;padding:4px 8px;border-radius:6px">{{ st.id }}</span>
+        <h2 style="margin:0;font:800 28px/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">{{ st.name }}</h2>
+        <span style="font:400 15px Inter,sans-serif;color:#5e5b52">{{ st.caption }}</span>
+      </div>
+      <div style="display:flex;gap:40px;align-items:flex-start">
+        <sc-for list="{{ st.boards }}" as="b" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:10px;flex:none">
+            <span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.label }}</span>
+            <div data-screen-label="{{ b.screenLabel }}" style="position:relative;width:{{ b.w }}px;background:#f4f1ea;border:1px solid #bdb6a6;overflow:hidden;color:#16181f;font-family:Inter,system-ui,sans-serif;box-sizing:border-box">
+              <dc-import name="AppHeader" active="grocery" lang="{{ b.lang }}" phone="{{ b.phone }}" hint-size="100%,88px"></dc-import>
+              <div style="padding:{{ b.appPad }};margin-top:{{ b.headGap }}">
+                <div style="display:flex;flex-direction:column;gap:24px;padding-bottom:{{ b.pageBottom }}">
+                  <div style="display:flex;flex-direction:{{ b.hdrDir }};align-items:{{ b.hdrAlign }};gap:{{ b.hdrGap }};flex-wrap:wrap">
+                    <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:6px">
+                      <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#5e5b52;margin:0 0 6px;text-transform:uppercase">{{ b.subLabel }}</div>
+                      <h1 style="margin:0;font:800 {{ b.titleFs }}/0.95 'Bricolage Grotesque',sans-serif;letter-spacing:-0.035em">{{ b.title }} <span style="color:#2323ff">{{ b.titleAccent }}</span></h1>
+                    </div>
+                    <div style="display:{{ b.segDisplay }};grid-template-columns:repeat(3,1fr);border:2px solid #16181f;border-radius:999px;overflow:hidden;background:#fffdf8">
+                      <sc-for list="{{ b.segs }}" as="sg" hint-placeholder-count="3"><span style="height:{{ b.segH }};padding:0 16px;display:flex;align-items:center;justify-content:center;background:{{ sg.bg }};color:{{ sg.fg }};font:600 13.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ sg.label }}</span></sc-for>
+                    </div>
+                    <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><span style="height:44px;padding:0 20px;border-radius:22px;border:2px solid #16181f;background:#fffdf8;font:600 14.5px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;flex:none;box-sizing:border-box">{{ b.share }}</span></sc-if>
+                  </div>
+
+                  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+                    <div style="flex:3 1 600px;min-width:0;display:flex;flex-direction:column;gap:18px">
+                      <sc-if value="{{ b.showHint }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;flex-direction:column;gap:16px;background:#fffdf8;border:2px dashed #16181f;border-radius:20px;padding:{{ b.hintPad }}">
+                          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px">
+                            <span style="flex:none;transform:rotate(-4deg);border:2px solid #16181f;border-radius:999px;padding:6px 12px;font:800 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;background:#ffe14d">{{ b.howItWorks }}</span>
+                            <span style="flex:1 1 {{ b.hintTitleBasis }};min-width:0;order:{{ b.hintTitleOrder }};font:700 15px/1.3 'Bricolage Grotesque',sans-serif">{{ b.hintTitle }}</span>
+                            <span style="flex:none;margin-left:auto;min-height:32px;display:flex;align-items:center;font:600 13px 'Bricolage Grotesque',sans-serif;text-decoration:underline;cursor:pointer">{{ b.gotIt }}</span>
+                          </div>
+                          <div style="display:flex;flex-direction:{{ b.hintDir }};gap:{{ b.hintBodyGap }};align-items:stretch">
+                            <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px">
+                              <div style="display:flex;align-items:center;gap:6px;padding:8px 12px 8px 4px;border:2px solid #16181f;border-radius:16px;background:{{ b.demoBg }};transition:background 200ms">
+                                <span onClick="{{ b.demoClick }}" style="flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span style="width:30px;height:30px;box-sizing:border-box;border-radius:9px;border:2px solid #16181f;background:{{ b.demoBoxBg }};color:#fff;display:flex;align-items:center;justify-content:center;font:800 {{ b.demoSize }}/1 'Bricolage Grotesque',sans-serif;transition:background 200ms">{{ b.demoGlyph }}</span></span>
+                                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                                  <span style="font:800 15.5px/19px 'Bricolage Grotesque',sans-serif;color:{{ b.demoNameFg }};text-decoration:{{ b.demoDeco }}">{{ b.demoName }}</span>
+                                  <span style="font:{{ b.demoMetaFw }} 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;color:{{ b.demoMetaFg }};white-space:nowrap">{{ b.demoMeta }}</span>
+                                </span>
+                                <span style="flex:none;width:52px;height:36px;box-sizing:border-box;border:2px solid {{ b.demoQtyBorder }};border-radius:18px;background:#fffdf8;color:{{ b.demoNameFg }};display:flex;align-items:center;justify-content:center;font:700 15px 'DM Mono',monospace">2</span>
+                              </div>
+                              <span style="padding-left:4px;font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;color:#5e5b52">{{ b.demoCaption }}</span>
+                            </div>
+                            <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px">
+                              <sc-for list="{{ b.hintSteps }}" as="hs" hint-placeholder-count="3">
+                                <div style="display:flex;align-items:center;gap:10px;padding:5px 10px 5px 6px;border:2px solid {{ hs.border }};border-radius:12px;background:{{ hs.bg }};transition:background 200ms, border-color 200ms">
+                                  <span style="flex:none;width:24px;height:24px;box-sizing:border-box;border-radius:7px;border:2px solid #16181f;background:{{ hs.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center;font:800 {{ hs.size }}/1 'Bricolage Grotesque',sans-serif">{{ hs.glyph }}</span>
+                                  <span style="flex:none;width:{{ b.stepTitleW }};font:700 13.5px 'Bricolage Grotesque',sans-serif;color:{{ hs.fg }}">{{ hs.title }}</span>
+                                  <span style="flex:1;min-width:0;font:400 13px/1.35 Inter,sans-serif;color:{{ hs.subFg }}">{{ hs.sub }}</span>
+                                </div>
+                              </sc-for>
+                            </div>
+                          </div>
+                          <div style="display:flex;flex-direction:{{ b.hintDir }};gap:{{ b.tipsGap }};padding-top:14px;border-top:1.5px dashed #d6cfbf">
+                            <div style="flex:1 1 0;min-width:0;display:flex;align-items:center;gap:12px">
+                              <span style="flex:none;height:30px;padding:0 12px;box-sizing:border-box;border:2px solid #16181f;border-radius:15px;background:#2323ff;color:#fff;box-shadow:2px 2px 0 #16181f;display:flex;align-items:center;font:600 12px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ b.tipAddBtn }}</span>
+                              <span style="min-width:0;font:400 13px/1.4 Inter,sans-serif;color:#3f3e37;text-wrap:pretty">{{ b.tipAdd }}</span>
+                            </div>
+                            <div style="flex:1 1 0;min-width:0;display:flex;align-items:center;gap:12px">
+                              <span style="flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:15px;background:#c9f5da;white-space:nowrap"><span style="width:10px;height:10px;box-sizing:border-box;border:1.5px solid #16181f;border-radius:5px;background:#10c95c"></span><span style="font:700 13px 'DM Mono',monospace;border-bottom:1.5px dotted #16181f">{{ b.tipSalePrice }}</span><span style="font:700 13px/1 'Bricolage Grotesque',sans-serif">›</span></span>
+                              <span style="min-width:0;font:400 13px/1.4 Inter,sans-serif;color:#3f3e37;text-wrap:pretty">{{ b.tipSale }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </sc-if>
+                  <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:10px;background:#ff48b0;border:2px solid #16181f;border-radius:18px;box-shadow:3px 3px 0 #16181f;padding:10px 10px 12px 14px">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span style="flex:none;font:800 34px/0.9 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em">{{ b.checkedCount }}</span>
+                        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.12em;text-transform:uppercase">{{ b.inCart }}</span><span style="font:700 13.5px/1.2 'Bricolage Grotesque',sans-serif">{{ b.itemsChecked }}</span></span>
+                        <span style="flex:none;height:36px;padding:0 14px;border-radius:18px;background:#16181f;color:#f4f1ea;display:flex;align-items:center;font:700 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;opacity:{{ b.cartBtnOp }}">{{ b.doneShort }}</span>
+                      </div>
+                      <div style="height:8px;margin-right:4px;border-radius:4px;background:#f4f1ea;border:2px solid #16181f;overflow:hidden"><div style="height:100%;width:{{ b.cartPct }}%;background:#16181f"></div></div>
+                    </div>
+                  </sc-if>
+                      <div style="display:flex;gap:10px;align-items:center;background:#fffdf8;border:2px solid #16181f;border-radius:999px;padding:6px 6px 6px 22px">
+                        <input type="text" readonly="" placeholder="{{ b.addPlaceholder }}" style="flex:1;min-width:0;height:40px;border:none;outline:none;background:transparent;font:500 15.5px 'Bricolage Grotesque',sans-serif">
+                        <span style="height:40px;padding:0 20px;border-radius:20px;background:#2323ff;color:#fff;border:2px solid #16181f;box-shadow:2px 2px 0 #16181f;font:700 14.5px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;flex:none;box-sizing:border-box">{{ b.addLabel }}</span>
+                      </div>
+                      <sc-if value="{{ b.isEmpty }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:13.5px;color:#3f3e37;background:#fffdf8;border:2px dashed #16181f;border-radius:18px;padding:18px">{{ b.emptyText }}</p></sc-if>
+                      <sc-for list="{{ b.groups }}" as="g" hint-placeholder-count="3">
+                        <div style="background:#fffdf8;border:2px solid #16181f;border-radius:24px;overflow:hidden;display:flex;flex-direction:column">
+                          <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}">
+                          <div style="display:grid;grid-template-columns:44px minmax(0,1fr) 128px 76px 56px 32px;column-gap:12px;align-items:end;padding:14px 12px 10px 14px;border-bottom:2px solid #16181f">
+                            <span style="grid-column:1 / 3;display:flex;align-items:center;gap:12px;min-width:0"><sc-if value="{{ g.grip }}" hint-placeholder-val="{{ true }}"><span style="flex:none;padding:4px 2px;color:#5e5b52;font-size:16px;line-height:1">⠿</span></sc-if><h3 style="margin:0;font:800 22px 'Bricolage Grotesque',sans-serif;white-space:nowrap">{{ g.name }}</h3><span style="font:500 11px 'DM Mono',monospace;letter-spacing:0.08em;color:#3f3e37;white-space:nowrap">{{ g.count }}</span></span>
+                            <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.colSale }}</span>
+                            <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.colRecipe }}</span>
+                            <span style="text-align:right;font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em;color:#5e5b52">{{ b.colBuy }}</span>
+                            <span style="display:flex;justify-content:center"><sc-if value="{{ g.removable }}" hint-placeholder-val="{{ false }}"><span style="flex:none;width:26px;height:26px;border-radius:13px;border:1.5px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;line-height:1;font-size:13px;box-sizing:border-box">×</span></sc-if></span>
+                          </div>
+                          </sc-if>
+                          <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-bottom:2px solid #16181f">
+                            <sc-if value="{{ g.grip }}" hint-placeholder-val="{{ true }}"><span style="flex:none;margin-right:4px;padding:4px 2px;color:#5e5b52;font-size:16px;line-height:1">⠿</span></sc-if>
+                            <h3 style="margin:0;font:800 {{ b.groupFs }} 'Bricolage Grotesque',sans-serif">{{ g.name }}</h3>
+                            <span style="margin-left:auto;font:400 {{ b.countFs }} 'DM Mono',monospace;letter-spacing:0.08em;white-space:nowrap">{{ g.count }}</span>
+                            <sc-if value="{{ g.removable }}" hint-placeholder-val="{{ false }}"><span style="flex:none;width:26px;height:26px;border-radius:13px;border:1.5px solid #16181f;background:#fffdf8;display:flex;align-items:center;justify-content:center;line-height:1;font-size:13px;box-sizing:border-box">×</span></sc-if>
+                          </div>
+                          </sc-if>
+                          <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                            <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}">
+                            <div style="display:grid;grid-template-columns:44px minmax(0,1fr) 128px 76px 56px 32px;column-gap:12px;align-items:center;box-sizing:border-box;min-height:68px;padding:10px 12px 10px 14px;border-top:{{ r.bt }};background:{{ r.bg }};transition:background 160ms">
+                              <span onClick="{{ r.onToggle }}" title="{{ r.tip }}" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span style="width:30px;height:30px;box-sizing:border-box;border-radius:9px;border:2px solid #16181f;background:{{ r.checkBg }};color:#fff;display:flex;align-items:center;justify-content:center;font:800 {{ r.checkSize }}/1 'Bricolage Grotesque',sans-serif;transition:background 160ms">{{ r.check }}</span></span>
+                              <span style="min-width:0;display:flex;flex-direction:column;gap:4px">
+                                <span style="font:800 15.5px/19px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;overflow-wrap:break-word;color:{{ r.nameFg }};text-decoration:{{ r.nameDeco }}">{{ r.name }}</span>
+                                <sc-if value="{{ r.hasMeta }}" hint-placeholder-val="{{ false }}">
+                                  <span style="display:flex;align-items:center;gap:8px;min-width:0">
+                                    <sc-if value="{{ r.queued }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:600 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;color:#2323ff;white-space:nowrap">{{ r.queuedLabel }}</span><sc-if value="{{ r.metaAfterQueued }}" hint-placeholder-val="{{ false }}"><span style="flex:none;width:4px;height:4px;border-radius:2px;background:#5e5b52"></span></sc-if></sc-if>
+                                    <sc-if value="{{ r.manual }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:400 11px/1.4 'DM Mono',monospace;letter-spacing:0.04em;color:#a9a598;white-space:nowrap">{{ r.manualLabel }}</span></sc-if>
+                                    <sc-if value="{{ r.hasBrand }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:600 12.5px 'Bricolage Grotesque',sans-serif;color:{{ r.brandFg }};white-space:nowrap">{{ r.brand }}</span><span style="flex:none;width:4px;height:4px;border-radius:2px;background:#5e5b52"></span></sc-if>
+                                    <span style="display:flex;align-items:baseline;gap:5px;min-width:0;font:500 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:{{ r.recFg }}"><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.recipes }}</span><span style="flex:none;white-space:nowrap">{{ r.more }}</span></span>
+                                  </span>
+                                </sc-if>
+                              </span>
+                              <span style="height:36px;display:flex;align-items:center">
+                                <sc-if value="{{ r.showDeal }}" hint-placeholder-val="{{ false }}"><a href="Deal Card.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:32px;margin-left:-8px;padding:0 8px;border-radius:16px;color:#16181f;cursor:pointer;white-space:nowrap" style-hover="background:#c9f5da"><span style="flex:none;width:10px;height:10px;box-sizing:border-box;border:1.5px solid #16181f;border-radius:5px;background:#10c95c"></span><span style="font:700 13.5px 'DM Mono',monospace;border-bottom:1.5px dotted #16181f">{{ r.dealPrice }}</span><sc-if value="{{ r.dealStoreShow }}" hint-placeholder-val="{{ false }}"><span style="font:600 12px 'Bricolage Grotesque',sans-serif;color:#3f3e37">{{ r.dealStore }}</span></sc-if><span style="font:700 13px/1 'Bricolage Grotesque',sans-serif">›</span></a></sc-if>
+                              </span>
+                              <span style="height:36px;display:flex;align-items:center;font:500 12.5px 'DM Mono',monospace;color:#5e5b52;white-space:nowrap">{{ r.need }}</span>
+                              <span style="height:36px;display:flex;align-items:center;justify-content:flex-end"><span style="width:52px;height:36px;box-sizing:border-box;border:2px solid {{ r.qtyBorder }};border-radius:18px;background:#fffdf8;color:{{ r.qtyFg }};display:flex;align-items:center;justify-content:center;font:700 15px 'DM Mono',monospace">{{ r.qty }}</span></span>
+                              <span style="width:32px;height:44px;display:flex;align-items:center;justify-content:center;color:#5e5b52;font:600 20px/1 'Bricolage Grotesque',sans-serif">×</span>
+                            </div>
+                            </sc-if>
+                            <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}">
+                            <div style="position:relative;display:flex;align-items:center;box-sizing:border-box;width:100%;height:{{ b.rowH }};padding:0 10px 0 14px;border-top:{{ r.bt }};background:{{ r.bg }}">
+                              <span onClick="{{ r.onToggle }}" style="flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span style="width:30px;height:30px;flex:none;box-sizing:border-box;border-radius:9px;border:2px solid #16181f;background:{{ r.checkBg }};color:#fff;display:flex;align-items:center;justify-content:center;font:800 {{ r.checkSize }}/1 'Bricolage Grotesque',sans-serif">{{ r.check }}</span></span>
+                              <span style="flex:1;min-width:0;padding:0 8px;display:flex;flex-direction:column;gap:4px">
+                                <span style="font:800 15.5px/19px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;overflow-wrap:break-word;color:{{ r.nameFg }};text-decoration:{{ r.nameDeco }}">{{ r.name }}</span>
+                                <sc-if value="{{ r.hasMeta }}" hint-placeholder-val="{{ false }}">
+                                  <span style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-height:24px">
+                                    <sc-if value="{{ r.manual }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:400 11px/1.4 'DM Mono',monospace;letter-spacing:0.04em;color:#a9a598;white-space:nowrap">{{ r.manualLabel }}</span></sc-if>
+                                    <sc-if value="{{ r.hasBrand }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font:600 12.5px 'Bricolage Grotesque',sans-serif;color:{{ r.brandFg }};white-space:nowrap">{{ r.brand }}</span><span style="flex:none;width:4px;height:4px;margin:0 -4px;border-radius:2px;background:#5e5b52"></span></sc-if>
+                                    <span style="display:flex;align-items:baseline;gap:5px;min-width:0;max-width:100%;font:500 11px/1.4 'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:{{ r.recFg }}"><span style="flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.recipes }}</span><span style="flex:none;white-space:nowrap">{{ r.more }}</span></span>
+                                    <sc-if value="{{ r.needNarrow }}" hint-placeholder-val="{{ false }}"><span style="flex:none;box-sizing:border-box;display:flex;align-items:center;border:1.5px dashed #8a877d;color:#3f3e37;font:500 10.5px 'DM Mono',monospace;white-space:nowrap;height:20px;padding:0 7px;border-radius:10px">{{ r.need }}</span></sc-if>
+                                  </span>
+                                </sc-if>
+                              </span>
+                              <span style="flex:none;display:flex;align-items:center;flex-wrap:{{ r.rightWrap }};justify-content:{{ r.rightJc }};width:{{ r.rightW }}">
+                                <span style="flex:none;width:{{ b.slotW }};margin-right:{{ b.slotMr }};display:{{ b.slotDisplay }};align-items:center;justify-content:flex-start;order:{{ r.slotOrder }}">
+                                  <sc-if value="{{ r.toInv }}" hint-placeholder-val="{{ false }}"><span style="flex:none;height:30px;padding:0 12px;border:2px solid #16181f;border-radius:15px;background:#2323ff;color:#fff;box-shadow:2px 2px 0 #16181f;font:700 12.5px 'Bricolage Grotesque',sans-serif;white-space:nowrap;display:flex;align-items:center;box-sizing:border-box;margin:{{ b.toInvMargin }}">{{ b.toInvLabel }}</span></sc-if>
+                                  <sc-if value="{{ r.showDeal }}" hint-placeholder-val="{{ false }}"><span style="flex:none;display:inline-flex;align-items:center;gap:7px;height:22px;box-sizing:border-box;padding:0 8px;border:1.5px solid #16181f;border-radius:6px;background:#10c95c;white-space:nowrap"><span style="font:600 11.5px 'Bricolage Grotesque',sans-serif">{{ r.dealStore }}</span><span style="flex:none;width:1.5px;height:11px;background:#16181f"></span><span style="font:700 11.5px 'DM Mono',monospace">{{ r.dealPrice }}</span></span></sc-if>
+                                </span>
+                                <sc-if value="{{ b.desktop }}" hint-placeholder-val="{{ true }}"><span style="flex:none;width:112px;display:flex;align-items:center;justify-content:center"><sc-if value="{{ r.hasNeed }}" hint-placeholder-val="{{ true }}"><span style="flex:none;box-sizing:border-box;display:flex;align-items:center;border:1.5px dashed #8a877d;color:#3f3e37;font:500 12px 'DM Mono',monospace;white-space:nowrap;height:26px;padding:0 10px;border-radius:13px">{{ r.need }}</span></sc-if></span></sc-if>
+                                <span style="flex:none;width:{{ b.qtyColW }};display:flex;align-items:center;justify-content:center"><span style="width:42px;height:42px;box-sizing:border-box;border:2px solid #16181f;border-radius:50%;background:{{ r.qtyBg }};font:700 16px 'DM Mono',monospace;display:flex;align-items:center;justify-content:center">{{ r.qty }}</span></span>
+                                <span style="position:relative;flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:#5e5b52;font:600 18px/1 'Bricolage Grotesque',sans-serif"><span style="position:absolute;width:30px;height:30px;box-sizing:border-box;border-radius:15px;border:2px solid #5e5b52"></span>×</span>
+                              </span>
+                            </div>
+                            </sc-if>
+                          </sc-for>
+                          <sc-if value="{{ g.hasQueued }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;flex-direction:{{ b.footDir }};align-items:{{ b.footAlign }};justify-content:space-between;gap:12px;padding:14px 16px 14px 20px;border-top:2px solid #16181f;background:#ebebff">
+                              <span style="min-width:0;font:500 12px/1.5 'DM Mono',monospace;letter-spacing:0.08em;color:#16181f;text-transform:uppercase">{{ g.queuedLine }}</span>
+                              <span onClick="{{ g.onAdd }}" style="flex:none;height:40px;padding:0 18px;box-sizing:border-box;border:2px solid #16181f;border-radius:20px;background:#2323ff;color:#fff;box-shadow:3px 3px 0 #16181f;display:flex;align-items:center;justify-content:center;font:600 14px 'Bricolage Grotesque',sans-serif;white-space:nowrap;cursor:pointer" style-active="transform:translate(2px,2px);box-shadow:1px 1px 0 #16181f">{{ g.addLabel }}</span>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{ b.showAddStore }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;height:40px;padding:0 18px;border:2px dashed #16181f;border-radius:20px;display:flex;align-items:center;font:700 13.5px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ b.addStore }}</span></sc-if>
+                      <sc-if value="{{ b.showRemoved }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border:1.5px dashed #bdb6a6;border-radius:18px">
+                          <span style="font:400 10.5px 'DM Mono',monospace;letter-spacing:0.08em;text-transform:uppercase;color:#5e5b52;margin-right:4px">{{ b.removedLabel }}</span>
+                          <sc-for list="{{ b.removed }}" as="rm" hint-placeholder-count="2"><span style="height:30px;padding:0 12px;border-radius:15px;border:1.5px solid #16181f;background:#fffdf8;color:#3f3e37;font:600 12.5px 'Bricolage Grotesque',sans-serif;display:flex;align-items:center;box-sizing:border-box"><span style="text-decoration:line-through">{{ rm }}</span><span style="margin-left:4px">↺</span></span></sc-for>
+                          <span style="margin-left:auto;font:600 13px 'Bricolage Grotesque',sans-serif;text-decoration:underline">{{ b.clearLabel }}</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ b.phone }}" hint-placeholder-val="{{ false }}"><span style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:56px;margin:4px 0;border-radius:28px;border:2px solid #16181f;background:#ff48b0;box-shadow:3px 3px 0 #16181f;font:800 17px 'Bricolage Grotesque',sans-serif;box-sizing:border-box">{{ b.atStore }} <span style="font:500 10.5px 'DM Mono',monospace;letter-spacing:0.1em">{{ b.bigMode }}</span></span></sc-if>
+                    </div>
+
+                    <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:18px">
+                      <sc-if value="{{ b.cartDone }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:12px 16px;border-radius:24px;border:2px solid #16181f;background:#fffdf8;font:800 15px 'Bricolage Grotesque',sans-serif;text-align:center">{{ b.groceriesDone }}</p></sc-if>
+                      <sc-if value="{{ b.showCart }}" hint-placeholder-val="{{ true }}">
+                        <div style="background:#ff48b0;border:2px solid #16181f;border-radius:24px;box-shadow:8px 8px 0 #16181f;padding:20px;display:flex;flex-direction:column;gap:12px">
+                          <div style="font:400 12px 'DM Mono',monospace;letter-spacing:0.12em;color:#16181f;opacity:0.75;text-transform:uppercase">{{ b.inCart }}</div>
+                          <div style="display:flex;align-items:baseline;gap:10px"><span style="font:800 84px/0.9 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em">{{ b.checkedCount }}</span><span style="font:700 16px 'Bricolage Grotesque',sans-serif">{{ b.itemsChecked }}</span></div>
+                          <div style="height:14px;border-radius:7px;background:#f4f1ea;border:2px solid #16181f;overflow:hidden"><div style="height:100%;width:{{ b.cartPct }}%;background:#16181f"></div></div>
+                          <span style="height:44px;border-radius:22px;background:#16181f;color:#f4f1ea;display:flex;align-items:center;justify-content:center;font:700 14.5px 'Bricolage Grotesque',sans-serif;text-align:center;padding:0 12px;opacity:{{ b.cartBtnOp }}">{{ b.doneShopping }}</span>
+                          <p style="margin:0;font-size:12.5px;line-height:1.5">{{ b.cartNote }}</p>
+                        </div>
+                      </sc-if>
+                      <div style="position:relative;background:#10c95c;border:2px solid #16181f;border-radius:24px;box-shadow:8px 8px 0 #16181f;padding:20px;display:flex;flex-direction:column;gap:8px">
+                        <span style="position:absolute;top:-14px;right:22px;transform:rotate(6deg);border:2px solid #16181f;border-radius:999px;padding:6px 12px;font:800 13px 'Bricolage Grotesque',sans-serif;white-space:nowrap;z-index:2;background:#ffe14d">{{ b.saveSticker }}</span>
+                        <p style="margin:0;font:800 26px/1.05 'Bricolage Grotesque',sans-serif">{{ b.saleTitle }}</p>
+                        <sc-if value="{{ b.hasSales }}" hint-placeholder-val="{{ true }}">
+                          <ul style="list-style:none;margin:10px 0 8px;padding:0;display:flex;flex-direction:column;gap:6px">
+                            <sc-for list="{{ b.sales }}" as="sa" hint-placeholder-count="3">
+                              <li style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'photo name price' 'photo meta ends';align-items:center;gap:1px 8px;padding:8px 10px 8px 8px;border:2px solid #16181f;border-radius:12px;background:#fffdf8">
+                                <span style="grid-area:photo;width:36px;height:36px;border:2px solid #16181f;border-radius:8px;box-sizing:border-box;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px">{{ sa.emoji }}</span>
+                                <span style="grid-area:name;align-self:end;font:700 14px/1.25 'Bricolage Grotesque',sans-serif;overflow-wrap:anywhere">{{ sa.name }}</span>
+                                <span style="grid-area:price;align-self:end;justify-self:end;font:800 14px 'Bricolage Grotesque',sans-serif;color:#0b7a3b;white-space:nowrap">{{ sa.price }}</span>
+                                <span style="grid-area:meta;align-self:start;font:500 10.5px 'DM Mono',monospace;color:#3f3e37">{{ sa.meta }}</span>
+                                <span style="grid-area:ends;align-self:start;justify-self:end;font:{{ sa.endsFw }} 10.5px 'DM Mono',monospace;color:{{ sa.endsFg }};white-space:nowrap">{{ sa.ends }}</span>
+                              </li>
+                            </sc-for>
+                          </ul>
+                          <p style="margin:0;font-size:13.5px;line-height:1.5">{{ b.saleCopy }}</p>
+                        </sc-if>
+                        <sc-if value="{{ b.noSales }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:13.5px;line-height:1.5">{{ b.noMatchDeals }}</p></sc-if>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;both&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;en&quot;,&quot;fr&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;only&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    import('./kit.js').then(k => { this.k = k; this.forceUpdate(); });
+    this.iv = setInterval(() => { if (!this.state.demoManual) this.setState(s => ({ demo: (s.demo || 0) + 1 })); }, 1800);
+  }
+  STATES = [
+    { id: '8.1', name: 'By store', caption: 'Default view. Sale items start in the store with the deal; Milk is queued for inventory (pale blue, blue +) and cilantro is bought. Click any checkbox to cycle it. First visit: the hint strip shows. A removed item waits in the dashed strip.', view: 'store', hint: true },
+    { id: '8.2', name: 'By aisle', caption: 'The same items under the aisles of the store, in walking order. No grip and no ×.', view: 'aisle' },
+    { id: '8.3', name: 'By recipe', caption: 'One group per recipe ("For …"), then the items you added yourself.', view: 'recipe' },
+    { id: '8.4', name: 'Everything checked', caption: 'Every item is in the cart: the cart reads 8 of 8 and Done shopping adds them all (it opens the Inventory confirm sheet first).', view: 'store', allChecked: true },
+    { id: '8.5', name: 'Nothing planned', caption: 'An empty plan and nothing added by hand.', view: 'store', empty: true },
+  ];
+  ITEMS = [
+    { id: 'tom', en: 'Diced tomatoes', fr: 'Tomates en dés', qty: 3, brand: 'Unico', rec: ['Pasta e fagioli'], need: ['2 cans', '2 boîtes'], deal: ['Metro', 2.49], store: 'Metro', aisle: 'pantry' },
+    { id: 'chk', en: 'Chicken thighs', fr: 'Hauts de cuisse de poulet', qty: 2, rec: ['Sheet-pan chicken shawarma'], need: ['900 g', '900 g'], deal: ['Metro', 2.99], store: 'Metro', aisle: 'meat' },
+    { id: 'lem', en: 'lemons', fr: 'citrons', qty: 2, manual: true, store: 'Metro', aisle: 'produce' },
+    { id: 'mlk', en: 'Milk 2%', fr: 'Lait 2 %', qty: 1, rec: ['Buttermilk pancakes'], need: ['750 mL', '750 mL'], store: 'Metro', aisle: 'dairy', checked: true },
+    { id: 'ched', en: 'Old cheddar, thinly sliced', fr: 'Fromage cheddar fort vieilli, tranché mince', qty: 1, rec: ['Lentil salad with feta', 'Chicken caesar wraps', 'Shakshuka'], need: ['350 g', '350 g'], store: 'Super C', aisle: 'dairy' },
+    { id: 'foil', en: 'aluminum foil', fr: "papier d'aluminium", qty: 1, manual: true, store: 'Super C', aisle: 'household' },
+    { id: 'cil', en: 'Cilantro', fr: 'Coriandre', qty: 1, rec: ['Salmon rice bowls'], need: ['1 bunch', '1 botte'], store: 'Super C', aisle: 'produce', checked: true },
+    { id: 'sal', en: 'Salmon fillets', fr: 'Filets de saumon', qty: 2, rec: ['Salmon rice bowls'], need: ['450 g', '450 g'], deal: ['IGA', 9.99], store: 'IGA', aisle: 'seafood' },
+  ];
+  componentWillUnmount() { clearInterval(this.iv); }
+  hintVals(FR, P, money) {
+    const n = this.state.demo || 0, st = n % 3, act = n === 0 ? -1 : (n - 1) % 3;
+    const STEPS = [
+      ['✓', '15px', '#2323ff', '#f4f1ea', FR ? 'Un clic' : 'Click once', FR ? 'Acheté, rayé de la liste' : 'Bought, crossed off'],
+      ['+', '19px', '#2323ff', '#ebebff', FR ? 'Deux clics' : 'Click twice', FR ? "En attente pour l'inventaire" : 'Queued for your inventory'],
+      ['', '15px', '#fffdf8', '#f4f1ea', FR ? 'Trois clics' : 'Click again', FR ? 'De retour dans la liste' : 'Back on the list'],
+    ];
+    return {
+      hintTitle: FR ? 'Chaque case a trois étapes.' : 'Each checkbox has three steps.',
+      hintTitleBasis: P ? '100%' : '0px', hintTitleOrder: P ? 3 : 0,
+      hintBodyGap: P ? '12px' : '24px', tipsGap: P ? '12px' : '24px', stepTitleW: P ? '92px' : '96px',
+      demoBg: st === 2 ? '#ebebff' : st === 1 ? '#f4f1ea' : '#fffdf8', demoBoxBg: st ? '#2323ff' : '#fffdf8', demoGlyph: st === 2 ? '+' : st === 1 ? '✓' : '', demoSize: st === 2 ? '22px' : '17px',
+      demoName: FR ? 'Citrons' : 'Lemons', demoNameFg: st ? '#5e5b52' : '#16181f', demoDeco: st ? 'line-through' : 'none', demoQtyBorder: st ? '#a9a598' : '#16181f',
+      demoMeta: st === 2 ? (FR ? '→ INVENTAIRE' : '→ INVENTORY') : (FR ? 'Ajouté par vous' : 'Added by you'), demoMetaFg: st === 2 ? '#2323ff' : '#a9a598', demoMetaFw: st === 2 ? 600 : 400,
+      demoCaption: this.state.demoManual ? (FR ? 'CLIQUEZ ENCORE' : 'KEEP CLICKING') : (FR ? 'ESSAYEZ : CLIQUEZ SUR LA CASE' : 'TRY IT: CLICK THE BOX'),
+      demoClick: () => this.setState(s => ({ demo: (s.demo || 0) + 1, demoManual: true })),
+      hintSteps: STEPS.map(([glyph, size, boxBg, bg, title, sub], j) => ({ glyph, size, boxBg, title, sub,
+        bg: j === act ? bg : 'transparent', border: j === act ? '#16181f' : 'transparent', fg: '#16181f', subFg: j === act ? '#16181f' : '#5e5b52' })),
+      tipAddBtn: FR ? "+ Ajouter 2 à l'inventaire" : '+ Add 2 to inventory',
+      tipAdd: FR ? 'Au bas de chaque magasin, un seul bouton ajoute tout ce qui est en attente.' : 'One button at the bottom of each store adds everything queued.',
+      tipSalePrice: money(2.49), tipSale: FR ? "Touchez un prix en solde pour voir l'offre." : 'Tap a sale price to see the deal.',
+    };
+  }
+  qmap(s) {
+    const saved = (this.state.q || {})[s.id];
+    if (saved) return saved;
+    return Object.fromEntries(this.ITEMS.map(i => [i.id, s.allChecked ? 1 : i.id === 'mlk' ? 2 : i.id === 'cil' ? 1 : 0]));
+  }
+  setQ(s, id, v) { const m = { ...this.qmap(s), [id]: v }; this.setState(st => ({ q: { ...(st.q || {}), [s.id]: m } })); }
+  addQueued(s, ids) { const m = { ...this.qmap(s) }; ids.forEach(id => { m[id] = 3; }); this.setState(st => ({ q: { ...(st.q || {}), [s.id]: m } })); }
+  board(k, s, bd) {
+    const L = bd.lang, P = bd.phone, t = k.tr(L), money = n => k.money(L, n);
+    const q = this.qmap(s), FR = L === 'fr', cap = x => x.charAt(0).toUpperCase() + x.slice(1);
+    const items = s.empty ? [] : this.ITEMS.map(i => ({ ...i, st: q[i.id] })).filter(i => i.st !== 3).map(i => ({ ...i, checked: i.st > 0 }));
+    const tips = FR ? ['Marquer comme acheté', "Mettre en attente pour l'inventaire", 'Remettre dans la liste'] : ['Mark as bought', 'Queue for inventory', 'Put back on the list'];
+    const row = (i, idx) => {
+      const name = cap(L === 'fr' ? i.fr : i.en), recipes = i.rec || [];
+      const recText = recipes.length > 2 ? recipes.slice(0, 1).join(', ') : recipes.join(', ');
+      const more = recipes.length > 2 ? `+${recipes.length - 1}` : '';
+      const need = i.need ? i.need[L === 'fr' ? 1 : 0] : '';
+      return {
+        name, bt: idx ? '1.5px dashed #d6cfbf' : 'none', bg: i.st === 2 ? '#ebebff' : i.checked ? '#f4f1ea' : 'transparent', check: i.st === 2 ? '+' : i.checked ? '✓' : '', checkBg: i.checked ? '#2323ff' : '#fffdf8',
+        checkSize: i.st === 2 ? '22px' : '17px', queued: i.st === 2, queuedLabel: FR ? '→ INVENTAIRE' : '→ INVENTORY', metaAfterQueued: !!i.brand || recipes.length > 0 || !!i.manual, manual: !!i.manual, manualLabel: FR ? 'Ajouté par vous' : 'Added by you',
+        tip: tips[i.st], onToggle: () => this.setQ(s, i.id, (i.st + 1) % 3), dealStoreShow: s.view !== 'store',
+        qtyBorder: i.checked ? '#a9a598' : '#16181f', qtyFg: i.checked ? '#5e5b52' : '#16181f',
+        nameFg: i.checked ? '#5e5b52' : '#16181f', nameDeco: i.checked ? 'line-through' : 'none',
+        hasMeta: !!i.brand || recipes.length > 0 || i.st === 2 || !!i.manual || (P && !!need && !i.manual), hasBrand: !!i.brand && recipes.length > 0, brand: i.brand || '', brandFg: i.checked ? '#5e5b52' : '#16181f',
+        recipes: recText, more, recFg: i.checked ? '#5e5b52' : '#3f3e37', needNarrow: P && !!need, hasNeed: !!need, need,
+        toInv: false, showDeal: !i.checked && !!i.deal && !P, dealStore: i.deal ? i.deal[0] : '', dealPrice: i.deal ? money(i.deal[1]) : '',
+        qty: i.qty, qtyBg: i.checked ? 'transparent' : '#e9e4d8',
+        rightWrap: P && i.checked ? 'wrap' : 'nowrap', rightJc: P && i.checked ? 'flex-end' : 'flex-start', rightW: P && i.checked ? '112px' : 'auto', slotOrder: P ? 3 : 0,
+      };
+    };
+    const STORES = ['Metro', 'Super C', 'IGA'];
+    const count = (list) => { const left = list.filter(i => !i.checked).length, sale = list.filter(i => !i.checked && i.deal).length; return sale ? `${t('grocery.groupToBuy', { count: left })} · ${t('grocery.groupOnSale', { count: sale })}` : t('grocery.groupToBuy', { count: left }); };
+    const grp = (name, list, extra) => { const qd = list.filter(i => i.st === 2); return { name, grip: false, removable: false, ...extra, count: count(list), rows: list.map(row),
+      hasQueued: qd.length > 0, queuedLine: `${qd.length} ${FR ? 'en attente' : 'queued'} · ${qd.map(i => cap(FR ? i.fr : i.en)).join(', ')}`,
+      addLabel: FR ? `+ Ajouter ${qd.length} à l'inventaire` : `+ Add ${qd.length} to inventory`, onAdd: () => this.addQueued(s, qd.map(i => i.id)) }; };
+    let groups = [];
+    if (s.view === 'store') groups = STORES.map(st => grp(st, items.filter(i => i.store === st), { grip: true, removable: st === 'Super C' })).filter(g => g.rows.length);
+    if (s.view === 'aisle') groups = ['produce', 'meat', 'seafood', 'dairy', 'pantry', 'household'].map(a => grp(t('aisles.' + a), items.filter(i => i.aisle === a))).filter(g => g.rows.length);
+    if (s.view === 'recipe') {
+      const recs = ['Sheet-pan chicken shawarma', 'Salmon rice bowls', 'Pasta e fagioli', 'Buttermilk pancakes', 'Lentil salad with feta'];
+      groups = recs.map(r => grp(t('grocery.recipesTitle', { recipes: r }), items.filter(i => (i.rec || [])[0] === r))).filter(g => g.rows.length);
+      const mine = items.filter(i => i.manual);
+      if (mine.length) groups.push(grp(t('grocery.addedByYou'), mine));
+    }
+    const left = items.filter(i => !i.checked).length, onSale = items.filter(i => !i.checked && i.deal).length, checked = items.filter(i => i.checked).length;
+    const SALES = [['🍅', 'Diced tomatoes', 'Tomates en dés', 2.49, 'Metro', 35, 'tomorrow'], ['🍗', 'Chicken thighs', 'Hauts de cuisse de poulet', 2.99, 'Metro', 40, 'wed'], ['🐟', 'Salmon fillets', 'Filets de saumon', 9.99, 'IGA', 25, 'today']];
+    const D = k.dict(L);
+    const sales = SALES.map(([emoji, en, fr, price, store, pct, ends]) => ({ emoji, name: L === 'fr' ? fr : en, price: money(price), meta: `${store} · ${t('grocery.pctOff', { pct })}`, ends: ends === 'today' ? t('grocery.endsToday') : ends === 'tomorrow' ? t('grocery.endsTomorrow') : t('grocery.endsOn', { day: D.days.short[2] }), endsFw: ends === 'today' || ends === 'tomorrow' ? 800 : 600, endsFg: ends === 'today' || ends === 'tomorrow' ? '#8a0f55' : '#3f3e37' }));
+    const view = s.view;
+    const C = v => typeof v === 'string' && /^[a-zà-ÿ]/.test(v) ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+    const out = {
+      ...bd, screenLabel: `${s.id} Grocery ${bd.label}`, desktop: !P,
+      appPad: P ? '0 18px' : '0 40px', headGap: P ? '18px' : '24px', pageBottom: P ? '40px' : '56px',
+      hdrDir: P ? 'column' : 'row', hdrAlign: P ? 'stretch' : 'flex-end', hdrGap: P ? '12px' : '16px',
+      subLabel: t('grocery.subLabel', { count: left, sales: onSale }), title: t('grocery.title'), titleAccent: t('grocery.titleAccent'), titleFs: P ? '38px' : '60px',
+      segDisplay: P ? 'grid' : 'inline-flex', segH: P ? '40px' : '38px', segs: [['store', 'viewStore'], ['aisle', 'viewAisle'], ['recipe', 'viewRecipe']].map(([id, key]) => ({ label: t('grocery.' + key), bg: view === id ? '#16181f' : 'transparent', fg: view === id ? '#f4f1ea' : '#16181f' })),
+      share: t('grocery.share'),
+      showHint: !!s.hint, hintDir: P ? 'column' : 'row', hintAlign: P ? 'flex-start' : 'center', hintGap: P ? '8px' : '14px', hintPad: P ? '12px 14px' : '12px 16px', dismissAlign: P ? 'flex-end' : 'center', dismissMinH: P ? '32px' : '0',
+      howItWorks: t('common.howItWorks'), gotIt: t('common.gotIt'), hint: view === 'store' ? t('grocery.hintStore') : t('grocery.hintOther'),
+      addPlaceholder: t('grocery.addPlaceholder'), addLabel: t('grocery.add'), isEmpty: !!s.empty, emptyText: t('grocery.nothingPlanned'),
+      ...this.hintVals(FR, P, money),
+      colSale: FR ? 'EN SOLDE' : 'ON SALE', colRecipe: FR ? 'RECETTE' : 'RECIPE', colBuy: FR ? 'ACHETER' : 'BUY', footDir: P ? 'column' : 'row', footAlign: P ? 'stretch' : 'center',
+      groups, groupFs: P ? '20px' : '22px', countFs: P ? '10.5px' : '11px', rowH: P ? '108px' : '68px',
+      slotW: P ? 'auto' : '200px', slotMr: P ? '0' : '6px', slotDisplay: P ? 'contents' : 'flex', qtyColW: P ? '50px' : '54px', toInvLabel: t('grocery.toInventory'), toInvMargin: P ? '0 4px 0 0' : '0',
+      showAddStore: view === 'store' && !s.empty, addStore: t('grocery.addStore'),
+      showRemoved: view === 'store' && !s.empty && !s.allChecked, removedLabel: t('grocery.removedLabel'), removed: [L === 'fr' ? 'Paprika fumé' : 'Smoked paprika'], clearLabel: t('grocery.clear'),
+      atStore: t('grocery.atStore'), bigMode: t('grocery.bigMode'),
+      showCart: !P, doneShort: FR ? 'Terminé' : 'Done shopping', cartDone: false, groceriesDone: t('grocery.groceriesDone'), inCart: t('grocery.inCart'), checkedCount: checked, itemsChecked: t('grocery.itemsChecked', { count: checked }), cartPct: items.length ? Math.round(checked / items.length * 100) : 0,
+      doneShopping: t('grocery.doneShopping', { count: checked }), cartBtnOp: checked ? 1 : 0.5, cartNote: t('grocery.cartNote'),
+      saveSticker: t('grocery.saveSticker'), saleTitle: s.empty ? t('grocery.onSale') : t('grocery.onSaleCount', { count: 3 }), hasSales: !s.empty, noSales: !!s.empty, sales, saleCopy: t('grocery.saleCopy'), noMatchDeals: t('grocery.noMatchDeals'),
+    };
+    ['howItWorks','gotIt','share','addLabel','addStore','removedLabel','clearLabel','atStore','bigMode','inCart','itemsChecked','doneShopping','saveSticker','saleTitle','subLabel','groceriesDone','emptyText','cartNote','saleCopy','noMatchDeals','addPlaceholder'].forEach(k2 => { out[k2] = C(out[k2]); });
+    out.sales = out.sales.map(sa => ({ ...sa, ends: C(sa.ends) }));
+    out.segs = out.segs.map(sg => ({ ...sg, label: C(sg.label) }));
+    out.groups = out.groups.map(g => ({ ...g, name: C(g.name) }));
+    return out;
+  }
+  renderVals() {
+    const k = this.k;
+    if (!k) return { states: [] };
+    const pref = this.props.lang || 'both', only = this.props.only;
+    return { states: this.STATES.filter(s => !only || only.split(',').includes(s.id)).map(s => ({ id: s.id, name: s.name, caption: s.caption, boards: k.boards(pref).map(bd => this.board(k, s, bd)) })) };
+  }
+}
+</script>
+</body>
+</html>
