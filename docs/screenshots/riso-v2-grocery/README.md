@@ -9,3 +9,5 @@ Screenshots against `docs/design/riso-v2-grocery/` (the README there first).
 - `phone-en-store-mode.png`: Store mode, with Milk 2% queued on the list (+ in its box) and the smaller Colours pill.
 
 The data is a test account made up for the screenshots (the browser test `e2e/grocery-three-steps.spec.js`, its "screenshot" tests and the Store mode one): five planned recipes, three flyer deals, two items typed in and a store you made. Re-take them with `npm run build`, then `npx playwright test e2e/grocery-three-steps.spec.js -g "screenshot|Store mode"`; the pictures land in `test-results/`.
+
+Note: since the Grocery check feedback change (`docs/screenshots/riso-v2-grocery-check-feedback/`) the sticky « Je suis à l'épicerie » in `phone-fr-sticky-button.png` and `phone-fr-by-store.png` is gone: the button is inside the pink cart bar, and a docked copy of the bar floats at the bottom once the bar has scrolled away. Those two pictures show how it was.
