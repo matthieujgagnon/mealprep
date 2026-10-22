@@ -18,8 +18,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { api } from "../api.js";
 import { HELD_DRAG, useDragTouchGuard } from "../hooks/useHeldDrag.js";
 import { UnitSelect } from "./UnitSelect.jsx";
-import { RECIPE_SLOTS, formatRecipeTime, recipeSlots, slotsHint } from "../lib/mealSlots.js";
+import { RECIPE_SLOTS, formatRecipeTime, isHiddenFromMakeable, recipeSlots, slotsHint } from "../lib/mealSlots.js";
 import { PreparedMealSwitch } from "./PreparedMealSwitch.jsx";
+import { Switch } from "./RisoControls.jsx";
 import { stepHeadingText, stepIsHeading, stepTimer } from "../lib/steps.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 import { recipeHave } from "../lib/inventoryMatch.js";
@@ -173,6 +174,8 @@ function initialState(recipe) {
     mealSlots: recipeSlots(recipe),
     // « Plat préparé »: nothing to cook.
     isPrepared: recipe?.isPrepared === true,
+    // « Masquer de Faisable »: Makeable never suggests it (lib/mealSlots.js isHiddenFromMakeable).
+    hiddenFromMakeable: isHiddenFromMakeable(recipe),
     inCookbook: recipe ? !!recipe.inCookbook : true,
     photos,
     coverId: photos[Math.max(0, coverIdx)]?.id || null,
@@ -201,6 +204,7 @@ function toPayload(s) {
     sourceUrl: s.sourceUrl.trim() || null,
     mealSlots: s.mealSlots,
     isPrepared: s.isPrepared,
+    hiddenFromMakeable: s.hiddenFromMakeable,
     inCookbook: s.inCookbook,
     photoUrl: cover,
     photos,
@@ -689,6 +693,14 @@ export function RecipeEditor({ recipe, kitchen, onSaved, onCancel, onDirtyChange
                 hint={!state.isPrepared && suggestion?.prepared ? t("editor.preparedLooksLike") : null}
                 help={t("editor.preparedHelp")}
               />
+            </div>
+            <div className="re-field">
+              <span className="re-label">{t("editor.hideLabel")}</span>
+              <div className="re-switch-row">
+                <Switch tone="ink" on={state.hiddenFromMakeable} onToggle={() => set((s) => ({ hiddenFromMakeable: !s.hiddenFromMakeable }))} label={t("editor.hideSwitch")} />
+                <span className="re-switch-text">{t("editor.hideSwitch")}</span>
+              </div>
+              <span className="re-help">{t("editor.hideHelp")}</span>
             </div>
             {!isNew && (
               <div className="re-field">

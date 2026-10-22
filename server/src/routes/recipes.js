@@ -3,13 +3,14 @@ import { prisma } from "../lib/prisma.js";
 import { scrapeRecipe, parseIngredientText } from "../lib/scrapeRecipe.js";
 import { estimateFridgeLifeDays } from "../lib/fridgeLife.js";
 import { fail } from "../lib/i18n.js";
-import { MEAL_SLOTS, readMealTypes, readPrepared, suggestForRecipe } from "../lib/mealTypes.js";
+import { MEAL_SLOTS, readHiddenFromMakeable, readMealTypes, readPrepared, suggestForRecipe } from "../lib/mealTypes.js";
 
 export const recipesRouter = Router();
 
-// What a request says about a recipe's meal types and « Plat préparé » flag, as the columns to
-// write (lib/mealTypes.js). A refusal comes back as { error } to answer with. The old single
-// `mealSlot` column is kept as the first of the list, so nothing that read it breaks.
+// What a request says about a recipe's meal types, « Plat préparé » flag and « Masquer de
+// Faisable » choice, as the columns to write (lib/mealTypes.js). A refusal comes back as
+// { error } to answer with. The old single `mealSlot` column is kept as the first of the list,
+// so nothing that read it breaks.
 function readTypeFields(req) {
   const types = readMealTypes(req.body);
   if (!types.ok) {
@@ -17,10 +18,13 @@ function readTypeFields(req) {
   }
   const prepared = readPrepared(req.body.isPrepared);
   if (!prepared.ok) return { error: fail(req, "mustBeOneOf", { field: "isPrepared", options: "true, false" }) };
+  const hidden = readHiddenFromMakeable(req.body.hiddenFromMakeable);
+  if (!hidden.ok) return { error: fail(req, "mustBeOneOf", { field: "hiddenFromMakeable", options: "true, false" }) };
   return {
     data: {
       ...(types.value !== undefined && { mealSlots: types.value, mealSlot: types.value[0] }),
       ...(prepared.value !== undefined && { isPrepared: prepared.value }),
+      ...(hidden.value !== undefined && { hiddenFromMakeable: hidden.value }),
     },
   };
 }

@@ -12116,19 +12116,22 @@ button.riso-deal-detail-other:focus-visible {
   text-decoration: line-through;
 }
 
-/* "Already at home" is not a removal: its names are not struck through. */
-.riso-grocery-athome .riso-removed-name {
+/* "Already at home" and Makeable's "Hidden from Makeable" are not removals: their names are not struck through. */
+.riso-grocery-athome .riso-removed-name,
+.mk-hidden .riso-removed-name {
   color: var(--riso-ink);
   text-decoration: none;
 }
 
 /* On a phone the row keeps its name and the button: the Inventory label would squeeze both. */
 @media (max-width: 767px) {
-  .riso-grocery-athome .riso-removed-meta {
+  .riso-grocery-athome .riso-removed-meta,
+  .mk-hidden .riso-removed-meta {
     display: none;
   }
 
-  .riso-grocery-athome .riso-removed-putback {
+  .riso-grocery-athome .riso-removed-putback,
+  .mk-hidden .riso-removed-putback {
     margin-left: auto;
   }
 }
@@ -13777,6 +13780,19 @@ body.no-select {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* The editor's « Masquer de Faisable » switch and its words, side by side. */
+.re-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.re-switch-text {
+  min-width: 0;
+  font: 600 14px/1.3 var(--riso-font-body);
+  overflow-wrap: anywhere;
 }
 
 .re-page input::placeholder,
@@ -24589,18 +24605,6 @@ body.no-select {
 
 .rpc-panel .rpc-title {
   -webkit-line-clamp: 3;
-}
-
-/* A thin line in the meal's colour along the bottom of a Recipes card. */
-.rpc-line {
-  position: absolute;
-  left: 25%;
-  right: 25%;
-  bottom: 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  opacity: 0.55;
-  pointer-events: none;
 }
 
 /* ---------- The Planner finder's card (variant "finder") ----------

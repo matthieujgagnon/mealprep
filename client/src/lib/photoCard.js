@@ -10,13 +10,6 @@ import { formatRecipeTime } from "./mealSlots.js";
 // docs/design/riso-v2-planner-search-cards/. Plain functions so they can be
 // tested without a browser.
 
-// The thin line at the bottom of a Recipes card: supper blue, lunch pink,
-// breakfast yellow. Any other kind of recipe (sides, desserts, prep) has none.
-const MEAL_LINE = { dinner: "var(--riso-accent)", lunch: "var(--riso-hot)", breakfast: "var(--riso-yellow)" };
-export function mealLineColor(slot) {
-  return MEAL_LINE[slot] || null;
-}
-
 // "35 MIN", "4 H", "1 H 15 MIN": the caption's time, or "" when there is none.
 export function captionTime(minutes) {
   return (formatRecipeTime(minutes) || "").toUpperCase();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RECIPE_SLOTS, hasSlot, inMealGroup, isMakeableMeal, isMealRecipe, makeableRuleOn, recipeSlot, recipeSlotCaption, recipeSlots, slotHint } from "./mealSlots.js";
+import { RECIPE_SLOTS, hasSlot, inMealGroup, isHiddenFromMakeable, isMakeableKind, isMakeableMeal, isMealRecipe, makeableRuleOn, recipeSlot, recipeSlotCaption, recipeSlots, slotHint } from "./mealSlots.js";
 import { setLang } from "../i18n/index.js";
 
 describe("recipe slots", () => {
@@ -118,5 +118,33 @@ describe("Makeable now rule", () => {
     expect(makeableRuleOn(false, "dinner")).toBe(true);
     for (const kind of ["side", "snack", "dessert", "prep", "prepared"]) expect(makeableRuleOn(false, kind)).toBe(false);
     expect(makeableRuleOn(true)).toBe(false);
+  });
+});
+
+describe("« Masquer de Faisable » (hiddenFromMakeable)", () => {
+  const toast = { mealSlots: ["breakfast"], hiddenFromMakeable: true };
+
+  it("is only a yes: nothing else, and a recipe without the flag is not hidden", () => {
+    expect(isHiddenFromMakeable(toast)).toBe(true);
+    expect(isHiddenFromMakeable({ mealSlots: ["breakfast"] })).toBe(false);
+    expect(isHiddenFromMakeable({ mealSlots: ["breakfast"], hiddenFromMakeable: false })).toBe(false);
+    expect(isHiddenFromMakeable(null)).toBe(false);
+  });
+
+  it("takes a recipe out of the Makeable now rule, whatever the setting", () => {
+    expect(isMakeableMeal(toast)).toBe(false);
+    expect(isMakeableMeal(toast, true)).toBe(false); // « Inclure accompagnements… » is about kinds of recipes, not this choice
+    expect(isMakeableMeal({ ...toast, hiddenFromMakeable: false })).toBe(true);
+    expect(isMakeableKind(toast)).toBe(true); // the kind part alone ignores the choice (the finder needs it apart)
+    expect(isMakeableKind({ mealSlots: ["dessert"], hiddenFromMakeable: true })).toBe(false);
+  });
+
+  it("is not a meal type: the recipe is still a Meal, in its groups and under its types", () => {
+    expect(isMealRecipe(toast)).toBe(true);
+    expect(inMealGroup(toast, "meals")).toBe(true);
+    expect(inMealGroup(toast, "breakfast")).toBe(true);
+    expect(hasSlot(toast, "breakfast")).toBe(true);
+    expect(recipeSlots(toast)).toEqual(["breakfast"]);
+    expect(recipeSlotCaption(toast)).toBe("Breakfast");
   });
 });

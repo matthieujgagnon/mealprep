@@ -6,7 +6,7 @@ import { isMealItem } from "./mealItem.js";
 import { onShelf, shelfSetOf } from "./shelves.js";
 import { dealSavings } from "./flyerIngredients.js";
 import { PROTEINS, recipeUsesProtein } from "./proteins.js";
-import { hasSlot, inMealGroup, isMakeableMeal, isPreparedRecipe, makeableRuleOn, recipeTotalMinutes } from "./mealSlots.js";
+import { hasSlot, inMealGroup, isHiddenFromMakeable, isMakeableKind, isPreparedRecipe, makeableRuleOn, recipeTotalMinutes } from "./mealSlots.js";
 import { matchesSearch } from "./recipeSearch.js";
 
 // The logic behind the shared recipe finder (components/Finder.jsx): the
@@ -203,6 +203,12 @@ function pickedBy(x, picks) {
 // sides, desserts and pantry prep unless it is on), makeable (the Makeable
 // page: the rule applies to every result, not just "ready", and a recipe with
 // no ingredients is left out, as on Home).
+// A recipe hidden from Makeable (« Masquer de Faisable », isHiddenFromMakeable) is never "ready",
+// whatever includeSides or the Meal menu says, and is not counted in Ready now or One or two
+// short on the page. On the page it is only kept when it is in `plannedThisWeek` (a Map or Set
+// of recipe ids, the Makeable page's plannedDays): hiding stops Makeable from suggesting a
+// recipe, but a meal that is planned is still the week, so it stays in Meals of the week. The
+// Planner's search is not Makeable: a hidden recipe is found there like any other.
 // "Expiring soon" keeps the recipes that use something going off within a week
 // (the ranked entry's `usesExpiring`).
 // Returns { tiles, counts }: counts is how many the three availability choices
@@ -210,15 +216,20 @@ function pickedBy(x, picks) {
 // `shared` (cores shared with the Main meal) and `picked` (keys of the Cook
 // with picks it uses).
 export function findRecipes(ranked, filters) {
-  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = [], base = null, baseId = null, includeSides = false, makeable = false } = filters;
+  const { query = "", meal = "all", protein = "", quick = false, expiring = false, picks = [], base = null, baseId = null, includeSides = false, makeable = false, plannedThisWeek = null } = filters;
   const ruleOn = makeableRuleOn(includeSides, meal);
-  const isReady = (x) => availabilityOf(x.stats) === "ready" && (!ruleOn || isMakeableMeal(x.recipe));
+  const hidden = (x) => isHiddenFromMakeable(x.recipe);
+  const kindOk = (x) => !ruleOn || isMakeableKind(x.recipe);
+  // Makeable's own suggestions: not hidden, and (while the rule is on) a meal.
+  const isReady = (x) => availabilityOf(x.stats) === "ready" && !hidden(x) && kindOk(x);
+  // One or two short only follows the hiding on the Makeable page; the Planner's chip never used the meal rule.
+  const isFew = (x) => availabilityOf(x.stats) === "few" && !(makeable && hidden(x));
   const kind = PROTEINS.find((p) => p.id === protein) || null;
   const searching = query.trim() !== "";
 
   const beforeAvailability = ranked
     .filter((x) => x.recipe.id !== baseId)
-    .filter((x) => !makeable || ((!ruleOn || isMakeableMeal(x.recipe)) && x.stats.totalCount > 0))
+    .filter((x) => !makeable || (kindOk(x) && (!hidden(x) || !!plannedThisWeek?.has(x.recipe.id)) && x.stats.totalCount > 0))
     .filter((x) => !searching || matchesSearch(x.recipe, query))
     .filter((x) => meal === "all" || (meal === "meals" ? inMealGroup(x.recipe, "meals") : meal === "prepared" ? isPreparedRecipe(x.recipe) : hasSlot(x.recipe, meal)))
     .filter((x) => !kind || recipeUsesProtein(x.recipe, kind))
@@ -234,15 +245,11 @@ export function findRecipes(ranked, filters) {
 
   const counts = { all: beforeAvailability.length, ready: 0, few: 0 };
   for (const x of beforeAvailability) {
-    const a = availabilityOf(x.stats);
     if (isReady(x)) counts.ready += 1;
-    if (a === "few") counts.few += 1;
+    if (isFew(x)) counts.few += 1;
   }
 
-  const wanted = (x) => {
-    const a = availabilityOf(x.stats);
-    return filters.avail === "ready" ? isReady(x) : filters.avail === "few" ? a === "few" : true;
-  };
+  const wanted = (x) => (filters.avail === "ready" ? isReady(x) : filters.avail === "few" ? isFew(x) : true);
   const tiles = beforeAvailability.filter(wanted);
 
   // Main meal puts the most shared first (the one similar rule, bySimilarity);

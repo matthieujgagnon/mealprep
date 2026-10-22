@@ -95,13 +95,29 @@ export function inMealGroup(recipe, groupId) {
 // "Include sides, desserts and prepared" is on. A recipe with no type yet counts like a meal, so
 // nothing disappears before it is sorted. This is the one rule every count and filter uses
 // (Recipes, Home, Makeable, the finder).
+//
+// « Masquer de Faisable »: a recipe the person has hidden (`hiddenFromMakeable`, their own choice
+// for one recipe, like avocado toast) is never suggested by Makeable, whatever the setting: not in
+// Ready now, the suggestion sections or any Makeable count. It is not a meal type, so it changes
+// nothing about "Meals" (isMealRecipe) and the recipe stays on Recipes and in the Planner search.
 export const NON_MEAL_SLOTS = ["side", "snack", "dessert", "prep"];
 
-export function isMakeableMeal(recipe, includeSides = false) {
+export function isHiddenFromMakeable(recipe) {
+  return recipe?.hiddenFromMakeable === true;
+}
+
+// The kind part of the rule (meals only unless sides are included), without the person's hiding.
+// The finder needs it apart so that a hidden recipe planned this week can still be in Meals of
+// the week; everything else asks isMakeableMeal.
+export function isMakeableKind(recipe, includeSides = false) {
   if (includeSides) return true;
   if (isPreparedRecipe(recipe)) return false;
   const slots = recipeSlots(recipe);
   return slots.length === 0 || slots.some((id) => MEAL_SLOT_IDS.includes(id));
+}
+
+export function isMakeableMeal(recipe, includeSides = false) {
+  return !isHiddenFromMakeable(recipe) && isMakeableKind(recipe, includeSides);
 }
 
 // Whether the rule applies at all: not when "Include sides, desserts and prepared" is on, and

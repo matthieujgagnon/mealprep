@@ -109,7 +109,7 @@ test.describe("at 1280 px", () => {
     expect(grid.tiles[0]).toMatchObject({ col: 0, row: 0 });
   });
 
-  test("a tile has the meal, the protein and the time on top, the title at the bottom and the meal's line", async ({ page }) => {
+  test("a tile has the meal, the protein and the time on top and the title at the bottom, with no meal-colour line", async ({ page }) => {
     await signUp(page);
     await cookbook(page, 3);
     await goRecipes(page);
@@ -117,14 +117,13 @@ test.describe("at 1280 px", () => {
     await expect(tile.locator(".rpc-cap-meal")).toHaveText("Supper"); // the app's word, not "Dinner"
     await expect(tile.locator(".rpc-cap-protein")).toHaveText("Chicken"); // 3 uses chicken thighs
     await expect(tile.locator(".rpc-cap-time")).toHaveText("33 MIN");
-    await expect(tile.locator(".rpc-line")).toHaveCSS("background-color", "rgb(35, 35, 255)"); // supper is blue
     const lunch = page.locator(".rpc-bento", { hasText: "Tile 1" });
     await expect(lunch.locator(".rpc-cap-meal")).toHaveText("Lunch");
-    await expect(lunch.locator(".rpc-line")).toHaveCSS("background-color", "rgb(255, 72, 176)"); // lunch is pink
-    await expect(lunch.locator(".rpc-cap-protein")).toHaveCount(0); // no protein, no line
+    await expect(lunch.locator(".rpc-cap-protein")).toHaveCount(0); // no protein, no protein word
     const breakfast = page.locator(".rpc-bento", { hasText: "Tile 2" });
     await expect(breakfast.locator(".rpc-cap-meal")).toHaveText("Breakfast");
-    await expect(breakfast.locator(".rpc-line")).toHaveCSS("background-color", "rgb(255, 225, 77)"); // breakfast is yellow
+    // The meal type is the caption's words only: no line in the meal's colour on any tile.
+    await expect(page.locator(".rpc-line")).toHaveCount(0);
     // A tile opens the recipe card.
     await tile.click();
     await expect(page.getByRole("dialog", { name: "Tile 3" })).toBeVisible();

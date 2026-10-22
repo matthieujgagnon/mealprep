@@ -119,7 +119,7 @@ test.describe("on a desktop", () => {
     await expect(names(page).first()).toHaveText("Oat bowl");
   });
 
-  test("a tile is a photo: meal, protein and time on top, the title at the bottom, a meal-colour line", async ({ page }) => {
+  test("a tile is a photo: meal, protein and time on top, the title at the bottom, and no meal-colour line", async ({ page }) => {
     await signUp(page);
     await seedRecipes(page);
     await goRecipes(page);
@@ -127,9 +127,10 @@ test.describe("on a desktop", () => {
     await expect(bowls.locator(".rpc-cap-meal")).toHaveText("Supper");
     await expect(bowls.locator(".rpc-cap-protein")).toHaveText("Chicken");
     await expect(bowls.locator(".rpc-cap-time")).toHaveText("35 MIN");
-    await expect(bowls.locator(".rpc-line")).toHaveCSS("background-color", "rgb(35, 35, 255)"); // supper is blue
-    await expect(page.locator(".rpc", { hasText: "Chicken wrap" }).locator(".rpc-line")).toHaveCSS("background-color", "rgb(255, 72, 176)"); // lunch is pink
-    await expect(page.locator(".rpc", { hasText: "Oat bowl" }).locator(".rpc-cap-protein")).toHaveCount(0); // no protein, no line
+    // The meal type is the caption's words only: no thin line in the meal's colour (supper, lunch or breakfast).
+    await expect(page.locator(".rpc-line")).toHaveCount(0);
+    await expect(page.locator(".rpc", { hasText: "Chicken wrap" }).locator(".rpc-cap-meal")).toHaveText("Lunch");
+    await expect(page.locator(".rpc", { hasText: "Oat bowl" }).locator(".rpc-cap-protein")).toHaveCount(0); // no protein, no protein word
     // The old card's pills, servings and "to buy" line are not here.
     await expect(page.locator(".rpc .riso-pill, .rpc .rpc-buy")).toHaveCount(0);
     // Tapping a tile opens the recipe card.

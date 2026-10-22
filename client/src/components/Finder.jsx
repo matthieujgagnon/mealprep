@@ -309,9 +309,10 @@ export function Finder({
           base,
           baseId: mainRecipe?.id || null,
           makeable: page,
+          plannedThisWeek: plannedDays, // a recipe hidden from Makeable still shows in Meals of the week when it is planned
         }
       ),
-    [page, ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, includeSides, finder.picks, base, mainRecipe]
+    [page, ranked, finder.query, finder.avail, finder.meal, finder.protein, finder.quick, finder.expiring, includeSides, finder.picks, base, mainRecipe, plannedDays]
   );
 
   // A menu closes on a click outside it, or Escape.

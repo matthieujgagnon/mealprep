@@ -6,7 +6,7 @@ import { formatClock, stepBody, stepImage, stepIngredients, stepTitle, scaleStep
 import { amountText, nextCurrent, stepState, timerPill, stepSeconds } from "../lib/recipeCard.js";
 import { lineNeed } from "../lib/inventoryMatch.js";
 import { captionTime, cardCaption } from "../lib/photoCard.js";
-import { isPreparedRecipe, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
+import { isHiddenFromMakeable, isPreparedRecipe, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
 import { storageOf } from "../lib/shelves.js";
 import { formatMoney } from "../i18n/format.js";
@@ -19,9 +19,10 @@ import { t } from "../i18n/index.js";
 // ---- The ⋯ menu -----------------------------------------------------------------
 
 // Plan around this, Edit, View original, Add to my Cookbook (or Move to Imported),
-// then Delete. (How long the leftovers keep is in Edit recipe, with the other details.)
-// A transparent catcher behind it closes it on any click outside.
-export function OptionsMenu({ recipe, onPlanAround, onEdit, onMove, onDelete, onClose }) {
+// Hide from Makeable (or Show in Makeable), then Delete. (How long the leftovers keep is in
+// Edit recipe, with the other details.) A transparent catcher behind it closes it on any
+// click outside.
+export function OptionsMenu({ recipe, onPlanAround, onEdit, onMove, onToggleMakeable, onDelete, onClose }) {
   return (
     <>
       <div className="riso-rc-menu-catcher" onClick={onClose} />
@@ -42,6 +43,11 @@ export function OptionsMenu({ recipe, onPlanAround, onEdit, onMove, onDelete, on
         <button type="button" role="menuitem" onClick={onMove}>
           {recipe.inCookbook ? t("recipeCard.moveToImported") : t("recipeCard.addToCookbook")}
         </button>
+        {onToggleMakeable && (
+          <button type="button" role="menuitem" onClick={onToggleMakeable}>
+            {isHiddenFromMakeable(recipe) ? t("recipeCard.showInMakeable") : t("recipeCard.hideFromMakeable")}
+          </button>
+        )}
         <div className="riso-rc-menu-divider" />
         <button type="button" role="menuitem" className="danger" onClick={onDelete}>
           {t("recipeCard.deleteRecipe")}

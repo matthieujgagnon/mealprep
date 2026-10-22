@@ -10,7 +10,7 @@ import { loadStorePrefs, namedStoreFor, storeSetup } from "../lib/groceryStores.
 import { groceryCore } from "../lib/groceryDedupe.js";
 import { groceryShared } from "../lib/groceryCache.js";
 import { useDeals } from "../lib/dealsStore.js";
-import { formatRecipeTime, isPreparedRecipe } from "../lib/mealSlots.js";
+import { formatRecipeTime, isHiddenFromMakeable, isPreparedRecipe } from "../lib/mealSlots.js";
 import { formatMoney } from "../i18n/format.js";
 import { useStepTimers } from "../hooks/useStepTimers.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
@@ -48,6 +48,7 @@ import { t } from "../i18n/index.js";
 //   onPlan(recipe)           the shared slot picker
 //   onPlanAround(recipe)     the Planner's Main meal (the ⋯ menu)
 //   onEdit(recipe), onDelete(recipe) (App deletes it with the toast's Undo),
+//   onSetMakeableHidden(recipe, hidden)   « Masquer de Faisable » in the ⋯ menu (App saves it, toast with Undo),
 //   onRecipeUpdated(updated), onRequestInventoryAdd (the confirmation sheet),
 //   onDeletePantryItem, onFinishCooking, onNavigate(tab), onToast(message, undo?)
 
@@ -71,6 +72,7 @@ export function RecipeDetailModal({
   onPlanAround,
   onEdit,
   onDelete,
+  onSetMakeableHidden,
   onRecipeUpdated,
   onRequestInventoryAdd,
   onDeletePantryItem,
@@ -354,6 +356,13 @@ export function RecipeDetailModal({
             onEdit?.(recipe);
           }}
           onMove={moveRecipe}
+          onToggleMakeable={
+            onSetMakeableHidden &&
+            (() => {
+              setMenuOpen(false);
+              onSetMakeableHidden(recipe, !isHiddenFromMakeable(recipe));
+            })
+          }
           onDelete={() => {
             setMenuOpen(false);
             onDelete?.(recipe);

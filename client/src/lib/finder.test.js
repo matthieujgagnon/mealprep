@@ -308,6 +308,101 @@ describe("the Makeable page", () => {
   });
 });
 
+describe("a recipe hidden from Makeable (« Masquer de Faisable »)", () => {
+  const tile = (id, slot, total, missing, extra = {}) => ({
+    recipe: { id, title: id, mealSlot: slot, ingredients: [], ...extra },
+    stats: { totalCount: total, missingCount: missing, matchedCount: total - missing },
+    cores: [],
+  });
+  // Avocado toast has everything and is hidden; soup is ready, tacos are two short, the cake is a dessert.
+  const ranked = [
+    tile("toast", "breakfast", 2, 0, { hiddenFromMakeable: true }),
+    tile("soup", "dinner", 3, 0),
+    tile("tacos", "dinner", 4, 2),
+    tile("cake", "dessert", 2, 0, { hiddenFromMakeable: true }),
+  ];
+  const ids = (result) => result.tiles.map((x) => x.recipe.id);
+  const find = (filters = {}) => findRecipes(ranked, { makeable: true, ...filters });
+  const week = (...entries) => new Map(entries);
+
+  it("is out of the Makeable page and of every one of its counts", () => {
+    expect(ids(find())).toEqual(["soup", "tacos"]);
+    expect(find().counts).toEqual({ all: 2, ready: 1, few: 1 });
+    expect(ids(find({ avail: "ready" }))).toEqual(["soup"]);
+  });
+
+  it("stays out when pantry and sides are included, and when the Meal menu is narrowed to its kind", () => {
+    expect(ids(find({ includeSides: true }))).toEqual(["soup", "tacos"]);
+    expect(find({ includeSides: true }).counts.ready).toBe(1);
+    expect(ids(find({ meal: "dessert" }))).toEqual([]); // the hidden cake does not come back under Dessert
+    expect(ids(find({ meal: "breakfast" }))).toEqual([]);
+  });
+
+  it("stays in Meals of the week when it is planned this week, and is still out of Ready now and the counts", () => {
+    const planned = week(["toast", 1]);
+    const result = find({ plannedThisWeek: planned });
+    expect(ids(result)).toEqual(["toast", "soup", "tacos"]);
+    expect(makeableSections(result.tiles, planned).map((s) => [s.id, s.tiles.map((x) => x.recipe.id)])).toEqual([
+      ["week", ["toast"]],
+      ["ready", ["soup"]],
+      ["few", ["tacos"]],
+    ]);
+    expect(result.counts).toEqual({ all: 3, ready: 1, few: 1 }); // "All" counts the cards there; Ready now and One or two short do not
+    expect(ids(find({ plannedThisWeek: planned, avail: "ready" }))).toEqual(["soup"]);
+    expect(ids(find({ plannedThisWeek: planned, avail: "few" }))).toEqual(["tacos"]);
+  });
+
+  it("a planned hidden recipe that is not a meal still follows the kind rule, like any planned recipe", () => {
+    expect(ids(find({ plannedThisWeek: week(["cake", 2]) }))).toEqual(["soup", "tacos"]);
+  });
+
+  it("is still in the Planner's search, which is not Makeable, and under its meal type", () => {
+    const planner = findRecipes(ranked, {});
+    expect(ids(planner)).toEqual(["toast", "soup", "tacos", "cake"]);
+    expect(ids(findRecipes(ranked, { query: "toast" }))).toEqual(["toast"]);
+    expect(ids(findRecipes(ranked, { meal: "breakfast" }))).toEqual(["toast"]);
+    expect(planner.counts.all).toBe(4);
+  });
+
+  it("leaves the Planner's Ready now chip and its count, with or without pantry and sides", () => {
+    expect(ids(findRecipes(ranked, { avail: "ready" }))).toEqual(["soup"]);
+    expect(findRecipes(ranked, {}).counts.ready).toBe(1);
+    expect(ids(findRecipes(ranked, { avail: "ready", includeSides: true }))).toEqual(["soup"]);
+    expect(findRecipes(ranked, { includeSides: true }).counts.ready).toBe(1);
+    expect(ids(findRecipes(ranked, { avail: "ready", meal: "dessert" }))).toEqual([]); // narrowed to Dessert: the hidden cake is still not suggested
+  });
+
+  it("an unhidden recipe comes back everywhere at once", () => {
+    const back = ranked.map((x) => (x.recipe.id === "toast" ? { ...x, recipe: { ...x.recipe, hiddenFromMakeable: false } } : x));
+    expect(ids(findRecipes(back, { makeable: true }))).toEqual(["toast", "soup", "tacos"]);
+    expect(findRecipes(back, { makeable: true }).counts).toEqual({ all: 3, ready: 2, few: 1 });
+  });
+});
+
+describe("Home's Makeable now with a hidden recipe", () => {
+  const recipe = (id, title, names, extra = {}) => ({ id, title, mealSlots: ["breakfast"], ingredients: names.map((name) => ({ name })), ...extra });
+  const list = [
+    recipe("toast", "Avocado toast", ["bread", "avocado"], { hiddenFromMakeable: true }),
+    recipe("omelette", "Omelette", ["eggs", "butter"]),
+    recipe("crepes", "Crepes", ["flour", "eggs", "milk", "butter"]),
+  ];
+  const stocked = { inventory: ["bread", "avocado", "eggs", "butter", "flour"].map((name) => ({ name, location: "pantry" })) };
+
+  it("leaves it out of ready and nearly, with or without pantry and sides, but keeps it in `results` for tonight's card", () => {
+    for (const includeSides of [false, true]) {
+      const home = makeableNow(list, stocked, includeSides);
+      expect(home.ready.map((m) => m.recipe.id)).toEqual(["omelette"]);
+      expect(home.nearly.map((m) => m.recipe.id)).toEqual(["crepes"]);
+      expect(home.results.map((m) => m.recipe.id)).toContain("toast");
+    }
+  });
+
+  it("brings it back when it is no longer hidden", () => {
+    const shown = list.map((r) => ({ ...r, hiddenFromMakeable: false }));
+    expect(makeableNow(shown, stocked, false).ready.map((m) => m.recipe.id)).toEqual(["toast", "omelette"]);
+  });
+});
+
 describe("plannedDayOf", () => {
   const entry = (recipeId, weekStart, dayOfWeek, extra = {}) => ({ recipe: { id: recipeId }, weekStart, dayOfWeek, ...extra });
 
