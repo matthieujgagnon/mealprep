@@ -3673,6 +3673,7 @@ input[type="date"].planner-week-picker {
   --riso-hot-soft: #ff5cb8; /* light pink: "Planned Wednesday", "expires soon" tags (black text reads well on it). The vivid --riso-hot stays for today. */
   --riso-accent-tint: #e4e4ff; /* light blue: a selected pill's fill */
   --riso-queued-tint: #ebebff; /* a grocery item queued for Inventory (+), and its store's Add to inventory footer */
+  --riso-flash: #fff1a8; /* the colour a row, or the cart, flashes for someone who asked for less motion (Grocery's check feedback) */
   --riso-sale-hover: #c9f5da; /* a grocery sale price under the pointer, and the sample sale chip in Grocery's How it works */
   --riso-hot-tint: #ffe9f5; /* light pink: an empty Planner slot with a recipe dragged over it */
   --riso-weekend-fill: #f8f8ff; /* the Planner's weekend block */
@@ -3719,6 +3720,7 @@ input[type="date"].planner-week-picker {
    #9a9aa8, dotted lines in ink, shadows in blue. Anything the design doesn't give
    (a second grey, the other hard shadows) is left as in light until it does. */
 .riso-theme[data-theme="dark"] {
+  --riso-flash: #3d3714;
   --riso-canvas: #000000;
   --riso-surface: #111115;
   --riso-track: #1b1b21;
@@ -4349,7 +4351,8 @@ button.riso-pill:disabled {
 .riso-press,
 .riso-grocery-add-btn,
 .riso-grocery-cart-btn,
-.riso-grocery-store-btn,
+.riso-grocery-cartbar-store,
+.riso-grocery-dock-store,
 .riso-grocery-add-store,
 .riso-grocery-add-store-cancel,
 .riso-removed-clear,
@@ -4371,7 +4374,8 @@ button.riso-pill:disabled {
 .riso-press:active:not(:disabled),
 .riso-grocery-add-btn:active:not(:disabled),
 .riso-grocery-cart-btn:active:not(:disabled),
-.riso-grocery-store-btn:active:not(:disabled),
+.riso-grocery-cartbar-store:active:not(:disabled),
+.riso-grocery-dock-store:active:not(:disabled),
 .riso-grocery-add-store:active:not(:disabled),
 .riso-grocery-add-store-cancel:active:not(:disabled),
 .riso-removed-clear:active:not(:disabled),
@@ -4384,25 +4388,6 @@ button.riso-pill:disabled {
 .store-mode-row:active:not(:disabled),
 .store-mode-back:active:not(:disabled) {
   transform: translate(1px, 1px) scale(0.97) !important;
-}
-
-/* A grocery item being checked: the box pops once, softly, in 240 ms (see
-   useJustChecked). */
-@keyframes riso-check-pop {
-  0% {
-    transform: scale(0.78);
-  }
-  60% {
-    transform: scale(1.12);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.riso-row-check.pop,
-.store-mode-check.pop {
-  animation: riso-check-pop 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Angled pill "sticker" overlapping a card edge - position (top/right/
@@ -11274,6 +11259,7 @@ body.riso-copy-drag .riso-planner-note.dragging {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  overflow: hidden;
   padding: 14px 16px 14px 20px;
   border-top: 2px solid var(--riso-ink);
   background: var(--riso-queued-tint);
@@ -11353,7 +11339,6 @@ body.riso-copy-drag .riso-planner-note.dragging {
   padding: 0 10px 0 14px;
   border-top: 1.5px dashed var(--riso-dash);
   background: transparent;
-  transition: background-color 160ms ease-out;
 }
 
 .riso-group-head + .riso-row {
@@ -11432,7 +11417,7 @@ body.riso-copy-drag .riso-planner-note.dragging {
   align-items: center;
   justify-content: center;
   font: 800 17px/1 var(--riso-font-display);
-  transition: background-color 160ms ease-out;
+  position: relative;
 }
 
 .riso-row-check.on {
@@ -11461,7 +11446,36 @@ body.riso-copy-drag .riso-planner-note.dragging {
 
 .riso-row-name.struck {
   color: var(--riso-muted);
-  text-decoration: line-through;
+}
+
+/* The strike-through is a line drawn in the name's own background, so it can sweep from left to
+   right (lib/checkMotion.js animates background-size) and still wrap over two lines: the name's
+   text is an inline span, so the line goes along one line and then the next. */
+.mm-strike {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 58%;
+  background-size: 0% 2px;
+}
+
+.riso-row-name.struck .mm-strike,
+.store-mode-name.struck .mm-strike {
+  background-size: 100% 2px;
+}
+
+/* The ✓ or + in a box, which pops by itself; the one that leaves a box fades from a copy. */
+.mm-mark {
+  display: block;
+}
+
+.mm-mark.ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .riso-row-meta {
@@ -12221,7 +12235,7 @@ button.riso-deal-detail-other:focus-visible {
 .riso-grocery-cart-fill {
   height: 100%;
   background: var(--riso-ink);
-  transition: width 0.25s;
+  transition: width calc(240ms * var(--mm, 1)) cubic-bezier(0.2, 0.7, 0.2, 1); /* --mm: slow motion, development only (lib/motion.js) */
 }
 
 .riso-grocery-cart-btn {
@@ -12359,10 +12373,151 @@ button.riso-deal-detail-other:focus-visible {
   overflow: hidden;
 }
 
+/* The cart bar's number bumps from its left edge. */
+.riso-grocery-cartbar-num,
+.riso-grocery-cart-num,
+.riso-grocery-dock-num {
+  transform-origin: left center;
+}
+
+/* « Je suis à l'épicerie » inside the cart bar (the cart's own button, phone only). */
+.riso-grocery-cartbar-store {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  margin: 2px 0 0;
+  padding: 0 14px;
+  border-radius: 24px;
+  border: 2px solid var(--riso-ink);
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font: 800 16px var(--riso-font-display);
+  cursor: pointer;
+}
+
+.riso-grocery-cartbar-store-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.riso-grocery-cartbar-store-tag {
+  flex: none;
+  font: 500 10.5px var(--riso-font-mono);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* The docked copy of the cart (phone, once the bar has scrolled away): the one thing that floats
+   at the bottom of the screen. The toast sits above it (96 px up). Below modals and sheets. */
+.riso-grocery-dock {
+  position: fixed;
+  z-index: 20;
+  left: 18px;
+  right: 18px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  height: 52px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 7px 0 16px;
+  background: var(--riso-hot);
+  color: var(--riso-ink);
+  border: 2px solid var(--riso-ink);
+  border-radius: 26px;
+  box-shadow: 3px 3px 0 var(--riso-ink);
+}
+
+.riso-grocery-dock-num {
+  flex: none;
+  min-width: 18px;
+  font: 800 26px/1 var(--riso-font-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.riso-grocery-dock-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.riso-grocery-dock-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 13px/1 var(--riso-font-display);
+}
+
+.riso-grocery-dock-track {
+  height: 6px;
+  box-sizing: content-box;
+  border: 1.5px solid var(--riso-ink);
+  border-radius: 3px;
+  background: var(--riso-canvas);
+  overflow: hidden;
+}
+
+.riso-grocery-dock-track > div {
+  height: 100%;
+  background: var(--riso-ink);
+  transition: width calc(240ms * var(--mm, 1)) cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Store mode, as a shop-front icon: a 36 px circle in a 44 px tap area (the button is the 44 px; its
+   negative margin keeps the dock's spacing as if it were the 36 px circle). */
+.riso-grocery-dock-store {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: 0 -4px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--riso-ink);
+  cursor: pointer;
+}
+
+.riso-grocery-dock-store-face {
+  width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--riso-ink);
+  border-radius: 50%;
+  background: var(--riso-surface);
+}
+
+/* The Done shopping pill on the dock is the bar's own (36 px). */
+.riso-grocery-dock .riso-grocery-cartbar-btn {
+  padding: 0 14px;
+}
+
+/* A footer's numbers roll when they change; the footer folds open and shut. */
+.mm-roll {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
 .riso-grocery-cartbar-track > div {
   height: 100%;
   background: var(--riso-ink);
-  transition: width 0.25s;
+  transition: width calc(240ms * var(--mm, 1)) cubic-bezier(0.2, 0.7, 0.2, 1); /* --mm: slow motion, development only (lib/motion.js) */
 }
 
 /* Grocery's How it works (§6): the shared strip with a title (HintStrip's
@@ -13137,10 +13292,6 @@ button.riso-deal-detail-other:focus-visible {
   }
 }
 
-.riso-grocery-store-btn {
-  display: none;
-}
-
 @media (max-width: 767px) {
   .riso-grocery-header {
     flex-direction: column;
@@ -13161,42 +13312,10 @@ button.riso-deal-detail-other:focus-visible {
     display: none;
   }
 
-  .riso-grocery-store-btn {
-    position: sticky;
-    bottom: 12px;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-    height: 56px;
-    margin: 4px 0;
-    border-radius: 28px;
-    border: 2px solid var(--riso-ink);
-    background: var(--riso-hot);
-    color: var(--riso-ink);
-    box-shadow: var(--riso-shadow);
-    font: 800 17px var(--riso-font-display);
-    cursor: pointer;
-  }
-
-  .riso-grocery-store-btn span {
-    font: 500 10.5px var(--riso-font-mono);
-    letter-spacing: 0.1em;
-  }
-
-  /* While the cart bar, a store's "+ Add N to inventory" or the list's last row
-     is under it, the sticky button slides down out of the screen, and comes back
-     once they've passed (useStickyDodge). */
-  .riso-grocery-store-btn {
-    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease-out;
-  }
-
-  .riso-grocery-store-btn.dodge {
-    transform: translateY(calc(100% + 16px));
-    opacity: 0;
-    pointer-events: none;
+  /* The cart's docked copy floats at the bottom of the screen: room under the last card for it
+     (and for the toast above it), so the last row always scrolls clear. */
+  .riso-grocery {
+    padding-bottom: 80px;
   }
 }
 
@@ -16961,6 +17080,17 @@ body.no-select {
   gap: 6px;
 }
 
+/* On a computer the side column is sticky (the cart stays in view to receive the name chip), so it can't
+   be taller than the window: past that, the sale list scrolls inside its card and nothing is cut off. The
+   550 px is the cart card and the rest of the sale card; the list keeps at least 140 px. */
+@media (min-width: 768px) {
+  .riso-grocery-sale-list {
+    max-height: max(140px, calc(100vh - 550px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 .riso-grocery-sale-row {
   width: 100%;
   display: grid;
@@ -17387,33 +17517,24 @@ body.no-select {
   padding: 0 8px;
 }
 
-.riso-help-copy .riso-help-copy-body.riso-grocery-store-btn {
-  position: static;
+.riso-help-copy .riso-help-copy-body.riso-grocery-cartbar-store {
+  display: inline-flex;
   width: auto;
+  height: auto;
   min-height: 24px;
   margin: 0;
   gap: 6px;
   padding: 0 11px;
   font-size: 11.5px;
+  box-shadow: 1px 1px 0 var(--riso-ink);
 }
 
-.riso-help-copy .riso-grocery-store-btn span {
+.riso-help-copy .riso-grocery-cartbar-store-tag {
   font-size: 8.5px;
 }
 
-/* The app styles .riso-grocery-store-btn on phones only (it doesn't exist on
-   a computer), so Help repeats the phone look; the avatar button's look is
-   repeated here too. Mirrors .riso-grocery-store-btn and
+/* The avatar button's look is repeated here too (it is styled under the header). Mirrors
    .app-header-avatar-btn. */
-.riso-help-copy .riso-help-copy-body.riso-grocery-store-btn {
-  display: inline-flex;
-  border: 2px solid var(--riso-ink);
-  background: var(--riso-hot);
-  color: var(--riso-ink);
-  font-family: var(--riso-font-display);
-  font-weight: 800;
-}
-
 .riso-help-copy .riso-help-copy-body.app-header-avatar-btn {
   border: 2px solid var(--riso-ink);
   background: var(--riso-yellow);
@@ -21474,8 +21595,61 @@ body.no-select {
   cursor: pointer;
 }
 
+/* ---------- Grocery's flying name chip (lib/motion.js flyChip) ---------- */
+/* One layer per screen, over the page and never taking a tap: the chip lifts off an item's name
+   and flies to the cart's number or the store's Add button. In Store mode the layer sits inside
+   it. The chip is removed when its flight ends. */
+.mm-chip-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.store-mode .mm-chip-layer {
+  position: absolute;
+  z-index: 40;
+}
+
+.mm-chip {
+  position: absolute;
+  max-width: 230px;
+  box-sizing: border-box;
+  padding: 5px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 999px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  box-shadow: 2px 2px 0 var(--riso-ink);
+  font: 700 14px var(--riso-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Queued for Inventory: blue, "+ name", on its way to the store's Add button. */
+.mm-chip.queue {
+  background: var(--riso-accent);
+  border-color: var(--riso-ink);
+  color: #fff;
+}
+
+/* Store mode: paper with ink text and a blue shadow, on its way to the big count. */
+.mm-chip.store {
+  background: #f4f1ea;
+  border-color: #16181f;
+  color: #16181f;
+  box-shadow: 2px 2px 0 #2323ff;
+}
+
 /* ---------- Toast with Undo ---------- */
-/* The one toast (components/Toast.jsx): a dark pill at the bottom with Undo. */
+/* The one toast (components/Toast.jsx): a dark pill at the bottom with Undo. Taps go
+   through its body to the page under it (the last rows of a list stay tappable); only
+   Undo takes one, in a 44 px tall hit area around its 28 px pill. A grocery check shows
+   the item's name (cut with a … when long) and its "· rest", which never wraps. */
 .riso-toast {
   position: fixed;
   /* Above every pop-out, picker and question, so Undo can be pressed while one is open. */
@@ -21487,36 +21661,118 @@ body.no-select {
   width: max-content;
   max-width: calc(100vw - 32px);
   box-sizing: border-box;
-  padding: 10px 12px 10px 20px;
+  min-height: 48px;
+  padding: 2px 6px 2px 20px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   background: var(--riso-ink);
   color: var(--riso-canvas);
   border-radius: 999px;
   box-shadow: 4px 4px 0 var(--riso-accent);
   font: 700 14px var(--riso-font-display);
+  pointer-events: none;
 }
 
-.riso-toast > span:only-child {
+.riso-toast-text {
+  min-width: 0;
+}
+
+.riso-toast > .riso-toast-text:only-child {
   padding-right: 8px;
 }
 
+.riso-toast-text.parts {
+  display: flex;
+  gap: 6px;
+}
+
+.riso-toast-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.riso-toast-rest {
+  flex: none;
+  white-space: nowrap;
+  font-weight: 500;
+  color: #d6cfbf;
+}
+
 .riso-toast-undo {
+  flex: none;
+  height: 44px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.riso-toast-undo > span {
   height: 28px;
   padding: 0 12px;
-  border: none;
   border-radius: 14px;
   background: var(--riso-yellow);
   color: var(--riso-ink);
   font: 800 13px var(--riso-font-display);
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.riso-toast-undo:focus-visible > span {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+.riso-toast.leaving .riso-toast-undo {
+  pointer-events: none;
 }
 
 @media (max-width: 767px) {
   .riso-toast {
     bottom: calc(96px + env(safe-area-inset-bottom));
   }
+}
+
+/* Store mode's toast (README §8): lower, a bigger Undo, and the pill is paper-coloured on the
+   dark screen (and the usual ink pill on the light one). */
+.riso-toast.store-dark,
+.riso-toast.store-light {
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  max-width: calc(100vw - 28px);
+  padding: 4px 6px 4px 20px;
+  font-size: 16px;
+}
+
+.riso-toast.store-dark {
+  background: #f4f1ea;
+  color: #16181f;
+}
+
+.riso-toast.store-dark .riso-toast-rest {
+  color: #3f3e37;
+}
+
+.riso-toast.store-dark .riso-toast-undo,
+.riso-toast.store-light .riso-toast-undo {
+  height: 48px;
+}
+
+.riso-toast.store-dark .riso-toast-undo > span,
+.riso-toast.store-light .riso-toast-undo > span {
+  height: 40px;
+  padding: 0 16px;
+  border: 2px solid #16181f;
+  box-sizing: border-box;
+  border-radius: 20px;
+  font-size: 15px;
 }
 
 /* ---------- The cards beside a slot ---------- */
@@ -22303,6 +22559,7 @@ body.no-select {
   --sm-num: #f4f1ea;
   --sm-card: #111115;
   --sm-card-border: #26262e;
+  --sm-flash: #3d3714; /* a row that was just checked or unchecked flashes this, for someone who asked for less motion */
   --sm-muted: #9a9aa8;
   --sm-track: #15151b;
   --gi-min: 72px;
@@ -22324,6 +22581,7 @@ body.no-select {
   --sm-num: #2323ff;
   --sm-card: #fffdf8;
   --sm-card-border: #16181f;
+  --sm-flash: #fff1a8;
   --sm-muted: #5e5b52;
   --sm-track: #fffdf8;
 }
@@ -22426,7 +22684,7 @@ body.no-select {
 .store-mode-track div {
   height: 100%;
   background: var(--riso-hot);
-  transition: width 0.25s;
+  transition: width calc(240ms * var(--mm, 1)) cubic-bezier(0.2, 0.7, 0.2, 1); /* --mm: slow motion, development only (lib/motion.js) */
 }
 
 .store-mode-list {
@@ -22607,6 +22865,7 @@ body.no-select {
 }
 
 .store-mode-check {
+  position: relative;
   flex: none;
   width: 34px;
   height: 34px;
@@ -22643,9 +22902,7 @@ body.no-select {
   overflow-wrap: break-word;
 }
 
-.store-mode-name.struck {
-  text-decoration: line-through;
-}
+
 
 .store-mode-qty {
   flex: none;

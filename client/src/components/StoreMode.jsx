@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GroceryItem } from "./GroceryItem.jsx";
 import { useDndMonitor } from "@dnd-kit/core";
 import { AddedSheet, ColoursSheet, DraggableRow, DropTray, LeaveSheet, StoreConfetti, StoreDropZone, StoreSticker } from "./StoreModeParts.jsx";
@@ -6,6 +6,7 @@ import { ThemeSwitch } from "./ThemeSwitch.jsx";
 import { useEqualRowHeight } from "../hooks/useEqualRowHeight.js";
 import { useTheme } from "../hooks/useTheme.js";
 import { capitalize } from "../lib/groceryList.js";
+import { EASE, T, flash, play, prefersReducedMotion } from "../lib/motion.js";
 import { brandOf } from "../lib/flyerIngredients.js";
 import { colorOfStore, readStoreColors, writeStoreColors } from "../lib/storeColors.js";
 import { getLang, t } from "../i18n/index.js";
@@ -20,6 +21,11 @@ import { getLang, t } from "../i18n/index.js";
 // the checked ones out of view. Leaving with items checked asks about Done
 // shopping, which always goes through the Inventory confirmation (`onDone`):
 // what to track is chosen there, at the till.
+// Checking a row (README §8 of docs/design/riso-v2-grocery-check-feedback): the box fills, the name is
+// struck through with a line that draws, the row fades back, and a chip flies to the big count, which
+// goes down (and bumps) when the chip lands; `flights` says which checked rows are still flying, and
+// `pulse` that the count has just changed. The shared toast says what happened, with Undo (Grocery's
+// `onToggle` makes it). For someone who asked for less motion the row and the count flash instead.
 // Press and hold a row, then drag it onto another store (its section or its
 // sticker, folded or not) to file it there for good, with Undo (`onMove`, `onToast`).
 // Light or dark is the shared switch (`useTheme`, `ThemeSwitch`), the same one and the
@@ -42,6 +48,8 @@ export function StoreMode({
   moveTargets = stores, // every store an item can be moved to (not only those with items today)
   onMove,
   onToast,
+  flights = {}, // key -> chips still on their way to the count: those rows aren't counted yet
+  pulse = null, // { n }: n changes when the count has just changed
 }) {
   const { theme, dark, toggle: pickTheme } = useTheme();
   const [colors, setColors] = useState(readStoreColors);
@@ -74,8 +82,10 @@ export function StoreMode({
   const listRef = useRef(null);
   useEqualRowHeight(listRef, { pad: 14 });
 
+  // A checked row counts as done once its chip has landed.
+  const counted = (key) => !!checked[key] && !(flights[key] > 0);
   const total = rows.length;
-  const left = rows.filter((r) => !checked[r.item.key]).length;
+  const left = rows.filter((r) => !counted(r.item.key)).length;
   const pct = total > 0 ? Math.round(((total - left) / total) * 100) : 0;
   const celebrate = total > 0 && left === 0;
 
@@ -102,7 +112,7 @@ export function StoreMode({
           const here = rows.filter((r) => r.store === store);
           return {
             store,
-            left: here.filter((r) => !checked[r.item.key]).length,
+            left: here.filter((r) => !counted(r.item.key)).length,
             visible: shown(here).length,
             sections: collapsed[store] ? [] : sectionsOf(shown(here)),
           };
@@ -166,6 +176,24 @@ export function StoreMode({
     setColors({});
   }
 
+  // The count bumps (1 -> 1.22 -> 1) when the chip lands or an item comes back; for reduced motion the
+  // count's row flashes instead.
+  const numberRef = useRef(null);
+  const summaryRef = useRef(null);
+  const lastPulse = useRef(pulse?.n);
+  useLayoutEffect(() => {
+    if (!pulse || pulse.n === lastPulse.current) return;
+    lastPulse.current = pulse.n;
+    if (prefersReducedMotion()) {
+      flash(summaryRef.current, "rgba(255, 225, 77, 0.28)");
+      return;
+    }
+    play(numberRef.current, [{ transform: "scale(1)" }, { transform: "scale(1.22)", offset: 0.4 }, { transform: "scale(1)" }], {
+      duration: T.storeCheck.count[1],
+      easing: EASE.out,
+    });
+  }, [pulse?.n]);
+
   function leave() {
     if (sendCount > 0) setSheet("leave");
     else onClose();
@@ -203,8 +231,10 @@ export function StoreMode({
           <ThemeSwitch dark={dark} onToggle={pickTheme} />
         </div>
 
-        <div className="store-mode-summary">
-          <span className={`store-mode-num${celebrate ? " pulse" : ""}`}>{left}</span>
+        <div className="store-mode-summary" ref={summaryRef}>
+          <span ref={numberRef} className={`store-mode-num${celebrate ? " pulse" : ""}`}>
+            {left}
+          </span>
           <div className="store-mode-progress">
             <span className="store-mode-at">{t("storeMode.leftOnList")}</span>
             <div className="store-mode-track" aria-hidden="true">
@@ -273,7 +303,7 @@ export function StoreMode({
                       queued={!!queued[row.item.key]}
                       deal={row.deal}
                       brand={brandOf(row.deal || row.flyerDeal)}
-                      onToggle={() => onToggle(row.item.key)}
+                      onToggle={(rowEl) => onToggle(row.item.key, rowEl)}
                     />
                   </DraggableRow>
                 ))}

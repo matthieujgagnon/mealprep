@@ -1034,15 +1034,18 @@ export default function App({ user, onLogout }) {
   // The one toast. `undo` puts the change back; `onGone` runs when the toast
   // leaves without Undo being pressed: after its five seconds, when another message
   // replaces it, when the page is left, or on logout (a recipe deleted with Undo is
-  // deleted for good then).
+  // deleted for good then). `replace: true` (a message that follows another quickly,
+  // like Grocery's one toast per tap) says the same pill keeps its place and swaps its
+  // text; `variant` ("store-dark" / "store-light") is Store mode's pill. The message is a
+  // text, or { name, rest } for an item's name and its "· rest" (components/Toast.jsx).
   const toastRef = useRef(null);
   function settleToast(old) {
     if (!old || old.settled) return undefined;
     old.settled = true;
     return old.onGone?.();
   }
-  function showToast(message, undo, { onGone } = {}) {
-    const next = { id: Date.now() + Math.random(), message, onGone };
+  function showToast(message, undo, { onGone, replace = false, variant } = {}) {
+    const next = { id: Date.now() + Math.random(), message, onGone, replace, variant };
     if (undo)
       next.undo = () => {
         next.settled = true;

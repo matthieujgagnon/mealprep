@@ -75,8 +75,9 @@ function Removed() {
 
 function AtStore() {
   return (
-    <span className="riso-grocery-store-btn riso-help-copy-body">
-      {t("grocery.atStore")} <span>{t("grocery.bigMode")}</span>
+    <span className="riso-grocery-cartbar-store riso-help-copy-body">
+      <span className="riso-grocery-cartbar-store-name">{t("grocery.atStore")}</span>
+      <span className="riso-grocery-cartbar-store-tag">{t("grocery.bigMode")}</span>
     </span>
   );
 }

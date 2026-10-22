@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useJustChecked } from "../hooks/useJustChecked.js";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { playRow } from "../lib/checkMotion.js";
 import { recipeAmountLabel } from "../lib/groceryChecks.js";
 import { cleanQuantityTyping, displayQuantity, quantityToSave } from "../lib/groceryQuantity.js";
 import { RecipesLine } from "./RecipesLine.jsx";
@@ -18,7 +18,12 @@ import { t } from "../i18n/index.js";
 //
 // The checkbox has three steps (lib/groceryChecks.js): to buy, bought ✓
 // (`checked`) and queued for Inventory + (`checked` and `queued`). Each tap of
-// the box calls `onToggle`, and the list moves it to the next step.
+// the box calls `onToggle` (with the row's element, so the list can fly the name chip from
+// it), and the list moves it to the next step. When the step changes while the row is on
+// screen it plays its own part of the motion (lib/checkMotion.js: the box, the tint, the
+// drawn strike-through, the "→ INVENTORY" label); a row that opens already checked doesn't.
+// The chip, the counts, the footer and the toast are the list's
+// (hooks/useCheckFeedback.js). Design: docs/design/riso-v2-grocery-check-feedback/README.md.
 //
 //   variant "line"   a row in a list. Only the checkbox checks it; a flyer item's
 //                    row opens its deal. Sized by CSS (--gi-min, --gi-h). Without
@@ -97,8 +102,26 @@ export function GroceryItem({
   const store = variant === "store";
   const isQueued = checked && queued;
   const step = !checked ? 0 : isQueued ? 2 : 1;
-  const justChecked = useJustChecked(checked);
   const c = (part) => cls(variant, part);
+
+  // The row's own element (for the motion and for the chip), kept next to the drag
+  // setup's ref when the list gives one.
+  const rootRef = useRef(null);
+  const setRoot = useCallback(
+    (el) => {
+      rootRef.current = el;
+      if (typeof rowRef === "function") rowRef(el);
+      else if (rowRef) rowRef.current = el;
+    },
+    [rowRef]
+  );
+  const lastStep = useRef(step);
+  useLayoutEffect(() => {
+    const from = lastStep.current;
+    lastStep.current = step;
+    if (from !== step) playRow(rootRef.current, from, step, { store });
+  }, [step, store]);
+  const mark = isQueued ? "+" : checked ? "✓" : "";
   const label = item.name + (item.varieties?.length > 0 ? ` (${item.varieties.join(", ")})` : "");
   // Names always start with a capital ("lemons" -> "Lemons").
   const shownName = capitalizeFirst(label);
@@ -116,7 +139,11 @@ export function GroceryItem({
 
   const metaLine = hasMeta && (
     <span className={c("meta")}>
-      {isQueued && <span className="riso-row-queued">{t("grocery.queuedLabel")}</span>}
+      {isQueued && (
+        <span className="riso-row-queued" data-gi-label>
+          {t("grocery.queuedLabel")}
+        </span>
+      )}
       {isQueued && afterQueued && <span className={c("dot")} aria-hidden="true" />}
       {mine && <span className="riso-row-mine">{t("grocery.addedByYou")}</span>}
       {brand && (
@@ -171,8 +198,10 @@ export function GroceryItem({
 
   const text = (
     <span className={c("main")} data-gi-text>
-      <span className={`${c("name")}${checked ? " struck" : ""}`} title={label}>
-        {shownName}
+      <span className={`${c("name")}${checked ? " struck" : ""}`} data-gi-name title={label}>
+        <span className="mm-strike" data-gi-strike>
+          {shownName}
+        </span>
       </span>
       {metaLine}
     </span>
@@ -182,15 +211,20 @@ export function GroceryItem({
     return (
       <button
         type="button"
-        ref={rowRef}
+        ref={setRoot}
         data-gi-row
+        data-gi-key={item.key}
         data-step={step}
         className={`store-mode-row${checked ? " on" : ""}${isQueued ? " queued" : ""}`}
         aria-pressed={checked}
-        onClick={onToggle}
+        onClick={() => onToggle(rootRef.current)}
       >
-        <span className={`store-mode-check${justChecked ? " pop" : ""}`} aria-hidden="true">
-          {isQueued ? "+" : checked ? "✓" : ""}
+        <span className="store-mode-check" data-gi-box aria-hidden="true">
+          {mark && (
+            <span className="mm-mark" data-gi-mark>
+              {mark}
+            </span>
+          )}
         </span>
         {text}
         <span className="store-mode-qty">{displayQuantity(item)}</span>
@@ -200,8 +234,9 @@ export function GroceryItem({
 
   return (
     <div
-      ref={rowRef}
+      ref={setRoot}
       data-gi-row
+      data-gi-key={item.key}
       data-step={step}
       className={`riso-row${checked ? " checked" : ""}${isQueued ? " queued" : ""}${dragging ? " dragging" : ""}${dragProps ? " draggable" : ""}${flyerDeal ? " opens-deal" : ""}`}
       {...(flyerDeal
@@ -230,11 +265,15 @@ export function GroceryItem({
         title={t(STEP_TIPS[step])}
         onClick={(e) => {
           e.stopPropagation();
-          onToggle();
+          onToggle(rootRef.current);
         }}
       >
-        <span className={`riso-row-check${checked ? " on" : ""}${isQueued ? " queued" : ""}${justChecked ? " pop" : ""}`}>
-          {isQueued ? "+" : checked ? "✓" : ""}
+        <span className={`riso-row-check${checked ? " on" : ""}${isQueued ? " queued" : ""}`} data-gi-box>
+          {mark && (
+            <span className="mm-mark" data-gi-mark>
+              {mark}
+            </span>
+          )}
         </span>
       </button>
       {text}

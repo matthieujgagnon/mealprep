@@ -1,3 +1,5 @@
+import { prefersReducedMotion } from "./motion.js";
+
 // Where a page starts, in one place (App.jsx is the only caller). Opening a page, by any
 // way the page can change (a header tab, the app name, Back and Forward, a link from
 // another page), starts it at its top and Home on its first screen; tapping the tab you
@@ -6,7 +8,7 @@
 // spot) is that page's own and happens after this.
 
 export function scrollPageToTop({ smooth = false } = {}) {
-  const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const calm = prefersReducedMotion();
   const behavior = smooth && !calm ? "smooth" : "auto";
   if (behavior === "smooth") window.scrollTo({ top: 0, left: 0, behavior });
   else window.scrollTo(0, 0);
