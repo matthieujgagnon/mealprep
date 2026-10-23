@@ -50,6 +50,10 @@ async function setup(page) {
 const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
 const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
 
+// What the server has saved. A change shows on screen at once and the save follows, so a test that
+// reloads to prove it was saved waits for this first.
+const savedOverrides = async (page) => (await page.request.get("/api/grocery-item-overrides")).json();
+
 test("the recipe quantity is read-only with its unit, and how many to buy is a plain number you can change", async ({ page }) => {
   await setup(page);
   // The recipe quantity pill carries the unit; the number box next to it never does.
@@ -71,6 +75,7 @@ test("the recipe quantity is read-only with its unit, and how many to buy is a p
   // Editing the number doesn't check the item off.
   await expect(check(page, "Garlic")).toHaveAttribute("aria-checked", "false");
 
+  await expect.poll(async () => (await savedOverrides(page)).find((o) => /garlic/.test(o.key))?.quantity).toBe("2");
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(row(page, "Garlic").getByLabel("Quantity of Garlic")).toHaveValue("2");
@@ -147,6 +152,7 @@ test("Clear empties the Removed strip and the rows stay off the list", async ({ 
   await expect(page.locator(".riso-grocery-removed")).toContainText("Lemon");
   await page.locator(".riso-grocery-removed").getByRole("button", { name: "Clear" }).click();
   await expect(page.locator(".riso-grocery-removed")).toHaveCount(0);
+  await expect.poll(async () => (await savedOverrides(page)).find((o) => /lemon/.test(o.key))).toMatchObject({ removed: true, hidden: true });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(row(page, "Garlic")).toBeVisible();
@@ -215,7 +221,15 @@ test("Done shopping adds the queued items to Inventory once, takes them off the 
   await confirmAdd(page);
   await expect(page.locator(".riso-grocery-cart-done")).toHaveText("Groceries done ✓ Nothing left to buy.");
   await expect(row(page, "Garlic")).toHaveCount(0);
-  // Still off the list after a reload, and not added a second time.
+  // Still off the list after a reload, and not added a second time. (It shows done at once and the
+  // saves follow: wait until the server has all three bought and the garlic in Inventory.)
+  await expect
+    .poll(async () => {
+      const checked = await (await page.request.get("/api/grocery-checked")).json();
+      const stock = await (await page.request.get("/api/pantry-inventory")).json();
+      return { bought: checked.length === 3 && checked.every((c) => c.bought), garlic: stock.filter((i) => /garlic/i.test(i.name)).length };
+    })
+    .toEqual({ bought: true, garlic: 1 });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(page.locator(".riso-grocery-cart-done")).toBeVisible();
@@ -277,24 +291,35 @@ test("the list waits for stores and deals, so items never show in Any store firs
   const storeNames = () => page.locator(".riso-group-name").allInnerTexts();
 
   // Deals answer slowly; before, the list drew without them and put every
-  // item in "Any store" until they arrived.
-  await page.route("**/api/deals?lite=1", async (route) => {
-    await new Promise((r) => setTimeout(r, 1500));
+  // item in "Any store" until they arrived. The test holds the answer itself and lets it go
+  // when it has looked, so nothing depends on a timer.
+  let letDealsThrough;
+  const dealsHeld = new Promise((resolve) => (letDealsThrough = resolve));
+  let dealsAsked;
+  const dealsRequested = new Promise((resolve) => (dealsAsked = resolve));
+  const deals = "**/api/deals?lite=1";
+  await page.route(deals, async (route) => {
+    dealsAsked();
+    await dealsHeld;
     await route.continue();
   });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await page.waitForTimeout(600);
-  expect(await storeNames()).not.toContain("Any store");
+  await dealsRequested; // the page has asked for the deals and is waiting for them
   await expect(page.locator(".riso-grocery-loading")).toBeVisible();
+  expect(await storeNames()).not.toContain("Any store");
 
+  letDealsThrough();
   const metro = page.getByRole("region", { name: "Metro store" });
   await expect(metro.getByRole("checkbox", { name: "Check off Garlic", exact: true })).toBeVisible();
   expect(await storeNames()).not.toContain("Any store");
 
-  // Coming back to the tab shows it straight away, already in place.
+  // Coming back to the tab shows it straight away, already in place: with the deals held again
+  // and never answered, the list is still there, so it is not waiting for them.
+  await page.unroute(deals);
+  await page.route(deals, () => {});
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
-  await expect(metro.getByRole("checkbox", { name: "Check off Garlic", exact: true })).toBeVisible({ timeout: 500 });
+  await expect(metro.getByRole("checkbox", { name: "Check off Garlic", exact: true })).toBeVisible();
   expect(await storeNames()).not.toContain("Any store");
 });

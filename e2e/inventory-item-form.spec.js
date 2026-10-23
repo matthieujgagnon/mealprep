@@ -21,6 +21,7 @@ async function setup(page) {
 }
 
 const inventory = async (page) => await (await page.request.get("/api/pantry-inventory")).json();
+const ONE_PIXEL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const toast = (page) => page.locator(".riso-toast");
 const note = (page) => itemForm(page).locator(".riso-itemform-note");
 const card = (page, name) => page.locator(":is(.inv-row, .inv-tile)").filter({ hasText: name }).first();
@@ -159,9 +160,13 @@ test("the preview is the real card: name, amount, expiry line, and a photo from 
   await form.getByLabel("Photo link").fill("javascript:alert(1)");
   await form.getByRole("button", { name: "Use", exact: true }).click();
   await expect(form.getByRole("alert")).toContainText("starts with http");
+  // The link answers with a real picture. Without that, its answer (a refusal in the sandbox, a 404
+  // on CI) takes the picture off the card a moment after it appears, at a time the test does not choose.
+  await page.route("https://example.com/bread.png", (route) => route.fulfill({ contentType: "image/png", body: ONE_PIXEL_PNG }));
   await form.getByLabel("Photo link").fill("https://example.com/bread.png");
   await form.getByLabel("Photo link").press("Enter");
   await expect(preview.locator("img.inv-card-photo")).toHaveAttribute("src", "https://example.com/bread.png");
+  await expect(preview.locator("img.inv-card-photo")).toHaveJSProperty("naturalWidth", 1); // it has loaded, and stays
   await form.getByRole("button", { name: "Add to inventory" }).click();
   await expect(form).toHaveCount(0);
   expect((await inventory(page))[0]).toMatchObject({ name: "Sourdough", quantity: 0.5, unit: "loaf", imageUrl: "https://example.com/bread.png" });
