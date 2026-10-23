@@ -243,8 +243,13 @@ test.describe("on a computer, in English", () => {
     await expect(page.locator(".riso-row-haveas")).toHaveCount(1);
 
     // The planned meal's card: a small button beside the chip of what is still to buy.
+    // (Both the teach and its Undo show at once and are saved behind: wait for the teach to land, so
+    // the Undo's save is the last one, before looking at what the server has.)
+    await expect.poll(async () => (await links(page)).length).toBe(1);
     await page.locator(".riso-toast").getByRole("button", { name: "Undo" }).click();
     await expect(page.locator(".riso-row-name")).toHaveText(["Tamari", "Wonton wrapper"]);
+    // The Undo shows at once and the save follows: wait until the server has taken the link away before reloading.
+    await expect.poll(async () => (await links(page)).length).toBe(0);
     await page.request.post("/api/planner", { data: { recipeId: (await (await page.request.get("/api/recipes")).json())[0].id, weekStart: mondayOf(new Date()), dayOfWeek: Math.min((new Date().getDay() + 6) % 7, 4), mealType: "dinner" } });
     await page.reload();
     await tab(page, L.en.planner).click();

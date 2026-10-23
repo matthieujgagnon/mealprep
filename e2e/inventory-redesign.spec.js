@@ -244,7 +244,20 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.keyboard.press("Enter");
   await expect(page.locator(".inv-shelf", { hasText: "Garage freezer" })).toBeVisible();
 
-  // Everything survives a reload, and the new names show in the add form.
+  // Everything survives a reload, and the new names show in the add form. (It all shows at once and
+  // is saved behind it: wait until the server has the new shelf and the last change to the layout, the
+  // arrow-key move. The layout saves go one after another, so the earlier ones are in by then.)
+  await expect
+    .poll(async () => {
+      const shelves = await (await page.request.get("/api/pantry-locations")).json();
+      const rows = await (await page.request.get("/api/inventory-layout")).json();
+      return {
+        shelf: shelves.some((l) => l.name === "Garage freezer"),
+        order: rows.map((r) => r.sectionId),
+        fridge: rows.find((r) => r.sectionId === "fridge")?.label,
+      };
+    })
+    .toEqual({ shelf: true, order: ["pantry", "freezer", "fridge", "leftovers", "prepared"], fridge: "Kitchen fridge" });
   const fridgeWidth = (await fridge.boundingBox()).width;
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();

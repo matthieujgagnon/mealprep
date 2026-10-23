@@ -24,6 +24,10 @@ async function openInventory(page) {
 }
 
 const order = (page) => page.locator(".inv-shelf").evaluateAll((els) => els.map((e) => e.dataset.sectionId));
+// The order the server has saved. The shelves and stores move on screen at once and the save follows,
+// so a test that reloads to prove the order was saved waits for this first.
+const savedShelves = async (page) => (await (await page.request.get("/api/inventory-layout")).json()).map((r) => r.sectionId);
+const savedStores = async (page) => (await (await page.request.get("/api/grocery-sections")).json()).map((s) => s.name);
 const shelf = (page, id) => page.locator(`.inv-shelf[data-section-id="${id}"]`);
 const gripOf = (page, name) => page.getByRole("button", { name: `Move the "${name}" section` });
 const middle = (b) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
@@ -89,6 +93,7 @@ test.describe("on a computer", () => {
     await expect(page.locator(".reorder-lifted")).toHaveCount(0);
 
     // Saved: still so after a reload.
+    await expect.poll(() => savedShelves(page)).toEqual(["pantry", "fridge", "freezer", "leftovers", "prepared"]);
     await openInventory(page);
     await expect.poll(() => order(page)).toEqual(["pantry", "fridge", "freezer", "leftovers", "prepared"]);
   });
@@ -186,6 +191,7 @@ test.describe("on a phone", () => {
     await touch(client, "touchEnd", []);
     await expect.poll(() => order(page)).toEqual(["freezer", "fridge", "pantry", "leftovers", "prepared"]);
     await page.screenshot({ path: test.info().outputPath("shelf-dropped-on-phone.png") });
+    await expect.poll(() => savedShelves(page)).toEqual(["freezer", "fridge", "pantry", "leftovers", "prepared"]);
     await openInventory(page);
     await expect.poll(() => order(page)).toEqual(["freezer", "fridge", "pantry", "leftovers", "prepared"]);
   });
@@ -228,6 +234,10 @@ test.describe("Grocery's stores, the same piece", () => {
     await expect.poll(async () => {
       const after = await names();
       return after.indexOf("Adonis") < after.indexOf("Costco");
+    }).toBe(true);
+    await expect.poll(async () => {
+      const saved = await savedStores(page);
+      return saved.indexOf("Adonis") < saved.indexOf("Costco");
     }).toBe(true);
     await page.reload();
     await page.getByRole("button", { name: "Grocery", exact: true }).click();

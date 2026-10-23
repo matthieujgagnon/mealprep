@@ -189,6 +189,11 @@ test("stores: add one and drag an item into it; it stays there", async ({ page }
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
   await expect(costco.getByRole("checkbox", { name: "Check off Garlic", exact: true })).toBeVisible();
+  // It moves on screen at once and the save follows: wait until the server has the item in the store.
+  await expect.poll(async () => {
+    const stores = await (await page.request.get("/api/grocery-sections")).json();
+    return stores.find((s) => s.name === "Costco")?.assignments.length;
+  }).toBe(1);
 
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
@@ -244,6 +249,11 @@ test("stores reorder by dragging their heading and keep that order", async ({ pa
   await expect.poll(async () => {
     const after = await names();
     return after.indexOf("Adonis") < after.indexOf("Costco");
+  }).toBe(true);
+  // The stores move on screen at once and the save follows: wait until the server has the order.
+  await expect.poll(async () => {
+    const saved = (await (await page.request.get("/api/grocery-sections")).json()).map((s) => s.name);
+    return saved.indexOf("Adonis") < saved.indexOf("Costco");
   }).toBe(true);
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();

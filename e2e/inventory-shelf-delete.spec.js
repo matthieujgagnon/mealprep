@@ -209,10 +209,11 @@ test.describe("on a computer", () => {
     await expect(shelf(page, "fridge").locator(".inv-tile", { hasText: "Ice cubes" }).locator(".storage-label")).toHaveText("Freezer");
     await expect(shelf(page, "fridge").locator(".inv-tile", { hasText: "Cumin" }).locator(".storage-label")).toHaveText("Pantry");
 
-    // The shelf row is still in the database, and so are its items, exactly as they were.
+    // The shelf row is still in the database, and so are its items, exactly as they were. (It goes
+    // from the screen at once and the save follows: wait until the server has it before looking.)
+    await expect.poll(async () => await layoutRow(page, spices.id)).toMatchObject({ hidden: true, movedTo: "fridge" });
     expect(await prisma.pantryLocation.findUnique({ where: { id: spices.id } })).not.toBeNull();
     expect(await rows(page)).toEqual(before);
-    expect(await layoutRow(page, spices.id)).toMatchObject({ hidden: true, movedTo: "fridge" });
 
     // A new shelf can't take its name: the sheet says to bring it back instead.
     await page.getByRole("button", { name: "+ Add section" }).click();
@@ -287,7 +288,8 @@ test.describe("on a computer", () => {
     // The drag itself works: dropped on Pantry it is kept there now.
     await drag(shelf(page, "pantry"));
     await expect(shelf(page, "pantry").getByText("Frozen peas", { exact: true })).toBeVisible();
-    expect(await find(page, "Frozen peas")).toMatchObject({ location: "pantry" });
+    // The card moves on screen at once and the save follows: wait until the server has it.
+    await expect.poll(async () => await find(page, "Frozen peas")).toMatchObject({ location: "pantry" });
   });
 
   test("the item pop-up still offers Fridge, Freezer and Pantry to keep something in, with Freezer deleted", async ({ page }) => {

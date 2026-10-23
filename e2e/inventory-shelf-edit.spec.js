@@ -35,6 +35,7 @@ const openInventory = async (page) => {
 const add = async (page, data) => (await page.request.post("/api/pantry-inventory", { data })).json();
 const find = async (page, name) => (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === name);
 const makeShelf = async (page, name) => (await page.request.post("/api/pantry-locations", { data: { name } })).json();
+const layoutRow = async (page, id) => (await (await page.request.get("/api/inventory-layout")).json()).find((r) => r.sectionId === id);
 const shelf = (page, id) => page.locator(`.inv-shelf[data-section-id="${id}"]`);
 const pencil = (card) => card.locator(".inv-shelf-edit:not(.inv-shelf-add)");
 const doneEditing = (card) => card.locator(".inv-shelf-edit.on");
@@ -94,6 +95,9 @@ for (const screen of SCREENS) {
       await expect(sheet.getByLabel("Move to")).toHaveValue("pantry");
       await sheet.getByRole("button", { name: "Delete shelf" }).click();
       await expect(shelf(page, garage.id)).toHaveCount(0);
+      // The shelf goes from the screen at once and the save follows: wait until the server has it
+      // before looking at the items or reloading.
+      await expect.poll(async () => (await layoutRow(page, garage.id))?.hidden).toBe(true);
 
       // The item shows on Pantry, still kept in the Freezer (it says so), same use-by day, and nothing
       // is written onto it: its shelf is still the one it was put on.
