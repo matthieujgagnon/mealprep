@@ -2,12 +2,14 @@ import { useState } from "react";
 import { dict, t, useLang } from "../i18n/index.js";
 import { HelpText } from "./HelpCopies.jsx";
 import { useFeedback } from "./Feedback.jsx";
+import { helpLinesFor } from "../lib/helpCopies.js";
 
 // The in-app guide: one section per screen, a FAQ and the outside sources.
 // Every word lives in en.js / fr.js under "help" (the sections and answers
 // are lists of sentences, so they're read from the dictionary directly). A
 // sentence that names a button writes [[id]] there, and HelpText draws a
-// small copy of that button in its place.
+// small copy of that button in its place. Text between <admin> and </admin> is
+// only shown to an admin (lib/helpCopies.js helpLinesFor).
 
 const SECTION_IDS = [
   "home",
@@ -60,7 +62,7 @@ function jumpTo(id) {
   el.focus({ preventScroll: true });
 }
 
-function FaqItem({ id, open, onToggle, question, answer }) {
+function FaqItem({ id, open, onToggle, question, answer, isAdmin }) {
   const buttonId = `help-faq-q-${id}`;
   const panelId = `help-faq-a-${id}`;
   return (
@@ -81,7 +83,7 @@ function FaqItem({ id, open, onToggle, question, answer }) {
         </button>
       </h3>
       <div id={panelId} role="region" aria-labelledby={buttonId} className="riso-help-faq-a" hidden={!open}>
-        {answer.map((paragraph) => (
+        {helpLinesFor(answer, isAdmin).map((paragraph) => (
           <p key={paragraph}>
             <HelpText text={paragraph} />
           </p>
@@ -91,7 +93,7 @@ function FaqItem({ id, open, onToggle, question, answer }) {
   );
 }
 
-export function Help() {
+export function Help({ isAdmin = false }) {
   useLang(); // re-render when the language changes: the lists below come straight from the dictionary
   const [openFaq, setOpenFaq] = useState(() => new Set());
   const help = dict().help;
@@ -130,7 +132,7 @@ export function Help() {
             {t(`help.sections.${id}.title`)}
           </h2>
           <ul className="riso-help-lines">
-            {help.sections[id].lines.map((line) => (
+            {helpLinesFor(help.sections[id].lines, isAdmin).map((line) => (
               <li key={line}>
                 <HelpText text={line} />
               </li>
@@ -152,6 +154,7 @@ export function Help() {
               onToggle={() => toggleFaq(id)}
               question={help.faq[id].q}
               answer={help.faq[id].a}
+              isAdmin={isAdmin}
             />
           ))}
         </div>

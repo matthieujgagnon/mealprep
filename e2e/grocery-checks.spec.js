@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { confirmAdd } from "./inventory-confirm.js";
+import { saveAnswered } from "./saves.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -113,8 +114,11 @@ test("everything bought empties the list and says so, also on Home", async ({ pa
 
 test("a check without Done shopping covers what it showed: more needed later shows the extra, unchecked", async ({ page }) => {
   const { soup } = await setup(page);
+  // (A check shows at once and is saved behind it: each wait below is for the save, before the page is reloaded.)
+  const chickenChecked = saveAnswered(page, "POST", "/api/grocery-checked", '"core":"chicken"');
   await check(page, "Chicken").click();
   await expect(check(page, "Chicken")).toHaveAttribute("aria-checked", "true");
+  await chickenChecked;
 
   await place(page, soup.id, 2);
   await page.reload();
@@ -126,9 +130,11 @@ test("a check without Done shopping covers what it showed: more needed later sho
   await expect(check(page, "Rice")).toHaveAttribute("aria-checked", "true");
 
   // Checking the grown row covers the new total.
+  const grownChecked = saveAnswered(page, "POST", "/api/grocery-checked", '"core":"chicken"');
   await check(page, "Chicken").click();
   await expect(check(page, "Chicken")).toHaveAttribute("aria-checked", "true");
   await expect(row(page, "Chicken")).toContainText("700 g");
+  await grownChecked;
   await page.reload();
   await openGrocery(page);
   await expect(check(page, "Chicken")).toHaveAttribute("aria-checked", "true");
@@ -136,9 +142,12 @@ test("a check without Done shopping covers what it showed: more needed later sho
 
 test("unchecking clears the check, and a row that was bought keeps what was bought", async ({ page }) => {
   const { soup } = await setup(page);
-  // Bought, queued, then back on the list.
+  // Bought, queued, then back on the list. (Three saves go one after another and the last is the
+  // delete: its answer means all three are in.)
+  const riceBackOnList = saveAnswered(page, "DELETE", "/api/grocery-checked/rice");
   for (let i = 0; i < 3; i++) await check(page, "Rice").click();
   await expect(check(page, "Rice")).toHaveAttribute("aria-checked", "false");
+  await riceBackOnList;
   await page.reload();
   await openGrocery(page);
   await expect(check(page, "Rice")).toHaveAttribute("aria-checked", "false");
@@ -146,14 +155,18 @@ test("unchecking clears the check, and a row that was bought keeps what was boug
   // Bought chicken, then a meal that needs more: checking and unchecking the
   // extra leaves the bought 500 g bought.
   await queue(page, "Chicken");
+  const chickenBought = saveAnswered(page, "POST", "/api/grocery-checked/in-inventory");
   await doneButton(page, 1).click();
   await confirmAdd(page);
+  await chickenBought;
   await place(page, soup.id, 2);
   await page.reload();
   await openGrocery(page);
+  const extraBackOnList = saveAnswered(page, "DELETE", "/api/grocery-checked/chicken");
   for (let i = 0; i < 3; i++) await check(page, "Chicken").click();
   await expect(check(page, "Chicken")).toHaveAttribute("aria-checked", "false");
   await expect(row(page, "Chicken")).toContainText("+200 g");
+  await extraBackOnList;
   await page.reload();
   await openGrocery(page);
   await expect(row(page, "Chicken")).toContainText("+200 g");

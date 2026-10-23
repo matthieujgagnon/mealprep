@@ -280,6 +280,8 @@ export default function App({ user, onLogout }) {
   // (lib/inventoryLinks.js is the list every page reads, through the one matcher). When
   // it changes, Inventory is handed on as a new array so every page asks the matcher
   // again. It adds nothing to Inventory, so it has no confirmation sheet (CLAUDE.md).
+  // For now only an admin is offered it (`user.isAdmin`, the same flag as the Admin menu):
+  // every place that offers it reads InventoryLinksContext, which is null for anyone else.
   const toastLatest = useRef(null);
   const linkSaverRef = useRef(null);
   if (!linkSaverRef.current) {
@@ -1487,7 +1489,7 @@ export default function App({ user, onLogout }) {
           </div>
         )}
 
-        {tab === "help" && <Help />}
+        {tab === "help" && <Help isAdmin={user.isAdmin} />}
         {tab === "admin" && <Admin user={user} onHome={() => goToTab("home")} />}
         {tab === "feedbackInbox" && <FeedbackInbox user={user} onHome={() => goToTab("home")} onToast={showToast} />}
 
@@ -1814,7 +1816,7 @@ export default function App({ user, onLogout }) {
   // through the context.
   return (
     <FeedbackContext.Provider value={openFeedback}>
-      <InventoryLinksContext.Provider value={linksApi}>{app}</InventoryLinksContext.Provider>
+      <InventoryLinksContext.Provider value={user.isAdmin ? linksApi : null}>{app}</InventoryLinksContext.Provider>
     </FeedbackContext.Provider>
   );
 }

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { en } from "./en.js";
 import { fr } from "./fr.js";
 import { SRC, hardCodedTexts, sourceFiles } from "./scan.js";
-import { COPY_TOKEN, HELP_COPIES, copyKeys } from "../lib/helpCopies.js";
+import { COPY_TOKEN, HELP_COPIES, copyKeys, helpLinesFor, helpTextFor } from "../lib/helpCopies.js";
 
 const PLURAL_FORMS = new Set(["zero", "one", "two", "few", "many", "other"]);
 
@@ -147,5 +147,56 @@ describe("Help button copies", () => {
     const used = new Set(helpTexts(FLAT_EN).flatMap(([, lines]) => lines.flatMap(tokenIds)));
     for (const id of Object.keys(HELP_COPIES)) if (!used.has(id)) problems.push(`${id}: not used in Help`);
     expect(problems).toEqual([]);
+  });
+});
+
+describe("Help text for admins only (« Je l'ai comme… » is admin-only for now)", () => {
+  const helpTexts = (flat) =>
+    Object.entries(flat)
+      .filter(([k]) => /^help\.(sections\.\w+\.lines|faq\.\w+\.a)$/.test(k))
+      .flatMap(([key, lines]) => lines.map((line, i) => [`${key}[${i}]`, line]));
+  const ADMIN_SPAN = /<admin>[\s\S]*?<\/admin>/g;
+  const FEATURE_WORDS = /rcHaveAs|chipHaveAs|rowHaveAs|I have it as|Je l'ai comme|Also counts as|Compte aussi comme/i;
+
+  it("every <admin> has its </admin>, in the same lines in both languages", () => {
+    const problems = [];
+    for (const [flat, other] of [[FLAT_EN, FLAT_FR], [FLAT_FR, FLAT_EN]]) {
+      const otherTexts = Object.fromEntries(helpTexts(other));
+      for (const [where, line] of helpTexts(flat)) {
+        const bare = line.replace(ADMIN_SPAN, "");
+        if (/<\/?admin>/.test(bare)) problems.push(`${where}: an <admin> without its </admin>`);
+        const spans = (line.match(ADMIN_SPAN) || []).length;
+        const otherSpans = (otherTexts[where].match(ADMIN_SPAN) || []).length;
+        if (spans !== otherSpans) problems.push(`${where}: ${spans} admin-only parts here, ${otherSpans} in the other language`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("a tester's Help never names « Je l'ai comme… », its three buttons or Also counts as, in either language", () => {
+    const problems = [];
+    for (const flat of [FLAT_EN, FLAT_FR]) {
+      for (const [where, line] of helpTexts(flat)) {
+        const seen = helpTextFor(line, false);
+        if (FEATURE_WORDS.test(seen) || /<\/?admin>/.test(seen)) problems.push(`${where}: ${seen.slice(0, 80)}`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("an admin's Help has all of it back, with no marker showing", () => {
+    for (const flat of [FLAT_EN, FLAT_FR]) {
+      const all = helpTexts(flat).map(([, line]) => helpTextFor(line, true));
+      expect(all.some((line) => /<\/?admin>/.test(line))).toBe(false);
+      for (const word of ["rcHaveAs", "chipHaveAs", "rowHaveAs"]) expect(all.some((line) => line.includes(`[[${word}]]`))).toBe(true);
+    }
+    expect(helpTextFor(FLAT_EN["help.sections.inventory.lines"].find((l) => l.includes("Also counts as")), true)).toMatch(/^Open an item and/);
+    expect(helpTextFor(FLAT_FR["help.sections.inventory.lines"].find((l) => l.includes("Compte aussi comme")), true)).toMatch(/^Ouvrez un article et/);
+  });
+
+  it("a line that was only admin text is left out for a tester, and the others keep their order", () => {
+    expect(helpLinesFor(["one.", "<admin>two.</admin>", "three.<admin> four.</admin>"], false)).toEqual(["one.", "three."]);
+    expect(helpLinesFor(["one.", "<admin>two.</admin>", "three.<admin> four.</admin>"], true)).toEqual(["one.", "two.", "three. four."]);
+    expect(helpLinesFor(["no markers"], false)).toEqual(["no markers"]);
   });
 });

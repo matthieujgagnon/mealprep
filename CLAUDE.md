@@ -38,7 +38,8 @@ The exceptions, which count as Matt confirming:
 - « Je l'ai comme… » / "I have it as…" (`InventoryLinkPopup.jsx`, `lib/inventoryLinks.js`) is not a way of
   adding: it adds nothing to Inventory, it only links a recipe's name to an item Matt already has
   (the matcher reads the link, nowhere else), so it needs no sheet. « J'en ai » / "I have it" is the
-  one that adds, through the sheet.
+  one that adds, through the sheet. For now it is for the admin account only (`user.isAdmin` on the
+  client, `ADMIN_EMAILS` on the server, the `<admin>` Help text): do not show it to testers.
 
 Do not call `api.addPantryInventoryItem` or `handleAddPantryItem` from anywhere else. A new
 way of adding must call `requestInventoryAdd(drafts)` and only act on the rows it resolves
