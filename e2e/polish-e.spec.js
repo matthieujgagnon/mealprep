@@ -236,18 +236,18 @@ test.describe("The recipes an item is for, in Grocery", () => {
     test("rows keep one height, and Store mode rows too (name and number only)", async ({ page }) => {
       await seed(page);
       await langSwitch(page).getByRole("button", { name: "Français" }).click();
-      await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toHaveText("+2");
+      await expect(rowFor(page, "Oignon").locator(".riso-row-recipes-more")).toHaveText("+2");
       const heights = await page.locator(".riso-group .riso-row").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       expect(new Set(heights).size, heights.join(" ")).toBe(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-      for (const n of ["Onion", "Carrot", "Tomato"]) {
+      for (const n of ["Oignon", "Carotte", "Tomate"]) {
         const nm = rowFor(page, n).locator(".riso-row-name");
         expect(await nm.evaluate((e) => e.scrollWidth <= e.clientWidth + 2), n).toBe(true);
       }
       // The long recipe name is cut off, and a "+2" never is.
-      const names = rowFor(page, "Carrot").locator(".riso-row-recipes-names");
+      const names = rowFor(page, "Carotte").locator(".riso-row-recipes-names");
       expect(await names.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
-      await expect(rowFor(page, "Onion").locator(".riso-row-recipes-more")).toBeVisible();
+      await expect(rowFor(page, "Oignon").locator(".riso-row-recipes-more")).toBeVisible();
 
       await page.getByRole("button", { name: /Je suis à l.épicerie/ }).click();
       const mode = page.getByRole("dialog", { name: "Mode magasin" });
@@ -257,7 +257,7 @@ test.describe("The recipes an item is for, in Grocery", () => {
       const rowHeights = await rows.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       expect(rowHeights.length).toBeGreaterThanOrEqual(4);
       expect(new Set(rowHeights).size, rowHeights.join(" ")).toBe(1);
-      const onionRow = mode.locator(".store-mode-row", { has: page.locator(".store-mode-name", { hasText: /^Onion$/ }) });
+      const onionRow = mode.locator(".store-mode-row", { has: page.locator(".store-mode-name", { hasText: /^Oignon$/ }) });
       expect(await onionRow.locator(".store-mode-name").evaluate((e) => e.scrollWidth <= e.clientWidth + 2)).toBe(true);
       // Only the name and the number: no recipes line, in Store mode.
       await expect(onionRow.locator(".store-mode-recipes")).toHaveCount(0);
