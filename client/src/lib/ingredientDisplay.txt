@@ -1,0 +1,465 @@
+# What an ingredient is called in English and in French (Quebec).
+#
+# The app uses this to SHOW a recipe's ingredient names in the language you picked
+# (FR | EN). It never changes the recipe: the text saved with the recipe stays exactly
+# as it was written, and a name that is not here is shown as written.
+# Code: lib/ingredientDisplay.js. The admin's Ingredient names card lists the names from the recipes
+# that have no line here yet.
+#
+# ---------------------------------------------------------------------------------
+# [ingredients]  one line per ingredient:
+#
+#     English singular | English plural | French singular | French plural | gender
+#
+#   * gender is m or f (masculine, feminine). Add p when the French name is always
+#     plural (« épinards », « pâtes »): mp, fp. It is used to make the describing words
+#     and prep words agree: « oignons rouges », « tomates hachées », « pois surgelés ».
+#   * "=" in a plural column means the plural is the same as the singular.
+#   * "/" gives other spellings that are understood when the name is READ. The first
+#     one is the one that is SHOWN. « coriandre » is shown for cilantro AND coriander.
+#   * Write each form the way it is said in a Quebec kitchen (bleuets, sauce soya,
+#     poudre à pâte, cassonade, yogourt).
+#   * Describing words (fresh, red, boneless, frozen...) are NOT repeated on every line:
+#     "red onion" is "onion" + "red", so « oignon rouge » needs no line. Add a whole line
+#     only when the pair is not just the two parts put together ("green pepper" is a
+#     bell pepper, not a pepper that is green).
+#
+# Every line is checked against the matcher (lib/inventoryMatch.js) by
+# ingredientDisplay.test.js: English and French of a line must be the same food to it.
+# ---------------------------------------------------------------------------------
+
+[ingredients]
+
+# Vegetables
+onion | onions | oignon | oignons | m
+green onion/scallion/spring onion | green onions/scallions/spring onions | oignon vert | oignons verts | m
+shallot | shallots | échalote | échalotes | f
+garlic | = | ail | = | m
+garlic clove | garlic cloves | gousse d'ail | gousses d'ail | f
+head of garlic/garlic bulb | heads of garlic/garlic bulbs | tête d'ail | têtes d'ail | f
+ginger | = | gingembre | = | m
+tomato | tomatoes | tomate | tomates | f
+cherry tomato | cherry tomatoes | tomate cerise | tomates cerises | f
+grape tomato | grape tomatoes | tomate raisin | tomates raisins | f
+Roma tomato | Roma tomatoes | tomate Roma | tomates Roma | f
+diced tomatoes | = | tomates en dés | = | fp
+crushed tomatoes | = | tomates concassées | = | fp
+potato | potatoes | pomme de terre | pommes de terre | f
+sweet potato | sweet potatoes | patate douce | patates douces | f
+carrot | carrots | carotte | carottes | f
+celery | = | céleri | = | m
+celery stalk/stalk of celery | celery stalks/stalks of celery | branche de céleri | branches de céleri | f
+bell pepper/sweet pepper | bell peppers/sweet peppers | poivron | poivrons | m
+red pepper/red bell pepper | red peppers/red bell peppers | poivron rouge | poivrons rouges | m
+green pepper/green bell pepper | green peppers/green bell peppers | poivron vert | poivrons verts | m
+yellow pepper/yellow bell pepper | yellow peppers/yellow bell peppers | poivron jaune | poivrons jaunes | m
+orange pepper/orange bell pepper | orange peppers/orange bell peppers | poivron orange | poivrons orange | m
+jalapeno pepper/jalapeno | jalapeno peppers/jalapenos | piment jalapeño | piments jalapeños | m
+chili pepper/chile pepper/hot pepper | chili peppers/chile peppers/hot peppers | piment fort | piments forts | m
+cucumber | cucumbers | concombre | concombres | m
+zucchini | zucchinis | courgette | courgettes | f
+eggplant/aubergine | eggplants/aubergines | aubergine | aubergines | f
+broccoli | = | brocoli | = | m
+cauliflower | = | chou-fleur | choux-fleurs | m
+cabbage | cabbages | chou | choux | m
+napa cabbage | napa cabbages | chou napa | choux napa | m
+Brussels sprout | Brussels sprouts | chou de Bruxelles | choux de Bruxelles | m
+kale | = | chou frisé | choux frisés | m
+spinach | = | épinards/épinard | = | mp
+lettuce | = | laitue | = | f
+romaine lettuce | = | laitue romaine | = | f
+mixed greens | = | mesclun | = | m
+arugula | = | roquette | = | f
+mushroom | mushrooms | champignon | champignons | m
+portobello mushroom/portobello | portobello mushrooms/portobellos | champignon portobello | champignons portobello | m
+shiitake mushroom | shiitake mushrooms | champignon shiitake | champignons shiitake | m
+corn | = | maïs | = | m
+pea | peas | pois | = | mp
+green pea | green peas | petit pois | petits pois | m
+snow pea | snow peas | pois mange-tout | = | m
+green bean | green beans | haricot vert | haricots verts | m
+asparagus | = | asperges/asperge | = | fp
+beet | beets | betterave | betteraves | f
+radish | radishes | radis | = | m
+turnip | turnips | navet | navets | m
+parsnip | parsnips | panais | = | m
+rutabaga | rutabagas | rutabaga | rutabagas | m
+butternut squash | butternut squashes | courge musquée | courges musquées | f
+squash | squashes | courge | courges | f
+pumpkin | pumpkins | citrouille | citrouilles | f
+leek | leeks | poireau | poireaux | m
+fennel | = | fenouil | = | m
+artichoke | artichokes | artichaut | artichauts | m
+avocado | avocados | avocat | avocats | m
+olive | olives | olive | olives | f
+black olive | black olives | olive noire | olives noires | f
+bok choy | = | bok choy | = | m
+
+# Herbs
+cilantro/coriander | = | coriandre | = | f
+parsley | = | persil | = | m
+flat-leaf parsley | = | persil plat | = | m
+basil | = | basilic | = | m
+mint | = | menthe | = | f
+dill | = | aneth | = | m
+thyme | = | thym | = | m
+rosemary | = | romarin | = | m
+oregano | = | origan | = | m
+sage | = | sauge | = | f
+chives | = | ciboulette | = | f
+tarragon | = | estragon | = | m
+bay leaf | bay leaves | feuille de laurier | feuilles de laurier | f
+lemongrass | = | citronnelle | = | f
+
+# Fruit
+apple | apples | pomme | pommes | f
+banana | bananas | banane | bananes | f
+orange | oranges | orange | oranges | f
+lemon | lemons | citron | citrons | m
+lime | limes | lime | limes | f
+grapefruit | grapefruits | pamplemousse | pamplemousses | m
+strawberry | strawberries | fraise | fraises | f
+blueberry | blueberries | bleuet | bleuets | m
+raspberry | raspberries | framboise | framboises | f
+blackberry | blackberries | mûre | mûres | f
+cranberry | cranberries | canneberge | canneberges | f
+cherry | cherries | cerise | cerises | f
+peach | peaches | pêche | pêches | f
+pear | pears | poire | poires | f
+plum | plums | prune | prunes | f
+grape | grapes | raisin | raisins | m
+raisin | raisins | raisin sec | raisins secs | m
+mango | mangoes/mangos | mangue | mangues | f
+pineapple | pineapples | ananas | = | m
+watermelon | watermelons | melon d'eau | melons d'eau | m
+cantaloupe | cantaloupes | cantaloup | cantaloups | m
+kiwi | kiwis | kiwi | kiwis | m
+pomegranate | pomegranates | grenade | grenades | f
+fig | figs | figue | figues | f
+date | dates | datte | dattes | f
+apricot | apricots | abricot | abricots | m
+coconut | coconuts | noix de coco | = | f
+
+# Meat, poultry and fish
+chicken | chickens | poulet | poulets | m
+chicken breast | chicken breasts | poitrine de poulet | poitrines de poulet | f
+chicken thigh | chicken thighs | haut de cuisse de poulet | hauts de cuisse de poulet | m
+chicken drumstick | chicken drumsticks | pilon de poulet | pilons de poulet | m
+chicken wing | chicken wings | aile de poulet | ailes de poulet | f
+chicken leg | chicken legs | cuisse de poulet | cuisses de poulet | f
+ground chicken | = | poulet haché | = | m
+beef | = | bœuf | = | m
+ground beef | = | bœuf haché | = | m
+steak | steaks | bifteck | biftecks | m
+sirloin steak | sirloin steaks | bifteck de surlonge | biftecks de surlonge | m
+flank steak | flank steaks | bavette | bavettes | f
+pork | = | porc | = | m
+ground pork | = | porc haché | = | m
+pork chop | pork chops | côtelette de porc | côtelettes de porc | f
+pork tenderloin | pork tenderloins | filet de porc | filets de porc | m
+bacon | = | bacon | = | m
+ham | = | jambon | = | m
+sausage | sausages | saucisse | saucisses | f
+Italian sausage | Italian sausages | saucisse italienne | saucisses italiennes | f
+chorizo | = | chorizo | = | m
+prosciutto | = | prosciutto | = | m
+turkey | = | dinde | = | f
+ground turkey | = | dinde hachée | = | f
+lamb | = | agneau | = | m
+ground lamb | = | agneau haché | = | m
+veal | = | veau | = | m
+duck | = | canard | = | m
+salmon | = | saumon | = | m
+salmon fillet | salmon fillets | filet de saumon | filets de saumon | m
+tuna | = | thon | = | m
+shrimp/prawns | = | crevettes/crevette | = | fp
+cod | = | morue | = | f
+haddock | = | aiglefin | = | m
+tilapia | = | tilapia | = | m
+halibut | = | flétan | = | m
+trout | = | truite | = | f
+scallop | scallops | pétoncle | pétoncles | m
+mussel | mussels | moule | moules | f
+lobster | lobsters | homard | homards | m
+crab | crabs | crabe | crabes | m
+anchovy | anchovies | anchois | = | m
+sardine | sardines | sardine | sardines | f
+
+# Dairy and eggs
+milk | = | lait | = | m
+skim milk | = | lait écrémé | = | m
+cream | = | crème | = | f
+heavy cream/whipping cream | = | crème 35 % | = | f
+sour cream | = | crème sure | = | f
+buttermilk | = | babeurre | = | m
+butter | = | beurre | = | m
+margarine | = | margarine | = | f
+cheese | cheeses | fromage | fromages | m
+cheddar | = | cheddar | = | m
+mozzarella | = | mozzarella | = | f
+parmesan | = | parmesan | = | m
+feta | = | feta | = | f
+ricotta | = | ricotta | = | f
+cream cheese | = | fromage à la crème | = | m
+goat cheese | = | fromage de chèvre | = | m
+cottage cheese | = | fromage cottage | = | m
+yogurt | = | yogourt/yaourt | = | m
+Greek yogurt | = | yogourt grec | = | m
+egg | eggs | œuf | œufs | m
+egg yolk | egg yolks | jaune d'œuf | jaunes d'œufs | m
+egg white | egg whites | blanc d'œuf | blancs d'œufs | m
+
+# Oils, vinegars and sauces
+olive oil | = | huile d'olive | = | f
+vegetable oil | = | huile végétale | = | f
+canola oil | = | huile de canola | = | f
+sesame oil | = | huile de sésame | = | f
+coconut oil | = | huile de coco | = | f
+cooking spray | = | enduit à cuisson | = | m
+vinegar | = | vinaigre | = | m
+white vinegar | = | vinaigre blanc | = | m
+rice vinegar | = | vinaigre de riz | = | m
+balsamic vinegar | = | vinaigre balsamique | = | m
+apple cider vinegar | = | vinaigre de cidre de pomme | = | m
+red wine vinegar | = | vinaigre de vin rouge | = | m
+white wine vinegar | = | vinaigre de vin blanc | = | m
+soy sauce | = | sauce soya | = | f
+fish sauce | = | sauce de poisson | = | f
+hoisin sauce | = | sauce hoisin | = | f
+oyster sauce | = | sauce aux huîtres | = | f
+Worcestershire sauce | = | sauce Worcestershire | = | f
+hot sauce | = | sauce piquante | = | f
+sriracha | = | sriracha | = | f
+ketchup | = | ketchup | = | m
+mustard | = | moutarde | = | f
+Dijon mustard | = | moutarde de Dijon | = | f
+mayonnaise | = | mayonnaise | = | f
+tomato paste | = | pâte de tomate | = | f
+tomato sauce | = | sauce tomate | = | f
+chicken broth/chicken stock | = | bouillon de poulet | = | m
+beef broth/beef stock | = | bouillon de bœuf | = | m
+vegetable broth/vegetable stock | = | bouillon de légumes | = | m
+coconut milk | = | lait de coco | = | m
+peanut butter | = | beurre d'arachide | = | m
+honey | = | miel | = | m
+maple syrup | = | sirop d'érable | = | m
+miso paste/miso | = | pâte de miso | = | f
+tahini | = | tahini | = | m
+
+# Baking and dry goods
+flour | = | farine | = | f
+all-purpose flour | = | farine tout usage | = | f
+whole wheat flour | = | farine de blé entier | = | f
+sugar | = | sucre | = | m
+brown sugar | = | cassonade/sucre brun | = | f
+powdered sugar/icing sugar | = | sucre à glacer | = | m
+baking powder | = | poudre à pâte | = | f
+baking soda/bicarbonate of soda | = | bicarbonate de soude | = | m
+cornstarch | = | fécule de maïs | = | f
+yeast | = | levure | = | f
+vanilla extract | = | extrait de vanille | = | m
+cocoa powder | = | poudre de cacao | = | f
+chocolate chip | chocolate chips | pépite de chocolat | pépites de chocolat | f
+dark chocolate | = | chocolat noir | = | m
+rice | = | riz | = | m
+basmati rice | = | riz basmati | = | m
+jasmine rice | = | riz jasmin | = | m
+arborio rice | = | riz arborio | = | m
+pasta | = | pâtes | = | fp
+spaghetti | = | spaghetti | = | m
+noodles | = | nouilles | = | fp
+rice noodles | = | nouilles de riz | = | fp
+couscous | = | couscous | = | m
+quinoa | = | quinoa | = | m
+rolled oats/oats | = | flocons d'avoine | = | mp
+breadcrumbs | = | chapelure | = | f
+puff pastry | = | pâte feuilletée | = | f
+pizza dough | = | pâte à pizza | = | f
+pie crust | pie crusts | pâte à tarte | pâtes à tarte | f
+shredded coconut/desiccated coconut | = | noix de coco râpée | = | f
+lentil | lentils | lentille | lentilles | f
+chickpea | chickpeas | pois chiche | pois chiches | m
+bean | beans | haricot | haricots | m
+black bean | black beans | haricot noir | haricots noirs | m
+kidney bean | kidney beans | haricot rouge | haricots rouges | m
+white bean/cannellini bean | white beans/cannellini beans | haricot blanc | haricots blancs | m
+tofu | = | tofu | = | m
+
+# Nuts and seeds
+almond | almonds | amande | amandes | f
+walnut | walnuts | noix de Grenoble | = | f
+pecan | pecans | pacane | pacanes | f
+cashew | cashews | noix de cajou | = | f
+peanut | peanuts | arachide | arachides | f
+pine nut | pine nuts | pignon | pignons | m
+pistachio | pistachios | pistache | pistaches | f
+hazelnut | hazelnuts | noisette | noisettes | f
+sesame seed | sesame seeds | graine de sésame | graines de sésame | f
+sunflower seed | sunflower seeds | graine de tournesol | graines de tournesol | f
+chia seed | chia seeds | graine de chia | graines de chia | f
+pumpkin seed | pumpkin seeds | graine de citrouille | graines de citrouille | f
+
+# Spices
+salt | = | sel | = | m
+kosher salt | = | sel casher | = | m
+sea salt | = | sel de mer | = | m
+pepper | = | poivre | = | m
+black pepper | = | poivre noir | = | m
+white pepper | = | poivre blanc | = | m
+cayenne pepper/cayenne | = | poivre de Cayenne | = | m
+chili flakes/red pepper flakes/crushed red pepper | = | flocons de piment | = | mp
+cumin | = | cumin | = | m
+ground cumin | = | cumin moulu | = | m
+paprika | = | paprika | = | m
+smoked paprika | = | paprika fumé | = | m
+chili powder | = | poudre de chili | = | f
+curry powder | = | poudre de cari | = | f
+garlic powder | = | poudre d'ail | = | f
+onion powder | = | poudre d'oignon | = | f
+cinnamon | = | cannelle | = | f
+ground cinnamon | = | cannelle moulue | = | f
+cinnamon stick | cinnamon sticks | bâton de cannelle | bâtons de cannelle | m
+nutmeg | = | noix de muscade | = | f
+turmeric | = | curcuma | = | m
+ground ginger | = | gingembre moulu | = | m
+ground coriander | = | coriandre moulue | = | f
+coriander seeds | = | graines de coriandre | = | fp
+Italian seasoning | = | assaisonnement italien | = | m
+allspice | = | piment de la Jamaïque | = | m
+star anise | = | anis étoilé | = | m
+cardamom | = | cardamome | = | f
+saffron | = | safran | = | m
+fennel seeds | = | graines de fenouil | = | fp
+mustard seeds | = | graines de moutarde | = | fp
+vanilla | = | vanille | = | f
+
+# Bread, drinks and juice
+bread | = | pain | = | m
+baguette | baguettes | baguette | baguettes | f
+tortilla | tortillas | tortilla | tortillas | f
+pita | pitas | pita | pitas | m
+water | = | eau | = | f
+white wine | = | vin blanc | = | m
+red wine | = | vin rouge | = | m
+beer | = | bière | = | f
+coffee | = | café | = | m
+tea | = | thé | = | m
+orange juice | = | jus d'orange | = | m
+lemon juice | = | jus de citron | = | m
+lime juice | = | jus de lime | = | m
+lemon zest | = | zeste de citron | = | m
+lime zest | = | zeste de lime | = | m
+orange zest | = | zeste d'orange | = | m
+
+
+# ---------------------------------------------------------------------------------
+# [describing words]  they come before the name in English and (mostly) after it in
+# French, and they agree with the name:
+#
+#     English | French m | French f | French m plural | French f plural | before or after
+#
+#   The last column is where the word goes in French: "before" for the few that go in
+#   front (« gros oignon »), "after" for the rest, and "colour" for colours, which go
+#   straight after the name in French but last in English ("roasted red peppers",
+#   « poivrons rouges rôtis »). When a name has several words, the order of the lines
+#   here is the order they are shown in.
+#   Words that mean different things with different foods are NOT here (ground is
+#   « haché » for a meat and « moulu » for a spice: those are whole lines above).
+# ---------------------------------------------------------------------------------
+
+[describing words]
+red | rouge | rouge | rouges | rouges | colour
+green | vert | verte | verts | vertes | colour
+yellow | jaune | jaune | jaunes | jaunes | colour
+white | blanc | blanche | blancs | blanches | colour
+black | noir | noire | noirs | noires | colour
+brown | brun | brune | bruns | brunes | colour
+purple | violet | violette | violets | violettes | colour
+large | gros | grosse | gros | grosses | before
+small | petit | petite | petits | petites | before
+medium | moyen | moyenne | moyens | moyennes | after
+fresh | frais | fraîche | frais | fraîches | after
+ripe | mûr | mûre | mûrs | mûres | after
+dried | séché | séchée | séchés | séchées | after
+frozen | surgelé | surgelée | surgelés | surgelées | after
+canned | en conserve | en conserve | en conserve | en conserve | after
+smoked | fumé | fumée | fumés | fumées | after
+roasted | rôti | rôtie | rôtis | rôties | after
+raw | cru | crue | crus | crues | after
+cooked | cuit | cuite | cuits | cuites | after
+whole | entier | entière | entiers | entières | after
+boneless | désossé | désossée | désossés | désossées | after
+skinless | sans peau | sans peau | sans peau | sans peau | after
+lean | maigre | maigre | maigres | maigres | after
+light | léger | légère | légers | légères | after
+plain | nature | nature | nature | nature | after
+unsalted | non salé | non salée | non salés | non salées | after
+salted | salé | salée | salés | salées | after
+organic | biologique | biologique | biologiques | biologiques | after
+extra-virgin | extra vierge | extra vierge | extra vierges | extra vierges | after
+
+
+# ---------------------------------------------------------------------------------
+# [prep words]  the words in an ingredient's note ("chopped", "melted"). They agree
+# with the ingredient: « oignons hachés », « ail haché », « tomates hachées »:
+#
+#     English | French m | French f | French m plural | French f plural
+#
+#   A note is translated only when EVERY word of it is in this file; one word that
+#   is not here and the whole note is shown as written, so a note is never half
+#   translated.
+# ---------------------------------------------------------------------------------
+
+[prep words]
+chopped | haché | hachée | hachés | hachées
+minced | haché finement | hachée finement | hachés finement | hachées finement
+diced | coupé en dés | coupée en dés | coupés en dés | coupées en dés
+cubed | coupé en cubes | coupée en cubes | coupés en cubes | coupées en cubes
+sliced | tranché | tranchée | tranchés | tranchées
+halved | coupé en deux | coupée en deux | coupés en deux | coupées en deux
+quartered | coupé en quartiers | coupée en quartiers | coupés en quartiers | coupées en quartiers
+julienned | coupé en julienne | coupée en julienne | coupés en julienne | coupées en julienne
+grated | râpé | râpée | râpés | râpées
+crushed | écrasé | écrasée | écrasés | écrasées
+crumbled | émietté | émiettée | émiettés | émiettées
+peeled | pelé | pelée | pelés | pelées
+seeded | épépiné | épépinée | épépinés | épépinées
+pitted | dénoyauté | dénoyautée | dénoyautés | dénoyautées
+deveined | déveiné | déveinée | déveinés | déveinées
+trimmed | paré | parée | parés | parées
+drained | égoutté | égouttée | égouttés | égouttées
+rinsed | rincé | rincée | rincés | rincées
+thawed | décongelé | décongelée | décongelés | décongelées
+melted | fondu | fondue | fondus | fondues
+softened | ramolli | ramollie | ramollis | ramollies
+beaten | battu | battue | battus | battues
+whisked | fouetté | fouettée | fouettés | fouettées
+toasted | grillé | grillée | grillés | grillées
+ground | moulu | moulue | moulus | moulues
+torn | déchiré | déchirée | déchirés | déchirées
+chilled | refroidi | refroidie | refroidis | refroidies
+warmed | réchauffé | réchauffée | réchauffés | réchauffées
+packed | tassé | tassée | tassés | tassées
+divided | divisé | divisée | divisés | divisées
+optional | facultatif | facultative | facultatifs | facultatives
+
+[prep adverbs]
+# They come before the word in English (« finely chopped ») and after it in French (« haché finement »).
+finely | finement
+thinly | finement
+roughly | grossièrement
+coarsely | grossièrement
+freshly | fraîchement
+lightly | légèrement
+
+[prep phrases]
+# Fixed phrases and small words: the same wherever they are.
+to taste | au goût
+or more to taste | ou plus au goût
+at room temperature | à température ambiante
+room temperature | à température ambiante
+for garnish | pour garnir
+for serving | pour servir
+as needed | au besoin
+and | et
+or | ou
