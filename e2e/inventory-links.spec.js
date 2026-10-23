@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { E2E_INVITE } from "./invite.js";
+import { openHelp } from "./account-menu.js";
+import { itemForm } from "./inventory-form.js";
 
 // « Je l'ai comme… » / "I have it as…" and the matcher's better rules for names it used
 // to miss (lib/inventoryMatch.js, lib/inventoryLinks.js):
@@ -13,7 +17,21 @@ import { E2E_INVITE } from "./invite.js";
 //   - Undo of a teach and a remove, and the planned-meal card's ≈ button and the
 //     Grocery row's link;
 //   - at 390px in French the pop-up, the chip button and the Grocery link fit.
+//   - for now it is for admins only: a tester (an account not in ADMIN_EMAILS) sees none of
+//     those entry points, nor the Help about them, and the server answers 403 to teaching or
+//     removing a link and an empty list to reading them. The admin account here is made in
+//     the database (playwright.config.js lists it), the same way as e2e/admin.spec.js.
 // Set SHOTS_DIR to also save the screenshots of the four pieces there.
+
+const prisma = new PrismaClient();
+const ADMIN = "e2e-links-admin@example.com";
+const PASSWORD = "adminpass123";
+
+// One admin account is shared, so these tests run one after the other, each on a fresh copy of it.
+test.describe.configure({ mode: "serial" });
+test.afterAll(async () => {
+  await prisma.$disconnect();
+});
 
 const TITLE = "Crispy Wonton Chicken Salad";
 const INGREDIENTS = ["boneless skinless chicken breasts", "wonton wrappers", "rice vinegar", "low sodium soy sauce", "tamari", "sesame oil"];
@@ -30,14 +48,24 @@ const nextMonday = () => {
   return mondayOf(x);
 };
 
-async function setup(page, { lang = "en" } = {}) {
+// The signed-in account: the admin by default (a new copy of the account each time, so nothing
+// of an earlier test is left), or `admin: false` for a tester who signs up like anyone else.
+async function setup(page, { lang = "en", admin = true } = {}) {
   const words = lang === "fr" ? { signUp: "S'inscrire", create: "Créer un compte", home: "Accueil" } : { signUp: "Sign up", create: "Create account", home: "Home" };
   await page.goto("/");
-  await page.getByRole("button", { name: words.signUp }).click();
-  await page.fill('input[type="email"]', `links+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
-  await page.fill('input[type="password"]', "testpass123");
-  await page.fill('input[name="invite"]', E2E_INVITE);
-  await page.getByRole("button", { name: words.create }).click();
+  if (admin) {
+    await prisma.user.deleteMany({ where: { email: ADMIN } });
+    await prisma.user.create({ data: { email: ADMIN, passwordHash: await bcrypt.hash(PASSWORD, 10), locale: lang } });
+    await page.fill('input[type="email"]', ADMIN);
+    await page.fill('input[type="password"]', PASSWORD);
+    await page.locator('input[type="password"]').press("Enter");
+  } else {
+    await page.getByRole("button", { name: words.signUp }).click();
+    await page.fill('input[type="email"]', `links+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`);
+    await page.fill('input[type="password"]', "testpass123");
+    await page.fill('input[name="invite"]', E2E_INVITE);
+    await page.getByRole("button", { name: words.create }).click();
+  }
   await expect(page.locator(".tab.active")).toHaveText(words.home);
   const recipe = await (
     await page.request.post("/api/recipes", {
@@ -233,6 +261,22 @@ test.describe("on a computer, in English", () => {
   });
 });
 
+test.describe("the admin's Help", () => {
+  test.use({ viewport: { width: 1280, height: 1000 } });
+
+  test("names « I have it as… » on the recipe card, the Planner, Grocery and Inventory", async ({ page }) => {
+    await setup(page);
+    await openHelp(page);
+    const help = page.locator(".riso-help");
+    await expect(help).toContainText("press I have it as… on the row");
+    await expect(help.locator("#help-recipeCard")).toContainText("Remove takes the link away");
+    await expect(help.locator("#help-planner")).toContainText("is I have it as… from the recipe card");
+    await expect(help.locator("#help-grocery")).toContainText("A row that comes from recipes has a small link");
+    await expect(help.locator("#help-inventory")).toContainText("Also counts as lists the recipe names you taught it");
+    expect(await help.locator(".riso-help-copy-body", { hasText: "I have it as…" }).count()).toBeGreaterThanOrEqual(2);
+  });
+});
+
 test.describe("on a phone, in French", () => {
   test.use({ locale: "fr-CA", viewport: { width: 390, height: 844 } });
 
@@ -298,5 +342,103 @@ test.describe("on the narrowest screen that has the planned-meal card's chips, i
     await expect(planned.locator(".ing-marks-haveas").first()).toHaveAttribute("aria-label", /: je l'ai comme/);
     await noSidewaysScroll(page, planned);
     await save(page, planned, "narrow-fr-2-chip-button");
+  });
+});
+
+// For now « Je l'ai comme… » is for admins only (HQ task jlc2). A tester is any account that is not
+// in ADMIN_EMAILS: signed up like anyone else.
+const TAMARI_LINK = { id: "link-1", recipeName: "tamari", itemName: "soy sauce", recipeLabel: "Tamari", itemLabel: "Soy sauce" };
+
+// Even if the server did hand a tester a link, the app offers nothing about it. (The matcher
+// reads whatever links it is given, so Tamari is blue here; only the entry points are gone.)
+async function serverHandsOverALink(page) {
+  await page.route("**/api/inventory-links", (route) => (route.request().method() === "GET" ? route.fulfill({ json: [TAMARI_LINK] }) : route.continue()));
+}
+
+test.describe("a tester, on a computer, in English", () => {
+  test.use({ viewport: { width: 1280, height: 1000 } });
+
+  test("sees none of the entry points: the recipe card, the Planner chip, the Grocery row and the item pop-up", async ({ page }) => {
+    await serverHandsOverALink(page);
+    await setup(page, { admin: false });
+
+    // Recipe card: "I have it" stays, "I have it as…" is gone, and a blue row doesn't say "Counts because you said…".
+    const card = await openCard(page);
+    await expect(buyRow(card, "Wonton wrappers")).toHaveCount(1);
+    await expect(haveRow(card, "Tamari")).toHaveCount(1);
+    await buyRow(card, "Wonton wrappers").locator(".riso-rc-buy-main").click();
+    const drawer = buyRow(card, "Wonton wrappers").locator(".riso-rc-drawer");
+    await expect(drawer.getByRole("button", { name: "I have it", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("button", { name: L.en.haveAs })).toHaveCount(0);
+    await haveRow(card, "Tamari").locator(".riso-rc-have-line").click();
+    await expect(haveRow(card, "Tamari").locator(".riso-rc-drawer")).toBeVisible();
+    await expect(haveRow(card, "Tamari").locator(".riso-rc-because")).toHaveCount(0);
+    await expect(card).not.toContainText("Counts because you said");
+    await page.keyboard.press("Escape");
+
+    // Grocery: the row for what is still to buy has no link.
+    await tab(page, L.en.grocery).click();
+    await page.getByRole("button", { name: L.en.gotIt }).click();
+    await expect(page.locator(".riso-row-name")).toHaveText(["Wonton wrapper"]);
+    await expect(page.locator(".riso-row-haveas")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /I have it as/ })).toHaveCount(0);
+
+    // Planner: the planned meal's To-buy chip has no ≈ button.
+    const recipeId = (await (await page.request.get("/api/recipes")).json())[0].id;
+    const day = Math.min((new Date().getDay() + 6) % 7, 4);
+    await page.request.post("/api/planner", { data: { recipeId, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+    await page.reload();
+    await tab(page, L.en.planner).click();
+    await page.locator(".riso-planner-cell").nth(2 * 7 + day).locator(".riso-planner-card").click();
+    const planned = page.getByRole("dialog", { name: TITLE });
+    await expect(planned.locator(".ing-marks-buy", { hasText: "Wonton wrappers" })).toHaveCount(1);
+    await expect(planned.locator(".ing-marks-haveas")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    // Inventory: the item pop-up of the item the link points to has no "Also counts as".
+    await tab(page, L.en.inventory).click();
+    await page.getByText("Soy sauce", { exact: true }).first().click();
+    const form = itemForm(page);
+    await expect(form.getByLabel("Item name")).toHaveValue("Soy sauce");
+    await expect(form.locator(".riso-itemform-also")).toHaveCount(0);
+    await expect(form).not.toContainText(L.en.alsoCounts);
+  });
+
+  test("gets 403 when it teaches or removes a link, and an empty list when it reads them", async ({ page }) => {
+    await setup(page, { admin: false });
+    expect((await page.request.post("/api/inventory-links", { data: { recipeName: "Tamari", itemName: "Soy sauce" } })).status()).toBe(403);
+    expect((await page.request.delete("/api/inventory-links/anything")).status()).toBe(403);
+    expect(await links(page)).toEqual([]);
+    // Nothing came of it: the card still lists Tamari to buy and offers no "I have it as…".
+    const card = await openCard(page);
+    await expect(buyRow(card, "Tamari")).toHaveCount(1);
+    await buyRow(card, "Tamari").locator(".riso-rc-buy-main").click();
+    await expect(buyRow(card, "Tamari").locator(".riso-rc-drawer").getByRole("button", { name: L.en.haveAs })).toHaveCount(0);
+  });
+
+  test("Help doesn't mention « I have it as… », but still explains I have it", async ({ page }) => {
+    await setup(page, { admin: false });
+    await openHelp(page);
+    const help = page.locator(".riso-help");
+    await expect(help.locator("#help-recipeCard")).toContainText("Saying you have it");
+    await expect(help.locator("#help-recipeCard")).toContainText("nothing is added until you confirm");
+    await expect(help.locator("#help-inventory")).toContainText("I have it on a recipe card");
+    await expect(help).not.toContainText(/I have it as|Also counts as|Remove takes the link away/);
+    await expect(help.locator(".riso-help-copy-body", { hasText: "I have it as…" })).toHaveCount(0);
+    await expect(help.locator(".ing-marks-haveas, .riso-row-haveas")).toHaveCount(0);
+  });
+});
+
+test.describe("a tester, in French", () => {
+  test.use({ locale: "fr-CA", viewport: { width: 1280, height: 1000 } });
+
+  test("Help doesn't mention « Je l'ai comme… », but still explains « J'en ai »", async ({ page }) => {
+    await setup(page, { lang: "fr", admin: false });
+    await openHelp(page, "Aide");
+    const help = page.locator(".riso-help");
+    await expect(help.locator("#help-recipeCard")).toContainText("rien n'est ajouté avant que vous confirmiez");
+    await expect(help.locator("#help-inventory")).toContainText("« J'en ai » sur la fiche d'une recette");
+    await expect(help).not.toContainText(/Je l'ai comme|Compte aussi comme/);
+    await expect(help.locator(".riso-help-copy-body", { hasText: /Je l'ai comme/ })).toHaveCount(0);
   });
 });

@@ -6,8 +6,10 @@ import { inventoryLinksRouter } from "../routes/inventoryLinks.js";
 
 // /api/inventory-links against the real database: only your own links are seen
 // and removed, saving the same pair twice is one link, bad names and too many are
-// refused, and the links go with their account. Skipped when no database is
-// reachable (or the table is not there yet).
+// refused, and the links go with their account. For now only an admin (ADMIN_EMAILS,
+// lib/admin.js) can teach or remove one: anyone else gets 403 on POST and DELETE and
+// an empty list on GET. Skipped when no database is reachable (or the table is not
+// there yet).
 let dbUp = true;
 try {
   await prisma.$queryRaw`SELECT 1`;
@@ -22,6 +24,8 @@ describe.skipIf(!dbUp)("/api/inventory-links (database)", () => {
   let base;
   let me;
   let other;
+  let tester; // not in ADMIN_EMAILS
+  let savedAdminEmails;
   let signedIn; // whose request it is, set per call
 
   async function call(path, { as = me, method = "GET", body, lang } = {}) {
@@ -37,8 +41,12 @@ describe.skipIf(!dbUp)("/api/inventory-links (database)", () => {
   const list = (options) => call("/api/inventory-links", options);
 
   beforeAll(async () => {
+    // `me` and `other` are admins; `tester` is not.
+    savedAdminEmails = process.env.ADMIN_EMAILS;
+    process.env.ADMIN_EMAILS = `links-me-${stamp}@example.com, links-other-${stamp}@example.com`;
     me = (await prisma.user.create({ data: { email: `links-me-${stamp}@example.com`, passwordHash: "x" } })).id;
     other = (await prisma.user.create({ data: { email: `links-other-${stamp}@example.com`, passwordHash: "x" } })).id;
+    tester = (await prisma.user.create({ data: { email: `links-tester-${stamp}@example.com`, passwordHash: "x" } })).id;
     const app = express();
     app.use(express.json());
     app.use(
@@ -56,7 +64,9 @@ describe.skipIf(!dbUp)("/api/inventory-links (database)", () => {
   });
 
   afterAll(async () => {
-    await prisma.user.deleteMany({ where: { id: { in: [me, other] } } });
+    if (savedAdminEmails === undefined) delete process.env.ADMIN_EMAILS;
+    else process.env.ADMIN_EMAILS = savedAdminEmails;
+    await prisma.user.deleteMany({ where: { id: { in: [me, other, tester] } } });
     await new Promise((resolve) => server?.close(resolve));
   });
 
@@ -92,6 +102,36 @@ describe.skipIf(!dbUp)("/api/inventory-links (database)", () => {
     expect(same).toMatchObject({ status: 400, data: { code: "linkSame", error: "Those two names are already the same." } });
     expect((await post({ recipeName: "Crème sure", itemName: "creme sure" }, { lang: "fr" })).data.error).toBe("Ces deux noms sont déjà les mêmes.");
     expect((await post({ recipeName: "a".repeat(500), itemName: "Rice" })).status).toBe(400);
+  });
+
+  it("keeps it to admins: a tester gets 403 on POST and DELETE, and an empty list on GET", async () => {
+    // A link the tester somehow has (made while it was open to everyone, or by hand) is not listed or removable.
+    const theirs = await prisma.inventoryLink.create({
+      data: { userId: tester, recipeName: "tamari", itemName: "soy sauce", recipeLabel: "Tamari", itemLabel: "Soy sauce" },
+    });
+    const myLinks = (await list()).data.length;
+    expect(myLinks).toBeGreaterThan(0);
+
+    expect(await list({ as: tester })).toMatchObject({ status: 200, data: [] });
+
+    const taught = await post({ recipeName: "Rice vinegar", itemName: "Rice wine vinegar" }, { as: tester, lang: "en" });
+    expect(taught).toMatchObject({ status: 403, data: { code: "adminOnly" } });
+    // The 403 comes before any other answer: a bad body is still a 403, not a 400.
+    expect((await post({ recipeName: "", itemName: "" }, { as: tester })).status).toBe(403);
+    expect((await call(`/api/inventory-links/${theirs.id}`, { method: "DELETE", as: tester })).status).toBe(403);
+    // Nobody else's id is any different for them.
+    const mine = (await list()).data[0];
+    expect((await call(`/api/inventory-links/${mine.id}`, { method: "DELETE", as: tester })).status).toBe(403);
+
+    // Nothing was added or removed by any of that.
+    expect(await prisma.inventoryLink.count({ where: { userId: tester } })).toBe(1);
+    expect((await list()).data).toHaveLength(myLinks);
+
+    // An admin is unchanged: teaches and removes as before.
+    const taughtByAdmin = await post({ recipeName: "Tamari", itemName: "Soy sauce" });
+    expect(taughtByAdmin.status).toBe(201);
+    expect((await call(`/api/inventory-links/${taughtByAdmin.data.id}`, { method: "DELETE" })).status).toBe(204);
+    await prisma.inventoryLink.delete({ where: { id: theirs.id } });
   });
 
   it("shows you only your own links, and removes only your own", async () => {

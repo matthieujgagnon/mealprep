@@ -7,6 +7,15 @@
 
 export const COPY_TOKEN = /\[\[(\w+)\]\]/g;
 
+// Help text for admins only. A line, or part of one, written between <admin> and
+// </admin> is shown to an admin (`user.isAdmin`) and left out for everyone else: « Je
+// l'ai comme… » is admin-only for now, so testers' Help doesn't mention it. A line that
+// is nothing but such a part comes back as "" for a tester, and Help.jsx drops it. Lines
+// keep their place in the list, so English and French still line up one for one.
+const ADMIN_ONLY = /<admin>([\s\S]*?)<\/admin>/g;
+export const helpTextFor = (text, isAdmin) => String(text).replace(ADMIN_ONLY, isAdmin ? "$1" : "");
+export const helpLinesFor = (lines, isAdmin) => lines.map((line) => helpTextFor(line, isAdmin)).filter(Boolean);
+
 // Kinds:
 //   pill    one labelled control, drawn with `cls` (the app's own classes)
 //   icon    a glyph-only control; hidden from screen readers because the
