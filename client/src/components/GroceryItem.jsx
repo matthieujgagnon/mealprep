@@ -62,7 +62,7 @@ function QuantityInput({ item, onSave }) {
       className={`riso-row-qty${draft.length > 3 ? " long" : ""}`}
       inputMode="decimal"
       autoComplete="off"
-      aria-label={t("grocery.quantityOf", { name: item.name })}
+      aria-label={t("grocery.quantityOf", { name: item.label })}
       title={t("grocery.setOwnAmount")}
       value={draft}
       onClick={(e) => e.stopPropagation()}
@@ -122,7 +122,7 @@ export function GroceryItem({
     if (from !== step) playRow(rootRef.current, from, step, { store });
   }, [step, store]);
   const mark = isQueued ? "+" : checked ? "✓" : "";
-  const label = item.name + (item.varieties?.length > 0 ? ` (${item.varieties.join(", ")})` : "");
+  const label = item.label + (item.varieties?.length > 0 ? ` (${item.varieties.join(", ")})` : "");
   // Names always start with a capital ("lemons" -> "Lemons").
   const shownName = capitalizeFirst(label);
   const hasRecipes = (item.usedIn || []).length > 0;
@@ -243,7 +243,7 @@ export function GroceryItem({
         ? {
             role: "button",
             tabIndex: 0,
-            "aria-label": t("grocery.openDeal", { name: item.name }),
+            "aria-label": t("grocery.openDeal", { name: item.label }),
             onClick: () => onOpenDeal(flyerDeal),
             onKeyDown: (e) => {
               if (e.target !== e.currentTarget) return;
@@ -261,7 +261,7 @@ export function GroceryItem({
         className="riso-row-check-hit"
         role="checkbox"
         aria-checked={checked}
-        aria-label={t("grocery.checkOff", { name: item.name })}
+        aria-label={t("grocery.checkOff", { name: item.label })}
         title={t(STEP_TIPS[step])}
         onClick={(e) => {
           e.stopPropagation();
@@ -297,7 +297,7 @@ export function GroceryItem({
           <button
             type="button"
             className="riso-row-delete"
-            aria-label={t("grocery.removeAria", { name: item.name })}
+            aria-label={t("grocery.removeAria", { name: item.label })}
             title={item.isManual ? t("grocery.deleteItem") : t("grocery.removeFromList")}
             onClick={(e) => {
               e.stopPropagation();

@@ -24,6 +24,7 @@ import { LanguageSwitch } from "./components/RisoControls.jsx";
 import { currentWeekStart, isPastDay, shiftWeek, toDateKey } from "./lib/dates.js";
 import { preparedMatches } from "./lib/preparedRecipes.js";
 import { buildGroceryList, capitalize } from "./lib/groceryList.js";
+import { ingredientName } from "./lib/ingredientDisplay.js";
 import { coresOnGroceryList, groceryCore, newGroceryItemCount, removedRecipeRows } from "./lib/groceryDedupe.js";
 import { Help } from "./components/Help.jsx";
 import { Admin } from "./components/Admin.jsx";
@@ -549,7 +550,8 @@ export default function App({ user, onLogout }) {
     }
     await removeFromGroceryList(name);
     onChanged?.();
-    showToast(t("grocery.takenOff", { name }), async () => {
+    // The name is a recipe's ingredient (or a flyer's product): said in the language shown.
+    showToast(t("grocery.takenOff", { name: ingredientName(name) }), async () => {
       await latestGrocery.current.addToGroceryList([name], { dealId });
       onChanged?.();
     });

@@ -17936,6 +17936,38 @@ body.no-select {
   margin-right: 8px;
 }
 
+/* Ingredient names: one name a row with how many recipes use it. */
+.riso-admin-namelist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.riso-admin-namelist li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  min-width: 0;
+}
+
+.riso-admin-namelist li + li {
+  border-top: 1px dashed var(--riso-dash-strong);
+}
+
+.riso-admin-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.riso-admin-name-uses {
+  flex: none;
+  font-size: 13px;
+  color: var(--riso-muted);
+}
+
 .riso-admin-status {
   margin: 4px 0 0;
   display: flex;
@@ -25230,10 +25262,19 @@ body.no-select {
   white-space: nowrap;
 }
 
+/* A long name wraps to a second line before it is cut (French names are longer: « oignons
+   rouges », « coriandre fraîche »); the pill keeps its height, two lines fit in it. */
 .mkc-pill-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .mkc-emoji {

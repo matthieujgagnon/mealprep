@@ -5,6 +5,7 @@ import { SaleTag } from "./SaleTag.jsx";
 import { formatClock, stepBody, stepImage, stepIngredients, stepTitle, scaleStepText, stepHeadingText } from "../lib/steps.js";
 import { amountText, nextCurrent, stepState, timerPill, stepSeconds } from "../lib/recipeCard.js";
 import { lineNeed } from "../lib/inventoryMatch.js";
+import { useIngredientNames } from "../lib/ingredientDisplay.js";
 import { captionTime, cardCaption } from "../lib/photoCard.js";
 import { isHiddenFromMakeable, isPreparedRecipe, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { formatExpiry, LOCATIONS } from "../lib/pantryInventory.js";
@@ -223,9 +224,10 @@ function RowDrawer({ row, kind, servings, onList, onToggleList, onHaveIt, onHave
   );
 }
 
-// The muted words after a name: the prep notes ("minced").
+// The muted words after a name: the prep notes ("minced"), in the language shown.
 function RowNotes({ row }) {
-  return row.notes.length ? <span className="riso-rc-row-note"> {row.notes.join(", ")}</span> : null;
+  const names = useIngredientNames();
+  return row.notes.length ? <span className="riso-rc-row-note"> {row.notes.map((note) => names.note(note, row.name)).join(", ")}</span> : null;
 }
 
 // One thing to buy: the round mark (green ✓ on your grocery list, white + not;
@@ -234,6 +236,7 @@ function RowNotes({ row }) {
 // you're short of; the recipe's group when it has groups) and on the right the real
 // sale tag (it opens the deal card), or the price once Meal pricing ships.
 function BuyRow({ row, open, onOpen, onList, store, deal, dealOthers, pricesOn, onToggleList, drawer }) {
+  const shown = useIngredientNames().name(row.name);
   const meta = [
     row.short ? t("recipeCard.amountMore", { amount: row.amount }) : row.amount,
     store,
@@ -247,7 +250,7 @@ function BuyRow({ row, open, onOpen, onList, store, deal, dealOthers, pricesOn, 
           type="button"
           className={`riso-rc-mark${onList ? " onlist" : ""}`}
           aria-pressed={onList}
-          aria-label={onList ? t("finder.takeOffListAria", { name: row.name }) : t("makeable.addToList", { name: row.name })}
+          aria-label={onList ? t("finder.takeOffListAria", { name: shown }) : t("makeable.addToList", { name: shown })}
           title={onList ? t("finder.onListTitle") : t("makeable.addToListTitle")}
           onClick={onToggleList}
         >
@@ -255,7 +258,7 @@ function BuyRow({ row, open, onOpen, onList, store, deal, dealOthers, pricesOn, 
         </button>
         <button type="button" className="riso-rc-buy-main" aria-expanded={open} onClick={onOpen}>
           <span className="riso-rc-buy-name">
-            {row.name}
+            {shown}
             <RowNotes row={row} />
           </span>
           {meta.length > 0 && <span className="riso-rc-buy-meta">{meta.join(" · ")}</span>}
@@ -272,11 +275,12 @@ function BuyRow({ row, open, onOpen, onList, store, deal, dealOthers, pricesOn, 
 // One thing from your Inventory: the name (and "Use soon!" when it goes off within
 // 3 days and no other planned meal uses it), the amount this recipe uses.
 function HaveRow({ row, open, onOpen, pricesOn, drawer }) {
+  const shown = useIngredientNames().name(row.name);
   return (
     <li className={`riso-rc-have${open ? " open" : ""}`}>
       <button type="button" className="riso-rc-have-line" aria-expanded={open} onClick={onOpen}>
         <span className="riso-rc-have-name">
-          {row.name}
+          {shown}
           <RowNotes row={row} />
           {row.soon && <span className="riso-rc-use-soon">{t("recipeCard.useSoon")}</span>}
         </span>
@@ -470,9 +474,10 @@ export function TimerPill({ timerKey, seconds, stepTimers }) {
 // "USES · 900 G CHICKEN THIGHS · 1 CUP PLAIN YOGURT": what the current step uses, by
 // the same matching as Cook mode's "For this step" (stepIngredients), scaled.
 function StepUses({ step, ingredients, scale }) {
+  const names = useIngredientNames();
   const items = stepIngredients(step, ingredients);
   if (items.length === 0) return null;
-  const words = items.map((ing) => [amountText(lineNeed([ing], scale)), ing.name].filter(Boolean).join(" "));
+  const words = items.map((ing) => [amountText(lineNeed([ing], scale)), names.name(ing.name)].filter(Boolean).join(" "));
   return <p className="riso-rc-step-uses">{t("recipeCard.uses", { items: words.join(" · ") })}</p>;
 }
 
@@ -603,6 +608,7 @@ export function SimilarStrip({ tiles, onOpen }) {
 // every recipe that shares its ingredients (the Recipes page's card). Tapping a
 // card opens that recipe.
 export function SimilarView({ recipe, chips, leftOut, onToggleChip, tiles, onOpen, onBack, onClose, phone }) {
+  const names = useIngredientNames();
   const off = new Set(leftOut);
   const banner = (
     <div className="riso-rc-sim-banner">
@@ -611,7 +617,7 @@ export function SimilarView({ recipe, chips, leftOut, onToggleChip, tiles, onOpe
         <div className="riso-rc-sim-chips">
           {chips.map((chip) => (
             <button key={chip.core} type="button" className={`riso-rc-sim-chip${off.has(chip.core) ? " off" : ""}`} aria-pressed={!off.has(chip.core)} onClick={() => onToggleChip(chip.core)}>
-              {chip.name}
+              {names.name(chip.name)}
             </button>
           ))}
         </div>

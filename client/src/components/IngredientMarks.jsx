@@ -1,5 +1,6 @@
 import { InStockPill, SalePill } from "./RisoPills.jsx";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
+import { useIngredientNames } from "../lib/ingredientDisplay.js";
 import { t } from "../i18n/index.js";
 
 // The ingredient marks for the Planner's planned-meal card (so it agrees with the
@@ -15,6 +16,8 @@ import { t } from "../i18n/index.js";
 // another name; it links the two names and adds nothing to Inventory).
 export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Section = "section", headingTag: H = "h3" }) {
   const links = useInventoryLinks();
+  // What is drawn is in the language shown; the list, the sale lookup and the link keep the recipe's own name.
+  const shown = useIngredientNames().name;
   return (
     <>
       {have.length > 0 && (
@@ -23,7 +26,7 @@ export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Sec
           <div className="ing-marks-pills ing-marks-have">
             {have.map((item) => (
               <InStockPill key={item.key} title={t("finder.haveTitle")}>
-                {item.name}
+                {shown(item.name)}
               </InStockPill>
             ))}
           </div>
@@ -43,23 +46,23 @@ export function IngredientMarks({ have, buy, isOnList, onToggleList, saleOf, Sec
                     type="button"
                     className={`riso-pill size-chip tone-yellow has-mark ing-marks-buy-pill${listed ? " listed" : ""}`}
                     aria-pressed={listed}
-                    aria-label={listed ? t("finder.takeOffListAria", { name: item.name }) : t("makeable.addToList", { name: item.name })}
+                    aria-label={listed ? t("finder.takeOffListAria", { name: shown(item.name) }) : t("makeable.addToList", { name: shown(item.name) })}
                     title={listed ? t("finder.onListTitle") : t("makeable.addToListTitle")}
                     onClick={() => onToggleList(item.name)}
                   >
                     <span className="riso-pill-mark" aria-hidden="true">
                       {listed ? "✓" : "+"}
                     </span>
-                    {item.name}
+                    {shown(item.name)}
                   </button>
                   {sale && <SalePill size="tag" percent={sale.percent} store={sale.store} price={sale.price} />}
                   {links && (
                     <button
                       type="button"
                       className="ing-marks-haveas"
-                      aria-label={t("links.haveAsAria", { name: item.name })}
+                      aria-label={t("links.haveAsAria", { name: shown(item.name) })}
                       title={t("links.chipTitle")}
-                      onClick={() => links.ask([item.name], { label: item.name })}
+                      onClick={() => links.ask([item.name], { label: shown(item.name) })}
                     >
                       <span aria-hidden="true">≈</span>
                     </button>

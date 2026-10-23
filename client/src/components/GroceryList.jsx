@@ -679,7 +679,7 @@ export function GroceryList({
   // chip, the cart's count and the footer's pulse (hooks/useCheckFeedback.js).
   const feedback = useCheckFeedback({
     onToast,
-    nameOf: (key) => capitalize(latest.current.shoppingItems.find((i) => i.key === key)?.name ?? ""),
+    nameOf: (key) => capitalize(latest.current.shoppingItems.find((i) => i.key === key)?.label ?? ""),
     isChecked: (key) => !!latest.current.checked[key],
   });
 
@@ -724,6 +724,9 @@ export function GroceryList({
   // number that counts things).
   function inventoryDraft(item) {
     const { quantity, unit } = inventoryAmount(item);
+    // The name that goes to Inventory is the recipe's own (or the typed one), not the one shown: the
+    // matcher reads some French spellings less well than the English (« banane »), so a bought item
+    // must not depend on the language of the screen.
     return { ref: item.key, name: item.name, quantity, unit };
   }
 
@@ -780,7 +783,7 @@ export function GroceryList({
       for (const { item } of open) {
         // How many to buy, and what the recipes need with its unit.
         const need = item.isManual ? "" : recipeAmountLabel(item);
-        lines.push(`- ${item.name} × ${displayQuantity(item)}${need ? ` (${need})` : ""}`);
+        lines.push(`- ${item.label} × ${displayQuantity(item)}${need ? ` (${need})` : ""}`);
       }
     }
     return lines.join("\n");
@@ -990,7 +993,7 @@ export function GroceryList({
     const names = item.ingredientNames || [];
     if (item.fromPrepared) return undefined; // a prepared recipe's row has no recipe names to teach: add the prepared meal instead
     if (!names.some((name) => ingredientHave(name, kitchen) === "need")) return undefined;
-    return () => links.ask(names, { label: capitalize(item.name) });
+    return () => links.ask(names, { label: capitalize(item.label) });
   }
 
   // One row of a group, the same in every view (only By store's rows drag).
@@ -1113,7 +1116,7 @@ export function GroceryList({
               </ReorderList>
               <AddStoreForm onAdd={addStore} />
               <DragOverlay dropAnimation={null}>
-                {draggingItem && <div className="riso-grocery-drag-chip">{draggingItem.name}</div>}
+                {draggingItem && <div className="riso-grocery-drag-chip">{draggingItem.label}</div>}
               </DragOverlay>
             </DndContext>
           ) : (
@@ -1135,8 +1138,8 @@ export function GroceryList({
             label={t("grocery.removedLabel")}
             items={removedItems.map((item) => ({
               key: item.key,
-              name: item.name,
-              ariaLabel: t("grocery.putBackAria", { name: item.name }),
+              name: item.label,
+              ariaLabel: t("grocery.putBackAria", { name: item.label }),
               onPutBack: () => setOverride(item.key, { removed: false }),
             }))}
             onClear={clearRemoved}
@@ -1152,11 +1155,12 @@ export function GroceryList({
             onToggle={() => setAtHomeOpen((open) => !open)}
             items={atHome.map(({ item, by }) => ({
               key: item.key,
-              name: item.name,
-              // Which Inventory item covers it, when it is named differently ("Poulet" for chicken).
-              meta: by && by.name.toLowerCase() !== item.name.toLowerCase() ? by.name : t("grocery.atHomeInInventory"),
+              name: item.label,
+              // Which Inventory item covers it, when it is named differently ("Poulet" for chicken); its
+              // name is what was typed.
+              meta: by && by.name.toLowerCase() !== item.label.toLowerCase() ? by.name : t("grocery.atHomeInInventory"),
               putBackLabel: t("grocery.putBackOnList"),
-              ariaLabel: t("grocery.putBackAria", { name: item.name }),
+              ariaLabel: t("grocery.putBackAria", { name: item.label }),
               onPutBack: () => setOverride(item.key, { keep: true }),
             }))}
           />
@@ -1183,7 +1187,7 @@ export function GroceryList({
                           <span className="riso-grocery-sale-photo">
                             <DealPhoto deal={deal} size={44} />
                           </span>
-                          <span className="riso-grocery-sale-name">{item.name}</span>
+                          <span className="riso-grocery-sale-name">{item.label}</span>
                           <span className="riso-grocery-sale-price">{localizePrice(deal.price)}</span>
                           <span className="riso-grocery-sale-meta">
                             {saving?.pct != null

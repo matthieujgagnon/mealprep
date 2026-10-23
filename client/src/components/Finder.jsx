@@ -26,6 +26,7 @@ import { RecipePhoto } from "./RecipePhoto.jsx";
 import { mealTitle, plannableMeals } from "../lib/leftovers.js";
 import { isPreparedMeal } from "../lib/mealItem.js";
 import { daysUntil } from "../lib/pantryInventory.js";
+import { useIngredientNames } from "../lib/ingredientDisplay.js";
 import { formatList } from "../i18n/format.js";
 import { t } from "../i18n/index.js";
 
@@ -175,6 +176,7 @@ function LeftoverResultCard({ entry, draggable, onAdd }) {
 // and, on the Planner, "Place leftovers". On the Makeable page (`page`) a ✕ in the
 // corner closes it and there is no Cancel.
 function MainMealBanner({ bannerRef, recipe, groups, off, onToggle, onView, onCancel, leftovers, page }) {
+  const ingredientNames = useIngredientNames();
   return (
     <section ref={bannerRef} className="fnd-main" aria-label={t("finder.mainMeal")}>
       {page && (
@@ -206,7 +208,7 @@ function MainMealBanner({ bannerRef, recipe, groups, off, onToggle, onView, onCa
                       <span className="fnd-ing-mark" aria-hidden="true">
                         {on ? "✓" : ""}
                       </span>
-                      {item.name}
+                      {ingredientNames.name(item.name)}
                     </button>
                   );
                 })}
@@ -279,6 +281,8 @@ export function Finder({
   const menusRef = useRef(null);
 
   const { ranked, nameOf } = useMemo(() => rankRecipesForTray({ recipes, upcomingEntries, kitchen }), [recipes, upcomingEntries, kitchen]);
+  // A recipe's ingredient is shown in the language shown; a Cook with pick is an Inventory item, as typed.
+  const ingredientNames = useIngredientNames();
   const expiring = useMemo(() => expiringItems(pantryInventory), [pantryInventory]);
   const shelves = useMemo(
     () => shelvesWithItems(pantryInventory, orderedSections(pantryLocations, inventoryLayout)),
@@ -343,7 +347,7 @@ export function Finder({
   // it uses of the Cook with picks.
   function reasonFor(tile) {
     if (mainRecipe) {
-      const { names, count } = sharedWords(tile.shared, nameOf);
+      const { names, count } = sharedWords(tile.shared, (core) => ingredientNames.name(nameOf(core)));
       if (count === 0) return null;
       return names.length > 0
         ? t("finder.sharesNames", { names: formatList(names.map(lowerFirst)) })
@@ -351,7 +355,7 @@ export function Finder({
     }
     if (finder.picks.length > 0 && tile.picked.length > 0) {
       const pickNames = new Map(finder.picks.map((p) => [p.key, p.name]));
-      return t("tray.uses", { names: formatList(tile.picked.map((c) => lowerFirst(pickNames.get(c) || nameOf(c)))) });
+      return t("tray.uses", { names: formatList(tile.picked.map((c) => lowerFirst(pickNames.get(c) || ingredientNames.name(nameOf(c))))) });
     }
     return null;
   }

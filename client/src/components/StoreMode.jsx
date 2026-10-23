@@ -89,7 +89,7 @@ export function StoreMode({
   const pct = total > 0 ? Math.round(((total - left) / total) * 100) : 0;
   const celebrate = total > 0 && left === 0;
 
-  const byName = (a, b) => a.item.name.localeCompare(b.item.name, getLang());
+  const byName = (a, b) => a.item.label.localeCompare(b.item.label, getLang());
   const order = [...aisleOrder, ...AISLE_ORDER.filter((id) => !aisleOrder.includes(id))];
   const shown = (list) => (hideDone ? list.filter((r) => !checked[r.item.key]) : list);
   // A store's rows A to Z, or in its sections in walking order (A to Z in each).
@@ -129,7 +129,7 @@ export function StoreMode({
     await onMove(row.item, store);
     setFlash(row.item.key);
     // Undo runs later, so it asks the latest `onMove` (the one made after this move was saved).
-    onToast?.(t("storeMode.moved", { name: capitalize(row.item.name), store: storeLabel(store) }), () => latestMove.current(row.item, row.store));
+    onToast?.(t("storeMode.moved", { name: capitalize(row.item.label), store: storeLabel(store) }), () => latestMove.current(row.item, row.store));
   }
 
   // A drag never checks the row it lifted from: the click that follows a drop (it
@@ -294,7 +294,7 @@ export function StoreMode({
                     key={row.item.key}
                     itemKey={row.item.key}
                     flash={flash === row.item.key}
-                    drag={canDrag ? { name: capitalize(row.item.name), from: row.store, drop: (store) => dropOn(row, store) } : null}
+                    drag={canDrag ? { name: capitalize(row.item.label), from: row.store, drop: (store) => dropOn(row, store) } : null}
                   >
                     <GroceryItem
                       variant="store"

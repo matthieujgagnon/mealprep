@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { t } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
@@ -14,13 +14,16 @@ import {
   parseAiLimit,
   usableCount,
 } from "../lib/admin.js";
+import { gapLines, ingredientGaps } from "../lib/ingredientGaps.js";
+import { useRecipeStore } from "../lib/recipeStore.js";
 import { CountPill, Pill } from "./RisoPills.jsx";
 import { Segmented } from "./RisoControls.jsx";
 
 // The Admin page (address /admin), for running the beta: Project HQ, the
 // Members list, Invite codes (make, list and switch off the codes signup
-// needs) and AI usage (the daily limit on reading flyers and receipts, and
-// what each account used today). Only admins get here from the avatar menu;
+// needs), AI usage (the daily limit on reading flyers and receipts, and
+// what each account used today) and Ingredient names (the names from the recipes
+// that the names table has no translation for yet). Only admins get here from the avatar menu;
 // anyone else who opens the address sees "Not allowed".
 // That is only what the screen shows: the server checks ADMIN_EMAILS on every
 // /api/admin call and refuses everyone else (server/src/lib/admin.js).
@@ -206,6 +209,65 @@ function CopyButton({ text, label }) {
     <button type="button" className="riso-btn small" aria-label={label} onClick={copy}>
       {copied ? t("admin.invites.copied") : t("admin.invites.copy")}
     </button>
+  );
+}
+
+// The ingredient names (and prep notes) from the recipes that ingredientDisplay.txt has no
+// line for, so they still show as written in the other language. Read from the recipes the
+// app already holds: nothing to load, nothing saved. Copy makes the lines of the table to
+// fill in (lib/ingredientGaps.js).
+const NAMES_SHOWN = 30;
+function NameList({ entries, label }) {
+  return (
+    <ul className="riso-admin-namelist" aria-label={label}>
+      {entries.map((entry) => (
+        <li key={entry.name}>
+          <span className="riso-admin-name">{entry.name}</span>
+          <span className="riso-admin-name-uses">{t("admin.names.usedIn", { count: entry.recipes })}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function IngredientNames() {
+  const { recipes } = useRecipeStore();
+  const gaps = useMemo(() => ingredientGaps(recipes), [recipes]);
+  const hidden = Math.max(0, gaps.names.length - NAMES_SHOWN);
+  return (
+    <section className="riso-admin-card riso-admin-names" aria-labelledby="admin-names-title">
+      <div className="riso-admin-card-head">
+        <h2 id="admin-names-title" className="riso-admin-card-title">
+          {t("admin.names.title")}
+        </h2>
+        {gaps.names.length > 0 && <CountPill count={gaps.names.length} tone="pink" aria-hidden="true" />}
+      </div>
+      <p className="riso-admin-card-text">{t("admin.names.intro")}</p>
+      {gaps.total === 0 ? (
+        <p className="riso-admin-status">{t("admin.names.noRecipes")}</p>
+      ) : gaps.names.length === 0 && gaps.notes.length === 0 ? (
+        <p className="riso-admin-status">{t("admin.names.none")}</p>
+      ) : (
+        <>
+          {gaps.names.length > 0 && (
+            <>
+              <p className="riso-admin-status">{t("admin.names.summary", { count: gaps.names.length, total: gaps.total })}</p>
+              <NameList entries={gaps.names.slice(0, NAMES_SHOWN)} label={t("admin.names.listLabel")} />
+              {hidden > 0 && <p className="riso-admin-status">{t("admin.names.more", { count: hidden })}</p>}
+            </>
+          )}
+          {gaps.notes.length > 0 && (
+            <>
+              <p className="riso-admin-status">{t("admin.names.notesSummary", { count: gaps.notes.length })}</p>
+              <NameList entries={gaps.notes.slice(0, NAMES_SHOWN)} label={t("admin.names.notesLabel")} />
+            </>
+          )}
+          <div>
+            <CopyButton text={gapLines(gaps)} label={t("admin.names.copyAria")} />
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -538,6 +600,7 @@ export function Admin({ user, onHome }) {
         <div className="riso-admin-col">
           <Members me={user.email} onForbidden={() => setForbidden(true)} />
           <AiUsage me={user.email} onForbidden={() => setForbidden(true)} />
+          <IngredientNames />
         </div>
         <div className="riso-admin-col">
           <section className="riso-admin-card riso-admin-hq" aria-labelledby="admin-hq-title">

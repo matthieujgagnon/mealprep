@@ -16,6 +16,7 @@ import { useStepTimers } from "../hooks/useStepTimers.js";
 import { useIsPhone } from "../hooks/useIsPhone.js";
 import { CookMode } from "./CookMode.jsx";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
+import { useIngredientNames } from "../lib/ingredientDisplay.js";
 import { PlannedPill, PreparedTag } from "./RisoPills.jsx";
 import { BuySticker, OptionsMenu, PhotoLightbox, PricesSwitch, Receipt, SimilarStrip, SimilarView, StepList } from "./RecipeCardParts.jsx";
 import { prefersReducedMotion } from "../lib/motion.js";
@@ -214,7 +215,11 @@ export function RecipeDetailModal({
     setOpenRow(null);
   }
 
-  // "I have it": the Inventory confirmation sheet; nothing is added before it is confirmed.
+  // "I have it": the Inventory confirmation sheet; nothing is added before it is confirmed. The
+  // name proposed is the recipe's own, not the one shown: the matcher reads some French spellings
+  // less well than the English (« banane »), so what goes into Inventory must not depend on the
+  // language of the screen.
+  const ingredientNames = useIngredientNames();
   function haveIt(row) {
     const draft = { ref: row.name, name: row.name };
     // A prepared recipe is had by a prepared meal, so that is what is added (the sheet says so).
@@ -227,7 +232,7 @@ export function RecipeDetailModal({
   // adds nothing to Inventory). A blue row that is blue only because of such a link says
   // so in its drawer, with Remove.
   const links = useInventoryLinks();
-  const haveAs = (row) => links.ask(row.names, { label: row.name });
+  const haveAs = (row) => links.ask(row.names, { label: ingredientNames.name(row.name) });
   const becauseOf = (row) => {
     const found = linkBehind(row.names, inventory);
     return found && { link: found.link, onRemove: () => links.remove([found.link]) };
