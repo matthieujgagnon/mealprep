@@ -122,6 +122,8 @@ test.describe("on a computer", () => {
     await setup(page);
     for (const view of [null, "By aisle", "By recipe"]) {
       if (view) await page.getByRole("button", { name: view, exact: true }).click();
+      // (A view draws a moment after its button is pressed; wait until its rows are there to measure.)
+      await expect.poll(async () => (await heights(page.locator(".riso-group .riso-row"))).length).toBeGreaterThanOrEqual(5);
       const h = await heights(page.locator(".riso-group .riso-row"));
       expect(h.length).toBeGreaterThanOrEqual(5);
       expect(new Set(h).size, h.join(" ")).toBe(1);
@@ -194,6 +196,8 @@ test.describe("on a computer", () => {
     await beans.locator(".riso-row-qty").pressSequentially("3 cans");
     await expect(beans.locator(".riso-row-qty")).toHaveValue("3");
     await page.keyboard.press("Enter");
+    // (It shows at once and is saved behind: wait until the server has the number before reloading.)
+    await expect.poll(async () => (await (await page.request.get("/api/grocery-item-overrides")).json()).find((o) => /bean/.test(o.key))?.quantity).toBe("3");
     await page.reload();
     await page.getByRole("button", { name: "Grocery", exact: true }).first().click();
     await expect(row(page, "Black bean").locator(".riso-row-qty")).toHaveValue("3");

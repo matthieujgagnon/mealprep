@@ -111,11 +111,13 @@ test("a removal stays until the meals that need the item leave the plan; restori
   // The chip brings it back.
   await page.getByRole("button", { name: "Put Lemon back on the list" }).click();
   await expect(row(page, "Lemon")).toBeVisible();
+  await expect.poll(async () => (await (await page.request.get("/api/grocery-item-overrides")).json()).length).toBe(0);
 
   // Remove it again, then let every meal that needs it leave the plan: the
   // saved removal goes with them, so a later meal that needs it starts fresh.
   await page.getByRole("button", { name: "Remove Lemon", exact: true }).click();
   await expect(row(page, "Lemon")).toHaveCount(0);
+  await expect.poll(async () => (await (await page.request.get("/api/grocery-item-overrides")).json()).length).toBe(1);
   await page.request.delete(`/api/planner/${entryB.id}`);
   await page.reload();
   await openGrocery(page);

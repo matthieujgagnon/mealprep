@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
+import { saveAnswered } from "./saves.js";
 
 // The Grocery list respects Inventory: what your planned meals need that Inventory
 // already holds is folded under the list as "Already at home" (« Déjà à la maison »),
@@ -67,10 +68,13 @@ test("what Inventory holds waits under Already at home; the rest stays on the li
   await expect(strip(page).locator(".riso-removed-meta")).toHaveText(["In your Inventory", "Sea salt"]);
   await expect(page.getByText("Water", { exact: true })).toHaveCount(0);
 
-  // Put back on the list: the row joins the list, and stays after a reload.
+  // Put back on the list: the row joins the list, and stays after a reload. (It joins at once and the
+  // save follows: wait for it before reloading.)
+  const kept = saveAnswered(page, "PUT", "/api/grocery-item-overrides", '"key":"salt"');
   await strip(page).getByRole("button", { name: "Put Salt back on the list" }).click();
   await expect(rowNames(page)).toHaveText(["Lemon", "Pepper", "Salt", "Spaghetti"]);
   await expect(strip(page).locator(".riso-removed-name")).toHaveText(["Olive oil"]);
+  await kept;
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
   await expect(rowNames(page)).toHaveText(["Lemon", "Pepper", "Salt", "Spaghetti"]);

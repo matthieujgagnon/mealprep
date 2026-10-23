@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { E2E_INVITE } from "./invite.js";
+import { saveAnswered } from "./saves.js";
 import { cancelAdd } from "./inventory-confirm.js";
 
 const prisma = new PrismaClient();
@@ -95,6 +96,8 @@ test.describe("on a computer", () => {
     await expect(row(page, "lemons")).toHaveAttribute("data-step", "0");
     await expect(lemons).toHaveAttribute("title", "Mark as bought");
 
+    // (Each tap shows at once and is saved behind: the saves are waited for before a reload.)
+    const lemonsQueued = saveAnswered(page, "POST", "/api/grocery-checked", '"queued":true');
     await lemons.click();
     await expect(row(page, "lemons")).toHaveAttribute("data-step", "1");
     await expect(row(page, "lemons")).toHaveClass(/checked/);
@@ -110,11 +113,14 @@ test.describe("on a computer", () => {
     // Queued is still in the cart.
     await expect(page.locator(".riso-grocery-cart-num")).toHaveText("1");
 
+    await lemonsQueued;
     await openGrocery(page);
     await expect(row(page, "lemons")).toHaveAttribute("data-step", "2");
 
+    const lemonsBackOnList = saveAnswered(page, "DELETE", "/api/grocery-checked/");
     await box(page, "lemons").click();
     await expect(row(page, "lemons")).toHaveAttribute("data-step", "0");
+    await lemonsBackOnList;
     await openGrocery(page);
     await expect(row(page, "lemons")).toHaveAttribute("data-step", "0");
     expect(await savedChecks(page)).toEqual({});
@@ -181,6 +187,7 @@ test.describe("on a computer", () => {
     expect(await inventory(page)).toHaveLength(0);
     await expect(row(page, "Old cheddar")).toHaveAttribute("data-step", "2");
 
+    const cheddarBought = saveAnswered(page, "POST", "/api/grocery-checked/in-inventory");
     await foot.getByRole("button", { name: "+ Add 1 to inventory" }).click();
     await sheet.getByRole("button", { name: "Add 1 to inventory" }).click();
     await sheet.waitFor({ state: "detached" });
@@ -190,6 +197,7 @@ test.describe("on a computer", () => {
     await expect(row(page, "Cilantro")).toHaveAttribute("data-step", "1");
     await expect(row(page, "Milk 2%")).toHaveAttribute("data-step", "2");
     await expect(superC.locator(".riso-group-foot")).toHaveCount(0);
+    await cheddarBought;
     await openGrocery(page);
     await expect(row(page, "Old cheddar")).toHaveCount(0);
   });
@@ -214,12 +222,16 @@ test.describe("on a computer", () => {
 
     await page.getByRole("button", { name: "Done shopping · add 1 to inventory" }).click();
     await sheet.getByLabel("Include Cilantro").check(); // tick a bought one too
+    // The cart is cleared at once and the save follows (it takes the typed-in lemons off too): wait for
+    // it before the page is reloaded.
+    const cartBought = saveAnswered(page, "POST", "/api/grocery-checked/in-inventory");
     await sheet.getByRole("button", { name: "Add 2 to inventory" }).click();
     await sheet.waitFor({ state: "detached" });
     await expect.poll(async () => (await inventory(page)).map((i) => i.name).sort()).toEqual(["Cilantro", "Milk 2%"]);
     // Everything in the cart left the list, the untracked lemons too.
     for (const name of ["Milk 2%", "Cilantro", "lemons"]) await expect(row(page, name)).toHaveCount(0);
     await expect(page.locator(".riso-grocery-cart-num")).toHaveText("0");
+    await cartBought;
     await openGrocery(page);
     for (const name of ["Milk 2%", "Cilantro", "lemons"]) await expect(row(page, name)).toHaveCount(0);
   });
@@ -232,10 +244,12 @@ test.describe("on a computer", () => {
     await page.getByRole("button", { name: "Done shopping", exact: true }).click();
     const sheet = page.locator(".riso-confirm");
     await expect(sheet.getByLabel("Include Cilantro")).not.toBeChecked();
+    const cilantroBought = saveAnswered(page, "POST", "/api/grocery-checked/in-inventory");
     await sheet.getByRole("button", { name: "Done, add nothing" }).click();
     await sheet.waitFor({ state: "detached" });
     await expect(row(page, "Cilantro")).toHaveCount(0);
     expect(await inventory(page)).toHaveLength(0);
+    await cilantroBought;
     await openGrocery(page);
     await expect(row(page, "Cilantro")).toHaveCount(0);
   });
@@ -332,9 +346,13 @@ test.describe("on a computer", () => {
     const userId = await signUp(page);
     await seed(page, userId);
     await openGrocery(page);
+    // (The taps show at once and are saved behind: wait for the saves before the page is reloaded.)
+    const cheddarQueued = saveAnswered(page, "POST", "/api/grocery-checked", '"queued":true');
+    const cilantroBought = saveAnswered(page, "POST", "/api/grocery-checked", '"core":"cilantro"');
     await box(page, "Old cheddar").click();
     await box(page, "Old cheddar").click();
     await box(page, "Cilantro").click();
+    await Promise.all([cheddarQueued, cilantroBought]);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openGrocery(page);
     await expect(group(page, "Super C").locator(".riso-group-foot")).toBeVisible();
@@ -406,9 +424,13 @@ test.describe("on a phone, in French", () => {
     const userId = await signUp(page, true);
     await seed(page, userId);
     await openGrocery(page);
+    // (The taps show at once and are saved behind: wait for the saves before the page is reloaded.)
+    const cheddarQueued = saveAnswered(page, "POST", "/api/grocery-checked", '"queued":true');
+    const cilantroBought = saveAnswered(page, "POST", "/api/grocery-checked", '"core":"cilantro"');
     await box(page, "Vieux cheddar|Old cheddar").first().tap();
     await box(page, "Vieux cheddar|Old cheddar").first().tap();
     await box(page, "Coriandre|Cilantro").first().tap();
+    await Promise.all([cheddarQueued, cilantroBought]);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openGrocery(page);
     await expect(page.locator(".riso-group-foot")).toBeVisible();

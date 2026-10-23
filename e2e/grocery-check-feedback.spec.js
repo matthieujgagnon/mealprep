@@ -83,7 +83,9 @@ const extraKey = async (page, name) => "extra-" + (await (await page.request.get
 async function recordAnimations(page) {
   await page.evaluate(() => {
     const start = Element.prototype.animate;
-    const cartNumber = () => (document.querySelector(".riso-grocery-dock-num, .riso-grocery-cartbar-num, .riso-grocery-cart-num") || {}).textContent;
+    // The count a chip flies to: Store mode's big number when it is open, else the cart's.
+    const cartNumber = () =>
+      (document.querySelector(".store-mode-num") || document.querySelector(".riso-grocery-dock-num, .riso-grocery-cartbar-num, .riso-grocery-cart-num") || {}).textContent;
     window.started = [];
     window.chips = 0;
     new MutationObserver((records) => {
@@ -91,7 +93,12 @@ async function recordAnimations(page) {
     }).observe(document.body, { childList: true, subtree: true });
     Element.prototype.animate = function (keyframes, options) {
       const is = (c) => this.classList.contains(c);
-      const what = is("mm-chip")
+      // The How it works strip has a sample row that checks itself every 1.8 s. It is not a row of the
+      // list, so its animations are kept apart: otherwise a slow machine, which takes more than 1.8 s
+      // over a test, counts the sample's ✓ as a second one.
+      const what = this.closest(".riso-hint-strip")
+        ? "hint"
+        : is("mm-chip")
         ? "chip"
         : this.hasAttribute("data-gi-mark")
           ? "mark"
@@ -412,8 +419,11 @@ test.describe("on a phone", () => {
     await cilantro.tap();
     await expect(cilantro).toHaveAttribute("data-step", "1");
     await expect.poll(async () => (await started(page, "chip")).length).toBe(1);
-    await expect(count).toHaveText(String(before)); // not counted while the chip flies
-    await expect(count).toHaveText(String(before - 1)); // counted when it lands
+    // Read when the chip took off and a moment after it landed (a look at the screen in between can
+    // come too late on a busy machine, once the chip has landed).
+    expect((await started(page, "chip"))[0].cartAtLaunch).toBe(String(before)); // not counted while the chip flies
+    await expect.poll(async () => (await started(page, "chip"))[0].cartAfter).toBe(String(before - 1)); // counted when it lands
+    await expect(count).toHaveText(String(before - 1));
     expect((await started(page, "strike")).every((a) => a.delay === 40 && a.duration === 200)).toBe(true); // the line draws
     const toast = page.locator(".riso-toast");
     await expect(toast).toHaveClass(/store-dark/);
