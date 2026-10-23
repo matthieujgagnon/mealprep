@@ -98,6 +98,8 @@ test.describe("on a computer", () => {
     await page.mouse.up();
 
     await expect(shelf(page, garage.id).getByText("Frozen peas")).toBeVisible();
+    // The card moves on screen at once and the save follows: wait until the server has it.
+    await expect.poll(async () => (await find(page, "Frozen peas")).shelf).toBe(garage.id);
     const moved = await find(page, "Frozen peas");
     expect(moved).toMatchObject({ location: "freezer", shelf: garage.id });
     expect(moved.expiresAt.slice(0, 10)).toBe(useBy);
