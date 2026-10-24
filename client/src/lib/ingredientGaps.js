@@ -1,10 +1,12 @@
 import { isKnownIngredient, isKnownNote } from "./ingredientDisplay.js";
 import { fold, looksFrench } from "./bilingual.js";
 
-// The admin's list of ingredients from the recipes that the names table
-// (ingredientDisplay.txt) has no line for yet. They are shown as written, so a French
-// screen still has English in it until a line is added. The list is made from the
-// recipes the app already holds; nothing is saved or sent anywhere.
+// The admin's list of ingredients from the recipes that the names table has no line for yet
+// (neither the built-in file ingredientDisplay.txt nor Matt's own changes, which the helper reads
+// too). They are shown as written, so a French screen still has English in it until a name is
+// given. The Admin page's Ingredient names card lists them, each a tap from the form that fills
+// the other language in (components/IngredientNameForm.jsx); a name Matt gives leaves the list at
+// once. The list is made from the recipes the app already holds; nothing is saved or sent anywhere.
 
 // "Biryani Masala" and "biryani masala" are one name.
 const sameName = (text) => fold(text).replace(/\s+/g, " ").trim();
@@ -38,9 +40,10 @@ export function ingredientGaps(recipes) {
   return { names: finish(names), notes: finish(notes), total: everyName.size };
 }
 
-// The list as lines of the names table, ready to fill in and send back (or paste into
-// ingredientDisplay.txt): the side a name is written in is already there, the other
-// side is empty. The "#" part is a comment the table ignores.
+// The list as lines of the names table, ready to fill in and paste into ingredientDisplay.txt:
+// the side a name is written in is already there, the other side is empty. The "#" part is a
+// comment the table ignores. The Admin card now uses it only for the prep notes, which are still
+// added in the file (a name is filled in on the card itself).
 export function gapLines({ names, notes }) {
   const uses = (n) => `# ${n} recipe${n === 1 ? "" : "s"}`;
   const out = [];

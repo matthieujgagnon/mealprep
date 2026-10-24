@@ -20,9 +20,14 @@ export const GROCERY = "grocery";
 // (lib/linkSaves.js), so a list read right after a change is never the one from before.
 export const LINKS = "links";
 
+// The "names" area is Matt's changes to the ingredient names (/ingredient-names, /admin/ingredient-names):
+// a read of them waits for the saves already sent (lib/nameSaves.js).
+export const NAMES = "names";
+
 // The area a save (a request that is not a GET) can change, or null.
 export function saveArea(path, method) {
   if (path.startsWith("/inventory-links")) return LINKS;
+  if (path.startsWith("/admin/ingredient-names")) return NAMES;
   if (path.startsWith("/grocery") || path.startsWith("/planner")) return GROCERY;
   // Only a recipe saved or deleted by its id: reading a link (/recipes/scrape)
   // or a pasted list (/recipes/parse-ingredients) saves nothing and can be slow.
@@ -34,6 +39,7 @@ export function saveArea(path, method) {
 // upcoming meals the list is built from, and the taught names.
 export function readArea(path) {
   if (path.startsWith("/inventory-links")) return LINKS;
+  if (path.startsWith("/ingredient-names")) return NAMES;
   return path.startsWith("/grocery") || path.startsWith("/planner/upcoming") ? GROCERY : null;
 }
 

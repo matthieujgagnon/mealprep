@@ -52,6 +52,7 @@ import { keptThere, placeOnShelf, shelfSetOf } from "./lib/shelves.js";
 import { GripAwarePointerSensor, sectionCollision } from "./components/ReorderSections.jsx";
 import { InventoryConfirmSheet } from "./components/InventoryConfirm.jsx";
 import { InventoryLinkPopup, InventoryLinksContext } from "./components/InventoryLinkPopup.jsx";
+import { createNameSaver } from "./lib/nameSaves.js";
 import { createLinkSaver } from "./lib/linkSaves.js";
 import { foodsToTeach } from "./lib/inventoryMatch.js";
 import { CookedViewHost } from "./components/CookedView.jsx";
@@ -293,6 +294,17 @@ export default function App({ user, onLogout }) {
     });
   }
   const linkSaver = linkSaverRef.current;
+  // Matt's changes to the ingredient names (lib/ingredientDisplay.js reads them; the saver keeps the
+  // list and saves it in order). Every account loads the list; only an admin can change it, from
+  // the Admin page's Ingredient names card.
+  const nameSaverRef = useRef(null);
+  if (!nameSaverRef.current) {
+    nameSaverRef.current = createNameSaver({
+      api,
+      onFailed: (what) => toastLatest.current?.(t(what === "save" ? "admin.names.saveFailed" : "admin.names.removeFailed")),
+    });
+  }
+  const nameSaver = nameSaverRef.current;
   toastLatest.current = showToast;
   const [linkAsk, setLinkAsk] = useState(null); // { foods, label } while the "I have it as…" pop-up is open
   const [loadError, setLoadError] = useState(false);
@@ -403,6 +415,9 @@ export default function App({ user, onLogout }) {
     ]).then((results) => {
       if (results.some((r) => r.status === "rejected")) setLoadError(true);
     });
+    // Not part of the check above: if the changes to the names can't be read, the built-in names
+    // are still right, so the app opens without them rather than asking to try again.
+    api.listIngredientNames().then(nameSaver.load).catch(() => {});
   }
 
   useEffect(() => {
@@ -663,6 +678,7 @@ export default function App({ user, onLogout }) {
     clearRecipes();
     clearGroceryShared();
     linkSaver.clear();
+    nameSaver.clear();
     onLogout();
   }
 
@@ -1492,7 +1508,7 @@ export default function App({ user, onLogout }) {
         )}
 
         {tab === "help" && <Help isAdmin={user.isAdmin} />}
-        {tab === "admin" && <Admin user={user} onHome={() => goToTab("home")} />}
+        {tab === "admin" && <Admin user={user} onHome={() => goToTab("home")} names={nameSaver} onToast={showToast} />}
         {tab === "feedbackInbox" && <FeedbackInbox user={user} onHome={() => goToTab("home")} onToast={showToast} />}
 
         {inventoryAsk && (

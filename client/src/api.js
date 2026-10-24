@@ -321,6 +321,14 @@ export const api = {
     request("/inventory-links", { method: "POST", body: JSON.stringify({ recipeName, itemName }) }),
   deleteInventoryLink: (id) => request(`/inventory-links/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
+  // Matt's changes to the ingredient names table (lib/ingredientDisplay.js). Every account reads the
+  // list; saving, changing and removing are admin only (the server refuses anyone else with 403).
+  listIngredientNames: () => request("/ingredient-names"),
+  saveIngredientName: (body) => request("/admin/ingredient-names", { method: "POST", body: JSON.stringify(body) }),
+  changeIngredientName: (id, body) =>
+    request(`/admin/ingredient-names/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteIngredientName: (id) => request(`/admin/ingredient-names/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
   getInventoryLayout: () => request("/inventory-layout"),
   // sections: [{ sectionId, label?, size }] in display order.
   saveInventoryLayout: (sections) =>

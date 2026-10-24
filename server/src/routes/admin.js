@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { memberRows } from "../lib/admin.js";
 import { makeAdminResetLink } from "../lib/resetLink.js";
 import { fail } from "../lib/i18n.js";
+import { adminIngredientNamesRouter } from "./adminIngredientNames.js";
 import {
   FEEDBACK_LIST_LIMIT,
   FEEDBACK_MAX_IDS,
@@ -28,6 +29,9 @@ import {
 // so every route here (and any added later) refuses non-admins with 403
 // before it runs.
 export const adminRouter = Router();
+
+// POST, PUT and DELETE /api/admin/ingredient-names: Matt's changes to the ingredient names table.
+adminRouter.use("/ingredient-names", adminIngredientNamesRouter);
 
 // GET /api/admin/members - every account's id, email, signup date and last
 // active (see memberRows in lib/admin.js). No other personal data.

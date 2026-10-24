@@ -48,6 +48,7 @@ model User {
   pantryConsumptionLogs PantryConsumptionLog[]
   pantryRemovedItems    PantryRemovedItem[]
   inventoryLinks        InventoryLink[]
+  ingredientNameChanges IngredientNameOverride[]
   feedback              Feedback[]
   pantryLocations       PantryLocation[]
   watchlistItems        WatchlistItem[]
@@ -465,6 +466,29 @@ model InventoryLink {
 
   @@unique([userId, recipeName, itemName])
   @@index([userId, createdAt])
+}
+
+// Matt's own changes to the ingredient names table (client/src/lib/ingredientDisplay.txt, which
+// is never changed): what a recipe's ingredient is called in each language. A row adds an
+// ingredient (`replaces` is null), replaces a built-in row (`replaces` is that row's key, its
+// first English singular folded) or hides one (`hidden`, with no names). Removing a row puts the
+// built-in row back. They are translations of the app, not personal data, so the rows belong to
+// nobody: every account reads them (GET /api/ingredient-names) and only an admin writes them
+// (routes/adminIngredientNames.js). The names are kept as the file writes a cell: "/" between
+// other spellings, "=" for a plural that is the singular. `updatedById` is who saved it last.
+model IngredientNameOverride {
+  id          String   @id @default(cuid())
+  replaces    String?  @unique
+  hidden      Boolean  @default(false)
+  enOne       String   @default("")
+  enOther     String   @default("")
+  frOne       String   @default("")
+  frOther     String   @default("")
+  gender      String   @default("") // m | f | mp | fp
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 }
 
 // What a signed-in tester sent from the app's Feedback form, or from a "Report a

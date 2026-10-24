@@ -3,8 +3,11 @@
 # The app uses this to SHOW a recipe's ingredient names in the language you picked
 # (FR | EN). It never changes the recipe: the text saved with the recipe stays exactly
 # as it was written, and a name that is not here is shown as written.
-# Code: lib/ingredientDisplay.js. The admin's Ingredient names card lists the names from the recipes
-# that have no line here yet.
+# Code: lib/ingredientDisplay.js, which reads this file through lib/ingredientTable.js (the server
+# reads it too). This file is the starting set: Matt's own changes (the admin's Ingredient names
+# card: a name filled in, a row corrected or hidden) are kept in the database and sit on top of it
+# for everyone, and removing one brings the line here back. The card also lists the names from the
+# recipes that have no line here yet.
 #
 # ---------------------------------------------------------------------------------
 # [ingredients]  one line per ingredient:

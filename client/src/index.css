@@ -17968,6 +17968,79 @@ body.no-select {
   color: var(--riso-muted);
 }
 
+/* Ingredient names (components/Admin.jsx): the search box, a name that opens the form, and a row of the
+   table with where it stands, who changed it and a way back. */
+.riso-admin-namesearch {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 600 15px var(--riso-font-display);
+}
+
+.riso-admin-namesearch:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+.riso-admin-namecard-main {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.riso-admin-name-end {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.riso-admin-name-go {
+  font: 800 22px/1 var(--riso-font-display);
+  color: var(--riso-accent);
+}
+
+.riso-admin-namecard-main:hover .riso-admin-name {
+  text-decoration: underline;
+}
+
+.riso-admin-namecard-main:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+.riso-admin-namelist li.riso-admin-namecard {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.riso-admin-namecard-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 6px;
+}
+
 .riso-admin-status {
   margin: 4px 0 0;
   display: flex;
@@ -26182,4 +26255,175 @@ body.no-select {
   color: var(--riso-ink);
   font: 700 18px/1 var(--riso-font-display);
   cursor: pointer;
+}
+
+
+/* ================================================================
+   The form for an ingredient's names (components/IngredientNameForm.jsx), on the Admin
+   page's Ingredient names card: the shared Popup (the bottom sheet on a phone) with the
+   English and French names side by side, the gender in French and Save.
+   ================================================================ */
+
+/* Above the page, below the "are you sure?" question (400) and the toast (500). */
+.riso-namepop-layer {
+  position: relative;
+  z-index: 350;
+}
+
+.riso-namepop {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  font-family: var(--riso-font-display);
+  color: var(--riso-ink);
+}
+
+.riso-namepop-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riso-namepop-title {
+  margin: 0;
+  font: 800 28px/1 var(--riso-font-display);
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.riso-namepop-intro {
+  margin: 0;
+  font: 400 14px/1.45 var(--riso-font-body);
+  color: var(--riso-soft);
+}
+
+.riso-namepop-lang {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.riso-namepop-lang legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-namepop-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.riso-namepop-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.riso-namepop-field > span {
+  font: 600 12px var(--riso-font-display);
+  color: var(--riso-soft);
+}
+
+.riso-namepop-field input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 22px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 600 15px var(--riso-font-display);
+}
+
+.riso-namepop-field input:focus-visible {
+  outline: 3px solid var(--riso-accent);
+  outline-offset: 2px;
+}
+
+.riso-namepop-hint {
+  margin: 0;
+  font: 400 12.5px/1.45 var(--riso-font-body);
+  color: var(--riso-muted);
+}
+
+.riso-namepop-gender {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.riso-namepop-gender-label {
+  flex: 1 0 100%;
+  font: 500 11px var(--riso-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--riso-muted);
+}
+
+.riso-namepop-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font: 600 14px var(--riso-font-display);
+}
+
+.riso-namepop-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--riso-accent);
+}
+
+.riso-namepop-error {
+  margin: 0;
+  font: 600 13.5px/1.4 var(--riso-font-body);
+  color: var(--riso-danger);
+}
+
+.riso-namepop-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.riso-namepop-actions .riso-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+}
+
+.riso-namepop-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 767px) {
+  .riso-namepop-title {
+    font-size: 24px;
+  }
+
+  .riso-namepop-actions .riso-btn.primary {
+    flex: 1 1 auto;
+  }
+
+  .riso-sheet:has(.riso-namepop) {
+    max-height: 94vh;
+    max-height: 94dvh;
+  }
 }
