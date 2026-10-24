@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
-import { t } from "../i18n/index.js";
+import { t, useLang } from "../i18n/index.js";
 import { formatDate } from "../i18n/format.js";
 import {
   DEFAULT_INVITE_DAYS,
@@ -15,15 +15,19 @@ import {
   usableCount,
 } from "../lib/admin.js";
 import { gapLines, ingredientGaps } from "../lib/ingredientGaps.js";
+import { getIngredientOverrides, ingredientRows, useIngredientOverridesVersion } from "../lib/ingredientDisplay.js";
+import { cardRows, changedCards, rowName, searchCards } from "../lib/ingredientNameForm.js";
+import { cleanOverride, rowFromOverride } from "../lib/ingredientTable.js";
 import { useRecipeStore } from "../lib/recipeStore.js";
 import { CountPill, Pill } from "./RisoPills.jsx";
 import { Segmented } from "./RisoControls.jsx";
+import { IngredientNameForm } from "./IngredientNameForm.jsx";
 
 // The Admin page (address /admin), for running the beta: Project HQ, the
 // Members list, Invite codes (make, list and switch off the codes signup
 // needs), AI usage (the daily limit on reading flyers and receipts, and
-// what each account used today) and Ingredient names (the names from the recipes
-// that the names table has no translation for yet). Only admins get here from the avatar menu;
+// what each account used today) and Ingredient names (give the names from the recipes
+// that have no translation theirs, and correct any row of the names table, for everyone). Only admins get here from the avatar menu;
 // anyone else who opens the address sees "Not allowed".
 // That is only what the screen shows: the server checks ADMIN_EMAILS on every
 // /api/admin call and refuses everyone else (server/src/lib/admin.js).
@@ -212,11 +216,16 @@ function CopyButton({ text, label }) {
   );
 }
 
-// The ingredient names (and prep notes) from the recipes that ingredientDisplay.txt has no
-// line for, so they still show as written in the other language. Read from the recipes the
-// app already holds: nothing to load, nothing saved. Copy makes the lines of the table to
-// fill in (lib/ingredientGaps.js).
+// The ingredient names. The names from the recipes that the names table (ingredientDisplay.txt
+// and Matt's own changes) has no line for yet, each one a tap away from a form to give it its
+// English and French names; a search over every row to correct one (built-in or already changed);
+// and Matt's changes with "Back to built-in". What is saved applies to everyone (lib/nameSaves.js
+// keeps it, the server stores it, lib/ingredientDisplay.js reads it). The prep notes with no
+// translation are only listed, with a Copy button: they are still added in the table file.
 const NAMES_SHOWN = 30;
+const STATUS_TONE = { "built-in": "dash", changed: "blue", added: "green", hidden: "ink" };
+const STATUS_KEY = { "built-in": "builtIn", changed: "changed", added: "added", hidden: "hidden" };
+
 function NameList({ entries, label }) {
   return (
     <ul className="riso-admin-namelist" aria-label={label}>
@@ -230,10 +239,78 @@ function NameList({ entries, label }) {
   );
 }
 
-function IngredientNames() {
+// One row of the table in the search results and in Matt's changes: "garlic clove → gousse d'ail",
+// where it stands, and (for a change of his) who changed it, when, and a way back.
+function NameCard({ card, me, onOpen, onBack }) {
+  const { override } = card;
+  const when = override?.updatedAt ? formatDate(override.updatedAt, { month: "short", day: "numeric" }) : null;
+  const who = override?.updatedBy ? (override.updatedBy === me ? t("admin.names.you") : override.updatedBy) : null;
+  const name = `${rowName(card.row, "en")} → ${rowName(card.row, "fr")}`;
+  return (
+    <li className="riso-admin-namecard" data-status={card.status}>
+      <button type="button" className="riso-admin-namecard-main" onClick={() => onOpen(card)}>
+        <span className="riso-admin-name">{name}</span>
+        <span className="riso-admin-name-end">
+          <Pill size="tag" tone={STATUS_TONE[card.status]}>
+            {t(`admin.names.status.${STATUS_KEY[card.status]}`)}
+          </Pill>
+          <span className="riso-admin-name-go" aria-hidden="true">›</span>
+        </span>
+      </button>
+      {override && (
+        <div className="riso-admin-namecard-meta">
+          {when && (
+            <span className="riso-admin-name-uses">
+              {who ? t("admin.names.changedBy", { who, date: when }) : t("admin.names.changedOn", { date: when })}
+            </span>
+          )}
+          <button type="button" className="riso-btn small" onClick={() => onBack(card)}>
+            {t(card.status === "added" ? "admin.names.form.remove" : "admin.names.form.backToBuiltIn")}
+          </button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function IngredientNames({ me, names, onToast }) {
   const { recipes } = useRecipeStore();
-  const gaps = useMemo(() => ingredientGaps(recipes), [recipes]);
+  const changes = useIngredientOverridesVersion();
+  const lang = useLang();
+  const overrides = getIngredientOverrides();
+  const gaps = useMemo(() => ingredientGaps(recipes), [recipes, changes]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cards = useMemo(() => cardRows(ingredientRows, overrides), [overrides]);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(null); // { gap } or { card } while the form is open
+  const found = useMemo(() => searchCards(cards, query), [cards, query]);
+  const mine = useMemo(() => changedCards(cards), [cards]);
   const hidden = Math.max(0, gaps.names.length - NAMES_SHOWN);
+  const searching = query.trim() !== "";
+
+  // The name a toast calls the row by: its first spelling in the language shown.
+  const called = (data, fallback) => (data?.hidden ? rowName(fallback.row, lang) : rowName(rowFromOverride(data), lang));
+
+  function save({ data, ref }) {
+    const card = open.card;
+    const { ref: savedRef, before } = names.save(data, ref);
+    setOpen(null);
+    onToast(t(data.hidden ? "admin.names.hiddenToast" : "admin.names.saved", { name: called(data, card) }), () => names.restore(savedRef, before));
+  }
+
+  function hide(card) {
+    const { data } = cleanOverride({ replaces: card.built.key, hidden: true });
+    save({ data, ref: card.ref });
+  }
+
+  function back(card) {
+    const before = names.remove(card.ref);
+    setOpen(null);
+    if (!before) return;
+    onToast(t(card.status === "added" ? "admin.names.removedToast" : "admin.names.backToast", { name: rowName(card.status === "hidden" ? card.built : card.row, lang) }), () =>
+      names.restore(card.ref, before)
+    );
+  }
+
   return (
     <section className="riso-admin-card riso-admin-names" aria-labelledby="admin-names-title">
       <div className="riso-admin-card-head">
@@ -243,29 +320,94 @@ function IngredientNames() {
         {gaps.names.length > 0 && <CountPill count={gaps.names.length} tone="pink" aria-hidden="true" />}
       </div>
       <p className="riso-admin-card-text">{t("admin.names.intro")}</p>
-      {gaps.total === 0 ? (
-        <p className="riso-admin-status">{t("admin.names.noRecipes")}</p>
-      ) : gaps.names.length === 0 && gaps.notes.length === 0 ? (
-        <p className="riso-admin-status">{t("admin.names.none")}</p>
+
+      <input
+        type="search"
+        className="riso-admin-namesearch"
+        value={query}
+        placeholder={t("admin.names.searchPlaceholder")}
+        aria-label={t("admin.names.searchLabel")}
+        autoComplete="off"
+        onChange={(e) => setQuery(e.target.value)}
+      />
+
+      {searching ? (
+        found.length > 0 ? (
+          <ul className="riso-admin-namelist" aria-label={t("admin.names.resultsLabel")}>
+            {found.map((card) => (
+              <NameCard key={card.ref} card={card} me={me} onOpen={(c) => setOpen({ card: c })} onBack={back} />
+            ))}
+          </ul>
+        ) : (
+          <p className="riso-admin-status">{t("admin.names.noMatch", { query: query.trim() })}</p>
+        )
       ) : (
         <>
-          {gaps.names.length > 0 && (
+          {gaps.total === 0 ? (
+            <p className="riso-admin-status">{t("admin.names.noRecipes")}</p>
+          ) : gaps.names.length === 0 && gaps.notes.length === 0 ? (
+            <p className="riso-admin-status">{t("admin.names.none")}</p>
+          ) : (
             <>
-              <p className="riso-admin-status">{t("admin.names.summary", { count: gaps.names.length, total: gaps.total })}</p>
-              <NameList entries={gaps.names.slice(0, NAMES_SHOWN)} label={t("admin.names.listLabel")} />
-              {hidden > 0 && <p className="riso-admin-status">{t("admin.names.more", { count: hidden })}</p>}
+              {gaps.names.length > 0 && (
+                <>
+                  <p className="riso-admin-status">{t("admin.names.summary", { count: gaps.names.length, total: gaps.total })}</p>
+                  <ul className="riso-admin-namelist" aria-label={t("admin.names.listLabel")}>
+                    {gaps.names.slice(0, NAMES_SHOWN).map((entry) => (
+                      <li key={entry.name}>
+                        <button
+                          type="button"
+                          className="riso-admin-namecard-main"
+                          aria-label={t("admin.names.nameIt", { name: entry.name })}
+                          onClick={() => setOpen({ gap: entry })}
+                        >
+                          <span className="riso-admin-name">{entry.name}</span>
+                          <span className="riso-admin-name-end">
+                            <span className="riso-admin-name-uses">{t("admin.names.usedIn", { count: entry.recipes })}</span>
+                            <span className="riso-admin-name-go" aria-hidden="true">›</span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {hidden > 0 && <p className="riso-admin-status">{t("admin.names.more", { count: hidden })}</p>}
+                </>
+              )}
+              {gaps.notes.length > 0 && (
+                <>
+                  <p className="riso-admin-status">{t("admin.names.notesSummary", { count: gaps.notes.length })}</p>
+                  <NameList entries={gaps.notes.slice(0, NAMES_SHOWN)} label={t("admin.names.notesLabel")} />
+                  <div>
+                    <CopyButton text={gapLines({ names: [], notes: gaps.notes })} label={t("admin.names.copyAria")} />
+                  </div>
+                </>
+              )}
             </>
           )}
-          {gaps.notes.length > 0 && (
-            <>
-              <p className="riso-admin-status">{t("admin.names.notesSummary", { count: gaps.notes.length })}</p>
-              <NameList entries={gaps.notes.slice(0, NAMES_SHOWN)} label={t("admin.names.notesLabel")} />
-            </>
+
+          <h3 className="riso-admin-subtitle">{t("admin.names.changesTitle")}</h3>
+          {mine.length > 0 ? (
+            <ul className="riso-admin-namelist" aria-label={t("admin.names.changesLabel")}>
+              {mine.map((card) => (
+                <NameCard key={card.ref} card={card} me={me} onOpen={(c) => setOpen({ card: c })} onBack={back} />
+              ))}
+            </ul>
+          ) : (
+            <p className="riso-admin-status">{t("admin.names.changesNone")}</p>
           )}
-          <div>
-            <CopyButton text={gapLines(gaps)} label={t("admin.names.copyAria")} />
-          </div>
         </>
+      )}
+
+      {open && (
+        <IngredientNameForm
+          gap={open.gap}
+          card={open.card}
+          overrides={overrides}
+          onSave={save}
+          onBack={() => back(open.card)}
+          onHide={() => hide(open.card)}
+          onClose={() => setOpen(null)}
+        />
       )}
     </section>
   );
@@ -587,7 +729,7 @@ function AiUsage({ me, onForbidden }) {
   );
 }
 
-export function Admin({ user, onHome }) {
+export function Admin({ user, onHome, names, onToast }) {
   // Turns to "Not allowed" if the server refuses, whatever this page was told.
   const [forbidden, setForbidden] = useState(false);
   if (!user.isAdmin || forbidden) return <NotAllowed onHome={onHome} />;
@@ -600,7 +742,7 @@ export function Admin({ user, onHome }) {
         <div className="riso-admin-col">
           <Members me={user.email} onForbidden={() => setForbidden(true)} />
           <AiUsage me={user.email} onForbidden={() => setForbidden(true)} />
-          <IngredientNames />
+          <IngredientNames me={user.email} names={names} onToast={onToast} />
         </div>
         <div className="riso-admin-col">
           <section className="riso-admin-card riso-admin-hq" aria-labelledby="admin-hq-title">

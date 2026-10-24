@@ -1,6 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { getLang, useLang } from "../i18n/index.js";
 import TABLE from "./ingredientDisplay.txt?raw";
+import { buildIndex, builtInRowsOf, effectiveRows, keyOf, parseTable } from "./ingredientTable.js";
+
+export { parseTable };
 
 // What a recipe's ingredient is called in the language the person picked.
 //
@@ -10,8 +13,11 @@ import TABLE from "./ingredientDisplay.txt?raw";
 // "add to list", what is saved) keeps using the name as written.
 //
 // The names are in ingredientDisplay.txt, one line each, so they are easy to read and
-// correct. A name (or note) that is not there is shown exactly as written, never half
-// translated: it is listed for the admin instead (lib/ingredientGaps.js, shown by components/Admin.jsx).
+// correct, and Matt's own changes from the Admin page sit on top of it (the OVERRIDES:
+// `setIngredientOverrides`; the file is never changed). A name (or note) that neither has is
+// shown exactly as written, never half translated: it is listed for the admin instead
+// (lib/ingredientGaps.js, shown by components/Admin.jsx). The file is read by
+// lib/ingredientTable.js, which the server runs too.
 //
 //   - A name is read in whichever language it is written in: « Oignons rouges » and
 //     "red onions" are the same ingredient. A name already in the language asked for is
@@ -23,86 +29,68 @@ import TABLE from "./ingredientDisplay.txt?raw";
 //   - A note ("finely chopped", « fondu ») is translated only when every word of it is
 //     known, and agrees with the ingredient it belongs to.
 //
-// The matcher (inventoryMatch.js) is not touched and does not read this file;
-// ingredientDisplay.test.js fails when a line here is not the same food to the matcher.
+// The matcher (inventoryMatch.js) is not touched and does not read this file or the overrides;
+// ingredientDisplayMatcher.test.js fails when a line of the file is not the same food to it.
+// (The overrides are not checked against the matcher until it reads this list too.)
 
-const fold = (text) =>
-  String(text || "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/œ/gi, "oe")
-    .toLowerCase();
-
-// "Gousses d'ail" and "gousses d’ail" and "Gousses d ail" read the same.
-const keyOf = (text) =>
-  fold(text)
-    .replace(/['’]/g, " ")
-    .replace(/[-‐]/g, " ")
-    .replace(/[^a-z0-9 ]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const forms = (cell) => String(cell || "").split("/").map((s) => s.trim()).filter(Boolean);
-
-// ---- Reading the table ------------------------------------------------------------
-
-export function parseTable(text) {
-  const sections = { ingredients: [], "describing words": [], "prep words": [], "prep adverbs": [], "prep phrases": [] };
-  let section = null;
-  for (const raw of String(text).split("\n")) {
-    const line = raw.replace(/#.*$/, "").trim();
-    if (!line) continue;
-    const head = line.match(/^\[(.+)\]$/);
-    if (head) {
-      section = head[1];
-      continue;
-    }
-    if (!sections[section]) throw new Error(`ingredientDisplay.txt: a line before any [section]: ${line}`);
-    sections[section].push({ line, cells: line.split("|").map((c) => c.trim()) });
-  }
-  return sections;
-}
+// ---- The table --------------------------------------------------------------------
 
 const SECTIONS = parseTable(TABLE);
 
-// { en: { one: [..], other: [..] }, fr: { one, other }, gender: "m" | "f", plural: bool }
-export const ingredientRows = SECTIONS.ingredients.map(({ line, cells }) => {
-  const [en1, enN, fr1, frN, g] = cells;
-  const plural = (cell, one) => (cell === "=" ? one : forms(cell));
-  const gender = /^([mf])(p?)$/.exec(g || "");
-  const row = {
-    line,
-    en: { one: forms(en1), other: plural(enN, forms(en1)) },
-    fr: { one: forms(fr1), other: plural(frN, forms(fr1)) },
-    gender: gender ? gender[1] : null,
-    alwaysPlural: Boolean(gender && gender[2]),
-  };
-  return row;
-});
+// The built-in rows, exactly as the file has them:
+// { en: { one: [..], other: [..] }, fr: { one, other }, gender: "m" | "f", alwaysPlural: bool, key }
+export const ingredientRows = builtInRowsOf(SECTIONS);
 
-// Every way a name can be written -> who it is: key -> [{ row, lang, number }].
-export const nounIndex = new Map();
-// Two lines that claim the same written name in the same language (the test fails on any).
-export const conflicts = [];
-// A written form that is a different ingredient in each language (« raisin » is a grape in
-// French, English "raisin" is dried): it is not read at all, so it is shown as written.
-export const ambiguous = [];
-for (const row of ingredientRows) {
-  for (const lang of ["en", "fr"]) {
-    for (const number of ["one", "other"]) {
-      for (const form of row[lang][number]) {
-        const key = keyOf(form);
-        const list = nounIndex.get(key) || [];
-        const same = list.find((entry) => entry.lang === lang);
-        if (same && same.row !== row) conflicts.push(`"${form}" is on two lines: ${same.row.line} / ${row.line}`);
-        // The first number a written form has is the one it keeps ("pois" is one before it is other).
-        else if (!same) list.push({ row, lang, number });
-        nounIndex.set(key, list);
-      }
-    }
-  }
+// The built-in file's own lookup. `conflicts`: two lines that claim the same written name in the
+// same language (the test fails on any). `ambiguous`: a written form that is a different
+// ingredient in each language (« raisin »), which is not read at all.
+const builtIn = buildIndex(ingredientRows);
+export const nounIndex = builtIn.nounIndex;
+export const conflicts = builtIn.conflicts;
+export const ambiguous = builtIn.ambiguous;
+
+// ---- Matt's overrides -------------------------------------------------------------
+
+// The rows in use: the built-in rows with Matt's overrides applied. It is rebuilt whenever
+// the overrides change (they arrive after the app has loaded, and change when he saves).
+let overrides = [];
+let live = { rows: ingredientRows, ...builtIn, ambiguousSet: new Set(builtIn.ambiguous) };
+let version = 0;
+const listeners = new Set();
+const nameCache = new Map();
+
+// Replaces the whole list of overrides: [{ id, replaces, hidden, enOne, enOther, frOne, frOther,
+// gender, updatedAt, updatedBy }], as the server sends it. Every screen that draws a name follows.
+export function setIngredientOverrides(next) {
+  overrides = Array.isArray(next) ? next : [];
+  const rows = effectiveRows(ingredientRows, overrides);
+  const index = buildIndex(rows);
+  live = { rows, ...index, ambiguousSet: new Set(index.ambiguous) };
+  nameCache.clear();
+  version++;
+  for (const listener of [...listeners]) listener();
 }
-for (const [key, list] of nounIndex) if (new Set(list.map((entry) => entry.row)).size > 1) ambiguous.push(key);
+
+export const getIngredientOverrides = () => overrides;
+
+// Moves whenever the overrides change.
+export const ingredientOverridesVersion = () => version;
+
+// Calls `listener` whenever the overrides change; gives back the function that stops it.
+export const subscribeIngredientOverrides = (listener) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
+// For a component that must draw again when the overrides change. The whole app does (AuthGate,
+// as it does for the language), so a name drawn by a plain function is drawn again too.
+export function useIngredientOverridesVersion() {
+  return useSyncExternalStore(subscribeIngredientOverrides, ingredientOverridesVersion, ingredientOverridesVersion);
+}
+
+// The rows in use now (built-in with the overrides applied, Matt's first): the one list the
+// Admin search reads, and what the matcher and the search will read.
+export const effectiveIngredientRows = () => live.rows;
 
 // Describing words: key -> { word, lang, index (0 m, 1 f, 2 m pl, 3 f pl) }.
 export const describing = SECTIONS["describing words"].map(({ cells }) => {
@@ -182,8 +170,8 @@ function readNoun(text) {
   for (let len = words.length; len >= 1; len--) {
     for (let start = 0; start + len <= words.length; start++) {
       const key = words.slice(start, start + len).join(" ");
-      const candidates = nounIndex.get(key);
-      if (!candidates || ambiguous.includes(key)) continue;
+      const candidates = live.nounIndex.get(key);
+      if (!candidates || live.ambiguousSet.has(key)) continue;
       const before = readDescribing(words.slice(0, start));
       const after = readDescribing(words.slice(start + len));
       if (!before || !after) continue;
@@ -332,17 +320,6 @@ function showReading(reading, target) {
   return reading.style === "bracket" ? `${head} (${note})` : `${head}, ${note}`;
 }
 
-// First words that start with a capital in the table because they are a name: Roma,
-// Dijon, Worcestershire. A capital on one of them is not a sentence's capital.
-const properFirstWords = new Set();
-for (const row of ingredientRows) {
-  for (const lang of ["en", "fr"]) {
-    for (const number of ["one", "other"]) {
-      for (const form of row[lang][number]) if (/^\p{Lu}/u.test(form)) properFirstWords.add(keyOf(form.split(" ")[0]));
-    }
-  }
-}
-
 // The shown text keeps the way the written one began: « Oignons » -> « Onions », ALL CAPS
 // stays ALL CAPS. (A lower-case start is left alone: the table only starts a name with a
 // capital when it is a proper name, "Worcestershire sauce".)
@@ -350,7 +327,7 @@ function mirrorCase(written, shown) {
   const letters = written.replace(/[^\p{L}]/gu, "");
   if (letters.length > 3 && letters === letters.toUpperCase()) return shown.toUpperCase();
   const first = written.match(/\p{L}/u)?.[0];
-  if (first && first === first.toUpperCase() && first !== first.toLowerCase() && !properFirstWords.has(keyOf(written.split(/\s+/)[0]))) {
+  if (first && first === first.toUpperCase() && first !== first.toLowerCase() && !live.properFirstWords.has(keyOf(written.split(/\s+/)[0]))) {
     return shown.charAt(0).toUpperCase() + shown.slice(1);
   }
   return shown;
@@ -358,8 +335,6 @@ function mirrorCase(written, shown) {
 
 // How many foods a name lists ("salt and pepper" is two), for words that agree with it.
 const listedIn = (reading) => (reading.type === "noted" ? listedIn(reading.head) : reading.type === "list" ? reading.parts.length : 1);
-
-const nameCache = new Map();
 
 function translateName(name, target) {
   const written = String(name ?? "");
@@ -412,12 +387,14 @@ export function isKnownNote(note) {
 // changes with the FR | EN switch.
 export function useIngredientNames() {
   const lang = useLang();
+  const changes = useIngredientOverridesVersion();
   return useMemo(
     () => ({
       lang,
       name: (name) => ingredientName(name, lang),
       note: (note, name) => ingredientNote(note, name, lang),
     }),
-    [lang]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lang, changes]
   );
 }

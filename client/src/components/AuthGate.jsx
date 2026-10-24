@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { getLang, setLang, t, useLang } from "../i18n/index.js";
+import { useIngredientOverridesVersion } from "../lib/ingredientDisplay.js";
 import { LanguageSwitch } from "./RisoControls.jsx";
 
 // The page around every auth card: a "MEAL PREP" pill and the title above
@@ -265,8 +266,10 @@ function ResetPasswordForm({ token }) {
 // password needs to work whether or not the visitor happens to already be
 // logged in on this browser.
 export function AuthGate({ children }) {
-  // Re-renders the whole app when the language changes.
+  // Re-renders the whole app when the language changes, and when Matt's changes to the ingredient
+  // names arrive or change (a name drawn by a plain function, like a Grocery row's, follows too).
   useLang();
+  useIngredientOverridesVersion();
   const [user, setUser] = useState(undefined); // undefined = still checking, null = logged out, object = logged in
   const [resetToken] = useState(() => new URLSearchParams(window.location.search).get("token"));
 

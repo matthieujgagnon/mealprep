@@ -12,7 +12,8 @@ import { E2E_INVITE } from "./invite.js";
 //   - what Matt typed (an Inventory item, a Grocery item) stays exactly as typed;
 //   - at 390px in French the long names fit on the card, in Cook mode, on a Grocery row and
 //     on Makeable's pills;
-//   - the admin's list of names with no translation yet, and its Copy button.
+//   - the admin's list of names with no translation yet, and the Copy button for prep notes
+//     (filling a name in is e2e/ingredient-name-edits.spec.js).
 // Set SHOTS_DIR to also save the screenshots (phone in French, computer in English) there.
 
 const prisma = new PrismaClient();
@@ -312,7 +313,7 @@ test.describe("on a phone, in French", () => {
 test.describe("the admin's list of names with no translation yet", () => {
   test.use({ locale: "en-CA", viewport: { width: 1280, height: 1000 } });
 
-  test("lists the names the table does not know with how many recipes use them, and Copy gives lines to fill in", async ({ page, context }) => {
+  test("lists the names the table does not know with how many recipes use them, and Copy gives the prep notes' lines to fill in", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await prisma.user.deleteMany({ where: { email: ADMIN } });
     await prisma.user.create({ data: { email: ADMIN, passwordHash: await bcrypt.hash(PASSWORD, 10), locale: "en" } });
@@ -322,7 +323,7 @@ test.describe("the admin's list of names with no translation yet", () => {
     await page.locator(".riso-auth-submit").click();
     await expect(page.locator(".tab.active")).toHaveText("Home");
     await page.request.post("/api/recipes", { data: RECIPE });
-    await page.request.post("/api/recipes", { data: { ...RECIPE, title: "Biryani again", ingredients: [{ name: "biryani masala" }, { name: "Pâte de piment fort" }, { name: "onions" }] } });
+    await page.request.post("/api/recipes", { data: { ...RECIPE, title: "Biryani again", ingredients: [{ name: "biryani masala" }, { name: "Pâte de piment fort" }, { name: "onions", notes: "cut like a pro" }] } });
     await page.goto("/admin");
 
     const card = page.locator(".riso-admin-names");
@@ -334,12 +335,16 @@ test.describe("the admin's list of names with no translation yet", () => {
     await expect(list.locator("li", { hasText: "red onions" })).toHaveCount(0);
     await expect(list.locator("li", { hasText: "garlic cloves" })).toHaveCount(0);
 
-    await card.getByRole("button", { name: "Copy the list of ingredient names to fill in" }).click();
-    await expect(card.getByRole("button", { name: "Copy the list of ingredient names to fill in" })).toContainText("Copied");
+    // A prep note the table does not know is listed too, and Copy gives its line for the table file
+    // (names are filled in on this page: see e2e/ingredient-name-edits.spec.js).
+    await expect(card.getByRole("list", { name: "Prep notes with no translation" }).locator("li")).toContainText("cut like a pro");
+    const copy = card.getByRole("button", { name: "Copy the prep notes as lines of the names table" });
+    await copy.click();
+    await expect(copy).toContainText("Copied");
     const copied = await page.evaluate(() => navigator.clipboard.readText());
-    // (The name keeps the spelling it was first met with, "Biryani masala" or "biryani masala".)
-    expect(copied).toMatch(/^biryani masala \|  \|  \|  \|  # 2 recipes$/im);
-    expect(copied).toContain(" |  | Pâte de piment fort |  |  # 1 recipe");
+    expect(copied).toMatch(/^# \[prep words\]/m);
+    expect(copied).toContain("cut like a pro |  |  |  |  # 1 recipe");
+    expect(copied).not.toMatch(/biryani masala/i);
     await shot(page, "admin-names-en", card);
   });
 
