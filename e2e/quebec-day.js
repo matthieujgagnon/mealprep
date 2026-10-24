@@ -15,6 +15,15 @@ export function addDays(key, days) {
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
+// Where a moment falls in the Planner's week, counted on the Quebec day: which day of the week
+// it is (0 = Monday ... 6 = Sunday) and the Monday ("2026-10-19") that starts that week. A
+// machine's own date is a day ahead from 8 p.m. in Quebec when it runs on UTC (Friday evening
+// reads as Saturday), so a meal planned from it can land on a day the Planner counts as past.
+export function quebecDayOfWeek(at = Date.now()) {
+  return (new Date(`${quebecDay(at)}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+export const quebecWeekStart = (at = Date.now()) => addDays(quebecDay(at), -quebecDayOfWeek(at));
+
 // A use-by day is saved as a bare date, which the database keeps as midnight UTC.
 export const asSavedDay = (key) => `${key}T00:00:00.000Z`;
 

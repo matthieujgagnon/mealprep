@@ -29,6 +29,7 @@ import { feedbackRouter } from "./routes/feedback.js";
 import { inventoryLinksRouter } from "./routes/inventoryLinks.js";
 import { startFlyerScheduler } from "./lib/flyerImport.js";
 import { fail } from "./lib/i18n.js";
+import { applyKeepAliveTimeouts } from "./lib/keepAlive.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -101,8 +102,9 @@ process.on("unhandledRejection", (err) => {
 // to each account and are seeded at signup time instead - see
 // lib/placeholders.js and routes/auth.js.
 const port = process.env.PORT || 4000;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
   startFlyerScheduler({ onRenamed: forgetAllDeals });
   warnAboutAdminEmails().catch((err) => console.error("Couldn't check ADMIN_EMAILS:", err));
 });
+applyKeepAliveTimeouts(server);
