@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { E2E_INVITE } from "./invite.js";
 import { openHelp } from "./account-menu.js";
 import { itemForm } from "./inventory-form.js";
+import { addDays, quebecDayOfWeek, quebecWeekStart } from "./quebec-day.js";
 
 // « Je l'ai comme… » / "I have it as…" and the matcher's better rules for names it used
 // to miss (lib/inventoryMatch.js, lib/inventoryLinks.js):
@@ -37,16 +38,12 @@ const TITLE = "Crispy Wonton Chicken Salad";
 const INGREDIENTS = ["boneless skinless chicken breasts", "wonton wrappers", "rice vinegar", "low sodium soy sauce", "tamari", "sesame oil"];
 const INVENTORY = ["Rice wine vinegar", "Soy sauce", "Chicken breast", "Toasted sesame oil"];
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-const nextMonday = () => {
-  const x = new Date(mondayOf(new Date()) + "T12:00:00");
-  x.setDate(x.getDate() + 7);
-  return mondayOf(x);
-};
+// The Planner counts "today" on the browser's clock, so the browser is in Quebec like Matt's phone,
+// and the week and day a meal is planned on come from the Quebec day (e2e/quebec-day.js), never
+// from this machine's own date: on UTC that is already Saturday from 8 p.m. on a Friday in Quebec,
+// and a meal planned on Friday would be on a day the Planner counts as past (its card does nothing).
+test.use({ timezoneId: "America/Toronto" });
+const nextMonday = () => addDays(quebecWeekStart(), 7);
 
 // The signed-in account: the admin by default (a new copy of the account each time, so nothing
 // of an earlier test is left), or `admin: false` for a tester who signs up like anyone else.
@@ -250,10 +247,10 @@ test.describe("on a computer, in English", () => {
     await expect(page.locator(".riso-row-name")).toHaveText(["Tamari", "Wonton wrapper"]);
     // The Undo shows at once and the save follows: wait until the server has taken the link away before reloading.
     await expect.poll(async () => (await links(page)).length).toBe(0);
-    await page.request.post("/api/planner", { data: { recipeId: (await (await page.request.get("/api/recipes")).json())[0].id, weekStart: mondayOf(new Date()), dayOfWeek: Math.min((new Date().getDay() + 6) % 7, 4), mealType: "dinner" } });
+    await page.request.post("/api/planner", { data: { recipeId: (await (await page.request.get("/api/recipes")).json())[0].id, weekStart: quebecWeekStart(), dayOfWeek: quebecDayOfWeek(), mealType: "dinner" } });
     await page.reload();
     await tab(page, L.en.planner).click();
-    const day = Math.min((new Date().getDay() + 6) % 7, 4);
+    const day = quebecDayOfWeek();
     await page.locator(".riso-planner-cell").nth(2 * 7 + day).locator(".riso-planner-card").click();
     const planned = page.getByRole("dialog", { name: TITLE });
     const chip = planned.locator(".ing-marks-buy", { hasText: "Tamari" });
@@ -321,8 +318,8 @@ test.describe("on a phone, in French", () => {
     // The phone's planned-meal card is the small inline one: it lists no To-buy chips (so
     // there is no chip button on a phone; the recipe card's drawer has the button).
     const recipe = (await (await page.request.get("/api/recipes")).json())[0];
-    const day = Math.min((new Date().getDay() + 6) % 7, 4);
-    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+    const day = quebecDayOfWeek();
+    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: quebecWeekStart(), dayOfWeek: day, mealType: "dinner" } });
     await page.reload();
     await tab(page, L.fr.planner).click();
     await page.locator(".pmb-cell .riso-planner-card").first().click();
@@ -337,8 +334,8 @@ test.describe("on the narrowest screen that has the planned-meal card's chips, i
 
   test("the chip button beside a To-buy chip fits, with no sideways scroll", async ({ page }) => {
     const recipe = await setup(page, { lang: "fr" });
-    const day = Math.min((new Date().getDay() + 6) % 7, 4);
-    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+    const day = quebecDayOfWeek();
+    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: quebecWeekStart(), dayOfWeek: day, mealType: "dinner" } });
     await page.reload();
     await tab(page, L.fr.planner).click();
     await page.locator(".riso-planner-cell").nth(2 * 7 + day).locator(".riso-planner-card").click();
@@ -390,8 +387,8 @@ test.describe("a tester, on a computer, in English", () => {
 
     // Planner: the planned meal's To-buy chip has no ≈ button.
     const recipeId = (await (await page.request.get("/api/recipes")).json())[0].id;
-    const day = Math.min((new Date().getDay() + 6) % 7, 4);
-    await page.request.post("/api/planner", { data: { recipeId, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+    const day = quebecDayOfWeek();
+    await page.request.post("/api/planner", { data: { recipeId, weekStart: quebecWeekStart(), dayOfWeek: day, mealType: "dinner" } });
     await page.reload();
     await tab(page, L.en.planner).click();
     await page.locator(".riso-planner-cell").nth(2 * 7 + day).locator(".riso-planner-card").click();
