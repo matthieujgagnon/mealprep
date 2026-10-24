@@ -14,4 +14,12 @@ A recipe **written in French** on a computer in **English**:
 
 - `desktop-en-1-card-of-a-french-recipe.png`, `desktop-en-3-cook-of-a-french-recipe.png`, `desktop-en-4-makeable-of-a-french-recipe.png`, `desktop-en-5-grocery-of-a-french-recipe.png`: the same screens, read in English. The steps are the recipe's own text and stay in French.
 - `desktop-en-2-card-of-an-english-recipe.png`: a recipe written in English, in English: exactly as written.
-- `desktop-en-6-admin-ingredient-names.png`: the admin's list of names with no translation yet, and its Copy button.
+- `desktop-en-6-admin-ingredient-names.png`: the admin's Ingredient names card: the search box, the names with no translation yet (each opens the form), the prep notes with their Copy button, and Your changes.
+
+
+Matt's own changes (made by `SHOTS_DIR=<folder> npx playwright test e2e/ingredient-name-edits.spec.js`):
+
+- `desktop-en-7-admin-search.png`: the search finds a built-in row by any spelling in either language (« CARDAMOME » finds "cardamom → cardamome", tagged Built-in).
+- `desktop-en-8-admin-changed-row.png`: after a correction, the row is tagged Changed with "Changed by you · Oct 24", and the toast says it is saved for everyone (with Undo).
+- `phone-fr-6-admin-names.png`: the card on a phone (390 px) in French.
+- `phone-fr-7-admin-name-form.png`: the form for a name with no translation, on a phone in French: the English name and its plural filled in, the cursor in the French side, the gender guessed from « pâte ».
