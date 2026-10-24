@@ -3,6 +3,7 @@ import { formatNumber } from "../i18n/format.js";
 import { getLang } from "../i18n/index.js";
 import { canonicalUnit, canonicalize, capitalize, singularize } from "./ingredientNames.js";
 import { foodsOnLine } from "./inventoryMatch.js";
+import { ingredientName } from "./ingredientDisplay.js";
 import { isPreparedRecipe } from "./mealSlots.js";
 
 export { canonicalUnit, canonicalize, capitalize, singularize };
@@ -84,12 +85,18 @@ export function buildGroceryList(plannerEntries, extraItems = [], overrides = []
       const { core, varieties, written } = canonicalize(ing.name);
       const resolvedCore = core || ing.name.toLowerCase();
       const shownName = capitalize(getLang() === "fr" && written ? written : resolvedCore);
+      // What is drawn (lib/ingredientDisplay.js). The singular "core" is made by English rules, which
+      // mangle French words (« gousses » -> "gouss"), so a French name the table knows is translated
+      // from the way it was written; any other name is translated from what is shown.
+      const translated = written ? capitalize(ingredientName(written)) : "";
+      const shownLabel = getLang() === "en" && translated && translated.toLowerCase() !== written.toLowerCase() ? translated : ingredientName(shownName);
       const qty = ing.quantity != null ? ing.quantity * scale : null;
 
       if (!map.has(resolvedCore)) {
         map.set(resolvedCore, {
           core: resolvedCore,
           name: shownName,
+          label: shownLabel,
           parts: [],
           usedIn: new Set(),
           varieties: new Set(),
@@ -104,7 +111,10 @@ export function buildGroceryList(plannerEntries, extraItems = [], overrides = []
       existing.ingredientNames.add(ing.name);
       varieties.forEach((v) => existing.varieties.add(v));
       // Keep the shorter display name (fewer prep words attached)
-      if (shownName.length < existing.name.length) existing.name = shownName;
+      if (shownName.length < existing.name.length) {
+        existing.name = shownName;
+        existing.label = shownLabel;
+      }
 
       addQuantityPart(existing.parts, qty, unit || null);
     }
@@ -116,6 +126,9 @@ export function buildGroceryList(plannerEntries, extraItems = [], overrides = []
       key: item.core,
       core: item.core,
       name: item.name,
+      // What is drawn: the name in the language shown (lib/ingredientDisplay.js). `name`
+      // stays the recipe's own wording, which sale lookups and the aisle call read.
+      label: item.label,
       parts,
       // Legacy single-value fields — first part only. Fine for the common
       // case (one part); GroceryList.jsx reads `parts` directly to render
@@ -137,6 +150,8 @@ export function buildGroceryList(plannerEntries, extraItems = [], overrides = []
       key: `extra-${extra.id}`,
       core: resolvedCore,
       name: extra.name,
+      // Typed by hand: shown exactly as typed, whatever language is shown.
+      label: extra.name,
       parts: [{ quantity: extra.quantity ?? null, unit: extra.unit || null }],
       quantity: extra.quantity ?? null,
       unit: extra.unit || null,
@@ -157,7 +172,7 @@ export function buildGroceryList(plannerEntries, extraItems = [], overrides = []
       const o = overrideByKey.get(item.key);
       return { ...item, removed: !!o?.removed, keep: !!o?.keep, customQuantity: o?.quantity || null };
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 // Bigger units once an amount gets unwieldy (1500 g -> 1.5 kg).

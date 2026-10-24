@@ -4,6 +4,7 @@ import { DealDetailHost } from "./SaleTag.jsx";
 import { foodEmoji } from "../lib/dealEmoji.js";
 import { saleFor } from "../lib/finder.js";
 import { findDealsFor } from "../lib/similarRecipes.js";
+import { useIngredientNames } from "../lib/ingredientDisplay.js";
 import { isPreparedRecipe, recipeSlotCaption, recipeTotalMinutes } from "../lib/mealSlots.js";
 import { cardButtons, cardCaption, cardState, haveBar, namesToAdd, pickPills, pillFontSize, saleCount } from "../lib/photoCard.js";
 import { t } from "../i18n/index.js";
@@ -30,8 +31,10 @@ import { t } from "../i18n/index.js";
 //   onCook(recipe), onPlan(recipe), onOpenCirculaires(deal)
 
 function MissingPill({ name, grocery, sale, showSale, saleOpen, onOpenSale }) {
+  const ingredientNames = useIngredientNames();
   const on = grocery.isOnList(name);
-  const label = name.toLocaleLowerCase();
+  // What is drawn is in the language shown; the list, the emoji and the sale lookup keep the recipe's own name.
+  const label = ingredientNames.name(name).toLocaleLowerCase();
   return (
     <span className="mkc-pill" style={{ fontSize: `${pillFontSize(label)}px` }}>
       <button

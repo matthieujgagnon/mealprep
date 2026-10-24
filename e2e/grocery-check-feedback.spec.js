@@ -455,7 +455,7 @@ for (const size of [{ width: 390, height: 664 }, { width: 390, height: 844 }]) {
       await expect(page.locator(".riso-grocery-dock")).toHaveCount(0); // the bar is in view
 
       // Something queued in two stores, so there are footers, and something in the cart.
-      for (const name of ["Old cheddar", "Old cheddar", "Milk 2%", "Milk 2%", "Cilantro"]) await box(page, name).tap();
+      for (const name of ["Old cheddar", "Old cheddar", "Milk 2%", "Milk 2%", "Coriandre"]) await box(page, name).tap();
       await page.getByRole("button", { name: "Compris" }).tap();
 
       const geometry = () =>
@@ -555,7 +555,7 @@ for (const width of [360, 390]) {
       const userId = await signUp(page, true);
       await seed(page, userId);
       await openGrocery(page, true);
-      for (const name of ["Old cheddar", "Old cheddar", "Cilantro"]) await box(page, name).tap();
+      for (const name of ["Old cheddar", "Old cheddar", "Coriandre"]) await box(page, name).tap();
       const overflowing = () =>
         page.evaluate(() =>
           [...document.querySelectorAll(".riso-grocery button, .riso-grocery .riso-group-foot-btn, .riso-grocery-dock button")]

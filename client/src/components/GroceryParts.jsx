@@ -162,7 +162,7 @@ function aroundNumber(text, count) {
 export function GroupFooter({ items, onAdd }) {
   const count = items.length;
   const last = useRef(null); // what it said last, which it keeps saying while it closes
-  if (count > 0) last.current = { count, names: items.map((item) => capitalize(item.name)).join(", ") };
+  if (count > 0) last.current = { count, names: items.map((item) => capitalize(item.label)).join(", ") };
   const [open, setOpen] = useState(count > 0); // stays true until the close animation has ended
   const footer = useRef(null);
   const before = useRef(count);

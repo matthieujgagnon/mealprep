@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { formatQuantity, unitLabel } from "../lib/units.js";
 import { clockParts, formatClock, secondsFromParts, stepTitle } from "../lib/steps.js";
+import { howLine } from "../lib/cookPrep.js";
+import { useIngredientNames } from "../lib/ingredientDisplay.js";
 import { t } from "../i18n/index.js";
 
 // The pieces of Cook mode's step view (design: docs/design/riso-v2-cook-mode/) and its
@@ -68,6 +70,7 @@ function amountText(ing, scale) {
 // servings) in a column that lines up, and the name with its prep note after it.
 // Tapping a row checks it off; `checked` is keyed `${stepIndex}:${name}`.
 export function StepIngredients({ items, stepIndex, scale, checked, onToggle }) {
+  const names = useIngredientNames();
   const keyOf = (ing) => `${stepIndex}:${ing.name}`;
   const done = items.filter((ing) => checked[keyOf(ing)]).length;
   return (
@@ -88,8 +91,8 @@ export function StepIngredients({ items, stepIndex, scale, checked, onToggle }) 
               </span>
               <span className="cm-uses-qty">{amountText(ing, scale)}</span>
               <span className="cm-uses-name">
-                {ing.name}
-                {ing.notes && <span className="cm-uses-prep">, {ing.notes}</span>}
+                {names.name(ing.name)}
+                {ing.notes && <span className="cm-uses-prep">, {names.note(ing.notes, ing.name)}</span>}
               </span>
             </button>
           );
@@ -116,6 +119,7 @@ const upperFirst = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1
 // computer, on its own line under the how line on a phone. `isOn` and `onToggle` are the
 // same ticks "For this step" keeps, so a tick here shows there.
 export function PrepList({ groups, scale, phone, isOn, onToggle }) {
+  const names = useIngredientNames();
   return (
     <div className="cm-prep-list">
       {groups.map((group) => {
@@ -136,8 +140,9 @@ export function PrepList({ groups, scale, phone, isOn, onToggle }) {
                   </span>
                   <span className="cm-uses-qty">{amountText(row.ingredient, scale)}</span>
                   <span className="cm-prep-text">
-                    <span className="cm-uses-name">{upperFirst(row.ingredient.name)}</span>
-                    <span className="cm-prep-how">{row.how}</span>
+                    <span className="cm-uses-name">{upperFirst(names.name(row.ingredient.name))}</span>
+                    {/* The instruction is made from the note in the language shown (« Hachez finement », "Finely chop"). */}
+                    <span className="cm-prep-how">{howLine(names.note(row.note, row.ingredient.name))}</span>
                     {phone && tag && <span className="cm-prep-tag">{tag}</span>}
                   </span>
                   {!phone && tag && <span className="cm-prep-tag">{tag}</span>}

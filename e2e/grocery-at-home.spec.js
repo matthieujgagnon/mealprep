@@ -95,7 +95,10 @@ test("a food added to Inventory moves off the list, and in French the section is
   await expect(strip(page).locator(".riso-removed-label")).toHaveText("Déjà à la maison");
   await strip(page).getByRole("button", { name: /Déjà à la maison/ }).click();
   await expect(strip(page).locator(".riso-removed-putback")).toContainText("Remettre sur la liste");
-  await expect(strip(page).locator(".riso-removed-meta")).toHaveText(["Poivre"]);
+  // The recipe's "pepper" reads « Poivre » in French, the same as the Inventory item that covers it,
+  // so the line under it says where it is rather than saying the name twice.
+  await expect(strip(page).locator(".riso-removed-name")).toHaveText(["Poivre"]);
+  await expect(strip(page).locator(".riso-removed-meta")).toHaveText(["Dans votre inventaire"]);
 });
 
 test.describe("on a phone, in French", () => {
