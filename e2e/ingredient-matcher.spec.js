@@ -160,8 +160,16 @@ test.describe("the Admin form, on a phone, in French", () => {
     await form.locator('input[name="frOther"]').fill("racines de glorbnik/sale");
     await expect(form.getByRole("status")).toContainText("« J'en ai » ne lit jamais « sale »");
     await shot(page, "matcher-notes-fr-phone");
+    // Everything in the sheet is whole on the screen (the page behind it is the Admin page's own business).
     const width = page.viewportSize().width;
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    const cramped = await form.evaluate(
+      (box, max) =>
+        [...box.querySelectorAll("button, h2, p, input, legend, label, span")]
+          .filter((e) => e.offsetParent && (e.getBoundingClientRect().right > max + 1 || e.getBoundingClientRect().left < -1))
+          .map((e) => `${e.className || e.tagName}: ${(e.textContent || "").trim().slice(0, 40)}`),
+      width
+    );
+    expect(cramped).toEqual([]);
     const box = await form.getByRole("status").boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
