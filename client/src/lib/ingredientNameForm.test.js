@@ -10,6 +10,7 @@ import {
   guessPlural,
   guessSingular,
   looksPlural,
+  matcherNotes,
   problemWith,
   rowName,
   searchCards,
@@ -200,5 +201,53 @@ describe("every row and where it stands", () => {
     expect(names).toContain("tomato");
     expect(names).toHaveLength(8);
     expect(searchCards(cards, "e", 7)).toHaveLength(7);
+  });
+});
+
+describe("what the Inventory matcher makes of a draft", () => {
+  const draft = (extra = {}) => ({ enOne: "kohlrabi", enOther: "kohlrabis", frOne: "chou-rave", frOther: "choux-raves", gender: "m", always: false, ...extra });
+
+  it("has nothing to say about a new name the matcher does not know yet", () => {
+    expect(matcherNotes(draft())).toEqual([]);
+    // a longer name made of words it knows, read the same way before and after
+    expect(matcherNotes(draft({ enOne: "pomegranate juice", enOther: "", frOne: "jus de grenade", frOther: "" }))).toEqual([]);
+  });
+
+  it("has nothing to say about a row that is already there, as it is", () => {
+    const row = ingredientRows.find((r) => r.key === "cauliflower");
+    expect(matcherNotes(draftForRow(row), { replaces: row.key })).toEqual([]);
+  });
+
+  it("says a French spelling is already read as another food, and which", () => {
+    // « citron » is lemon to the matcher; a row that said it was lime would change that
+    const notes = matcherNotes(draft({ enOne: "lime", enOther: "limes", frOne: "limette verte", frOther: "citron" }), { replaces: null });
+    expect(notes).toContainEqual({ kind: "reads", form: "citron", was: "lemon", now: "lime" });
+  });
+
+  it("says when the matcher would not take the two names for one food", () => {
+    const notes = matcherNotes(draft({ enOne: "juice", enOther: "", frOne: "jus", frOther: "" }));
+    expect(notes).toContainEqual({ kind: "different", english: "juice", french: "jus" });
+  });
+
+  it("says a spelling is never read: an English word, or a different ingredient in each language", () => {
+    expect(matcherNotes(draft({ frOther: "sale" }))).toContainEqual({ kind: "notRead", form: "sale" });
+    expect(matcherNotes(draft({ frOther: "raisin" }))).toContainEqual({ kind: "notRead", form: "raisin" });
+  });
+
+  it("does not count the row being changed, or the one it replaces, as something the matcher knows", () => {
+    const garlic = ingredientRows.find((r) => r.key === "garlic clove");
+    const edited = draftForRow(garlic);
+    expect(matcherNotes({ ...edited, frOne: "caïeu d'ail/gousse d'ail" }, { replaces: garlic.key })).toEqual([]);
+    const override = { id: "r1", replaces: "garlic clove", hidden: false, enOne: "garlic clove", enOther: "garlic cloves", frOne: "caïeu d'ail", frOther: "caïeux d'ail", gender: "m" };
+    expect(matcherNotes({ ...edited, frOne: "caïeu d'ail" }, { replaces: garlic.key, overrides: [override], self: override })).toEqual([]);
+  });
+
+  it("is empty while the names are not typed yet", () => {
+    expect(matcherNotes(draft({ enOne: "", frOne: "" }))).toEqual([]);
+    expect(matcherNotes(draft({ enOne: "a|b" }))).toEqual([]);
+  });
+
+  it("is refused, not just noted, when a spelling is one of the matcher's own words", () => {
+    expect(problemWith(draft({ frOne: "poudre" }))).toMatchObject({ error: "ingredientMatcherWord", vars: { form: "poudre", english: "powder" }, live: true });
   });
 });

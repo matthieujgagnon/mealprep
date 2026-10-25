@@ -142,7 +142,7 @@ export const fr = {
     },
     names: {
       title: "Noms des ingrédients",
-      intro: "Les ingrédients s'affichent dans la langue choisie (FR | EN) quand leur nom est dans le tableau des noms. Touchez un nom ci-dessous pour lui donner ses noms en anglais et en français, ou cherchez-en un à corriger. Ce que vous enregistrez s'applique à tout le monde tout de suite. Cela change les mots affichés, pas ce qui compte comme « J'en ai ».",
+      intro: "Les ingrédients s'affichent dans la langue choisie (FR | EN) quand leur nom est dans le tableau des noms. Touchez un nom ci-dessous pour lui donner ses noms en anglais et en français, ou cherchez-en un à corriger. Ce que vous enregistrez s'applique à tout le monde tout de suite. Cela change les mots affichés et aussi ce qui compte comme « J'en ai » : un nom français donné ici est lu comme son nom anglais, dans les deux langues.",
       summary: { one: "{count} nom d'ingrédient sur {total} n'a pas encore de traduction.", other: "{count} noms d'ingrédients sur {total} n'ont pas encore de traduction." },
       none: "Tous les noms d'ingrédients de vos recettes ont une traduction.",
       noRecipes: "Aucun ingrédient à vérifier pour l'instant.",
@@ -190,6 +190,7 @@ export const fr = {
         spellingsHint: "Les autres façons de l'écrire vont entre barres obliques : la première est affichée.",
         save: "Enregistrer pour tout le monde",
         hide: "Masquer ce nom de base",
+        hideHint: "Le masquer empêche aussi « J'en ai » de lire ses noms français.",
         backToBuiltIn: "Revenir au nom de base",
         remove: "Retirer",
       },
@@ -201,6 +202,12 @@ export const fr = {
         ingredientGender: "Choisissez masculin ou féminin.",
         ingredientHideNeedsBuiltIn: "Seul un nom de base peut être masqué.",
         ingredientTaken: "« {form} » est déjà utilisé pour un autre ingrédient ({other}).",
+        ingredientMatcherWord: "« {form} » est un mot que « J'en ai » lit à sa façon (il veut dire « {english} »). Utilisez un nom plus long.",
+      },
+      warn: {
+        reads: "« {form} » veut déjà dire « {was} » pour « J'en ai ». Avec cette ligne, il voudrait dire « {now} », ce qui change les recettes comptées comme ayant tout.",
+        different: "« J'en ai » ne prend pas « {english} » et « {french} » pour le même aliment : il ne les liera pas.",
+        notRead: "« J'en ai » ne lit jamais « {form} » : c'est aussi un mot anglais, ou un ingrédient différent dans chaque langue. Il ne comptera pas comme ayant.",
       },
     },
     invites: {

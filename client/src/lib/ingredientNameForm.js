@@ -1,6 +1,8 @@
 import { looksFrench } from "./bilingual.js";
-import { clashOf, cleanCells, cleanOverride, fold, keyOf, rowFromOverride } from "./ingredientTable.js";
+import { buildIndex, clashOf, cleanCells, cleanOverride, effectiveRows, fold, keyOf, rowFromOverride } from "./ingredientTable.js";
 import { ingredientRows } from "./ingredientDisplay.js";
+import { foodProfileUnder, readingFor, sameProfiles } from "./inventoryMatch.js";
+import { NOT_READ_FR } from "./matcherWords.js";
 
 // What the Admin page's Ingredient names card needs to fill in a name: good first guesses for
 // the form (components/IngredientNameForm.jsx), the list of every row with where it stands, the
@@ -127,6 +129,51 @@ export function problemWith(draft, { replaces = null, overrides = [], self = nul
   if (clash) return { ...clash, live: true };
   const cleaned = cleanOverride(body);
   return cleaned.error ? { error: cleaned.error, vars: cleaned.vars, live: false } : null;
+}
+
+// ---- What the Inventory matcher makes of a draft -------------------------------------
+
+// The matcher (« J'en ai ») learns its French from this table, so a row changes which Inventory
+// items count for which recipes. The form shows these notes while Matt types; none of them stops a
+// save (the only name that is refused is one of the matcher's own words, `clashOf`). Each note is
+// { kind, ... } and has a message, admin.names.warn.<kind>:
+//   reads      { form, was, now }  a French spelling the matcher already reads as one food, that this
+//                                  row would make another ("citron" read as lemon, now as lime)
+//   different  { english, french } the matcher would not take the row's two names for one food
+//   notRead    { form }            a spelling the matcher never reads: it is also an English word
+//                                  (« sale »), or a different ingredient in each language (« raisin »)
+// `overrides`, `self` and `replaces` are as for `problemWith`; the draft's own row (and the built-in
+// row it stands in for) is left out of "what the matcher knows now".
+export function matcherNotes(draft, { replaces = null, overrides = [], self = null, builtIn = ingredientRows } = {}) {
+  const sides = cleanCells(bodyOf(draft, replaces));
+  if (sides.error || !sides.cells.enOne || !sides.cells.frOne) return [];
+  const row = rowFromOverride({ replaces, hidden: false, ...sides.cells, enOther: sides.cells.enOther || "=", frOther: sides.cells.frOther || "=", gender: "m" });
+  const kept = effectiveRows(builtIn, (overrides || []).filter((other) => other.id !== self?.id)).filter((r) => r.override || r.key !== replaces);
+  const before = readingFor(kept);
+  const after = readingFor([row, ...kept]);
+  // The whole spelling is something the matcher already reads: a word or a phrase of the table or
+  // of its own (not just a name with one known word in it).
+  const knownWhole = (key) => before.words.has(key) || (key.includes(" ") && before.phraseMap.has(key.replace(/ /g, "")));
+  const ambiguous = new Set(buildIndex([row, ...kept]).ambiguous);
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const shape = (p) => [p.food, p.derived, p.part, [...p.cuts].sort(), [...p.kinds].sort()];
+  const notes = [];
+  for (const form of [...row.fr.one, ...row.fr.other]) {
+    const key = keyOf(form);
+    if (NOT_READ_FR.includes(key) || ambiguous.has(key)) {
+      notes.push({ kind: "notRead", form });
+      continue;
+    }
+    // Only a spelling the matcher already reads as a whole.
+    if (!knownWhole(key)) continue;
+    const was = foodProfileUnder(before, form);
+    const now = foodProfileUnder(after, form);
+    if (!same(shape(was), shape(now))) notes.push({ kind: "reads", form, was: was.food || was.core, now: now.food || now.core });
+  }
+  const english = foodProfileUnder(after, row.en.one[0]);
+  const french = foodProfileUnder(after, row.fr.one[0]);
+  if (!sameProfiles(english, french)) notes.push({ kind: "different", english: row.en.one[0], french: row.fr.one[0] });
+  return notes;
 }
 
 // ---- Every row, and where it stands --------------------------------------------------

@@ -1,12 +1,15 @@
 // The ingredient names table as data, and the rules for Matt's changes to it. Plain
-// JavaScript with no imports, so the browser (lib/ingredientDisplay.js) and the server
-// (server/src/lib/ingredientNames.js, which reads ingredientDisplay.txt once at start-up)
-// run this one file: there is no second parser and no second copy of the rules.
+// JavaScript that imports nothing of the app but matcherWords.js (plain data too), so the browser
+// (lib/ingredientList.js) and the server (server/src/lib/ingredientNames.js, which reads
+// ingredientDisplay.txt once at start-up) run this one file: there is no second parser and no
+// second copy of the rules.
 //
 // A built-in row comes from a line of ingredientDisplay.txt. An OVERRIDE is Matt's own
 // row from the Admin page (the IngredientNameOverride table): it adds an ingredient, or
 // replaces a built-in row (`replaces` is that row's key), or hides it (`hidden`). The
 // built-in file is never changed. `effectiveRows` is the one list every reader uses.
+
+import { RULE_WORD_MEANING } from "./matcherWords.js";
 
 export const fold = (text) =>
   String(text || "")
@@ -178,7 +181,9 @@ export function takenSpelling(row, otherRows) {
   return null;
 }
 
-// The clash a change would make, or null: { error: "ingredientTaken", vars: { form, other } }.
+// The clash a change would make, or null: { error: "ingredientTaken", vars: { form, other } }, or
+// { error: "ingredientMatcherWord", vars: { form, english } } for a French spelling that is one of
+// the matcher's own words (matcherWords.js).
 //   data       the cleaned change (cleanOverride's `data`)
 //   builtIn    the built-in rows
 //   overrides  every change now kept
@@ -187,6 +192,15 @@ export function takenSpelling(row, otherRows) {
 // A hidden change takes no names, so it can't clash.
 export function clashOf(data, builtIn, overrides, self = null) {
   if (data.hidden) return null;
+  // A French spelling that is one of the matcher's own words (« poudre » is powder to its rules)
+  // may not be used: the matcher keeps reading it its own way, so the row would never count.
+  const mine = rowFromOverride(data);
+  for (const number of ["one", "other"]) {
+    for (const form of mine.fr[number]) {
+      const english = RULE_WORD_MEANING.get(keyOf(form));
+      if (english) return { error: "ingredientMatcherWord", vars: { form, english } };
+    }
+  }
   const others = effectiveRows(builtIn, (overrides || []).filter((other) => other.id !== self?.id)).filter(
     (row) => row.override || row.key !== data.replaces
   );

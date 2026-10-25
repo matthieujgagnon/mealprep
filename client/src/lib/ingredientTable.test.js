@@ -150,6 +150,18 @@ describe("a change that clashes", () => {
     const replaced = { id: "r1", replaces: "garlic", hidden: true, enOne: "", enOther: "", frOne: "", frOther: "", gender: "" };
     expect(clashOf(data({ enOne: "garlic", frOne: "ail" }), builtIn, [replaced])).toBeNull();
   });
+
+  it("is found for a French spelling that is one of the matcher's own words", () => {
+    expect(clashOf(data({ frOne: "poudre" }), builtIn, [])).toEqual({ error: "ingredientMatcherWord", vars: { form: "poudre", english: "powder" } });
+    expect(clashOf(data({ frOne: "Zeste" }), builtIn, [])).toMatchObject({ error: "ingredientMatcherWord", vars: { english: "zest" } });
+    expect(clashOf(data({ frOther: "feuilles/zorblaxes" }), builtIn, [])).toMatchObject({ error: "ingredientMatcherWord", vars: { form: "feuilles" } });
+    expect(clashOf(data({ frOne: "pâte pour" }), builtIn, [])).toMatchObject({ error: "ingredientMatcherWord" });
+    // A longer name that only contains one is fine, and so is the same word as an English spelling.
+    expect(clashOf(data({ frOne: "poudre de zorblax" }), builtIn, [])).toBeNull();
+    expect(clashOf(data({ enOne: "zeste", frOne: "zorblaxe" }), builtIn, [])).toBeNull();
+    // A hidden change takes no names.
+    expect(clashOf(data({ hidden: true, frOne: "poudre" }), builtIn, [])).toBeNull();
+  });
 });
 
 describe("the rows in use", () => {

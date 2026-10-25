@@ -62,6 +62,15 @@ describe("checking a change", () => {
     expect(checkOverride(edit({ frOne: "echalote" }), []).error).toBe("ingredientTaken");
   });
 
+  it("refuses a French spelling that is one of the Inventory matcher's own words", () => {
+    expect(checkOverride(edit({ frOne: "poudre" }), [])).toMatchObject({ error: "ingredientMatcherWord", vars: { form: "poudre", english: "powder" }, status: 400 });
+    expect(checkOverride(edit({ frOther: "zeste" }), []).error).toBe("ingredientMatcherWord");
+    expect(checkOverride(edit({ frOne: "poudre de chili épicée" }), []).error).toBeUndefined();
+    // a message in each language, with the word in it
+    expect(fail("fr", "ingredientMatcherWord", { form: "poudre", english: "powder" }).error).toMatch(/« poudre »/);
+    expect(fail("en", "ingredientMatcherWord", { form: "poudre", english: "powder" }).error).toMatch(/"poudre"/);
+  });
+
   it("lets a spelling be a different food in the other language (« raisin »)", () => {
     expect(checkOverride(edit({ enOne: "raisin tart", frOne: "tarte aux raisins", enOther: "raisin tarts" }), []).error).toBeUndefined();
     // "tomate" is French only on the built-in row; the same word as an English spelling is not a clash
