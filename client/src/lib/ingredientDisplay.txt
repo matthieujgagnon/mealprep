@@ -3,8 +3,11 @@
 # The app uses this to SHOW a recipe's ingredient names in the language you picked
 # (FR | EN). It never changes the recipe: the text saved with the recipe stays exactly
 # as it was written, and a name that is not here is shown as written.
-# Code: lib/ingredientDisplay.js, which reads this file through lib/ingredientTable.js (the server
-# reads it too). This file is the starting set: Matt's own changes (the admin's Ingredient names
+# Code: lib/ingredientList.js, which reads this file through lib/ingredientTable.js (the server
+# reads it too); lib/ingredientDisplay.js shows the names from it. The Inventory matcher
+# (lib/frenchReading.js) and the recipe search read it too: every French spelling of a line is
+# read as the line's first English name, so « banane » counts for "banana" in « J'en ai », and
+# « coriandre » finds "cilantro". This file is the starting set: Matt's own changes (the admin's Ingredient names
 # card: a name filled in, a row corrected or hidden) are kept in the database and sit on top of it
 # for everyone, and removing one brings the line here back. The card also lists the names from the
 # recipes that have no line here yet.
@@ -28,7 +31,9 @@
 #     bell pepper, not a pepper that is green).
 #
 # Every line is checked against the matcher (lib/inventoryMatch.js) by
-# ingredientDisplay.test.js: English and French of a line must be the same food to it.
+# ingredientDisplayMatcher.test.js: English and French of a line must be the same food to it.
+# Only the FRENCH spellings are read by the matcher; the other English ones ("cilantro/coriander")
+# are for showing and searching, because "ground coriander" must stay apart from cilantro.
 # ---------------------------------------------------------------------------------
 
 [ingredients]
@@ -47,7 +52,7 @@ grape tomato | grape tomatoes | tomate raisin | tomates raisins | f
 Roma tomato | Roma tomatoes | tomate Roma | tomates Roma | f
 diced tomatoes | = | tomates en dés | = | fp
 crushed tomatoes | = | tomates concassées | = | fp
-potato | potatoes | pomme de terre | pommes de terre | f
+potato | potatoes | pomme de terre/patate | pommes de terre/patates | f
 sweet potato | sweet potatoes | patate douce | patates douces | f
 carrot | carrots | carotte | carottes | f
 celery | = | céleri | = | m
@@ -111,7 +116,7 @@ oregano | = | origan | = | m
 sage | = | sauge | = | f
 chives | = | ciboulette | = | f
 tarragon | = | estragon | = | m
-bay leaf | bay leaves | feuille de laurier | feuilles de laurier | f
+bay leaf | bay leaves | feuille de laurier/laurier | feuilles de laurier/laurier | f
 lemongrass | = | citronnelle | = | f
 
 # Fruit
@@ -119,7 +124,7 @@ apple | apples | pomme | pommes | f
 banana | bananas | banane | bananes | f
 orange | oranges | orange | oranges | f
 lemon | lemons | citron | citrons | m
-lime | limes | lime | limes | f
+lime | limes | lime/limette/citron vert | limes/limettes/citrons verts | f
 grapefruit | grapefruits | pamplemousse | pamplemousses | m
 strawberry | strawberries | fraise | fraises | f
 blueberry | blueberries | bleuet | bleuets | m
@@ -142,6 +147,8 @@ fig | figs | figue | figues | f
 date | dates | datte | dattes | f
 apricot | apricots | abricot | abricots | m
 coconut | coconuts | noix de coco | = | f
+mandarin | mandarins | mandarine | mandarines | f
+clementine | clementines | clémentine | clémentines | f
 
 # Meat, poultry and fish
 chicken | chickens | poulet | poulets | m
@@ -166,7 +173,7 @@ sausage | sausages | saucisse | saucisses | f
 Italian sausage | Italian sausages | saucisse italienne | saucisses italiennes | f
 chorizo | = | chorizo | = | m
 prosciutto | = | prosciutto | = | m
-turkey | = | dinde | = | f
+turkey | = | dinde/dindon | = | f
 ground turkey | = | dinde hachée | = | f
 lamb | = | agneau | = | m
 ground lamb | = | agneau haché | = | m
@@ -187,6 +194,17 @@ lobster | lobsters | homard | homards | m
 crab | crabs | crabe | crabes | m
 anchovy | anchovies | anchois | = | m
 sardine | sardines | sardine | sardines | f
+fish | = | poisson | poissons | m
+sole | = | sole | soles | f
+pollock | = | goberge | goberges | f
+strip loin | strip loins | contre-filet | contre-filets | m
+tournedos | = | tournedos | = | m
+souvlaki | = | souvlaki | = | m
+meatball | meatballs | boulette de viande/boulette | boulettes de viande/boulettes | f
+nugget | nuggets | croquette | croquettes | f
+burger | burgers | burger | burgers | m
+pepperoni | = | pepperoni | = | m
+salami | = | salami | = | m
 
 # Dairy and eggs
 milk | = | lait | = | m
@@ -200,8 +218,8 @@ margarine | = | margarine | = | f
 cheese | cheeses | fromage | fromages | m
 cheddar | = | cheddar | = | m
 mozzarella | = | mozzarella | = | f
-parmesan | = | parmesan | = | m
-feta | = | feta | = | f
+parmesan | = | parmesan/fromage parmesan | = | m
+feta | = | feta/fromage feta | = | f
 ricotta | = | ricotta | = | f
 cream cheese | = | fromage à la crème | = | m
 goat cheese | = | fromage de chèvre | = | m
@@ -212,7 +230,28 @@ egg | eggs | œuf | œufs | m
 egg yolk | egg yolks | jaune d'œuf | jaunes d'œufs | m
 egg white | egg whites | blanc d'œuf | blancs d'œufs | m
 
+# Prepared dishes, desserts and snacks
+pizza | pizzas | pizza | pizzas | f
+quiche | quiches | quiche | quiches | f
+pie | pies | tarte | tartes | f
+shepherd's pie | shepherd's pies | pâté chinois | pâtés chinois | m
+meat pie | meat pies | tourtière | tourtières | f
+soup | soups | soupe | soupes | f
+cake | cakes | gâteau | gâteaux | m
+crumble | crumbles | crumble | crumbles | m
+cookie | cookies | biscuit | biscuits | m
+bar | bars | barre | barres | f
+ice cream | = | crème glacée | = | f
+chocolate | = | chocolat | = | m
+jam | = | confiture | = | f
+spread | spreads | tartinade | tartinades | f
+dip | dips | trempette | trempettes | f
+chips | = | croustilles | = | fp
+fries | = | frites | = | fp
+
 # Oils, vinegars and sauces
+oil | oils | huile | huiles | f
+cooking oil | = | huile de cuisson | = | f
 olive oil | = | huile d'olive | = | f
 vegetable oil | = | huile végétale | = | f
 canola oil | = | huile de canola | = | f
@@ -226,7 +265,7 @@ balsamic vinegar | = | vinaigre balsamique | = | m
 apple cider vinegar | = | vinaigre de cidre de pomme | = | m
 red wine vinegar | = | vinaigre de vin rouge | = | m
 white wine vinegar | = | vinaigre de vin blanc | = | m
-soy sauce | = | sauce soya | = | f
+soy sauce | = | sauce soya/sauce soja | = | f
 fish sauce | = | sauce de poisson | = | f
 hoisin sauce | = | sauce hoisin | = | f
 oyster sauce | = | sauce aux huîtres | = | f
@@ -237,15 +276,17 @@ ketchup | = | ketchup | = | m
 mustard | = | moutarde | = | f
 Dijon mustard | = | moutarde de Dijon | = | f
 mayonnaise | = | mayonnaise | = | f
-tomato paste | = | pâte de tomate | = | f
+tomato paste | = | pâte de tomate/pâte de tomates | = | f
 tomato sauce | = | sauce tomate | = | f
 chicken broth/chicken stock | = | bouillon de poulet | = | m
 beef broth/beef stock | = | bouillon de bœuf | = | m
 vegetable broth/vegetable stock | = | bouillon de légumes | = | m
 coconut milk | = | lait de coco | = | m
+cooking cream | = | crème à cuisson | = | f
 peanut butter | = | beurre d'arachide | = | m
 honey | = | miel | = | m
 maple syrup | = | sirop d'érable | = | m
+mustard powder | = | moutarde en poudre | = | f
 miso paste/miso | = | pâte de miso | = | f
 tahini | = | tahini | = | m
 
@@ -256,8 +297,8 @@ whole wheat flour | = | farine de blé entier | = | f
 sugar | = | sucre | = | m
 brown sugar | = | cassonade/sucre brun | = | f
 powdered sugar/icing sugar | = | sucre à glacer | = | m
-baking powder | = | poudre à pâte | = | f
-baking soda/bicarbonate of soda | = | bicarbonate de soude | = | m
+baking powder | = | poudre à pâte/poudre à lever | = | f
+baking soda/bicarbonate of soda | = | bicarbonate de soude/bicarbonate de sodium | = | m
 cornstarch | = | fécule de maïs | = | f
 yeast | = | levure | = | f
 vanilla extract | = | extrait de vanille | = | m
@@ -277,8 +318,9 @@ quinoa | = | quinoa | = | m
 rolled oats/oats | = | flocons d'avoine | = | mp
 breadcrumbs | = | chapelure | = | f
 puff pastry | = | pâte feuilletée | = | f
+phyllo pastry | = | pâte phyllo | = | f
 pizza dough | = | pâte à pizza | = | f
-pie crust | pie crusts | pâte à tarte | pâtes à tarte | f
+pie crust | pie crusts | pâte à tarte/pâte brisée | pâtes à tarte/pâtes brisées | f
 shredded coconut/desiccated coconut | = | noix de coco râpée | = | f
 lentil | lentils | lentille | lentilles | f
 chickpea | chickpeas | pois chiche | pois chiches | m
@@ -305,24 +347,27 @@ pumpkin seed | pumpkin seeds | graine de citrouille | graines de citrouille | f
 # Spices
 salt | = | sel | = | m
 kosher salt | = | sel casher | = | m
+coarse salt | = | gros sel | = | m
+celery salt | = | sel de céleri | = | m
+onion salt | = | sel d'oignon | = | m
 sea salt | = | sel de mer | = | m
 pepper | = | poivre | = | m
 black pepper | = | poivre noir | = | m
 white pepper | = | poivre blanc | = | m
-cayenne pepper/cayenne | = | poivre de Cayenne | = | m
-chili flakes/red pepper flakes/crushed red pepper | = | flocons de piment | = | mp
+cayenne pepper/cayenne | = | poivre de Cayenne/piment de Cayenne | = | m
+chili flakes/red pepper flakes/crushed red pepper | = | flocons de piment/piment broyé | = | mp
 cumin | = | cumin | = | m
 ground cumin | = | cumin moulu | = | m
 paprika | = | paprika | = | m
 smoked paprika | = | paprika fumé | = | m
-chili powder | = | poudre de chili | = | f
+chili powder | = | poudre de chili/assaisonnement au chili | = | f
 curry powder | = | poudre de cari | = | f
 garlic powder | = | poudre d'ail | = | f
 onion powder | = | poudre d'oignon | = | f
 cinnamon | = | cannelle | = | f
 ground cinnamon | = | cannelle moulue | = | f
 cinnamon stick | cinnamon sticks | bâton de cannelle | bâtons de cannelle | m
-nutmeg | = | noix de muscade | = | f
+nutmeg | = | noix de muscade/muscade | = | f
 turmeric | = | curcuma | = | m
 ground ginger | = | gingembre moulu | = | m
 ground coriander | = | coriandre moulue | = | f
@@ -330,6 +375,7 @@ coriander seeds | = | graines de coriandre | = | fp
 Italian seasoning | = | assaisonnement italien | = | m
 allspice | = | piment de la Jamaïque | = | m
 star anise | = | anis étoilé | = | m
+five spice powder | = | cinq épices | = | mp
 cardamom | = | cardamome | = | f
 saffron | = | safran | = | m
 fennel seeds | = | graines de fenouil | = | fp
@@ -342,6 +388,7 @@ baguette | baguettes | baguette | baguettes | f
 tortilla | tortillas | tortilla | tortillas | f
 pita | pitas | pita | pitas | m
 water | = | eau | = | f
+wine | wines | vin | vins | m
 white wine | = | vin blanc | = | m
 red wine | = | vin rouge | = | m
 beer | = | bière | = | f
@@ -350,6 +397,7 @@ tea | = | thé | = | m
 orange juice | = | jus d'orange | = | m
 lemon juice | = | jus de citron | = | m
 lime juice | = | jus de lime | = | m
+apple juice | = | jus de pomme | = | m
 lemon zest | = | zeste de citron | = | m
 lime zest | = | zeste de lime | = | m
 orange zest | = | zeste d'orange | = | m

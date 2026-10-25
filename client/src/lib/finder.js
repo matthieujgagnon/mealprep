@@ -1,6 +1,8 @@
 import { core, findSaleDeal } from "./similarRecipes.js";
 import { daysUntil } from "./pantryInventory.js";
 import { capitalize } from "./groceryList.js";
+import { ingredientSearchTerms } from "./ingredientDisplay.js";
+import { keyOf } from "./ingredientTable.js";
 import { expiringSoon, foodKey, recipeUsesItem } from "./inventoryMatch.js";
 import { isMealItem } from "./mealItem.js";
 import { onShelf, shelfSetOf } from "./shelves.js";
@@ -137,10 +139,14 @@ export function shelvesWithItems(pantryInventory, sections) {
     .filter((shelf) => shelf.items.length > 0);
 }
 
-// "Spinach, Onion" -> a filter on the search text, for the picker's own search.
+// A filter on the name of an Inventory item, for the picker's own search ("Cook with"). It finds
+// either language through the ingredient names table (« banane » finds "Bananas"), and accents,
+// capitals and hyphens do not matter.
 export function matchesIngredientSearch(name, query) {
-  const q = fold(query).trim();
-  return !q || fold(name).includes(q);
+  const variants = ingredientSearchTerms(query);
+  if (variants.length === 0) return true;
+  const text = keyOf(name);
+  return variants.some((variant) => text.includes(variant));
 }
 
 // ---- Results ----------------------------------------------------------------

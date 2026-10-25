@@ -425,3 +425,217 @@ describe("the recipe that started it", () => {
     expect(recipe.ingredients).toHaveLength(3);
   });
 });
+
+// ---- French from the table of ingredient names -------------------------------------------------
+//
+// The matcher learns its French from the table (ingredientDisplay.txt, with Matt's changes on top):
+// every French spelling of a row, singular and plural, is read as the row's English name. These
+// rows are the answers that must hold both ways round, in both languages.
+
+describe("French singulars and plurals are read from the table", () => {
+  it.each(
+    both([
+      ["banane", "banana"],
+      ["banane", "bananas"],
+      ["bananes", "banana"],
+      ["bananes", "bananas"],
+      ["Banane", "BANANAS"],
+      ["oignon rouge", "red onion"],
+      ["oignons rouges", "red onions"],
+      ["oignon rouge", "onion"],
+      ["coriandre fraîche", "fresh cilantro"],
+      ["coriandre fraîche", "cilantro"],
+      ["coriandre", "fresh cilantro"],
+      ["gousse d'ail", "garlic clove"],
+      ["gousses d'ail", "garlic"],
+      ["tête d'ail", "head of garlic"],
+      ["tête d'ail", "ail"],
+      ["chou-fleur", "cauliflower"],
+      ["amande", "almonds"],
+      ["poire", "pear"],
+      ["citrouille", "pumpkin"],
+      ["haricot noir", "black beans"],
+      ["noix de coco", "coconut"],
+      ["pétoncle", "scallops"],
+      ["patate", "potato"],
+      ["citron vert", "lime"],
+      ["muscade", "nutmeg"],
+      ["laurier", "bay leaf"],
+      ["gros sel", "coarse salt"],
+      ["mandarine", "mandarins"],
+      ["tourtière", "meat pie"],
+      ["croustilles", "chips"],
+      ["sauce soja", "soy sauce"],
+      ["poudre à lever", "baking powder"],
+      ["piment de Cayenne", "cayenne pepper"],
+    ])
+  )("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+
+  it("a word with accents is the same typed without them", () => {
+    expect(itemCovers("tete d'ail", "head of garlic")).toBe(true);
+    expect(itemCovers("clementine", "clémentines")).toBe(true);
+    expect(itemCovers("pate de tomates", "tomato paste")).toBe(true);
+  });
+
+  it("a plural reads as its singular in English too: cheeses, cookies", () => {
+    for (const [have, ingredient] of both([
+      ["cheese", "cheeses"],
+      ["fromage", "fromages"],
+      ["fromages", "cheese"],
+      ["cookie", "cookies"],
+      ["biscuit", "cookies"],
+      ["biscuits", "cookie"],
+    ])) {
+      expect(itemCovers(have, ingredient), `${have} / ${ingredient}`).toBe(true);
+    }
+  });
+});
+
+describe("French names that are another food stay apart", () => {
+  it.each(
+    both([
+      // A coloured or named bean is not the plain one, as in English.
+      ["haricot vert", "bean"],
+      ["haricots verts", "beans"],
+      ["haricot rouge", "bean"],
+      ["haricots rouges", "beans"],
+      ["haricots verts", "haricots noirs"],
+      ["haricot noir", "haricot rouge"],
+      // A chicken cut is not another.
+      ["pilon de poulet", "chicken thighs"],
+      ["pilon de poulet", "poitrine de poulet"],
+      ["pilons de poulet", "chicken wings"],
+      ["haut de cuisse de poulet", "aile de poulet"],
+      // A pork chop is not a tenderloin.
+      ["côtelette de porc", "filet de porc"],
+      ["côtelette de porc", "pork tenderloin"],
+      ["côtelette de porc", "ground pork"],
+      // A lime is not a lemon, in any form of the word.
+      ["citron vert", "lemon"],
+      ["citrons verts", "citron"],
+      ["citron vert", "citron"],
+      // A word the matcher reads on its own stays its own.
+      ["poudre d'ail", "gousse d'ail"],
+      ["tête d'ail", "poudre d'ail"],
+      ["bouillon de poulet", "poulet"],
+      ["coriandre moulue", "coriandre"],
+      ["graines de coriandre", "cilantro"],
+      ["poivre", "poivron"],
+      ["pomme", "pomme de terre"],
+      ["lait", "lait de coco"],
+    ])
+  )("%s does not cover %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(false);
+  });
+});
+
+describe("an egg covers its yolk and its white, one way only", () => {
+  // Having eggs, a recipe's "egg yolk" or "egg white" is had (like a lime for its juice and zest);
+  // egg whites or yolks in Inventory never make a recipe's eggs had.
+  it.each([
+    ["egg", "egg yolk"],
+    ["egg", "egg white"],
+    ["eggs", "egg yolks"],
+    ["eggs", "egg whites"],
+    ["large eggs", "egg whites"],
+    ["egg", "jaune d'œuf"],
+    ["egg", "blanc d'œuf"],
+    ["eggs", "jaunes d'œufs"],
+    ["eggs", "blancs d'œufs"],
+    ["œuf", "egg yolk"],
+    ["œuf", "egg white"],
+    ["œufs", "egg whites"],
+    ["œuf", "jaune d'œuf"],
+    ["œuf", "blanc d'œuf"],
+    ["œufs", "jaunes d'œufs"],
+    ["œufs", "blancs d'œufs"],
+    ["oeufs", "jaune d'oeuf"],
+    ["Œufs", "blanc d'oeuf"],
+  ])("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+
+  it.each([
+    ["egg yolk", "egg"],
+    ["egg white", "egg"],
+    ["egg yolks", "eggs"],
+    ["egg whites", "eggs"],
+    ["egg whites", "large eggs"],
+    ["jaune d'œuf", "egg"],
+    ["blanc d'œuf", "egg"],
+    ["jaunes d'œufs", "œufs"],
+    ["blancs d'œufs", "œufs"],
+    ["jaune d'œuf", "œuf"],
+    ["blanc d'œuf", "œuf"],
+    ["egg yolk", "œufs"],
+    ["egg white", "œuf"],
+  ])("%s does not cover %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(false);
+  });
+
+  it("a yolk is not a white, and each is the same in both languages", () => {
+    for (const [have, ingredient] of both([
+      ["egg yolk", "egg white"],
+      ["jaune d'œuf", "blanc d'œuf"],
+      ["egg yolk", "blanc d'œuf"],
+    ])) {
+      expect(itemCovers(have, ingredient)).toBe(false);
+    }
+    for (const [have, ingredient] of both([
+      ["egg yolk", "jaune d'œuf"],
+      ["egg yolks", "jaunes d'œufs"],
+      ["egg white", "blanc d'œuf"],
+      ["egg whites", "blancs d'oeufs"],
+    ])) {
+      expect(itemCovers(have, ingredient)).toBe(true);
+    }
+  });
+
+  it("white stays a colour anywhere but on an egg: white egg noodles are egg noodles", () => {
+    expect(itemCovers("egg noodles", "white egg noodles")).toBe(true);
+    expect(itemCovers("white egg noodles", "egg noodles")).toBe(true);
+    expect(itemCovers("egg", "egg noodles")).toBe(false);
+  });
+
+  it("an egg in Inventory makes a recipe's yolk had, and the recipe's eggs need whites", () => {
+    const eggs = { inventory: [{ id: 1, name: "Œufs" }] };
+    const whites = { inventory: [{ id: 2, name: "Egg whites" }] };
+    expect(ingredientHave("egg yolk", eggs)).toBe("have");
+    expect(ingredientHave("blanc d'œuf", eggs)).toBe("have");
+    expect(ingredientHave("eggs", whites)).toBe("need");
+    expect(ingredientHave("egg white", whites)).toBe("have");
+  });
+});
+
+describe("an orange pepper is a bell pepper", () => {
+  it.each(
+    both([
+      ["orange pepper", "orange bell pepper"],
+      ["poivron orange", "orange bell pepper"],
+      ["poivrons orange", "orange bell peppers"],
+      ["poivron orange", "orange pepper"],
+    ])
+  )("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+
+  it.each(
+    both([
+      ["orange pepper", "red pepper"],
+      ["poivron orange", "poivron rouge"],
+      ["orange", "orange pepper"],
+      ["pepper", "orange pepper"],
+      ["poivre", "poivron orange"],
+    ])
+  )("%s does not cover %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(false);
+  });
+
+  it("an orange is still an orange: its zest, its juice, its colour as a word", () => {
+    expect(itemCovers("orange", "orange zest")).toBe(true);
+    expect(itemCovers("orange", "orange juice")).toBe(false);
+    expect(itemCovers("oranges", "orange")).toBe(true);
+  });
+});

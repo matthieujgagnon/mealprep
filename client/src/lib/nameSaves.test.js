@@ -250,3 +250,34 @@ describe("loading and logging out", () => {
     expect(getIngredientOverrides()).toEqual([]);
   });
 });
+
+describe("telling the app the list changed", () => {
+  it("calls onChange after every change, so the app asks the Inventory matcher again", async () => {
+    const api = fakeApi();
+    const onChange = vi.fn();
+    const saver = createNameSaver({ api, onChange });
+    saver.load([]);
+    expect(onChange).not.toHaveBeenCalled(); // an empty list that is still empty
+    const { ref } = saver.save(draft());
+    expect(onChange).toHaveBeenCalledTimes(1);
+    await flush();
+    expect(onChange.mock.calls.length).toBeGreaterThanOrEqual(2); // the server's id and time came back
+    const before = onChange.mock.calls.length;
+    saver.remove(ref);
+    expect(onChange.mock.calls.length).toBeGreaterThan(before);
+    await flush();
+    saver.clear();
+  });
+
+  it("calls onChange when the list arrives with something in it, and when it is emptied", () => {
+    const api = fakeApi();
+    const onChange = vi.fn();
+    const saver = createNameSaver({ api, onChange });
+    saver.load([{ id: "s1", replaces: null, hidden: false, ...draft() }]);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    saver.clear();
+    expect(onChange).toHaveBeenCalledTimes(2);
+    saver.clear();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+});

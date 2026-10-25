@@ -294,14 +294,18 @@ export default function App({ user, onLogout }) {
     });
   }
   const linkSaver = linkSaverRef.current;
-  // Matt's changes to the ingredient names (lib/ingredientDisplay.js reads them; the saver keeps the
-  // list and saves it in order). Every account loads the list; only an admin can change it, from
-  // the Admin page's Ingredient names card.
+  // Matt's changes to the ingredient names (lib/ingredientList.js holds them; the display, the
+  // Inventory matcher and the recipe search read them; the saver keeps the list and saves it in
+  // order). Every account loads the list; only an admin can change it, from the Admin page's
+  // Ingredient names card.
   const nameSaverRef = useRef(null);
   if (!nameSaverRef.current) {
     nameSaverRef.current = createNameSaver({
       api,
       onFailed: (what) => toastLatest.current?.(t(what === "save" ? "admin.names.saveFailed" : "admin.names.removeFailed")),
+      // The Inventory matcher reads these names too: hand Inventory on as a new array so every page
+      // asks it again, the way it does after a taught name.
+      onChange: () => setPantryInventory((prev) => [...prev]),
     });
   }
   const nameSaver = nameSaverRef.current;
