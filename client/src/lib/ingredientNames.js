@@ -71,6 +71,10 @@ function stripParens(str) {
 
 // Crude singularization for grouping purposes only (display name keeps
 // whatever form was first seen) — "avocados" and "avocado" should merge.
+// Plurals in -ies whose singular ends in -ie and not -y: "cookies" is "cookie" ("cooky" would make
+// "cookie" and "cookies" two different foods), where "cherries" is "cherry".
+const IE_PLURALS = new Set(["cookies", "brownies", "smoothies", "veggies", "hoagies"]);
+
 export function singularize(word) {
   // Words ending in "us" (hummus, asparagus, citrus, octopus) are singular
   // in their own right, not an "-s" plural of something — stripping the
@@ -80,16 +84,19 @@ export function singularize(word) {
   // matching.
   if (word.endsWith("us") && word.length > 3) return word;
   if (word.endsWith("oes") && word.length > 4) return word.slice(0, -2);
+  if (IE_PLURALS.has(word)) return word.slice(0, -1);
   if (word.endsWith("ies") && word.length > 4) return word.slice(0, -3) + "y";
   // Only words ending in a genuine sibilant sound ("-ches", "-shes",
-  // "-sses", "-xes", "-zes" — boxes, dishes, watches, glasses) take a real
+  // "-sses", "-xes", "-zzes" — boxes, dishes, watches, glasses) take a real
   // "-es" plural where both letters come off. Everything else ending in
   // "es" is actually a silent-e word plus a plain "-s" ("flake" -> "flakes",
-  // "olive" -> "olives", "grape" -> "grapes", "lime" -> "limes") — chopping
-  // both letters there ate the "e" and mangled a huge class of common
-  // ingredient words ("red pepper flakes" -> "flak", "limes" -> "lim",
-  // silently breaking the "lime" entry in the perishables list too).
-  if (/(?:[sxz]|ch|sh)es$/.test(word) && word.length > 4) return word.slice(0, -2);
+  // "olive" -> "olives", "grape" -> "grapes", "lime" -> "limes", "cheese" ->
+  // "cheeses", "size" -> "sizes") — chopping both letters there ate the "e"
+  // and mangled a huge class of common ingredient words ("red pepper flakes"
+  // -> "flak", "limes" -> "lim", "cheeses" -> "chees", silently breaking the
+  // "lime" entry in the perishables list too). A lone "s" or "z" before the
+  // "es" is not a sibilant ending: only a doubled "ss" or "zz" is.
+  if (/(?:ss|x|zz|ch|sh)es$/.test(word) && word.length > 4) return word.slice(0, -2);
   if (word.endsWith("s") && !word.endsWith("ss") && word.length > 3) return word.slice(0, -1);
   return word;
 }
