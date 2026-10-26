@@ -18,7 +18,9 @@ import { ROUTE_NAMES, adminLoaded, expectAdminFits, newTag, seedLongAccounts, sh
 //     the name is a gap again.
 // The names are shared by every account, so these tests use a name of their own ("Zorblax paste")
 // and the built-in row "cardamom" that no other test reads, and take their changes away at the
-// end. The admin account is made in the database (playwright.config.js lists it). The day shown
+// end. Every list on the Admin page (and /api/ingredient-names) holds the rows of every spec that runs
+// at the same time, so each step finds its own row by that name and never counts a list, waits for
+// "You haven't changed a name yet" or reads "the first row". The admin account is made in the database (playwright.config.js lists it). The day shown
 // beside a change is the Quebec day the server saved it on (the real clock, e2e/spec-clock.js), never this machine's own date.
 // Set SHOTS_DIR to also save the screenshots (phone in French, computer in English) there.
 
@@ -189,12 +191,14 @@ test.describe("on a phone, in French", () => {
     await other.reload();
     const theirs = await openCard(other, "fr");
     await expect(theirs.locator(".riso-rc-buy-name", { hasText: "Pâte de zorblax" })).toHaveCount(1);
+    // The list holds every spec's changes, in no order this test can rely on: it reads the row it made.
     const listed = await (await other.request.get("/api/ingredient-names")).json();
-    expect(listed.find((r) => r.enOne === "zorblax paste")).toBeTruthy();
-    expect("updatedBy" in listed[0]).toBe(false); // who changed it is for an admin only
+    const given = listed.find((r) => r.enOne === "zorblax paste");
+    expect(given).toBeTruthy();
+    expect("updatedBy" in given).toBe(false); // who changed it is for an admin only
     const refused = await other.request.post("/api/admin/ingredient-names", { data: { enOne: "zorblax x", frOne: "zorblax y", gender: "m" } });
     expect(refused.status()).toBe(403);
-    expect((await other.request.delete(`/api/admin/ingredient-names/${listed[0].id}`)).status()).toBe(403);
+    expect((await other.request.delete(`/api/admin/ingredient-names/${given.id}`)).status()).toBe(403);
     await tester.close();
   });
 
@@ -253,23 +257,26 @@ test.describe("on a computer, in English", () => {
     // The search finds a row by any spelling, in either language, accents and capitals ignored.
     await card.getByRole("searchbox", { name: "Find an ingredient to correct" }).fill("CARDAMOME");
     const results = card.getByRole("list", { name: "Ingredients found" });
-    await expect(results.locator("li")).toHaveCount(1);
-    await expect(results.locator("li")).toContainText("cardamom → cardamome");
-    await expect(results.locator("li")).toContainText("Built-in");
-    await expect(results.locator("li").getByRole("button", { name: "Back to built-in" })).toHaveCount(0);
+    // The row this test works on, found by its name. The lists hold every spec's rows (the matcher spec's
+    // "Glorbnik root" is in them whenever it runs), so nothing below counts a list or reads "the one row".
+    const cardamom = results.locator("li", { hasText: "cardamom →" });
+    await expect(cardamom).toHaveCount(1);
+    await expect(cardamom).toContainText("cardamom → cardamome");
+    await expect(cardamom).toContainText("Built-in");
+    await expect(cardamom.getByRole("button", { name: "Back to built-in" })).toHaveCount(0);
     await shot(card, "names-search-en");
 
     // Correct it: the French is Matt's wording now, for everyone.
-    await results.locator("li").getByRole("button").first().click();
+    await cardamom.getByRole("button").first().click();
     const form = page.locator(".riso-namepop");
     await expect(form.locator('input[name="frOne"]')).toHaveValue("cardamome");
     await expect(form.getByRole("button", { name: "Feminine" })).toHaveAttribute("aria-pressed", "true");
     await form.locator('input[name="frOne"]').fill("cardamome verte");
     await form.getByRole("button", { name: "Save for everyone" }).click();
     await expect(page.locator(".riso-toast")).toContainText("“cardamom” saved for everyone");
-    await expect(results.locator("li")).toContainText("cardamom → cardamome verte");
-    await expect(results.locator("li")).toContainText("Changed");
-    await expect(results.locator("li")).toContainText("Changed by you");
+    await expect(cardamom).toContainText("cardamom → cardamome verte");
+    await expect(cardamom).toContainText("Changed");
+    await expect(cardamom).toContainText("Changed by you");
     await expect.poll(async () => (await kept(page)).map((r) => r.frOne)).toEqual(["cardamome verte"]);
     await shot(card, "names-changed-en");
 
@@ -285,21 +292,23 @@ test.describe("on a computer, in English", () => {
 
     // Back to built-in: the built-in French is back at once, and Undo puts his version back.
     await card.getByRole("searchbox", { name: "Find an ingredient to correct" }).fill("cardamom");
-    await results.locator("li").getByRole("button", { name: "Back to built-in" }).click();
+    await cardamom.getByRole("button", { name: "Back to built-in" }).click();
     await expect(page.locator(".riso-toast")).toContainText("“cardamom” is back to the built-in name");
-    await expect(results.locator("li")).toContainText("cardamom → cardamome");
-    await expect(results.locator("li")).not.toContainText("cardamome verte");
+    await expect(cardamom).toContainText("cardamom → cardamome");
+    await expect(cardamom).not.toContainText("cardamome verte");
     await expect.poll(async () => (await kept(page)).length).toBe(0);
     await page.locator(".riso-toast").getByRole("button", { name: "Undo" }).click();
-    await expect(results.locator("li")).toContainText("cardamom → cardamome verte");
+    await expect(cardamom).toContainText("cardamom → cardamome verte");
     await expect.poll(async () => (await kept(page)).map((r) => r.frOne)).toEqual(["cardamome verte"]);
 
-    // And back for good, from the list of his changes.
+    // And back for good, from the list of his changes: the list is every change anyone saved, so this looks
+    // for its own row, and does not wait for the list to say "You haven't changed a name yet" (it never will
+    // while another spec's change is in it).
     await card.getByRole("searchbox", { name: "Find an ingredient to correct" }).fill("");
-    const mine = card.getByRole("list", { name: "Names you changed" });
-    await expect(mine.locator("li")).toHaveCount(1);
-    await mine.locator("li").getByRole("button", { name: "Back to built-in" }).click();
-    await expect(card.getByText("You haven't changed a name yet.")).toBeVisible();
+    const mine = card.getByRole("list", { name: "Names you changed" }).locator("li", { hasText: "cardamom →" });
+    await expect(mine).toHaveCount(1);
+    await mine.getByRole("button", { name: "Back to built-in" }).click();
+    await expect(mine).toHaveCount(0);
     await expect.poll(async () => (await kept(page)).length).toBe(0);
   });
 
@@ -311,13 +320,14 @@ test.describe("on a computer, in English", () => {
     await expect(gaps.locator("li", { hasText: "cardamom" })).toHaveCount(0);
 
     await card.getByRole("searchbox", { name: "Find an ingredient to correct" }).fill("cardamom");
-    await card.getByRole("list", { name: "Ingredients found" }).locator("li").getByRole("button").first().click();
+    await card.getByRole("list", { name: "Ingredients found" }).locator("li", { hasText: "cardamom →" }).getByRole("button").first().click();
     await page.locator(".riso-namepop").getByRole("button", { name: "Hide this built-in name" }).click();
     await expect(page.locator(".riso-toast")).toContainText("“cardamom” hidden");
     await expect.poll(async () => (await kept(page)).map((r) => r.hidden)).toEqual([true]);
     await card.getByRole("searchbox", { name: "Find an ingredient to correct" }).fill("");
     await expect(gaps.locator("li", { hasText: "cardamom" })).toContainText("1 recipe");
-    await expect(card.getByRole("list", { name: "Names you changed" }).locator("li")).toContainText("Hidden");
+    // Its own row in the list of changes (which holds every spec's changes), not "the" row.
+    await expect(card.getByRole("list", { name: "Names you changed" }).locator("li", { hasText: "cardamom →" })).toContainText("Hidden");
 
     await page.locator(".riso-toast").getByRole("button", { name: "Undo" }).click();
     await expect(gaps.locator("li", { hasText: "cardamom" })).toHaveCount(0);
