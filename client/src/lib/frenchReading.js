@@ -20,38 +20,59 @@ import { EXCEPTIONS_FR, NOT_READ_FR, RULE_WORDS_FR } from "./matcherWords.js";
 // writes everything.
 const english = (text) => fold(text).replace(/['’]/g, " ");
 
-// [[frenchKey, english]] in the order they win. `skip`: more spellings never to read (the matcher's
-// little words).
-export function frenchPairs(rows, describingCells = [], skip = new Set()) {
+// The pairs in the order they win ([[frenchKey, english]]), and the single words that are an
+// ingredient AND a describing word (`also`: key -> the describing word's English). « mûres » is
+// blackberries, and it is also the feminine of « mûr », ripe (« cerises mûres »): the table gives
+// the word one meaning, so the other one is kept here for the matcher to choose from the name.
+// `skip`: more spellings never to read (the matcher's little words).
+function readFrench(rows, describingCells, skip) {
   const unread = new Set([...NOT_READ_FR, ...skip, ...buildIndex(rows).ambiguous]);
   const pairs = [];
   const seen = new Set();
+  const fromRow = new Set();
+  const also = new Map();
   const add = (key, to, always = false) => {
-    if (!key || seen.has(key) || (!always && unread.has(key))) return;
+    if (!key || seen.has(key) || (!always && unread.has(key))) return false;
     seen.add(key);
     pairs.push([key, to]);
+    return true;
   };
   for (const [fr, en] of EXCEPTIONS_FR) add(fr, en, true);
   for (const [fr, en] of RULE_WORDS_FR) add(fr, en, true);
   for (const row of rows) {
     const to = english(row.en.one[0]);
     if (!to) continue;
-    for (const number of ["one", "other"]) for (const form of row.fr[number]) add(keyOf(form), to);
+    for (const number of ["one", "other"]) {
+      for (const form of row.fr[number]) {
+        const key = keyOf(form);
+        if (add(key, to)) fromRow.add(key);
+      }
+    }
   }
-  for (const cells of describingCells) for (const form of cells.slice(1, 5)) add(keyOf(form), english(cells[0]));
-  return pairs;
+  for (const cells of describingCells) {
+    for (const form of cells.slice(1, 5)) {
+      const key = keyOf(form);
+      if (fromRow.has(key) && !key.includes(" ") && !unread.has(key)) also.set(key, english(cells[0]));
+      add(key, english(cells[0]));
+    }
+  }
+  return { pairs, also };
 }
+
+// [[frenchKey, english]] in the order they win.
+export const frenchPairs = (rows, describingCells = [], skip = new Set()) => readFrench(rows, describingCells, skip).pairs;
 
 // The lookups toEnglish uses: single words, and phrases (longest first) found anywhere in a name.
 export function buildFrenchReading(rows, describingCells = [], skip = new Set()) {
   const words = new Map();
   const phrases = [];
-  for (const [key, to] of frenchPairs(rows, describingCells, skip)) {
+  const { pairs, also } = readFrench(rows, describingCells, skip);
+  for (const [key, to] of pairs) {
     if (key.includes(" ")) phrases.push([key, to]);
     else words.set(key, to);
   }
   phrases.sort((a, b) => b[0].length - a[0].length);
   const phraseRe = phrases.length ? new RegExp(`(?<![a-z])(${phrases.map(([fr]) => fr.replace(/ /g, "[- ]+")).join("|")})(?![a-z])`, "g") : null;
   const phraseMap = new Map(phrases.map(([fr, to]) => [fr.replace(/ /g, ""), to]));
-  return { words, phraseRe, phraseMap };
+  return { words, phraseRe, phraseMap, also };
 }

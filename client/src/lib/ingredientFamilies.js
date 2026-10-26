@@ -67,6 +67,17 @@ const DERIVED_PRODUCT_WORDS = new Set([
   "broth", "stock", "bouillon", "base", "consomme", "consommé",
 ]);
 
+// What the Inventory matcher (inventoryMatch.js) takes from this file. It has to keep one food apart
+// from another where `familyKey` below only has to say "the same sort of thing": a synonym is
+// swapped word by word ("chilli jam" stays a jam, it does not become "chile"), and what to do with
+// a name that has an animal in it is the matcher's call.
+// The same food written another way ("chilli" is "chile"), or undefined.
+export const synonymOf = (text) => SYNONYM_WORDS[text];
+// The protein a name is a cut of, by its exact name ("filet mignon" is beef, "prawn" is shrimp), or undefined.
+export const cutFamily = (text) => CUT_TO_FAMILY[text];
+// The animal a word names ("chicken", "shrimp"), or undefined.
+export const animalWord = (word) => (FAMILY_WORDS.has(word) ? word : undefined);
+
 // Given a canonicalize()-produced core string, returns the broader family
 // key to use for reuse/similarity matching. Falls back to the core itself
 // when nothing more specific is known, so unmapped ingredients still match

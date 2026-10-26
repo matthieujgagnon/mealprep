@@ -69,6 +69,20 @@ describe("the French pairs", () => {
     expect(p.get("rouge")).toBe("red");
   });
 
+  it("keep the describing meaning of a spelling that is also a row's, for the matcher to choose from the name", () => {
+    const rows = [row("blackberry", "mûre", { fr: { one: ["mûre"], other: ["mûres"] } }), row("red onion", "rouges")];
+    const describing = [["ripe", "mûr", "mûre", "mûrs", "mûres", "after"], ["red", "rouge", "rouge", "rouges", "rouges", "before"]];
+    const { words, also } = buildFrenchReading(rows, describing);
+    expect(words.get("mures")).toBe("blackberry"); // the row still wins on its own
+    expect(also.get("mures")).toBe("ripe");
+    expect(also.get("mure")).toBe("ripe");
+    expect(also.has("mur")).toBe(false); // not a row's spelling
+    expect(also.has("rouges")).toBe(true);
+    // The whole built-in table has exactly one such word, in its two forms.
+    const built = buildFrenchReading(effectiveIngredientRows(), describingCells()).also;
+    expect([...built.keys()].sort()).toEqual(["mure", "mures"]);
+  });
+
   it("read the whole built-in table and a change on top of it", () => {
     const built = pairs(effectiveIngredientRows(), describingCells());
     expect(built.get("banane")).toBe("banana");

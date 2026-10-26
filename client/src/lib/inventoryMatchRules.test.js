@@ -639,3 +639,106 @@ describe("an orange pepper is a bell pepper", () => {
     expect(itemCovers("oranges", "orange")).toBe(true);
   });
 });
+
+// A French name is new to the matcher whenever the table gives it, and it is read as the English
+// of its row. The English rules it falls under must not join two different foods: a sausage is
+// not a pork chop, « canard » is not duck fat, « tomate cerise » is not a roma tomato. These are
+// the pairs that were wrongly "had" before (in French, and for most of them in English too).
+describe("a name that is made from an animal, or a variety, stays its own food", () => {
+  it.each(
+    both([
+      // Sausage, bacon, ham, chorizo, prosciutto and pancetta are not pork, nor one another.
+      ["saucisse italienne", "côtelette de porc"],
+      ["saucisses italiennes", "pork chop"],
+      ["saucisse", "filet de porc"],
+      ["italian sausage", "pork"],
+      ["sausage", "ground pork"],
+      ["bacon", "pork chop"],
+      ["bacon", "porc"],
+      ["jambon", "côtelette de porc"],
+      ["ham", "pork tenderloin"],
+      ["prosciutto", "pork"],
+      ["pancetta", "pork belly"],
+      ["chorizo", "pork"],
+      ["bacon", "sausage"],
+      ["ham", "bacon"],
+      ["jambon", "saucisse"],
+      ["chorizo", "saucisse italienne"],
+      // ...and the animal they are made of only counts when it is not pork.
+      ["turkey bacon", "bacon"],
+      ["chicken sausage", "sausage"],
+      ["turkey ham", "ham"],
+      ["bacon", "bacon grease"],
+      // A dish, an organ or a fat made from an animal is not the animal.
+      ["canard", "duck fat"],
+      ["duck", "duck fat"],
+      ["crevette", "shrimp salad"],
+      ["poulet", "chicken salad"],
+      ["poulet", "chicken liver"],
+      ["chicken", "chicken soup"],
+      ["chicken", "chicken nuggets"],
+      ["porc", "pork rinds"],
+      ["boeuf", "beef gravy"],
+      ["boeuf", "corned beef"],
+      ["agneau", "lamb kidney"],
+      ["beef", "beef tomatoes"],
+      ["oyster", "oyster mushrooms"],
+      // A chile pepper is not a jam, a paste, flakes or a dish with chili in its name.
+      ["piment fort", "thai chilli jam"],
+      ["chili", "chili con carne"],
+      ["chili pepper", "chilli flakes"],
+      ["chili", "chilli bean paste"],
+      ["piment fort", "pâte de piment fort"],
+      ["piment fort", "flocons de piment"],
+      // A roma tomato is a plum tomato, not a cherry, a grape or a vine one.
+      ["tomate cerise", "tomate roma"],
+      ["cherry tomato", "roma tomato"],
+      ["tomate raisin", "roma tomato"],
+      ["grape tomatoes", "tomates roma"],
+      ["vine tomatoes", "roma tomato"],
+      // Goat cheese is not a goat.
+      ["fromage de chèvre", "goat"],
+      ["goat cheese", "goat"],
+      // « mûre » after a fruit says it is ripe, it is not a blackberry.
+      ["cerise mûre", "blackberry"],
+      ["cerises mûres", "mûres"],
+      ["prune mûre", "blackberry"],
+      ["tomate mûre", "mûres"],
+      ["banane mûre", "mûres"],
+    ])
+  )("%s does not cover %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(false);
+  });
+
+  it.each(
+    both([
+      // The same food in the two languages, and the animal on its own for its cuts.
+      ["saucisse", "sausage"],
+      ["saucisses italiennes", "italian sausage"],
+      ["saucisse italienne", "sausage"],
+      ["pork sausage", "sausage"],
+      ["jambon", "ham"],
+      ["canard", "duck"],
+      ["canard", "duck breast"],
+      ["crevettes", "shrimp"],
+      ["porc", "pork chop"],
+      ["poulet", "chicken breast"],
+      ["boeuf", "ground beef"],
+      ["chili", "chili pepper"],
+      ["chile pepper", "piment fort"],
+      ["chilli flakes", "chili flakes"],
+      ["flocons de piment", "crushed red pepper"],
+      ["tomate roma", "plum tomato"],
+      ["tomate roma", "roma tomatoes"],
+      ["tomate", "tomate roma"],
+      ["fromage de chèvre", "goat cheese"],
+      ["mûres", "blackberries"],
+      ["confiture de mûres", "blackberry jam"],
+      ["tarte aux mûres", "blackberry pie"],
+      ["cerises mûres", "ripe cherries"],
+      ["bananes mûres", "ripe bananas"],
+    ])
+  )("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+});

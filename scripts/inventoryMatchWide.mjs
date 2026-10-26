@@ -58,6 +58,12 @@ const EXTRA = [
   "jus de lime", "jus de citron", "zeste de citron", "zeste de lime", "zeste d'orange", "jus d'orange", "citron", "lime", "orange", "sauce sriracha", "sauce hoisin",
   "vinaigre blanc", "vinaigre", "sel assaisonné", "sauce de poisson", "vinaigre de cidre de pommes", "oignons verts", "poitrine de poulet", "huile de sésame", "huile de sésame grillé",
   "crème 35", "banane", "oignon rouge", "coriandre fraîche", "jaune d'œuf", "blanc d'œuf", "œuf", "œufs", "egg yolk", "egg white", "egg yolks", "egg whites", "eggs", "egg",
+  // Names that join two foods if a rule is too wide: a meat made into something else, a variety, a ripe fruit.
+  "saucisse italienne", "saucisses italiennes", "jambon", "pork sausage", "chicken sausage", "turkey bacon", "turkey ham", "bacon grease", "bacon bits", "pork chop", "pork", "porc",
+  "côtelette de porc", "canard", "duck fat", "crevette", "shrimp salad", "chicken salad", "chicken liver", "chicken soup", "chicken nuggets", "pork rinds", "beef gravy", "corned beef",
+  "lamb kidney", "beef tomatoes", "oyster mushrooms", "chili con carne", "chilli bean paste", "thai chilli jam", "pâte de piment fort", "chilli flakes", "chile pepper",
+  "tomate roma", "roma tomatoes", "plum tomato", "tomate cerise", "tomate raisin", "fromage de chèvre", "goat", "goat cheese",
+  "mûres", "mûre", "cerise mûre", "cerises mûres", "prune mûre", "tomate mûre", "banane mûre", "bananes mûres", "confiture de mûres", "tarte aux mûres", "ripe cherries", "ripe bananas", "blackberry jam",
 ];
 
 // Words that describe or prepare a food and are never a food: as a name on their own

@@ -56,6 +56,50 @@ const GONE_ON_PURPOSE_FRENCH_AND_EGGS = [
   ["citron", "citrons verts"],
 ];
 
+// Wrong matches that went away on purpose when a name that is made from an animal, or a variety,
+// stopped being read as the animal or the plain food (a few of each kind, both directions). The French
+// names the table gave the matcher would otherwise have inherited every one of them:
+//   - sausage, bacon, ham, chorizo, prosciutto and pancetta are not pork, nor one another;
+//   - a liver, a kidney, fat, rinds, a salad, a soup, nuggets, gravy, corned beef, beef tomatoes and
+//     oyster mushrooms are not the animal (or the shellfish) in their name;
+//   - a chilli jam, a paste, flakes and pickled scallions are not the chile or the scallion;
+//   - a roma tomato is a plum tomato, not a cherry, grape or vine one;
+//   - goat cheese is not a goat.
+const GONE_ON_PURPOSE_MADE_FROM_ANIMALS = [
+  ["saucisse italienne", "pork loin"],
+  ["saucisses italiennes", "pork rinds"],
+  ["sausage", "pork"],
+  ["ham", "raw pork chops"],
+  ["jambon", "côtelette de porc"],
+  ["natural bacon", "pork loin"],
+  ["bacon", "pork belly slices"],
+  ["pork loin", "prosciutto"],
+  ["chorizo", "ham"],
+  ["bacon", "sausage"],
+  ["canard", "duck fat"],
+  ["duck fat", "canard"],
+  ["crevette", "shrimp salad"],
+  ["shrimp salad", "crevette"],
+  ["chicken", "Chicken Liver"],
+  ["Chicken salad", "poulet"],
+  ["poulet", "chicken nuggets"],
+  ["boeuf", "corned beef"],
+  ["Beef tomatoes", "beef"],
+  ["boeuf", "Beef Gravy"],
+  ["agneau", "Lamb Kidney"],
+  ["Oyster Mushrooms", "oyster"],
+  ["chili", "Thai Chilli Jam"],
+  ["piment fort", "Pâte de piment fort"],
+  ["Chilli Flakes", "Chilli"],
+  ["piment fort", "Chilli Flakes"],
+  ["Pickled Scallion Heads", "green onion"],
+  ["cherry tomato", "roma tomato"],
+  ["tomate cerise", "tomate roma"],
+  ["Vine Tomatoes", "roma tomato"],
+  ["goat", "goat cheese"],
+  ["fromage de chèvre", "goat"],
+];
+
 // Wrong matches that went away on purpose, both ways round where they were both:
 //   - lime, banana, grape, vine and curry leaves are products of their own, never the
 //     fruit or the plant (and "grape leaves" were "raisins");
@@ -104,7 +148,7 @@ describe("the wide check over real names", () => {
   it("lists a few thousand names and what they covered", () => {
     expect(names.length).toBeGreaterThan(3000);
     expect(baseline).toHaveLength(names.length);
-    expect(baseline.reduce((n, row) => n + row.length, 0)).toBeGreaterThan(26000);
+    expect(baseline.reduce((n, row) => n + row.length, 0)).toBeGreaterThan(20000);
   });
 
   it("still covers every name it covered", () => {
@@ -115,7 +159,7 @@ describe("the wide check over real names", () => {
     expect(lost).toEqual([]);
   });
 
-  it.each([...GONE_ON_PURPOSE, ...GONE_ON_PURPOSE_FRENCH_AND_EGGS])("%s does not cover %s, as it should not", (have, ingredient) => {
+  it.each([...GONE_ON_PURPOSE, ...GONE_ON_PURPOSE_FRENCH_AND_EGGS, ...GONE_ON_PURPOSE_MADE_FROM_ANIMALS])("%s does not cover %s, as it should not", (have, ingredient) => {
     expect(itemCovers(have, ingredient)).toBe(false);
   });
 });
