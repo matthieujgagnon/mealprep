@@ -14,8 +14,10 @@ import { E2E_INVITE } from "./invite.js";
 //   - the Recipes search box finds either language, without caring about accents: « coriandre »
 //     finds "fresh cilantro" and the reverse; so does the Cook with search on the Planner.
 // The names are shared by every account, so the admin test uses a name of its own ("Glorbnik root")
-// and takes its change away at the end. The admin account is made in the database
-// (playwright.config.js lists it). Set SHOTS_DIR to also save the screenshots there.
+// and takes its change away at the end. Every list on the Admin page holds the rows of every spec that
+// runs at the same time, so each step finds its own row by that name and never counts a list or reads
+// "the only row". The admin account is made in the database (playwright.config.js lists it).
+// Set SHOTS_DIR to also save the screenshots there.
 
 const prisma = new PrismaClient();
 const ADMIN = "e2e-matcher-admin@example.com";
@@ -138,8 +140,10 @@ test.describe("on a computer, in English", () => {
     await signInAsAdmin(page);
     await page.goto("/admin");
     const names = page.locator(".riso-admin-names");
-    await names.getByRole("searchbox", { name: "Find an ingredient to correct" }).fill("cardamom");
-    await names.getByRole("list", { name: "Ingredients found" }).locator("li").getByRole("button").first().click();
+    // A built-in row no other spec changes (ingredient-name-edits.spec.js corrects and hides "cardamom" while this
+    // runs, and the hint below only shows for a row that is still the built-in one), found by its name.
+    await names.getByRole("searchbox", { name: "Find an ingredient to correct" }).fill("turmeric");
+    await names.getByRole("list", { name: "Ingredients found" }).locator("li", { hasText: "turmeric →" }).getByRole("button").first().click();
     await expect(page.locator(".riso-namepop")).toContainText("Hiding it also stops “I have it” from reading its French names.");
   });
 });
