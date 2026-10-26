@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { quebecDayIn } from "./quebec-day.js";
+import { expect, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 
 // A planned prepared meal is a photo card (design: docs/design/prepared-tag/): the Inventory
 // item's photo read live through the link, the 3px ink border and the one shared « plat
@@ -28,16 +28,13 @@ async function signUp(page, { french = false } = {}) {
 const upload = async (page, body) => (await (await page.request.post("/api/recipe-images", { headers: { "Content-Type": "image/png" }, data: body })).json()).url;
 const add = async (page, data) => (await page.request.post("/api/pantry-inventory", { data })).json();
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-const todayIndex = () => (new Date().getDay() + 6) % 7;
+// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
+// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
+test.use({ timezoneId: "America/Toronto" });
 
 // What the app does when a meal from Inventory is planned: a note, then its marks and its link.
 async function plan(page, item, { note, mealType = "dinner" }) {
-  const entry = await (await page.request.post("/api/planner/blank", { data: { weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType, note } })).json();
+  const entry = await (await page.request.post("/api/planner/blank", { data: { weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType, note } })).json();
   const linked = await (await page.request.put(`/api/planner/${entry.id}`, { data: { isLeftover: true, leftoverItemId: item.id } })).json();
   return linked;
 }
@@ -58,7 +55,7 @@ test.describe("on a computer, in English", () => {
     await signUp(page);
     const red = await upload(page, PNG_RED);
     const green = await upload(page, PNG_GREEN);
-    const lasagna = await add(page, { name: "Lasagna", quantity: 4, unit: "portion", location: "freezer", isPreparedMeal: true, imageUrl: red, expiresAt: quebecDayIn(60) });
+    const lasagna = await add(page, { name: "Lasagna", quantity: 4, unit: "portion", location: "freezer", isPreparedMeal: true, imageUrl: red, expiresAt: quebecDayIn(60, specNow()) });
     await plan(page, lasagna, { note: "Prepared meal · Lasagna" });
     await openPlanner(page);
 
@@ -90,7 +87,7 @@ test.describe("on a computer, in English", () => {
     await expect(card.locator("img.riso-planner-card-photo")).toHaveAttribute("src", green);
 
     // The entry kept a copy of the new photo; once the item has left Inventory, that copy keeps the card's picture.
-    const today = mondayOf(new Date());
+    const today = thisMonday();
     const entry = async () => (await (await page.request.get(`/api/planner?week=${today}`)).json()).find((e) => e.isLeftover);
     expect((await entry()).photoUrl).toBe(green);
     await page.request.delete(`/api/pantry-inventory/${lasagna.id}`);
@@ -102,7 +99,7 @@ test.describe("on a computer, in English", () => {
 
   test("with no photo the card shows the striped placeholder", async ({ page }) => {
     await signUp(page);
-    const tourtiere = await add(page, { name: "Tourtière", quantity: 1, unit: "box", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(60) });
+    const tourtiere = await add(page, { name: "Tourtière", quantity: 1, unit: "box", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(60, specNow()) });
     await plan(page, tourtiere, { note: "Prepared meal · Tourtière" });
     await openPlanner(page);
     const card = page.locator(".riso-planner-cell .riso-planner-card.linked.prepared");
@@ -113,8 +110,8 @@ test.describe("on a computer, in English", () => {
   test("leftovers typed by hand: a photo makes a card with the yellow border and the « leftover » sticker; with none it stays a note", async ({ page }) => {
     await signUp(page);
     const red = await upload(page, PNG_RED);
-    const tacos = await add(page, { name: "Tacos", quantity: 2, unit: "portion", location: "fridge", isLeftover: true, imageUrl: red, expiresAt: quebecDayIn(3) });
-    const chili = await add(page, { name: "Chili", quantity: 2, unit: "portion", location: "fridge", isLeftover: true, expiresAt: quebecDayIn(3) });
+    const tacos = await add(page, { name: "Tacos", quantity: 2, unit: "portion", location: "fridge", isLeftover: true, imageUrl: red, expiresAt: quebecDayIn(3, specNow()) });
+    const chili = await add(page, { name: "Chili", quantity: 2, unit: "portion", location: "fridge", isLeftover: true, expiresAt: quebecDayIn(3, specNow()) });
     await plan(page, tacos, { note: "Leftovers · Tacos", mealType: "dinner" });
     await plan(page, chili, { note: "Leftovers · Chili", mealType: "lunch" });
     await openPlanner(page);
@@ -133,7 +130,7 @@ test.describe("on a computer, in English", () => {
   test("the calendar's day preview and Home's week strip show the photo and the tag", async ({ page }) => {
     await signUp(page);
     const red = await upload(page, PNG_RED);
-    const pierogi = await add(page, { name: "Pierogi", quantity: 1, unit: "bag", location: "freezer", isPreparedMeal: true, imageUrl: red, expiresAt: quebecDayIn(60) });
+    const pierogi = await add(page, { name: "Pierogi", quantity: 1, unit: "bag", location: "freezer", isPreparedMeal: true, imageUrl: red, expiresAt: quebecDayIn(60, specNow()) });
     await plan(page, pierogi, { note: "Prepared meal · Pierogi" });
 
     // Home's week strip: today's supper is a photo card.
@@ -167,7 +164,7 @@ test.describe("on a phone", () => {
       await signUp(page, { french });
       const red = await upload(page, PNG_RED);
       const name = french ? "Lasagne à la viande surgelée" : "Frozen meat lasagna with a very long name";
-      const lasagne = await add(page, { name, quantity: 4, unit: "portion", location: "freezer", isPreparedMeal: true, imageUrl: red, expiresAt: quebecDayIn(60) });
+      const lasagne = await add(page, { name, quantity: 4, unit: "portion", location: "freezer", isPreparedMeal: true, imageUrl: red, expiresAt: quebecDayIn(60, specNow()) });
       await plan(page, lasagne, { note: `${french ? "Plat préparé" : "Prepared meal"} · ${name}` });
       await openPlanner(page);
 

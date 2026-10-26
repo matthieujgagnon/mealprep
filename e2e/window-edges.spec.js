@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, thisMonday } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 
 // Fix batch 7: the Planner's week calendar and its day pop-up stay inside the window on
@@ -6,11 +6,9 @@ import { E2E_INVITE } from "./invite.js";
 // grey bar that sat above the recipe search on a computer is gone (the phone keeps its
 // dashed line between the board and the search).
 
-const mondayOf = (d) => {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-};
+// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
+// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
+test.use({ timezoneId: "America/Toronto" });
 
 async function setUp(page, { french = false } = {}) {
   await page.goto("/");
@@ -24,7 +22,7 @@ async function setUp(page, { french = false } = {}) {
   const recipe = await (
     await page.request.post("/api/recipes", { data: { title: "A fairly long recipe name for the day card", ingredients: [{ name: "flour" }], instructions: ["Cook it."] } })
   ).json();
-  const week = mondayOf(new Date());
+  const week = thisMonday();
   for (const [dayOfWeek, mealType] of [[0, "breakfast"], [0, "dinner"], [3, "lunch"], [6, "dinner"]]) {
     await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: week, dayOfWeek, mealType } });
   }

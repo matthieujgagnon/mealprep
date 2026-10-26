@@ -230,6 +230,12 @@ Render automatically redeploys on every push to `main`.
   npx playwright install --with-deps chromium   # first time only
   npm run test:e2e
   ```
+  The Planner specs count their days and weeks on the Quebec day (`e2e/quebec-day.js`,
+  `e2e/spec-clock.js`) and run their browser in `America/Toronto`, so they give the same answer on a
+  UTC machine at 9 p.m. Quebec time as on a laptop at noon. To check one on a particular moment, freeze the
+  browser's clock to it: `E2E_NOW=2026-10-31T21:30:00-04:00 npx playwright test e2e/planner.spec.js`
+  (the last evening of a month; also try a Sunday evening). A spec that needs a calendar of a given
+  shape pins its own date instead.
 - Both run automatically on every push and pull request via GitHub Actions
   (`.github/workflows/ci.yml`), against a fresh throwaway Postgres.
 

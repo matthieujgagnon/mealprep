@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // The Planner finder's results are photo cards (design:
 // docs/design/riso-v2-planner-search-cards/): « MEAL · TIME » on the photo, the
@@ -7,7 +8,9 @@ import { E2E_INVITE } from "./invite.js";
 // thin bar; no pills or buttons. A recipe with nothing missing has the blue
 // outline. The whole card opens the recipe card and the + still adds to a slot.
 
-test.use({ viewport: { width: 1280, height: 1000 } });
+// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone, and
+// E2E_NOW (spec-clock.js) can freeze it to check the board on any day.
+test.use({ viewport: { width: 1280, height: 1000 }, timezoneId: "America/Toronto" });
 
 async function setup(page) {
   await page.goto("/");
@@ -29,7 +32,7 @@ async function setup(page) {
     });
   }
   for (const name of ["tomato", "cucumber", "chicken", "carrot"]) {
-    await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge" } });
+    await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
   }
   await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();

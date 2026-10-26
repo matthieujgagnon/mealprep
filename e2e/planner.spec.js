@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { scrollBetween } from "./planner-drag.js";
 import { quebecDayIn } from "./quebec-day.js";
@@ -7,17 +7,11 @@ import { quebecDayIn } from "./quebec-day.js";
 // finder under it (search, filters, Cook with, Main meal, the recipe card).
 // One thing per slot - placing replaces, moving swaps.
 
-test.use({ viewport: { width: 1440, height: 1100 } });
+// The Planner counts its weeks and days on the browser's clock, so the browser runs in Quebec's time zone
+// and the spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
+test.use({ viewport: { width: 1440, height: 1100 }, timezoneId: "America/Toronto" });
 
 const MEALS = ["breakfast", "lunch", "dinner"];
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-
 async function setup(page, recipes) {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -72,7 +66,7 @@ async function drag(page, from, to) {
   await page.mouse.up();
 }
 
-async function weekEntries(page, week = mondayOf(new Date())) {
+async function weekEntries(page, week = thisMonday()) {
   return (await page.request.get(`/api/planner?week=${week}`)).json();
 }
 
@@ -150,7 +144,7 @@ test("with no slot chosen, + opens the slot picker; a free slot is confirmed the
   await setup(page, [{ title: "Picker Pie" }, { title: "Already Here" }]);
   const [, here] = await (await page.request.get("/api/recipes")).json().then((r) => [0, r.find((x) => x.title === "Already Here")]);
   const day = visibleDay();
-  await page.request.post("/api/planner", { data: { recipeId: here.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "lunch" } });
+  await page.request.post("/api/planner", { data: { recipeId: here.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "lunch" } });
   await openPlanner(page);
   await page.getByRole("textbox", { name: "Title, ingredient or tag" }).fill("Picker");
 
@@ -272,7 +266,7 @@ test("dragging a recipe from the bottom panel onto a filled slot replaces it", a
   const [first] = await setup(page, [{ title: "Old Meal" }, { title: "New Meal" }]);
   const day = visibleDay();
   await page.request.post("/api/planner", {
-    data: { recipeId: first.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" },
+    data: { recipeId: first.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" },
   });
   await openPlanner(page);
   await page.getByRole("textbox", { name: "Title, ingredient or tag" }).fill("New Meal");
@@ -306,7 +300,7 @@ test("dragging a recipe from the bottom panel onto an empty slot saves it there"
 test("dragging a meal onto another meal swaps the two slots", async ({ page }) => {
   const [a, b] = await setup(page, [{ title: "Meal A" }, { title: "Meal B" }]);
   const day = visibleDay();
-  const weekStart = mondayOf(new Date());
+  const weekStart = thisMonday();
   await page.request.post("/api/planner", { data: { recipeId: a.id, weekStart, dayOfWeek: day, mealType: "breakfast" } });
   await page.request.post("/api/planner", { data: { recipeId: b.id, weekStart, dayOfWeek: day, mealType: "lunch" } });
   await openPlanner(page);
@@ -347,7 +341,7 @@ test("Expiring soon keeps the recipes that use food going off", async ({ page })
     { title: "Plain Rice", ingredients: [{ name: "rice" }] },
   ]);
   await page.request.post("/api/pantry-inventory", {
-    data: { name: "spinach", location: "fridge", expiresAt: quebecDayIn(2) }, // in 2 Quebec days
+    data: { name: "spinach", location: "fridge", expiresAt: quebecDayIn(2, specNow()) }, // in 2 Quebec days
   });
   await openPlanner(page);
   await page.getByRole("button", { name: "Browse" }).click();
@@ -365,7 +359,7 @@ test("Cook with lists expiring food first, then the user's own shelves, and find
     { title: "Plain Rice", ingredients: [{ name: "rice" }] },
   ]);
   const shelf = await (await page.request.post("/api/pantry-locations", { data: { name: "Spice rack" } })).json();
-  const inDays = (n) => quebecDayIn(n); // a use-by day n Quebec days from today
+  const inDays = (n) => quebecDayIn(n, specNow()); // a use-by day n Quebec days from today
   await page.request.post("/api/pantry-inventory", { data: { name: "spinach", location: "fridge", expiresAt: inDays(2) } });
   await page.request.post("/api/pantry-inventory", { data: { name: "ice cream", location: "freezer", expiresAt: inDays(90) } });
   await page.request.post("/api/pantry-inventory", { data: { name: "paprika", location: shelf.id, expiresAt: inDays(300) } });
@@ -404,7 +398,7 @@ test("clicking a filled slot opens its planned-meal card; only the × removes th
   ]);
   const day = visibleDay();
   await page.request.post("/api/planner", {
-    data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" },
+    data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" },
   });
   await openPlanner(page);
 
@@ -438,7 +432,7 @@ test("clicking a filled slot opens its planned-meal card; only the × removes th
 test("the planned-meal card's Cook opens the recipe card over the Planner", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Cook Me", instructions: ["Step one.", "Step two."] }]);
   const day = visibleDay();
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" } });
   await openPlanner(page);
   await cell(page, day, "dinner").locator(".riso-planner-card").click();
   await page.getByRole("dialog", { name: "Cook Me" }).getByRole("button", { name: "Cook", exact: true }).click();
@@ -450,7 +444,7 @@ test("the planned-meal card's Cook opens the recipe card over the Planner", asyn
 test("Replace this recipe targets that slot with a Replaces notice; the new meal replaces it, and Undo puts the old one back", async ({ page }) => {
   const [old] = await setup(page, [{ title: "Old Stew" }, { title: "Fresh Curry" }]);
   const day = visibleDay();
-  await page.request.post("/api/planner", { data: { recipeId: old.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: old.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" } });
   await openPlanner(page);
   await cell(page, day, "dinner").locator(".riso-planner-card").click();
   await page.getByRole("dialog", { name: "Old Stew" }).getByRole("button", { name: "Replace this recipe" }).click();
@@ -477,7 +471,7 @@ test("Use as a base makes the meal the Main meal and lets empty slots take its l
     { title: "Chicken Wraps", ingredients: [{ name: "chicken" }, { name: "tortilla" }] },
   ]);
   const day = visibleDay();
-  await page.request.post("/api/planner", { data: { recipeId: base.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: base.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" } });
   await openPlanner(page);
   await cell(page, day, "dinner").locator(".riso-planner-card").click();
   await page.getByRole("dialog", { name: "Base Chicken" }).getByRole("button", { name: "Use as a base for other meals" }).click();
@@ -650,7 +644,7 @@ test("the check on a meal card marks it leftover, then already have it", async (
   const [a] = await setup(page, [{ title: "Toggle Meal" }]);
   const day = visibleDay();
   await page.request.post("/api/planner", {
-    data: { recipeId: a.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" },
+    data: { recipeId: a.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" },
   });
   await openPlanner(page);
 
@@ -664,9 +658,9 @@ test("the check on a meal card marks it leftover, then already have it", async (
 
 test("past days are black and white; today and later keep their colour", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Old soup" }]);
-  const lastWeek = mondayOf(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+  const lastWeek = mondayAfter(-1);
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 6, mealType: "dinner" } });
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "dinner" } });
   await openPlanner(page);
 
   const todayCell = page.locator(".riso-planner-cell").filter({ has: page.locator(".riso-planner-card") });
@@ -684,7 +678,7 @@ test("past days are black and white; today and later keep their colour", async (
 test("on a phone, a meal card with an emoji is the same size as a recipe card with a photo", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Photo stew", photoUrl: "/photo-does-not-matter.jpg" }]);
   await page.request.post("/api/planner", {
-    data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner" },
+    data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "dinner" },
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
@@ -705,10 +699,17 @@ test("on a phone, a meal card with an emoji is the same size as a recipe card wi
   await page.screenshot({ path: test.info().outputPath("planner-phone-emoji-card.png") });
 });
 
+// The week calendar draws a month as whole weeks, so whether a row follows this week's depends on the day
+// the spec runs. These two moments are fixed (not the real clock, not E2E_NOW): the middle of a month, with
+// a row before and after this week's, and the last evening of one, when the next week is in the next month.
+const MID_MONTH = new Date("2026-10-14T12:00:00-04:00"); // Wednesday
+const MONTH_END = new Date("2026-10-31T21:30:00-04:00"); // Saturday evening (already Sunday in UTC)
+
 test("the title is on its own line with the week controls under it; Copy last week is in the calendar and fills only empty slots, with Undo", async ({ page }) => {
+  await page.clock.setFixedTime(MID_MONTH);
   const [recipe, other] = await setup(page, [{ title: "Copy Me", ingredients: [{ name: "zucchini" }] }, { title: "Already There" }]);
-  const lastWeek = mondayOf(new Date(Date.now() - 7 * 86400000));
-  const thisWeek = mondayOf(new Date());
+  const lastWeek = mondayAfter(-1, MID_MONTH);
+  const thisWeek = thisMonday(MID_MONTH);
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 0, mealType: "dinner" } });
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 1, mealType: "dinner" } });
   // This week already has something in Tuesday's supper (a leftover): it must not be replaced.
@@ -760,9 +761,9 @@ test("the title is on its own line with the week controls under it; Copy last we
   await expect(calendar.locator(".wcal-dashes i.on")).toHaveCount(dashesBefore + 1); // the dashes follow the copy
   await expect(cell(page, 0, "dinner").locator(".riso-planner-card-name")).toHaveText("Copy Me");
   await expect(cell(page, 1, "dinner").locator(".riso-planner-card-name")).toHaveText("Already There");
-  expect(await weekEntries(page)).toHaveLength(2);
+  expect(await weekEntries(page, thisWeek)).toHaveLength(2);
   await toast.getByRole("button", { name: "Undo" }).click();
-  await expect.poll(async () => (await weekEntries(page)).length).toBe(1);
+  await expect.poll(async () => (await weekEntries(page, thisWeek)).length).toBe(1);
   await expect(cell(page, 1, "dinner").locator(".riso-planner-card-name")).toHaveText("Already There");
 
   // Escape closes it.
@@ -787,6 +788,41 @@ test("the title is on its own line with the week controls under it; Copy last we
 
   // The desktop board has no "Make the grocery list" button.
   await expect(page.getByRole("button", { name: /^Make the grocery list/ })).toHaveCount(0);
+});
+
+test("on the last evening of a month the next week is in the next month's calendar, and its row opens that week", async ({ page }) => {
+  await page.clock.setFixedTime(MONTH_END);
+  const [recipe] = await setup(page, [{ title: "November Stew" }]);
+  const nextWeek = mondayAfter(1, MONTH_END); // Monday Nov 2
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: nextWeek, dayOfWeek: 0, mealType: "dinner" } });
+  await openPlanner(page);
+
+  const header = page.locator(".phd");
+  await expect(header.getByText("this week", { exact: true })).toBeVisible();
+  await expect(header.locator(".phd-date")).toHaveText(/^Oct 26 – Nov 1/);
+  await header.locator(".phd-date").click();
+  const calendar = page.getByRole("dialog", { name: "Choose a week" });
+  await expect(calendar).toBeVisible();
+  // October's last row is this week: nothing follows it in this month's grid.
+  await expect(calendar.locator(".wcal-title")).toHaveText(/october/i);
+  await expect(calendar.locator(".wcal-week.selected")).toHaveCount(1);
+  await expect(calendar.locator(".wcal-week.selected + .wcal-week")).toHaveCount(0);
+  await expect(calendar.locator(".wcal-day.today")).toHaveCount(1);
+
+  // The next month holds the next week, with its meal planned.
+  await calendar.getByRole("button", { name: "Next month" }).click();
+  await expect(calendar.locator(".wcal-title")).toHaveText(/november/i);
+  const row = calendar.getByRole("button", { name: "Open the week Nov 2 – 8" });
+  await expect(row.locator(".wcal-dashes i.on")).toHaveCount(1);
+  await row.click();
+  await expect(calendar).toHaveCount(0);
+  await expect(header.locator(".phd-date")).toHaveText(/^Nov 2 – 8/);
+  await expect(cell(page, 0, "dinner").locator(".riso-planner-card-name")).toHaveText("November Stew");
+  await expect.poll(async () => (await weekEntries(page, nextWeek)).length).toBe(1);
+
+  // And back: the sticker says "↩ this week".
+  await page.getByRole("button", { name: "↩ this week" }).click();
+  await expect(header.locator(".phd-date")).toHaveText(/^Oct 26 – Nov 1/);
 });
 
 test("the Meal and Protein menus open like the Recipes page menus and filter the results", async ({ page }) => {
@@ -835,7 +871,7 @@ test("every way of adding ends with a message and Undo; dropping on a slot too",
 test("only one overlay is open at a time", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Overlay Pie" }]);
   const day = visibleDay();
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" } });
   await openPlanner(page);
 
   await cell(page, day, "breakfast").locator(".riso-planner-cell-empty").click();
@@ -852,7 +888,7 @@ test("only one overlay is open at a time", async ({ page }) => {
 
 test("a card's round button still marks leftover, already have, and the past-fridge-life warning shows", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Fridge Stew", fridgeLifeDays: 1 }]);
-  const weekStart = mondayOf(new Date());
+  const weekStart = thisMonday();
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: 0, mealType: "dinner" } });
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: 3, mealType: "lunch", isLeftover: true } });
   await openPlanner(page);

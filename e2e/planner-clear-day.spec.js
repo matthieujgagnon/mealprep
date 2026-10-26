@@ -1,16 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 
 // Fix batch 4: "Clear" under a day on the Planner (desktop and phone), and the
 // quieter Recipes cards (no have-bar, one small "to buy" line, more recipe info).
 
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
+// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
+// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
+test.use({ timezoneId: "America/Toronto" });
 
 async function setup(page, lang) {
   if (lang) await page.addInitScript((l) => localStorage.setItem("mealprep-lang", l), lang);
@@ -34,7 +30,7 @@ const rects = (cards) => cards.evaluateAll((els) => els.map((el) => el.getBoundi
 const weekEntries = async (page, week) => (await page.request.get(`/api/planner?week=${week}`)).json();
 
 async function seedPlan(page) {
-  const week = mondayOf(new Date());
+  const week = thisMonday();
   const today = todayIndex();
   const chicken = await post(page, "/api/recipes", {
     title: "Roast chicken with lemon and herbs",
