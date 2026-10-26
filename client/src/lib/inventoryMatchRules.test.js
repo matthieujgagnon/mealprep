@@ -742,3 +742,51 @@ describe("a name that is made from an animal, or a variety, stays its own food",
     expect(itemCovers(have, ingredient)).toBe(true);
   });
 });
+
+// "ripe" (« mûr », « mûre », « mûrs », « mûres ») only describes another food, like "whole" or
+// "unsalted": the bananas at home are the "ripe bananas" a recipe asks for, in both languages. On its
+// own, or after « de » / « aux », « mûre » is still the blackberry (the must-stay-NO pairs above:
+// « cerise mûre » is not a blackberry, « mûres » are not ripe cherries).
+describe("ripe is a describing word", () => {
+  it.each(
+    both([
+      ["bananas", "ripe bananas"],
+      ["banana", "ripe banana"],
+      ["bananes", "bananes mûres"],
+      ["banane", "banane mûre"],
+      ["bananas", "bananes mûres"],
+      ["bananes", "ripe bananas"],
+      ["ripe bananas", "bananes mûres"],
+      ["tomatoes", "ripe tomatoes"],
+      ["tomate", "tomates mûres"],
+      ["avocado", "ripe avocados"],
+      ["avocat", "avocats mûrs"],
+      ["avocats", "avocat mûr"],
+      ["mangue", "ripe mango"],
+      ["mangue", "mangue mûre"],
+      ["cerises", "ripe cherries"],
+      ["cerises", "cerises mûres"],
+      // The blackberry keeps its name, alone or with « de » / « aux », and "ripe" on it changes nothing.
+      ["mûres", "blackberries"],
+      ["blackberries", "ripe blackberries"],
+      ["confiture de mûres", "blackberry jam"],
+    ])
+  )("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+
+  it("a ripe fruit is still that fruit and no other", () => {
+    expect(itemCovers("ripe bananas", "mangue mûre")).toBe(false);
+    expect(itemCovers("bananes mûres", "ripe mango")).toBe(false);
+    expect(itemCovers("ripe bananas", "blackberries")).toBe(false);
+    expect(itemCovers("bananes mûres", "mûres")).toBe(false);
+  });
+
+  it("a recipe line with ripe bananas is had with bananas in Inventory (card, Makeable, Planner), both languages", () => {
+    const bananas = { inventory: [{ id: 1, name: "Bananes" }] };
+    expect(ingredientHave("ripe bananas", bananas)).toBe("have");
+    expect(ingredientHave("bananes mûres", bananas)).toBe("have");
+    expect(ingredientHave("blackberries", bananas)).toBe("need");
+    expect(ingredientHave("mûres", bananas)).toBe("need");
+  });
+});

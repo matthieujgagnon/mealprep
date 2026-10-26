@@ -64,6 +64,7 @@ const EXTRA = [
   "lamb kidney", "beef tomatoes", "oyster mushrooms", "chili con carne", "chilli bean paste", "thai chilli jam", "pâte de piment fort", "chilli flakes", "chile pepper",
   "tomate roma", "roma tomatoes", "plum tomato", "tomate cerise", "tomate raisin", "fromage de chèvre", "goat", "goat cheese",
   "mûres", "mûre", "cerise mûre", "cerises mûres", "prune mûre", "tomate mûre", "banane mûre", "bananes mûres", "confiture de mûres", "tarte aux mûres", "ripe cherries", "ripe bananas", "blackberry jam",
+  "ripe banana", "bananes", "ripe tomatoes", "tomates mûres", "ripe avocados", "avocat mûr", "avocats mûrs", "ripe mango", "mangue mûre", "ripe blackberries",
 ];
 
 // Words that describe or prepare a food and are never a food: as a name on their own

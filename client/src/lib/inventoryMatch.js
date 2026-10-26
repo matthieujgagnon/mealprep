@@ -55,7 +55,8 @@ import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLin
 //     chop, and a liver, "duck fat", "shrimp salad", "beef tomatoes" or "corned beef" is not the
 //     animal in its name (MADE_MEATS, NOT_THE_ANIMAL); a synonym is swapped word by word, so a
 //     "chilli jam" is not a chile; a roma tomato is a plum tomato, not a cherry one; goat cheese
-//     is not a goat; « mûres » is blackberries, and « cerises mûres » are ripe cherries;
+//     is not a goat; "ripe" says nothing about which food it is ("ripe bananas", « bananes mûres »),
+//     while « mûres » on its own is blackberries;
 //   - coriander on its own is cilantro, while ground coriander and coriander seeds
 //     are the spice;
 //   - lime, banana, grape, vine and curry leaves are products of their own, never
@@ -136,7 +137,7 @@ function toEnglish(name, reading) {
       if (LITTLE.has(w) || /^\d/.test(w)) return null;
       // « mûres » is blackberries, and the feminine of « mûr », ripe: it is the fruit on its own or
       // after « de », « aux », « et » or a number (« confiture de mûres »), and it only says ripe
-      // after another word (« cerises mûres »).
+      // after another word (« cerises mûres »), which is then left out like any describing word.
       const before = tokens[i - 1];
       if (also.has(w) && before && !LITTLE.has(before) && !/^\d/.test(before)) return also.get(w);
       return words.get(w) || words.get(w.replace(/[sx]$/, "")) || w;
@@ -151,7 +152,7 @@ function toEnglish(name, reading) {
 const DESCRIPTORS = new Set(
   (
     "whole skim nonfat fat-free low-fat reduced-fat unsalted salted boneless skinless bone-in skin-on lean extra-lean extra-virgin virgin " +
-    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought mild moulu moulue moulus moulues all-purpose pure granulated bulb"
+    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought mild moulu moulue moulus moulues all-purpose pure granulated bulb ripe"
   ).split(" ")
 );
 // What a food was made into: not the food itself.
