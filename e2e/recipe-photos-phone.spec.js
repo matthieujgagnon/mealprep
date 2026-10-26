@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { saveRecipe } from "./recipe-form.js";
 

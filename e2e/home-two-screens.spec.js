@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, specNow, test, thisMonday } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { langSwitch } from "./account-menu.js";
-import { addDays, quebecDay, quebecDayIn } from "./quebec-day.js";
+import { addDays, quebecDayIn, quebecMoment } from "./quebec-day.js";
 import { PrismaClient } from "@prisma/client";
 import { HOME_FLICK_STOP } from "../client/src/lib/homeScreens.js";
 
@@ -16,12 +16,6 @@ const prisma = new PrismaClient();
 // tablet); a phone scrolls freely and the flick stop keeps a flick from flying
 // across the join (HOME_FLICK_STOP; with it off those tests are skipped). The dots
 // follow and jump either way.
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
 
 async function signUp(page) {
   await page.goto("/");
@@ -91,7 +85,7 @@ async function flick(page, kind, direction) {
   const y1 = direction === "down" ? box.y + box.height - 20 : box.y + 20;
   const y2 = direction === "down" ? y1 - dy : y1 + dy;
   const cdp = await page.context().newCDPSession(page);
-  const t0 = Date.now() / 1000;
+  const t0 = realNow().getTime() / 1000;
   const send = (type, touchPoints, i) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints, timestamp: t0 + i * 0.016 });
   await send("touchStart", [{ x, y: y1 }], 0);
   for (let i = 1; i <= steps; i++) {
@@ -127,14 +121,14 @@ async function seedScreen2(page) {
       ["Porc haché | Ground pork", "ground pork", 3.49, 5.99],
     ].map(([item, matchName, unitPrice, regularPrice]) => ({
       userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${unitPrice}/lb`,
-      unitPrice, unitBasis: "lb", regularPrice, validUntil: quebecDayIn(3), isCurrent: true, createdAt: new Date(),
+      unitPrice, unitBasis: "lb", regularPrice, validUntil: quebecDayIn(3, specNow()), isCurrent: true, createdAt: realNow(),
     })),
   });
   await page.request.post("/api/recipes", {
     data: { title: "Omelette", baseServings: 2, fridgeLifeDays: 1, instructions: ["Cook: Cook the eggs."], ingredients: [{ name: "eggs", quantity: 4, unit: "" }] },
   });
   for (const [name, days] of [["eggs", 2], ["spinach", 1], ["milk", 4], ["yogurt", 6], ["mushrooms", 3]]) {
-    await page.request.post("/api/pantry-inventory", { data: { name, quantity: 1, location: "fridge", expiresAt: quebecDayIn(days) } });
+    await page.request.post("/api/pantry-inventory", { data: { name, quantity: 1, location: "fridge", expiresAt: quebecDayIn(days, specNow()) } });
   }
   await page.reload();
   for (const card of [".riso-home-proteins", ".riso-home-makeable", ".riso-home-useup"]) {
@@ -203,14 +197,14 @@ test.describe("a tall computer window: both screens fit, and it still scrolls fr
     await signUp(page);
     const me = await (await page.request.get("/api/auth/me")).json();
     const userId = me.user?.id ?? me.id;
-    const inDays = (n) => addDays(quebecDay(new Date()), n);
+    const inDays = (n) => quebecDayIn(n, specNow());
     await prisma.flyerDeal.createMany({
       data: [
         ["Cuisses de poulet | Chicken thighs", "chicken thighs", 2.49, 4.99],
         ["Poitrines de poulet | Chicken breasts", "chicken breasts", 3.99, 7.99],
       ].map(([item, matchName, unitPrice, regularPrice]) => ({
         userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${unitPrice}/lb`,
-        unitPrice, unitBasis: "lb", regularPrice, validUntil: inDays(3), isCurrent: true, createdAt: new Date(),
+        unitPrice, unitBasis: "lb", regularPrice, validUntil: inDays(3), isCurrent: true, createdAt: realNow(),
       })),
     });
     await page.reload();
@@ -423,9 +417,7 @@ test.describe("a phone", () => {
   test("the week strip centres on today and slides sideways without moving the page", async ({ page }) => {
     await signUp(page);
     // A Thursday: today is mid-strip, so it can be centred.
-    const thursday = new Date(`${mondayOf(new Date())}T12:00:00`);
-    thursday.setDate(thursday.getDate() + 3);
-    await page.clock.setFixedTime(thursday);
+    await page.clock.setFixedTime(quebecMoment(addDays(thisMonday(), 3), 12));
     await page.reload();
     await expect(scroller(page)).toBeVisible();
 
@@ -736,7 +728,7 @@ async function seedEverything(page) {
   await prisma.flyerDeal.createMany({
     data: deals.map(([item, matchName], i) => ({
       userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${3 + i}/lb`,
-      unitPrice: 3 + i, unitBasis: "lb", regularPrice: 6 + i, validUntil: quebecDayIn(3), isCurrent: true, createdAt: new Date(),
+      unitPrice: 3 + i, unitBasis: "lb", regularPrice: 6 + i, validUntil: quebecDayIn(3, specNow()), isCurrent: true, createdAt: realNow(),
     })),
   });
   await page.request.post("/api/recipes", {
@@ -744,7 +736,7 @@ async function seedEverything(page) {
   });
   const useUp = ["eggs", "spinach", "milk", "yogurt", "mushrooms", "cream", "cheddar", "lettuce", "ham", "tortillas"];
   for (const [i, name] of useUp.entries()) {
-    await page.request.post("/api/pantry-inventory", { data: { name, quantity: 1, location: "fridge", expiresAt: quebecDayIn(1 + i * 2) } });
+    await page.request.post("/api/pantry-inventory", { data: { name, quantity: 1, location: "fridge", expiresAt: quebecDayIn(1 + i * 2, specNow()) } });
   }
   await page.reload();
   await expect(page.locator('[data-screen="2"] .riso-protein-list > li')).toHaveCount(8);

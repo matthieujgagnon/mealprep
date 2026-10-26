@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import { E2E_INVITE } from "./invite.js";
 import { quebecDayIn } from "./quebec-day.js";
@@ -92,7 +92,7 @@ test.describe("on a computer", () => {
     test(`${c.name}: delete it, its items and new ones show on ${c.targetName}, Undo and Bring back put it all back`, async ({ page }) => {
       test.setTimeout(90_000);
       await signUp(page);
-      const useBy = quebecDayIn(30);
+      const useBy = quebecDayIn(30, specNow());
       for (const seed of Object.values(SEED)) await add(page, { expiresAt: useBy, ...seed });
       const garage = await (await page.request.post("/api/pantry-locations", { data: { name: "Spices" } })).json();
       const cumin = await add(page, { name: "Cumin", location: "pantry", expiresAt: useBy });
@@ -184,7 +184,7 @@ test.describe("on a computer", () => {
 
   test("a shelf of Matt's own, with the picker: hidden, never deleted, and its items come back with it", async ({ page }) => {
     await signUp(page);
-    const useBy = quebecDayIn(30);
+    const useBy = quebecDayIn(30, specNow());
     await page.getByRole("button", { name: "Inventory", exact: true }).click();
     await page.getByRole("button", { name: "+ Add section" }).click();
     await page.getByLabel("Shelf name").fill("Spices");
@@ -258,7 +258,7 @@ test.describe("on a computer", () => {
 
   test("a drop on the shelf an item shows on only because of a redirect never changes where it is kept", async ({ page }) => {
     await signUp(page);
-    const useBy = quebecDayIn(25);
+    const useBy = quebecDayIn(25, specNow());
     await add(page, { name: "Frozen peas", location: "freezer", expiresAt: useBy });
     await openInventory(page);
     await deleteVia(page, "freezer");
@@ -294,7 +294,7 @@ test.describe("on a computer", () => {
 
   test("the item pop-up still offers Fridge, Freezer and Pantry to keep something in, with Freezer deleted", async ({ page }) => {
     await signUp(page);
-    await add(page, { name: "Chicken breast", location: "freezer", expiresAt: quebecDayIn(40) });
+    await add(page, { name: "Chicken breast", location: "freezer", expiresAt: quebecDayIn(40, specNow()) });
     await openInventory(page);
     await deleteVia(page, "freezer");
     // Add item: Stored in lists all three; the Shelf choice lists only the shelves that are left.
@@ -317,8 +317,8 @@ test.describe("on a phone, in French", () => {
   test("Supprimer la tablette: the edit controls, the sheet, the last-shelf sheet, Ramener and the toast fit 390 px", async ({ page }) => {
     test.setTimeout(90_000);
     await signUp(page, { french: true });
-    await add(page, { name: "Pois surgelés", location: "freezer", expiresAt: quebecDayIn(30) });
-    await add(page, { name: "Lait", location: "fridge", expiresAt: quebecDayIn(10) });
+    await add(page, { name: "Pois surgelés", location: "freezer", expiresAt: quebecDayIn(30, specNow()) });
+    await add(page, { name: "Lait", location: "fridge", expiresAt: quebecDayIn(10, specNow()) });
     await openInventory(page);
 
     const within = async (locator) => {

@@ -28,10 +28,6 @@ async function signUp(page, { french = false } = {}) {
 const upload = async (page, body) => (await (await page.request.post("/api/recipe-images", { headers: { "Content-Type": "image/png" }, data: body })).json()).url;
 const add = async (page, data) => (await page.request.post("/api/pantry-inventory", { data })).json();
 
-// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
-// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
-test.use({ timezoneId: "America/Toronto" });
-
 // What the app does when a meal from Inventory is planned: a note, then its marks and its link.
 async function plan(page, item, { note, mealType = "dinner" }) {
   const entry = await (await page.request.post("/api/planner/blank", { data: { weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType, note } })).json();

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 
 // One way to move a whole section: a shelf on Inventory moves like a store on
@@ -207,10 +207,7 @@ test.describe("Grocery's stores, the same piece", () => {
         data: { title: "Garlic lemon pasta", baseServings: 2, ingredients: [{ name: "garlic", quantity: 4, unit: "clove" }] },
       })
     ).json();
-    const x = new Date();
-    x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
-    const monday = `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: monday, dayOfWeek: 0, mealType: "dinner" } });
+    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayAfter(1), dayOfWeek: 0, mealType: "dinner" } });
     await page.reload();
     await page.getByRole("button", { name: "Grocery", exact: true }).click();
     for (const name of ["Costco", "Adonis"]) {

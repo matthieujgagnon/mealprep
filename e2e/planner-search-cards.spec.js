@@ -8,9 +8,7 @@ import { quebecDayIn } from "./quebec-day.js";
 // thin bar; no pills or buttons. A recipe with nothing missing has the blue
 // outline. The whole card opens the recipe card and the + still adds to a slot.
 
-// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone, and
-// E2E_NOW (spec-clock.js) can freeze it to check the board on any day.
-test.use({ viewport: { width: 1280, height: 1000 }, timezoneId: "America/Toronto" });
+test.use({ viewport: { width: 1280, height: 1000 } });
 
 async function setup(page) {
   await page.goto("/");

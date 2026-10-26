@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // Fix batch 3: the round ✓ on an ingredient (blue = in Inventory, green = on the grocery
 // list), the Planner card borders, Option-drag leftovers and the "Confirm" tile.
@@ -12,12 +13,6 @@ const YELLOW = "rgb(255, 225, 77)";
 
 const MEALS = ["breakfast", "lunch", "dinner"];
 const cell = (page, day, meal) => page.locator(".riso-planner-cell").nth(MEALS.indexOf(meal) * 7 + day);
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
 
 async function setup(page, recipes) {
   await page.goto("/");
@@ -36,8 +31,8 @@ async function setup(page, recipes) {
 }
 
 const place = (page, recipe, dayOfWeek, mealType, extra = {}) =>
-  page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek, mealType, ...extra } });
-const weekEntries = async (page) => (await page.request.get(`/api/planner?week=${mondayOf(new Date())}`)).json();
+  page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek, mealType, ...extra } });
+const weekEntries = async (page) => (await page.request.get(`/api/planner?week=${thisMonday()}`)).json();
 const markColor = (loc) => loc.evaluate((el) => getComputedStyle(el).backgroundColor);
 
 async function openCard(page, title) {
@@ -48,7 +43,7 @@ async function openCard(page, title) {
 
 test("recipe card: blue ✓ in Inventory, green ✓ on the list; a tap takes it off (Undo) and puts it back", async ({ page }) => {
   await setup(page, [{ title: "Marks Stew", ingredients: [{ name: "quokka beans" }, { name: "wombat stew" }] }]);
-  await page.request.post("/api/pantry-inventory", { data: { name: "wombat stew", location: "fridge" } });
+  await page.request.post("/api/pantry-inventory", { data: { name: "wombat stew", location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
   await page.reload();
   const card = await openCard(page, "Marks Stew");
 
@@ -78,8 +73,8 @@ test("recipe card: blue ✓ in Inventory, green ✓ on the list; a tap takes it 
 
 test("the recipe card and the planned meal's card agree on what you have", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Card Marks", ingredients: [{ name: "quokka beans" }, { name: "wombat stew" }] }]);
-  await page.request.post("/api/pantry-inventory", { data: { name: "wombat stew", location: "fridge" } });
-  const today = (new Date().getDay() + 6) % 7;
+  await page.request.post("/api/pantry-inventory", { data: { name: "wombat stew", location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
+  const today = todayIndex();
   await place(page, recipe, today, "dinner");
   await page.reload();
   const card = await openCard(page, "Card Marks");

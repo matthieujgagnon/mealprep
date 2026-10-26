@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { langSwitch } from "./account-menu.js";
 
@@ -248,7 +248,7 @@ test.describe("at 1280 px", () => {
     for (let i = 1; i <= 7; i++) await imported(page, i === 1 ? "Imported old" : `Imported older ${i}`, 10 + i); // enough to scroll to
     await goRecipes(page);
     const fresh = await imported(page, "Imported fresh", 12); // the page does not know it yet
-    await page.route("**/api/recipes/import", (route) => route.fulfill({ json: { ...fresh, createdAt: new Date(Date.now() + 60_000).toISOString() } }));
+    await page.route("**/api/recipes/import", (route) => route.fulfill({ json: { ...fresh, createdAt: realNow(60_000).toISOString() } }));
     await page.locator(".riso-recipes-searchbar input").fill("https://example.com/fresh");
     await page.getByRole("button", { name: "Import recipe" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Imported. Find it under Imported" })).toBeVisible();

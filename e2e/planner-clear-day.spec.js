@@ -4,10 +4,6 @@ import { E2E_INVITE } from "./invite.js";
 // Fix batch 4: "Clear" under a day on the Planner (desktop and phone), and the
 // quieter Recipes cards (no have-bar, one small "to buy" line, more recipe info).
 
-// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
-// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
-test.use({ timezoneId: "America/Toronto" });
-
 async function setup(page, lang) {
   if (lang) await page.addInitScript((l) => localStorage.setItem("mealprep-lang", l), lang);
   await page.goto("/");

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { itemForm, pickCompact } from "./inventory-form.js";
 import { quebecDayIn } from "./quebec-day.js";
@@ -33,7 +33,7 @@ test.describe("on a computer", () => {
 
   test("the title row, and Compact / Tiles remembered after a reload for this account", async ({ page }) => {
     await signUp(page);
-    await add(page, { name: "Eggs", quantity: 8, expiresAt: quebecDayIn(10) });
+    await add(page, { name: "Eggs", quantity: 8, expiresAt: quebecDayIn(10, specNow()) });
     await openInventory(page);
 
     // Title row: the view choice, Scan receipt, + Add section, + Add item, in that order.
@@ -72,8 +72,8 @@ test.describe("on a computer", () => {
 
   test("on the use-by day an item says today in both views; Expired only from the next day", async ({ page }) => {
     await signUp(page);
-    await add(page, { name: "Milk", quantity: 1, unit: "l", expiresAt: quebecDayIn(0) });
-    await add(page, { name: "Cream", quantity: 1, unit: "cup", expiresAt: quebecDayIn(-1) });
+    await add(page, { name: "Milk", quantity: 1, unit: "l", expiresAt: quebecDayIn(0, specNow()) });
+    await add(page, { name: "Cream", quantity: 1, unit: "cup", expiresAt: quebecDayIn(-1, specNow()) });
     await openInventory(page);
     await pickCompact(page);
 
@@ -97,24 +97,33 @@ test.describe("on a computer", () => {
   });
 
   test("Recently removed: used up, tossed, deleted and cooked items, Put back as they were, and they count nowhere", async ({ page }) => {
+    // The server stamps the removals with the real day, and "today" is that day on the browser's clock: a browser
+    // frozen by E2E_NOW on another day would read them as days ago.
+    await page.clock.setFixedTime(realNow());
     await signUp(page);
-    const kale = await (await add(page, { name: "Kale", quantity: 1, unit: "bunch", expiresAt: quebecDayIn(1) })).json();
-    await add(page, { name: "Bread", location: "freezer", quantity: 0.5, unit: "loaf", expiresAt: quebecDayIn(40) });
+    const kale = await (await add(page, { name: "Kale", quantity: 1, unit: "bunch", expiresAt: quebecDayIn(1, realNow()) })).json();
+    await add(page, { name: "Bread", location: "freezer", quantity: 0.5, unit: "loaf", expiresAt: quebecDayIn(40, realNow()) });
     await add(page, { name: "Mlik", quantity: 1 });
-    const rice = await (await add(page, { name: "Rice", location: "pantry", quantity: 1, unit: "kg", expiresAt: quebecDayIn(300) })).json();
+    const rice = await (await add(page, { name: "Rice", location: "pantry", quantity: 1, unit: "kg", expiresAt: quebecDayIn(300, realNow()) })).json();
     await openInventory(page);
     await expect(page.locator(".riso-inv-removed")).toHaveCount(0); // nothing removed yet: no strip
 
     // Used up from the bulk bar.
     await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Kale" }).locator(".inv-check").click();
+    // Each removal is waited for at the server before the next one: the strip lists them by the time the server
+    // saved them, and the page shows a removal before it is saved.
+    const removed = (name) => expect.poll(async () => (await stock(page)).map((i) => i.name)).not.toContain(name);
     await page.locator(".inv-action-bar").getByRole("button", { name: "Used up" }).click();
+    await removed("Kale");
     // Tossed and Remove from the item's pop-up.
     await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Bread" }).click();
     await itemForm(page).getByRole("button", { name: "Tossed" }).click();
     await expect(itemForm(page)).toHaveCount(0);
+    await removed("Bread");
     await page.locator(":is(.inv-row, .inv-tile)", { hasText: "Mlik" }).click();
     await itemForm(page).getByRole("button", { name: /^Remove/ }).click();
     await expect(itemForm(page)).toHaveCount(0);
+    await removed("Mlik");
     // "I cooked this" taking the rice out to zero.
     await page.request.post("/api/pantry-inventory/take-out", { data: { takes: [{ id: rice.id, amount: "all" }] } });
     await openInventory(page);
@@ -154,8 +163,8 @@ test.describe("on a phone, in French", () => {
   test.use({ viewport: { width: 390, height: 844 }, locale: "fr-CA", hasTouch: true, isMobile: true });
 
   async function seed(page) {
-    for (let i = 0; i < 4; i++) await add(page, { name: `Lait ${i}`, quantity: 1, unit: "l", expiresAt: quebecDayIn(i + 2) });
-    await add(page, { name: "Pois", location: "freezer", quantity: 500, unit: "g", expiresAt: quebecDayIn(90) });
+    for (let i = 0; i < 4; i++) await add(page, { name: `Lait ${i}`, quantity: 1, unit: "l", expiresAt: quebecDayIn(i + 2, specNow()) });
+    await add(page, { name: "Pois", location: "freezer", quantity: 500, unit: "g", expiresAt: quebecDayIn(90, specNow()) });
     await add(page, { name: "Riz", location: "pantry", quantity: 2, unit: "kg" });
   }
 
@@ -208,8 +217,8 @@ test.describe("on a phone, in French", () => {
 
   test("press and hold carries an item to another shelf, and a shelf by its grip; a tap still opens the item", async ({ page, context }) => {
     await signUp(page, { french: true });
-    await add(page, { name: "Crevettes", quantity: 1, unit: "lb", expiresAt: quebecDayIn(1) });
-    await add(page, { name: "Pois", location: "freezer", quantity: 500, unit: "g", expiresAt: quebecDayIn(90) });
+    await add(page, { name: "Crevettes", quantity: 1, unit: "lb", expiresAt: quebecDayIn(1, specNow()) });
+    await add(page, { name: "Pois", location: "freezer", quantity: 500, unit: "g", expiresAt: quebecDayIn(90, specNow()) });
     await openInventory(page, "Inventaire");
     const client = await context.newCDPSession(page);
 
@@ -253,8 +262,8 @@ test.describe("on a phone, in French", () => {
         await route.abort();
       });
       await signUp(page, { french: true });
-      await add(page, { name: "Crevettes", quantity: 1, unit: "lb", expiresAt: quebecDayIn(1) });
-      await add(page, { name: "Pois", location: "freezer", quantity: 500, unit: "g", expiresAt: quebecDayIn(90) });
+      await add(page, { name: "Crevettes", quantity: 1, unit: "lb", expiresAt: quebecDayIn(1, specNow()) });
+      await add(page, { name: "Pois", location: "freezer", quantity: 500, unit: "g", expiresAt: quebecDayIn(90, specNow()) });
       await openInventory(page, "Inventaire");
       const client = await context.newCDPSession(page);
 

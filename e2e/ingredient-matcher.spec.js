@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { E2E_INVITE } from "./invite.js";
@@ -21,7 +21,6 @@ const prisma = new PrismaClient();
 const ADMIN = "e2e-matcher-admin@example.com";
 const PASSWORD = "adminpass123";
 
-test.use({ timezoneId: "America/Toronto" });
 test.describe.configure({ mode: "serial" });
 
 const MINE = { enOne: { startsWith: "glorbnik" } };

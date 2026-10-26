@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // One matcher everywhere (lib/inventoryMatch.js): the same recipe, next to an
 // Inventory written in French, gives the same answer on Makeable, the recipe
@@ -23,13 +24,6 @@ const INGREDIENTS = [
 const INVENTORY = ["Hauts de cuisse de poulet", "Ail", "Oignons", "Riz", "Coriandre", "Sel", "Huile d'olive", "Poivre noir"];
 const TITLE = "Garlic chicken and rice";
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
 async function signUp(page, { signUp: signUpLabel, create, home }) {
   await page.goto("/");
   await page.getByRole("button", { name: signUpLabel }).click();
@@ -46,9 +40,9 @@ async function seed(page) {
       data: { title: TITLE, mealSlot: "dinner", instructions: ["Cook it."], ingredients: INGREDIENTS.map((name) => ({ name })) },
     })
   ).json();
-  for (const name of INVENTORY) await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge" } });
+  for (const name of INVENTORY) await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
   // A leftover of a chicken dish: never counts as chicken.
-  await page.request.post("/api/pantry-inventory", { data: { name: "Poulet au beurre (restes)", location: "fridge", isLeftover: true } });
+  await page.request.post("/api/pantry-inventory", { data: { name: "Poulet au beurre (restes)", location: "fridge", isLeftover: true, expiresAt: quebecDayIn(30, specNow()) } });
   await page.reload();
   return recipe;
 }
@@ -98,7 +92,7 @@ test.describe("on a computer, in English", () => {
 
     // And so does the planned meal's card.
     const day = Math.min(todayIndex(), 4);
-    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: day, mealType: "dinner" } });
+    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: day, mealType: "dinner" } });
     await page.reload();
     await tab(page, "Planner").click();
     await page.locator(".riso-planner-cell").nth(2 * 7 + day).locator(".riso-planner-card").click();
@@ -124,7 +118,7 @@ test.describe("on a phone, in French", () => {
     });
 
     // The planned meal's card on the phone board: « 1 à acheter ».
-    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner" } });
+    await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "dinner" } });
     await page.reload();
     await tab(page, "Planificateur").click();
     await expect(page.locator(".pmb")).toBeVisible();

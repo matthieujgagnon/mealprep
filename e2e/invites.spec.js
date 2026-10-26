@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { aiDay } from "../server/src/lib/aiLimit.js";
@@ -155,9 +155,9 @@ test.describe("on a computer, in English", () => {
   });
 
   test("an expired code is refused", async ({ page, browser }) => {
-    const expired = await prisma.inviteCode.create({ data: { code: "EXP1-RED2", expiresAt: new Date(Date.now() - 60_000) } }).catch(async () => {
+    const expired = await prisma.inviteCode.create({ data: { code: "EXP1-RED2", expiresAt: realNow(-60_000) } }).catch(async () => {
       await prisma.inviteCode.deleteMany({ where: { code: "EXP1-RED2" } });
-      return prisma.inviteCode.create({ data: { code: "EXP1-RED2", expiresAt: new Date(Date.now() - 60_000) } });
+      return prisma.inviteCode.create({ data: { code: "EXP1-RED2", expiresAt: realNow(-60_000) } });
     });
     const visitor = await browser.newContext({ locale: "en-CA" });
     const stranger = await visitor.newPage();

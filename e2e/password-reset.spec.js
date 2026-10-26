@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -30,7 +30,7 @@ test("reset link sets a new password and signs out other sessions", async ({ pag
   // instead of waiting on a real inbox.
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   const resetToken = await prisma.passwordResetToken.create({
-    data: { userId: user.id, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+    data: { userId: user.id, expiresAt: realNow(60 * 60 * 1000) },
   });
 
   await page.goto(`/reset-password?token=${resetToken.id}`);
@@ -73,7 +73,7 @@ test("a used reset link can't be replayed", async ({ page }) => {
 
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   const resetToken = await prisma.passwordResetToken.create({
-    data: { userId: user.id, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+    data: { userId: user.id, expiresAt: realNow(60 * 60 * 1000) },
   });
 
   await page.goto(`/reset-password?token=${resetToken.id}`);

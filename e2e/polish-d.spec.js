@@ -1,22 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, test, thisMonday } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { langSwitch } from "./account-menu.js";
 
 // Polish D: the Recipes toolbar and section headers, Add to Cookbook / Move to
 // Imported, step timers, equal Planner cards, and button feedback.
-
-const pad = (n) => String(n).padStart(2, "0");
-const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const mondayOf = (d) => {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return dateKey(x);
-};
-function nextMonday() {
-  const x = new Date();
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
-  return dateKey(x);
-}
 
 async function signUp(page) {
   await page.goto("/");
@@ -223,7 +210,7 @@ test.describe("Step timers", () => {
 test.describe("Planner cards are one size", () => {
   async function seed(page) {
     await signUp(page);
-    const week = mondayOf(new Date());
+    const week = thisMonday();
     const photo = await recipe(page, "Chicken tikka masala with rice and a very long name", { photoUrl: SVG("#2a4bd7") });
     const plain = await recipe(page, "Pancakes");
     for (const [day, meal, r] of [[0, "dinner", photo], [0, "breakfast", plain], [1, "lunch", photo]]) {
@@ -284,7 +271,7 @@ test.describe("Button feedback", () => {
   async function groceryWithItem(page) {
     await signUp(page);
     const r = await recipe(page, "Roast chicken", { baseServings: 2, ingredients: [{ name: "chicken", quantity: 500, unit: "g" }] });
-    await page.request.post("/api/planner", { data: { recipeId: r.id, weekStart: nextMonday(), dayOfWeek: 0, mealType: "dinner" } });
+    await page.request.post("/api/planner", { data: { recipeId: r.id, weekStart: mondayAfter(1), dayOfWeek: 0, mealType: "dinner" } });
     await page.reload();
     await page.getByRole("button", { name: "Grocery", exact: true }).first().click();
   }

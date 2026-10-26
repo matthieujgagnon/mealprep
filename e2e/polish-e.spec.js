@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import { langSwitch } from "./account-menu.js";
@@ -7,15 +7,6 @@ const prisma = new PrismaClient();
 
 // Home's Proteins on sale by general protein (the count and "See your recipes"
 // cover every kind of it), and the recipes line under each grocery item.
-
-const pad = (n) => String(n).padStart(2, "0");
-const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-// Next week's Monday: its meals are always still ahead, whatever day the test runs.
-function nextMonday() {
-  const x = new Date();
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
-  return dateKey(x);
-}
 
 async function signUp(page) {
   await page.goto("/");
@@ -43,7 +34,7 @@ test.describe("Proteins on sale, by general protein", () => {
     const userId = await signUp(page);
     const row = (item, matchName, unitPrice, extra = {}) => ({
       userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${unitPrice}/lb`,
-      unitPrice, unitBasis: "lb", isCurrent: true, createdAt: new Date(), ...extra,
+      unitPrice, unitBasis: "lb", isCurrent: true, createdAt: realNow(), ...extra,
     });
     await prisma.flyerDeal.createMany({
       data: [
@@ -134,7 +125,7 @@ test.describe("Proteins on sale, by general protein", () => {
 test.describe("The recipes an item is for, in Grocery", () => {
   async function seed(page) {
     await signUp(page);
-    const week = nextMonday();
+    const week = mondayAfter(1);
     const meals = [
       ["Tacos", ["onion", "tomato"]],
       ["Chili with a really long name that goes on and on", ["onion", "carrot"]],
@@ -331,7 +322,7 @@ test.describe("Recipes protein filter: a sauce or stock is not the protein", () 
     const me = await (await page.request.get("/api/auth/me")).json();
     const deal = (item, unitPrice, regularPrice) => ({
       userId: me.user?.id ?? me.id, store: "Metro", source: "Metro", category: "protein", item, matchName: item.toLowerCase(),
-      price: `$${unitPrice}/lb`, unitPrice, unitBasis: "lb", regularPrice, isCurrent: true, createdAt: new Date(),
+      price: `$${unitPrice}/lb`, unitPrice, unitBasis: "lb", regularPrice, isCurrent: true, createdAt: realNow(),
     });
     await prisma.flyerDeal.createMany({
       data: [deal("Whole chicken", 2.49, 4.49), deal("Cod fillets", 8.99, 12.99), deal("Lean ground beef", 5.97, 8.99)],

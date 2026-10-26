@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, realNow, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { E2E_INVITE } from "./invite.js";
-import { addDays, quebecDay, quebecWeekStart } from "./quebec-day.js";
+import { quebecDay } from "./quebec-day.js";
 
 // Matt's changes to the ingredient names (the Admin page's Ingredient names card; lib/nameSaves.js,
 // lib/ingredientDisplay.js, server/src/routes/adminIngredientNames.js):
@@ -18,14 +18,13 @@ import { addDays, quebecDay, quebecWeekStart } from "./quebec-day.js";
 // The names are shared by every account, so these tests use a name of their own ("Zorblax paste")
 // and the built-in row "cardamom" that no other test reads, and take their changes away at the
 // end. The admin account is made in the database (playwright.config.js lists it). The day shown
-// beside a change is the Quebec day (e2e/quebec-day.js), never this machine's own date.
+// beside a change is the Quebec day the server saved it on (the real clock, e2e/spec-clock.js), never this machine's own date.
 // Set SHOTS_DIR to also save the screenshots (phone in French, computer in English) there.
 
 const prisma = new PrismaClient();
 const ADMIN = "e2e-name-edits-admin@example.com";
 const PASSWORD = "adminpass123";
 
-test.use({ timezoneId: "America/Toronto" });
 test.describe.configure({ mode: "serial" });
 
 const MINE = { OR: [{ enOne: { startsWith: "zorblax" } }, { replaces: "cardamom" }] };
@@ -68,7 +67,7 @@ async function signInAsAdmin(page, lang) {
   const recipe = await (await page.request.post("/api/recipes", { data: RECIPE })).json();
   // Planned next week, so it is always ahead and its ingredients are on the Grocery list (the week
   // comes from the Quebec day, never this machine's own date).
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: addDays(quebecWeekStart(), 7), dayOfWeek: 0, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayAfter(1), dayOfWeek: 0, mealType: "dinner" } });
 }
 
 async function signUpTester(page, lang) {
@@ -139,7 +138,7 @@ test.describe("on a phone, in French", () => {
     const mine = card.getByRole("list", { name: "Noms que vous avez modifiés" });
     const row = mine.locator("li", { hasText: "zorblax paste → pâte de zorblax" });
     await expect(row).toContainText("Modifié par vous");
-    await expect(row).toContainText(String(Number(quebecDay(Date.now()).slice(8))));
+    await expect(row).toContainText(String(Number(quebecDay(realNow()).slice(8))));
     await expect(row).toContainText("Ajouté");
 
     // The recipe card, reached without a reload, already says it in French.
@@ -165,7 +164,7 @@ test.describe("on a phone, in French", () => {
     await expect(recipe.locator(".riso-rc-buy-name", { hasText: "Pâte de zorblax" })).toHaveCount(1);
 
     // A tester (another account) sees it after a reload, and the server refuses their change.
-    const tester = await browser.newContext({ locale: "fr-CA", viewport: { width: 390, height: 844 }, timezoneId: "America/Toronto" });
+    const tester = await browser.newContext({ locale: "fr-CA", viewport: { width: 390, height: 844 } });
     const other = await tester.newPage();
     await signUpTester(other, "fr");
     await other.request.post("/api/recipes", { data: RECIPE });

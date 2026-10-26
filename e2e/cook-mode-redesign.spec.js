@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, thisMonday } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { saveRecipe } from "./recipe-form.js";
 import { confirmAdd } from "./inventory-confirm.js";
@@ -173,10 +173,7 @@ test("I cooked this opens the finished view; the Leftovers card adds a LEFTOVER 
   expect(leftover).toMatchObject({ name: "Cook Mode Finish Test", quantity: 2, unit: "portion", location: "fridge" });
 
   // Nothing is planned by itself any more: leftovers are planned from the Planner.
-  const d = new Date();
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  const week = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const entries = await (await page.request.get(`/api/planner?week=${week}`)).json();
+  const entries = await (await page.request.get(`/api/planner?week=${thisMonday()}`)).json();
   expect(entries.filter((e) => e.isLeftover)).toHaveLength(0);
 });
 

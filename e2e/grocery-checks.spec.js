@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDay } from "./quebec-day.js";
 import { confirmAdd } from "./inventory-confirm.js";
 import { saveAnswered } from "./saves.js";
 import { PrismaClient } from "@prisma/client";
@@ -13,15 +14,6 @@ const prisma = new PrismaClient();
 // sheet starts with that item ticked.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
-
-const pad = (n) => String(n).padStart(2, "0");
-const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-// Next week's Monday: its meals are always still ahead, whatever day the test runs.
-function nextMonday() {
-  const x = new Date();
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
-  return dateKey(x);
-}
 
 async function signUp(page) {
   const email = `grocery-checks+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`;
@@ -38,7 +30,7 @@ async function signUp(page) {
 const recipe = async (page, title, ingredients) =>
   await (await page.request.post("/api/recipes", { data: { title, baseServings: 2, ingredients } })).json();
 const place = async (page, recipeId, dayOfWeek) =>
-  await page.request.post("/api/planner", { data: { recipeId, weekStart: nextMonday(), dayOfWeek, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId, weekStart: mondayAfter(1), dayOfWeek, mealType: "dinner" } });
 // A grocery row, and the checkbox in it: only the checkbox checks the item off.
 const check = (page, name) => page.getByRole("checkbox", { name: `Check off ${name}`, exact: true });
 const row = (page, name) => page.locator(".riso-row").filter({ has: check(page, name) });
@@ -221,7 +213,7 @@ test("a bought item is forgotten once no planned meal needs it", async ({ page }
   expect((await (await page.request.get("/api/grocery-checked")).json()).map((c) => c.core)).toEqual(["chicken"]);
 
   // Take the meal off the plan: the purchase is forgotten with it.
-  const planned = await (await page.request.get(`/api/planner/upcoming?from=${dateKey(new Date())}`)).json();
+  const planned = await (await page.request.get(`/api/planner/upcoming?from=${quebecDay(specNow())}`)).json();
   for (const entry of planned) await page.request.delete(`/api/planner/${entry.id}`);
   await page.reload();
   await openGrocery(page);

@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
-import { addDays, quebecDay, quebecDayIn } from "./quebec-day.js";
+import { quebecDay, quebecDayIn, quebecMoment } from "./quebec-day.js";
 import { itemForm, pickCompact } from "./inventory-form.js";
 
 // Prepared meals: a ready-made dish in Inventory (a frozen lasagna, Matt's "Chicken,
@@ -30,20 +30,13 @@ const inventory = async (page) => (await page.request.get("/api/pantry-inventory
 const tab = (page, name) => page.getByRole("button", { name, exact: true }).first();
 const prepared = (page) => itemForm(page).getByRole("switch", { name: "Prepared meal" });
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
 test.describe("on a computer, in English", () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
   test("tagging the pastry as a prepared meal: the recipe's chicken stops being blue, and it can be planned", async ({ page }) => {
     await signUp(page);
     await page.request.post("/api/recipes", { data: STIR_FRY });
-    await add(page, { name: PASTRY, quantity: 2, unit: "box", location: "freezer", expiresAt: quebecDayIn(30) });
+    await add(page, { name: PASTRY, quantity: 2, unit: "box", location: "freezer", expiresAt: quebecDayIn(30, specNow()) });
     await page.reload();
 
     // Untagged, it is chicken: the stir-fry has one of three in Inventory.
@@ -150,6 +143,8 @@ test.describe("on a computer, in English", () => {
     await prepared(page).click();
     await form.getByRole("button", { name: "Add to inventory" }).click();
 
+    // The page shows the last item before the server has it: wait for all three.
+    await expect.poll(async () => (await inventory(page)).length).toBe(3);
     const items = await inventory(page);
     const byName = (name) => items.find((i) => i.name === name);
     expect(byName("Frozen lasagna sheets").isPreparedMeal).toBe(false);
@@ -176,8 +171,8 @@ test.describe("on a computer, in English", () => {
   test("plan the prepared meal from the Planner search, and when its day has passed one box comes off, with Undo", async ({ page }) => {
     await signUp(page);
     await page.request.post("/api/recipes", { data: STIR_FRY });
-    const lasagna = await add(page, { name: "Lasagna", quantity: 2, unit: "box", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(60) });
-    const chili = await add(page, { name: "Chili", quantity: 1, unit: "portion", location: "fridge", isLeftover: true, expiresAt: quebecDayIn(3) });
+    const lasagna = await add(page, { name: "Lasagna", quantity: 2, unit: "box", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(60, specNow()) });
+    const chili = await add(page, { name: "Chili", quantity: 1, unit: "portion", location: "fridge", isLeftover: true, expiresAt: quebecDayIn(3, specNow()) });
     await add(page, { name: "Chicken breasts", quantity: 1, unit: "kg", location: "fridge" });
     await page.reload();
 
@@ -194,7 +189,7 @@ test.describe("on a computer, in English", () => {
 
     // On the board it has no recipe, so it is held as a note, like leftovers typed in by hand, but it is
     // drawn as a photo card: the 3px ink border and the shared « prepared meal » tag.
-    const today = quebecDay(Date.now());
+    const today = quebecDay(specNow());
     const upcoming = async () => (await (await page.request.get(`/api/planner/upcoming?from=${today}`)).json()).find((e) => e.isLeftover);
     expect(await upcoming()).toMatchObject({ leftoverItemId: lasagna.id });
     expect((await upcoming()).recipe.title).toBe("Prepared meal · Lasagna");
@@ -216,7 +211,7 @@ test.describe("on a computer, in English", () => {
     await expect.poll(async () => (await upcoming())?.leftoverItemId).toBe(lasagna.id);
 
     // A day goes by (the browser's clock is two days on): one box comes off, once.
-    const later = new Date(Date.now() + 2 * 86400000);
+    const later = quebecMoment(quebecDayIn(2, specNow()), 12);
     await page.clock.setFixedTime(later);
     await page.reload();
     await expect(page.locator(".riso-toast")).toContainText("1 meal taken off your Inventory: Prepared meal · Lasagna");
@@ -232,8 +227,8 @@ test.describe("on a computer, in English", () => {
 
   test("a prepared meal counted by weight comes off whole, lands in Recently removed, and Put back keeps the tag", async ({ page }) => {
     await signUp(page);
-    const perogies = await add(page, { name: "Perogies", quantity: 900, unit: "g", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(60) });
-    const lastWeek = mondayOf(new Date(Date.now() - 7 * 86400000));
+    const perogies = await add(page, { name: "Perogies", quantity: 900, unit: "g", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(60, specNow()) });
+    const lastWeek = mondayAfter(-1);
     const note = await (await page.request.post("/api/planner/blank", { data: { weekStart: lastWeek, dayOfWeek: 6, mealType: "dinner", note: "Prepared meal · Perogies" } })).json();
     const linked = await page.request.put(`/api/planner/${note.id}`, { data: { isLeftover: true, leftoverItemId: perogies.id } });
     expect(linked.ok()).toBe(true);
@@ -256,7 +251,7 @@ test.describe("on a computer, in English", () => {
     const chicken = await add(page, { name: "Chicken breasts", quantity: 1, unit: "kg", location: "fridge" });
     const recipe = await (await page.request.post("/api/recipes", { data: STIR_FRY })).json();
     const place = (leftoverItemId) =>
-      page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: 0, mealType: "dinner", isLeftover: true, leftoverItemId } });
+      page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: 0, mealType: "dinner", isLeftover: true, leftoverItemId } });
     const refused = await place(chicken.id);
     expect(refused.status()).toBe(400);
     expect((await refused.json()).error).toBeTruthy();
@@ -288,9 +283,9 @@ test.describe("on a phone, in French", () => {
     await signUp(page, { french: true });
     // The Planner shows its board once there is a recipe.
     await page.request.post("/api/recipes", { data: STIR_FRY });
-    const lasagne = await add(page, { name: "Lasagne à la viande surgelée", quantity: 2, unit: "box", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(40) });
+    const lasagne = await add(page, { name: "Lasagne à la viande surgelée", quantity: 2, unit: "box", location: "freezer", isPreparedMeal: true, expiresAt: quebecDayIn(40, specNow()) });
     await add(page, { name: "Poitrines de poulet", quantity: 1, unit: "kg", location: "fridge" });
-    const note = await (await page.request.post("/api/planner/blank", { data: { weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner", note: "Plat préparé · Lasagne à la viande surgelée" } })).json();
+    const note = await (await page.request.post("/api/planner/blank", { data: { weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "dinner", note: "Plat préparé · Lasagne à la viande surgelée" } })).json();
     await page.request.put(`/api/planner/${note.id}`, { data: { isLeftover: true, leftoverItemId: lasagne.id } });
     await page.reload();
 

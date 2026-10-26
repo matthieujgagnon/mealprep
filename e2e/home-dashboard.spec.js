@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, todayAt } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
-import { quebecDay, quebecDayIn } from "./quebec-day.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // The Home tab is now the landing page - covers the pieces that pull data
 // from elsewhere in the app (planner, grocery list, inventory) rather than
@@ -13,12 +13,11 @@ function uniqueEmail() {
 
 // These are about supper, which is the card from 3 pm: fix the clock at 6 pm
 // so they give the same answer whenever they run. 6 pm on today's Quebec day
-// (the day the app counts use-by days in), on this machine's clock (the hour the
-// browser reads): from 8 pm in Quebec a UTC machine's own date is already
-// tomorrow, and "6 pm tomorrow" made a use-by date of tomorrow say today.
+// (the day the app counts use-by days in), in the browser's Quebec time zone: from
+// 8 pm in Quebec a UTC machine's own date is already tomorrow, and "6 pm tomorrow"
+// made a use-by date of tomorrow say today.
 test.beforeEach(async ({ page }) => {
-  const [y, m, d] = quebecDay(new Date()).split("-").map(Number);
-  await page.clock.setFixedTime(new Date(y, m - 1, d, 18, 0, 0, 0));
+  await page.clock.setFixedTime(todayAt(18));
 });
 
 test("signing up lands on Home, not Recipes", async ({ page }) => {
@@ -86,7 +85,7 @@ test("the grocery summary and inventory cards reflect real data", async ({ page 
   await expect(page.getByText("cilantro", { exact: true })).toBeVisible();
 
   await page.getByText("cilantro", { exact: true }).click();
-  const tomorrow = quebecDayIn(1); // a Quebec day: from 8 p.m. the UTC date of "now + 24 h" is already the day after
+  const tomorrow = quebecDayIn(1, specNow()); // a Quebec day: from 8 p.m. the UTC date of "now + 24 h" is already the day after
   await itemForm(page).getByLabel("Use-by date").fill(tomorrow);
   await itemForm(page).getByRole("button", { name: "Save changes" }).click();
   await expect(itemForm(page)).toHaveCount(0);

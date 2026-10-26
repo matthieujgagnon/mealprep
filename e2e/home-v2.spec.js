@@ -1,34 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, thisMonday, todayAt, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
-import { quebecDayIn } from "./quebec-day.js";
+import { addDays, quebecDay, quebecDayIn, quebecMoment } from "./quebec-day.js";
 
 // Riso v2 Home: the card that follows the day, the week strip's shadows and
 // scroll, To use, and Makeable now stepping aside.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
-// Today at this hour (the browser's clock is fixed there).
-function atHour(hour) {
-  const d = new Date();
-  d.setHours(hour, 0, 0, 0);
-  return d;
-}
-
 // Wednesday of this week at noon: "today" then has days after it in the same
 // week whatever day the tests run (on a real Sunday there would be none).
-function midweekNoon() {
-  const d = new Date(`${mondayOf(new Date())}T12:00:00`);
-  d.setDate(d.getDate() + 2);
-  return d;
-}
+const midweekNoon = () => quebecMoment(addDays(thisMonday(), 2), 12);
 
 async function signUp(page) {
   await page.goto("/");
@@ -48,7 +29,7 @@ test("the top card follows the day: breakfast, lunch, then supper", async ({ pag
     [12, "Today · Lunch", "Nothing planned for lunch yet."],
     [18, "Tonight · Supper", "Nothing planned for tonight yet."],
   ]) {
-    await page.clock.setFixedTime(atHour(hour));
+    await page.clock.setFixedTime(todayAt(hour));
     await page.reload();
     await expect(hero.locator(".riso-eyebrow")).toHaveText(eyebrow);
     await expect(hero).toContainText(empty);
@@ -57,9 +38,9 @@ test("the top card follows the day: breakfast, lunch, then supper", async ({ pag
 
 test("a day marked as no meal says so and has no Eating out", async ({ page }) => {
   await signUp(page);
-  await page.clock.setFixedTime(atHour(18));
+  await page.clock.setFixedTime(todayAt(18));
   await page.request.post("/api/planner/blank", {
-    data: { weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner" },
+    data: { weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "dinner" },
   });
   await page.reload();
   const hero = page.locator(".riso-home-hero");
@@ -70,7 +51,7 @@ test("a day marked as no meal says so and has no Eating out", async ({ page }) =
 
 test("the all-meals strip: shadow on today's column and the meal on now only, none on next week", async ({ page }) => {
   await signUp(page);
-  await page.clock.setFixedTime(atHour(12));
+  await page.clock.setFixedTime(todayAt(12));
   await page.reload();
   await page.getByRole("button", { name: "All meals" }).click();
   const shadow = (loc) => loc.evaluate((el) => getComputedStyle(el).boxShadow);
@@ -106,12 +87,12 @@ test("Use it up lists everything inside a month, soonest first, and scrolls insi
     const name = `Item ${String(d).padStart(2, "0")}`;
     names.push(name);
     await page.request.post("/api/pantry-inventory", {
-      data: { name, location: "fridge", expiresAt: quebecDayIn(d) }, // in d Quebec days, as the Inventory form saves it
+      data: { name, location: "fridge", expiresAt: quebecDayIn(d, specNow()) }, // in d Quebec days, as the Inventory form saves it
     });
   }
   // Past the month: not listed.
   await page.request.post("/api/pantry-inventory", {
-    data: { name: "Rice flour", location: "pantry", expiresAt: quebecDayIn(40) },
+    data: { name: "Rice flour", location: "pantry", expiresAt: quebecDayIn(40, specNow()) },
   });
   await page.reload();
   const card = page.locator(".riso-home-useup");
@@ -138,8 +119,8 @@ test("this week's suppers: only today has the pink shadow, other planned days a 
   const now = midweekNoon();
   await page.clock.setFixedTime(now);
   const recipe = await (await page.request.post("/api/recipes", { data: { title: "Shadow soup", ingredients: [{ name: "leek" }] } })).json();
-  const weekStart = mondayOf(now);
-  const today = (now.getDay() + 6) % 7;
+  const weekStart = thisMonday(now);
+  const today = todayIndex(now);
   const planned = [];
   for (let d = 0; d < 7; d++) {
     if (d === today || d > today) {
@@ -171,7 +152,7 @@ test("this week's suppers: only today has the pink shadow, other planned days a 
   expect((await tag(todayCell)).bg).toBe("rgba(0, 0, 0, 0)");
   // It says the day name and number like the other days, not "Today".
   const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-  await expect(label(todayCell)).toHaveText(`${DAYS[today]} ${now.getDate()}`);
+  await expect(label(todayCell)).toHaveText(`${DAYS[today]} ${Number(quebecDay(now).slice(8))}`);
   const none = strip.locator(".riso-home-week-day.past, .riso-home-week-day.empty:not(.today)");
   for (let i = 0; i < (await none.count()); i++) expect(await shadow(none.nth(i))).toBe("none");
 });
@@ -183,7 +164,7 @@ test("Makeable now steps aside when it has nothing, and Proteins on sale fills t
   await expect(page.locator(".riso-home-proteins")).toBeVisible();
 
   await page.request.post("/api/recipes", { data: { title: "Plain toast", ingredients: [{ name: "bread" }], instructions: ["Toast."] } });
-  await page.request.post("/api/pantry-inventory", { data: { name: "bread", location: "pantry" } });
+  await page.request.post("/api/pantry-inventory", { data: { name: "bread", location: "pantry", expiresAt: quebecDayIn(30, specNow()) } });
   await page.reload();
   await expect(page.locator(".riso-home-makeable .riso-home-makeable-num")).toHaveText("1");
   await expect(page.locator(".riso-home-bottom-row.three")).toHaveCount(1);
@@ -195,9 +176,7 @@ test.describe("on a phone", () => {
   test("today is in view in the week strip on load", async ({ page }) => {
     await signUp(page);
     // A Friday, so today sits off the left edge of a 7-column strip.
-    const friday = new Date(`${mondayOf(new Date())}T12:00:00`);
-    friday.setDate(friday.getDate() + 4);
-    await page.clock.setFixedTime(friday);
+    await page.clock.setFixedTime(quebecMoment(addDays(thisMonday(), 4), 12));
     await page.reload();
 
     const strip = page.locator(".riso-home-week-strip");

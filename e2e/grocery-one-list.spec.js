@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { quebecDay, quebecDayIn } from "./quebec-day.js";
 import { PrismaClient } from "@prisma/client";
@@ -10,19 +10,6 @@ const prisma = new PrismaClient();
 // week. A removal lasts until the meals that need the item leave the plan.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
-
-const pad = (n) => String(n).padStart(2, "0");
-const key = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return key(x);
-}
-function plusDays(k, n) {
-  const [y, m, d] = k.split("-").map(Number);
-  return key(new Date(y, m - 1, d + n));
-}
-const todayIndex = (new Date().getDay() + 6) % 7;
 
 async function signUp(page) {
   const email = `grocery-one-list+${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.com`;
@@ -47,7 +34,7 @@ const openGrocery = (page) => page.getByRole("button", { name: "Grocery", exact:
 
 test("one list for every meal from today on, across weeks, amounts merged; no week controls", async ({ page }) => {
   await signUp(page);
-  const thisWeek = mondayOf(new Date());
+  const thisWeek = thisMonday();
   const pasta = await recipe(page, "Garlic lemon pasta", [
     { name: "garlic", quantity: 4, unit: "clove" },
     { name: "lemon", quantity: 1 },
@@ -58,10 +45,10 @@ test("one list for every meal from today on, across weeks, amounts merged; no we
     { name: "chicken breast", quantity: 600, unit: "g" },
   ]);
   const soup = await recipe(page, "Old soup", [{ name: "leek", quantity: 2 }]);
-  const lastWeek = plusDays(thisWeek, -7);
+  const lastWeek = mondayAfter(-1);
   await place(page, soup.id, lastWeek, 3); // already happened
-  await place(page, pasta.id, thisWeek, todayIndex); // today
-  await place(page, chicken.id, plusDays(thisWeek, 14), 2); // two weeks ahead
+  await place(page, pasta.id, thisWeek, todayIndex()); // today
+  await place(page, chicken.id, mondayAfter(2), 2); // two weeks ahead
   await page.reload();
   await openGrocery(page);
 
@@ -84,10 +71,10 @@ test("one list for every meal from today on, across weeks, amounts merged; no we
 
 test("a removal stays until the meals that need the item leave the plan; restoring brings it back", async ({ page }) => {
   await signUp(page);
-  const nextWeek = plusDays(mondayOf(new Date()), 7);
+  const nextWeek = mondayAfter(1);
   const pasta = await recipe(page, "Garlic lemon pasta", [{ name: "garlic", quantity: 4, unit: "clove" }, { name: "lemon", quantity: 1 }]);
   const entryA = await place(page, pasta.id, nextWeek, 0);
-  const entryB = await place(page, pasta.id, plusDays(nextWeek, 7), 0);
+  const entryB = await place(page, pasta.id, mondayAfter(2), 0);
   await page.reload();
   await openGrocery(page);
   await expect(row(page, "Lemon")).toContainText("2");
@@ -133,7 +120,7 @@ test("a removal stays until the meals that need the item leave the plan; restori
 test("manual items, checks and store moves stay until changed, whichever days pass", async ({ page }) => {
   await signUp(page);
   const pasta = await recipe(page, "Garlic pasta", [{ name: "garlic", quantity: 4, unit: "clove" }]);
-  await place(page, pasta.id, plusDays(mondayOf(new Date()), 7), 1);
+  await place(page, pasta.id, mondayAfter(1), 1);
   await page.request.post("/api/grocery-sections", { data: { name: "Costco" } });
   await page.reload();
   await openGrocery(page);
@@ -201,19 +188,19 @@ test("a page opened right after a change shows the change", async ({ page }) => 
 
 test("On sale lists what to buy first, soonest-ending first", async ({ page }) => {
   const email = await signUp(page);
-  const thisWeek = mondayOf(new Date());
+  const thisWeek = thisMonday();
   const pasta = await recipe(page, "Garlic lemon pasta", [
     { name: "garlic", quantity: 4, unit: "clove" },
     { name: "lemon", quantity: 1 },
     { name: "spaghetti", quantity: 500, unit: "g" },
   ]);
-  await place(page, pasta.id, thisWeek, todayIndex);
+  await place(page, pasta.id, thisWeek, todayIndex());
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   const base = { userId: user.id, source: "Flipp", category: "produce", isCurrent: true };
   await prisma.flyerDeal.createMany({
     data: [
-      { ...base, store: "Maxi", item: "Lemons", matchName: "lemons", price: "$0.50", unitPrice: 0.5, unitBasis: "each", regularPrice: 0.99, validUntil: quebecDay(new Date()) },
-      { ...base, store: "Metro", category: "staple", item: "Barilla spaghetti, 900 g", matchName: "spaghetti", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, validUntil: quebecDayIn(9) },
+      { ...base, store: "Maxi", item: "Lemons", matchName: "lemons", price: "$0.50", unitPrice: 0.5, unitBasis: "each", regularPrice: 0.99, validUntil: quebecDay(specNow()) },
+      { ...base, store: "Metro", category: "staple", item: "Barilla spaghetti, 900 g", matchName: "spaghetti", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, validUntil: quebecDayIn(9, specNow()) },
     ],
   });
   await page.reload();

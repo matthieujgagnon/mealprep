@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { cancelAdd } from "./inventory-confirm.js";
 import { PrismaClient } from "@prisma/client";
@@ -12,12 +12,6 @@ const prisma = new PrismaClient();
 // (read-only, with its unit), how many to buy (a plain number) and the remove ×.
 // Every item in a view is the same height; no name is cut. (The rows here are
 // the list's, `.riso-group .riso-row`: How it works' demo row is one too.)
-
-function nextMonday() {
-  const x = new Date();
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
 
 const LONG = "Extra virgin cold pressed olive oil from the Mediterranean, unfiltered";
 
@@ -40,7 +34,7 @@ async function setup(page) {
         data: { title, baseServings: 2, ingredients: ingredients.map(([name, quantity, unit]) => ({ name, quantity, unit })) },
       })
     ).json();
-    await page.request.post("/api/planner", { data: { recipeId: r.id, weekStart: nextMonday(), dayOfWeek: i, mealType: "dinner" } });
+    await page.request.post("/api/planner", { data: { recipeId: r.id, weekStart: mondayAfter(1), dayOfWeek: i, mealType: "dinner" } });
   }
   const me = await (await page.request.get("/api/auth/me")).json();
   const userId = me.user?.id ?? me.id;

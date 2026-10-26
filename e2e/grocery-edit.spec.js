@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { confirmAdd } from "./inventory-confirm.js";
 import { PrismaClient } from "@prisma/client";
@@ -9,14 +9,6 @@ const prisma = new PrismaClient();
 // plan, with a way back) and can carry your own amount next to the recipe's.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
-
-// Next week's Monday: its meals are always still ahead, whatever day the
-// test runs (the list only covers meals from today on).
-function nextMonday() {
-  const x = new Date();
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
 
 async function setup(page) {
   await page.goto("/");
@@ -40,7 +32,7 @@ async function setup(page) {
     })
   ).json();
   await page.request.post("/api/planner", {
-    data: { recipeId: recipe.id, weekStart: nextMonday(), dayOfWeek: 0, mealType: "dinner" },
+    data: { recipeId: recipe.id, weekStart: mondayAfter(1), dayOfWeek: 0, mealType: "dinner" },
   });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
@@ -137,7 +129,7 @@ test("a leftover meal adds nothing to the list, and there's no Left off card", a
     await page.request.post("/api/recipes", { data: { title: "Leftover soup", ingredients: [{ name: "leek", quantity: 2 }] } })
   ).json();
   await page.request.post("/api/planner", {
-    data: { recipeId: soup.id, weekStart: nextMonday(), dayOfWeek: 1, mealType: "lunch", isLeftover: true },
+    data: { recipeId: soup.id, weekStart: mondayAfter(1), dayOfWeek: 1, mealType: "lunch", isLeftover: true },
   });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();
