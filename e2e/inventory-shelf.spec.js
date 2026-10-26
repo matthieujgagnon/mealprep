@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import { E2E_INVITE } from "./invite.js";
 import { confirmAdd } from "./inventory-confirm.js";
 import { itemForm, pickCompact } from "./inventory-form.js";
-import { quebecDayIn } from "./quebec-day.js";
+import { asSavedDay, quebecDayIn } from "./quebec-day.js";
 
 // Where an item is KEPT (Fridge, Freezer, Pantry: its use-by follows it) and which SHELF it shows
 // on are two things. These cover what Matt asked for: a prepared meal goes on the Prepared meals
@@ -43,7 +43,7 @@ test.describe("on a computer", () => {
   test("a Freezer item put on a shelf of your own stays in the Freezer, keeps its use-by date, and says so", async ({ page }) => {
     await signUp(page);
     const garage = await (await page.request.post("/api/pantry-locations", { data: { name: "Garage" } })).json();
-    const useBy = quebecDayIn(40);
+    const useBy = quebecDayIn(40, specNow());
     // (a food that can be kept in more than one place, so the pop-up offers more than one card)
     await add(page, { name: "Chicken breast", quantity: 1, unit: "unit", location: "freezer", expiresAt: useBy });
     await openInventory(page);
@@ -82,7 +82,7 @@ test.describe("on a computer", () => {
   test("dragging an item to a shelf of your own changes only the shelf; Compact rows say where it is kept too", async ({ page }) => {
     await signUp(page);
     const garage = await (await page.request.post("/api/pantry-locations", { data: { name: "Garage" } })).json();
-    const useBy = quebecDayIn(25);
+    const useBy = quebecDayIn(25, specNow());
     await add(page, { name: "Frozen peas", quantity: 1, unit: "unit", location: "freezer", expiresAt: useBy });
     await openInventory(page);
 
@@ -201,7 +201,7 @@ test.describe("on a computer", () => {
     // What the old one-field setup left: items on a shelf of his own, with where they are kept lost.
     const garage = await prisma.pantryLocation.create({ data: { userId: user.id, name: "Garage", position: 0 } });
     const oldPrepared = await prisma.pantryLocation.create({ data: { userId: user.id, name: "Prepared meals", position: 1 } });
-    const useBy = new Date(`${quebecDayIn(30)}T00:00:00.000Z`);
+    const useBy = new Date(asSavedDay(quebecDayIn(30, specNow())));
     const mk = (name) =>
       prisma.pantryInventoryItem.create({ data: { userId: user.id, name, core: name.toLowerCase(), quantity: 1, unit: "unit", location: garage.id, shelf: garage.id, expiresAt: useBy } });
     const pizza = await mk("Frozen pizza");

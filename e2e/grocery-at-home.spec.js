@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { saveAnswered } from "./saves.js";
 
@@ -9,13 +9,6 @@ import { saveAnswered } from "./saves.js";
 // are in Inventory, on the list when they are not. Water from the tap is never listed.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
-
-// Next week's Monday: its meals are always still ahead, whatever day the test runs.
-function nextMonday() {
-  const x = new Date();
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7);
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
 
 async function setup(page, inventory) {
   await page.goto("/");
@@ -40,7 +33,7 @@ async function setup(page, inventory) {
       },
     })
   ).json();
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: nextMonday(), dayOfWeek: 0, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayAfter(1), dayOfWeek: 0, mealType: "dinner" } });
   for (const name of inventory) await page.request.post("/api/pantry-inventory", { data: { name, location: "pantry" } });
   await page.reload();
   await page.getByRole("button", { name: "Grocery", exact: true }).click();

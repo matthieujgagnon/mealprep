@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { cancelAdd, confirmAdd } from "./inventory-confirm.js";
 import { PrismaClient } from "@prisma/client";
@@ -31,7 +31,7 @@ async function seedList(page) {
   const deal = (store, item, matchName, price, unitPrice, unitBasis, category) => ({
     userId, store, source: store, category, item, matchName, price, unitPrice, unitBasis, regularPrice: unitPrice * 1.4, isCurrent: true,
     // Metro's flyer is the newer one, so it is the first store (where unfiled items land) on every run.
-    createdAt: new Date(Date.now() - (store === "Metro" ? 0 : 60_000)),
+    createdAt: realNow(store === "Metro" ? 0 : -60_000),
   });
   await prisma.flyerDeal.createMany({
     data: [

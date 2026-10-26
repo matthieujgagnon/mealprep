@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, thisMonday } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // « Masquer de Faisable » / "Hide from Makeable": Matt's own choice for one recipe (avocado toast: two
 // ingredients, always "ready"). It is set from the recipe card's ⋯ menu (toast with Undo) or the
@@ -10,12 +11,6 @@ import { E2E_INVITE } from "./invite.js";
 // is gone from the cards.
 
 test.use({ viewport: { width: 1280, height: 1000 } });
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
 
 async function signUp(page, tag, lang = "en") {
   const email = `${tag}+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -46,11 +41,11 @@ async function seed(page, { hidden = [], planned = [] } = {}) {
     });
     made[title] = await res.json();
   }
-  for (const name of INVENTORY) await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge" } });
+  for (const name of INVENTORY) await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
   for (const title of hidden) await page.request.put(`/api/recipes/${made[title].id}`, { data: { hiddenFromMakeable: true } });
   // Planned this week (Sunday is never in the past).
   for (const title of planned) {
-    await page.request.post("/api/planner", { data: { recipeId: made[title].id, weekStart: mondayOf(new Date()), dayOfWeek: 6, mealType: "breakfast" } });
+    await page.request.post("/api/planner", { data: { recipeId: made[title].id, weekStart: thisMonday(), dayOfWeek: 6, mealType: "breakfast" } });
   }
   await page.reload();
   await expect(page.locator(".tab.active")).toBeVisible();

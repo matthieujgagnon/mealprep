@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { E2E_INVITE } from "./invite.js";
@@ -300,8 +300,8 @@ test.describe("the Feedback inbox", () => {
     const base = { userId: tester.id, locale: "fr", device: "phone", screen: "390x844", browser: "Safari 17 on iOS", appVersion: "a1b2c3d" };
     await prisma.feedback.createMany({
       data: [
-        { ...base, kind: "wrong", message: `Older one ${mark}\nwith a second line`, page: "grocery", createdAt: new Date(Date.now() - 3 * 86400000) },
-        { ...base, kind: "idea", message: `Newer one ${mark}`, page: "planner", errorName: "TypeError", createdAt: new Date(Date.now() - 60000) },
+        { ...base, kind: "wrong", message: `Older one ${mark}\nwith a second line`, page: "grocery", createdAt: realNow(-3 * 86400000) },
+        { ...base, kind: "idea", message: `Newer one ${mark}`, page: "planner", errorName: "TypeError", createdAt: realNow(-60000) },
       ],
     });
 
@@ -458,11 +458,11 @@ test.describe("the Feedback inbox", () => {
     await adminAccount(ADMIN_INBOX, "en");
     const mark = stamp();
     const tester = await prisma.user.create({ data: { email: uniqueEmail("fb-all"), passwordHash: "x" } });
-    const longAgo = new Date(Date.now() - 5 * 86400000);
+    const longAgo = realNow(-5 * 86400000);
     await prisma.feedback.createMany({
       data: [
-        { ...feedbackBase(tester.id), kind: "idea", message: `Done one ${mark}`, page: "home", doneAt: new Date() },
-        { ...feedbackBase(tester.id), kind: "wrong", message: `Done two ${mark}`, page: "home", doneAt: new Date() },
+        { ...feedbackBase(tester.id), kind: "idea", message: `Done one ${mark}`, page: "home", doneAt: realNow() },
+        { ...feedbackBase(tester.id), kind: "wrong", message: `Done two ${mark}`, page: "home", doneAt: realNow() },
         { ...feedbackBase(tester.id), kind: "other", message: `Still open ${mark}`, page: "home" },
         { ...feedbackBase(tester.id), kind: "idea", message: `Archived before ${mark}`, page: "home", doneAt: longAgo, archivedAt: longAgo },
       ],
@@ -505,7 +505,7 @@ test.describe("the Feedback inbox", () => {
     const tester = await prisma.user.create({ data: { email: uniqueEmail("fb-pages"), passwordHash: "x" } });
     const sentAt = new Date("2001-02-03T04:05:06.000Z"); // all at one time: the page edge falls among rows with the same time
     await prisma.feedback.createMany({
-      data: Array.from({ length: 205 }, (_, i) => ({ ...feedbackBase(tester.id), kind: "other", message: `Old ${i} ${mark}`, page: "home", createdAt: sentAt, archivedAt: new Date() })),
+      data: Array.from({ length: 205 }, (_, i) => ({ ...feedbackBase(tester.id), kind: "other", message: `Old ${i} ${mark}`, page: "home", createdAt: sentAt, archivedAt: realNow() })),
     });
     try {
       await page.goto("/admin/feedback");
@@ -569,7 +569,7 @@ test.describe("the Feedback inbox on a phone, in French", () => {
     await prisma.feedback.createMany({
       data: [
         { ...base, kind: "wrong", message: `À archiver ${mark}` },
-        { ...base, kind: "idea", message: `Déjà traité ${mark}`, doneAt: new Date() },
+        { ...base, kind: "idea", message: `Déjà traité ${mark}`, doneAt: realNow() },
       ],
     });
     // Nothing is cut off and nothing makes the page wider than the phone.

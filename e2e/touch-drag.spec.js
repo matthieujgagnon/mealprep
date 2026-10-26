@@ -31,9 +31,7 @@ import { expect, test, thisMonday } from "./spec-clock.js";
 // a press-and-hold drags): Store mode's rows and Inventory's rows and tiles
 // do. These tests are what prove a held drag still isn't cancelled.
 
-// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
-// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
-test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 }, timezoneId: "America/Toronto" });
+test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 } });
 
 function uniqueEmail(tag) {
   return `${tag}+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, fillAddForm, itemForm, shelfCard } from "./inventory-form.js";
 import { asSavedDay, quebecDayIn } from "./quebec-day.js";
@@ -260,7 +260,7 @@ test("Edit: shelf, use-by date and amount save together with Save changes, and C
   const saved = (await inventory(page))[0];
   expect(saved).toMatchObject({ location: "freezer", quantity: 3 });
   // 3 months is 90 Quebec days from today, saved as that day.
-  expect(saved.expiresAt).toBe(asSavedDay(quebecDayIn(90)));
+  expect(saved.expiresAt).toBe(asSavedDay(quebecDayIn(90, specNow())));
 });
 
 test("the server lists recent foods and shelf life for every shelf", async ({ page }) => {

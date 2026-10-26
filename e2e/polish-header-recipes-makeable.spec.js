@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 import { PrismaClient } from "@prisma/client";
 import { accountButton, langSwitch } from "./account-menu.js";
 import { chooseMealType } from "./recipe-form.js";
@@ -99,7 +100,7 @@ test("Home lists Tofu, and recipes with any kind of tofu match it", async ({ pag
   await recipe(page, "Miso soup", "lunch", ["silken tofu", "miso"]);
   await recipe(page, "Plain rice", "side", ["rice"]);
   await prisma.flyerDeal.create({
-    data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Firm tofu", matchName: "firm tofu", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: new Date() },
+    data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Firm tofu", matchName: "firm tofu", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: realNow() },
   });
   await page.reload();
   const proteins = page.locator(".riso-home-proteins");
@@ -147,7 +148,7 @@ test("Home shows a tofu deal that has no regular price, and Tofu says so when it
   await expect(proteins).toContainText("No flyer deals loaded yet.");
   // Smoked tofu with nothing to compare it with is still this week's tofu.
   await prisma.flyerDeal.create({
-    data: { userId, store: "IGA", source: "IGA", category: "protein", item: "Smoked tofu, 350 g", matchName: "smoked tofu", price: "$2.99", unitPrice: 2.99, unitBasis: "each", isCurrent: true, createdAt: new Date() },
+    data: { userId, store: "IGA", source: "IGA", category: "protein", item: "Smoked tofu, 350 g", matchName: "smoked tofu", price: "$2.99", unitPrice: 2.99, unitBasis: "each", isCurrent: true, createdAt: realNow() },
   });
   await page.reload();
   // No real sale to list, but its price shows, and it opens onto that price.
@@ -168,7 +169,7 @@ test.describe("Proteins on sale panel on a phone", () => {
   test("says none use it when no recipe does, with no arrow, and stays inside the screen", async ({ page }) => {
     const userId = await signUp(page, "Matt");
     await prisma.flyerDeal.create({
-      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Tofu ferme", matchName: "tofu ferme", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: new Date() },
+      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Tofu ferme", matchName: "tofu ferme", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: realNow() },
     });
     await page.reload();
     await langSwitch(page).getByRole("button", { name: "Français" }).click();
@@ -312,7 +313,7 @@ test.describe("Makeable", () => {
     await recipe(page, "Chicken curry", "dinner", ["chicken", "rice"], { prepTimeMinutes: 20 });
     await recipe(page, "Garlic rice", "side", ["rice", "garlic"], { prepTimeMinutes: 10 });
     for (const name of ["avocado", "bread", "chocolate", "flour", "chicken", "rice", "garlic"]) {
-      await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge" } });
+      await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
     }
     await page.reload();
     await page.getByRole("button", { name: "Makeable", exact: true }).click();

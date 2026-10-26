@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import { E2E_INVITE } from "./invite.js";
 import { quebecDayIn } from "./quebec-day.js";
@@ -80,7 +80,7 @@ for (const screen of SCREENS) {
         .toBe(true);
 
       // A Freezer item put on it: only its shelf is the section, it is still kept in the Freezer.
-      const useBy = quebecDayIn(40);
+      const useBy = quebecDayIn(40, specNow());
       const chicken = await add(page, { name: "Chicken breast", quantity: 1, unit: "unit", location: "freezer", expiresAt: useBy });
       await page.request.put(`/api/pantry-inventory/${chicken.id}`, { data: { shelf: garage.id } });
       await openInventory(page);

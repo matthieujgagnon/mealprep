@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { quebecDayIn } from "./quebec-day.js";
 
@@ -59,7 +59,7 @@ async function seed(page, { recipes = [SHAWARMA], inventory = [], onList = [] } 
   }
   for (const [name, quantity, unit, days] of inventory) {
     await page.request.post("/api/pantry-inventory", {
-      data: { name, quantity, unit, ...(days != null && { expiresAt: quebecDayIn(days) }) }, // in n Quebec days
+      data: { name, quantity, unit, ...(days != null && { expiresAt: quebecDayIn(days, specNow()) }) }, // in n Quebec days
     });
   }
   for (const name of onList) await page.request.post("/api/grocery-extra-items", { data: { name, quantity: null, unit: null } });
@@ -356,13 +356,7 @@ test("the grocery marks, Add to grocery list, and I have it (which asks first)",
 test("every page opens this card in one tap: Planner, Makeable, Home and Grocery", async ({ page }) => {
   await signUp(page);
   const [recipe] = await seed(page, { ...KITCHEN, recipes: [SHAWARMA, { title: "Leek Soup", mealSlot: "dinner", ingredients: [ing("leek", 2)] }] });
-  const monday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  })();
-  const today = (new Date().getDay() + 6) % 7;
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: monday, dayOfWeek: today, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "dinner" } });
   await page.reload();
   const card = page.getByRole("dialog", { name: "Card Shawarma" });
   const close = async () => {

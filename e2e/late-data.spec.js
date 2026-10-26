@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 
 // Pages that decided before their data arrived (on a slow phone):
@@ -10,7 +10,7 @@ import { E2E_INVITE } from "./invite.js";
 test.use({ viewport: { width: 1280, height: 1000 } });
 
 // A Wednesday at noon: the first upcoming slot is Wednesday's supper, whatever day it really is.
-const FIXED_NOW = new Date(2026, 9, 7, 12, 0, 0);
+const FIXED_NOW = new Date("2026-10-07T12:00:00-04:00");
 const WEEK = "2026-10-05";
 const WEDNESDAY = 2;
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

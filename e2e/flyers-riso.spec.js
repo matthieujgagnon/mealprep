@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, realNow, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -51,7 +52,7 @@ async function openCard(page, name) {
   return card(page, name);
 }
 
-const weeksAgo = (n) => new Date(Date.now() - n * 7 * 24 * 60 * 60 * 1000);
+const weeksAgo = (n) => realNow(-n * 7 * 24 * 60 * 60 * 1000);
 
 // Three weeks of "chicken breast" @ Metro (decreasing - today is a 6-month
 // low) plus one brand-new item with zero history, for one user.
@@ -71,12 +72,12 @@ async function seedChickenHistory(userId) {
       {
         userId, store: "Metro", source: "Metro", category: "protein",
         item: "Chicken breast", matchName: "chicken breast", price: "$4.49/lb",
-        unitPrice: 4.49, unitBasis: "lb", isCurrent: true, createdAt: new Date(),
+        unitPrice: 4.49, unitBasis: "lb", isCurrent: true, createdAt: realNow(),
       },
       {
         userId, store: "IGA", source: "IGA", category: "produce",
         item: "Bell peppers", matchName: "bell peppers", price: "$1.49/lb",
-        unitPrice: 1.49, unitBasis: "lb", isCurrent: true, createdAt: new Date(),
+        unitPrice: 1.49, unitBasis: "lb", isCurrent: true, createdAt: realNow(),
       },
     ],
   });
@@ -375,10 +376,7 @@ test("on the grocery list, a sale item's price shows where it's cheapest, wherev
     await page.request.post("/api/recipes", { data: { title: "BLT", ingredients: [{ name: "bacon" }, { name: "lemon juice" }, { name: "red bell pepper" }] } })
   ).json();
   // Next week's Monday: its meals are always still ahead (the list covers meals from today on).
-  const monday = new Date();
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) + 7);
-  const weekStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: 2, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayAfter(1), dayOfWeek: 2, mealType: "dinner" } });
   const base = { userId: user.id, source: "Flipp", category: "other", unitBasis: "each", isCurrent: true };
   await prisma.flyerDeal.createMany({
     data: [
@@ -457,7 +455,7 @@ test("every chart shows Quebec's monthly average for 6 months, and how many week
   // Statistics Canada's last 6 months, ending last month.
   const months = [];
   for (let i = 6; i >= 1; i--) {
-    const d = new Date();
+    const d = realNow();
     d.setUTCDate(1);
     d.setUTCMonth(d.getUTCMonth() - i);
     months.push(d.toISOString().slice(0, 7));
@@ -601,7 +599,7 @@ test("a recipe's sale pill is only for a real sale and opens the deal; on hand n
   await page.request.post("/api/recipes", {
     data: { title: "Mango chicken", ingredients: [{ name: "mangoes" }, { name: "chicken thighs" }, { name: "quokka beans" }] },
   });
-  await page.request.post("/api/pantry-inventory", { data: { name: "Chicken Breast Fillets", location: "fridge" } });
+  await page.request.post("/api/pantry-inventory", { data: { name: "Chicken Breast Fillets", location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
   const base = { userId: user.id, source: "Flipp", category: "produce", unitBasis: "each", isCurrent: true };
   await prisma.flyerDeal.createMany({
     data: [

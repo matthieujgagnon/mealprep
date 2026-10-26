@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, thisMonday, todayAt, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 
 // A recipe lives in one place, the recipe store (client/src/lib/recipeStore.js), and every
@@ -6,20 +6,6 @@ import { E2E_INVITE } from "./invite.js";
 // recipe and look at the pages that hold planned meals (the Planner, Home, Grocery) without
 // ever reloading: before the store, the Planner kept the recipe as it was loaded and Home and
 // Grocery kept a deleted recipe's meals until you left and came back.
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
-// Today at this hour (the browser's clock is fixed there), so Home shows supper.
-function atHour(hour) {
-  const d = new Date();
-  d.setHours(hour, 0, 0, 0);
-  return d;
-}
 
 async function signUp(page) {
   await page.goto("/");
@@ -49,7 +35,7 @@ const RECIPE = {
 async function seed(page) {
   const recipe = await (await page.request.post("/api/recipes", { data: RECIPE })).json();
   await page.request.post("/api/planner", {
-    data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: todayIndex(), mealType: "dinner" },
+    data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "dinner" },
   });
   await page.reload();
   return recipe;
@@ -74,7 +60,7 @@ async function editRecipe(page, newTitle) {
 test("a recipe saved in Edit recipe is the new one on the Planner card and in the finished view, with no reload", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await signUp(page);
-  await page.clock.setFixedTime(atHour(12));
+  await page.clock.setFixedTime(todayAt(12));
   await seed(page);
   const edited = `${TITLE}, saved`;
   await editRecipe(page, edited);
@@ -94,7 +80,7 @@ test("a recipe saved in Edit recipe is the new one on the Planner card and in th
 test("Home and Cook mode show the saved recipe at once", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await signUp(page);
-  await page.clock.setFixedTime(atHour(19));
+  await page.clock.setFixedTime(todayAt(19));
   await seed(page);
   const edited = `${TITLE}, saved`;
   await editRecipe(page, edited);
@@ -112,7 +98,7 @@ test("Home and Cook mode show the saved recipe at once", async ({ page }) => {
 test("deleting a recipe takes its meals off Home, Grocery and the Planner at once, and Undo puts them back on every page", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await signUp(page);
-  await page.clock.setFixedTime(atHour(19));
+  await page.clock.setFixedTime(todayAt(19));
   const recipe = await seed(page);
   const toast = page.locator(".riso-toast");
   const sumac = page.locator(".riso-row-name", { hasText: /^Sumac$/ });
@@ -147,7 +133,7 @@ test("deleting a recipe takes its meals off Home, Grocery and the Planner at onc
 test("a deleted recipe stays off every page once the delete has gone through", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await signUp(page);
-  await page.clock.setFixedTime(atHour(19));
+  await page.clock.setFixedTime(todayAt(19));
   const recipe = await seed(page);
 
   await page.locator(".riso-home-hero").getByRole("button", { name: "Start cooking" }).click();

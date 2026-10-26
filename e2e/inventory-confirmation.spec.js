@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import { cancelAdd, confirmAdd } from "./inventory-confirm.js";
@@ -121,7 +121,7 @@ test("a receipt goes through the same sheet, and cancelling it adds nothing", as
 test.describe("grocery rows", () => {
   async function seed(page, userId) {
     const deal = await prisma.flyerDeal.create({
-      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Maple Leaf bacon, 375 g", matchName: "bacon", price: "$3.99", unitPrice: 3.99, unitBasis: "each", regularPrice: 6.99, isCurrent: true, createdAt: new Date() },
+      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Maple Leaf bacon, 375 g", matchName: "bacon", price: "$3.99", unitPrice: 3.99, unitBasis: "each", regularPrice: 6.99, isCurrent: true, createdAt: realNow() },
     });
     await addExtra(page, { name: "Bacon", dealId: deal.id }); // added from the flyer
     await addExtra(page, { name: "Soap" }); // typed by hand
@@ -195,7 +195,7 @@ test.describe("grocery rows", () => {
 test("Store mode rows are all the same height, with or without a detail line, amount or price", async ({ page }) => {
   const userId = await signUp(page);
   const deal = await prisma.flyerDeal.create({
-    data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Maple Leaf bacon, 375 g", matchName: "bacon", price: "$3.99", unitPrice: 3.99, unitBasis: "each", regularPrice: 6.99, isCurrent: true, createdAt: new Date() },
+    data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Maple Leaf bacon, 375 g", matchName: "bacon", price: "$3.99", unitPrice: 3.99, unitBasis: "each", regularPrice: 6.99, isCurrent: true, createdAt: realNow() },
   });
   await addExtra(page, { name: "Bacon", dealId: deal.id, quantity: 2 }); // detail line, amount and price
   await addExtra(page, { name: "Soap" }); // none of them

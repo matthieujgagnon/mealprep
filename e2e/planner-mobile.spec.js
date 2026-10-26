@@ -10,9 +10,7 @@ import { expect, mondayAfter, test, thisMonday, todayIndex } from "./spec-clock.
 // in the calendar, a long press to pick a card or a result up (a trash strip
 // while a card is held), and the shared finder as one pill at the bottom.
 
-// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
-// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
-test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, timezoneId: "America/Toronto" });
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
 // Tests that look at the page the board opens on, or at which days are past, depend on the
 // weekday. They run on a fixed day instead (a Thursday, when the current week opens on its

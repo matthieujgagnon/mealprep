@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

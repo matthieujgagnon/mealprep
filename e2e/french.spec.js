@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { saveRecipe } from "./recipe-form.js";
 import { PrismaClient } from "@prisma/client";
@@ -49,14 +49,8 @@ async function expectAllFrench(page, screen) {
   expect(await englishOn(page), screen).toEqual([]);
 }
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-
 // A use-by day n Quebec days from today ("2026-10-15"): days left are Quebec days.
-const inDays = (n) => quebecDayIn(n);
+const inDays = (n) => quebecDayIn(n, specNow());
 
 async function signUpInFrench(page) {
   await page.goto("/");
@@ -97,8 +91,8 @@ async function seedKitchen(page) {
   });
   await page.request.post("/api/pantry-inventory", { data: { name: "pois chiches", location: "pantry", quantity: 2 } });
   await page.request.post("/api/pantry-inventory", { data: { name: "citron", location: "fridge", quantity: 3, expiresAt: inDays(-1) } });
-  const weekStart = mondayOf(new Date());
-  const today = (new Date().getDay() + 6) % 7;
+  const weekStart = thisMonday();
+  const today = todayIndex();
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: today, mealType: "dinner" } });
   await page.request.post("/api/planner/blank", {
     data: { weekStart, dayOfWeek: (today + 1) % 7, mealType: "dinner", note: "Pool de hockey" },

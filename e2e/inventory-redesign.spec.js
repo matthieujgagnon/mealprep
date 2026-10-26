@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, fillAddForm, itemForm, pickCompact, shelfCard } from "./inventory-form.js";
 import { quebecDayIn } from "./quebec-day.js";
@@ -320,11 +320,11 @@ test("Compact rows and Tiles: photo, name and amount; the life-left strip and ba
   await expect(page.locator(".tab.active")).toBeVisible(); // signed in (the name may be inside the account menu)
   const add = (data) => page.request.post("/api/pantry-inventory", { data });
   // Use-by days n Quebec days from today, as the Inventory form saves them.
-  await add({ name: "Bbq sauce", location: "fridge", quantity: 0.25, unit: "cup", expiresAt: quebecDayIn(-3) });
-  await add({ name: "Cilantro", location: "fridge", quantity: 1, unit: "bunch", expiresAt: quebecDayIn(2) });
-  await add({ name: "Greek yogurt", location: "fridge", quantity: 500, unit: "g", expiresAt: quebecDayIn(6) });
-  await add({ name: "Eggs", location: "fridge", quantity: 8, expiresAt: quebecDayIn(14) });
-  await add({ name: "Basmati rice", location: "pantry", quantity: 2, unit: "kg", expiresAt: quebecDayIn(600) });
+  await add({ name: "Bbq sauce", location: "fridge", quantity: 0.25, unit: "cup", expiresAt: quebecDayIn(-3, specNow()) });
+  await add({ name: "Cilantro", location: "fridge", quantity: 1, unit: "bunch", expiresAt: quebecDayIn(2, specNow()) });
+  await add({ name: "Greek yogurt", location: "fridge", quantity: 500, unit: "g", expiresAt: quebecDayIn(6, specNow()) });
+  await add({ name: "Eggs", location: "fridge", quantity: 8, expiresAt: quebecDayIn(14, specNow()) });
+  await add({ name: "Basmati rice", location: "pantry", quantity: 2, unit: "kg", expiresAt: quebecDayIn(600, specNow()) });
   await add({ name: "Xylo widget", location: "pantry", category: "Other", expiresAt: null });
   // Only an uploaded photo or a web link is kept as a photo.
   const bad = await add({ name: "Odd", imageUrl: "javascript:alert(1)" });

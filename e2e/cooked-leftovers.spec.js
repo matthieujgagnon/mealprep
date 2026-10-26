@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test, thisMonday, todayAt, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { addDays, asSavedDay, quebecDay, quebecDayIn } from "./quebec-day.js";
 import { langSwitch } from "./account-menu.js";
@@ -8,20 +8,6 @@ import { pickCompact } from "./inventory-form.js";
 // leftovers system: LEFTOVER items on Inventory's Leftovers shelf, added by hand,
 // thawed, planned from the Planner search, and a portion taken off once a planned
 // leftover's day has passed. (Cook mode's own door: cook-mode-redesign.spec.js.)
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
-// Today at this hour (the browser's clock is fixed there), so Home shows supper.
-function atHour(hour) {
-  const d = new Date();
-  d.setHours(hour, 0, 0, 0);
-  return d;
-}
 
 async function signUp(page) {
   await page.goto("/");
@@ -54,7 +40,7 @@ async function seed(page) {
   await add({ name: "Hauts de cuisse de poulet", quantity: 1.2, unit: "kg", location: "fridge" });
   await add({ name: "Pitas", quantity: 6, unit: "unit", location: "pantry" });
   await add({ name: "Huile d'olive", quantity: 1, unit: "l", location: "pantry" });
-  const weekStart = mondayOf(new Date());
+  const weekStart = thisMonday();
   const entry = await (await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart, dayOfWeek: todayIndex(), mealType: "dinner" } })).json();
   return { recipe, entry, weekStart };
 }
@@ -113,7 +99,7 @@ test("from a planned meal's card: the review list, and the meal leaves the groce
 test("Leftovers keep is in Edit recipe: a change there is what the Leftovers card adds to Inventory", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await signUp(page);
-  await page.clock.setFixedTime(atHour(12));
+  await page.clock.setFixedTime(todayAt(12));
   const { recipe } = await seed(page);
   await page.reload();
 
@@ -147,12 +133,12 @@ test("Leftovers keep is in Edit recipe: a change there is what the Leftovers car
   await sheet.getByRole("button", { name: "+ Add to Inventory" }).click();
   await expect
     .poll(async () => (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.isLeftover)?.expiresAt)
-    .toBe(asSavedDay(addDays(quebecDay(atHour(12)), 5)));
+    .toBe(asSavedDay(addDays(quebecDay(todayAt(12)), 5)));
 });
 
 test("from tonight's meal on Home: Not now leaves Inventory as it was, the meal is cooked, and Undo puts it back", async ({ page }) => {
   await signUp(page);
-  await page.clock.setFixedTime(atHour(19));
+  await page.clock.setFixedTime(todayAt(19));
   const { entry, weekStart } = await seed(page);
   await page.reload();
   const before = await inventory(page);
@@ -190,7 +176,7 @@ test("leftovers: added by hand on the Leftovers shelf, thawed, and planned from 
   const today = quebecDay(LATE_EVENING);
   const recipe = await (await page.request.post("/api/recipes", { data: SHAWARMA })).json();
   await page.request.post("/api/pantry-inventory", {
-    data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "freezer", isLeftover: true, recipeId: recipe.id, expiresAt: quebecDayIn(60) },
+    data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "freezer", isLeftover: true, recipeId: recipe.id, expiresAt: quebecDayIn(60, LATE_EVENING) },
   });
   await page.reload();
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
@@ -246,16 +232,16 @@ test("leftovers: added by hand on the Leftovers shelf, thawed, and planned from 
 // A fridge leftover typed into Inventory's Leftovers form keeps its 4 days at any hour in Quebec:
 // it shows 4 days left and expires on the Quebec day four days on.
 test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
-  test.use({ viewport: { width: 1280, height: 1000 }, timezoneId: "America/Toronto" });
+  test.use({ viewport: { width: 1280, height: 1000 } });
 
   for (const [label, at] of [
-    ["9 a.m.", "2026-10-12T13:00:00Z"],
-    ["3 p.m.", "2026-10-12T19:00:00Z"],
-    ["11 p.m.", "2026-10-13T03:00:00Z"],
+    ["9 a.m.", new Date("2026-10-12T13:00:00Z")],
+    ["3 p.m.", new Date("2026-10-12T19:00:00Z")],
+    ["11 p.m.", new Date("2026-10-13T03:00:00Z")],
   ]) {
     test(`at ${label} it shows 4 days left and expires on the right Quebec day`, async ({ page }) => {
       await signUp(page);
-      await page.clock.setFixedTime(new Date(at));
+      await page.clock.setFixedTime(at);
       await page.reload();
       await page.getByRole("button", { name: "Inventory", exact: true }).click();
       await pickCompact(page);
@@ -292,15 +278,15 @@ test.describe("a fridge leftover added by hand, in a Quebec browser", () => {
   // The use-by day itself is not expired: it says it expires today, on the Inventory card, in the
   // add/edit form and in Home's Use it up, from the morning to the end of the Quebec evening.
   for (const [label, at] of [
-    ["9 a.m.", "2026-10-16T13:00:00Z"],
-    ["11 p.m.", "2026-10-17T03:00:00Z"],
+    ["9 a.m.", new Date("2026-10-16T13:00:00Z")],
+    ["11 p.m.", new Date("2026-10-17T03:00:00Z")],
   ]) {
     test(`on its use-by day, at ${label}, it says today and is not expired`, async ({ page }) => {
       await signUp(page);
       await page.request.post("/api/pantry-inventory", {
         data: { name: "Pizza", quantity: 1, unit: "portion", location: "fridge", isLeftover: true, expiresAt: "2026-10-16" },
       });
-      await page.clock.setFixedTime(new Date(at));
+      await page.clock.setFixedTime(at);
       await page.reload();
 
       // Home's Use it up lists it as today.
@@ -353,10 +339,10 @@ test("a planned leftover whose day has passed takes one portion off, once, with 
   const recipe = await (await page.request.post("/api/recipes", { data: SHAWARMA })).json();
   const leftovers = await (
     await page.request.post("/api/pantry-inventory", {
-      data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "fridge", isLeftover: true, recipeId: recipe.id, expiresAt: quebecDayIn(2) },
+      data: { name: SHAWARMA.title, quantity: 2, unit: "portion", location: "fridge", isLeftover: true, recipeId: recipe.id, expiresAt: quebecDayIn(2, specNow()) },
     })
   ).json();
-  const lastWeek = mondayOf(new Date(Date.now() - 7 * 86400000));
+  const lastWeek = mondayAfter(-1);
   await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: lastWeek, dayOfWeek: 6, mealType: "lunch", isLeftover: true, leftoverItemId: leftovers.id } });
 
   await page.reload();

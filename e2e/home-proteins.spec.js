@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
-import { addDays, quebecDay } from "./quebec-day.js";
+import { quebecDayIn } from "./quebec-day.js";
 import { langSwitch } from "./account-menu.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -16,7 +16,7 @@ const prisma = new PrismaClient();
 // Best deal, "Can't tell yet") are in home-redesign.spec.js and polish-e.spec.js.
 
 // A flyer's end day is a Quebec day, so "in N days" is counted from the Quebec day (e2e/quebec-day.js).
-const dateIn = (days) => addDays(quebecDay(new Date()), days);
+const dateIn = (days) => quebecDayIn(days, specNow());
 
 async function signUp(page) {
   await page.goto("/");
@@ -42,7 +42,7 @@ const PHOTO =
 async function seed(userId) {
   const row = (item, matchName, unitPrice, extra = {}) => ({
     userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${unitPrice}/lb`,
-    unitPrice, unitBasis: "lb", isCurrent: true, createdAt: new Date(), ...extra,
+    unitPrice, unitBasis: "lb", isCurrent: true, createdAt: realNow(), ...extra,
   });
   await prisma.flyerDeal.createMany({
     data: [
@@ -291,7 +291,7 @@ test.describe("Proteins on sale on a wide screen", () => {
     await seed(userId);
     // A recipe ready to cook, so Makeable now shows beside it.
     await page.request.post("/api/recipes", { data: { title: "Omelette", ingredients: [{ name: "eggs", quantity: 4, unit: "" }] } });
-    await page.request.post("/api/pantry-inventory", { data: { name: "eggs", quantity: 12, location: "fridge" } });
+    await page.request.post("/api/pantry-inventory", { data: { name: "eggs", quantity: 12, location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
     await page.reload();
     await expect(page.locator(".riso-home-bottom-row.three .riso-home-makeable")).toBeVisible();
     const chicken = await rowButton(page, "Chicken").boundingBox();
@@ -411,7 +411,7 @@ test.describe("Proteins on sale: loading, nothing to show and a failed load", ()
   test("flyers with no protein on sale say so", async ({ page }) => {
     const userId = await signUp(page);
     await prisma.flyerDeal.create({
-      data: { userId, store: "Metro", source: "Metro", category: "produce", item: "Bananas", matchName: "bananas", price: "$0.69/lb", unitPrice: 0.69, unitBasis: "lb", isCurrent: true, createdAt: new Date() },
+      data: { userId, store: "Metro", source: "Metro", category: "produce", item: "Bananas", matchName: "bananas", price: "$0.69/lb", unitPrice: 0.69, unitBasis: "lb", isCurrent: true, createdAt: realNow() },
     });
     await page.reload();
     await expect(card(page)).toContainText("No proteins on sale this week.");

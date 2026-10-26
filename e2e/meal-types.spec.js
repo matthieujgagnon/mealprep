@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { chooseMealType } from "./recipe-form.js";
 import { quebecDayIn } from "./quebec-day.js";
@@ -26,7 +26,7 @@ async function signUp(page, { french = false } = {}) {
 const post = async (page, url, data) => (await page.request.post(url, { data })).json();
 const recipe = (page, title, ingredients, extra = {}) =>
   post(page, "/api/recipes", { title, instructions: ["Do it."], ingredients: ingredients.map((name) => ({ name, quantity: 2, unit: "unit" })), ...extra });
-const inventory = (page, data) => post(page, "/api/pantry-inventory", { quantity: 4, unit: "unit", location: "freezer", expiresAt: quebecDayIn(30), ...data });
+const inventory = (page, data) => post(page, "/api/pantry-inventory", { quantity: 4, unit: "unit", location: "freezer", expiresAt: quebecDayIn(30, specNow()), ...data });
 const recipesOf = async (page) => (await page.request.get("/api/recipes")).json();
 const find = async (page, title) => (await recipesOf(page)).find((r) => r.title === title);
 const stockOf = async (page, name) => (await (await page.request.get("/api/pantry-inventory")).json()).find((i) => i.name === name);
@@ -189,13 +189,14 @@ test.describe("on a computer", () => {
     await signUp(page);
     const croissants = await recipe(page, "Croissants", ["croissants"], { mealSlots: ["breakfast"], isPrepared: true });
     const meal = await inventory(page, { name: "Croissants", isPreparedMeal: true, quantity: 4 });
-    const entry = await post(page, "/api/planner", { recipeId: croissants.id, weekStart: "2026-09-07", dayOfWeek: 2, mealType: "breakfast" });
+    const weekStart = mondayAfter(-4); // a Wednesday a month ago: the day has passed whatever day the test runs
+    const entry = await post(page, "/api/planner", { recipeId: croissants.id, weekStart, dayOfWeek: 2, mealType: "breakfast" });
 
     await page.goto("/"); // the app opens: the day has passed
     const toast = page.getByText(/1 meal taken off your Inventory: Croissants/);
     await expect(toast).toBeVisible();
     await expect.poll(async () => (await stockOf(page, "Croissants")).quantity).toBe(3);
-    const settled = (await (await page.request.get("/api/planner?week=2026-09-07")).json()).find((e) => e.id === entry.id);
+    const settled = (await (await page.request.get(`/api/planner?week=${weekStart}`)).json()).find((e) => e.id === entry.id);
     expect(settled.cookedAt).not.toBeNull();
 
     // Undo puts the box back; the meal stays settled, so it is not taken again.
@@ -334,12 +335,7 @@ test.describe("on a phone, in French", () => {
   test("a prepared recipe on the 104px Planner card holds the whole tag, in French", async ({ page }) => {
     await signUp(page, { french: true });
     const croissants = await recipe(page, "Croissants au beurre", ["croissants"], { mealSlots: ["breakfast"], isPrepared: true });
-    const monday = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    })();
-    await post(page, "/api/planner", { recipeId: croissants.id, weekStart: monday, dayOfWeek: (new Date().getDay() + 6) % 7, mealType: "breakfast" });
+    await post(page, "/api/planner", { recipeId: croissants.id, weekStart: thisMonday(), dayOfWeek: todayIndex(), mealType: "breakfast" });
     await page.goto("/");
     await page.getByRole("button", { name: "Planificateur", exact: true }).first().click();
     const card = page.locator(".pmb-cell .riso-planner-card", { has: page.locator(".prepared-tag") });

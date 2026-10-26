@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 
 // The Flyers auto-import strip and its settings. The test server's Flipp

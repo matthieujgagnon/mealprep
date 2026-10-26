@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { E2E_INVITE } from "./invite.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // Ingredient names in the language shown (lib/ingredientDisplay.js, ingredientDisplay.txt):
 //   - in French a recipe's ingredients read in French on the recipe card, in Cook mode
@@ -33,12 +34,7 @@ async function shot(page, name, target = page) {
   await target.screenshot({ path: `${SHOTS}/${name}.png` });
 }
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-const today = () => (new Date().getDay() + 6) % 7;
+const today = () => todayIndex();
 
 // Written in English, with the long names French makes longer.
 const RECIPE = {
@@ -91,7 +87,7 @@ async function signUp(page, { fr }) {
 const OTHER = { ...RECIPE, title: "Weeknight skillet" };
 async function seed(page, recipe = RECIPE) {
   const saved = await (await page.request.post("/api/recipes", { data: recipe })).json();
-  await page.request.post("/api/planner", { data: { recipeId: saved.id, weekStart: mondayOf(new Date()), dayOfWeek: today(), mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: saved.id, weekStart: thisMonday(), dayOfWeek: today(), mealType: "dinner" } });
   await page.request.post("/api/recipes", { data: OTHER });
   return saved;
 }
@@ -107,7 +103,7 @@ test.describe("in French", () => {
     // Typed by hand: stays exactly as typed, here an English name that the table knows.
     await page.request.post("/api/grocery-extra-items", { data: { name: "Red onions", quantity: 1 } });
     await page.request.post("/api/grocery-extra-items", { data: { name: "Papier collant", quantity: 1 } });
-    await page.request.post("/api/pantry-inventory", { data: { name: "Chicken thighs", location: "fridge", quantity: 1 } });
+    await page.request.post("/api/pantry-inventory", { data: { name: "Chicken thighs", location: "fridge", quantity: 1, expiresAt: quebecDayIn(30, specNow()) } });
     await page.reload();
 
     // The recipe card: the receipt's rows and their prep notes.
@@ -198,7 +194,7 @@ test.describe("in English", () => {
     await signUp(page, { fr: false });
     const recette = await (await page.request.post("/api/recipes", { data: RECETTE })).json();
     await page.request.post("/api/recipes", { data: RECIPE });
-    await page.request.post("/api/planner", { data: { recipeId: recette.id, weekStart: mondayOf(new Date()), dayOfWeek: today(), mealType: "dinner" } });
+    await page.request.post("/api/planner", { data: { recipeId: recette.id, weekStart: thisMonday(), dayOfWeek: today(), mealType: "dinner" } });
     await page.request.post("/api/recipes", { data: { ...RECETTE, title: "Poulet du lundi" } }); // not planned: Makeable shows its pills
     await page.reload();
     await tab(page, "Recipes");

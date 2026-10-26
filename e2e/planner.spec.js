@@ -7,9 +7,7 @@ import { quebecDayIn } from "./quebec-day.js";
 // finder under it (search, filters, Cook with, Main meal, the recipe card).
 // One thing per slot - placing replaces, moving swaps.
 
-// The Planner counts its weeks and days on the browser's clock, so the browser runs in Quebec's time zone
-// and the spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
-test.use({ viewport: { width: 1440, height: 1100 }, timezoneId: "America/Toronto" });
+test.use({ viewport: { width: 1440, height: 1100 } });
 
 const MEALS = ["breakfast", "lunch", "dinner"];
 async function setup(page, recipes) {

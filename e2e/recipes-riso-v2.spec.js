@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import { langSwitch } from "./account-menu.js";
@@ -175,7 +175,7 @@ test.describe("on a phone, in French", () => {
     await recipe(page, "Miso soup", "lunch", ["silken tofu", "miso"]);
     await recipe(page, "Plain rice", "side", ["rice"]);
     await prisma.flyerDeal.create({
-      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Firm tofu", matchName: "firm tofu", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: new Date() },
+      data: { userId, store: "Metro", source: "Metro", category: "protein", item: "Firm tofu", matchName: "firm tofu", price: "$1.99", unitPrice: 1.99, unitBasis: "each", regularPrice: 3.49, isCurrent: true, createdAt: realNow() },
     });
     await page.reload();
     const row = page.locator("button.riso-protein-card", { hasText: "Tofu" });

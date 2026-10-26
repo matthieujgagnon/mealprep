@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, thisMonday, todayAt, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 
 // Tonight's card for something you wrote on the planner ("Hockey pool")
@@ -7,18 +7,10 @@ import { E2E_INVITE } from "./invite.js";
 
 test.use({ viewport: { width: 1280, height: 1000 } });
 
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-
 // These are about supper, which is the card from 3 pm: fix the clock at 6 pm
 // so they give the same answer whenever they run.
 test.beforeEach(async ({ page }) => {
-  const evening = new Date();
-  evening.setHours(18, 0, 0, 0);
-  await page.clock.setFixedTime(evening);
+  await page.clock.setFixedTime(todayAt(18));
 });
 
 test("a written note tonight shows without Start cooking", async ({ page }) => {
@@ -30,9 +22,9 @@ test("a written note tonight shows without Start cooking", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.locator(".tab.active")).toHaveText("Home");
 
-  const today = (new Date().getDay() + 6) % 7;
+  const today = todayIndex();
   await page.request.post("/api/planner/blank", {
-    data: { weekStart: mondayOf(new Date()), dayOfWeek: today, mealType: "dinner", note: "Hockey Pool @ Normal" },
+    data: { weekStart: thisMonday(), dayOfWeek: today, mealType: "dinner", note: "Hockey Pool @ Normal" },
   });
   await page.reload();
   const hero = page.locator(".riso-home-hero");
@@ -61,9 +53,9 @@ test("a written meal gets its food's emoji, and Pick a recipe instead swaps toni
   const recipe = await (
     await page.request.post("/api/recipes", { data: { title: "Lemon chicken orzo", ingredients: [{ name: "orzo" }] } })
   ).json();
-  const today = (new Date().getDay() + 6) % 7;
+  const today = todayIndex();
   await page.request.post("/api/planner/blank", {
-    data: { weekStart: mondayOf(new Date()), dayOfWeek: today, mealType: "dinner", note: "Fries night" },
+    data: { weekStart: thisMonday(), dayOfWeek: today, mealType: "dinner", note: "Fries night" },
   });
   await page.reload();
   const hero = page.locator(".riso-home-hero");
@@ -85,7 +77,7 @@ test("a written meal gets its food's emoji, and Pick a recipe instead swaps toni
 
 test("past suppers this week are greyed out; today is pink", async ({ page }) => {
   await signUp(page);
-  const today = (new Date().getDay() + 6) % 7;
+  const today = todayIndex();
   await expect(page.locator(".riso-home-week-day.past")).toHaveCount(today);
   await expect(page.locator(".riso-home-week-day.today")).toHaveCount(1);
   if (today > 0) {

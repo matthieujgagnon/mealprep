@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test, thisMonday } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import { quebecDayIn } from "./quebec-day.js";
@@ -12,12 +12,6 @@ import { quebecDayIn } from "./quebec-day.js";
 
 const prisma = new PrismaClient();
 test.use({ viewport: { width: 1280, height: 1000 } });
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
 
 async function signUp(page, tag) {
   const email = `${tag}+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -43,9 +37,9 @@ async function seed(page, recipes, inventory) {
   }
   for (const item of inventory) {
     const [name, days] = Array.isArray(item) ? item : [item, null];
-    // A use-by day n Quebec days from today: the app counts days left in Quebec days.
-    const expiresAt = days == null ? undefined : quebecDayIn(days);
-    await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", ...(expiresAt && { expiresAt }) } });
+    // A use-by day n Quebec days from today: the app counts days left in Quebec days. An item with no number is
+    // simply in stock: a month out, so a browser frozen on a later day does not see it as past.
+    await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: quebecDayIn(days ?? 30, specNow()) } });
   }
   await page.reload();
   return made;
@@ -72,7 +66,7 @@ test("sections by what is missing; planned recipes only in Meals of the week; no
     ["flour", "egg", "chicken", "carrot"]
   );
   // Planned this week (Sunday is never in the past).
-  await page.request.post("/api/planner", { data: { recipeId: made["Riso Planned"].id, weekStart: mondayOf(new Date()), dayOfWeek: 6, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: made["Riso Planned"].id, weekStart: thisMonday(), dayOfWeek: 6, mealType: "dinner" } });
   await page.reload();
   await openMakeable(page);
 
@@ -285,7 +279,7 @@ test("tapping the photo or the title opens the recipe card; Cook opens it too; P
   const picker = page.getByRole("dialog", { name: "Pick a slot" });
   await picker.getByRole("button", { name: "Next week" }).click();
   await picker.getByRole("button", { name: /^Add to .*Supper$/ }).click();
-  const nextWeek = mondayOf(new Date(Date.now() + 7 * 86400000));
+  const nextWeek = mondayAfter(1);
   await expect
     .poll(async () => (await (await page.request.get(`/api/planner?week=${nextWeek}`)).json()).map((e) => e.recipe?.id))
     .toEqual([made["Riso Plan Dish"].id]);

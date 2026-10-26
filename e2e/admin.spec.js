@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -54,6 +54,9 @@ test.describe("on a computer, in English", () => {
 
   test("an admin finds Admin in the avatar menu: HQ, Members, Invite codes and AI usage", async ({ page, context }) => {
     await adminAccount("en");
+    // The server stamps the sign-up day, and "Today" is that day on the browser's clock: a browser frozen by E2E_NOW
+    // on another day would read it as a date.
+    await page.clock.setFixedTime(realNow());
     const member = uniqueEmail("admin-members");
     await prisma.user.create({ data: { email: member, passwordHash: "x" } });
 

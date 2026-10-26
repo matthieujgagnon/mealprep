@@ -6,10 +6,6 @@ import { E2E_INVITE } from "./invite.js";
 // grey bar that sat above the recipe search on a computer is gone (the phone keeps its
 // dashed line between the board and the search).
 
-// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
-// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
-test.use({ timezoneId: "America/Toronto" });
-
 async function setUp(page, { french = false } = {}) {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();

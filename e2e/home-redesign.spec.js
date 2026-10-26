@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, realNow, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
 import { saveRecipe } from "./recipe-form.js";
@@ -16,7 +16,7 @@ async function seedRealDeal(page) {
     data: {
       userId, store: "Metro", source: "Metro", category: "meat",
       item: "Boneless chicken breast", matchName: "boneless chicken breast", price: "$4.99/lb",
-      unitPrice: 4.99, unitBasis: "lb", regularPrice: 7.99, isCurrent: true, createdAt: new Date(),
+      unitPrice: 4.99, unitBasis: "lb", regularPrice: 7.99, isCurrent: true, createdAt: realNow(),
     },
   });
   await page.reload();
@@ -109,7 +109,7 @@ test("Home shows the proteins on sale this week, each kind's best buy, and opens
   const userId = me.user?.id ?? me.id;
   const row = (item, matchName, unitPrice, extra = {}) => ({
     userId, store: "Metro", source: "Metro", category: "protein", item, matchName, price: `$${unitPrice}/lb`,
-    unitPrice, unitBasis: "lb", isCurrent: true, createdAt: new Date(), ...extra,
+    unitPrice, unitBasis: "lb", isCurrent: true, createdAt: realNow(), ...extra,
   });
   await prisma.flyerDeal.createMany({
     data: [
@@ -241,7 +241,7 @@ test("See in Flyers lands on that deal's card in Flyers, and \"On list\" takes a
 
 test("Use it up finds recipes for those items; Makeable now counts the ones one or two items away", async ({ page }) => {
   await signUp(page, uniqueEmail());
-  const soon = quebecDayIn(2); // a Quebec day, like a use-by date the Inventory form saves
+  const soon = quebecDayIn(2, specNow()); // a Quebec day, like a use-by date the Inventory form saves
   for (const name of ["parsley", "cucumber", "chickpeas"]) {
     await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: soon } });
   }

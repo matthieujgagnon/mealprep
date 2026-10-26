@@ -230,12 +230,18 @@ Render automatically redeploys on every push to `main`.
   npx playwright install --with-deps chromium   # first time only
   npm run test:e2e
   ```
-  The Planner specs count their days and weeks on the Quebec day (`e2e/quebec-day.js`,
-  `e2e/spec-clock.js`) and run their browser in `America/Toronto`, so they give the same answer on a
-  UTC machine at 9 p.m. Quebec time as on a laptop at noon. To check one on a particular moment, freeze the
-  browser's clock to it: `E2E_NOW=2026-10-31T21:30:00-04:00 npx playwright test e2e/planner.spec.js`
-  (the last evening of a month; also try a Sunday evening). A spec that needs a calendar of a given
-  shape pins its own date instead.
+  Every browser spec takes its `test` and `expect` from `e2e/spec-clock.js`, counts its days and weeks on
+  the Quebec day (`e2e/quebec-day.js`) and runs its browser in `America/Toronto`, so it gives the same
+  answer on a UTC machine at 9 p.m. Quebec time as on a laptop at noon. A spec never reads the machine's
+  clock itself (`new Date()`, `Date.now()`, `getDay()`, a Monday worked out by hand): it asks
+  `spec-clock.js` (`thisMonday()`, `mondayAfter(n)`, `todayIndex()`, `todayAt(hour)`, `specNow()`), and
+  `server/src/e2eClockRule.test.js` (part of `npm test`) fails if one does. To check the whole suite, or one
+  spec, on a particular moment, start the browser's clock at it:
+  `E2E_NOW=2026-10-31T21:30:00-04:00 npx playwright test` (the last evening of a month; also try a Sunday
+  evening). Only the browser is moved, the server keeps the real day: an Inventory item a spec needs fresh
+  gets a use-by counted from the same moment (`quebecDayIn(30, specNow())`), and a row the server dates
+  itself (a reset link that lasts an hour) uses `realNow()`. A spec that needs a calendar of a given shape
+  pins its own date instead.
 - Both run automatically on every push and pull request via GitHub Actions
   (`.github/workflows/ci.yml`), against a fresh throwaway Postgres.
 
