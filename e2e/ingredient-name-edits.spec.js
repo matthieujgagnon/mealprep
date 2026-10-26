@@ -5,6 +5,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { E2E_INVITE } from "./invite.js";
 import { quebecDay } from "./quebec-day.js";
+import { ROUTE_NAMES, adminLoaded, expectAdminFits, newTag, seedLongAccounts, showLongChange } from "./admin-fit.js";
 
 // Matt's changes to the ingredient names (the Admin page's Ingredient names card; lib/nameSaves.js,
 // lib/ingredientDisplay.js, server/src/routes/adminIngredientNames.js):
@@ -109,6 +110,23 @@ test.describe("on a phone, in French", () => {
 
   test("Matt gives a name its French; the recipe card shows it at once, it stays after a reload, and a tester sees it too and cannot change it", async ({ page, browser }) => {
     await signInAsAdmin(page, "fr");
+
+    // First the page itself, with the worst case made here so it never depends on the accounts the other specs
+    // have made (e2e/admin-fit.js): three accounts with very long emails, and a name changed by one of them
+    // ("Modifié par <email>"). All five Admin cards are no wider than the phone.
+    const tag = newTag();
+    const long = await seedLongAccounts(prisma, tag);
+    try {
+      await showLongChange(page, tag, long.emails[0]);
+      await page.goto("/admin");
+      await adminLoaded(page);
+      await expect(page.locator(".riso-admin-names .riso-admin-namecard-meta", { hasText: `Modifié par ${long.emails[0]}` })).toHaveCount(1);
+      await expectAdminFits(page, { cards: 5, seen: long.emails });
+    } finally {
+      await page.unroute(ROUTE_NAMES);
+      await long.remove();
+    }
+
     await page.goto("/admin");
     const card = page.locator(".riso-admin-names");
     await expect(card.getByRole("heading", { name: "Noms des ingrédients" })).toBeVisible();

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { aiDay } from "../server/src/lib/aiLimit.js";
 import { E2E_INVITE } from "./invite.js";
 import { accountButton } from "./account-menu.js";
+import { LONG_NOTE, adminLoaded, expectAdminFits, newTag, seedLongAccounts, showLongChange, showLongFeedback } from "./admin-fit.js";
 
 // Invite-only signup, the Invite codes and AI usage sections of Admin, and the
 // daily limit on flyer and receipt reading. playwright.config.js lists
@@ -271,7 +272,37 @@ test.describe("on a phone, in French", () => {
     await fresh.getByRole("button", { name: /^Désactiver/ }).click();
     await expect(fresh.locator(".riso-pill")).toHaveText("Désactivé");
     await expect(card(phone, "Utilisation de l'IA").getByLabel("Lectures par compte par jour")).toBeVisible();
-    expect(await phone.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+    // The worst case, made here so it never depends on the accounts the other specs have made: three accounts with
+    // very long emails who joined with a code whose note is 80 letters in a row, a name changed by one of them and
+    // feedback from all of them (e2e/admin-fit.js). All five Admin cards fit the screen at 390px and at 360px, and
+    // so does the Feedback inbox, in both its tabs.
+    const tag = newTag();
+    const worst = await prisma.inviteCode.create({ data: { code: `LONG-${Math.floor(1000 + Math.random() * 9000)}`, note: LONG_NOTE, maxUses: 5, usedCount: 3 } });
+    const long = await seedLongAccounts(prisma, tag, { inviteCodeId: worst.id });
+    try {
+      await showLongChange(phone, tag, long.emails[0]);
+      await showLongFeedback(phone, long.emails);
+      for (const width of [390, 360]) {
+        await phone.setViewportSize({ width, height: 844 });
+        await phone.goto("/admin");
+        await adminLoaded(phone);
+        await expect(phone.locator(".riso-admin-names .riso-admin-namecard-meta", { hasText: long.emails[0] })).toHaveCount(1);
+        await expect(phone.locator(".riso-admin-invites .riso-admin-code-joined", { hasText: long.emails[1] })).toHaveCount(1);
+        await expectAdminFits(phone, { cards: 5, seen: [LONG_NOTE, ...long.emails] });
+
+        await phone.goto("/admin/feedback");
+        for (const tab of [0, 1]) {
+          await phone.locator(".riso-fbi-tabs button").nth(tab).click();
+          await expect(phone.locator(".riso-fbi-tabs button").nth(tab)).toHaveAttribute("aria-pressed", "true");
+          await expect(phone.locator(".riso-fbi-item").first()).toBeVisible();
+          await expectAdminFits(phone, { cards: 1, seen: long.emails });
+        }
+      }
+    } finally {
+      await long.remove();
+      await prisma.inviteCode.delete({ where: { id: worst.id } });
+    }
     await admin.close();
   });
 

@@ -18041,6 +18041,15 @@ body.no-select {
   padding-bottom: 6px;
 }
 
+/* "Changed by <email> · Oct 26": the one line in the card that holds someone's email. A count beside a
+   name ("2 recipes") stays as wide as it is (.riso-admin-name-uses is flex: none), but this line takes
+   the room the button leaves and wraps, so a long email can never make the page wider than the screen. */
+.riso-admin-namecard-meta .riso-admin-name-uses {
+  flex: 1 1 12em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .riso-admin-status {
   margin: 4px 0 0;
   display: flex;
