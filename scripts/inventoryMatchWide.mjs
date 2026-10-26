@@ -6,14 +6,34 @@
 //        recipe ingredient, whether the item covers the ingredient, and writes the
 //        answers (default fixtures/inventoryMatchBaseline.json)
 //
-// The names are real ones: TheMealDB's ingredient list, FoodKeeper's products, the
-// kitchen words in French, the 23 basics of the matcher's own table, and the names
-// the tests and the browser tests already use. Add names by adding them to EXTRA in
+// The names are real ones: TheMealDB's ingredient list, FoodKeeper's products, every
+// spelling of the ingredient names table (ingredientDisplay.txt, English and French) and the
+// matcher's own French words (matcherWords.js), the flyers' word pairs, and the names the
+// tests and the browser tests already use. Add names by adding them to EXTRA in
 // this file or to the sources above, then run `names` and `matches`; look at what
 // changed before you commit it: a match that disappears must be a wrong match going away.
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { register } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { builtInRowsOf, fold, parseTable } from "../client/src/lib/ingredientTable.js";
+
+// The matcher reads the ingredient names table with Vite's `?raw` import, which plain Node does not
+// know: this hook gives it the file's text.
+register(
+  "data:text/javascript," +
+    encodeURIComponent(`
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+export async function load(url, context, nextLoad) {
+  if (url.endsWith("?raw")) {
+    const text = readFileSync(fileURLToPath(url.slice(0, -4)), "utf8");
+    return { format: "module", shortCircuit: true, source: "export default " + JSON.stringify(text) };
+  }
+  return nextLoad(url, context);
+}`),
+  import.meta.url
+);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = join(root, "client/src/lib/fixtures");
@@ -37,17 +57,26 @@ const EXTRA = [
   "feuilles de coriandre", "coriandre moulue", "graines de coriandre", "feuilles de lime", "feuilles de limette", "feuilles de bananier", "feuilles de vigne", "feuilles de cari",
   "jus de lime", "jus de citron", "zeste de citron", "zeste de lime", "zeste d'orange", "jus d'orange", "citron", "lime", "orange", "sauce sriracha", "sauce hoisin",
   "vinaigre blanc", "vinaigre", "sel assaisonné", "sauce de poisson", "vinaigre de cidre de pommes", "oignons verts", "poitrine de poulet", "huile de sésame", "huile de sésame grillé",
+  "crème 35", "banane", "oignon rouge", "coriandre fraîche", "jaune d'œuf", "blanc d'œuf", "œuf", "œufs", "egg yolk", "egg white", "egg yolks", "egg whites", "eggs", "egg",
+  // Names that join two foods if a rule is too wide: a meat made into something else, a variety, a ripe fruit.
+  "saucisse italienne", "saucisses italiennes", "jambon", "pork sausage", "chicken sausage", "turkey bacon", "turkey ham", "bacon grease", "bacon bits", "pork chop", "pork", "porc",
+  "côtelette de porc", "canard", "duck fat", "crevette", "shrimp salad", "chicken salad", "chicken liver", "chicken soup", "chicken nuggets", "pork rinds", "beef gravy", "corned beef",
+  "lamb kidney", "beef tomatoes", "oyster mushrooms", "chili con carne", "chilli bean paste", "thai chilli jam", "pâte de piment fort", "chilli flakes", "chile pepper",
+  "tomate roma", "roma tomatoes", "plum tomato", "tomate cerise", "tomate raisin", "fromage de chèvre", "goat", "goat cheese",
+  "mûres", "mûre", "cerise mûre", "cerises mûres", "prune mûre", "tomate mûre", "banane mûre", "bananes mûres", "confiture de mûres", "tarte aux mûres", "ripe cherries", "ripe bananas", "blackberry jam",
+  "ripe banana", "bananes", "ripe tomatoes", "tomates mûres", "ripe avocados", "avocat mûr", "avocats mûrs", "ripe mango", "mangue mûre", "ripe blackberries",
 ];
 
 // Words that describe or prepare a food and are never a food: as a name on their own
 // they match nothing (they used to match only themselves), so they are not in the list.
-const NOT_FOODS = new Set(["bulb", "bulbe", "feuille", "feuilles", "zeste", "liquid", "liquide", "full fat"]);
+const NOT_FOODS = new Set(["bulb", "bulbe", "feuille", "feuilles", "zeste", "liquid", "liquide", "full fat", "biologique", "biologiques", "organic"]);
 
 function names() {
   const out = new Set();
   const add = (n) => {
     const s = String(n || "").replace(/\s+/g, " ").trim();
-    if (s.length >= 2 && s.length <= 60 && !NOT_FOODS.has(s.toLowerCase())) out.add(s);
+    // "pxpie" is bilingual.js's own marker for a pâté, not a name anyone has.
+    if (s.length >= 2 && s.length <= 60 && !NOT_FOODS.has(s.toLowerCase()) && !/^pxpie/i.test(s)) out.add(s);
   };
   // TheMealDB's ingredient list.
   const mealdb = read("client/src/lib/mealdbIngredients.js").match(/`([^`]+)`/)[1];
@@ -57,16 +86,23 @@ function names() {
     add(p.name.replace(/\([^)]*\)/g, " "));
     (p.keywords || []).forEach(add);
   }
-  // The kitchen words in French, and the flyers' word pairs.
-  const match = read("client/src/lib/inventoryMatch.js");
-  const kitchen = match.slice(match.indexOf("const KITCHEN_FR"), match.indexOf("// \"the\" is English"));
-  for (const m of kitchen.matchAll(/\["([^"]+)", "([^"]+)"\]/g)) {
-    add(m[1]);
-    add(m[2]);
+  // Every spelling of the ingredient names table, in both languages, singular and plural, as it is
+  // written, in lower case and typed without accents (« creme sure »).
+  const table = parseTable(read("client/src/lib/ingredientDisplay.txt"));
+  const addTyped = (form) => {
+    add(form);
+    add(form.toLowerCase());
+    add(fold(form));
+  };
+  for (const row of builtInRowsOf(table)) {
+    for (const lang of ["en", "fr"]) for (const number of ["one", "other"]) row[lang][number].forEach(addTyped);
   }
-  for (const m of read("client/src/lib/bilingual.js").matchAll(/\["([^"]+)", "([^"]+)"\]/g)) {
-    add(m[1]);
-    add(m[2]);
+  // The matcher's own French words, and the flyers' word pairs.
+  for (const file of ["client/src/lib/matcherWords.js", "client/src/lib/bilingual.js"]) {
+    for (const m of read(file).matchAll(/\["([^"]+)", "([^"]+)"\]/g)) {
+      add(m[1]);
+      add(m[2]);
+    }
   }
   // The matcher's own tables of names, and the names the tests and the browser tests use.
   const files = [

@@ -1,22 +1,17 @@
-import { expect, test } from "@playwright/test";
+import { expect, mondayAfter, specNow, test, thisMonday, todayIndex } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { scrollBetween } from "./planner-drag.js";
+import { quebecDayIn } from "./quebec-day.js";
 
 // Matt's review of the desktop Planner (#125, #126): the shared recipe card
 // (Plan first, Cook), the shared slot picker with week arrows, the Makeable now
 // rule, the drag highlight and Plan around this.
 
-test.use({ viewport: { width: 1440, height: 1100 } });
+// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
+// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
+test.use({ viewport: { width: 1440, height: 1100 }, timezoneId: "America/Toronto" });
 
 const MEALS = ["breakfast", "lunch", "dinner"];
-const todayIndex = () => (new Date().getDay() + 6) % 7;
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-
 async function setup(page, recipes) {
   await page.goto("/");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -50,9 +45,9 @@ test("on Recipes a card opens the recipe card; its Plan opens the slot picker, w
   await picker.getByRole("button", { name: "Next week" }).click();
   await picker.getByRole("button", { name: /^Add to .*Supper$/ }).click();
 
-  const nextWeek = mondayOf(new Date(Date.now() + 7 * 86400000));
+  const nextWeek = mondayAfter(1);
   await expect.poll(async () => (await weekEntries(page, nextWeek)).length).toBe(1);
-  expect(await weekEntries(page, mondayOf(new Date()))).toHaveLength(0);
+  expect(await weekEntries(page, thisMonday())).toHaveLength(0);
   const toast = page.getByRole("status").filter({ hasText: "Added to" });
   await expect(toast).toContainText("1 item added to your list");
   await toast.getByRole("button", { name: "Undo" }).click();
@@ -61,7 +56,7 @@ test("on Recipes a card opens the recipe card; its Plan opens the slot picker, w
 
 test("a planned meal's Cook opens the recipe card over the Planner, not Cook mode", async ({ page }) => {
   const [recipe] = await setup(page, [{ title: "Cook From Planner" }]);
-  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: mondayOf(new Date()), dayOfWeek: 0, mealType: "dinner" } });
+  await page.request.post("/api/planner", { data: { recipeId: recipe.id, weekStart: thisMonday(), dayOfWeek: 0, mealType: "dinner" } });
   await page.reload();
   await page.getByRole("button", { name: "Planner", exact: true }).click();
   await cell(page, 0, "dinner").getByRole("button", { name: /Cook From Planner - open/ }).click();
@@ -79,7 +74,7 @@ test("Makeable now counts meals only; Include sides, desserts and prepared bring
     { title: "No Type Yet", ingredients: [{ name: "egg" }] },
   ]);
   for (const name of ["chicken", "rice", "onion", "egg"]) {
-    await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge" } });
+    await page.request.post("/api/pantry-inventory", { data: { name, location: "fridge", expiresAt: quebecDayIn(30, specNow()) } });
   }
   await page.reload();
   await page.getByRole("button", { name: "Makeable", exact: true }).click();

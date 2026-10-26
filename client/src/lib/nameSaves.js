@@ -1,4 +1,4 @@
-import { setIngredientOverrides } from "./ingredientDisplay.js";
+import { getIngredientOverrides, setIngredientOverrides } from "./ingredientDisplay.js";
 import { NAMES } from "./pendingSaves.js";
 import { saveInOrder } from "./saveInOrder.js";
 
@@ -19,7 +19,10 @@ import { saveInOrder } from "./saveInOrder.js";
 //
 // api   { saveIngredientName(body), changeIngredientName(id, body), deleteIngredientName(id) }
 // onFailed  called with "save" | "remove" and the error when a save failed and the screen went back
-export function createNameSaver({ api, onFailed = () => {} }) {
+// onChange  called after the list the display and the Inventory matcher read has changed (not for a
+//           list that was empty and still is), so the app asks the matcher again, as it does after a
+//           taught name (lib/linkSaves.js)
+export function createNameSaver({ api, onFailed = () => {}, onChange = () => {} }) {
   const saves = saveInOrder({ area: NAMES });
   const wanted = new Map(); // ref -> the row as it should be now (the screen)
   const confirmed = new Map(); // ref -> the row as the server has it
@@ -37,7 +40,12 @@ export function createNameSaver({ api, onFailed = () => {} }) {
     gender: row.gender,
   });
   const same = (a, b) => JSON.stringify(a ? bodyOf(a) : null) === JSON.stringify(b ? bodyOf(b) : null);
-  const publish = () => setIngredientOverrides([...wanted.values()].map((row) => ({ ...row, id: ids.get(row.ref) || row.id })));
+  const publish = () => {
+    const had = getIngredientOverrides().length;
+    const next = [...wanted.values()].map((row) => ({ ...row, id: ids.get(row.ref) || row.id }));
+    setIngredientOverrides(next);
+    if (had > 0 || next.length > 0) onChange();
+  };
 
   // The ref a draft is saved under: its built-in row's, else the one given (changing an added
   // ingredient), else a new one.

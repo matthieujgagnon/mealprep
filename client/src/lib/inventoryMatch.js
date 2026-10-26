@@ -1,6 +1,8 @@
 import { canonicalize, canonicalUnit, capitalize, singularize } from "./ingredientNames.js";
-import { PHRASES, fold } from "./bilingual.js";
-import { familyKey } from "./ingredientFamilies.js";
+import { buildFrenchReading } from "./frenchReading.js";
+import { describingCells, effectiveIngredientRows, ingredientListVersion } from "./ingredientList.js";
+import { fold } from "./ingredientTable.js";
+import { animalWord, cutFamily, familyKey, synonymOf } from "./ingredientFamilies.js";
 import { convertToUnit } from "./units.js";
 import { daysUntil } from "./pantryInventory.js";
 import { isMealItem, isPreparedMeal } from "./mealItem.js";
@@ -15,9 +17,14 @@ import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLin
 // and Cook with, so they always agree.
 //
 // Two names are the same food when, once both are read in English:
-//   - French names count: « Poulet », « Lait 2 % », « ail », « oignons », « pommes
-//     de terre » (the flyers' word pairs in bilingual.js, plus the kitchen words
-//     below that flyers rarely print);
+//   - French names count: « Poulet », « Lait 2 % », « ail », « oignons », « banane »,
+//     « pommes de terre ». The French comes from ONE place, the table of ingredient names
+//     (ingredientDisplay.txt, with Matt's changes from the Admin page on top of it, read
+//     through lib/ingredientList.js): every French spelling of a row, singular and plural, is
+//     read as the row's first English name (lib/frenchReading.js), and it follows an edit at
+//     once. The matcher's own few words (« haché », « bouillon », « zeste », the cuts of a meat)
+//     are lib/matcherWords.js. Only French is read from the table, never a row's other
+//     English spellings ("ground coriander" must stay apart from cilantro);
 //   - the food words are the same, in any order (« fromage cheddar » is "cheddar
 //     cheese"), with prep words, plurals, "whole", "2%", "unsalted", "boneless"
 //     and the like left out;
@@ -42,6 +49,14 @@ import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLin
 //     (ALSO_COVERS: seasoned rice vinegar is rice vinegar, not the other way round);
 //   - a whole lime or lemon covers its juice and zest, an orange its zest; bottled
 //     juice never covers the fruit (FRUIT_PARTS);
+//   - an egg covers its yolk and its white, never the other way round (an egg is not "egg
+//     yolk" in a recipe; a yolk is not an egg);
+//   - a meat made into something else is a food of its own: a sausage, bacon or ham is never a pork
+//     chop, and a liver, "duck fat", "shrimp salad", "beef tomatoes" or "corned beef" is not the
+//     animal in its name (MADE_MEATS, NOT_THE_ANIMAL); a synonym is swapped word by word, so a
+//     "chilli jam" is not a chile; a roma tomato is a plum tomato, not a cherry one; goat cheese
+//     is not a goat; "ripe" says nothing about which food it is ("ripe bananas", « bananes mûres »),
+//     while « mûres » on its own is blackberries;
 //   - coriander on its own is cilantro, while ground coriander and coriander seeds
 //     are the spice;
 //   - lime, banana, grape, vine and curry leaves are products of their own, never
@@ -61,65 +76,31 @@ import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLin
 // its ingredients are not looked for among the ingredients. `{ prepared: true }` on the
 // functions below is that; the ones that take a recipe read the recipe's own flag.
 
-// Kitchen words in French that the flyers' list doesn't have, singular and
-// plural, longest first where it matters.
-const KITCHEN_FR = [
-  ["non sale", "unsalted"], ["sans sel", "unsalted"], ["demi sel", "salted"],
-  ["hauts de cuisses", "thighs"], ["hauts de cuisse", "thighs"], ["haut de cuisse", "thigh"],
-  ["pommes de terre", "potatoes"], ["pomme de terre", "potato"], ["patate douce", "sweet potato"],
-  ["pois chiches", "chickpeas"], ["pois chiche", "chickpea"], ["creme sure", "sour cream"], ["creme 35", "heavy cream"],
-  ["creme a cuisson", "cooking cream"], ["lait de coco", "coconut milk"], ["oignons verts", "green onions"], ["oignon vert", "green onion"],
-  ["haricots noirs", "black beans"], ["haricots rouges", "kidney beans"], ["citron vert", "lime"], ["sauce soya", "soy sauce"],
-  ["poudre d'ail", "garlic powder"], ["poudre d'oignon", "onion powder"], ["fromage feta", "feta"], ["fromage parmesan", "parmesan"],
-  ["oignon", "onion"], ["carotte", "carrot"], ["tomate", "tomato"], ["champignon", "mushroom"], ["poivron", "bell pepper"], ["poivrons", "bell peppers"],
-  ["citron", "lemon"], ["echalote", "shallot"], ["echalotes", "shallots"], ["persil", "parsley"], ["coriandre", "cilantro"],
-  ["basilic", "basil"], ["gingembre", "ginger"], ["lentille", "lentil"], ["lentilles", "lentils"], ["nouilles", "noodles"],
-  ["concombre", "cucumber"], ["courgette", "zucchini"], ["aubergine", "eggplant"], ["aubergines", "eggplants"], ["patate", "potato"],
-  ["haricot", "bean"], ["haricots", "beans"], ["oeuf", "egg"], ["avocat", "avocado"], ["epinard", "spinach"],
-  ["vinaigre", "vinegar"], ["moutarde", "mustard"], ["poireau", "leek"], ["poireaux", "leeks"], ["navet", "turnip"],
-  ["fenouil", "fennel"], ["mangue", "mango"], ["framboise", "raspberry"], ["fraise", "strawberry"], ["bleuet", "blueberry"],
-  ["pita", "pita"], ["pitas", "pitas"], ["tortilla", "tortilla"], ["tortillas", "tortillas"], ["yogourt", "yogurt"], ["yaourt", "yogurt"],
-  ["bouillon", "stock"], ["poudre", "powder"], ["concentre", "paste"], ["puree", "puree"], ["vin", "wine"], ["mais", "corn"],
-  ["grec", "greek"], ["grecque", "greek"], ["oignons", "onions"], ["carottes", "carrots"], ["tomates", "tomatoes"],
-  // Salt, oil, baking basics and spices, so a French recipe's « sel » or
-  // « origan » is the same food as salt and oregano.
-  ["au gout", "to taste"], ["sel casher", "kosher salt"], ["gros sel", "coarse salt"], ["sel de mer", "sea salt"],
-  ["sel de celeri", "celery salt"], ["sel d'oignon", "onion salt"], ["poivre noir", "black pepper"], ["poivre blanc", "white pepper"],
-  ["poivre de cayenne", "cayenne pepper"], ["piment de cayenne", "cayenne pepper"], ["sel", "salt"], ["poivre", "pepper"],
-  ["huile vegetale", "vegetable oil"], ["huile de canola", "canola oil"], ["huile de cuisson", "cooking oil"], ["enduit a cuisson", "cooking spray"],
-  ["extra vierge", "extra-virgin"], ["farine tout usage", "all-purpose flour"], ["sucre brun", "brown sugar"], ["cassonade", "brown sugar"],
-  ["poudre a pate", "baking powder"], ["poudre a lever", "baking powder"], ["bicarbonate de soude", "baking soda"],
-  ["bicarbonate de sodium", "baking soda"], ["fecule de mais", "cornstarch"], ["extrait de vanille", "vanilla extract"],
-  ["sauce soja", "soy sauce"], ["paprika fume", "smoked paprika"], ["cumin moulu", "ground cumin"], ["coriandre moulue", "ground coriander"],
-  ["gingembre moulu", "ground ginger"], ["cannelle moulue", "ground cinnamon"], ["noix de muscade", "nutmeg"], ["muscade", "nutmeg"],
-  ["curcuma", "turmeric"], ["cannelle", "cinnamon"], ["origan", "oregano"], ["thym", "thyme"], ["romarin", "rosemary"],
-  ["feuilles de laurier", "bay leaves"], ["feuille de laurier", "bay leaf"], ["laurier", "bay leaf"], ["poudre de chili", "chili powder"],
-  ["assaisonnement au chili", "chili powder"], ["poudre de cari", "curry powder"], ["assaisonnement italien", "italian seasoning"],
-  ["flocons de piment", "chili flakes"], ["piment broye", "crushed red pepper"], ["piment de la jamaique", "allspice"],
-  ["anis etoile", "star anise"], ["cardamome", "cardamom"], ["graines de fenouil", "fennel seeds"], ["graines de moutarde", "mustard seeds"],
-  ["moutarde en poudre", "mustard powder"], ["cinq epices", "five spice powder"], ["seche", "dried"], ["sechee", "dried"],
-  ["seches", "dried"], ["sechees", "dried"],
-  // Words the rules below need in English: leaves, zest, cider, bulbs and the like.
-  ["feuilles", "leaves"], ["feuille", "leaf"], ["zeste", "zest"], ["cidre", "cider"], ["limette", "lime"], ["bananier", "banana"],
-  ["vigne", "vine"], ["cari", "curry"], ["bulbe", "bulb"], ["assaisonne", "seasoned"], ["assaisonnee", "seasoned"],
-  ["balsamique", "balsamic"], ["pate de miso", "miso paste"], ["pate de tomate", "tomato paste"], ["pate de tomates", "tomato paste"],
-  ["all purpose", "all-purpose"], ["eau froide", "cold water"], ["eau chaude", "hot water"], ["eau tiede", "warm water"], ["eau bouillante", "boiling water"], ["eau", "water"],
-];
-
 // "the" is English as often as it is « thé », so it is never read as tea here.
 const LITTLE = new Set("a an and or of the to in for with on at de du des la le les l d un une au aux et ou en pour avec sur sans".split(" "));
 
-const PHRASE_LIST = [...KITCHEN_FR, ...PHRASES.filter(([fr]) => fr !== "the")];
-const WORD_MAP = new Map();
-const MULTI = [];
-for (const [fr, en] of PHRASE_LIST) {
-  const key = fr.replace(/'/g, " ");
-  if (/[ -]/.test(key)) MULTI.push([key, en]);
-  else if (!WORD_MAP.has(key)) WORD_MAP.set(key, en);
+// What the matcher understands in French, built from the table of ingredient names (Matt's changes
+// included) and its few own words. Built again, with everything worked out from the old one
+// forgotten, whenever the table changes.
+const profileCache = new Map();
+const lineFoods = new Map();
+let frenchReading = null;
+let frenchReadingVersion = -1;
+
+// The French the matcher would understand from a list of rows (the Admin form tries a draft row
+// this way, before it is saved).
+export const readingFor = (rows) => buildFrenchReading(rows, describingCells(), LITTLE);
+
+function currentReading() {
+  const version = ingredientListVersion();
+  if (!frenchReading || version !== frenchReadingVersion) {
+    frenchReading = readingFor(effectiveIngredientRows());
+    frenchReadingVersion = version;
+    profileCache.clear();
+    lineFoods.clear();
+  }
+  return frenchReading;
 }
-MULTI.sort((a, b) => b[0].length - a[0].length);
-const MULTI_RE = new RegExp(`(?<![a-z])(${MULTI.map(([fr]) => fr.replace(/[- ]/g, "[- ]+")).join("|")})(?![a-z])`, "g");
-const MULTI_MAP = new Map(MULTI.map(([fr, en]) => [fr.replace(/[- ]/g, ""), en]));
 
 // Words that say how a food is made or sold, never which food it is, written as
 // they arrive (two words, or hyphenated), in English and in Quebec French (the
@@ -141,16 +122,27 @@ const OWN_LEAF_FR_RE = /(?<![a-z])(?:leaf|leaves) (?:(?:kaffir|makrut) )?(lime|b
 
 // A name in (mostly) English words: French phrases and words are swapped for
 // their English, anything unknown is kept as written.
-function toEnglish(name) {
-  const text = fold(String(name || "").replace(/\([^)]*\)/g, " "))
+function toEnglish(name, reading) {
+  const { words, phraseRe, phraseMap, also = new Map() } = reading;
+  let text = fold(String(name || "").replace(/\([^)]*\)/g, " "))
     .replace(/['’]/g, " ")
-    .replace(DESCRIBING_RE, " ")
-    .replace(MULTI_RE, (m) => ` ${MULTI_MAP.get(m.replace(/[- ]/g, "")) || m} `)
-    .replace(/\b(\d+)\s*%/g, " ");
-  return text
+    .replace(DESCRIBING_RE, " ");
+  if (phraseRe) text = text.replace(phraseRe, (m) => ` ${phraseMap.get(m.replace(/[- ]/g, "")) || m} `);
+  const tokens = text
+    .replace(/\b(\d+)\s*%/g, " ")
     .split(/[^a-z0-9-]+/)
-    .filter((w) => w && !LITTLE.has(w) && !/^\d/.test(w))
-    .map((w) => WORD_MAP.get(w) || WORD_MAP.get(w.replace(/[sx]$/, "")) || w)
+    .filter(Boolean);
+  return tokens
+    .map((w, i) => {
+      if (LITTLE.has(w) || /^\d/.test(w)) return null;
+      // « mûres » is blackberries, and the feminine of « mûr », ripe: it is the fruit on its own or
+      // after « de », « aux », « et » or a number (« confiture de mûres »), and it only says ripe
+      // after another word (« cerises mûres »), which is then left out like any describing word.
+      const before = tokens[i - 1];
+      if (also.has(w) && before && !LITTLE.has(before) && !/^\d/.test(before)) return also.get(w);
+      return words.get(w) || words.get(w.replace(/[sx]$/, "")) || w;
+    })
+    .filter(Boolean)
     .join(" ")
     .replace(OWN_LEAF_RE, "$1leaf")
     .replace(OWN_LEAF_FR_RE, "$1leaf");
@@ -160,7 +152,7 @@ function toEnglish(name) {
 const DESCRIPTORS = new Set(
   (
     "whole skim nonfat fat-free low-fat reduced-fat unsalted salted boneless skinless bone-in skin-on lean extra-lean extra-virgin virgin " +
-    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought mild moulu moulue moulus moulues all-purpose pure granulated bulb"
+    "organic bio plain natural regular low-sodium sodium-free no-salt-added light homemade store-bought mild moulu moulue moulus moulues all-purpose pure granulated bulb ripe"
   ).split(" ")
 );
 // What a food was made into: not the food itself.
@@ -178,7 +170,9 @@ const COMPOUNDS = [
   ["green onion", "scallion"], ["spring onion", "scallion"], ["green bean", "greenbean"], ["black bean", "blackbean"], ["kidney bean", "kidneybean"],
   ["sweet potato", "sweetpotato"], ["red pepper flake", "chiliflake"], ["sour cream", "sourcream"], ["cream cheese", "creamcheese"], ["ice cream", "icecream"],
   ["coconut milk", "coconutmilk"], ["peanut butter", "peanutbutter"], ["maple syrup", "maplesyrup"],
-  ["crushed red pepper", "chiliflake"], ["chili flake", "chiliflake"], ["chile flake", "chiliflake"], ["corn starch", "cornstarch"],
+  ["crushed red pepper", "chiliflake"], ["chili flake", "chiliflake"], ["chilli flake", "chiliflake"], ["chile flake", "chiliflake"], ["corn starch", "cornstarch"],
+  // "cheese" is left out of a name ("pita bread" is pita, "cheddar cheese" is cheddar), so goat cheese would be the goat.
+  ["goat cheese", "goatcheese"],
 ];
 // Names that are one food written two ways, said once here.
 const SAME_FOOD = { "smoked paprika": "paprika", "cooking oil": "vegetable oil", "canola oil": "vegetable oil" };
@@ -188,6 +182,19 @@ const PEPPER_COLOURS = new Set(["red", "yellow", "green", "purple"]);
 const TAP_WATER_WORDS = new Set("water cold warm hot boiling lukewarm ice iced tap filtered cool room-temperature".split(" "));
 // Words that only say what kind of thing it is ("pita bread" is pita).
 const GENERIC = new Set(["bread", "cheese"]);
+// A name with an animal in it is that animal ("rotisserie chicken", "pork shoulder steaks") unless it
+// is made into something else. Bacon, ham and sausage are a food of their own, whatever animal they
+// come from (the animal only tells two of them apart, like a colour): a sausage is never a pork chop.
+const MADE_MEATS = new Set("bacon ham prosciutto pancetta sausage chorizo".split(" "));
+// These next to an animal make another food, not the animal: "chicken liver", "duck fat",
+// "shrimp salad", "pork rinds", "beef tomatoes", "oyster mushrooms", "corned beef".
+const NOT_THE_ANIMAL = new Set(
+  "liver kidney fat rind nugget patty burger meatball salad soup curry gravy bowl pie sandwich mushroom tomato corned".split(" ")
+);
+// Varieties that canonicalize leaves out but that tell two foods apart, and the kind each one is
+// ("roma" is a plum tomato, so it is not a cherry or a grape tomato). Hass and California avocados
+// are the same fruit, so those stay left out.
+const VARIETY_KINDS = new Map([["roma", "plum"]]);
 // Style words that never name another food, with the product they imply: "balsamic"
 // alone is "balsamic vinegar" and "sriracha" is "sriracha sauce". Plain "vinegar" is
 // not balsamic, so these stay part of the food; only the product word is filled in.
@@ -208,26 +215,39 @@ const ALSO_COVERS = [["seasoned rice vinegar", "rice vinegar"]];
 // The parts of a fruit that a whole one covers (bottled juice never covers the fruit).
 const FRUIT_PARTS = { lime: ["juice", "zest"], lemon: ["juice", "zest"], orange: ["zest"] };
 
-const profileCache = new Map();
+// The parts of a whole food that it covers, one way only: an egg covers a recipe's "egg yolk" and
+// "egg white", but a yolk or a white never covers an egg. A part is only read on a name that is
+// the food and the part and nothing else ("white egg noodles" stays egg noodles).
+const FOOD_PARTS = { egg: ["yolk", "white"] };
 
-// Everything the matching needs to know about one name.
-export function foodProfile(name) {
-  const key = String(name || "");
-  if (profileCache.has(key)) return profileCache.get(key);
-
-  let core = canonicalize(toEnglish(key)).core;
+// Everything the matching needs to know about one name, read with the French in `reading`
+// (frenchReading.js: the table, Matt's changes and the matcher's own words).
+function buildProfile(key, reading) {
+  const { core: written, varieties } = canonicalize(toEnglish(key, reading));
+  let core = written;
   const words0 = core.split(" ").filter((w) => w && !DESCRIPTORS.has(w) && !LITTLE.has(w));
   core = words0.join(" ");
   core = SAME_FOOD[core] || core;
   let joined = ` ${core} `;
   for (const [phrase, token] of COMPOUNDS) joined = joined.replace(` ${phrase} `, ` ${token} `);
   let words = joined.trim().split(" ").filter(Boolean);
+  words.push(...varieties.filter((v) => VARIETY_KINDS.has(v)).map((v) => VARIETY_KINDS.get(v)));
   for (const [from, to] of SYNONYMS) {
     if (from.every((w) => words.includes(w))) words = [...new Set([...words.filter((w) => !from.includes(w)), ...to])];
   }
   // A style word on its own names its product: "miso" is "miso paste".
   const styled = words.filter((w) => !KINDS.has(w));
   if (styled.length === 1 && STYLE_WORDS[styled[0]]) words = [...words, STYLE_WORDS[styled[0]]];
+
+  // "egg yolk", "egg whites": the egg and the part of it ("white" is a colour everywhere else).
+  let part = null;
+  for (const [whole, parts] of Object.entries(FOOD_PARTS)) {
+    const found = parts.find((w) => words.includes(w));
+    if (found && words.includes(whole) && words.every((w) => w === whole || w === found)) {
+      part = found;
+      words = words.filter((w) => w !== found);
+    }
+  }
 
   let derived = null;
   const cuts = new Set();
@@ -248,30 +268,66 @@ export function foodProfile(name) {
   // Plain pepper is the spice; a coloured pepper is the vegetable ("bell" stays in
   // a bell pepper's name, so that one is never the spice).
   if (base.length === 1 && base[0] === "pepper" && [...kinds].some((k) => PEPPER_COLOURS.has(k))) base = ["bell", "pepper"];
+  // "orange" is a fruit first, so an orange pepper is told by its two words: it is a bell pepper.
+  if (base.length === 2 && base.includes("orange") && base.includes("pepper")) base = ["orange", "bell", "pepper"];
   if (base.length > 1) base = base.filter((w) => !GENERIC.has(w));
   // A cut on its own ("flank steak", "sirloin") is still a meat.
   if (base.length === 0) {
     const fam = familyKey(words.join(" "));
     base = fam && fam !== words.join(" ") ? [fam] : [...cuts].map((c) => familyKey(c));
   }
-  // Chicken is chicken whatever else the name says ("rotisserie chicken").
-  const family = familyKey(base.join(" "));
-  const food = family !== base.join(" ") ? family : [...base].sort().join(" ");
+  // A sausage, bacon or ham is its own food, and pork is what it is made of unless the name says
+  // another animal ("pork sausage" is a sausage, "turkey bacon" is not bacon). Any other word keeps
+  // it apart too ("bacon grease", "bacon bits").
+  if (base.some((w) => MADE_MEATS.has(w))) base = base.filter((w) => w !== "pork");
 
-  const profile = { core, food, derived, cuts, kinds };
-  profileCache.set(key, profile);
-  return profile;
+  return { core, food: foodOf(base), derived, part, cuts, kinds };
 }
 
-const overlaps = (a, b) => a.size === 0 || b.size === 0 || [...a].some((x) => b.has(x));
+// The food a name is, once its words are sorted out. Chicken is chicken whatever else the name says
+// ("rotisserie chicken"), except when it is made into something else; a synonym is swapped word by
+// word ("chilli" is "chile", so "chilli jam" is a chile jam and not a chile).
+function foodOf(base) {
+  const whole = base.join(" ");
+  if (base.some((w) => MADE_MEATS.has(w))) return [...base].sort().join(" ");
+  const exact = cutFamily(whole) || synonymOf(whole);
+  if (exact) return exact;
+  if (!base.some((w) => NOT_THE_ANIMAL.has(w))) {
+    const animal = base.find(animalWord);
+    if (animal) return animal;
+  }
+  const words = base.map((w) => synonymOf(w) || w);
+  // A chile is a chile pepper, hot or not ("chili", "chili pepper" and "hot chilies"), while a chile
+  // jam, a chili con carne or a chili bean paste are other foods.
+  return (words.includes("chile") ? words.filter((w) => w !== "pepper" && w !== "hot") : words).sort().join(" ");
+}
 
-const lineFoods = new Map();
+// Everything the matching needs to know about one name.
+export function foodProfile(name) {
+  const key = String(name || "");
+  const reading = currentReading();
+  if (!profileCache.has(key)) profileCache.set(key, buildProfile(key, reading));
+  return profileCache.get(key);
+}
+
+// The same, read with another reading (a table with a draft row in it): for the Admin form's
+// checks. Nothing is kept.
+export const foodProfileUnder = (reading, name) => buildProfile(String(name || ""), reading);
+
+// How a name reads in English under `reading`, before the rules look at it.
+export const englishUnder = (reading, name) => toEnglish(name, reading);
+
+// Two profiles are the same food under the matcher's rules.
+export const sameProfiles = (a, b) => sameProfile(a, b);
+
+const overlaps = (a, b) => a.size === 0 || b.size === 0 || [...a].some((x) => b.has(x));
 
 // The foods written on one ingredient line: the line itself, or its parts when it
 // names several ("salt and pepper", « sel et poivre, au goût »). A part that is
 // only a note ("to taste", "minced") is not a food.
 export function foodsOnLine(name) {
   const key = String(name || "").trim();
+  currentReading(); // forgets the lines worked out with an older table
   if (!lineFoods.has(key)) {
     const parts = key.split(/\s*(?:,|&|\band\b|\bet\b)\s*/i).filter((part) => foodProfile(part).core);
     lineFoods.set(key, parts.length > 1 ? parts : [key]);
@@ -289,11 +345,10 @@ export function isTapWater(name) {
 function sameProfile(have, want) {
   if (!have.food || !want.food) return false;
   if (have.derived !== want.derived) return false;
+  if (have.part !== want.part) return false;
   if (have.food !== want.food) return false;
   return overlaps(have.cuts, want.cuts) && overlaps(have.kinds, want.kinds);
 }
-
-const alsoCovers = ALSO_COVERS.map(([from, to]) => [foodProfile(from), foodProfile(to)]);
 
 // Coriander written on its own (no "ground", no "seeds") is the herb, cilantro.
 const isBareCoriander = (p) => p.food === "coriander" && !p.derived && p.cuts.size === 0 && p.kinds.size === 0;
@@ -304,7 +359,9 @@ function coveredAnotherWay(have, want) {
   if ((isBareCoriander(have) && isCilantro(want)) || (isCilantro(have) && isBareCoriander(want))) return true;
   // A whole fruit covers its juice and its zest.
   if (!have.derived && have.food === want.food && FRUIT_PARTS[have.food]?.includes(want.derived)) return true;
-  return alsoCovers.some(([from, to]) => sameProfile(have, from) && sameProfile(to, want));
+  // A whole egg covers its yolk and its white (and a yolk or a white never covers an egg).
+  if (!have.part && !have.derived && have.food === want.food && FOOD_PARTS[have.food]?.includes(want.part)) return true;
+  return ALSO_COVERS.some(([from, to]) => sameProfile(have, foodProfile(from)) && sameProfile(foodProfile(to), want));
 }
 
 // The matcher's own rules: the two names are the same food.
@@ -402,9 +459,10 @@ function answersFor(kitchen) {
   const inventory = kitchen?.inventory || NO_ITEMS;
   const day = new Date().toDateString();
   const links = linksVersion();
+  const names = ingredientListVersion();
   let table = answers.get(inventory);
-  if (!table || table.day !== day || table.links !== links) {
-    table = { day, links, byName: new Map() };
+  if (!table || table.day !== day || table.links !== links || table.names !== names) {
+    table = { day, links, names, byName: new Map() };
     answers.set(inventory, table);
   }
   return table;
@@ -501,7 +559,7 @@ export function recipesUsingItem(item, recipes = []) {
 export function foodKey(name) {
   const p = foodProfile(name);
   if (!p.food) return `~${fold(name).trim()}`;
-  return [p.food, p.derived || "", [...p.cuts].sort().join("+"), [...p.kinds].sort().join("+")].join("|");
+  return [p.food, p.derived || "", p.part || "", [...p.cuts].sort().join("+"), [...p.kinds].sort().join("+")].join("|");
 }
 
 // Inventory items still good that go off within `withinDays` days, soonest first.

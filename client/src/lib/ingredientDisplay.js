@@ -1,9 +1,32 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { getLang, useLang } from "../i18n/index.js";
-import TABLE from "./ingredientDisplay.txt?raw";
-import { buildIndex, builtInRowsOf, effectiveRows, keyOf, parseTable } from "./ingredientTable.js";
+import {
+  SECTIONS,
+  ambiguous,
+  conflicts,
+  effectiveIngredientRows,
+  getIngredientOverrides,
+  ingredientOverridesVersion,
+  ingredientRows,
+  liveIngredientList,
+  nounIndex,
+  setIngredientOverrides,
+  subscribeIngredientOverrides,
+} from "./ingredientList.js";
+import { keyOf, parseTable } from "./ingredientTable.js";
 
-export { parseTable };
+export {
+  ambiguous,
+  conflicts,
+  effectiveIngredientRows,
+  getIngredientOverrides,
+  ingredientOverridesVersion,
+  ingredientRows,
+  nounIndex,
+  parseTable,
+  setIngredientOverrides,
+  subscribeIngredientOverrides,
+};
 
 // What a recipe's ingredient is called in the language the person picked.
 //
@@ -29,68 +52,27 @@ export { parseTable };
 //   - A note ("finely chopped", « fondu ») is translated only when every word of it is
 //     known, and agrees with the ingredient it belongs to.
 //
-// The matcher (inventoryMatch.js) is not touched and does not read this file or the overrides;
-// ingredientDisplayMatcher.test.js fails when a line of the file is not the same food to it.
-// (The overrides are not checked against the matcher until it reads this list too.)
+// The list itself (the file, Matt's changes on top of it, and what follows them) is
+// lib/ingredientList.js. The Inventory matcher reads the same list for its French
+// (lib/frenchReading.js), and the recipe search reads it for either language (`ingredientSearchTerms`
+// below); ingredientDisplayMatcher.test.js fails when a row, built-in or changed, is not the
+// same food to the matcher in both languages.
 
 // ---- The table --------------------------------------------------------------------
 
-const SECTIONS = parseTable(TABLE);
-
-// The built-in rows, exactly as the file has them:
-// { en: { one: [..], other: [..] }, fr: { one, other }, gender: "m" | "f", alwaysPlural: bool, key }
-export const ingredientRows = builtInRowsOf(SECTIONS);
-
-// The built-in file's own lookup. `conflicts`: two lines that claim the same written name in the
-// same language (the test fails on any). `ambiguous`: a written form that is a different
-// ingredient in each language (« raisin »), which is not read at all.
-const builtIn = buildIndex(ingredientRows);
-export const nounIndex = builtIn.nounIndex;
-export const conflicts = builtIn.conflicts;
-export const ambiguous = builtIn.ambiguous;
-
-// ---- Matt's overrides -------------------------------------------------------------
-
-// The rows in use: the built-in rows with Matt's overrides applied. It is rebuilt whenever
-// the overrides change (they arrive after the app has loaded, and change when he saves).
-let overrides = [];
-let live = { rows: ingredientRows, ...builtIn, ambiguousSet: new Set(builtIn.ambiguous) };
-let version = 0;
-const listeners = new Set();
+// The list in use changes when Matt's changes do: the names already worked out are forgotten.
 const nameCache = new Map();
-
-// Replaces the whole list of overrides: [{ id, replaces, hidden, enOne, enOther, frOne, frOther,
-// gender, updatedAt, updatedBy }], as the server sends it. Every screen that draws a name follows.
-export function setIngredientOverrides(next) {
-  overrides = Array.isArray(next) ? next : [];
-  const rows = effectiveRows(ingredientRows, overrides);
-  const index = buildIndex(rows);
-  live = { rows, ...index, ambiguousSet: new Set(index.ambiguous) };
+const searchCache = new Map();
+subscribeIngredientOverrides(() => {
   nameCache.clear();
-  version++;
-  for (const listener of [...listeners]) listener();
-}
-
-export const getIngredientOverrides = () => overrides;
-
-// Moves whenever the overrides change.
-export const ingredientOverridesVersion = () => version;
-
-// Calls `listener` whenever the overrides change; gives back the function that stops it.
-export const subscribeIngredientOverrides = (listener) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
+  searchCache.clear();
+});
 
 // For a component that must draw again when the overrides change. The whole app does (AuthGate,
 // as it does for the language), so a name drawn by a plain function is drawn again too.
 export function useIngredientOverridesVersion() {
   return useSyncExternalStore(subscribeIngredientOverrides, ingredientOverridesVersion, ingredientOverridesVersion);
 }
-
-// The rows in use now (built-in with the overrides applied, Matt's first): the one list the
-// Admin search reads, and what the matcher and the search will read.
-export const effectiveIngredientRows = () => live.rows;
 
 // Describing words: key -> { word, lang, index (0 m, 1 f, 2 m pl, 3 f pl) }.
 export const describing = SECTIONS["describing words"].map(({ cells }) => {
@@ -170,8 +152,8 @@ function readNoun(text) {
   for (let len = words.length; len >= 1; len--) {
     for (let start = 0; start + len <= words.length; start++) {
       const key = words.slice(start, start + len).join(" ");
-      const candidates = live.nounIndex.get(key);
-      if (!candidates || live.ambiguousSet.has(key)) continue;
+      const candidates = liveIngredientList().nounIndex.get(key);
+      if (!candidates || liveIngredientList().ambiguousSet.has(key)) continue;
       const before = readDescribing(words.slice(0, start));
       const after = readDescribing(words.slice(start + len));
       if (!before || !after) continue;
@@ -327,7 +309,7 @@ function mirrorCase(written, shown) {
   const letters = written.replace(/[^\p{L}]/gu, "");
   if (letters.length > 3 && letters === letters.toUpperCase()) return shown.toUpperCase();
   const first = written.match(/\p{L}/u)?.[0];
-  if (first && first === first.toUpperCase() && first !== first.toLowerCase() && !live.properFirstWords.has(keyOf(written.split(/\s+/)[0]))) {
+  if (first && first === first.toUpperCase() && first !== first.toLowerCase() && !liveIngredientList().properFirstWords.has(keyOf(written.split(/\s+/)[0]))) {
     return shown.charAt(0).toUpperCase() + shown.slice(1);
   }
   return shown;
@@ -381,6 +363,49 @@ export function isKnownNote(note) {
   const text = String(note ?? "").trim();
   if (!text) return true;
   return showNote(text, "en", { gender: "m" }, "one", 1) !== null && showNote(text, "fr", { gender: "m" }, "one", 1) !== null;
+}
+
+// ---- Searching by a name --------------------------------------------------------------
+
+// Every way a search for `term` can be written, in either language, so « coriandre » finds a recipe
+// with "fresh cilantro" and "cilantro" one with « coriandre fraîche ». Each is folded the way
+// `keyOf` folds (no accents, capitals, apostrophes or hyphens), because the search compares texts
+// folded that way. The term itself comes first.
+//   - a term that is a whole name in the table (any spelling, singular or plural, either language)
+//     gives every spelling of that row: « coriandre » is "cilantro" and "coriander" too;
+//   - a name with describing words around it (« oignon rouge ») gives its other-language
+//     reading ("red onion"), the way the display shows it;
+//   - a spelling that is a different ingredient in each language (« raisin ») gives only itself.
+// Worked out once per term and kept until Matt's changes change the list.
+export function ingredientSearchTerms(term) {
+  const key = keyOf(term);
+  if (!key) return [];
+  if (searchCache.has(key)) return searchCache.get(key);
+  const found = new Set([key]);
+  const list = liveIngredientList();
+  const rows = list.ambiguousSet.has(key) ? [] : (list.nounIndex.get(key) || []).map((entry) => entry.row);
+  for (const row of rows) {
+    for (const lang of ["en", "fr"]) for (const number of ["one", "other"]) for (const form of row[lang][number]) found.add(keyOf(form));
+  }
+  if (rows.length === 0) {
+    const reading = readName(String(term));
+    for (const lang of ["en", "fr"]) {
+      // A name with describing words around it is shown in the other language in both numbers
+      // (« oignon rouge » finds "red onions" as well as "red onion").
+      if (reading?.type === "noun") {
+        for (const number of ["one", "other"]) {
+          if (reading.row[lang][number].length > 0) found.add(keyOf(showNoun({ ...reading, number }, lang)));
+        }
+      } else {
+        const shown = translateName(String(term), lang);
+        if (shown) found.add(keyOf(shown));
+      }
+    }
+  }
+  found.delete("");
+  const terms = [...found];
+  searchCache.set(key, terms);
+  return terms;
 }
 
 // For a component: the same two functions, bound to the language shown now, so the text

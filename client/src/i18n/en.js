@@ -141,7 +141,7 @@ export const en = {
     },
     names: {
       title: "Ingredient names",
-      intro: "Recipes show their ingredients in the language picked (FR | EN) when the name is in the names table. Tap a name below to give it its English and French names, or search for one to correct. What you save applies to everyone at once. It changes the words shown, not what counts as “I have it”.",
+      intro: "Recipes show their ingredients in the language picked (FR | EN) when the name is in the names table. Tap a name below to give it its English and French names, or search for one to correct. What you save applies to everyone at once. It changes the words shown and also what counts as “I have it”: a French name you give here is read as its English one, in every language.",
       summary: { one: "{count} of {total} ingredient names has no translation yet.", other: "{count} of {total} ingredient names have no translation yet." },
       none: "Every ingredient name in your recipes has a translation.",
       noRecipes: "No ingredients to check yet.",
@@ -189,6 +189,7 @@ export const en = {
         spellingsHint: "Other spellings go between slashes: the first one is shown.",
         save: "Save for everyone",
         hide: "Hide this built-in name",
+        hideHint: "Hiding it also stops “I have it” from reading its French names.",
         backToBuiltIn: "Back to built-in",
         remove: "Remove",
       },
@@ -200,6 +201,12 @@ export const en = {
         ingredientGender: "Pick masculine or feminine.",
         ingredientHideNeedsBuiltIn: "Only a built-in name can be hidden.",
         ingredientTaken: "“{form}” is already used for another ingredient ({other}).",
+        ingredientMatcherWord: "“{form}” is a word “I have it” reads on its own (it means “{english}”). Use a longer name.",
+      },
+      warn: {
+        reads: "“{form}” already means “{was}” to “I have it”. With this row it would mean “{now}”, which changes which recipes count as had.",
+        different: "“I have it” does not take “{english}” and “{french}” for the same food, so it won't link them.",
+        notRead: "“I have it” never reads “{form}”: it is also an English word, or a different ingredient in each language. It won't count as had.",
       },
     },
     invites: {

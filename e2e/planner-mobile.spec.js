@@ -1,6 +1,7 @@
-import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { WHEN_FAILS, holdAndDragWhilePictureFails, holdPictures } from "./picture-fails.js";
+import { addDays } from "./quebec-day.js";
+import { expect, mondayAfter, test, thisMonday, todayIndex } from "./spec-clock.js";
 
 // The Planner on a phone (design: docs/design/riso-v2-planner-mobile-v2): three
 // days at a time on a board that slides under the pinned meal names (pages start
@@ -9,26 +10,14 @@ import { WHEN_FAILS, holdAndDragWhilePictureFails, holdPictures } from "./pictur
 // in the calendar, a long press to pick a card or a result up (a trash strip
 // while a card is held), and the shared finder as one pill at the bottom.
 
-test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
-
-const todayIndex = (now = new Date()) => (now.getDay() + 6) % 7;
-
-function mondayOf(d) {
-  const x = new Date(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
-}
-
-function nextMonday(now = new Date()) {
-  const x = new Date(now);
-  x.setDate(x.getDate() + 7);
-  return mondayOf(x);
-}
+// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
+// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, timezoneId: "America/Toronto" });
 
 // Tests that look at the page the board opens on, or at which days are past, depend on the
 // weekday. They run on a fixed day instead (a Thursday, when the current week opens on its
 // second page and three days are past), so they give the same answer whatever day it is.
-const FIXED_NOW = new Date(2026, 9, 8, 12, 0, 0);
+const FIXED_NOW = new Date("2026-10-08T12:00:00-04:00");
 const freezeToday = (page) => page.clock.setFixedTime(FIXED_NOW);
 
 async function setup(page) {
@@ -145,7 +134,7 @@ test("the board shows three days at a time; the meal names stay pinned; stickers
 test("cards: leftover = yellow border and tag, already have = blue border only, no shadow, no ✓ or ×; a note says NOTE; nothing planned is a plain card; past days are faded", async ({ page }) => {
   await freezeToday(page);
   const recipe = await setup(page);
-  const week = nextMonday(FIXED_NOW);
+  const week = mondayAfter(1, FIXED_NOW);
   await plan(page, recipe, week, 0, "dinner");
   await plan(page, recipe, week, 1, "dinner");
   const entries = await (await page.request.get(`/api/planner?week=${week}`)).json();
@@ -206,7 +195,7 @@ test("an empty slot's card opens under its row and pushes the rows down; Nothing
   await page.getByRole("button", { name: "Add to Breakfast, Wed" }).click();
   const card = page.getByRole("dialog", { name: "Add to Wed · Breakfast" });
   await expect(card).toBeVisible();
-  await expect(card.locator(".pmi-caps")).toHaveText("WED 7 · BREAKFAST".replace("7", String(new Date(Date.now() + 7 * 864e5 - ((new Date().getDay() + 6) % 7) * 864e5 + 2 * 864e5).getDate())));
+  await expect(card.locator(".pmi-caps")).toHaveText("WED 7 · BREAKFAST".replace("7", String(Number(addDays(mondayAfter(1), 2).slice(8)))));
   // Under the slot's row: below the cell, with the rows under it pushed down by its height.
   const cell = await page.locator(".pmb-cell.selected").boundingBox();
   const cardBox = await card.boundingBox();
@@ -225,11 +214,11 @@ test("an empty slot's card opens under its row and pushes the rows down; Nothing
   await expect(blank).toContainText("Confirm");
   await expect(blank).toHaveCSS("background-color", INK);
   expect(await blank.evaluate((el) => getComputedStyle(el).boxShadow)).toContain(PINK);
-  expect(await (await page.request.get(`/api/planner?week=${nextMonday()}`)).json()).toHaveLength(0);
+  expect(await (await page.request.get(`/api/planner?week=${mondayAfter(1)}`)).json()).toHaveLength(0);
   await blank.click();
   await expect(page.locator(".pmi")).toHaveCount(0);
   await expect(page.locator(".pmb-cell .riso-planner-note.blank")).toHaveCount(1);
-  await expect.poll(async () => (await (await page.request.get(`/api/planner?week=${nextMonday()}`)).json()).length).toBe(1);
+  await expect.poll(async () => (await (await page.request.get(`/api/planner?week=${mondayAfter(1)}`)).json()).length).toBe(1);
   await expect.poll(lunchName).toBeCloseTo(before, 0); // the rows are back
 
   // Closing: ✕, and tapping the same slot again.
@@ -279,7 +268,7 @@ test("Recipe makes the slot the search panel's target (a chip in the pill); + fi
 
   await page.getByRole("button", { name: "Add Roast chicken to the plan" }).click();
   await expect(page.locator(".pmb-cell .riso-planner-card")).toHaveCount(1);
-  const entries = await (await page.request.get(`/api/planner?week=${nextMonday()}`)).json();
+  const entries = await (await page.request.get(`/api/planner?week=${mondayAfter(1)}`)).json();
   expect([entries[0].dayOfWeek, entries[0].mealType]).toEqual([1, "dinner"]);
   await expect(page.getByRole("status").filter({ hasText: "Added to Tue · Supper" })).toBeVisible();
 
@@ -289,7 +278,7 @@ test("Recipe makes the slot the search panel's target (a chip in the pill); + fi
 
 test("a planned meal's card: the status steps plain -> leftovers -> already have with a toast and Undo; Replace targets the slot; Cook opens the recipe", async ({ page }) => {
   const recipe = await setup(page);
-  await plan(page, recipe, nextMonday(), 0, "dinner");
+  await plan(page, recipe, mondayAfter(1), 0, "dinner");
   await openPlanner(page);
   await page.getByRole("button", { name: "Next week" }).click();
 
@@ -335,7 +324,7 @@ test("a planned meal's card: the status steps plain -> leftovers -> already have
 
 test("a status tap that cannot be saved puts the card back as it was and says so", async ({ page }) => {
   const recipe = await setup(page);
-  await plan(page, recipe, nextMonday(), 0, "dinner");
+  await plan(page, recipe, mondayAfter(1), 0, "dinner");
   await openPlanner(page);
   await page.getByRole("button", { name: "Next week" }).click();
   await page.route("**/api/planner/*", (route) => (route.request().method() === "PUT" ? route.fulfill({ status: 500, json: { error: "nope" } }) : route.continue()));
@@ -391,7 +380,7 @@ test("the weekend's settings are in the calendar and match the desktop after a r
 
 test("a long press picks a planned card up and drops it on a slot (two swap); a result drops on a slot; holding at the edge turns the page; the trash strip removes with Undo", async ({ page }) => {
   const recipe = await setup(page);
-  const week = nextMonday();
+  const week = mondayAfter(1);
   await plan(page, recipe, week, 0, "dinner");
   await openPlanner(page);
   await page.getByRole("button", { name: "Next week" }).click();
@@ -475,7 +464,7 @@ test("a long press picks a planned card up and drops it on a slot (two swap); a 
 
 test("« Clear » is a small link under each future day that has something planned; the toast has Undo", async ({ page }) => {
   const recipe = await setup(page);
-  const week = nextMonday();
+  const week = mondayAfter(1);
   await plan(page, recipe, week, 1, "dinner");
   await openPlanner(page);
   await page.getByRole("button", { name: "Next week" }).click();
@@ -492,7 +481,7 @@ test("« Clear » is a small link under each future day that has something plann
 
 test("leftovers can be placed from a Main meal, on the board; the banner is stacked and nothing is cut off at 390px", async ({ page }) => {
   const recipe = await setup(page);
-  await plan(page, recipe, nextMonday(), 0, "dinner");
+  await plan(page, recipe, mondayAfter(1), 0, "dinner");
   await openPlanner(page);
   await page.getByRole("button", { name: "Next week" }).click();
 
@@ -522,7 +511,7 @@ test("leftovers can be placed from a Main meal, on the board; the banner is stac
   await expect(page.getByRole("button", { name: "Place leftovers" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Put leftovers on Lunch, Wed" }).click();
   await expect(page.locator(".pmb-cell .riso-planner-card.leftover .riso-planner-card-leftover")).toHaveText("leftover");
-  const entries = await (await page.request.get(`/api/planner?week=${nextMonday()}`)).json();
+  const entries = await (await page.request.get(`/api/planner?week=${mondayAfter(1)}`)).json();
   expect(entries.filter((e) => e.isLeftover)).toHaveLength(1);
   await page.getByRole("button", { name: "Place leftovers" }).click();
   await expect(page.getByRole("button", { name: /Put leftovers on/ })).toHaveCount(0);
@@ -530,7 +519,7 @@ test("leftovers can be placed from a Main meal, on the board; the banner is stac
 
 test("the date pill opens the calendar panel: three dashes a day, a tapped day shows its meals under its row, Show this week opens that week", async ({ page }) => {
   const recipe = await setup(page);
-  await plan(page, recipe, mondayOf(new Date()), todayIndex(), "dinner");
+  await plan(page, recipe, thisMonday(), todayIndex(), "dinner");
   await openPlanner(page);
 
   // The title is above the controls; the pill says this is the current week and turns blue while the calendar is open.
@@ -597,8 +586,8 @@ test("a photo that fails to load does not hide the next photo shown in the same 
   const { url } = await upload.json();
   const broken = await (await page.request.post("/api/recipes", { data: { title: "Broken photo", baseServings: 2, photoUrl: "/api/recipe-images/does-not-exist", ingredients: [{ name: "x" }] } })).json();
   const good = await (await page.request.post("/api/recipes", { data: { title: "Good photo", baseServings: 2, photoUrl: url, ingredients: [{ name: "x" }] } })).json();
-  await plan(page, broken, mondayOf(new Date()), 6, "dinner");
-  await plan(page, good, nextMonday(), 6, "dinner");
+  await plan(page, broken, thisMonday(), 6, "dinner");
+  await plan(page, good, mondayAfter(1), 6, "dinner");
   await openPlanner(page);
 
   const card = page.locator(".riso-planner-card");
@@ -620,7 +609,7 @@ for (const when of WHEN_FAILS) {
     const pictures = await holdPictures(page, /pictures\.example\.test/);
     const recipe = await setup(page);
     await page.request.put(`/api/recipes/${recipe.id}`, { data: { photoUrl: "https://pictures.example.test/roast-chicken.jpg" } });
-    const week = nextMonday();
+    const week = mondayAfter(1);
     await plan(page, recipe, week, 0, "dinner");
     await openPlanner(page);
     await page.getByRole("button", { name: "Next week" }).click();

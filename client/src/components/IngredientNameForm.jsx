@@ -8,6 +8,7 @@ import {
   draftForRow,
   guessGender,
   guessPlural,
+  matcherNotes,
   problemWith,
 } from "../lib/ingredientNameForm.js";
 import { cleanOverride } from "../lib/ingredientTable.js";
@@ -64,6 +65,8 @@ export function IngredientNameForm({ gap, card, overrides, onSave, onBack, onHid
 
   const problem = useMemo(() => problemWith(draft, { replaces, overrides, self }), [draft, replaces, overrides, self]);
   const shownProblem = problem && (problem.live || attempted) ? problem : null;
+  // What the Inventory matcher (« J'en ai ») makes of the names: notes, never a stop.
+  const notes = useMemo(() => matcherNotes(draft, { replaces, overrides, self }), [draft, replaces, overrides, self]);
 
   function save(event) {
     event.preventDefault();
@@ -158,6 +161,12 @@ export function IngredientNameForm({ gap, card, overrides, onSave, onBack, onHid
             </p>
           )}
 
+          {(problem?.live ? [] : notes).map((note) => (
+            <p key={`${note.kind}:${note.form || note.english}`} className="riso-namepop-warn" role="status">
+              {t(`admin.names.warn.${note.kind}`, note)}
+            </p>
+          ))}
+
           <div className="riso-namepop-actions">
             <button type="button" className="riso-btn" onClick={onClose}>
               {t("common.cancel")}
@@ -180,9 +189,12 @@ export function IngredientNameForm({ gap, card, overrides, onSave, onBack, onHid
                 </button>
               )}
               {card.status === "built-in" && (
-                <button type="button" className="riso-btn small" onClick={onHide}>
-                  {t("admin.names.form.hide")}
-                </button>
+                <>
+                  <button type="button" className="riso-btn small" onClick={onHide}>
+                    {t("admin.names.form.hide")}
+                  </button>
+                  <p className="riso-namepop-hint">{t("admin.names.form.hideHint")}</p>
+                </>
               )}
             </div>
           )}

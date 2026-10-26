@@ -26394,6 +26394,14 @@ body.no-select {
   color: var(--riso-danger);
 }
 
+.riso-namepop-warn {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 4px solid var(--riso-yellow);
+  font: 600 13.5px/1.4 var(--riso-font-body);
+  color: var(--riso-ink);
+}
+
 .riso-namepop-actions {
   display: flex;
   justify-content: flex-end;

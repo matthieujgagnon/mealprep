@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { E2E_INVITE } from "./invite.js";
 import { addInventoryItem, itemForm } from "./inventory-form.js";
+import { expect, test, thisMonday } from "./spec-clock.js";
 
 // Regression coverage for a real mobile drag-and-drop bug: every existing
 // drag e2e test (grocery/recipes/inventory) simulates a drag via
@@ -31,7 +31,9 @@ import { addInventoryItem, itemForm } from "./inventory-form.js";
 // a press-and-hold drags): Store mode's rows and Inventory's rows and tiles
 // do. These tests are what prove a held drag still isn't cancelled.
 
-test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 } });
+// The Planner counts its weeks and days on the browser's clock: the browser runs in Quebec's time zone and the
+// spec counts the same Quebec days (spec-clock.js), whatever time zone the machine is in.
+test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 }, timezoneId: "America/Toronto" });
 
 function uniqueEmail(tag) {
   return `${tag}+${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
@@ -135,9 +137,7 @@ test("a real touch drag repositions a placed meal card between planner cells wit
   const recipe = await (
     await page.request.post("/api/recipes", { data: { title: "Touch Recipe One", ingredients: [{ name: "flour" }] } })
   ).json();
-  const d = new Date();
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  const weekStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const weekStart = thisMonday();
   await page.request.post("/api/planner", {
     data: { recipeId: recipe.id, weekStart, dayOfWeek: 0, mealType: "breakfast" },
   });

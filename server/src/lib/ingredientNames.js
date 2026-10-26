@@ -9,7 +9,9 @@ import { builtInRowsOf, cleanOverride, clashOf, OVERRIDES_MAX, parseTable } from
 // repo (the whole repo is deployed). It is read ONCE, when the server starts, with the same
 // parser and rules the browser runs (client/src/lib/ingredientTable.js: there is no second copy
 // of either), so a change can be refused when it uses a spelling the built-in table already has.
-// The matcher and search (the next task) read the same list through `builtInIngredientRows`.
+// The matcher and the recipe search read the same list in the browser (client/src/lib/ingredientList.js);
+// the server does neither, so it reads the file only to refuse a spelling that is already taken or that
+// is one of the matcher's own words.
 
 const TABLE_FILE = new URL("../../../client/src/lib/ingredientDisplay.txt", import.meta.url);
 

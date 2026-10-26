@@ -15,7 +15,7 @@ import {
 } from "./ingredientDisplay.js";
 import { buildGroceryList } from "./groceryList.js";
 import { ingredientGaps } from "./ingredientGaps.js";
-import { itemCovers } from "./inventoryMatch.js";
+import { ingredientHave, itemCovers } from "./inventoryMatch.js";
 
 // Matt's changes to the ingredient names (the Admin page's Ingredient names card) sit on top of
 // the built-in table: one reader, so every screen follows. Removing a change goes back to the
@@ -161,31 +161,56 @@ describe("telling the screens", () => {
 });
 
 describe("the Inventory matcher", () => {
-  it("does not read the changes: every answer is the same with or without them", () => {
-    const pairs = [
-      ["garlic", "garlic cloves"],
-      ["Gousse d'ail", "garlic clove"],
-      ["Ail", "garlic"],
-      ["tomate", "tomatoes"],
-      ["Oignon", "onions"],
-      ["biryani masala", "masala biryani"],
-      ["caïeu d'ail", "garlic clove"],
-      ["échalote", "shallots"],
-      ["oignon jaune", "onion"],
-    ];
-    const answers = () => pairs.map(([have, want]) => [itemCovers(have, want), itemCovers(want, have)]);
-    const before = answers();
-    setIngredientOverrides([
-      added,
-      replace,
-      { id: "h1", replaces: "shallot", hidden: true, enOne: "", enOther: "", frOne: "", frOther: "", gender: "" },
-      { id: "c1", replaces: "onion", hidden: false, enOne: "onion", enOther: "onions", frOne: "oignon jaune", frOther: "oignons jaunes", gender: "m" },
-    ]);
-    expect(answers()).toEqual(before);
+  const hide = (key) => ({ id: `h-${key}`, replaces: key, hidden: true, enOne: "", enOther: "", frOne: "", frOther: "", gender: "" });
+
+  it("reads the changes: an ingredient Matt adds counts as soon as it is saved", () => {
+    expect(itemCovers("chou-rave", "kohlrabi")).toBe(false);
+    setIngredientOverrides([{ id: "k1", replaces: null, hidden: false, enOne: "kohlrabi", enOther: "kohlrabis", frOne: "chou-rave", frOther: "choux-raves", gender: "m" }]);
+    expect(itemCovers("chou-rave", "kohlrabi")).toBe(true);
+    expect(itemCovers("kohlrabi", "choux-raves")).toBe(true);
+    setIngredientOverrides([]);
+    expect(itemCovers("chou-rave", "kohlrabi")).toBe(false);
   });
 
-  it("does not import the display names or the changes to them", () => {
+  it("reads a spelling Matt gives a built-in row, and forgets one he took off it", () => {
+    expect(itemCovers("Gousse d'ail", "garlic clove")).toBe(true);
+    expect(itemCovers("caïeu d'ail", "garlic clove")).toBe(false);
+    setIngredientOverrides([replace]);
+    expect(itemCovers("caïeu d'ail", "garlic clove")).toBe(true);
+    // The row now has its own spellings: the built-in « gousse d'ail » is no longer one of them.
+    expect(itemCovers("Gousse d'ail", "garlic clove")).toBe(false);
+    setIngredientOverrides([]);
+    expect(itemCovers("Gousse d'ail", "garlic clove")).toBe(true);
+  });
+
+  it("stops reading the French of a built-in row Matt hides, and reads it again when it is back", () => {
+    expect(itemCovers("échalote", "shallots")).toBe(true);
+    setIngredientOverrides([hide("shallot")]);
+    expect(itemCovers("échalote", "shallots")).toBe(false);
+    setIngredientOverrides([]);
+    expect(itemCovers("échalote", "shallots")).toBe(true);
+  });
+
+  it("answers again for an Inventory it has already answered for", () => {
+    const kitchen = { inventory: [{ id: 1, name: "Chou-rave", quantity: 1, unit: null }] };
+    expect(ingredientHave("kohlrabi", kitchen)).toBe("need");
+    setIngredientOverrides([{ id: "k1", replaces: null, hidden: false, enOne: "kohlrabi", enOther: "kohlrabis", frOne: "chou-rave", frOther: "choux-raves", gender: "m" }]);
+    expect(ingredientHave("kohlrabi", kitchen)).toBe("have");
+    setIngredientOverrides([]);
+    expect(ingredientHave("kohlrabi", kitchen)).toBe("need");
+  });
+
+  it("keeps its own rules ahead of a name: « poudre » stays powder whatever a row says", () => {
+    setIngredientOverrides([{ id: "p1", replaces: null, hidden: false, enOne: "talc", enOther: "=", frOne: "poudre", frOther: "=", gender: "f" }]);
+    expect(itemCovers("poudre de chili", "chili powder")).toBe(true);
+    expect(itemCovers("poudre", "talc")).toBe(false);
+  });
+
+  it("reads the list through lib/ingredientList.js, never the display helper, and no second French list", () => {
     const source = fs.readFileSync(new URL("./inventoryMatch.js", import.meta.url), "utf8");
-    expect(source).not.toMatch(/ingredientDisplay|ingredientTable|nameSaves/);
+    expect(source).toMatch(/from "\.\/ingredientList\.js"/);
+    expect(source).toMatch(/from "\.\/frenchReading\.js"/);
+    expect(source).not.toMatch(/ingredientDisplay\.js|nameSaves/);
+    expect(source).not.toMatch(/KITCHEN_FR|bilingual\.js/);
   });
 });
