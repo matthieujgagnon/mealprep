@@ -49,6 +49,12 @@ import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLin
 //     (ALSO_COVERS: seasoned rice vinegar is rice vinegar, not the other way round);
 //   - a whole lime or lemon covers its juice and zest, an orange its zest; bottled
 //     juice never covers the fruit (FRUIT_PARTS);
+//   - dried and smoked are foods of their own, in both directions and both languages ("dried apricots" are
+//     not apricots, smoked salmon is not salmon; STATE_WORDS): "dehydrated", "sun-dried", « séchées »,
+//     « déshydratées », « fumées »... are the same state. "dried" says nothing about a herb, a spice or a
+//     food only sold dry (DRIED_IS_PLAIN: "dried oregano" is oregano, "dried spaghetti" is spaghetti), nor
+//     about a ground spice ("dried ground mustard"), and "smoked" says nothing about paprika; "cooked",
+//     "raw", "fresh" and "frozen" are still left out;
 //   - an egg covers its yolk and its white, never the other way round (an egg is not "egg
 //     yolk" in a recipe; a yolk is not an egg);
 //   - a meat made into something else is a food of its own: a sausage, bacon or ham is never a pork
@@ -114,6 +120,48 @@ const DESCRIBING = [
 ].sort((a, b) => b.length - a.length);
 const DESCRIBING_RE = new RegExp(`(?<![a-z])(${DESCRIBING.map((phrase) => phrase.replace(/ /g, "[- ]+")).join("|")})(?![a-z])`, "g");
 
+// How a food was kept: dried and smoked are different products you buy differently, so they tell two
+// foods apart ("dried apricots" are not apricots, smoked salmon is not salmon), in both directions and
+// in both languages. Every way of writing them is read as one of the two states: "dehydrated",
+// "sun-dried", "freeze-dried", « séchées », « séchées au soleil », « déshydratées », « lyophilisées »
+// are dried, "hickory-smoked" and « fumée » are smoked. ("dry" and « sec » are not here: a dry wine
+// or a dry-roasted nut is not a dried food; "cooked", "raw", "fresh" and "frozen" stay describing
+// words.) The state words are taken out of a name before the food is read, and the profile keeps them.
+const STATE_WORDS = new Map([["dried", "dried"], ["dehydrated", "dried"], ["sundried", "dried"], ["smoked", "smoked"]]);
+const DRIED_PHRASE_RE = /(?<![a-z])(?:(?:sun|freeze|air|oven)[- ]+dried|sech[a-z]*[- ]+au[- ]+soleil)(?![a-z])/g;
+const SMOKED_COMPOUND_RE = /(?<![a-z])[a-z]+-smoked(?![a-z])/g;
+// Foods that "dried" says nothing about, because that is how they are sold: the jar of oregano on the
+// spice rack is dried oregano, and a box of spaghetti or lentils is dry. (Beans and chickpeas are not
+// here: the bare name could be a can.) Written as the matcher reads the food.
+const DRIED_IS_PLAIN = new Set([
+  // Herbs.
+  "oregano", "thyme", "basil", "parsley", "dill", "mint", "rosemary", "sage", "chive", "tarragon", "bay", "marjoram", "savory", "cilantro",
+  "coriander", "fenugreek", "lemongrass", "herb",
+  // Spices and chili flakes.
+  "chiliflake", "paprika", "cumin", "turmeric", "cinnamon", "nutmeg", "cardamom", "saffron", "allspice", "cayenne pepper",
+  // Only ever sold dry.
+  "pasta", "spaghetti", "penne", "macaroni", "fusilli", "linguine", "fettuccine", "rigatoni", "farfalle", "orzo", "vermicelli", "lasagna",
+  "noodle", "egg noodle", "noodle rice", "lasagna noodle", "lentil", "pea split",
+]);
+// Smoked paprika is the paprika in the spice rack, as it always was (Cook with's "Paprika" finds it).
+const SMOKED_IS_PLAIN = new Set(["paprika"]);
+const STATE_IS_PLAIN = { dried: DRIED_IS_PLAIN, smoked: SMOKED_IS_PLAIN };
+
+// The state words in an English reading, and the rest of the name.
+function takeState(english) {
+  const states = new Set();
+  const rest = english.split(" ").filter((w) => {
+    const state = STATE_WORDS.get(w);
+    if (state) states.add(state);
+    return !state;
+  });
+  return { rest: rest.join(" "), states };
+}
+
+// "dried", "smoked", "dried+smoked" or "": the states that tell this food apart from its plain self.
+const stateOf = (food, states) =>
+  [...states].filter((state) => !STATE_IS_PLAIN[state].has(food)).sort().join("+");
+
 // The leaves that are a product of their own: "lime leaves" is not lime, "grape
 // leaves" are not grapes. Every other leaf is its herb ("basil leaves", "bay
 // leaves"), which canonicalize leaves out. Joined into one word before that.
@@ -126,7 +174,9 @@ function toEnglish(name, reading) {
   const { words, phraseRe, phraseMap, also = new Map() } = reading;
   let text = fold(String(name || "").replace(/\([^)]*\)/g, " "))
     .replace(/['’]/g, " ")
-    .replace(DESCRIBING_RE, " ");
+    .replace(DESCRIBING_RE, " ")
+    .replace(DRIED_PHRASE_RE, " dried ")
+    .replace(SMOKED_COMPOUND_RE, " smoked ");
   if (phraseRe) text = text.replace(phraseRe, (m) => ` ${phraseMap.get(m.replace(/[- ]/g, "")) || m} `);
   const tokens = text
     .replace(/\b(\d+)\s*%/g, " ")
@@ -175,7 +225,7 @@ const COMPOUNDS = [
   ["goat cheese", "goatcheese"],
 ];
 // Names that are one food written two ways, said once here.
-const SAME_FOOD = { "smoked paprika": "paprika", "cooking oil": "vegetable oil", "canola oil": "vegetable oil" };
+const SAME_FOOD = { "cooking oil": "vegetable oil", "canola oil": "vegetable oil" };
 // The colours that make "pepper" the vegetable.
 const PEPPER_COLOURS = new Set(["red", "yellow", "green", "purple"]);
 // Words that can sit beside "water" and leave it water from the tap.
@@ -223,7 +273,8 @@ const FOOD_PARTS = { egg: ["yolk", "white"] };
 // Everything the matching needs to know about one name, read with the French in `reading`
 // (frenchReading.js: the table, Matt's changes and the matcher's own words).
 function buildProfile(key, reading) {
-  const { core: written, varieties } = canonicalize(toEnglish(key, reading));
+  const { rest, states } = takeState(toEnglish(key, reading));
+  const { core: written, varieties } = canonicalize(rest);
   let core = written;
   const words0 = core.split(" ").filter((w) => w && !DESCRIPTORS.has(w) && !LITTLE.has(w));
   core = words0.join(" ");
@@ -238,6 +289,9 @@ function buildProfile(key, reading) {
   // A style word on its own names its product: "miso" is "miso paste".
   const styled = words.filter((w) => !KINDS.has(w));
   if (styled.length === 1 && STYLE_WORDS[styled[0]]) words = [...words, STYLE_WORDS[styled[0]]];
+
+  // "dried ground mustard" is ground mustard: a ground spice is dry already.
+  if (words.includes("ground")) states.delete("dried");
 
   // "egg yolk", "egg whites": the egg and the part of it ("white" is a colour everywhere else).
   let part = null;
@@ -281,7 +335,8 @@ function buildProfile(key, reading) {
   // it apart too ("bacon grease", "bacon bits").
   if (base.some((w) => MADE_MEATS.has(w))) base = base.filter((w) => w !== "pork");
 
-  return { core, food: foodOf(base), derived, part, cuts, kinds };
+  const food = foodOf(base);
+  return { core, food, derived, part, cuts, kinds, state: stateOf(food, states) };
 }
 
 // The food a name is, once its words are sorted out. Chicken is chicken whatever else the name says
@@ -346,6 +401,7 @@ function sameProfile(have, want) {
   if (!have.food || !want.food) return false;
   if (have.derived !== want.derived) return false;
   if (have.part !== want.part) return false;
+  if (have.state !== want.state) return false;
   if (have.food !== want.food) return false;
   return overlaps(have.cuts, want.cuts) && overlaps(have.kinds, want.kinds);
 }
@@ -356,6 +412,8 @@ const isCilantro = (p) => p.food === "cilantro" && !p.derived && p.cuts.size ===
 
 // The rules that make two differently written names one food, after sameProfile.
 function coveredAnotherWay(have, want) {
+  // A dried lime is not a fresh lime's juice, and a smoked food is not a plain one.
+  if (have.state !== want.state) return false;
   if ((isBareCoriander(have) && isCilantro(want)) || (isCilantro(have) && isBareCoriander(want))) return true;
   // A whole fruit covers its juice and its zest.
   if (!have.derived && have.food === want.food && FRUIT_PARTS[have.food]?.includes(want.derived)) return true;
@@ -559,7 +617,7 @@ export function recipesUsingItem(item, recipes = []) {
 export function foodKey(name) {
   const p = foodProfile(name);
   if (!p.food) return `~${fold(name).trim()}`;
-  return [p.food, p.derived || "", p.part || "", [...p.cuts].sort().join("+"), [...p.kinds].sort().join("+")].join("|");
+  return [p.food, p.derived || "", p.part || "", [...p.cuts].sort().join("+"), [...p.kinds].sort().join("+"), p.state].join("|");
 }
 
 // Inventory items still good that go off within `withinDays` days, soonest first.
@@ -685,7 +743,8 @@ export function buildTakeOut({ recipe, servings, inventory = [] }) {
     const qty = ing.quantity != null ? ing.quantity * scale : null;
 
     if (items.length === 0) {
-      const key = `missing:${foodProfile(ing.name).core || ing.name.toLowerCase()}`;
+      const profile = foodProfile(ing.name);
+      const key = `missing:${profile.state ? `${profile.state} ` : ""}${profile.core || ing.name.toLowerCase()}`;
       if (!others.has(key)) {
         others.set(key, { key, kind: "missing", names: [], on: false });
         order.push(key);

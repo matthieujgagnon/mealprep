@@ -21,6 +21,9 @@ export const RULE_WORDS_FR = [
   ["marine", "marinated"], ["marines", "marinated"], ["marinees", "marinated"],
   ["a bouillir", "boiling"], ["condense", "condensed"], ["evapore", "evaporated"],
   ["croustillant", "crispy"], ["croustillants", "crispy"],
+  // Dried, as « séché » is (the table's describing word): the matcher keeps "dried" apart from the plain food.
+  ["deshydrate", "dried"], ["deshydratee", "dried"], ["deshydrates", "dried"], ["deshydratees", "dried"],
+  ["lyophilise", "dried"], ["lyophilisee", "dried"], ["lyophilises", "dried"], ["lyophilisees", "dried"],
   ["mi maigre", "medium"], ["extra maigre", "extra lean"],
   ["hache", "ground"], ["hachee", "ground"], ["haches", "ground"],
   ["grec", "greek"], ["grecque", "greek"], ["balsamique", "balsamic"], ["all purpose", "all-purpose"],

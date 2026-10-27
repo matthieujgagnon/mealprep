@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { haveItemFor, ingredientHave, itemCovers, matchingItems } from "./inventoryMatch.js";
+import { readFileSync } from "node:fs";
+import { buildTakeOut, foodKey, haveItemFor, ingredientHave, itemCovers, matchingItems, recipeHave, recipeLines, recipeUsesItem } from "./inventoryMatch.js";
 
 // The table of expected answers for the names the matcher used to miss (rice wine
 // vinegar and rice vinegar, low-sodium soy sauce, liquid honey, balsamic, lime and its
@@ -788,5 +789,213 @@ describe("ripe is a describing word", () => {
     expect(ingredientHave("bananes mûres", bananas)).toBe("have");
     expect(ingredientHave("blackberries", bananas)).toBe("need");
     expect(ingredientHave("mûres", bananas)).toBe("need");
+  });
+});
+
+// ---- Dried and smoked are their own foods -----------------------------------------------------
+//
+// Dried and smoked are different products you buy differently: dried apricots are not apricots, and
+// smoked salmon is not salmon, in both directions and in both languages. The words that count as dried:
+// dried, dehydrated, freeze-dried, sun-dried, « séché(e)(s) » (also « séchées au soleil »),
+// « déshydraté(e)(s) » and « lyophilisé(e)(s) »; as smoked: smoked ("hickory-smoked" too) and
+// « fumé(e)(s) ». "dry" and « sec » are not read (a dry wine is not a dried food). Cooked, raw, fresh and
+// frozen are still describing words. Herbs, spices and the foods only sold dry keep their plain name.
+describe("dried and smoked are their own foods", () => {
+  it.each(
+    both([
+      // Dried fruit, vegetables, fish and mushrooms are not the fresh (or frozen) food.
+      ["apricots", "dried apricots"],
+      ["abricots", "abricots séchés"],
+      ["apricots", "abricots séchés"],
+      ["abricots", "dried apricots"],
+      ["abricot", "abricots déshydratés"],
+      ["cranberries", "dried cranberries"],
+      ["canneberges", "canneberges séchées"],
+      ["mango", "dried mango"],
+      ["mangue", "mangue séchée"],
+      ["cherries", "dried cherries"],
+      ["cerises", "cerises séchées"],
+      ["strawberries", "freeze-dried strawberries"],
+      ["fraises", "fraises lyophilisées"],
+      ["shrimp", "dried shrimp"],
+      ["crevettes", "crevettes séchées"],
+      ["crevette", "dried shrimp"],
+      ["shrimp", "crevettes séchées"],
+      ["tomatoes", "dried tomatoes"],
+      ["tomatoes", "sun-dried tomatoes"],
+      ["tomatoes", "sun dried tomatoes"],
+      ["tomates", "tomates séchées"],
+      ["tomates", "tomates séchées au soleil"],
+      ["tomates", "tomates déshydratées"],
+      ["tomatoes", "tomates séchées au soleil"],
+      ["mushrooms", "dried mushrooms"],
+      ["champignons", "champignons séchés"],
+      ["onion", "dried minced onion"],
+      ["oignon", "oignon déshydraté"],
+      // Dried beans and chickpeas: the bare name could be a can.
+      ["chickpeas", "dried chickpeas"],
+      ["pois chiches", "pois chiches séchés"],
+      ["white beans", "dried white beans"],
+      // Smoked fish, meat and tofu are not the plain food.
+      ["salmon", "smoked salmon"],
+      ["saumon", "saumon fumé"],
+      ["salmon", "saumon fumé"],
+      ["saumon", "smoked salmon"],
+      ["salmon", "cold smoked salmon"],
+      ["ham", "smoked ham"],
+      ["jambon", "jambon fumé"],
+      ["bacon", "smoked bacon"],
+      ["bacon", "hickory-smoked bacon"],
+      ["sausage", "smoked sausage"],
+      ["saucisse", "saucisse fumée"],
+      ["turkey", "smoked turkey"],
+      ["dinde", "dinde fumée"],
+      ["tofu", "smoked tofu"],
+      ["tofu", "tofu fumé"],
+      // Dried is not smoked.
+      ["dried salmon", "smoked salmon"],
+      ["saumon séché", "saumon fumé"],
+      ["dried tomatoes", "smoked tomatoes"],
+    ])
+  )("%s does not cover %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(false);
+  });
+
+  it.each(
+    both([
+      // Every way of writing dried is the same food, in both languages.
+      ["dried apricots", "dehydrated apricots"],
+      ["dried apricots", "abricots séchés"],
+      ["dried apricots", "abricots déshydratés"],
+      ["abricots séchés", "abricots déshydratés"],
+      ["Dried Apricots", "dried apricot"],
+      ["dried tomatoes", "sun-dried tomatoes"],
+      ["dried tomatoes", "sun dried tomatoes"],
+      ["sun-dried tomatoes", "sun dried tomatoes"],
+      ["sun-dried tomatoes", "tomates séchées au soleil"],
+      ["tomates séchées", "tomates séchées au soleil"],
+      ["tomates déshydratées", "dehydrated tomatoes"],
+      ["dried tomatoes", "tomates séchées"],
+      ["freeze-dried strawberries", "fraises lyophilisées"],
+      ["dried mango", "mangue séchée"],
+      ["dried shrimp", "crevettes séchées"],
+      ["dried mushrooms", "champignons séchés"],
+      ["dried cranberries", "canneberges séchées"],
+      ["dried chickpeas", "pois chiches séchés"],
+      // ...and smoked.
+      ["smoked salmon", "saumon fumé"],
+      ["smoked salmon", "cold smoked salmon"],
+      ["saumon fumé", "saumons fumés"],
+      ["smoked bacon", "hickory-smoked bacon"],
+      ["smoked ham", "jambon fumé"],
+      ["smoked sausage", "saucisse fumée"],
+      ["smoked tofu", "tofu fumé"],
+      ["smoked turkey", "dinde fumée"],
+    ])
+  )("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+
+  // The edge cases that keep matching, with the reason in each group.
+  it.each(
+    both([
+      // Dried herbs: the jar in the spice rack is the dried one, so "dried oregano" is "oregano".
+      ["oregano", "dried oregano"],
+      ["origan", "origan séché"],
+      ["oregano", "origan séché"],
+      ["origan", "dried oregano"],
+      ["basil", "dried basil"],
+      ["basilic", "basilic séché"],
+      ["parsley", "dried parsley"],
+      ["persil", "persil séché"],
+      ["thyme", "dried thyme"],
+      ["thym", "thym séché"],
+      ["bay leaves", "dried bay leaves"],
+      ["feuilles de laurier", "feuilles de laurier séchées"],
+      ["cilantro", "dried cilantro"],
+      ["coriandre", "coriandre séchée"],
+      ["chili flakes", "dried chili flakes"],
+      ["flocons de piment", "flocons de piment séchés"],
+      // A ground spice is dry already.
+      ["ground mustard", "dried ground mustard"],
+      ["moutarde moulue", "dried ground mustard"],
+      // Foods only ever sold dry: "dried" only describes the box.
+      ["spaghetti", "dried spaghetti"],
+      ["pasta", "dried pasta"],
+      ["pâtes", "pâtes séchées"],
+      ["pâtes", "dried pasta"],
+      ["lentils", "dried lentils"],
+      ["lentilles", "lentilles séchées"],
+      ["egg noodles", "dried egg noodles"],
+      ["rice noodles", "dried rice noodles"],
+      // Smoked paprika is the paprika in the spice rack (Cook with's "Paprika" finds it).
+      ["paprika", "smoked paprika"],
+      ["paprika", "paprika fumé"],
+      ["paprika", "sweet smoked paprika"],
+      ["smoked paprika", "paprika fumé"],
+      // Cooked, raw, fresh and frozen are describing words, as they were: raw chicken at home is the
+      // recipe's "cooked chicken".
+      ["chicken", "cooked chicken"],
+      ["poulet", "poulet cuit"],
+      ["poulet", "cooked chicken"],
+      ["chicken", "poulet cuit"],
+      ["rice", "cooked rice"],
+      ["riz", "riz cuit"],
+      ["shrimp", "cooked shrimp"],
+      ["crevettes", "crevettes cuites"],
+      ["tomatoes", "fresh tomatoes"],
+      ["peas", "frozen peas"],
+      ["pois", "pois surgelés"],
+    ])
+  )("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+
+  it("is a different line, a different ✓ and a different Cook with pick", () => {
+    const fresh = { inventory: [{ name: "Abricots" }] };
+    const dried = { inventory: [{ name: "Abricots séchés" }] };
+    expect(ingredientHave("apricots", fresh)).toBe("have");
+    expect(ingredientHave("dried apricots", fresh)).toBe("need");
+    expect(ingredientHave("apricots", dried)).toBe("need");
+    expect(ingredientHave("dried apricots", dried)).toBe("have");
+    expect(ingredientHave("smoked salmon", { inventory: [{ name: "Salmon" }] })).toBe("need");
+    expect(ingredientHave("salmon", { inventory: [{ name: "Saumon fumé" }] })).toBe("need");
+    // A recipe with both is two lines, each had or missing on its own.
+    const bake = { id: "bake", ingredients: [{ name: "apricots" }, { name: "dried apricots" }] };
+    expect(recipeLines(bake, fresh).map((l) => [l.name, l.had])).toEqual([["Apricots", true], ["Dried apricots", false]]);
+    expect(recipeHave(bake, dried)).toMatchObject({ totalCount: 2, matchedCount: 1, missing: ["Apricots"] });
+    // A pick finds the recipes that use that food and not the other one.
+    expect(recipeUsesItem({ ingredients: [{ name: "dried apricots" }] }, "Abricots")).toBe(false);
+    expect(recipeUsesItem({ ingredients: [{ name: "dried apricots" }] }, "Abricots séchés")).toBe(true);
+    expect(foodKey("apricots")).not.toBe(foodKey("dried apricots"));
+    expect(foodKey("abricots séchés")).toBe(foodKey("dried apricots"));
+    expect(foodKey("saumon fumé")).toBe(foodKey("smoked salmon"));
+    expect(foodKey("oregano")).toBe(foodKey("dried oregano"));
+    // The finished view's take-out list does not take the fresh item for the dried ingredient.
+    const rows = buildTakeOut({ recipe: { ingredients: [{ name: "dried apricots", quantity: 1, unit: "cup" }] }, servings: 1, inventory: [{ id: 1, name: "Abricots", quantity: 2, unit: "cup" }] });
+    expect(rows).toMatchObject([{ kind: "missing" }]);
+    const mixed = buildTakeOut({ recipe: { ingredients: [{ name: "apricots" }, { name: "dried apricots" }] }, servings: 1, inventory: [] });
+    expect(mixed.map((r) => r.kind)).toEqual(["missing", "missing"]);
+  });
+
+  it("does not read dry or « sec » as dried, and keeps a bare word from being a food", () => {
+    expect(itemCovers("white wine", "dry white wine")).toBe(false);
+    expect(itemCovers("dried", "dried")).toBe(false);
+    expect(itemCovers("smoked", "fumé")).toBe(false);
+  });
+
+  // The names table lists the herbs once, under "# Herbs": every one of them keeps its plain name, in both
+  // languages, so a herb added there later does not quietly become a different food when dried.
+  it("keeps every herb of the names table (English and French) the same when dried", () => {
+    const text = readFileSync(new URL("./ingredientDisplay.txt", import.meta.url), "utf8");
+    const section = text.split("\n# Herbs\n")[1].split("\n# Fruit\n")[0];
+    const rows = section.split("\n").filter((line) => line.includes("|")).map((line) => line.split("|").map((cell) => cell.trim().split("/")[0]));
+    expect(rows.length).toBeGreaterThan(10);
+    for (const [english, , french] of rows) {
+      expect(itemCovers(english, `dried ${english}`), `${english} / dried ${english}`).toBe(true);
+      expect(itemCovers(`dried ${english}`, english), `dried ${english} / ${english}`).toBe(true);
+      expect(itemCovers(french, `${french} séché`), `${french} / ${french} séché`).toBe(true);
+      expect(itemCovers(`${french} séché`, english), `${french} séché / ${english}`).toBe(true);
+    }
   });
 });
