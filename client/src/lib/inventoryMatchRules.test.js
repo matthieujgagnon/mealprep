@@ -999,3 +999,50 @@ describe("dried and smoked are their own foods", () => {
     }
   });
 });
+
+// ---- Mustard powder is one food, and never prepared mustard ------------------------------------
+//
+// The spice in the spice rack is written many ways, in both languages, and they all match each other. Prepared
+// mustard (Dijon, yellow, the plain jar) is another food: neither covers the other.
+describe("mustard powder is one food, and never prepared mustard", () => {
+  const POWDER = [
+    "dried mustard",
+    "dry mustard",
+    "ground mustard",
+    "dried ground mustard",
+    "mustard powder",
+    "dry mustard powder",
+    "powdered mustard",
+    "moutarde sèche",
+    "moutarde séchée",
+    "moutarde en poudre",
+    "moutarde moulue",
+    "poudre de moutarde",
+    "Dry Mustard",
+    "Ground Mustard",
+  ];
+  const PREPARED = ["mustard", "moutarde", "dijon mustard", "moutarde de Dijon", "yellow mustard", "moutarde jaune", "honey mustard", "English mustard"];
+
+  it.each(POWDER.flatMap((a) => POWDER.filter((b) => b !== a).map((b) => [a, b])))("%s covers %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(true);
+  });
+
+  it.each(both(POWDER.flatMap((a) => PREPARED.map((b) => [a, b]))))("%s does not cover %s", (have, ingredient) => {
+    expect(itemCovers(have, ingredient)).toBe(false);
+  });
+
+  it("is not mustard seed, and a prepared mustard line is not had with the powder", () => {
+    for (const [have, ingredient] of both([
+      ["mustard seeds", "mustard powder"],
+      ["graines de moutarde", "moutarde en poudre"],
+      ["mustard seeds", "ground mustard"],
+    ])) {
+      expect(itemCovers(have, ingredient)).toBe(false);
+    }
+    expect(ingredientHave("dijon mustard", { inventory: [{ name: "Moutarde sèche" }] })).toBe("need");
+    expect(ingredientHave("dry mustard", { inventory: [{ name: "Moutarde de Dijon" }] })).toBe("need");
+    expect(ingredientHave("dry mustard", { inventory: [{ name: "Moutarde en poudre" }] })).toBe("have");
+    expect(foodKey("moutarde sèche")).toBe(foodKey("mustard powder"));
+    expect(foodKey("mustard")).not.toBe(foodKey("ground mustard"));
+  });
+});

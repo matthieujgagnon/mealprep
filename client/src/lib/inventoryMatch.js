@@ -53,8 +53,11 @@ import { findLink, linkKey, linksOnItemName, linksVersion } from "./inventoryLin
 //     not apricots, smoked salmon is not salmon; STATE_WORDS): "dehydrated", "sun-dried", « séchées »,
 //     « déshydratées », « fumées »... are the same state. "dried" says nothing about a herb, a spice or a
 //     food only sold dry (DRIED_IS_PLAIN: "dried oregano" is oregano, "dried spaghetti" is spaghetti), nor
-//     about a ground spice ("dried ground mustard"), and "smoked" says nothing about paprika; "cooked",
-//     "raw", "fresh" and "frozen" are still left out;
+//     about a ground spice, and "smoked" says nothing about paprika; "cooked", "raw", "fresh" and "frozen"
+//     are still left out;
+//   - mustard powder is one food however it is written ("dry mustard", "dried ground mustard", "mustard
+//     powder", « moutarde sèche », « moutarde en poudre », « moutarde moulue ») and never prepared mustard
+//     (isMustardPowder);
 //   - an egg covers its yolk and its white, never the other way round (an egg is not "egg
 //     yolk" in a recipe; a yolk is not an egg);
 //   - a meat made into something else is a food of its own: a sausage, bacon or ham is never a pork
@@ -156,6 +159,18 @@ function takeState(english) {
     return !state;
   });
   return { rest: rest.join(" "), states };
+}
+
+// Mustard powder, the spice in the spice rack, is written many ways: "dry mustard", "dried mustard",
+// "ground mustard", "dried ground mustard", "mustard powder", « moutarde sèche », « moutarde en poudre »,
+// « moutarde moulue ». They are all one food, a powder, and none of them is prepared mustard (Dijon,
+// yellow) or the other way round: a name that is mustard and says it is dry or ground is read as
+// "mustard powder", which the matcher already keeps apart from the plain food.
+const MUSTARD_POWDER_WORDS = new Set("dry ground powder powdered moulu moulue moulus moulues poudre".split(" "));
+function isMustardPowder(rest, states) {
+  const words = rest.split(" ").filter((w) => w && !LITTLE.has(w));
+  const others = words.filter((w) => !MUSTARD_POWDER_WORDS.has(w));
+  return others.length === 1 && others[0] === "mustard" && (states.has("dried") || words.length > 1);
 }
 
 // "dried", "smoked", "dried+smoked" or "": the states that tell this food apart from its plain self.
@@ -273,7 +288,13 @@ const FOOD_PARTS = { egg: ["yolk", "white"] };
 // Everything the matching needs to know about one name, read with the French in `reading`
 // (frenchReading.js: the table, Matt's changes and the matcher's own words).
 function buildProfile(key, reading) {
-  const { rest, states } = takeState(toEnglish(key, reading));
+  const taken = takeState(toEnglish(key, reading));
+  const { states } = taken;
+  let { rest } = taken;
+  if (isMustardPowder(rest, states)) {
+    rest = "mustard powder";
+    states.delete("dried");
+  }
   const { core: written, varieties } = canonicalize(rest);
   let core = written;
   const words0 = core.split(" ").filter((w) => w && !DESCRIPTORS.has(w) && !LITTLE.has(w));

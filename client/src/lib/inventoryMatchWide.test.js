@@ -150,7 +150,8 @@ const GONE_ON_PURPOSE = [
 // the plain one, in both directions and both languages, a few of each kind here.
 //   - dried fruit, vegetables, fish and mushrooms are not the fresh (or frozen) food;
 //   - dried beans and chickpeas are not the bare name, which could be a can;
-//   - dry mustard powder is not the jar of mustard;
+//   - mustard powder (dried, dry, ground mustard, « moutarde sèche / en poudre / moulue ») is one food and is
+//     never prepared mustard (the plain jar, yellow, English), in both directions;
 //   - smoked salmon, turkey and tofu are not the plain food;
 //   - a bare "smoked", « fumé », « déshydraté » or "sun dried" (FoodKeeper keywords) is not a food;
 //   - herbs, spices and the foods only sold dry keep their plain name (rows in inventoryMatchRules.test.js).
@@ -197,6 +198,15 @@ const GONE_ON_PURPOSE_DRIED_AND_SMOKED = [
   ["pois chiche", "pois chiches séchés"],
   ["pois chiches séchés", "pois chiche"],
   ["dried mustard", "moutarde"],
+  ["mustard", "ground mustard"],
+  ["ground mustard", "mustard"],
+  ["moutarde", "moutarde moulue"],
+  ["moutarde moulue", "moutarde"],
+  ["yellow mustard", "dried mustard"],
+  ["dried mustard", "yellow mustard"],
+  ["moutarde jaune", "moutarde sèche"],
+  ["moutarde séchée", "moutarde"],
+  ["English mustard", "dried ground mustard"],
   ["salmon", "cold smoked salmon"],
   ["cold smoked salmon", "salmon"],
   ["filet de saumon", "saumon fumé"],

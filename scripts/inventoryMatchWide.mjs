@@ -76,6 +76,10 @@ const EXTRA = [
   "spaghetti", "dried spaghetti", "pasta", "dried pasta", "pâtes séchées", "lentils", "dried lentils", "lentilles", "lentilles séchées",
   "chickpeas", "dried chickpeas", "pois chiches", "pois chiches séchés", "dried white beans", "tofu", "smoked tofu", "tofu fumé",
   "cooked chicken", "poulet cuit", "chicken", "poulet", "cooked rice", "riz cuit", "rice", "riz",
+  // Mustard powder, written every way, and the prepared mustards it is not.
+  "mustard", "moutarde", "dried mustard", "dry mustard", "ground mustard", "dried ground mustard", "mustard powder", "dry mustard powder", "powdered mustard",
+  "moutarde sèche", "moutarde séchée", "moutarde en poudre", "moutarde moulue", "poudre de moutarde", "yellow mustard", "moutarde jaune", "honey mustard",
+  "English mustard", "mustard seeds", "graines de moutarde",
 ];
 
 // Words that describe or prepare a food and are never a food: as a name on their own
