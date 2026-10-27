@@ -8,8 +8,9 @@ import { itemCovers } from "./inventoryMatch.js";
 // ingredients, FoodKeeper's products, every spelling of the ingredient names table in both
 // languages, the matcher's own French words and the ingredient names the tests and the browser
 // tests use (scripts/inventoryMatchWide.mjs builds it). fixtures/inventoryMatchBaseline.json is
-// what the matcher answered for them when it began to read its French from that table: for each
-// name as an Inventory item, the names (as recipe ingredients) it covered.
+// what the matcher answered for them when dried and smoked became foods of their own (it was rebuilt
+// then; before that it was what the matcher answered when it began to read its French from the
+// table): for each name as an Inventory item, the names (as recipe ingredients) it covered.
 //
 // A change to the matcher must not lose one of those matches without somebody
 // meaning to. If this test fails, look at the pair it names: if it is a wrong match
@@ -144,6 +145,93 @@ const GONE_ON_PURPOSE = [
   ["vinegar", "vinaigre rouge"],
 ];
 
+// Matches that went away on purpose when dried and smoked became foods of their own (the lost matches are
+// grouped and explained in the pull request): a dried food is not the fresh one and a smoked food is not
+// the plain one, in both directions and both languages, a few of each kind here.
+//   - dried fruit, vegetables, fish and mushrooms are not the fresh (or frozen) food;
+//   - dried beans and chickpeas are not the bare name, which could be a can;
+//   - mustard powder (dried, dry, ground mustard, « moutarde sèche / en poudre / moulue ») is one food and is
+//     never prepared mustard (the plain jar, yellow, English), in both directions;
+//   - smoked salmon, turkey and tofu are not the plain food;
+//   - a bare "smoked", « fumé », « déshydraté » or "sun dried" (FoodKeeper keywords) is not a food;
+//   - herbs, spices and the foods only sold dry keep their plain name (rows in inventoryMatchRules.test.js).
+const GONE_ON_PURPOSE_DRIED_AND_SMOKED = [
+  ["apricot", "dried apricots"],
+  ["dried apricots", "apricot"],
+  ["abricot", "abricots séchés"],
+  ["abricots séchés", "abricot"],
+  ["abricot", "dried apricots"],
+  ["Baby Plum Tomatoes", "dried tomatoes"],
+  ["dried tomatoes", "Baby Plum Tomatoes"],
+  ["tomate", "tomates séchées"],
+  ["tomates séchées", "tomate"],
+  ["Baby Plum Tomatoes", "tomates séchées"],
+  ["cranberries", "dried cranberries"],
+  ["dried cranberries", "cranberries"],
+  ["canneberge", "canneberges séchées"],
+  ["canneberges séchées", "canneberge"],
+  ["cherries", "Dried Cherries"],
+  ["Dried Cherries", "cherries"],
+  ["cerise", "Dried Cherries"],
+  ["mango", "dried mango"],
+  ["dried mango", "mango"],
+  ["mangue", "mangue séchée"],
+  ["mangue séchée", "mangue"],
+  ["fruit", "Dried Fruit"],
+  ["Dried Fruit", "fruit"],
+  ["mushroom", "dried mushrooms"],
+  ["dried mushrooms", "mushroom"],
+  ["champignon", "champignons séchés"],
+  ["champignons séchés", "champignon"],
+  ["Jumbo Shrimp", "dried shrimp"],
+  ["dried shrimp", "Jumbo Shrimp"],
+  ["crevette", "crevettes séchées"],
+  ["crevettes séchées", "crevette"],
+  ["corn", "Dried white corn"],
+  ["Dried white corn", "corn"],
+  ["Dried white corn", "mais"],
+  ["bean", "dried white beans"],
+  ["dried white beans", "bean"],
+  ["dried white beans", "haricot"],
+  ["chickpea", "dried chickpeas"],
+  ["dried chickpeas", "chickpea"],
+  ["pois chiche", "pois chiches séchés"],
+  ["pois chiches séchés", "pois chiche"],
+  ["dried mustard", "moutarde"],
+  ["mustard", "ground mustard"],
+  ["ground mustard", "mustard"],
+  ["moutarde", "moutarde moulue"],
+  ["moutarde moulue", "moutarde"],
+  ["yellow mustard", "dried mustard"],
+  ["dried mustard", "yellow mustard"],
+  ["moutarde jaune", "moutarde sèche"],
+  ["moutarde séchée", "moutarde"],
+  ["English mustard", "dried ground mustard"],
+  ["salmon", "cold smoked salmon"],
+  ["cold smoked salmon", "salmon"],
+  ["filet de saumon", "saumon fumé"],
+  ["saumon fumé", "filet de saumon"],
+  ["cold smoked salmon", "filet de saumon"],
+  ["dindon", "Smoked Turkey Neck"],
+  ["Smoked Turkey Neck", "dindon"],
+  ["dinde", "Smoked Turkey Neck"],
+  ["firm tofu", "smoked tofu"],
+  ["smoked tofu", "firm tofu"],
+  ["commercially", "commercially dried"],
+  ["commercially dried", "commercially"],
+  ["split", "dried split"],
+  ["dried split", "split"],
+  ["sun", "sun dried"],
+  ["sun dried", "sun"],
+  ["sun dried", "sun dried"],
+  ["smoked", "smoked"],
+  ["smoked", "fume"],
+  ["fume", "fume"],
+  ["fumee", "fumes"],
+  ["deshydrate", "deshydrates"],
+  ["lyophilise", "lyophilise"],
+];
+
 describe("the wide check over real names", () => {
   it("lists a few thousand names and what they covered", () => {
     expect(names.length).toBeGreaterThan(3000);
@@ -159,7 +247,7 @@ describe("the wide check over real names", () => {
     expect(lost).toEqual([]);
   });
 
-  it.each([...GONE_ON_PURPOSE, ...GONE_ON_PURPOSE_FRENCH_AND_EGGS, ...GONE_ON_PURPOSE_MADE_FROM_ANIMALS])("%s does not cover %s, as it should not", (have, ingredient) => {
+  it.each([...GONE_ON_PURPOSE, ...GONE_ON_PURPOSE_FRENCH_AND_EGGS, ...GONE_ON_PURPOSE_MADE_FROM_ANIMALS, ...GONE_ON_PURPOSE_DRIED_AND_SMOKED])("%s does not cover %s, as it should not", (have, ingredient) => {
     expect(itemCovers(have, ingredient)).toBe(false);
   });
 });

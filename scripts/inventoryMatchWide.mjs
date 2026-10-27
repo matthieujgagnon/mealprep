@@ -65,6 +65,21 @@ const EXTRA = [
   "tomate roma", "roma tomatoes", "plum tomato", "tomate cerise", "tomate raisin", "fromage de chèvre", "goat", "goat cheese",
   "mûres", "mûre", "cerise mûre", "cerises mûres", "prune mûre", "tomate mûre", "banane mûre", "bananes mûres", "confiture de mûres", "tarte aux mûres", "ripe cherries", "ripe bananas", "blackberry jam",
   "ripe banana", "bananes", "ripe tomatoes", "tomates mûres", "ripe avocados", "avocat mûr", "avocats mûrs", "ripe mango", "mangue mûre", "ripe blackberries",
+  // Dried and smoked foods are their own foods, in both languages (herbs, spices and foods sold dry keep their plain name).
+  "apricots", "abricots", "dried apricots", "dehydrated apricots", "abricots séchés", "abricots déshydratés", "dried shrimp", "crevettes séchées", "shrimp",
+  "salmon", "saumon", "smoked salmon", "saumon fumé", "cold smoked salmon", "hickory-smoked bacon", "smoked bacon", "smoked ham", "jambon fumé", "ham", "smoked sausage", "saucisse fumée",
+  "tomatoes", "tomates", "dried tomatoes", "sun-dried tomatoes", "sun dried tomatoes", "tomates séchées", "tomates séchées au soleil", "tomates déshydratées", "dehydrated tomatoes",
+  "strawberries", "fraises", "freeze-dried strawberries", "fraises lyophilisées", "mushrooms", "champignons", "dried mushrooms", "champignons séchés",
+  "mango", "mangue", "dried mango", "mangue séchée", "cranberries", "canneberges", "dried cranberries", "canneberges séchées",
+  "oregano", "origan", "dried oregano", "origan séché", "basil", "dried basil", "basilic séché", "parsley", "dried parsley", "persil séché", "thyme", "dried thyme", "thym séché",
+  "dried chili flakes", "flocons de piment séchés", "paprika", "smoked paprika", "paprika fumé", "cilantro", "dried cilantro", "coriandre séchée",
+  "spaghetti", "dried spaghetti", "pasta", "dried pasta", "pâtes séchées", "lentils", "dried lentils", "lentilles", "lentilles séchées",
+  "chickpeas", "dried chickpeas", "pois chiches", "pois chiches séchés", "dried white beans", "tofu", "smoked tofu", "tofu fumé",
+  "cooked chicken", "poulet cuit", "chicken", "poulet", "cooked rice", "riz cuit", "rice", "riz",
+  // Mustard powder, written every way, and the prepared mustards it is not.
+  "mustard", "moutarde", "dried mustard", "dry mustard", "ground mustard", "dried ground mustard", "mustard powder", "dry mustard powder", "powdered mustard",
+  "moutarde sèche", "moutarde séchée", "moutarde en poudre", "moutarde moulue", "poudre de moutarde", "yellow mustard", "moutarde jaune", "honey mustard",
+  "English mustard", "mustard seeds", "graines de moutarde",
 ];
 
 // Words that describe or prepare a food and are never a food: as a name on their own
