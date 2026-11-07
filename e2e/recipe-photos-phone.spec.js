@@ -1,6 +1,7 @@
 import { expect, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { saveRecipe } from "./recipe-form.js";
+import { waitUntilStill } from "./wait-until-still.js";
 
 // The recipe form's photo tiles on a phone. Like every other drag in the app, a tile is picked up
 // by a press that holds still (hooks/useHeldDrag.js): a swipe along the page scrolls it, a held
@@ -35,6 +36,13 @@ async function openFormWithPhotos(page) {
   const tiles = page.locator(".re-photo:not(.uploading)");
   await expect(tiles).toHaveCount(3);
   await tiles.first().evaluate((el) => el.scrollIntoView({ block: "center" }));
+  // The form is a sheet that slides up, and its tiles are still moving (about 150px in the first 130 ms) when
+  // they first count three. A finger put where a tile WAS lands on something else: the drag never starts, or
+  // the swipe is not over the form. So the touch tests start once the tiles and the scroll stand still.
+  await waitUntilStill(page, async () => [
+    await tiles.evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left), Math.round(r.width)]; })),
+    await scrolled(tiles.first()),
+  ]);
   return tiles;
 }
 
