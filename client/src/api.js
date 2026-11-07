@@ -321,6 +321,15 @@ export const api = {
     request("/inventory-links", { method: "POST", body: JSON.stringify({ recipeName, itemName }) }),
   deleteInventoryLink: (id) => request(`/inventory-links/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
+  // Examples (server lib/examples.js): what the banner, the account menu and the sheets say
+  // ({ counts: { recipes, plannedMeals, inventoryItems, total }, canAdd, preview }), « Ajouter des
+  // exemples » (the person confirmed it in the sheet that lists exactly what it adds, CLAUDE.md),
+  // « Retirer les exemples », and its Undo, which only puts back what that removal took.
+  getExamples: () => request("/examples"),
+  addExamples: () => request("/examples", { method: "POST" }),
+  removeExamples: () => request("/examples", { method: "DELETE" }),
+  undoExamples: () => request("/examples/undo", { method: "POST" }),
+
   // Matt's changes to the ingredient names table (lib/ingredientDisplay.js). Every account reads the
   // list; saving, changing and removing are admin only (the server refuses anyone else with 403).
   listIngredientNames: () => request("/ingredient-names"),

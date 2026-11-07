@@ -6,6 +6,7 @@ import { mondayKey, plannedDays, validKey } from "../lib/plannedDates.js";
 import { entriesToCopy } from "../lib/copyWeek.js";
 import { isMealItem } from "../lib/mealItem.js";
 import { photoUrl, realPhoto } from "../lib/itemPhoto.js";
+import { liftMark } from "../lib/examples.js";
 
 export const plannerRouter = Router();
 
@@ -125,6 +126,9 @@ plannerRouter.post("/", async (req, res) => {
   if (await linksToNonMeal(req.userId, leftoverItemId)) return res.status(400).json(fail(req, "notAMeal"));
   // Linked to an Inventory meal: keep a copy of its photo (an Undo that sends the copy it had keeps that one).
   if (photo === undefined || photo === null) photo = (await photoCopyFor(req.userId, leftoverItemId)) ?? photo;
+  // Planning a recipe is the person's: an example recipe they plan themselves is theirs from now on
+  // (lib/examples.js). The meal made here is not an example.
+  await liftMark(prisma, req.userId, { recipeIds: [recipeId] });
 
   const entry = await prisma.plannerEntry.create({
     data: {
@@ -210,6 +214,8 @@ plannerRouter.post("/copy-week", async (req, res) => {
   ]);
   const toCreate = entriesToCopy(source, existingTarget);
   if (toCreate.length > 0) {
+    // The copies are the person's own meals, so the recipes they plan again are theirs (lib/examples.js).
+    await liftMark(prisma, req.userId, { recipeIds: toCreate.map((e) => e.recipeId) });
     await prisma.plannerEntry.createMany({
       data: toCreate.map((e) => ({
         userId: req.userId,
@@ -292,9 +298,18 @@ plannerRouter.put("/:id", async (req, res) => {
       ...(cookedAt !== undefined && { cookedAt: cookedAt ? new Date(cookedAt) : null }),
       ...(leftoverItemId !== undefined && { leftoverItemId: typeof leftoverItemId === "string" ? leftoverItemId : null }),
       ...(photo !== undefined && { photoUrl: photo === "none" ? null : photo }),
+      // Moving or changing a planned meal is the person's: an example one is theirs from now on.
+      isExample: false,
     },
   });
   if (count === 0) return res.status(404).json(fail(req, "notFound.plannerEntry"));
+  // Cooking it is the person's too, and makes its recipe theirs (lib/examples.js).
+  if (cookedAt) {
+    await prisma.recipe.updateMany({
+      where: { userId: req.userId, isExample: true, plannerEntries: { some: { id: req.params.id } } },
+      data: { isExample: false },
+    });
+  }
 
   const entry = await prisma.plannerEntry.findFirst({ where: { id: req.params.id, userId: req.userId } });
   res.json(entry);

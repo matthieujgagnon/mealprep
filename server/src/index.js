@@ -28,6 +28,7 @@ import { adminRouter } from "./routes/admin.js";
 import { ingredientNamesRouter } from "./routes/ingredientNames.js";
 import { feedbackRouter } from "./routes/feedback.js";
 import { inventoryLinksRouter } from "./routes/inventoryLinks.js";
+import { examplesRouter } from "./routes/examples.js";
 import { startFlyerScheduler } from "./lib/flyerImport.js";
 import { fail } from "./lib/i18n.js";
 import { applyKeepAliveTimeouts } from "./lib/keepAlive.js";
@@ -70,6 +71,7 @@ app.use("/api/recipe-images", requireAuth, recipeImagesRouter);
 app.use("/api/feedback", requireAuth, feedbackRouter);
 app.use("/api/inventory-links", requireAuth, inventoryLinksRouter);
 app.use("/api/ingredient-names", requireAuth, ingredientNamesRouter);
+app.use("/api/examples", requireAuth, examplesRouter);
 
 // Admin only: requireAdmin checks ADMIN_EMAILS on the server for every
 // /api/admin route and refuses everyone else with 403 (lib/admin.js).

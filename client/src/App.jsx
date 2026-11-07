@@ -39,6 +39,8 @@ import { RecipeDetailModal } from "./components/RecipeDetailModal.jsx";
 import { Planner } from "./components/Planner.jsx";
 import { Toast } from "./components/Toast.jsx";
 import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
+import { ExamplesBanner } from "./components/ExamplesBanner.jsx";
+import { useExamples } from "./hooks/useExamples.js";
 import { SlotPicker } from "./components/SlotPicker.jsx";
 import { weekendFrom } from "./lib/weekend.js";
 import { useIsPhone } from "./hooks/useIsPhone.js";
@@ -311,6 +313,24 @@ export default function App({ user, onLogout }) {
   const nameSaver = nameSaverRef.current;
   toastLatest.current = showToast;
   const [linkAsk, setLinkAsk] = useState(null); // { foods, label } while the "I have it as…" pop-up is open
+  // The account's examples (server lib/examples.js): what the banner and the sheets say, which sheet is
+  // open ("remove" | "add"), and a counter that remounts Home (it reads its own data) after a change.
+  const examples = useExamples();
+  const [examplesAsk, setExamplesAsk] = useState(null);
+  const [homeKey, setHomeKey] = useState(0);
+  // While examples remain, opening a page reads what it shows again: planning, cooking, moving or
+  // editing an example makes it the person's (the server takes the mark off in that save), and its
+  // « Exemple » tag and the count in the banner must follow without a reload. Nothing runs once the
+  // account has no example left.
+  const examplesLeft = examples.info?.counts.total > 0;
+  useEffect(() => {
+    if (!examplesLeft) return;
+    examples.refresh();
+    if (tab === "collection") api.listRecipes().then(loadRecipes).catch(() => {});
+    if (tab === "planner") api.listPlanner(weekStart).then(setPlannerRows).catch(() => {});
+    if (tab === "inventory") api.listPantryInventory().then(setPantryInventory).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
   const [loadError, setLoadError] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("all");
@@ -686,6 +706,87 @@ export default function App({ user, onLogout }) {
     onLogout();
   }
 
+  // ---- Examples -----------------------------------------------------------------------------
+  // Adding, removing or undoing them changes recipes, the Planner, Inventory and so the grocery
+  // list: read them all again, and remount Home, which reads its own planner data.
+  async function reloadAfterExamples() {
+    await Promise.allSettled([
+      api.listRecipes().then(loadRecipes),
+      api.listPantryInventory().then(setPantryInventory),
+      api.listPlanner(weekStart).then(setPlannerRows),
+    ]);
+    setUpcomingTick((n) => n + 1);
+    setHomeKey((n) => n + 1);
+    examples.refresh();
+  }
+
+  // The sheet says exactly what will go (or be added); nothing happens until its button is pressed.
+  function askExamples(kind) {
+    examples.refresh();
+    setExamplesAsk(kind);
+  }
+
+  // « Retirer les exemples »: only what still has the example mark goes; the toast's Undo puts back
+  // exactly what this removal took (server lib/examples.js).
+  async function confirmRemoveExamples() {
+    setExamplesAsk(null);
+    try {
+      await api.removeExamples();
+    } catch {
+      showToast(t("examples.failed"));
+      return;
+    }
+    await reloadAfterExamples();
+    showToast(t("examples.removed"), async () => {
+      try {
+        await api.undoExamples();
+      } catch {
+        showToast(t("examples.failed"));
+        return;
+      }
+      await reloadAfterExamples();
+    });
+  }
+
+  // « Ajouter des exemples »: its sheet listed exactly what is added, and that button is the
+  // confirmation (CLAUDE.md). It adds nothing to an account that already has examples.
+  async function confirmAddExamples() {
+    setExamplesAsk(null);
+    try {
+      await api.addExamples();
+    } catch {
+      showToast(t("examples.failed"));
+      examples.refresh();
+      return;
+    }
+    await reloadAfterExamples();
+    showToast(t("examples.added"));
+  }
+
+  // The account menu offers one of the two: remove while there is something to remove, else add.
+  const examplesAction = !examples.info
+    ? null
+    : examples.info.counts.total > 0
+      ? { id: "examples", label: t("examples.remove"), onSelect: () => askExamples("remove") }
+      : examples.info.canAdd
+        ? { id: "examples", label: t("examples.add"), onSelect: () => askExamples("add") }
+        : null;
+
+  // The two sheets' words, from the numbers the server gave.
+  const examplesSheet = (() => {
+    if (!examplesAsk || !examples.info) return null;
+    const counts = examplesAsk === "remove" ? examples.info.counts : examples.info.preview;
+    const lines = [
+      counts.recipes > 0 && t("examples.recipes", { count: counts.recipes }),
+      counts.plannedMeals > 0 && t("examples.plannedMeals", { count: counts.plannedMeals }),
+      counts.inventoryItems > 0 && t("examples.inventoryItems", { count: counts.inventoryItems }),
+      examplesAsk === "add" && t("examples.addItems", { names: counts.itemNames.join(", ") }),
+    ].filter(Boolean);
+    return examplesAsk === "remove"
+      ? { message: t("examples.removeAsk"), lines, note: t("examples.removeKeeps"), leaveLabel: t("examples.removeConfirm"), onLeave: confirmRemoveExamples }
+      : { message: t("examples.addAsk"), lines, note: t("examples.addWarning"), leaveLabel: t("examples.addConfirm"), onLeave: confirmAddExamples };
+  })();
+
   // What the account area offers besides the language switch and the name.
   // Shown in the avatar menu. A new entry shows up there by being added here.
   // Send feedback opens the Feedback form over the page you are on (it is not a page).
@@ -694,6 +795,7 @@ export default function App({ user, onLogout }) {
   const accountActions = [
     { id: "help", label: t("app.help"), current: tab === "help", onSelect: () => goToTab("help") },
     { id: "feedback", label: t("feedback.menu"), onSelect: () => openFeedback() },
+    ...(examplesAction ? [examplesAction] : []),
     ...(user.isAdmin
       ? [
           { id: "admin", label: t("same.admin"), current: tab === "admin", onSelect: () => goToTab("admin") },
@@ -1595,8 +1697,10 @@ export default function App({ user, onLogout }) {
           />
         )}
 
+        {tab === "home" && examples.info?.counts.total > 0 && <ExamplesBanner onRemove={() => askExamples("remove")} />}
         {tab === "home" && (
           <Home
+            key={homeKey}
             user={user}
             recipes={recipes}
             pantryInventory={pantryInventory}
@@ -1790,6 +1894,17 @@ export default function App({ user, onLogout }) {
               setLeaveFor(null);
               showTab(next);
             }}
+          />
+        )}
+        {examplesSheet && (
+          <ConfirmDialog
+            message={examplesSheet.message}
+            lines={examplesSheet.lines}
+            note={examplesSheet.note}
+            stayLabel={t("examples.cancel")}
+            leaveLabel={examplesSheet.leaveLabel}
+            onStay={() => setExamplesAsk(null)}
+            onLeave={examplesSheet.onLeave}
           />
         )}
         <CookedViewHost

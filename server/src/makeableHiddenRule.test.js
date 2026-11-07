@@ -30,6 +30,7 @@ const MAY_MENTION_COLUMN = {
   "client/src/App.jsx": "sends the choice when the card's menu or Makeable's Show again changes it",
   "server/src/lib/mealTypes.js": "readHiddenFromMakeable checks a request's yes or no",
   "server/src/routes/recipes.js": "writes the column for POST and PUT /api/recipes",
+  "server/src/lib/examples.js": "Undo of « Retirer les exemples » copies the column back as it was; nothing is decided from it",
 };
 
 // What is wrong with one source file.

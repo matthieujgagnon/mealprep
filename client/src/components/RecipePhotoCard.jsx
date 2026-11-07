@@ -1,5 +1,5 @@
 import { RecipePhoto } from "./RecipePhoto.jsx";
-import { PreparedTag } from "./RisoPills.jsx";
+import { ExampleTag, PreparedTag } from "./RisoPills.jsx";
 
 // The one photo card behind the recipe cards (design: docs/design/
 // riso-v2-recipe-cards/ and docs/design/riso-v2-planner-search-cards/): a
@@ -35,10 +35,13 @@ import { PreparedTag } from "./RisoPills.jsx";
 // « Plat préparé »: it wears that same tag (size M), the grid card's top left corner, the bento
 // tile's bottom band above the title and the finder card's corner, where it replaces the meal and
 // time caps (docs/design/prepared-tag/).
+// `example` is a recipe the app made as an example (« Exemple »): it wears the shared
+// <ExampleTag> on the photo, under the caption row, so it never replaces the meal and time or
+// the « plat préparé » tag (the strip variant has none).
 // `cardRef` and any other props (drag listeners, for instance) go on the card
 // itself. A new recipe card is this with another caption and children, not a new
 // card.
-export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, tag, prepared, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
+export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, tag, prepared, example, ready, openLabel, onOpen, className, children, action, cardRef, ...rest }) {
   // The finder and strip cards hold their photo in a box of fixed height, with the
   // text under it inside the button.
   const finder = variant === "finder" || variant === "strip";
@@ -51,6 +54,7 @@ export function RecipePhotoCard({ variant = "grid", title, photoUrl, caption, ta
       <span className="rpc-scrim-top" aria-hidden="true" />
       <span className="rpc-caption">{caption}</span>
       {sticker && !inBand ? <span className="rpc-tag">{sticker}</span> : null}
+      {example && variant !== "strip" ? <ExampleTag sticker className="rpc-example" /> : null}
       <span className="rpc-scrim-bottom">
         {sticker && inBand ? <span className="rpc-tag">{sticker}</span> : null}
         <span className="rpc-title">{title}</span>

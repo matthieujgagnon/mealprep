@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img">
+<title>Pâté chinois</title>
+<rect width="600" height="800" fill="#ffe14d"/>
+<g transform="translate(300 440) scale(1.12) translate(-300 -440)">
+<g stroke="#16181f" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+<rect x="112" y="282" width="400" height="300" rx="36" fill="#16181f"/>
+<rect x="100" y="270" width="400" height="300" rx="36" fill="#2323ff"/>
+<rect x="128" y="298" width="344" height="244" rx="20" fill="#f3cf86"/>
+<g fill="none" stroke="#c98a2b" stroke-width="6">
+<path d="M158 322 q12 24 0 48 t0 48 t0 48 t0 24"/>
+<path d="M198 322 q12 24 0 48 t0 48 t0 48 t0 24"/>
+<path d="M238 322 q12 24 0 48 t0 48 t0 48 t0 24"/>
+<path d="M278 322 q12 24 0 48 t0 48 t0 48 t0 24"/>
+<path d="M318 322 q12 24 0 48 t0 48 t0 48 t0 24"/>
+</g>
+<rect x="352" y="298" width="120" height="132" rx="4" fill="#fffdf8"/>
+<rect x="352" y="298" width="120" height="44" fill="#8a4b2d"/>
+<rect x="352" y="342" width="120" height="44" fill="#ffd23f"/>
+<rect x="352" y="386" width="120" height="44" fill="#fff3d1"/>
+<rect x="352" y="298" width="120" height="132" rx="4" fill="none"/>
+</g>
+<g fill="#16181f"><circle cx="150" cy="500" r="5"/><circle cx="330" cy="512" r="5"/><circle cx="262" cy="490" r="5"/></g>
+</g>
+</svg>

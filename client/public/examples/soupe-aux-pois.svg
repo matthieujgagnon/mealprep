@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img">
+<title>Soupe aux pois et au jambon</title>
+<rect width="600" height="800" fill="#10c95c"/>
+<g transform="translate(300 420) scale(1.08) translate(-300 -400)">
+<g stroke="#16181f" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="312" cy="412" r="206" fill="#16181f"/>
+<circle cx="300" cy="400" r="206" fill="#fffdf8"/>
+<circle cx="300" cy="400" r="158" fill="#2323ff"/>
+<circle cx="300" cy="400" r="128" fill="#d6dc62"/>
+<g fill="#10c95c" stroke-width="5"><circle cx="240" cy="360" r="14"/><circle cx="330" cy="344" r="14"/><circle cx="360" cy="430" r="14"/><circle cx="262" cy="452" r="14"/><circle cx="316" cy="400" r="12"/></g>
+<g fill="#ff8a2b" stroke-width="5"><rect x="268" y="338" width="26" height="26" rx="4" transform="rotate(14 281 351)"/><rect x="214" y="410" width="26" height="26" rx="4" transform="rotate(-12 227 423)"/><rect x="336" y="372" width="26" height="26" rx="4" transform="rotate(20 349 385)"/></g>
+<g fill="#ff9ab8" stroke-width="5"><rect x="296" y="446" width="28" height="22" rx="4" transform="rotate(-10 310 457)"/><rect x="228" y="364" width="28" height="22" rx="4" transform="rotate(18 242 375)"/><rect x="352" y="318" width="28" height="22" rx="4"/></g>
+<path d="M452 168 L560 96" fill="none" stroke-width="12"/>
+<ellipse cx="438" cy="180" rx="34" ry="22" transform="rotate(-34 438 180)" fill="#fffdf8"/>
+</g>
+<g fill="none" stroke="#16181f" stroke-width="6" stroke-linecap="round" opacity=".35"><path d="M250 180 q-14 -22 0 -44 t0 -44"/><path d="M310 168 q-14 -22 0 -44 t0 -44"/><path d="M370 180 q-14 -22 0 -44 t0 -44"/></g>
+</g>
+</svg>

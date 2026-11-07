@@ -20,6 +20,8 @@ New to the code? [docs/how-it-works.md](docs/how-it-works.md) maps the stack, fo
    APP_URL="http://localhost:5173"
    FEEDBACK_EMAIL_TO="...the address that should get an email for each feedback..."
    ```
+   Optional: `NEW_ACCOUNT_EXAMPLES=off` stops every new account starting with example recipes, a planned
+   week and an Inventory (on by default; set it on Render to turn them off without a deploy).
    `GEMINI_API_KEY` is only needed for flyer-deal extraction (uploading a flyer PDF/photo on the
    Flyers tab) and receipt import (the Inventory tab) — everything else works without it. `RESEND_API_KEY` (from
    [resend.com](https://resend.com), free tier is enough for a handful of accounts) and `EMAIL_FROM`
@@ -224,7 +226,10 @@ Render automatically redeploys on every push to `main`.
   ```
 - **End-to-end tests** (a handful of real browser smoke tests — signup, add a recipe, use the
   inventory and grocery list — against a real Postgres; signup needs an invite code, so
-  `e2e/global-setup.js` makes the tests' own code first, see `e2e/invite.js`):
+  `e2e/global-setup.js` makes the tests' own code first, see `e2e/invite.js`). Every new account
+  starts with example recipes, a planned week and an Inventory (see `docs/components.md`, Examples), so
+  the tests' server runs with `NEW_ACCOUNT_EXAMPLES=off` (their accounts start empty) and a second
+  server on port 4001, with examples on, runs the one spec about them (`e2e/examples.spec.js`):
   ```bash
   npm run build          # needs DATABASE_URL set, same as local dev setup above
   npx playwright install --with-deps chromium   # first time only

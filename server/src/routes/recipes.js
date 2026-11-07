@@ -250,6 +250,9 @@ recipesRouter.put("/:id", async (req, res) => {
       ...(categoryId !== undefined && { categoryId }),
       ...typeFields.data,
       ...(instructions !== undefined && { instructions: JSON.stringify(instructions) }),
+      // Any save of a recipe is the person's: an example they edit is theirs from now on
+      // (lib/examples.js). Reordering (PUT /reorder above) is not an edit and leaves the mark.
+      isExample: false,
     },
   });
   if (count === 0) return res.status(404).json(fail(req, "notFound.recipe"));

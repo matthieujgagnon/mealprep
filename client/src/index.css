@@ -26444,3 +26444,121 @@ body.no-select {
     max-height: 94dvh;
   }
 }
+
+/* ---------- Examples (« Exemple »): the tag, the bar on Home and the sheet's list ---------- */
+
+/* The shared <ExampleTag> on a recipe's photo card (components/RecipePhotoCard.jsx): under the
+   caption row, so it never covers the meal and time or the « plat préparé » tag above it. */
+.rpc-example {
+  position: absolute;
+  top: 34px;
+  left: 14px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.rpc-finder .rpc-example {
+  top: 38px;
+  left: 12px;
+}
+
+@media (max-width: 767px) {
+  .rpc-grid .rpc-example,
+  .rpc-panel .rpc-example,
+  .rpc-bento .rpc-example {
+    top: 30px;
+    left: 8px;
+  }
+
+  .rpc-finder .rpc-example {
+    top: 34px;
+    left: 10px;
+  }
+}
+
+/* On a Planner card: the left twin of the « plat préparé » sticker, at the same height. */
+.riso-planner-card-example {
+  position: absolute;
+  left: 5px;
+  top: calc(58% - 9px);
+  z-index: 1;
+}
+
+.pmb-cell .riso-planner-card-example {
+  left: 1px;
+  top: 33px;
+}
+
+/* On an Inventory tile: the right twin of the prepared sticker at the foot of the photo well. */
+.inv-tile-example {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+}
+
+/* In the recipe pop-out's row of facts it leads the row, upright. */
+.riso-rc-facts .riso-rc-example {
+  flex: none;
+  margin-right: 10px;
+}
+
+/* The bar at the top of Home (components/ExamplesBanner.jsx). Home is exactly the window tall, so it
+   is one slim line (two on a narrow phone) and Home's scroller takes what is left. It is as wide as
+   the page, like Home itself. */
+.examples-banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 0 -40px;
+  padding: 6px 40px;
+  box-sizing: border-box;
+  background: var(--riso-yellow);
+  color: var(--riso-ink);
+  border-bottom: 2px solid var(--riso-ink);
+  font: 700 13px/1.2 var(--riso-font-body);
+}
+
+.examples-banner-text {
+  min-width: 0;
+}
+
+.examples-banner-btn {
+  appearance: none;
+  min-height: 28px;
+  padding: 2px 12px;
+  border: 2px solid var(--riso-ink);
+  border-radius: 14px;
+  background: var(--riso-surface);
+  color: var(--riso-ink);
+  font: 800 12.5px/1.1 var(--riso-font-display);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .examples-banner {
+    margin: 0 -18px;
+    padding: 5px 18px;
+    font-size: 12.5px;
+    gap: 2px 8px;
+  }
+}
+
+/* The examples' two sheets add a short list and a quieter line to the shared question. */
+.riso-ask-lines {
+  margin: -6px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: 600 15px/1.3 var(--riso-font-body);
+}
+
+.riso-ask-note {
+  margin: -8px 0 0;
+  font: 500 13.5px/1.35 var(--riso-font-body);
+  color: var(--riso-muted);
+}

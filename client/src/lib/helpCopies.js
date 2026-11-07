@@ -189,6 +189,11 @@ export const HELP_COPIES = {
   feedbackButton: { kind: "pill", cls: "btn subtle btn-sm", label: "feedback.menu" },
   logOutButton: { kind: "pill", cls: "btn subtle btn-sm", label: "app.logOut" },
   avatar: { kind: "avatar" },
+  // Examples: the tag, the bar on Home, and the account menu's two entries (components/ExamplesBanner.jsx).
+  exampleTag: { kind: "pill", cls: "riso-pill size-mini tone-yellow", label: "examples.tag" },
+  removeExamplesBanner: { kind: "pill", cls: "examples-banner-btn", label: "examples.remove" },
+  removeExamplesButton: { kind: "pill", cls: "btn subtle btn-sm", label: "examples.remove" },
+  addExamplesButton: { kind: "pill", cls: "btn subtle btn-sm", label: "examples.add" },
 
   // FAQ
   reimport: { kind: "pill", cls: "riso-btn", label: "editor.reimport" },

@@ -90,7 +90,8 @@ pantryInventoryRouter.get("/suggest", async (req, res) => {
 // before /:id so "recent" isn't read as an item id.
 pantryInventoryRouter.get("/recent", async (req, res) => {
   const [items, logs] = await Promise.all([
-    prisma.pantryInventoryItem.findMany({ where: { userId: req.userId }, orderBy: { createdAt: "desc" }, take: 40 }),
+    // Examples are not "recently added": the app made them (lib/examples.js).
+    prisma.pantryInventoryItem.findMany({ where: { userId: req.userId, isExample: false }, orderBy: { createdAt: "desc" }, take: 40 }),
     prisma.pantryConsumptionLog.findMany({ where: { userId: req.userId }, orderBy: { createdAt: "desc" }, take: 40 }),
   ]);
   res.json(mergeRecent(items, logs));
@@ -151,7 +152,8 @@ pantryInventoryRouter.post("/", async (req, res) => {
 // PUT /api/pantry-inventory/:id { name?, quantity?, unit?, location?, category?, purchasedAt?, expiresAt?, imageUrl? } -
 // edits any field, most commonly the suggested expiration date itself.
 pantryInventoryRouter.put("/:id", async (req, res) => {
-  const data = {};
+  // Editing an item is the person's: an example item they change is theirs from now on (lib/examples.js).
+  const data = { isExample: false };
   if (req.body.name !== undefined) {
     if (!req.body.name.trim()) return res.status(400).json(fail(req, "nameEmpty"));
     data.name = req.body.name.trim();
@@ -233,7 +235,9 @@ async function takeOut(userId, takes, how) {
       logIds.push(log.id);
       logFor.set(item.id, log.id);
     }
-    for (const { id, quantity } of updates) await tx.pantryInventoryItem.update({ where: { id }, data: { quantity } });
+    // "I cooked this" is the person using the item, so an example one is theirs from now on; the
+    // app's own steps (a planned meal's day passing, how = "consumed") leave the mark (lib/examples.js).
+    for (const { id, quantity } of updates) await tx.pantryInventoryItem.update({ where: { id }, data: { quantity, ...(how === "cooked" && { isExample: false }) } });
     if (removes.length > 0) await tx.pantryInventoryItem.deleteMany({ where: { id: { in: removes }, userId } });
     await recordRemoved(tx, userId, removed, how, logFor);
   });
@@ -300,7 +304,8 @@ pantryInventoryRouter.post("/storage", async (req, res) => {
   if (!items.every((i) => i && typeof i.id === "string" && isStorage(i.location))) return res.status(400).json(fail(req, "storageInvalid"));
   const rows = await prisma.pantryInventoryItem.findMany({ where: { id: { in: items.map((i) => i.id) }, userId: req.userId } });
   const where = new Map(items.map((i) => [i.id, i.location]));
-  await prisma.$transaction(rows.map((row) => prisma.pantryInventoryItem.update({ where: { id: row.id }, data: { location: where.get(row.id) } })));
+  // Saying where an item is kept is the person's: an example item is theirs from now on (lib/examples.js).
+  await prisma.$transaction(rows.map((row) => prisma.pantryInventoryItem.update({ where: { id: row.id }, data: { location: where.get(row.id), isExample: false } })));
   const after = await prisma.pantryInventoryItem.findMany({ where: { id: { in: rows.map((r) => r.id) }, userId: req.userId } });
   res.json({ items: after.map(enrichItem), before: rows });
 });
