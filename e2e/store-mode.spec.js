@@ -266,6 +266,21 @@ async function drag(page, from, path, { holdMs = 350, during } = {}) {
   await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await page.waitForTimeout(150);
 }
+// A swipe leaves momentum: the list keeps moving for a moment after the finger lifts. `read` (a number: a
+// scroll position) is read until it has not changed for 300 ms, so what comes next (putting it back at the top,
+// working out where a row is, putting a finger on it) happens on a list that is standing still. A finger put on
+// a list that is still flinging stops the fling and never becomes a press-and-hold.
+async function waitUntilStill(page, read) {
+  let last = await read();
+  let still = 0;
+  for (let tries = 0; still < 3; tries++) {
+    if (tries > 60) throw new Error("the list never stopped moving");
+    await page.waitForTimeout(100);
+    const now = await read();
+    still = now === last ? still + 1 : 0;
+    last = now;
+  }
+}
 const towards = (a, b, steps = 6) =>
   Array.from({ length: steps }, (_, i) => ({ x: a.x + ((b.x - a.x) * (i + 1)) / steps, y: a.y + ((b.y - a.y) * (i + 1)) / steps }));
 
@@ -413,8 +428,12 @@ test.describe("moving an item to another store by dragging it", () => {
     await expect(mode.locator(".store-mode-row.on")).toHaveCount(0);
     await expect(page.locator(".store-drag-chip")).toHaveCount(0);
 
-    // Carried to the bottom edge, the list scrolls by itself.
+    // Carried to the bottom edge, the list scrolls by itself. The swipe's momentum is still carrying the list,
+    // so let it stop, put the list back at the top, and check it stays there before a finger goes on it.
+    await waitUntilStill(page, scrollTop);
     await list.evaluate((el) => (el.scrollTop = 0));
+    await waitUntilStill(page, scrollTop);
+    expect(await scrollTop()).toBe(0);
     const row = mode.locator(".store-mode-row").first();
     const from = await centre(row);
     const before = await scrollTop();
