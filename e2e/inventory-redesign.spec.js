@@ -1,5 +1,6 @@
 import { expect, specNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
+import { waitForClicksAfterDrop } from "./after-drop.js";
 import { addInventoryItem, fillAddForm, itemForm, pickCompact, shelfCard } from "./inventory-form.js";
 import { quebecDayIn } from "./quebec-day.js";
 
@@ -231,6 +232,7 @@ test("sections can be renamed, dragged to move and resized, and the layout is sa
   await page.mouse.down();
   await page.mouse.move(fb.x + 20, fb.y + fb.height / 2, { steps: 12 });
   await page.mouse.up();
+  await waitForClicksAfterDrop(page); // the "+ Add section" click further down must not land in the library's 50 ms after a drop
   await expect.poll(order).toEqual(["Pantry section", "Kitchen fridge section", "Freezer section", "Leftovers section", "Prepared meals section"]);
 
   // The grip also moves with the arrow keys.
