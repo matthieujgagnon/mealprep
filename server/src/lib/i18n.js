@@ -55,6 +55,7 @@ const MESSAGES = {
     mustBeArray: "{field} must be a list.",
     mustBeOneOf: "{field} must be one of: {options}.",
     mealTypeRequired: "A recipe needs at least one meal type.",
+    examplesPresent: "This account already has examples. Remove them first to add them again.",
     notFound: {
       recipe: "Recipe not found.",
       deal: "Deal not found.",
@@ -70,6 +71,7 @@ const MESSAGES = {
       link: "That link doesn't exist.",
       ingredientName: "That change doesn't exist.",
       ingredientBuiltIn: "That built-in name doesn't exist any more.",
+      examples: "There is nothing to undo.",
     },
     sectionExists: "A section named \"{name}\" already exists.",
     storeExists: "A store named \"{name}\" already exists.",
@@ -188,6 +190,7 @@ const MESSAGES = {
     mustBeArray: "{field} doit être une liste.",
     mustBeOneOf: "{field} doit être l'un de : {options}.",
     mealTypeRequired: "Une recette doit avoir au moins un type de repas.",
+    examplesPresent: "Ce compte a déjà des exemples. Retirez-les d'abord pour les ajouter de nouveau.",
     notFound: {
       recipe: "Recette introuvable.",
       deal: "Aubaine introuvable.",
@@ -203,6 +206,7 @@ const MESSAGES = {
       link: "Ce lien n'existe pas.",
       ingredientName: "Cette modification n'existe pas.",
       ingredientBuiltIn: "Ce nom de la liste de base n'existe plus.",
+      examples: "Il n'y a rien à annuler.",
     },
     sectionExists: "Une section nommée « {name} » existe déjà.",
     storeExists: "Un magasin nommé « {name} » existe déjà.",

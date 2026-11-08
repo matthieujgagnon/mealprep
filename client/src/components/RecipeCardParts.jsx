@@ -659,6 +659,7 @@ export function SimilarView({ recipe, chips, leftOut, onToggleChip, tiles, onOpe
               photoUrl={x.recipe.photoUrl}
               caption={<span className="rpc-cap-left">{caption}</span>}
               prepared={isPreparedRecipe(x.recipe)}
+              example={x.recipe.isExample === true}
               openLabel={t("planner.open", { title: x.recipe.title })}
               onOpen={() => onOpen(x.recipe)}
             >

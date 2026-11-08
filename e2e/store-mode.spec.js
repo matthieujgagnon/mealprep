@@ -1,6 +1,7 @@
 import { expect, realNow, test } from "./spec-clock.js";
 import { E2E_INVITE } from "./invite.js";
 import { cancelAdd, confirmAdd } from "./inventory-confirm.js";
+import { waitUntilStill } from "./wait-until-still.js";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -413,8 +414,12 @@ test.describe("moving an item to another store by dragging it", () => {
     await expect(mode.locator(".store-mode-row.on")).toHaveCount(0);
     await expect(page.locator(".store-drag-chip")).toHaveCount(0);
 
-    // Carried to the bottom edge, the list scrolls by itself.
+    // Carried to the bottom edge, the list scrolls by itself. The swipe's momentum is still carrying the list,
+    // so let it stop, put the list back at the top, and check it stays there before a finger goes on it.
+    await waitUntilStill(page, scrollTop);
     await list.evaluate((el) => (el.scrollTop = 0));
+    await waitUntilStill(page, scrollTop);
+    expect(await scrollTop()).toBe(0);
     const row = mode.locator(".store-mode-row").first();
     const from = await centre(row);
     const before = await scrollTop();

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img">
+<title>Poulet et légumes sur plaque</title>
+<rect width="600" height="800" fill="#ff48b0"/>
+<g transform="translate(300 440) scale(1.05) translate(-300 -440)">
+<g stroke="#16181f" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+<rect x="82" y="262" width="460" height="320" rx="26" fill="#16181f"/>
+<rect x="70" y="250" width="460" height="320" rx="26" fill="#dcdcd6"/>
+<rect x="94" y="274" width="412" height="272" rx="14" fill="#f2efe6" stroke-width="5"/>
+<g fill="#f4d58d" stroke-width="6"><path d="M130 330 q30 -30 62 -4 q20 22 -6 46 q-34 18 -58 -6 q-8 -20 2 -36z"/><path d="M360 470 q30 -30 62 -4 q20 22 -6 46 q-34 18 -58 -6 q-8 -20 2 -36z"/><path d="M250 500 q26 -22 52 -2 q16 18 -4 36 q-30 12 -48 -6z"/></g>
+<g fill="#ff7a1a" stroke-width="6"><circle cx="230" cy="320" r="26"/><circle cx="470" cy="318" r="26"/><circle cx="150" cy="470" r="26"/><circle cx="438" cy="400" r="22"/></g>
+<g fill="#ffb066" stroke-width="4"><circle cx="230" cy="320" r="9"/><circle cx="470" cy="318" r="9"/><circle cx="150" cy="470" r="9"/><circle cx="438" cy="400" r="8"/></g>
+<g fill="#d9822b" stroke-width="7"><ellipse cx="190" cy="400" rx="64" ry="38" transform="rotate(-28 190 400)"/><ellipse cx="330" cy="350" rx="64" ry="38" transform="rotate(22 330 350)"/><ellipse cx="330" cy="460" rx="64" ry="38" transform="rotate(-14 330 460)"/><ellipse cx="450" cy="478" rx="56" ry="34" transform="rotate(30 450 478)"/></g>
+<g fill="#fffdf8" stroke-width="5"><circle cx="134" cy="428" r="12"/><circle cx="388" cy="338" r="12"/><circle cx="278" cy="476" r="12"/><circle cx="496" cy="496" r="11"/></g>
+<g fill="none" stroke="#a85a14" stroke-width="5"><path d="M180 384 q14 -6 28 4"/><path d="M322 336 q14 -6 28 4"/><path d="M322 446 q14 -6 28 4"/></g>
+</g>
+</g>
+</svg>

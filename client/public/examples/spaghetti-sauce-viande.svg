@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img">
+<title>Spaghetti sauce à la viande</title>
+<rect width="600" height="800" fill="#2323ff"/>
+<g transform="translate(300 400) scale(1.15) translate(-300 -400)">
+<g stroke="#16181f" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="312" cy="412" r="206" fill="#16181f"/>
+<circle cx="300" cy="400" r="206" fill="#fffdf8"/>
+<circle cx="300" cy="400" r="158" fill="#f4f1ea" stroke-width="5"/>
+<g fill="none" stroke="#f1c63f" stroke-width="12">
+<ellipse cx="300" cy="404" rx="128" ry="104"/><ellipse cx="300" cy="404" rx="104" ry="82" transform="rotate(20 300 404)"/><ellipse cx="300" cy="404" rx="80" ry="62" transform="rotate(-24 300 404)"/><ellipse cx="300" cy="404" rx="54" ry="42" transform="rotate(40 300 404)"/>
+</g>
+<g fill="none" stroke="#16181f" stroke-width="3" opacity=".35"><ellipse cx="300" cy="404" rx="128" ry="104"/><ellipse cx="300" cy="404" rx="80" ry="62" transform="rotate(-24 300 404)"/></g>
+<path d="M232 392 q-6 -52 58 -58 q64 -4 70 44 q4 54 -52 64 q-62 8 -76 -50z" fill="#d93a22"/>
+<g fill="#8a3b22" stroke-width="4"><circle cx="268" cy="380" r="9"/><circle cx="304" cy="366" r="9"/><circle cx="332" cy="392" r="9"/><circle cx="286" cy="414" r="9"/><circle cx="318" cy="424" r="8"/><circle cx="256" cy="408" r="8"/></g>
+<path d="M146 214 v-72 M170 214 v-72 M194 214 v-72" fill="none" stroke-width="7"/>
+<path d="M146 214 q24 26 48 0" fill="none" stroke-width="7"/><path d="M170 214 v110" fill="none" stroke-width="12"/>
+</g>
+</g>
+</svg>

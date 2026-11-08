@@ -7,7 +7,7 @@ import { lineForDays, qtyStep } from "../lib/inventoryForm.js";
 import { ItemPhoto } from "./ItemPhoto.jsx";
 import { t } from "../i18n/index.js";
 import { isMealItem, isPreparedMeal } from "../lib/mealItem.js";
-import { PreparedTag, StorageLabel } from "./RisoPills.jsx";
+import { ExampleTag, PreparedTag, StorageLabel } from "./RisoPills.jsx";
 import { storageLabelOf } from "../lib/shelves.js";
 
 // One Inventory item, in the two views of Matt's design
@@ -207,6 +207,7 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
         <div className={`inv-tile-well${leftover && photoItem.imageUrl ? " dish" : ""}`}>
           <ItemPhoto item={photoItem} />
           {isPreparedMeal(item) && <PreparedTag size="s" sticker className="inv-tile-prepared" />}
+          {item.isExample === true && <ExampleTag sticker className="inv-tile-example" />}
         </div>
         {onToggleSelect && <SelectBox item={item} selected={selected} onToggle={onToggleSelect} />}
         {(line?.expired || leftover) && (
@@ -243,10 +244,11 @@ function ItemFace({ item, view, line, days, recipe, selected, onToggleSelect, on
         </span>
         <div className="inv-row-main">
           <span className="inv-row-name">{item.name}</span>
-          {(line?.expired || meal || kept) && (
+          {(line?.expired || meal || kept || item.isExample === true) && (
             <span className="inv-row-tags">
               {line?.expired && <ExpiredTag />}
               <MealTag item={item} />
+              {item.isExample === true && <ExampleTag />}
               {kept && <StorageLabel storage={kept} />}
               {leftover && days != null && days >= 0 && <span className="inv-row-where">{daysLabel(days)}</span>}
             </span>

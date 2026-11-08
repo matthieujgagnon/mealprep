@@ -17,7 +17,7 @@ import { useIsPhone } from "../hooks/useIsPhone.js";
 import { CookMode } from "./CookMode.jsx";
 import { useInventoryLinks } from "./InventoryLinkPopup.jsx";
 import { useIngredientNames } from "../lib/ingredientDisplay.js";
-import { PlannedPill, PreparedTag } from "./RisoPills.jsx";
+import { ExampleTag, PlannedPill, PreparedTag } from "./RisoPills.jsx";
 import { BuySticker, OptionsMenu, PhotoLightbox, PricesSwitch, Receipt, SimilarStrip, SimilarView, StepList } from "./RecipeCardParts.jsx";
 import { prefersReducedMotion } from "../lib/motion.js";
 import { t } from "../i18n/index.js";
@@ -310,6 +310,7 @@ export function RecipeDetailModal({
     <div className="riso-rc-facts">
       {/* « Plat préparé » comes first in the row under the title: the same tag, size L, upright. */}
       {isPreparedRecipe(recipe) && <PreparedTag size="l" className="riso-rc-prepared" />}
+      {recipe.isExample === true && <ExampleTag className="riso-rc-example" />}
       {[
         totalTime > 0 && <b key="time">{formatRecipeTime(totalTime)}</b>,
         <span key="serves">

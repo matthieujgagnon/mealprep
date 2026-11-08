@@ -350,8 +350,9 @@ test.describe("the Feedback inbox", () => {
     await page.goto("/");
     await logIn(page, ADMIN_MENU, PASSWORD);
     await page.locator(".app-header").getByRole("button", { name: "Account" }).click();
-    const names = await page.locator(".app-header-avatar-menu button").allInnerTexts();
-    expect(names).toEqual(["Help", "Send feedback", "Admin", "Feedback inbox", "Log out"]);
+    // An account with no examples (these test accounts start without) is offered "Add examples" too,
+    // once the app has read that it has none: the list is checked until it shows.
+    await expect(page.locator(".app-header-avatar-menu button")).toHaveText(["Help", "Send feedback", "Add examples", "Admin", "Feedback inbox", "Log out"]);
     await page.getByRole("button", { name: "Feedback inbox" }).click();
     await expect(page).toHaveURL(/\/admin\/feedback$/);
     await page.locator(".app-header").getByRole("button", { name: "Account" }).click();
@@ -365,7 +366,7 @@ test.describe("the Feedback inbox", () => {
   test("a tester doesn't see the inbox, is refused on its address, and the routes answer 401 and 403", async ({ page, browser }) => {
     await signUp(page, uniqueEmail("fb-member"));
     await page.locator(".app-header").getByRole("button", { name: "Account" }).click();
-    expect(await page.locator(".app-header-avatar-menu button").allInnerTexts()).toEqual(["Help", "Send feedback", "Log out"]);
+    await expect(page.locator(".app-header-avatar-menu button")).toHaveText(["Help", "Send feedback", "Add examples", "Log out"]);
 
     await page.goto("/admin/feedback");
     await expect(page.getByRole("alert")).toContainText("Not allowed.");

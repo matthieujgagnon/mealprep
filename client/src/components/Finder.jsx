@@ -78,6 +78,7 @@ function ResultCard({ tile, reason, draggable, isOpen, onOpen, onAdd }) {
       photoUrl={recipe.photoUrl}
       caption={caption}
       prepared={isPreparedRecipe(recipe)}
+      example={recipe.isExample === true}
       openLabel={draggable ? t("tray.dragAria", { title: recipe.title }) : t("planner.open", { title: recipe.title })}
       onOpen={(rect) => onOpen(recipe, rect)}
       action={
@@ -147,6 +148,7 @@ function LeftoverResultCard({ entry, draggable, onAdd }) {
       photoUrl={item.imageUrl && item.imageUrl !== "none" ? item.imageUrl : recipe?.photoUrl}
       caption={caption}
       tag={prepared ? <PreparedTag size="m" sticker /> : null}
+      example={item.isExample === true}
       openLabel={t("finder.leftoverAdd", { title })}
       onOpen={() => onAdd(entry)}
       action={

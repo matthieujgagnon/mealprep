@@ -311,6 +311,7 @@ jasmine rice | = | riz jasmin | = | m
 arborio rice | = | riz arborio | = | m
 pasta | = | pâtes | = | fp
 spaghetti | = | spaghetti | = | m
+lasagna | lasagnas | lasagne | lasagnes | f
 noodles | = | nouilles | = | fp
 rice noodles | = | nouilles de riz | = | fp
 couscous | = | couscous | = | m
@@ -324,6 +325,7 @@ pie crust | pie crusts | pâte à tarte/pâte brisée | pâtes à tarte/pâtes b
 shredded coconut/desiccated coconut | = | noix de coco râpée | = | f
 lentil | lentils | lentille | lentilles | f
 chickpea | chickpeas | pois chiche | pois chiches | m
+split pea | split peas | pois cassé | pois cassés | mp
 bean | beans | haricot | haricots | m
 black bean | black beans | haricot noir | haricots noirs | m
 kidney bean | kidney beans | haricot rouge | haricots rouges | m

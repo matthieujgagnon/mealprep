@@ -1,4 +1,5 @@
 import { E2E_INVITE } from "./invite.js";
+import { waitForClicksAfterDrop } from "./after-drop.js";
 import { WHEN_FAILS, holdAndDragWhilePictureFails, holdPictures } from "./picture-fails.js";
 import { addDays } from "./quebec-day.js";
 import { expect, mondayAfter, test, thisMonday, todayIndex } from "./spec-clock.js";
@@ -453,6 +454,7 @@ test("a long press picks a planned card up and drops it on a slot (two swap); a 
   await expect(pill).toHaveClass(/over/);
   await expect(pill).toContainText("Release to remove");
   await send("touchEnd");
+  await waitForClicksAfterDrop(page); // the toast's Undo below must not land in the library's 50 ms after a drop
   await expect.poll(async () => (await (await page.request.get(`/api/planner?week=${week}`)).json()).length).toBe(1);
   const toast = page.getByRole("status").filter({ hasText: "removed from" });
   await expect(toast).toBeVisible();

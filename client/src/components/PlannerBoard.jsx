@@ -8,7 +8,7 @@ import { weekendLayout } from "../lib/weekend.js";
 import { RecipePhoto } from "./RecipePhoto.jsx";
 import { leftoverIsStale } from "../lib/leftovers.js";
 import { linkedMeals } from "../lib/linkedMeal.js";
-import { PreparedTag } from "./RisoPills.jsx";
+import { ExampleTag, PreparedTag } from "./RisoPills.jsx";
 import { dict, t } from "../i18n/index.js";
 
 const DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -90,6 +90,7 @@ export function PlannerMealCard({ entry, mealIndex, isPast, isStale, onClick, on
         {entry.cookedAt && !entry.isLeftover && <span className="riso-planner-card-cooked">{t("cooked.status")}</span>}
       </div>
       {isPreparedRecipe(recipe) && <PreparedTag size="s" sticker className="riso-planner-card-prepared" />}
+      {entry.isExample === true && <ExampleTag sticker className="riso-planner-card-example" />}
       <button
         type="button"
         className={`riso-planner-card-have${entry.alreadyHave ? " on" : ""}`}

@@ -35,7 +35,10 @@ describe("a prepared recipe is had by a prepared meal of the same name", () => {
   it("matches by the matcher's rules: French names, plurals, word order", () => {
     const k = kitchenOf(item("Lasagne surgelée", { isPreparedMeal: true }), item("croissant", { isPreparedMeal: true }));
     expect(recipeHave(croissants, k).missingCount).toBe(0); // "croissant" is "croissants"
-    expect(matchingItems("lasagna", k.inventory, { prepared: true })).toHaveLength(0); // « lasagne surgelée » is not just "lasagna"
+    // « lasagne » is in the names table (the examples' prepared meal), and "frozen" only describes it: « lasagne surgelée » is "lasagna".
+    expect(matchingItems("lasagna", k.inventory, { prepared: true })).toHaveLength(1);
+    expect(matchingItems("frozen lasagna", k.inventory, { prepared: true })).toHaveLength(1);
+    expect(matchingItems("croissants", k.inventory, { prepared: true })).toHaveLength(1);
     const plain = kitchenOf(item("Lasagna", { isPreparedMeal: true }));
     expect(recipeHave(lasagna, plain).missingCount).toBe(0);
   });

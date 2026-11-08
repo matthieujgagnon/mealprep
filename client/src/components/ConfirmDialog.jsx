@@ -9,10 +9,13 @@ import { createPortal } from "react-dom";
 // form or pop-up underneath.
 //
 //   message     the question
+//   lines       optional: a short list under it, what exactly the answer does (the examples' sheets:
+//               « 8 recettes », « 6 repas planifiés »...)
+//   note        optional: one quieter line under the list
 //   stayLabel   the safe answer (« Continuer à modifier » / "Keep editing")
 //   leaveLabel  the other one (« Abandonner » / "Discard")
 //   onStay, onLeave
-export function ConfirmDialog({ message, stayLabel, leaveLabel, onStay, onLeave }) {
+export function ConfirmDialog({ message, lines, note, stayLabel, leaveLabel, onStay, onLeave }) {
   const stayRef = useRef(null);
   const boxRef = useRef(null);
   const latest = useRef(onStay);
@@ -61,6 +64,14 @@ export function ConfirmDialog({ message, stayLabel, leaveLabel, onStay, onLeave 
     >
       <div ref={boxRef} className="riso-ask" role="alertdialog" aria-modal="true" aria-label={message} onClick={(e) => e.stopPropagation()}>
         <p className="riso-ask-message">{message}</p>
+        {lines?.length > 0 && (
+          <ul className="riso-ask-lines">
+            {lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
+        {note && <p className="riso-ask-note">{note}</p>}
         <div className="riso-ask-actions">
           <button ref={stayRef} type="button" className="riso-ask-btn primary" onClick={onStay}>
             {stayLabel}

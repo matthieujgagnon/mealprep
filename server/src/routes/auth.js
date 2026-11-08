@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword, createSession, destroySession, requireAuth } from "../lib/auth.js";
 import { seedPlaceholderRecipesForUser } from "../lib/placeholders.js";
+import { createExamples, examplesEnabled } from "../lib/examples.js";
 import { emailStatus, sendPasswordResetEmail } from "../lib/mailer.js";
 import { createResetToken, resetUrlFor } from "../lib/resetLink.js";
 import { fail, langOf, msg, normalizeLang } from "../lib/i18n.js";
@@ -127,6 +128,19 @@ authRouter.post("/signup", async (req, res) => {
   // fresh set for every other case (first user with no legacy data at all,
   // or any later signup).
   await seedPlaceholderRecipesForUser(user.id);
+
+  // Every new account starts with examples (lib/examples.js): recipes, a planned week and a
+  // stocked Inventory, in the account's language, all tagged « Exemple ». They come after the
+  // account and its invite use are saved, in one transaction of their own that is all or nothing
+  // and gives up after 10 seconds, so whatever goes wrong here, the person is signed up: they
+  // only start without examples and « Ajouter des exemples » is in the account menu.
+  if (examplesEnabled()) {
+    try {
+      await createExamples(user.id, { lang: user.locale });
+    } catch (err) {
+      console.error("The example content could not be made for a new account; signup went ahead without it:", err);
+    }
+  }
 
   await createSession(res, user.id);
   res.status(201).json(serializeUser(user));

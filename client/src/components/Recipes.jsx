@@ -58,6 +58,7 @@ function RecipeCard({ recipe, onOpen, tile }) {
       title={recipe.title}
       photoUrl={recipe.photoUrl}
       prepared={isPreparedRecipe(recipe)}
+      example={recipe.isExample === true}
       openLabel={t("planner.open", { title: recipe.title })}
       onOpen={(rect) => onOpen(recipe, rect)}
       caption={

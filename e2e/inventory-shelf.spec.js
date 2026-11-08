@@ -1,6 +1,7 @@
 import { expect, specNow, test } from "./spec-clock.js";
 import { PrismaClient } from "@prisma/client";
 import { E2E_INVITE } from "./invite.js";
+import { waitForClicksAfterDrop } from "./after-drop.js";
 import { confirmAdd } from "./inventory-confirm.js";
 import { itemForm, pickCompact } from "./inventory-form.js";
 import { asSavedDay, quebecDayIn } from "./quebec-day.js";
@@ -96,6 +97,7 @@ test.describe("on a computer", () => {
     await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
     await page.waitForTimeout(100);
     await page.mouse.up();
+    await waitForClicksAfterDrop(page); // the Compact click below must not land in the library's 50 ms after a drop
 
     await expect(shelf(page, garage.id).getByText("Frozen peas")).toBeVisible();
     // The card moves on screen at once and the save follows: wait until the server has it.

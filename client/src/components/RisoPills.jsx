@@ -31,6 +31,10 @@ import { isStorage } from "../lib/shelves.js";
 //                     row that sits on a shelf that is not the shelf of where it is kept (Prepared
 //                     meals, Leftovers, a section of their own). A mini dashed pill, neutral: no blue,
 //                     green, yellow or pink. `storage` is "fridge" | "freezer" | "pantry".
+//   <ExampleTag>      « Exemple » / "Example": the small yellow sticker on every recipe, planned meal and
+//                     Inventory item the app made as an example (lib/examples on the server, `isExample`).
+//                     The ONE tag for it. `sticker` is for on top of a photo (tilted); upright in a row.
+//                     Where it sits is the caller's CSS class (`className`), never a second tag.
 //   <PreparedTag>     the « plat préparé » / "prepared meal" tag: an ink pill with cream text
 //                     and a takeout-box glyph (design: docs/design/prepared-tag/). The ONE tag
 //                     for a prepared meal, on Inventory items and on recipes. Props: size
@@ -177,6 +181,15 @@ export function StorageLabel({ storage, className, ...rest }) {
   return (
     <Pill size="mini" tone="dash" className={`storage-label${className ? ` ${className}` : ""}`} title={t(`inventory.storage.title.${storage}`)} {...rest}>
       {t(`inventory.storage.short.${storage}`)}
+    </Pill>
+  );
+}
+
+// « Exemple » / "Example" (see the top of the file): a mini yellow Pill, the only tag for an example.
+export function ExampleTag({ sticker = false, className, ...rest }) {
+  return (
+    <Pill size="mini" tone="yellow" sticker={sticker} className={`example-tag${className ? ` ${className}` : ""}`} {...rest}>
+      {t("examples.tag")}
     </Pill>
   );
 }
